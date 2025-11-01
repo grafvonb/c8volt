@@ -8,9 +8,10 @@ import (
 
 type AuthMode string
 
-func (m AuthMode) IsValid() bool { return m == ModeOAuth2 || m == ModeCookie }
+func (m AuthMode) IsValid() bool { return m == ModeOAuth2 || m == ModeCookie || m == ModeNone }
 
 const (
+	ModeNone   AuthMode = "none"
 	ModeOAuth2 AuthMode = "oauth2"
 	ModeCookie AuthMode = "cookie"
 )

@@ -16,20 +16,47 @@ There are plenty of operational tasks where you want to be sure that:
 
 1. **Install Camunda 8.8 Run**  
    Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run/8.8/), unpack and start it with `./start.sh`.
+   Use listed relevant URLs and default credentials to create the configuration for c8volt.
+    ```bash
+    $ ./start.sh
+    
+    System Version Information
+    --------------------------
+    Camunda Details:
+      Version: 8.8.2
+    --------------------------
+    [...]
+    -------------------------------------------
+    Access each component at the following urls with these default credentials:
+    - username: demo
+    - password: demo
+    
+    Operate:                    http://localhost:8080/operate
+    Tasklist:                   http://localhost:8080/tasklist
+    Identity:                   http://localhost:8080/identity
+    
+    Orchestration Cluster API:  http://localhost:8080/v2/
+    [...]
+    ```
 2. **Install c8volt**  
-   Download the latest release from the [c8volt Releases](https://github.com/grafvonb/c8volt/releases) page and unpack it.
+Download the latest release relevant to your OS from the [c8volt Releases](https://github.com/grafvonb/c8volt/releases) page and unpack it.
+Here is an example for macOS ARM64:
+    ```bash
+    $ wget -q --show-progress -c -O c8volt.tar.gz https://github.com/grafvonb/c8volt/releases/download/v0.1.61/c8volt_0.1.61_Darwin_arm64.tar.gz
+    $ tar -xvf c8volt.tar.gz
+    ```
 3. **Configure c8volt**  
    Create a configuration file (YAML) in the folder where you unpacked c8volt with the name `config.yaml` or in `$HOME/.c8volt/config.yaml` with the minimal connection and authentication details:
     ```yaml
-    auth:
-      mode: "cookie"
-      cookie:
-        base_url: "http://localhost:8080"
-    
     apis:
       version: "8.8"
       camunda_api:
         base_url: "http://localhost:8080/v2"
+   
+    auth:
+      mode: "cookie"
+      cookie:
+        base_url: "http://localhost:8080"
     ```
 4. **Run c8volt**  
    Test the connection and list cluster topology:
@@ -161,16 +188,7 @@ You need to provide the following settings:
 
 Here is an example configuration snippet for OAuth2 authentication for Camunda 8 running locally with Keycloak:
 ```yaml
-auth:
-  mode: "oauth2" # options: "oauth2", "cookie"
-  oauth2:
-    token_url: "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"
-    client_id: "c8volt"
-    client_secret: "*******" # use environment variable C8VOLT_AUTH_CLIENT_SECRET if possible
-    scopes:
-      camunda_api: "profile"
-      operate_api: "profile"
-      tasklist_api: "profile"
+
 ```
 
 #### Authentication with API Cookie (development with Camunda 8 Run only)
@@ -182,12 +200,7 @@ You need to provide the following settings:
 
 Here is an example configuration snippet for API Cookie authentication for Camunda 8 Run running locally:
 ```yaml
-auth:
-  mode: "cookie" # options: "oauth2", "cookie"
-  cookie:
-    base_url: "http://localhost:8090"
-    username: "demo"
-    password: "demo"
+
 ```
 
 ### Connecting to Camunda's 8 APIs
@@ -254,42 +267,65 @@ When searching for a config file, c8volt checks these paths in order and uses th
 
 ### File format
 
-Config files must be **YAML**. Example with core settings:
-
+Config files must be **YAML**. You can inspect the effective configuration (after merging defaults, config file, env vars, and flags) with:
+```bash
+$ ./c8volt config show
+```
+You will see output like this:
 ``` yaml
-app:
-  # Tenant identifier (optional, depending on your setup)
-  tenant: ""
-
-auth:
-  # OAuth token endpoint
-  token_url: "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"
-
-  # Client credentials (use env vars if possible)
-  client_id: "c8volt"
-  client_secret: "" # do not store secrets in config files if possible, use environment variable C8VOLT_AUTH_CLIENT_SECRET instead
-
-  # Scopes as key:value pairs (names -> scope strings)
-  # Do not define if not in use or empty
-  scopes:
-    camunda_api: "profile"
-    operate_api: "profile"
-    tasklist_api: "profile"
-
-http:
-  # Go duration string (e.g., 10s, 1m, 2m30s)
-  timeout: "30s"
-
 apis:
-  # Base URL for Camunda API (v8.8+: Orchestration Cluster API)
-  camunda_api:
-    base_url: "http://localhost:8080/v2"
-  # Base URL for Operate API (leaves empty to default to camunda_api, deprecated in v8.8+)
-  operate_api:
-    base_url: "http://localhost:8081/v1"
-  # Base URL for Tasklist API (leaves empty to default to camunda_api, deprecated in v8.8+)
-  tasklist_api:
-    base_url: "http://localhost:8082/v1"
+    camunda_api:
+        base_url: http://localhost:8080/v2
+        key: camunda_api
+        require_scope: false
+    operate_api:
+        base_url: http://localhost:8080
+        key: operate_api
+        require_scope: false
+    tasklist_api:
+        base_url: http://localhost:8080
+        key: tasklist_api
+        require_scope: false
+    version: "8.8"
+app:
+    backoff:
+        initial_delay: 5e+08
+        max_delay: 8e+09
+        max_retries: 0
+        multiplier: 2
+        strategy: exponential
+        timeout: 5e+09
+    tenant: ""
+auth:
+    cookie:
+        base_url: http://localhost:8090
+        password: '*****'
+        username: ""
+    mode: oauth2
+    oauth2:
+        client_id: c8volt
+        client_secret: '*****'
+        scopes:
+            camunda_api: profile
+            operate_api: profile
+            tasklist_api: profile
+        token_url: http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect
+config: ""
+http:
+    timeout: 23s
+log:
+    format: plain
+    level: debug
+    with_request_body: false
+    with_source: true
+```
+You can output the config as empty (no values) template with:
+```bash
+$ ./c8volt config show --template
+```
+In case of any issues with loading or parsing the config file, use validation with:
+```bash
+$ ./c8volt config show --validate
 ```
 
 ### Environment variables
@@ -305,70 +341,8 @@ example:
 ### Security note
 
 Sensitive fields such as `auth.client_secret` are **always masked** when
-the configuration is printed (e.g. with `--show-config`) or logged.\
-The raw values are still loaded and used internally, but they will never
+the configuration is printed or logged. The raw values are still loaded and used internally, but they will never
 appear in output.
-
-### Example: Show effective configuration
-
-You can inspect the effective configuration (after merging defaults,
-config file, env vars, and flags) with:
-
-```bash
-$ ./c8volt --show-config
-config loaded: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config.yaml
-{
-  "Config": "",
-  "App": {
-    "Tenant": "",
-    "Backoff": {
-      "Strategy": "exponential",
-      "InitialDelay": 500000000,
-      "MaxDelay": 8000000000,
-      "MaxRetries": 0,
-      "Multiplier": 2,
-      "Timeout": 30000000000
-    }
-  },
-  "Auth": {
-    "Mode": "",
-    "OAuth2": {
-      "TokenURL": "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect",
-      "ClientID": "******",
-      "ClientSecret": "******",
-      "Scopes": {
-        "camunda_api": "profile",
-        "operate_api": "profile",
-        "tasklist_api": "profile"
-      }
-    },
-    "Cookie": {
-      "BaseURL": "http://localhost:8090",
-      "Username": "******",
-      "Password": "******"
-    }
-  },
-  "APIs": {
-    "Version": "87",
-    "Camunda": {
-      "Key": "camunda_api",
-      "BaseURL": "http://localhost:8086/v2"
-    },
-    "Operate": {
-      "Key": "operate_api",
-      "BaseURL": "http://localhost:8081"
-    },
-    "Tasklist": {
-      "Key": "tasklist_api",
-      "BaseURL": "http://localhost:8082"
-    }
-  },
-  "HTTP": {
-    "Timeout": "23s"
-  }
-}
-```
-
 
 ### c8volt in Action
 Look here for practical examples of using c8volt for common tasks and special use cases.

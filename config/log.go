@@ -11,14 +11,17 @@ import (
 
 type Log struct {
 	Level           string `mapstructure:"level" json:"level" yaml:"level"`
-	Format          string `mapstructure:"format" json:"format" yaml:"format"` // "text" or "json"
+	Format          string `mapstructure:"format" json:"format" yaml:"format"` // "text", "json" or "plain"
 	WithSource      bool   `mapstructure:"with_source" json:"with_source" yaml:"with_source"`
 	WithRequestBody bool   `mapstructure:"with_request_body" json:"with_request_body" yaml:"with_request_body"`
 }
 
 func (l *Log) Normalize() {
-	l.Level = strings.ToLower(strings.TrimSpace(l.Level))
 	l.Format = strings.ToLower(strings.TrimSpace(l.Format))
+	if l.Format == "" {
+		l.Format = "plain"
+	}
+	l.Level = strings.ToLower(strings.TrimSpace(l.Level))
 	if l.Level == "" {
 		l.Level = "info"
 	}
@@ -29,13 +32,6 @@ func (l *Log) Normalize() {
 		l.Level = "warn"
 	case "err":
 		l.Level = "error"
-	}
-	if l.Format == "" {
-		l.Format = "text"
-	}
-	switch l.Format {
-	case "console":
-		l.Format = "text"
 	}
 }
 

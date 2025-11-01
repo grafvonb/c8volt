@@ -8,6 +8,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 	"github.com/grafvonb/c8volt/internal/services/auth/cookie"
+	"github.com/grafvonb/c8volt/internal/services/auth/none"
 	"github.com/grafvonb/c8volt/internal/services/auth/oauth2"
 )
 
@@ -17,6 +18,8 @@ func BuildAuthenticator(cfg *config.Config, httpClient *http.Client, log *slog.L
 		return oauth2.New(cfg, httpClient, log)
 	case config.ModeCookie:
 		return cookie.New(cfg, httpClient, log)
+	case config.ModeNone:
+		return none.New(log)
 	default:
 		return nil, fmt.Errorf("unknown auth mode: %s", cfg.Auth.Mode)
 	}

@@ -33,8 +33,12 @@ func WithHTTPClient(h *http.Client) Option { return func(s *Service) { s.http = 
 
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	if cfg == nil {
-		return nil, errors.New("cfg is nil")
+		return nil, errors.New("cfg must not be nil")
 	}
+	if log == nil {
+		return nil, errors.New("logger must not be nil")
+	}
+	log.Debug("Using 'cookie' authenticator: session cookie-based authentication")
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}

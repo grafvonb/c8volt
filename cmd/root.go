@@ -160,8 +160,9 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	v.SetDefault("http.timeout", "30s")
 
 	v.SetDefault("log.level", "info")
-	v.SetDefault("log.format", "text")
+	v.SetDefault("log.format", "plain")
 	v.SetDefault("log.with_source", false)
+	v.SetDefault("log.with_request_body", false)
 
 	v.SetEnvPrefix("c8volt")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
