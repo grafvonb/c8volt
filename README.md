@@ -1,10 +1,8 @@
-<p align="center">
-<img src="./docs/logo/c8volt_bkg_white_900x300.png" alt="c8volt logo" style="border-radius: 5px;" height="150px" />
-</p>
+<img src="./docs/logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
 # c8volt - Yet Another Camunda 8 CLI Tool?
 
-No – c8volt is different. Its design and development focus on operational effectiveness, ensuring that done is done.
+No, **c8volt** is different. Its design and development focus on operational effectiveness, ensuring that done is done.
 There are plenty of operational tasks where you want to be sure that:
 
 * A process was canceled – is it really in the cancelled state?
@@ -12,7 +10,7 @@ There are plenty of operational tasks where you want to be sure that:
 * A process instance was started – has it already reached the expected user task?
 * A process variable was set – does it hold the correct value?
 
-c8volt focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
+**c8volt** focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
  
 ## Quick Start with c8volt
 
