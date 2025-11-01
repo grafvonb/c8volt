@@ -1,6 +1,6 @@
 package main
 
-import "github.com/grafvonb/kamunder/cmd"
+import "github.com/grafvonb/c8volt/cmd"
 
 func main() {
 	cmd.Execute()

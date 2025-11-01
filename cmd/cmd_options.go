@@ -1,6 +1,6 @@
 package cmd
 
-import "github.com/grafvonb/kamunder/kamunder/options"
+import "github.com/grafvonb/c8volt/c8volt/options"
 
 func collectOptions() []options.FacadeOption {
 	var opts []options.FacadeOption

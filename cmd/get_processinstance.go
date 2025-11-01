@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/kamunder/process"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 
 		if err != nil {
-			ferrors.HandleAndExit(log, fmt.Errorf("error creating kamunder client: %w", err))
+			ferrors.HandleAndExit(log, fmt.Errorf("error creating c8volt client: %w", err))
 		}
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 )
 
 type State string

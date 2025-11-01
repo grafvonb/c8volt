@@ -1,12 +1,12 @@
-package kamunder
+package c8volt
 
 import (
 	"context"
 
-	"github.com/grafvonb/kamunder/kamunder/cluster"
-	"github.com/grafvonb/kamunder/kamunder/process"
-	"github.com/grafvonb/kamunder/kamunder/resource"
-	"github.com/grafvonb/kamunder/kamunder/task"
+	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/c8volt/task"
 )
 
 type API interface {

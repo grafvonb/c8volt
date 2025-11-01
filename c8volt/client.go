@@ -1,4 +1,4 @@
-package kamunder
+package c8volt
 
 import (
 	"context"
@@ -6,16 +6,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grafvonb/kamunder/config"
-	csvc "github.com/grafvonb/kamunder/internal/services/cluster"
-	pdsvc "github.com/grafvonb/kamunder/internal/services/processdefinition"
-	pisvc "github.com/grafvonb/kamunder/internal/services/processinstance"
-	rsvc "github.com/grafvonb/kamunder/internal/services/resource"
-	"github.com/grafvonb/kamunder/kamunder/resource"
+	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/config"
+	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
+	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 
-	"github.com/grafvonb/kamunder/kamunder/cluster"
-	"github.com/grafvonb/kamunder/kamunder/process"
-	"github.com/grafvonb/kamunder/kamunder/task"
+	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/task"
 )
 
 type Option func(*cfg)

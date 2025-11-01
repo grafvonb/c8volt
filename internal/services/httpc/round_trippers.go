@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/grafvonb/kamunder/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 )
 
 type LogTransport struct {

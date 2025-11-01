@@ -12,11 +12,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/clients/auth/oauth2"
-	"github.com/grafvonb/kamunder/internal/services/auth/authenticator"
-	"github.com/grafvonb/kamunder/internal/services/common"
-	"github.com/grafvonb/kamunder/internal/services/httpc"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/clients/auth/oauth2"
+	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 type TargetResolver func(*http.Request) string

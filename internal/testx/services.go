@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/services/auth"
-	"github.com/grafvonb/kamunder/internal/services/auth/authenticator"
-	"github.com/grafvonb/kamunder/internal/services/httpc"
-	"github.com/grafvonb/kamunder/toolx"
-	"github.com/grafvonb/kamunder/toolx/logging"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/auth"
+	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/require"
 )
 

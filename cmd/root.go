@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/services/auth"
-	"github.com/grafvonb/kamunder/internal/services/auth/authenticator"
-	"github.com/grafvonb/kamunder/internal/services/httpc"
-	"github.com/grafvonb/kamunder/toolx"
-	"github.com/grafvonb/kamunder/toolx/logging"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/auth"
+	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -23,8 +23,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "kamunder",
-	Short: "Kamunder is a CLI tool to interact with Camunda 8",
+	Use:   "c8volt",
+	Short: "c8volt is a CLI tool to interact with Camunda 8",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
 		if err := initViper(v, cmd); err != nil {
@@ -162,7 +162,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 
 	v.SetDefault("http.timeout", "30s")
 
-	v.SetEnvPrefix("KAMUNDER")
+	v.SetEnvPrefix("c8volt")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -173,10 +173,10 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 		v.SetConfigName("config")
 		v.SetConfigType("yaml")
 		v.AddConfigPath(".")
-		v.AddConfigPath("$XDG_CONFIG_HOME/kamunder")
-		v.AddConfigPath("$HOME/.config/kamunder")
-		v.AddConfigPath("$HOME/.kamunder")
-		v.AddConfigPath("/etc/kamunder")
+		v.AddConfigPath("$XDG_CONFIG_HOME/c8volt")
+		v.AddConfigPath("$HOME/.config/c8volt")
+		v.AddConfigPath("$HOME/.c8volt")
+		v.AddConfigPath("/etc/c8volt")
 	}
 	if err := v.ReadInConfig(); err != nil {
 		var nf viper.ConfigFileNotFoundError

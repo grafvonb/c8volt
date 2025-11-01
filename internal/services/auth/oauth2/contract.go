@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/grafvonb/kamunder/internal/clients/auth/oauth2"
-	"github.com/grafvonb/kamunder/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/internal/clients/auth/oauth2"
+	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 )
 
 const formContentType = "application/x-www-form-urlencoded"

@@ -1,8 +1,8 @@
 package cluster
 
 import (
-	"github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	"github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromDomainTopology(t domain.Topology) Topology {

@@ -1,8 +1,8 @@
 package process
 
 import (
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {

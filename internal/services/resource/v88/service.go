@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"net/textproto"
 
-	"github.com/grafvonb/kamunder/config"
-	camundav88 "github.com/grafvonb/kamunder/internal/clients/camunda/v88/camunda"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/internal/services"
-	"github.com/grafvonb/kamunder/internal/services/httpc"
+	"github.com/grafvonb/c8volt/config"
+	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 type Service struct {

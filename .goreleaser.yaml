@@ -17,10 +17,10 @@ builds:
       - arm64
     ldflags:
       - >-
-        -X github.com/grafvonb/kamunder/cmd.version={{.Version}}
-        -X github.com/grafvonb/kamunder/cmd.commit={{.Commit}}
-        -X github.com/grafvonb/kamunder/cmd.date={{.Date}}
-        -X github.com/grafvonb/kamunder/cmd.builtBy=GoReleaser
+        -X github.com/grafvonb/c8volt/cmd.version={{.Version}}
+        -X github.com/grafvonb/c8volt/cmd.commit={{.Commit}}
+        -X github.com/grafvonb/c8volt/cmd.date={{.Date}}
+        -X github.com/grafvonb/c8volt/cmd.builtBy=GoReleaser
 
 archives:
   - formats: [tar.gz]

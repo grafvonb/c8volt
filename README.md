@@ -1,10 +1,10 @@
 <p align="center">
-<img src="./docs/logo/kamunder_bkg_white_900x300.png" alt="kamunder logo" style="border-radius: 5px;" height="150px" />
+<img src="./docs/logo/c8volt_bkg_white_900x300.png" alt="c8volt logo" style="border-radius: 5px;" height="150px" />
 </p>
 
-# Kamunder - Yet Another Camunda 8 CLI Tool?
+# c8volt - Yet Another Camunda 8 CLI Tool?
 
-No – Kamunder is different. Its design and development focus on operational effectiveness, ensuring that done is done.
+No – c8volt is different. Its design and development focus on operational effectiveness, ensuring that done is done.
 There are plenty of operational tasks where you want to be sure that:
 
 * A process was canceled – is it really in the cancelled state?
@@ -12,16 +12,16 @@ There are plenty of operational tasks where you want to be sure that:
 * A process instance was started – has it already reached the expected user task?
 * A process variable was set – does it hold the correct value?
 
-Kamunder focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
+c8volt focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
  
-## Quick Start with Kamunder
+## Quick Start with c8volt
 
 1. **Install Camunda 8.8 Run**  
    Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run/8.8/), unpack and start it with `./start.sh`.
-2. **Install Kamunder**  
-   Download the latest release from the [Kamunder Releases](https://github.com/grafvonb/kamunder/releases) page and unpack it.
-3. **Configure Kamunder**  
-   Create a configuration file (YAML) in the folder where you unpacked Kamunder with the name `config.yaml` or in `$HOME/.kamunder/config.yaml` with the minimal connection and authentication details:
+2. **Install c8volt**  
+   Download the latest release from the [c8volt Releases](https://github.com/grafvonb/c8volt/releases) page and unpack it.
+3. **Configure c8volt**  
+   Create a configuration file (YAML) in the folder where you unpacked c8volt with the name `config.yaml` or in `$HOME/.c8volt/config.yaml` with the minimal connection and authentication details:
     ```yaml
     auth:
       mode: "cookie"
@@ -33,14 +33,14 @@ Kamunder focuses on real operational use cases while still providing the familia
       camunda_api:
         base_url: "http://localhost:8080/v2"
     ```
-4. **Run Kamunder**  
+4. **Run c8volt**  
    Test the connection and list cluster topology:
    ```bash
-   ./kamunder get cluster-topology
+   ./c8volt get cluster-topology
    ```
    or use explicit path to config file:
    ```bash
-   ./kamunder get cluster-topology --config ./config-minimal.yaml
+   ./c8volt get cluster-topology --config ./config-minimal.yaml
    ```
    You should see output like this:
     ```json
@@ -70,74 +70,74 @@ Kamunder focuses on real operational use cases while still providing the familia
 
 ## Highlights
 
-Kamunder simplifies various tasks related to Camunda 8, including these special use cases:
+c8volt simplifies various tasks related to Camunda 8, including these special use cases:
 
 - **Delete active process instances by cancelling them first**
   ```bash
-  ./kamunder delete pi --key <process-instance-key> --cancel
+  ./c8volt delete pi --key <process-instance-key> --cancel
   ```
 
 - **List process instances that are children (sub-processes) of other process instances**
   ```bash
-  ./kamunder get pi --bpmn-process-id=<bpmn-process-id> --children-only
+  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --children-only
   ```
 
 - **List process instances that are parents of other process instances**
   ```bash
-  ./kamunder get pi --bpmn-process-id=<bpmn-process-id> --parents-only
+  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --parents-only
   ```
 
 - **List process instances that are children of orphan parent process instances**  
   (i.e., their parent process instance no longer exists)
   ```bash
-  ./kamunder get pi --bpmn-process-id=<bpmn-process-id> --orphan-parents-only
+  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --orphan-parents-only
   ```
 
 - **List process instances for a specific process definition (model) and its first version**
   ```bash
-  ./kamunder get pi --bpmn-process-id=<bpmn-process-id> --process-version=1
+  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --process-version=1
   ```
 
 - **List process instances with incidents**
   ```bash
-  ./kamunder get pi --incidents-only
+  ./c8volt get pi --incidents-only
   ```
 
 - **List process instances without incidents**
   ```bash
-  ./kamunder get pi --no-incidents-only
+  ./c8volt get pi --no-incidents-only
   ```
 
 - **Recursive search (walk) process instances with parent–child relationships**
     - List all child process instances of a given process instance
       ```bash
-      ./kamunder walk pi --mode children --start-key <process-instance-key>
+      ./c8volt walk pi --mode children --start-key <process-instance-key>
       ```
     - List path from a given process instance to its root ancestor (top-level parent)
       ```bash
-      ./kamunder walk pi --mode parent --start-key <process-instance-key>
+      ./c8volt walk pi --mode parent --start-key <process-instance-key>
       ```
     - List the entire family (parent, grandparent, …) of a given process instance (traverse up and down the tree)
       ```bash
-      ./kamunder walk pi --mode family --start-key <process-instance-key>
+      ./c8volt walk pi --mode family --start-key <process-instance-key>
       ```
 
 - **List process instances in one line per instance (suitable for scripting)**  
   Works with all `get` commands.
   ```bash
-  ./kamunder get pi --one-line
+  ./c8volt get pi --one-line
   ```
 
 - **List process instances just by their keys (suitable for scripting)**  
   Works with all `get` commands.
   ```bash
-  ./kamunder get pi --keys-only
+  ./c8volt get pi --keys-only
   ```
 
 - …and more to come:
 - bulk operations (e.g., delete multiple process instances by filter)
 - multiple Camunda 8 API versions support (currently 8.7, 8.8 to come)
-- or submit a proposal or contribute code on [GitHub](https://github.com/grafvonb/kamunder)
+- or submit a proposal or contribute code on [GitHub](https://github.com/grafvonb/c8volt)
 
 ## Supported Camunda 8 APIs
 
@@ -148,13 +148,13 @@ Kamunder simplifies various tasks related to Camunda 8, including these special 
 
 ### Choose authentication method
 
-Kamunder supports two authentication methods for connecting to Camunda 8 APIs:
+c8volt supports two authentication methods for connecting to Camunda 8 APIs:
 - OAuth2 (OIDC)
 - API Cookie (development with Camunda 8 Run only)
 
 #### Authentication with OAuth2 (OIDC)
 
-Kamunder supports OAuth2 (OIDC) authentication with client credentials flow.
+c8volt supports OAuth2 (OIDC) authentication with client credentials flow.
 You need to provide the following settings:
 * Token URL
 * Client ID
@@ -167,8 +167,8 @@ auth:
   mode: "oauth2" # options: "oauth2", "cookie"
   oauth2:
     token_url: "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"
-    client_id: "kamunder"
-    client_secret: "*******" # use environment variable KAMUNDER_AUTH_CLIENT_SECRET if possible
+    client_id: "c8volt"
+    client_secret: "*******" # use environment variable c8volt_AUTH_CLIENT_SECRET if possible
     scopes:
       camunda_api: "profile"
       operate_api: "profile"
@@ -194,10 +194,10 @@ auth:
 
 ### Connecting to Camunda 8 APIs
 
-To run Kamunder, you need to configure the connection to your Camunda 8 APIs (Camunda, Operate, Tasklist) and authentication details.
+To run c8volt, you need to configure the connection to your Camunda 8 APIs (Camunda, Operate, Tasklist) and authentication details.
 With the introduction of Camunda 8.8 and unified APIs, some of these settings may become optional or redundant in the future.
 
-Kamunder expects the following API configurations:
+c8volt expects the following API configurations:
 * Camunda 8 API (required, formally known as Zeebe API)
 * Operate API (optional, required for some commands, if not set defaults to Camunda 8 API)
 * Tasklist API (optional, required for some commands, if not set defaults to Camunda 8 API)
@@ -223,11 +223,11 @@ apis:
 
 ### Ways to provide settings
 
-Kamunder uses [Viper](https://github.com/spf13/viper) under the hood.
+c8volt uses [Viper](https://github.com/spf13/viper) under the hood.
 Configuration values can come from:
 
 -   **Flags** (`--auth-client-id=...`)
--   **Environment variables** (`KAMUNDER_AUTH_CLIENT_ID=...`)
+-   **Environment variables** (`c8volt_AUTH_CLIENT_ID=...`)
 -   **Config file** (YAML)
 -   **Defaults** (hardcoded fallbacks)
 
@@ -238,21 +238,21 @@ When multiple sources define the same setting, the **highest-priority value wins
 | Priority    | Source             | Example                          |
 |-------------|--------------------|----------------------------------|
 | 1 (highest) | Command-line flags | `--auth-client-id=cli-id`        |
-| 2           | Environment vars   | `KAMUNDER_AUTH_CLIENT_ID=env-id` |
+| 2           | Environment vars   | `c8volt_AUTH_CLIENT_ID=env-id` |
 | 3           | Config file (YAML) | `auth.client_id: file-id`        |
 | 4 (lowest)  | Defaults           | `http.timeout: "30s"` (built-in) |
 
 ### Default configuration file locations
 
-When searching for a config file, Kamunder checks these paths in order and uses the first one it finds:
+When searching for a config file, c8volt checks these paths in order and uses the first one it finds:
 
 | Priority | Location                                        | Notes                                                                                                                              |
 |----------|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
 | 1        | `./config.yaml`                                 | Current working directory                                                                                                          |
-| 2        | `$XDG_CONFIG_HOME/kamunder/config.yaml`         | Skipped if `$XDG_CONFIG_HOME` is not set                                                                                           |
-| 3        | `$HOME/.config/kamunder/config.yaml`            | XDG default on Linux/macOS                                                                                                         |
-| 4        | `$HOME/.kamunder/config.yaml`                   | Legacy fallback                                                                                                                    |
-| 5        | `%AppData%\kamunder\config.yaml` (Windows only) | `%AppData%` usually expands to `C:\Users\<User>\AppData\Roaming`<br>Example: `C:\Users\Alice\AppData\Roaming\kamunder\config.yaml` |
+| 2        | `$XDG_CONFIG_HOME/c8volt/config.yaml`         | Skipped if `$XDG_CONFIG_HOME` is not set                                                                                           |
+| 3        | `$HOME/.config/c8volt/config.yaml`            | XDG default on Linux/macOS                                                                                                         |
+| 4        | `$HOME/.c8volt/config.yaml`                   | Legacy fallback                                                                                                                    |
+| 5        | `%AppData%\c8volt\config.yaml` (Windows only) | `%AppData%` usually expands to `C:\Users\<User>\AppData\Roaming`<br>Example: `C:\Users\Alice\AppData\Roaming\c8volt\config.yaml` |
 
 ### File format
 
@@ -273,7 +273,7 @@ auth:
   token_url: "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"
 
   # Client credentials (use env vars if possible)
-  client_id: "kamunder"
+  client_id: "c8volt"
   client_secret: ""
 
   # Scopes as key:value pairs (names -> scope strings)
@@ -300,12 +300,12 @@ apis:
 ### Environment variables
 
 Each config key can also be set via environment variable.\
-The prefix is `KAMUNDER_`, and nested keys are joined with `_`. For
+The prefix is `c8volt_`, and nested keys are joined with `_`. For
 example:
 
--   `KAMUNDER_AUTH_CLIENT_ID`
--   `KAMUNDER_AUTH_CLIENT_SECRET`
--   `KAMUNDER_HTTP_TIMEOUT`
+-   `c8volt_AUTH_CLIENT_ID`
+-   `c8volt_AUTH_CLIENT_SECRET`
+-   `c8volt_HTTP_TIMEOUT`
 
 ### Security note
 
@@ -320,8 +320,8 @@ You can inspect the effective configuration (after merging defaults,
 config file, env vars, and flags) with:
 
 ```bash
-$ ./kamunder --show-config
-config loaded: /Users/adam.boczek/Development/Workspace/Boczek/Projects/kamunder/kamunder/config.yaml
+$ ./c8volt --show-config
+config loaded: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config.yaml
 {
   "Config": "",
   "App": {
@@ -375,13 +375,13 @@ config loaded: /Users/adam.boczek/Development/Workspace/Boczek/Projects/kamunder
 ```
 
 
-### Kamunder in Action
-Look here for practical examples of using Kamunder for common tasks and special use cases.
+### c8volt in Action
+Look here for practical examples of using c8volt for common tasks and special use cases.
 
 #### Deleting an active process instance by cancelling it first, if the instance is active
 List all process instances for a specific process definition:
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
 found: 12
 2251799813685511 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:30.380+0000 i:false
 2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
@@ -398,7 +398,7 @@ found: 12
 ```
 List only active process instances for the specific process definition in active state:
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --state=active
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --state=active
 filter: state=active
 found: 10
 2251799813685511 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:30.380+0000 i:false
@@ -414,13 +414,13 @@ found: 10
 ```
 Try to delete an active process instance (will fail):
 ```
-$ kamunder delete pi --key 2251799813685511
+$ c8volt delete pi --key 2251799813685511
 trying to delete process instance with key 2251799813685511...
 Error deleting process instance with key 2251799813685511: unexpected status 400: {"status":400,"message":"Process instances needs to be in one of the states [COMPLETED, CANCELED]","instance":"dae2c2ce-58dd-4396-a948-4d57463168ed","type":"Invalid request"}
 ```
 Try to delete an active process instance by forcing cancellation first (will succeed):
 ```
-$ kamunder delete pi --key 2251799813685511 --cancel
+$ c8volt delete pi --key 2251799813685511 --cancel
 trying to delete process instance with key 2251799813685511...
 process instance with key 2251799813685511 not in state COMPLETED or CANCELED, cancelling it first...
 trying to cancel process instance with key 2251799813685511...
@@ -442,7 +442,7 @@ process instance with key 2251799813685511 was successfully deleted
 #### Finding process instances with orphan (non-existing) parent process instances
 List all process instances for a specific process definition:
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
 found: 12
 2251799813685511 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:30.380+0000 i:false
 2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
@@ -459,7 +459,7 @@ found: 12
 ```
 List all process instances for a specific process definition that are children of other process instances (look at p:...):
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --children-only
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --children-only
 filter: children-only=true
 found: 4
 2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
@@ -469,7 +469,7 @@ found: 4
 ```
 List all process instances for a specific process definition that are children of orphan parent process instances (their parent process instance no longer exists):
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --orphan-parents-only
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --orphan-parents-only
 filter: orphan-parents-only=true
 found: 2
 2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
@@ -479,7 +479,7 @@ found: 2
 #### Listing process instances for a process definition in a specific version
 List all process instances for a specific process definition:
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
 found: 11
 2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
 2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false
@@ -495,7 +495,7 @@ found: 11
 ```
 List only process instances for version 1 of the process definition:
 ```
-$ kamunder get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --process-version=1
+$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --process-version=1
 found: 3
 2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
 2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false

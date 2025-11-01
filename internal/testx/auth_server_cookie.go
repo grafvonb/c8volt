@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafvonb/kamunder/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
 type AuthServerCookie struct {

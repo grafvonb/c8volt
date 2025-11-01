@@ -6,9 +6,9 @@ import (
 
 	"log/slog"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/services/cluster"
-	"github.com/grafvonb/kamunder/toolx"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/cluster"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 

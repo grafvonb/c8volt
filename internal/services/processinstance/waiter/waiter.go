@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafvonb/kamunder/config"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/internal/services"
+	"github.com/grafvonb/c8volt/config"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 )
 
 type PIWaiter interface {

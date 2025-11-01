@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/services/httpc"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 type Services struct {

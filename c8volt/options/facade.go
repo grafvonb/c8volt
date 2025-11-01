@@ -1,6 +1,6 @@
 package options
 
-import "github.com/grafvonb/kamunder/internal/services"
+import "github.com/grafvonb/c8volt/internal/services"
 
 func WithNoStateCheck() FacadeOption { return func(c *FacadeCfg) { c.NoStateCheck = true } }
 func WithCancel() FacadeOption       { return func(c *FacadeCfg) { c.Cancel = true } }

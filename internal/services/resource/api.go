@@ -3,10 +3,10 @@ package resource
 import (
 	"context"
 
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/internal/services"
-	v87 "github.com/grafvonb/kamunder/internal/services/resource/v87"
-	v88 "github.com/grafvonb/kamunder/internal/services/resource/v88"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	v87 "github.com/grafvonb/c8volt/internal/services/resource/v87"
+	v88 "github.com/grafvonb/c8volt/internal/services/resource/v88"
 )
 
 type API interface {

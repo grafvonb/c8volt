@@ -1,9 +1,9 @@
 package v88
 
 import (
-	operatev88 "github.com/grafvonb/kamunder/internal/clients/camunda/v88/operate"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromProcessDefinitionResponse(r operatev88.ProcessDefinition) d.ProcessDefinition {

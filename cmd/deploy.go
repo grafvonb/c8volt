@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafvonb/kamunder/kamunder/resource"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

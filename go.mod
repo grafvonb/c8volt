@@ -1,4 +1,4 @@
-module github.com/grafvonb/kamunder
+module github.com/grafvonb/c8volt
 
 go 1.25.3
 

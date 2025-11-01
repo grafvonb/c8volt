@@ -5,11 +5,11 @@ import (
 	"errors"
 	"log/slog"
 
-	rsvc "github.com/grafvonb/kamunder/internal/services/resource"
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/kamunder/options"
-	"github.com/grafvonb/kamunder/kamunder/process"
-	"github.com/grafvonb/kamunder/toolx"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/options"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type API interface {

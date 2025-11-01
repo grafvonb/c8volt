@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/kamunder/process"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 

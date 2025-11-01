@@ -1,7 +1,7 @@
 package resource
 
 import (
-	d "github.com/grafvonb/kamunder/internal/domain"
+	d "github.com/grafvonb/c8volt/internal/domain"
 )
 
 func fromProcessDefinitionDeployment(d d.Deployment) ProcessDefinitionDeployment {

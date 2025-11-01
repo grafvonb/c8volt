@@ -3,7 +3,7 @@ package v87
 import (
 	"context"
 
-	tasklistv87 "github.com/grafvonb/kamunder/internal/clients/camunda/v87/tasklist"
+	tasklistv87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/tasklist"
 )
 
 type GenUserTaskClient interface {

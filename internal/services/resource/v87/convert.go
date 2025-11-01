@@ -1,9 +1,9 @@
 package v87
 
 import (
-	camundav87 "github.com/grafvonb/kamunder/internal/clients/camunda/v87/camunda"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromDeploymentResult(r camundav87.DeploymentResult) d.Deployment {

@@ -3,8 +3,8 @@ package v87
 import (
 	"context"
 
-	camundav87 "github.com/grafvonb/kamunder/internal/clients/camunda/v87/camunda"
-	operatev87 "github.com/grafvonb/kamunder/internal/clients/camunda/v87/operate"
+	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
+	operatev87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/operate"
 )
 
 type GenClusterClientCamunda interface {

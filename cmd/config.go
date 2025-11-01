@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/toolx/logging"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
 

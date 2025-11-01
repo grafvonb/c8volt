@@ -13,15 +13,15 @@ template: testify
 template-schema: '{{.Template}}.schema.json'
 
 packages:
-  github.com/grafvonb/kamunder/internal/services/auth:
+  github.com/grafvonb/c8volt/internal/services/auth:
     config:
       all: true
       dir: 'internal/services/auth/mocks'              # unique per package
-  github.com/grafvonb/kamunder/internal/services/cluster/v87:
+  github.com/grafvonb/c8volt/internal/services/cluster/v87:
     config:
       all: true
       dir: 'internal/services/cluster/v87/mocks'      # include version
-  github.com/grafvonb/kamunder/internal/services/cluster/v88:
+  github.com/grafvonb/c8volt/internal/services/cluster/v88:
     config:
       all: true
       dir: 'internal/services/cluster/v88/mocks'      # include version

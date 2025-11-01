@@ -1,6 +1,6 @@
 package config
 
-import "github.com/grafvonb/kamunder/internal/services/common"
+import "github.com/grafvonb/c8volt/internal/services/common"
 
 type App struct {
 	Tenant  string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`

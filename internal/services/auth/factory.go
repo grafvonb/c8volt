@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/services/auth/authenticator"
-	"github.com/grafvonb/kamunder/internal/services/auth/cookie"
-	"github.com/grafvonb/kamunder/internal/services/auth/oauth2"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/internal/services/auth/cookie"
+	"github.com/grafvonb/c8volt/internal/services/auth/oauth2"
 )
 
 func BuildAuthenticator(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (authenticator.Authenticator, error) {

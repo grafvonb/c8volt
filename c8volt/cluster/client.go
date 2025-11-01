@@ -3,9 +3,9 @@ package cluster
 import (
 	"context"
 
-	csvc "github.com/grafvonb/kamunder/internal/services/cluster"
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/kamunder/options"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/options"
+	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
 )
 
 type API interface {

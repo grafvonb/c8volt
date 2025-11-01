@@ -1,9 +1,9 @@
 package v87
 
 import (
-	operatev87 "github.com/grafvonb/kamunder/internal/clients/camunda/v87/operate"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	operatev87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/operate"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromProcessInstanceResponse(r operatev87.ProcessInstance) d.ProcessInstance {

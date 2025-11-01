@@ -3,10 +3,10 @@ package v88
 import (
 	"time"
 
-	camundav88 "github.com/grafvonb/kamunder/internal/clients/camunda/v88/camunda"
-	operatev88 "github.com/grafvonb/kamunder/internal/clients/camunda/v88/operate"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 //nolint:unused

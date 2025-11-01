@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/clients/auth/oauth2"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/clients/auth/oauth2"
 )
 
 type tokenJSON200 = struct {

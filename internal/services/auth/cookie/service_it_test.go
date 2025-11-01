@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafvonb/kamunder/config"
-	"github.com/grafvonb/kamunder/internal/services/auth/cookie"
-	"github.com/grafvonb/kamunder/internal/testx"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/internal/services/auth/cookie"
+	"github.com/grafvonb/c8volt/internal/testx"
 	"github.com/stretchr/testify/require"
 )
 

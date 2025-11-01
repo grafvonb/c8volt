@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"github.com/grafvonb/kamunder/embedded"
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/toolx"
-	"github.com/grafvonb/kamunder/toolx/logging"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/embedded"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/internal/services"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 )
 
 type PIWalker interface {

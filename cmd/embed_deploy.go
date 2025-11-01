@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"slices"
 
-	"github.com/grafvonb/kamunder/embedded"
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
-	"github.com/grafvonb/kamunder/kamunder/resource"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/embedded"
 	"github.com/spf13/cobra"
 )
 

@@ -1,8 +1,8 @@
 package task
 
 import (
-	pdsvc "github.com/grafvonb/kamunder/internal/services/processdefinition"
-	pisvc "github.com/grafvonb/kamunder/internal/services/processinstance"
+	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 )
 
 type API interface{}

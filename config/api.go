@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafvonb/kamunder/toolx"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 const (

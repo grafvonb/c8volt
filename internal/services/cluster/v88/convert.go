@@ -1,9 +1,9 @@
 package v88
 
 import (
-	camundav88 "github.com/grafvonb/kamunder/internal/clients/camunda/v88/camunda"
-	d "github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/toolx"
+	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromTopologyResponse(r camundav88.TopologyResponse) d.Topology {

@@ -12,7 +12,7 @@ auth:
   token_url: "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"
 
   # Client credentials (use env vars if possible)
-  client_id: "kamunder"
+  client_id: "c8volt"
   client_secret: ""
 
   # Scopes as key:value pairs (names -> scope strings)

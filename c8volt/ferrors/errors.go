@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/grafvonb/kamunder/internal/domain"
-	"github.com/grafvonb/kamunder/internal/exitcode"
+	"github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/exitcode"
 )
 
 var (

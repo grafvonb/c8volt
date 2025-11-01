@@ -1,4 +1,4 @@
-BINARY := kamunder
+BINARY := c8volt
 BIN_DIR := bin
 PKG := ./...
 COVER_DIR := .coverage

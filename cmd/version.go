@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/grafvonb/kamunder/toolx"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ var versionCmd = &cobra.Command{
 			cmd.Println(toolx.ToJSONString(out))
 			return
 		}
-		cmd.Printf("Kamunder version %s, commit %s, built at %s. Supported Camunda versions: %s\n", version, commit, date, toolx.SupportedCamundaVersionsString())
+		cmd.Printf("c8volt version %s, commit %s, built at %s. Supported Camunda versions: %s\n", version, commit, date, toolx.SupportedCamundaVersionsString())
 	},
 }
 

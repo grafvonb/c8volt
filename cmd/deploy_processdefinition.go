@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grafvonb/kamunder/kamunder/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
