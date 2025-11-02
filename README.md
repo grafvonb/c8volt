@@ -66,21 +66,6 @@ auth:
 log:
   level: debug
 ```
-If you use c8run v8.7, you need to use cookie authentication instead:
-```yaml
-apis:
-  version: "87"
-  camunda_api:
-    base_url: "http://localhost:8080/v2"
-auth:
-  mode: cookie
-  cookie:
-    base_url: "http://localhost:8080"
-    username: "demo"
-    password: "demo"
-log:
-  level: debug
-```
 4. **Run c8volt**
 
 Test the connection and list cluster topology:
@@ -116,8 +101,114 @@ You should see output like this:
   "LastCompletedChangeId": ""
 }
 ```
-
 ## Highlights
+
+The comprehensive documentation is on its way, but here are some highlights of what **c8volt** can do for you.
+
+### Embedded Deployment of BPMN Models
+
+Quite often, we need to deploy some BPMN models to Camunda 8 for testing or operational tasks.
+**c8volt** has embedded models in its binary that can be deployed on demand, without to use Camunda Modeler or other tools.
+
+#### Embedded Deployment in Action
+
+List embedded BPMN models:
+```bash
+$ ./c8volt embed list
+processdefinitions/C87_DoubleUserTaskProcess.bpmn
+processdefinitions/C87_MultipleSubProcessesParentProcess.bpmn
+processdefinitions/C87_SimpleParentProcess.bpmn
+processdefinitions/C87_SimpleUserTaskProcess.bpmn
+processdefinitions/C87_SimpleUserTaskWithIncidentProcess.bpmn
+processdefinitions/C88_DoubleUserTaskProcess.bpmn
+processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn
+processdefinitions/C88_SimpleParentProcess.bpmn
+processdefinitions/C88_SimpleUserTaskProcess.bpmn
+processdefinitions/C88_SimpleUserTaskWithIncidentProcess.bpmn
+```
+Deploy three embedded BPMN models to Camunda 8 that build a parent-child process instance tree:
+```bash
+$ ./c8volt embed deploy -f processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn,processdefinitions/C88_SimpleParentProcess.bpmn,processdefinitions/C88_SimpleUserTaskProcess.bpmn
+found: 3
+2251799813685772 <default> C88_MultipleSubProcessesParentProcess v1 vprocessdefinitions/C88_MultipleSubProcessesParentProcess.bpmn (2251799813685771)
+2251799813685773 <default> C88_SimpleParentProcess v1 vprocessdefinitions/C88_SimpleParentProcess.bpmn (2251799813685771)
+2251799813685774 <default> C88_SimpleUserTask_Process v1 vprocessdefinitions/C88_SimpleUserTaskProcess.bpmn (2251799813685771)
+```
+Check that the models are deployed:
+```bash
+$ ./c8volt get pd
+found: 3
+2251799813685772 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0
+2251799813685773 <default> C88_SimpleParentProcess v1/v1.0.0
+2251799813685774 <default> C88_SimpleUserTask_Process v1/v1.0.0
+```
+
+### Running Process Instances
+
+TBD
+
+### Searching Process Instances
+
+TBD
+
+### Cancellation of Process Instances
+
+Standard cancellation of process instances in Camunda 8 is asynchronous and does not guarantee that the instance is actually cancelled when the API call returns successfully.
+**c8volt** provides a waiting mechanism that polls the process instance state until it reaches the desired `CANCELED` state or a timeout occurs.
+It allows also forced cancellation a process instance even it is a child, by traversing the parent chain and cancelling its root ancestor. 
+
+#### Cancellation in Action
+
+Assuming you have following process instance tree (look at the sections above how to achieve that with c8volt's embedded deployment and run features):
+```bash
+$ ./c8volt get pi
+found: 4
+2251799813686374 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000  p:<root> i:false
+2251799813686383 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000  p:2251799813686374 i:false
+2251799813686384 <default> C88_SimpleParentProcess v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000  p:2251799813686374 i:false
+2251799813686392 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000  p:2251799813686384 i:false
+```
+Cancel the process instance `2251799813686384` (which is a child of `2251799813686374` and parent of `2251799813686392`):
+```bash
+$ ./c8volt cancel pi --key 2251799813686384
+INFO cannot cancel, process instance with key 2251799813686384 is a child process of a root parent with key 2251799813686374
+INFO you can use the --force flag to cancel the root process instance with key 2251799813686374 and all its child processes
+```
+You cannot cancel a child process instance directly. It is as standard behavior of Camunda 8.
+**c8volt** has a flag `--force` to find the root ancestor process instance and cancel it instead, which also cancels all its child process instances:
+```bash
+$ ./c8volt cancel pi --key 2251799813686384 --force
+INFO cannot cancel, process instance with key 2251799813686384 is a child process of a root parent with key 2251799813686374
+INFO force flag is set, cancelling root process instance with key 2251799813686374 and all its child processes
+INFO waiting for process instance with key 2251799813686374 to be cancelled by workflow engine...
+INFO process instance 2251799813686374 currently in state ACTIVE; waiting...
+INFO process instance 2251799813686374 currently in state ACTIVE; waiting...
+INFO process instance 2251799813686374 currently in state ACTIVE; waiting...
+INFO process instance with key 2251799813686374 was successfully cancelled
+```
+Standard behavior of **c8volt** is to wait until the process instance reaches the `CANCELED` state. 
+You can check it with a special `walk` command that traverses the process instance tree. To get the whole tree use `--mode family`:
+```bash
+$ ./c8volt walk pi --key 2251799813686384 --mode family
+2251799813686374 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-02T12:47:25.352Z  e:2025-11-02T12:53:43.594Z p:<root> i:false ⇄ 
+2251799813686383 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-02T12:47:25.352+0000  e:2025-11-02T12:53:43.594+0000 p:2251799813686374 i:false ⇄ 
+2251799813686384 <default> C88_SimpleParentProcess v1/v1.0.0 CANCELED s:2025-11-02T12:47:25.352+0000  e:2025-11-02T12:53:43.594+0000 p:2251799813686374 i:false ⇄ 
+2251799813686392 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-02T12:47:25.352+0000  e:2025-11-02T12:53:43.594+0000 p:2251799813686384 i:false
+```
+
+### Deletion
+
+#### Deletion of Process Instances
+
+TBD
+
+#### Deletion of Process Definitions
+
+TBD
+
+### Walking Process Instance Trees
+
+TBD
 
 ### Scripting Support
 
@@ -128,13 +219,215 @@ If you do not want to deal with specific error codes, you can use the `--no-err-
 
 #### Command Pipelining
 
+TBD
 
+## Configuration
 
+### Supported Camunda 8 Versions
 
+**c8volt** supports the following Camunda 8 versions:
 
-## ---
+- 8.7.x
+- 8.8.x
 
-c8volt simplifies various tasks related to Camunda 8, including these special use cases:
+As the changes between Camunda 8.8+ and previous versions are significant, you need to specify the version you are using in the configuration file.
+Here is an example configuration snippet for Camunda 8.8:
+```yaml
+app:
+  camunda_version: "8.8"
+```
+
+### API Base URLs
+
+**c8volt** needs to connect to Camunda 8 APIs. You need to provide the base URLs for the following APIs:
+- Camunda 8 Orchestration Cluster API (formerly known as Zeebe API or Camunda API)
+- Camunda 8 Operate API
+- Camunda 8 Tasklist API
+
+The base URL to Camunda 8 Orchestration Cluster API is usually in the form of `https://<host>:<port>/v2`, 
+while the Operate and Tasklist APIs are usually in the form of `https://<host>:<port>`.
+If you provide only the Camunda 8 Orchestration Cluster API base URL, **c8volt** will assume that Operate and Tasklist APIs 
+are available under the same host and port without the `/v2` suffix.
+Here is an example configuration snippet for API base URLs for Camunda 8 running locally:
+
+```yaml
+apis:
+  camunda_api:
+    base_url: "http://localhost:8080/v2"
+  operate_api:
+    base_url: "http://localhost:8080"
+  tasklist_api:
+    base_url: "http://localhost:8080"
+```
+
+### Choose authentication method
+
+**c8volt** supports following authentication methods for connecting to Camunda 8 APIs:
+- OAuth2 (OIDC)
+- API Cookie (for local development with Camunda 8.7 Run only)
+- No Authentication (for local development with Camunda 8.8+ Run only)
+
+#### Authentication with OAuth2 (OIDC)
+
+**c8volt** supports OAuth2 (OIDC) authentication with client credentials flow.
+You need to provide the following settings:
+* Token URL
+* Client ID
+* Client Secret
+* Scopes (optional, depending on your identity provider and API setup)
+
+Here is an example configuration snippet for OAuth2 authentication for Camunda 8 running locally with Keycloak:
+```yaml
+auth:
+  mode: "oauth2"
+  oauth2:
+    token_url: "http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"
+    client_id: "c8volt"
+    client_secret: "*******" # for local tests only, use environment variable C8VOLT_AUTH_OAUTH2_CLIENT_SECRET instead
+    scopes:
+      camunda_api: "profile"
+      operate_api: "profile"
+      tasklist_api: "profile"
+```
+
+#### Authentication with API Cookie (development with Camunda 8 Run only)
+
+This method is only suitable for local development with Camunda 8 Run (up to version 8.7), 
+as it uses the API cookie set by the web interface.
+
+You need to provide the following settings:
+* API base URL
+* (optional) Username and Password (if not set, defaults to `demo`/`demo`)
+
+Here is an example configuration snippet for API Cookie authentication for Camunda 8 Run running locally:
+```yaml
+app:
+  camunda_version: "8.7"
+apis:
+  camunda_api:
+    base_url: "http://localhost:8080/v2"
+auth:
+  mode: cookie
+  cookie:
+    base_url: "http://localhost:8080"
+    username: "demo"
+    password: "demo"
+log:
+  level: debug
+```
+
+#### No Authentication (development with Camunda 8.8+ Run only)
+
+This method is only suitable for local development with Camunda 8.8+ Run, as it disables authentication entirely.
+```yaml
+app:
+  camunda_version: "8.8"
+apis:
+  camunda_api:
+    base_url: "http://localhost:8080/v2"
+auth:
+  mode: none
+log:
+  level: debug
+```
+
+### Ways to provide settings
+
+c8volt uses [Viper](https://github.com/spf13/viper) under the hood. Configuration values can come from:
+
+- Flags (`--auth-oauth2-client-id=...`)
+- Environment variables (`C8VOLT_AUTH_OAUTH2_CLIENT_ID`)
+- Config file (YAML)
+- Defaults (hardcoded fallbacks)
+
+### Precedence
+
+When multiple sources define the same setting, the **highest-priority value wins**:
+
+| Priority    | Source             | Example                               |
+|-------------|--------------------|---------------------------------------|
+| 1 (highest) | Command-line flags | `--auth-oauth2-client-id=c8volt`      |
+| 2           | Environment vars   | `C8VOLT_AUTH_OAUTH2_CLIENT_ID=c8volt` |
+| 3           | Config file (YAML) | `auth.oauth2.client_id: c8volt`       |
+| 4 (lowest)  | Defaults           | `http.timeout: "30s"` (built-in)      |
+
+### Default configuration file locations
+
+When searching for a config file, c8volt checks these paths in order and uses the first one it finds:
+
+| Priority | Location                                        | Notes                                                                                                                              |
+|----------|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| 1        | `./config.yaml`                                 | Current working directory                                                                                                          |
+| 2        | `$XDG_CONFIG_HOME/c8volt/config.yaml`         | Skipped if `$XDG_CONFIG_HOME` is not set                                                                                           |
+| 3        | `$HOME/.config/c8volt/config.yaml`            | XDG default on Linux/macOS                                                                                                         |
+| 4        | `$HOME/.c8volt/config.yaml`                   | Legacy fallback                                                                                                                    |
+| 5        | `%AppData%\c8volt\config.yaml` (Windows only) | `%AppData%` usually expands to `C:\Users\<User>\AppData\Roaming`<br>Example: `C:\Users\Alice\AppData\Roaming\c8volt\config.yaml` |
+
+### File format
+
+Config files must be **YAML**. You can inspect the effective configuration (after merging defaults, config file, env vars, and flags) with:
+```bash
+$ ./c8volt config show
+```
+You will see output like this:
+``` yaml
+app:
+    tenant: ""
+    camunda_version: "88"
+apis:
+    camunda_api:
+        base_url: http://localhost:8080/v2
+        key: camunda_api
+        require_scope: true
+    operate_api:
+        base_url: http://localhost:8080
+        key: operate_api
+        require_scope: true
+    tasklist_api:
+        base_url: http://localhost:8080
+        key: tasklist_api
+        require_scope: true
+auth:
+    mode: oauth2
+    oauth2:
+        client_id: c8volt
+        client_secret: '*****'
+        scopes:
+            camunda_api: profile
+            operate_api: profile
+            tasklist_api: profile
+        token_url: http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect
+http:
+    timeout: 23s
+log:
+    level: debug
+```
+You can output the config as empty (no values) template with:
+```bash
+$ ./c8volt config show --template
+```
+In case of any issues with loading or parsing the config file, use validation with:
+```bash
+$ ./c8volt config show --validate
+```
+
+### Environment variables
+
+Each config key can also be set via environment variable.\
+The prefix is `C8VOLT_`, and nested keys are joined with `_`. For
+example:
+
+-   `C8VOLT_AUTH_OAUTH2_CLIENT_ID`
+-   `C8VOLT_AUTH_OAUTH2_CLIENT_SECRET`
+-   `C8VOLT_HTTP_OAUTH2_TOKEN_URL`
+
+### Security note
+
+Sensitive fields such as `auth.oauth2.client_secret` are **always masked** when
+the configuration is printed or logged. The raw values are still loaded and used internally, but they will never appear in output.
+
+## Archive Section 
+(for future documentation, might not work anymore in the current version, will be removed soon)
 
 - **Delete active process instances by cancelling them first**
   ```bash
@@ -203,311 +496,6 @@ c8volt simplifies various tasks related to Camunda 8, including these special us
 - multiple Camunda 8 API versions support (currently 8.7, 8.8, 8.9 planned)
 - or submit a proposal or contribute code on [GitHub](https://github.com/grafvonb/c8volt)
 
-## Supported Camunda 8 APIs
-
-- 8.7.x
-- 8.8.x
-
-## Configuration
-
-### Choose authentication method
-
-c8volt supports two authentication methods for connecting to Camunda 8 APIs:
-- OAuth2 (OIDC)
-- API Cookie (development with Camunda 8 Run only)
-
-#### Authentication with OAuth2 (OIDC)
-
-c8volt supports OAuth2 (OIDC) authentication with client credentials flow.
-You need to provide the following settings:
-* Token URL
-* Client ID
-* Client Secret
-* Scopes (optional, depending on your identity provider and API setup)
-
-Here is an example configuration snippet for OAuth2 authentication for Camunda 8 running locally with Keycloak:
-```yaml
-
-```
-
-#### Authentication with API Cookie (development with Camunda 8 Run only)
-
-This method is only suitable for local development with Camunda 8 Run, as it uses the API cookie set by the web interface.
-You need to provide the following settings:
-* API base URL
-* (optional) Username and Password (if not set, defaults to `demo`/`demo`)
-
-Here is an example configuration snippet for API Cookie authentication for Camunda 8 Run running locally:
-```yaml
-
-```
-
-### Connecting to Camunda's 8 APIs
-
-To run c8volt, you need to configure the connection to your Camunda 8 APIs (Camunda, Operate, Tasklist) and authentication details.
-With the introduction of Camunda v8.8 and unified APIs, some of these settings may become optional or redundant in the future.
-
-c8volt expects the following API configurations:
-* [Camunda 8 API](https://docs.camunda.io/docs/8.7/apis-tools/camunda-api-rest/camunda-api-rest-overview/) (required, formally known as Zeebe API), since v8.8 known as [Orchestration Cluster API](https://docs.camunda.io/docs/apis-tools/orchestration-cluster-api-rest/orchestration-cluster-api-rest-overview/)
-* [Operate API](https://docs.camunda.io/docs/8.7/apis-tools/operate-api/overview/) (optional, required for some commands, if not set defaults to Camunda 8 API), since v8.8 deprecated in favor of unified Orchestration Cluster API
-* [Tasklist API](https://docs.camunda.io/docs/8.7/apis-tools/tasklist-api-rest/tasklist-api-rest-overview/) (optional, required for some commands, if not set defaults to Camunda 8 API), since v8.8 deprecated in favor of unified Orchestration Cluster API
-
-#### If you use Camunda 8 Run with API Cookie Authentication (Development only)
-
-After starting Camunda 8 Run, you can find the API endpoint in the terminal output (default is `http://localhost:8080/v2`). 
-(current, October 2025, gotcha: if you use `--port` flag, the terminal output still shows port 8080, but it actually runs on the port you specified).
-
-Provide the following settings in the config file, environment variables, or flags:
-```yaml
-apis:
-  version: "87"
-  camunda_api:
-    base_url: "http://localhost:8080/v2"
-  operate_api:
-    base_url: "http://localhost:8080"
-  tasklist_api:
-    base_url: "http://localhost:8080"
-```
-
-#### If you use Camunda 8 with OAuth2 (oidc) authentication
-
-### Ways to provide settings
-
-c8volt uses [Viper](https://github.com/spf13/viper) under the hood.
-Configuration values can come from:
-
--   **Flags** (`--auth-client-id=...`)
--   **Environment variables** (`C8VOLT_AUTH_CLIENT_ID=...`)
--   **Config file** (YAML)
--   **Defaults** (hardcoded fallbacks)
-
-### Precedence
-
-When multiple sources define the same setting, the **highest-priority value wins**:
-
-| Priority    | Source             | Example                          |
-|-------------|--------------------|----------------------------------|
-| 1 (highest) | Command-line flags | `--auth-client-id=cli-id`        |
-| 2           | Environment vars   | `C8VOLT_AUTH_CLIENT_ID=env-id`   |
-| 3           | Config file (YAML) | `auth.client_id: file-id`        |
-| 4 (lowest)  | Defaults           | `http.timeout: "30s"` (built-in) |
-
-### Default configuration file locations
-
-When searching for a config file, c8volt checks these paths in order and uses the first one it finds:
-
-| Priority | Location                                        | Notes                                                                                                                              |
-|----------|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
-| 1        | `./config.yaml`                                 | Current working directory                                                                                                          |
-| 2        | `$XDG_CONFIG_HOME/c8volt/config.yaml`         | Skipped if `$XDG_CONFIG_HOME` is not set                                                                                           |
-| 3        | `$HOME/.config/c8volt/config.yaml`            | XDG default on Linux/macOS                                                                                                         |
-| 4        | `$HOME/.c8volt/config.yaml`                   | Legacy fallback                                                                                                                    |
-| 5        | `%AppData%\c8volt\config.yaml` (Windows only) | `%AppData%` usually expands to `C:\Users\<User>\AppData\Roaming`<br>Example: `C:\Users\Alice\AppData\Roaming\c8volt\config.yaml` |
-
-### File format
-
-Config files must be **YAML**. You can inspect the effective configuration (after merging defaults, config file, env vars, and flags) with:
-```bash
-$ ./c8volt config show
-```
-You will see output like this:
-``` yaml
-apis:
-    camunda_api:
-        base_url: http://localhost:8080/v2
-        key: camunda_api
-        require_scope: false
-    operate_api:
-        base_url: http://localhost:8080
-        key: operate_api
-        require_scope: false
-    tasklist_api:
-        base_url: http://localhost:8080
-        key: tasklist_api
-        require_scope: false
-    version: "8.8"
-app:
-    backoff:
-        initial_delay: 5e+08
-        max_delay: 8e+09
-        max_retries: 0
-        multiplier: 2
-        strategy: exponential
-        timeout: 5e+09
-    tenant: ""
-auth:
-    cookie:
-        base_url: http://localhost:8090
-        password: '*****'
-        username: ""
-    mode: oauth2
-    oauth2:
-        client_id: c8volt
-        client_secret: '*****'
-        scopes:
-            camunda_api: profile
-            operate_api: profile
-            tasklist_api: profile
-        token_url: http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect
-config: ""
-http:
-    timeout: 23s
-log:
-    format: plain
-    level: debug
-    with_request_body: false
-    with_source: true
-```
-You can output the config as empty (no values) template with:
-```bash
-$ ./c8volt config show --template
-```
-In case of any issues with loading or parsing the config file, use validation with:
-```bash
-$ ./c8volt config show --validate
-```
-
-### Environment variables
-
-Each config key can also be set via environment variable.\
-The prefix is `C8VOLT_`, and nested keys are joined with `_`. For
-example:
-
--   `C8VOLT_AUTH_CLIENT_ID`
--   `C8VOLT_AUTH_CLIENT_SECRET`
--   `C8VOLT_HTTP_TIMEOUT`
-
-### Security note
-
-Sensitive fields such as `auth.client_secret` are **always masked** when
-the configuration is printed or logged. The raw values are still loaded and used internally, but they will never
-appear in output.
-
-### c8volt in Action
-Look here for practical examples of using c8volt for common tasks and special use cases.
-
-#### Deleting an active process instance by cancelling it first, if the instance is active
-List all process instances for a specific process definition:
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
-found: 12
-2251799813685511 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:30.380+0000 i:false
-2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
-2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false
-2251799813685532 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:44.338+0000 i:false
-2251799813685541 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:11:52.976+0000 i:false
-2251799813685548 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:30.653+0000 i:false
-2251799813685556 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:53.060+0000 i:false
-2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
-2251799813685582 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:33.364+0000 e:2025-09-09T20:27:55.530+0000 p:2251799813685577 i:false
-2251799813685595 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:27.621+0000 p:2251799813685590 i:false
-2251799813685606 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:33.533+0000 p:2251799813685601 i:false
-2251799813685614 dev01 C87SimpleUserTask_Process v3 ACTIVE s:2025-09-10T10:03:12.700+0000 i:false
-```
-List only active process instances for the specific process definition in active state:
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --state=active
-filter: state=active
-found: 10
-2251799813685511 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:30.380+0000 i:false
-2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
-2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false
-2251799813685532 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:44.338+0000 i:false
-2251799813685541 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:11:52.976+0000 i:false
-2251799813685548 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:30.653+0000 i:false
-2251799813685556 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:53.060+0000 i:false
-2251799813685595 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:27.621+0000 p:2251799813685590 i:false
-2251799813685606 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:33.533+0000 p:2251799813685601 i:false
-2251799813685614 dev01 C87SimpleUserTask_Process v3 ACTIVE s:2025-09-10T10:03:12.700+0000 i:false
-```
-Try to delete an active process instance (will fail):
-```
-$ c8volt delete pi --key 2251799813685511
-trying to delete process instance with key 2251799813685511...
-Error deleting process instance with key 2251799813685511: unexpected status 400: {"status":400,"message":"Process instances needs to be in one of the states [COMPLETED, CANCELED]","instance":"dae2c2ce-58dd-4396-a948-4d57463168ed","type":"Invalid request"}
-```
-Try to delete an active process instance by forcing cancellation first (will succeed):
-```
-$ c8volt delete pi --key 2251799813685511 --cancel
-trying to delete process instance with key 2251799813685511...
-process instance with key 2251799813685511 not in state COMPLETED or CANCELED, cancelling it first...
-trying to cancel process instance with key 2251799813685511...
-process instance with key 2251799813685511 was successfully cancelled
-waiting for process instance with key 2251799813685511 to be cancelled by workflow engine...
-process instance "2251799813685511" currently in state "ACTIVE"; waiting...
-process instance "2251799813685511" currently in state "ACTIVE"; waiting...
-process instance "2251799813685511" currently in state "ACTIVE"; waiting...
-process instance "2251799813685511" currently in state "ACTIVE"; waiting...
-process instance "2251799813685511" currently in state "ACTIVE"; waiting...
-process instance "2251799813685511" reached desired state "CANCELED"
-process instance with key 2251799813685511 was successfully deleted
-{
-  "deleted": 1,
-  "message": "Process instance and dependant data deleted for key '2251799813685511'"
-}
-```
-
-#### Finding process instances with orphan (non-existing) parent process instances
-List all process instances for a specific process definition:
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
-found: 12
-2251799813685511 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:30.380+0000 i:false
-2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
-2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false
-2251799813685532 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:44.338+0000 i:false
-2251799813685541 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:11:52.976+0000 i:false
-2251799813685548 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:30.653+0000 i:false
-2251799813685556 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:53.060+0000 i:false
-2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
-2251799813685582 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:33.364+0000 e:2025-09-09T20:27:55.530+0000 p:2251799813685577 i:false
-2251799813685595 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:27.621+0000 p:2251799813685590 i:false
-2251799813685606 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:33.533+0000 p:2251799813685601 i:false
-2251799813685614 dev01 C87SimpleUserTask_Process v3 ACTIVE s:2025-09-10T10:03:12.700+0000 i:false
-```
-List all process instances for a specific process definition that are children of other process instances (look at p:...):
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --children-only
-filter: children-only=true
-found: 4
-2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
-2251799813685582 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:33.364+0000 e:2025-09-09T20:27:55.530+0000 p:2251799813685577 i:false
-2251799813685595 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:27.621+0000 p:2251799813685590 i:false
-2251799813685606 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:33.533+0000 p:2251799813685601 i:false
-```
-List all process instances for a specific process definition that are children of orphan parent process instances (their parent process instance no longer exists):
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --orphan-parents-only
-filter: orphan-parents-only=true
-found: 2
-2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
-2251799813685582 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:33.364+0000 e:2025-09-09T20:27:55.530+0000 p:2251799813685577 i:false
-```
-
-#### Listing process instances for a process definition in a specific version
-List all process instances for a specific process definition:
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line
-found: 11
-2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
-2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false
-2251799813685532 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:44.338+0000 i:false
-2251799813685541 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:11:52.976+0000 i:false
-2251799813685548 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:30.653+0000 i:false
-2251799813685556 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T16:13:53.060+0000 i:false
-2251799813685571 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:28.190+0000 e:2025-09-10T20:36:44.990+0000 p:2251799813685566 i:false
-2251799813685582 dev01 C87SimpleUserTask_Process v2 CANCELED s:2025-09-09T19:10:33.364+0000 e:2025-09-09T20:27:55.530+0000 p:2251799813685577 i:false
-2251799813685595 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:27.621+0000 p:2251799813685590 i:false
-2251799813685606 dev01 C87SimpleUserTask_Process v2 ACTIVE s:2025-09-09T22:01:33.533+0000 p:2251799813685601 i:false
-2251799813685614 dev01 C87SimpleUserTask_Process v3 ACTIVE s:2025-09-10T10:03:12.700+0000 i:false
-```
-List only process instances for version 1 of the process definition:
-```
-$ c8volt get pi --bpmn-process-id=C87SimpleUserTask_Process --one-line --process-version=1
-found: 3
-2251799813685518 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:36.618+0000 i:false
-2251799813685525 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:40.675+0000 i:false
-2251799813685532 dev01 C87SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-09-09T12:14:44.338+0000 i:false
-```
+## Copyright
 
 Copyright © 2025 Adam Bogdan Boczek | [boczek.info](https://boczek.info)

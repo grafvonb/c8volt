@@ -23,8 +23,5 @@ var cancelCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(cancelCmd)
 
-	cancelCmd.PersistentFlags().BoolVar(&flagCancelNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed (no status checks)")
-	cancelCmd.PersistentFlags().BoolVar(&flagCancelNoStateCheck, "no-state-check", false, "skip checking the current state of the resource before cancelling it")
-
 	addBackoffFlagsAndBindings(cancelCmd, viper.GetViper())
 }
