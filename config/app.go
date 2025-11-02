@@ -1,10 +1,17 @@
 package config
 
-import "github.com/grafvonb/c8volt/internal/services/common"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/toolx"
+)
 
 type App struct {
-	Tenant  string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
-	Backoff common.BackoffConfig `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
+	CamundaVersion toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
+	Tenant         string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
+	Backoff        common.BackoffConfig `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
 }
 
 func (a *App) ViewTenant() string {
@@ -12,4 +19,20 @@ func (a *App) ViewTenant() string {
 		return "default"
 	}
 	return a.Tenant
+}
+
+func (a *App) Normalize() error {
+	var errs []error
+	switch a.CamundaVersion {
+	case "":
+		a.CamundaVersion = toolx.CurrentCamundaVersion
+	default:
+		v, err := toolx.NormalizeCamundaVersion(string(a.CamundaVersion))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("version: %w", err))
+		} else {
+			a.CamundaVersion = v
+		}
+	}
+	return errors.Join(errs...)
 }

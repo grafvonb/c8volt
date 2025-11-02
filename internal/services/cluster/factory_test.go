@@ -20,7 +20,7 @@ func testConfig() *config.Config {
 
 func TestFactory_V87(t *testing.T) {
 	cfg := testConfig()
-	cfg.APIs.Version = toolx.V87
+	cfg.App.CamundaVersion = toolx.V87
 	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
 	require.NoError(t, err)
 	require.NotNil(t, svc)
@@ -28,7 +28,7 @@ func TestFactory_V87(t *testing.T) {
 
 func TestFactory_V88(t *testing.T) {
 	cfg := testConfig()
-	cfg.APIs.Version = toolx.V88
+	cfg.App.CamundaVersion = toolx.V88
 	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
 	require.NoError(t, err)
 	require.NotNil(t, svc)
@@ -36,7 +36,7 @@ func TestFactory_V88(t *testing.T) {
 
 func TestFactory_Unknown(t *testing.T) {
 	cfg := testConfig()
-	cfg.APIs.Version = "v0"
+	cfg.App.CamundaVersion = "v0"
 	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
 	require.Error(t, err)
 	require.Nil(t, svc)

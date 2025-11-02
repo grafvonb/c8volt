@@ -15,83 +15,107 @@ There are plenty of operational tasks where you want to be sure that:
 ## Quick Start with c8volt
 
 1. **Install Camunda 8.8 Run**  
-   Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run/8.8/), unpack and start it with `./start.sh`.
-   Use listed relevant URLs and default credentials to create the configuration for c8volt.
-    ```bash
-    $ ./start.sh
-    
-    System Version Information
-    --------------------------
-    Camunda Details:
-      Version: 8.8.2
-    --------------------------
-    [...]
-    -------------------------------------------
-    Access each component at the following urls with these default credentials:
-    - username: demo
-    - password: demo
-    
-    Operate:                    http://localhost:8080/operate
-    Tasklist:                   http://localhost:8080/tasklist
-    Identity:                   http://localhost:8080/identity
-    
-    Orchestration Cluster API:  http://localhost:8080/v2/
-    [...]
-    ```
-2. **Install c8volt**  
+
+Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run), unpack and start it with `./start.sh`.
+Use listed relevant URLs and default credentials to create the configuration for c8volt.
+```bash
+$ ./start.sh
+
+System Version Information
+--------------------------
+Camunda Details:
+  Version: 8.8.2
+--------------------------
+[...]
+-------------------------------------------
+Access each component at the following urls with these default credentials:
+- username: demo
+- password: demo
+
+Operate:                    http://localhost:8080/operate
+Tasklist:                   http://localhost:8080/tasklist
+Identity:                   http://localhost:8080/identity
+
+Orchestration Cluster API:  http://localhost:8080/v2/
+[...]
+```
+2. **Install c8volt**
+
 Download the latest release relevant to your OS from the [c8volt Releases](https://github.com/grafvonb/c8volt/releases) page and unpack it.
 Here is an example for macOS ARM64:
-    ```bash
-    $ wget -q --show-progress -c -O c8volt.tar.gz https://github.com/grafvonb/c8volt/releases/download/v0.1.61/c8volt_0.1.61_Darwin_arm64.tar.gz
-    $ tar -xvf c8volt.tar.gz
-    ```
-3. **Configure c8volt**  
-   Create a configuration file (YAML) in the folder where you unpacked c8volt with the name `config.yaml` or in `$HOME/.c8volt/config.yaml` with the minimal connection and authentication details:
-    ```yaml
-    apis:
-      version: "8.8"
-      camunda_api:
-        base_url: "http://localhost:8080/v2"
-   
-    auth:
-      mode: "cookie"
-      cookie:
-        base_url: "http://localhost:8080"
-    ```
-4. **Run c8volt**  
-   Test the connection and list cluster topology:
-   ```bash
-   ./c8volt get cluster-topology
-   ```
-   or use explicit path to config file:
-   ```bash
-   ./c8volt get cluster-topology --config ./config-minimal.yaml
-   ```
-   You should see output like this:
-    ```json
+```bash
+$ wget -q --show-progress -c -O c8volt.tar.gz https://github.com/grafvonb/c8volt/releases/download/v0.1.61/c8volt_0.1.61_Darwin_arm64.tar.gz
+$ tar -xvf c8volt.tar.gz
+```
+Check the version:
+```bash
+$ ./c8volt version
+c8volt version 0.1.62, commit 5c38662a89a82ee82809752857a340129c20995e, built at 2025-11-01T16:46:41Z. Supported Camunda versions: 8.7, 8.8
+```
+3. **Configure c8volt**
+
+Create a configuration file (YAML) in the folder where you unpacked c8volt with the name `config.yaml` or in `$HOME/.c8volt/config.yaml` with the minimal connection details.
+c8run v8.8 uses no authentication by default for local development, so the minimal config looks like this:
+```yaml
+apis:
+  version: "88"
+  camunda_api:
+    base_url: "http://localhost:8080/v2"
+auth:
+  mode: none
+log:
+  level: debug
+```
+If you use c8run v8.7, you need to use cookie authentication instead:
+```yaml
+apis:
+  version: "87"
+  camunda_api:
+    base_url: "http://localhost:8080/v2"
+auth:
+  mode: cookie
+  cookie:
+    base_url: "http://localhost:8080"
+    username: "demo"
+    password: "demo"
+log:
+  level: debug
+```
+4. **Run c8volt**
+
+Test the connection and list cluster topology:
+```bash
+./c8volt get cluster-topology
+```
+or use explicit path to config file:
+```bash
+./c8volt get cluster-topology --config ./config-minimal.yaml
+```
+You should see output like this:
+```bash
+{
+  "Brokers": [
     {
-      "Brokers": [
+      "Host": "localhost",
+      "NodeId": 0,
+      "Partitions": [
         {
-          "Host": "192.168.178.88",
-          "NodeId": 0,
-          "Partitions": [
-            {
-              "Health": "healthy",
-              "PartitionId": 1,
-              "Role": "leader"
-            }
-          ],
-          "Port": 26501,
-          "Version": "8.8.0"
+          "Health": "healthy",
+          "PartitionId": 1,
+          "Role": "leader"
         }
       ],
-      "ClusterSize": 1,
-      "GatewayVersion": "8.8.0",
-      "PartitionsCount": 1,
-      "ReplicationFactor": 1,
-      "LastCompletedChangeId": ""
-    }  
-    ```
+      "Port": 26501,
+      "Version": "8.8.2"
+    }
+  ],
+  "ClusterSize": 1,
+  "GatewayVersion": "8.8.2",
+  "PartitionsCount": 1,
+  "ReplicationFactor": 1,
+  "LastCompletedChangeId": ""
+}
+```
 
 ## Highlights
 

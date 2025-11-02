@@ -60,7 +60,7 @@ var rootCmd = &cobra.Command{
 		if err = cfg.Validate(); err != nil {
 			return fmt.Errorf("validate config:\n%w", err)
 		}
-		log.Debug("working with Camunda version: " + string(cfg.APIs.Version))
+		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
 		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
 
 		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar())

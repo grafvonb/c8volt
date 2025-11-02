@@ -60,6 +60,9 @@ func ITCtx(t *testing.T, d time.Duration) context.Context {
 func ITConfigFromEnv(t *testing.T) *config.Config {
 	t.Helper()
 	return &config.Config{
+		App: config.App{
+			CamundaVersion: toolx.CamundaVersion(RequireEnvWithPrefix(t, "API_VERSION")),
+		},
 		Auth: config.Auth{
 			Mode: "cookie",
 			Cookie: config.AuthCookieSession{
@@ -78,7 +81,6 @@ func ITConfigFromEnv(t *testing.T) *config.Config {
 			Tasklist: config.API{
 				BaseURL: RequireEnvWithPrefix(t, "TASKLIST_API_BASE_URL"),
 			},
-			Version: toolx.CamundaVersion(RequireEnvWithPrefix(t, "API_VERSION")),
 		},
 		HTTP: config.HTTP{Timeout: "30s"},
 	}

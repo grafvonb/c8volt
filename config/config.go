@@ -36,7 +36,10 @@ type Config struct {
 func (c *Config) Normalize() error {
 	var errs []error
 	if err := c.APIs.Normalize(); err != nil {
-		errs = append(errs, fmt.Errorf("apis:\n%w", err))
+		errs = append(errs, fmt.Errorf("apis: %w", err))
+	}
+	if err := c.App.Normalize(); err != nil {
+		errs = append(errs, fmt.Errorf("app: %w", err))
 	}
 	c.Log.Normalize()
 	return errors.Join(errs...)
@@ -45,16 +48,16 @@ func (c *Config) Normalize() error {
 func (c *Config) Validate() error {
 	var errs []error
 	if err := c.Auth.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("auth:\n%w", err))
+		errs = append(errs, fmt.Errorf("auth: %w", err))
 	}
 	if err := c.APIs.Validate(c.Auth.OAuth2.Scopes); err != nil {
-		errs = append(errs, fmt.Errorf("apis:\n%w", err))
+		errs = append(errs, fmt.Errorf("apis: %w", err))
 	}
 	if err := c.HTTP.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("http:\n%w", err))
+		errs = append(errs, fmt.Errorf("http: %w", err))
 	}
 	if err := c.Log.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("log:\n%w", err))
+		errs = append(errs, fmt.Errorf("log: %w", err))
 	}
 	return errors.Join(errs...)
 }

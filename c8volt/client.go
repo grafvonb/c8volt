@@ -66,8 +66,8 @@ func New(opts ...Option) (API, error) {
 		TaskAPI:    task.New(pdAPI, piAPI),
 		capsFunc: func(context.Context) (Capabilities, error) {
 			return Capabilities{
-				APIVersion: string(c.cfg.APIs.Version),
-				Features:   map[Feature]bool{},
+				CamundaVersion: string(c.cfg.App.CamundaVersion),
+				Features:       map[Feature]bool{},
 			}, nil
 		},
 	}

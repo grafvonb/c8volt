@@ -18,8 +18,8 @@ type API interface {
 }
 
 type Capabilities struct {
-	APIVersion string
-	Features   map[Feature]bool
+	CamundaVersion string
+	Features       map[Feature]bool
 }
 type Feature string
 

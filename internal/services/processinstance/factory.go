@@ -13,7 +13,7 @@ import (
 )
 
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
-	v := cfg.APIs.Version
+	v := cfg.App.CamundaVersion
 	switch v {
 	case toolx.V87:
 		return v87.New(cfg, httpClient, log)
