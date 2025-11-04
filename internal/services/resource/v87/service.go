@@ -92,5 +92,6 @@ func (s *Service) Deploy(ctx context.Context, tenantId string, units []d.Deploym
 		return d.Deployment{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
+	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), tenantId))
 	return fromDeploymentResult(*resp.JSON200), nil
 }

@@ -47,5 +47,6 @@ func init() {
 	deployProcessDefinitionCmd.Flags().StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
 	_ = deployProcessDefinitionCmd.MarkFlagRequired("file")
 
-	deployProcessDefinitionCmd.Flags().BoolVar(&flagDeployPDWithRun, "with-run", false, "run a process instance after deploying process definition(s)")
+	deployProcessDefinitionCmd.Flags().BoolVar(&flagDeployPDWithRun, "run", false, "run a process instance after deploying process definition(s)")
+	_ = deployProcessDefinitionCmd.Flags().MarkHidden("run")
 }
