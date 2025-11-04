@@ -5,10 +5,16 @@
 No, **c8volt** is different. Its design and development focus on operational effectiveness, ensuring that done is done.
 There are plenty of operational tasks where you want to be sure that:
 
-* A process was canceled – is it really in the cancelled state?
-* A process tree was deleted – are all instances truly gone?
-* A process instance was started – has it already reached the expected user task?
+* A process instance was started – is it really active and running?
+* A process instance was canceled – is it really in the cancelled state?
+* A process instance tree was deleted – are all instances truly gone?
 * A process variable was set – does it hold the correct value?
+
+If some operation requires additional steps to reach the desired state, **c8volt** takes care of it for you by:
+* Cancelling the root process instance when you want to cancel a child process instance.
+* Deleting process instances by first cancelling them and then deleting them.
+* Waiting until the process instance reaches the desired state (e.g., `CANCELED`)
+* Traversing the process instance tree to perform operations like cancellation or deletion.
 
 **c8volt** focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
  
