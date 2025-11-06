@@ -1,0 +1,4 @@
+title: c8volt – Camunda 8 CLI
+theme: minima
+plugins:
+  - jekyll-sitemap
