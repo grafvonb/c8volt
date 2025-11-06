@@ -13,10 +13,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	flagDeployTenantId string
-)
-
 var deployCmd = &cobra.Command{
 	Use:     "deploy",
 	Short:   "Deploy resources",
@@ -31,8 +27,6 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 
 	addBackoffFlagsAndBindings(deployCmd, viper.GetViper())
-
-	deployCmd.PersistentFlags().StringVarP(&flagDeployTenantId, "tenant-id", "t", "", "tenant id for the deployment")
 }
 
 func validateFiles(files []string) error {
