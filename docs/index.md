@@ -543,4 +543,5 @@ Use **c8volt** at your own risk. It can modify system state.
 Copyright © 2025 [Adam Bogdan Boczek](https://boczek.info)
 
 This project is licensed under the Apache License, Version 2.0.
-See the LICENSE file in this repository for the full text.
+See the [LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE) file for the full text.
+

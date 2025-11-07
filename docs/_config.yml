@@ -7,6 +7,3 @@ plugins:
 
 url: "https://grafvonb.github.io"
 baseurl: "/c8volt"
-
-minima:
-  skin: auto
