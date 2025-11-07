@@ -1,4 +1,12 @@
 title: c8volt – Camunda 8 CLI
+description: Command Line Interface (CLI) for Camunda 8
 theme: minima
 plugins:
   - jekyll-sitemap
+  - jekyll-seo-tag
+
+url: "https://grafvonb.github.io"
+baseurl: "/c8volt"
+
+minima:
+  skin: auto

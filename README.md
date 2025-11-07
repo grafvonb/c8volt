@@ -524,6 +524,23 @@ the configuration is printed or logged. The raw values are still loaded and used
 - multiple Camunda 8 API versions support (currently 8.7, 8.8, 8.9 planned)
 - or submit a proposal or contribute code on [GitHub](https://github.com/grafvonb/c8volt)
 
+## Disclaimer
+
+Use **c8volt** at your own risk. It can modify system state.
+
+- Always create a verified backup before write operations, especially in production.
+- Test commands in a non-production environment first.
+- Batch operations and parallel runs can reduce system performance and availability.
+- Review commands and flags before execution; dry-run where available.
+- Ensure you have proper authorization. Changes may be irreversible.
+- Network or API issues can leave partial state changes; validate results.
+- Keep credentials secure and rotate them regularly.
+
+**c8volt** is provided "AS IS", without warranties or conditions of any kind, as stated in the Apache License 2.0.
+
 ## Copyright
 
-Copyright © 2025 Adam Bogdan Boczek | [boczek.info](https://boczek.info)
+Copyright © 2025 [Adam Bogdan Boczek](https://boczek.info)
+
+This project is licensed under the Apache License, Version 2.0.
+See the LICENSE file in this repository for the full text.
