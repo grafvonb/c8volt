@@ -61,9 +61,9 @@ func New(opts ...Option) (API, error) {
 	}
 
 	cl := client{
-		ClusterAPI: cluster.New(cAPI),
-		ProcessAPI: process.New(pdAPI, piAPI),
-		TaskAPI:    task.New(pdAPI, piAPI),
+		ClusterAPI: cluster.New(cAPI, c.log),
+		ProcessAPI: process.New(pdAPI, piAPI, c.log),
+		TaskAPI:    task.New(pdAPI, piAPI, c.log),
 		capsFunc: func(context.Context) (Capabilities, error) {
 			return Capabilities{
 				CamundaVersion: string(c.cfg.App.CamundaVersion),

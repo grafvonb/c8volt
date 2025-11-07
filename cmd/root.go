@@ -21,6 +21,8 @@ var (
 	flagViewAsJson   bool
 	flagViewKeysOnly bool
 	flagQuiet        bool
+	flagVerbose      bool
+	flagDebug        bool
 	flagNoErrCodes   bool
 )
 
@@ -36,6 +38,12 @@ var rootCmd = &cobra.Command{
 			return nil
 		}
 
+		switch {
+		case flagQuiet:
+			v.Set("log.level", "error")
+		case flagDebug:
+			v.Set("log.level", "debug")
+		}
 		cfg, err := retrieveAndNormalizeConfig(v)
 		if err != nil {
 			return err
@@ -44,9 +52,6 @@ var rootCmd = &cobra.Command{
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return fmt.Errorf("retrieve logger from context: %w", err)
-		}
-		if flagQuiet {
-			v.Set("log.level", "error")
 		}
 
 		if pathcfg := v.ConfigFileUsed(); pathcfg != "" {
@@ -103,7 +108,10 @@ func Execute() {
 
 func init() {
 	pf := rootCmd.PersistentFlags()
-	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors")
+	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
+	pf.BoolVar(&flagVerbose, "verbose", false, "enable verbose output")
+	rootCmd.PersistentFlags().MarkHidden("verbose") // not used currently
+	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
 	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable)")
 

@@ -24,6 +24,8 @@ type API interface {
 	DeleteProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ChangeStatus, error)
 	WaitForProcessInstanceState(ctx context.Context, key string, desired States, opts ...options.FacadeOption) (State, error)
 	Walker
+
+	CreateNProcessInstances(ctx context.Context, data ProcessInstanceData, n int, parallel int, opts ...options.FacadeOption) ([]ProcessInstance, error)
 }
 
 var _ API = (*client)(nil)

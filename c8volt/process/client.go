@@ -2,6 +2,7 @@ package process
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/options"
@@ -14,12 +15,14 @@ import (
 type client struct {
 	pdApi pdsvc.API
 	piApi pisvc.API
+	log   *slog.Logger
 }
 
-func New(pdApi pdsvc.API, piApi pisvc.API) API {
+func New(pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger) API {
 	return &client{
 		pdApi: pdApi,
 		piApi: piApi,
+		log:   log,
 	}
 }
 
