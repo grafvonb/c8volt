@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +50,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if !ok {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
+			if searchFilterOpts.State.In(process.StateCanceled, process.StateCompleted, process.StateTerminated) {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("it does not make sense to cancel process instances already in state %q", searchFilterOpts.State.String()))
+			}
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, maxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
@@ -58,7 +62,11 @@ var cancelProcessInstanceCmd = &cobra.Command{
 				keys = append(keys, pi.Key)
 			}
 		}
-		if err := confirmCmdOrAbort(flagCmdAutoConfirm, fmt.Sprintf("Are you sure you want to cancel %d process instance(s)?", len(keys))); err != nil {
+		if len(keys) == 0 {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to cancel"))
+		}
+		prompt := fmt.Sprintf("You are about to cancel %d process instance(s)?", len(keys))
+		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 		_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagCancelPIWorkers, flagCancelPIFailFast, collectOptions()...)
@@ -84,4 +92,5 @@ func init() {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }
