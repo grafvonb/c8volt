@@ -1,9 +1,5 @@
 package process
 
-import (
-	"fmt"
-)
-
 type ProcessDefinition struct {
 	BpmnProcessId string `json:"bpmnProcessId,omitempty"`
 	Key           string `json:"key,omitempty"`
@@ -64,35 +60,48 @@ type ProcessInstanceSearchFilterOpts struct {
 	ParentKey         string
 }
 
-type CancelReport struct {
+type Reporter struct {
 	Key        string `json:"key,omitempty"`
 	Ok         bool   `json:"ok,omitempty"`
 	StatusCode int    `json:"statusCode,omitempty"`
 	Status     string `json:"status,omitempty"`
 }
 
+func (r Reporter) OK() bool {
+	return r.Ok
+}
+
+type CancelReport = Reporter
+
 type CancelReports struct {
 	Items []CancelReport `json:"items,omitempty"`
 }
 
 func (c CancelReports) Totals() (total int, oks int, noks int) {
-	count := 0
-	for _, r := range c.Items {
-		if r.Ok {
-			count++
+	return TotalsOf(c.Items)
+}
+
+type DeleteReport = Reporter
+
+type DeleteReports struct {
+	Items []DeleteReport `json:"items,omitempty"`
+}
+
+func (c DeleteReports) Totals() (total int, oks int, noks int) {
+	return TotalsOf(c.Items)
+}
+
+type OKer interface {
+	OK() bool
+}
+
+func TotalsOf[T OKer](items []T) (total, oks, noks int) {
+	for _, r := range items {
+		if r.OK() {
+			oks++
 		}
 	}
-	total = len(c.Items)
-	oks = count
+	total = len(items)
 	noks = total - oks
 	return
-}
-
-type ChangeStatus struct {
-	Deleted int64
-	Message string
-}
-
-func (c ChangeStatus) String() string {
-	return fmt.Sprintf("deleted: %d, message: %s", c.Deleted, c.Message)
 }

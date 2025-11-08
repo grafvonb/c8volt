@@ -115,7 +115,7 @@ func init() {
 	_ = rootCmd.PersistentFlags().MarkHidden("verbose") // not used currently
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
-	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable)")
+	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable), can be used for piping to other commands, like cancel or delete")
 
 	pf.String("config", "", "path to config file")
 

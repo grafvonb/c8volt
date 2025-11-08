@@ -48,6 +48,25 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys []string, para
 	return r, err
 }
 
+func (c *client) DeleteProcessInstances(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (DeleteReports, error) {
+	cCfg := foptions.ApplyFacadeOptions(opts)
+	ukeys := toolx.UniqueSlice(keys)
+
+	workers := determineNoOfWorkers(len(keys), parallel)
+	c.log.Info(fmt.Sprintf("deleting process instances requested for %d unique keys using %d workers", len(ukeys), workers))
+	rs, err := fpool.ExecuteSlice[string, DeleteReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
+		return c.DeleteProcessInstance(ctx, key, opts...)
+	})
+	r := DeleteReports{
+		Items: rs,
+	}
+	if !cCfg.NoWait {
+		t, oks, noks := r.Totals()
+		c.log.Info(fmt.Sprintf("deleting %d process instances completed: %d succeeded, %d failed", t, oks, noks))
+	}
+	return r, err
+}
+
 func determineNoOfWorkers(jobsCount, wantedWorkersCount int) int {
 	workers := wantedWorkersCount
 	if workers <= 0 {

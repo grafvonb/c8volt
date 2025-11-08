@@ -19,14 +19,15 @@ type API interface {
 	GetProcessInstanceByKey(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessInstance, error)
 	SearchProcessInstances(ctx context.Context, filter ProcessInstanceSearchFilterOpts, size int32, opts ...foptions.FacadeOption) (ProcessInstances, error)
 	CancelProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) (CancelReport, error)
+	DeleteProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) (DeleteReport, error)
 	GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessInstances, error)
 	FilterProcessInstanceWithOrphanParent(ctx context.Context, items []ProcessInstance, opts ...foptions.FacadeOption) ([]ProcessInstance, error)
-	DeleteProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) error
 	WaitForProcessInstanceState(ctx context.Context, key string, desired States, opts ...foptions.FacadeOption) (State, error)
 	Walker
 
 	CreateNProcessInstances(ctx context.Context, data ProcessInstanceData, n int, parallel int, opts ...foptions.FacadeOption) ([]ProcessInstance, error)
 	CancelProcessInstances(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (CancelReports, error)
+	DeleteProcessInstances(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (DeleteReports, error)
 }
 
 var _ API = (*client)(nil)

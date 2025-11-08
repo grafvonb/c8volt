@@ -118,6 +118,14 @@ func (c *client) CancelProcessInstance(ctx context.Context, key string, opts ...
 	return CancelReport{Key: key, Ok: true, StatusCode: resp.StatusCode, Status: resp.Status}, nil
 }
 
+func (c *client) DeleteProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) (DeleteReport, error) {
+	resp, err := c.piApi.DeleteProcessInstance(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return DeleteReport{Key: key, Ok: false, StatusCode: resp.StatusCode, Status: resp.Status}, ferrors.FromDomain(err)
+	}
+	return DeleteReport{Key: key, Ok: true, StatusCode: resp.StatusCode, Status: resp.Status}, nil
+}
+
 func (c *client) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessInstances, error) {
 	children, err := c.piApi.GetDirectChildrenOfProcessInstance(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
@@ -133,14 +141,6 @@ func (c *client) FilterProcessInstanceWithOrphanParent(ctx context.Context, item
 		return nil, ferrors.FromDomain(err)
 	}
 	return toolx.MapSlice(out, fromDomainProcessInstance), nil
-}
-
-func (c *client) DeleteProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) error {
-	_, err := c.piApi.DeleteProcessInstance(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ferrors.FromDomain(err)
-	}
-	return nil
 }
 
 func (c *client) WaitForProcessInstanceState(ctx context.Context, key string, desired States, opts ...foptions.FacadeOption) (State, error) {
