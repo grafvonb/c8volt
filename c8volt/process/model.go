@@ -52,12 +52,13 @@ type ProcessInstances struct {
 }
 
 type ProcessInstanceFilter struct {
-	Key               string `json:"key,omitempty"`
-	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
-	ProcessVersion    int32  `json:"version,omitempty"`
-	ProcessVersionTag string `json:"versionTag,omitempty"`
-	State             State  `json:"state,omitempty"`
-	ParentKey         string `json:"parentKey,omitempty"`
+	Key                  string `json:"key,omitempty"`
+	BpmnProcessId        string `json:"bpmnProcessId,omitempty"`
+	ProcessVersion       int32  `json:"version,omitempty"`
+	ProcessVersionTag    string `json:"versionTag,omitempty"`
+	ProcessDefinitionKey string `json:"processDefinitionKey,omitempty"`
+	State                State  `json:"state,omitempty"`
+	ParentKey            string `json:"parentKey,omitempty"`
 }
 
 type Reporter struct {

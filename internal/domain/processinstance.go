@@ -17,12 +17,13 @@ type ProcessInstance struct {
 }
 
 type ProcessInstanceFilter struct {
-	Key               string
-	BpmnProcessId     string
-	ProcessVersion    int32
-	ProcessVersionTag string
-	State             State
-	ParentKey         string
+	Key                  string
+	BpmnProcessId        string
+	ProcessVersion       int32
+	ProcessVersionTag    string
+	ProcessDefinitionKey string
+	State                State
+	ParentKey            string
 }
 
 type CancelResponse struct {

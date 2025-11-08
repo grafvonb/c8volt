@@ -129,13 +129,15 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	if err != nil {
 		return nil, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
 	}
+	pdk, _ := toolx.StringToInt64Ptr(filter.ProcessDefinitionKey)
 	f := operatev88.ProcessInstance{
-		TenantId:          &s.cfg.App.Tenant,
-		BpmnProcessId:     &filter.BpmnProcessId,
-		ProcessVersion:    toolx.PtrIfNonZero(filter.ProcessVersion),
-		ProcessVersionTag: &filter.ProcessVersionTag,
-		State:             &st,
-		ParentKey:         pk,
+		TenantId:             toolx.Ptr(s.cfg.App.Tenant),
+		BpmnProcessId:        toolx.Ptr(filter.BpmnProcessId),
+		ProcessDefinitionKey: pdk,
+		ProcessVersion:       toolx.PtrIfNonZero(filter.ProcessVersion),
+		ProcessVersionTag:    toolx.Ptr(filter.ProcessVersionTag),
+		State:                toolx.Ptr(st),
+		ParentKey:            pk,
 	}
 	body := operatev88.SearchProcessInstancesJSONRequestBody{
 		Filter: &f,

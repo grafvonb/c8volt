@@ -218,6 +218,18 @@ func StringToInt64Ptr(s string) (*int64, error) {
 	return &v, nil
 }
 
+func StringToInt32Ptr(s string) (*int32, error) {
+	if s == "" {
+		return nil, nil
+	}
+	v, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	x := int32(v)
+	return &x, nil
+}
+
 // StringPtrToInt64Ptr converts *string → *int64. Returns nil if input is nil, error if parsing fails.
 func StringPtrToInt64Ptr(p *string) (*int64, error) {
 	if p == nil {

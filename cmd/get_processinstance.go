@@ -11,12 +11,13 @@ import (
 const maxPISearchSize int32 = 1000
 
 var (
-	flagGetPIKey               string
-	flagGetPIBpmnProcessID     string
-	flagGetPIProcessVersion    int32
-	flagGetPIProcessVersionTag string
-	flagGetPIState             string
-	flagGetPIParentKey         string
+	flagGetPIKey                  string
+	flagGetPIBpmnProcessID        string
+	flagGetPIProcessVersion       int32
+	flagGetPIProcessVersionTag    string
+	flagGetPIProcessDefinitionKey string
+	flagGetPIState                string
+	flagGetPIParentKey            string
 )
 
 // command options
@@ -37,18 +38,23 @@ var getProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error creating c8volt client: %w", err))
 		}
+		if flagGetPIProcessDefinitionKey != "" && (flagGetPIBpmnProcessID != "" || flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: --pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag", ferrors.ErrBadRequest))
+		}
+		if flagGetPIBpmnProcessID == "" && (flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: --pd-version and --pd-version-tag require --bpmn-process-id to be set", ferrors.ErrBadRequest))
+		}
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
-		searchFilterOpts, _ := populatePISearchFilterOpts()
-		if searchFilterOpts.Key != "" {
-			log.Debug(fmt.Sprintf("searching by key: %s", searchFilterOpts.Key))
-			pi, err := cli.GetProcessInstance(cmd.Context(), searchFilterOpts.Key)
+		filter, _ := populatePISearchFilterOpts()
+		if filter.Key != "" {
+			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
+			pi, err := cli.GetProcessInstance(cmd.Context(), filter.Key)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instance by key %s: %w", searchFilterOpts.Key, err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instance by key %s: %w", filter.Key, err))
 			}
 			err = processInstanceView(cmd, pi)
 			if err != nil {
@@ -56,8 +62,8 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 			log.Debug(fmt.Sprintf("searched by key, found process instance with key: %s", pi.Key))
 		} else {
-			log.Debug(fmt.Sprintf("searching by filter: %v", searchFilterOpts))
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, maxPISearchSize)
+			log.Debug(fmt.Sprintf("searching by filter: %v", filter))
+			pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, maxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
 			}
@@ -99,6 +105,7 @@ func init() {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
+	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -128,6 +135,9 @@ func populatePISearchFilterOpts() (process.ProcessInstanceFilter, bool) {
 	}
 	if v := flagGetPIProcessVersionTag; v != "" {
 		f.ProcessVersionTag, populated = v, true
+	}
+	if v := flagGetPIProcessDefinitionKey; v != "" {
+		f.ProcessDefinitionKey, populated = v, true
 	}
 	if s := flagGetPIState; s != "" && s != "all" {
 		if st, ok := process.ParseState(s); ok {

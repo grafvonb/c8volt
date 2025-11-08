@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -30,26 +30,20 @@ func (c *client) DeployProcessDefinition(ctx context.Context, tenantId string, u
 }
 
 func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts ...foptions.FacadeOption) (DeleteReport, error) {
+	cCfg := foptions.ApplyFacadeOptions(opts)
+	if !cCfg.NoStateCheck {
+		filter := process.ProcessInstanceFilter{ProcessDefinitionKey: key, State: process.StateActive}
+		pis, err := c.papi.SearchProcessInstances(ctx, filter, 1, opts...)
+		if err != nil {
+			return DeleteReport{Key: key, Ok: false}, ferrors.FromDomain(err)
+		}
+		if len(pis.Items) > 0 {
+			return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cannot delete process definition %s with active process instances; cancel or terminate them first", key)
+		}
+	}
 	err := c.api.Delete(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return DeleteReport{Key: key, Ok: false}, ferrors.FromDomain(err)
 	}
 	return DeleteReport{Key: key, Ok: true}, nil
-}
-
-func (c *client) DeleteProcessDefinitions(ctx context.Context, filter process.ProcessDefinitionFilter, opts ...foptions.FacadeOption) (DeleteReports, error) {
-	pds, err := c.papi.SearchProcessDefinitions(ctx, filter, opts...)
-	if err != nil {
-		return DeleteReports{}, ferrors.FromDomain(err)
-	}
-	var errs []error
-	var reps DeleteReports
-	for _, pd := range pds.Items {
-		r, err := c.DeleteProcessDefinition(ctx, pd.Key, opts...)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		reps.Items = append(reps.Items, r)
-	}
-	return reps, errors.Join(errs...)
 }

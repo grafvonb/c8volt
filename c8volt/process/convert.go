@@ -95,12 +95,13 @@ func toDomainProcessDefinitionFilter(x ProcessDefinitionFilter) d.ProcessDefinit
 
 func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFilter {
 	return d.ProcessInstanceFilter{
-		Key:               x.Key,
-		BpmnProcessId:     x.BpmnProcessId,
-		ProcessVersion:    x.ProcessVersion,
-		ProcessVersionTag: x.ProcessVersionTag,
-		State:             d.State(x.State),
-		ParentKey:         x.ParentKey,
+		Key:                  x.Key,
+		BpmnProcessId:        x.BpmnProcessId,
+		ProcessVersion:       x.ProcessVersion,
+		ProcessVersionTag:    x.ProcessVersionTag,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		State:                d.State(x.State),
+		ParentKey:            x.ParentKey,
 	}
 }
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -9,11 +10,14 @@ import (
 )
 
 var (
-	flagDeletePDKey               string
+	flagDeletePDKeys              []string
 	flagDeletePDBpmnProcessId     string
 	flagDeletePDProcessVersion    int32
 	flagDeletePDProcessVersionTag string
 	flagDeletePDLatest            bool
+
+	flagDeletePDWorkers  int
+	flagDeletePDFailFast bool
 )
 
 var deleteProcessDefinitionCmd = &cobra.Command{
@@ -25,35 +29,53 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		if flagDeletePDKey == "" && flagDeletePDBpmnProcessId == "" {
+		if len(flagDeletePDKeys) == 0 && flagDeletePDBpmnProcessId == "" {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
 		}
+
+		keys := append([]string{}, flagDeletePDKeys...)
+		if inKeys, err := readKeysFromStdin(); err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
+		} else if len(inKeys) > 0 {
+			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
+				if strings.HasPrefix(firstBadKey, "filter: ") {
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
+				}
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
+			}
+			keys = append(keys, inKeys...)
+		}
+
 		switch {
-		case flagDeletePDKey != "":
+		case len(flagDeletePDKeys) > 0:
+		default:
+			filter := process.ProcessDefinitionFilter{
+				BpmnProcessId:     flagDeletePDBpmnProcessId,
+				ProcessVersion:    flagDeletePDProcessVersion,
+				ProcessVersionTag: flagDeletePDProcessVersionTag,
+			}
+			var pds process.ProcessDefinitions
+			if !flagDeletePDLatest {
+				pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+			} else {
+				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
+			}
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("searching for process definitions to delete: %w", err))
+			}
+			keys = make([]string, 0, len(pds.Items))
+			for _, pd := range pds.Items {
+				keys = append(keys, pd.Key)
+			}
 		}
-		filter := process.ProcessDefinitionFilter{
-			Key:               flagDeletePDKey,
-			BpmnProcessId:     flagDeletePDBpmnProcessId,
-			ProcessVersion:    flagDeletePDProcessVersion,
-			ProcessVersionTag: flagDeletePDProcessVersionTag,
-		}
-		var pds process.ProcessDefinitions
-		if !flagDeletePDLatest {
-			pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
-		} else {
-			pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
-		}
-		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("searching for process definitions to delete: %w", err))
-		}
-		if len(pds.Items) == 0 {
+		if len(keys) == 0 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process definitions found to delete"))
 		}
-		prompt := fmt.Sprintf("You are about to delete %d process definition(s)?", len(pds.Items))
+		prompt := fmt.Sprintf("You are about to delete %d process definition(s)?", len(keys))
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.DeleteProcessDefinitions(cmd.Context(), filter, collectOptions()...)
+		_, err = cli.DeleteProcessDefinitions(cmd.Context(), keys, flagDeletePDWorkers, flagDeletePDFailFast, collectOptions()...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancelling process instance(s): %w", err))
 		}
@@ -64,9 +86,12 @@ func init() {
 	deleteCmd.AddCommand(deleteProcessDefinitionCmd)
 
 	fs := deleteProcessDefinitionCmd.Flags()
-	fs.StringVarP(&flagDeletePDKey, "key", "k", "", "process definition key to delete")
+	fs.StringSliceVarP(&flagDeletePDKeys, "key", "k", nil, "process definition key(s) to delete")
 	fs.StringVarP(&flagDeletePDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID of the process definition (all versions) to delete")
 	fs.Int32Var(&flagDeletePDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagDeletePDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagDeletePDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
+
+	fs.IntVarP(&flagDeletePDWorkers, "workers", "w", 0, "Maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagDeletePDFailFast, "fail-fast", false, "Stop scheduling new instances after the first error")
 }

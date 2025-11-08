@@ -3,7 +3,6 @@ package process
 import (
 	"context"
 	"fmt"
-	"runtime"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
@@ -14,7 +13,7 @@ import (
 func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstanceData, n, parallel int, opts ...foptions.FacadeOption) ([]ProcessInstance, error) {
 	cCfg := foptions.ApplyFacadeOptions(opts)
 
-	workers := determineNoOfWorkers(n, parallel)
+	workers := toolx.DetermineNoOfWorkers(n, parallel)
 	c.log.Info(fmt.Sprintf("creating %d process instances using %d workers", n, workers))
 	pics, err := fpool.ExecuteNTimes[ProcessInstance](ctx, n, workers, cCfg.FailFast, func(ctx context.Context, _ int) (ProcessInstance, error) {
 		pic, err := c.piApi.CreateProcessInstance(ctx, toProcessInstanceData(data), foptions.MapFacadeOptionsToCallOptions(opts)...)
@@ -33,7 +32,7 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys []string, para
 	cCfg := foptions.ApplyFacadeOptions(opts)
 	ukeys := toolx.UniqueSlice(keys)
 
-	workers := determineNoOfWorkers(len(keys), parallel)
+	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
 	c.log.Info(fmt.Sprintf("cancelling process instances requested for %d unique keys using %d workers", len(ukeys), workers))
 	rs, err := fpool.ExecuteSlice[string, CancelReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (CancelReport, error) {
 		return c.CancelProcessInstance(ctx, key, opts...)
@@ -52,7 +51,7 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys []string, para
 	cCfg := foptions.ApplyFacadeOptions(opts)
 	ukeys := toolx.UniqueSlice(keys)
 
-	workers := determineNoOfWorkers(len(keys), parallel)
+	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
 	c.log.Info(fmt.Sprintf("deleting process instances requested for %d unique keys using %d workers", len(ukeys), workers))
 	rs, err := fpool.ExecuteSlice[string, DeleteReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessInstance(ctx, key, opts...)
@@ -65,18 +64,4 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys []string, para
 		c.log.Info(fmt.Sprintf("deleting %d process instances completed: %d succeeded, %d failed", t, oks, noks))
 	}
 	return r, err
-}
-
-func determineNoOfWorkers(jobsCount, wantedWorkersCount int) int {
-	workers := wantedWorkersCount
-	if workers <= 0 {
-		workers = jobsCount
-		if gp := runtime.GOMAXPROCS(0); gp < workers {
-			workers = gp
-		}
-	}
-	if workers > jobsCount {
-		workers = jobsCount
-	}
-	return workers
 }
