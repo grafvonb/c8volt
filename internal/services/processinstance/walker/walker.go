@@ -9,7 +9,7 @@ import (
 )
 
 type PIWalker interface {
-	GetProcessInstanceByKey(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
+	GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error)
 	GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error)
 }
 
@@ -35,7 +35,7 @@ func Ancestry(ctx context.Context, s PIWalker, startKey string, opts ...services
 		}
 		visited[cur] = struct{}{}
 
-		it, getErr := s.GetProcessInstanceByKey(ctx, cur, opts...)
+		it, getErr := s.GetProcessInstance(ctx, cur, opts...)
 		if getErr != nil {
 			return "", nil, chain, fmt.Errorf("get %s: %w", cur, getErr)
 		}
@@ -77,7 +77,7 @@ func Descendants(ctx context.Context, s PIWalker, rootKey string, opts ...servic
 
 		desc = append(desc, parent)
 		if _, ok := chain[parent]; !ok {
-			it, getErr := s.GetProcessInstanceByKey(ctx, parent, opts...)
+			it, getErr := s.GetProcessInstance(ctx, parent, opts...)
 			if getErr != nil {
 				return fmt.Errorf("get %s: %w", parent, getErr)
 			}

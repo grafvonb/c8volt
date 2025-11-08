@@ -7,12 +7,12 @@ import (
 
 func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {
 	return ProcessDefinition{
-		BpmnProcessId: x.BpmnProcessId,
-		Key:           x.Key,
-		Name:          x.Name,
-		TenantId:      x.TenantId,
-		Version:       x.Version,
-		VersionTag:    x.VersionTag,
+		BpmnProcessId:     x.BpmnProcessId,
+		Key:               x.Key,
+		Name:              x.Name,
+		TenantId:          x.TenantId,
+		ProcessVersion:    x.ProcessVersion,
+		ProcessVersionTag: x.ProcessVersionTag,
 	}
 }
 
@@ -84,17 +84,17 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	}
 }
 
-func toDomainProcessDefinitionFilter(x ProcessDefinitionSearchFilterOpts) d.ProcessDefinitionSearchFilterOpts {
-	return d.ProcessDefinitionSearchFilterOpts{
-		Key:           x.Key,
-		BpmnProcessId: x.BpmnProcessId,
-		Version:       x.Version,
-		VersionTag:    x.VersionTag,
+func toDomainProcessDefinitionFilter(x ProcessDefinitionFilter) d.ProcessDefinitionFilter {
+	return d.ProcessDefinitionFilter{
+		Key:               x.Key,
+		BpmnProcessId:     x.BpmnProcessId,
+		ProcessVersion:    x.ProcessVersion,
+		ProcessVersionTag: x.ProcessVersionTag,
 	}
 }
 
-func toDomainProcessInstanceFilter(x ProcessInstanceSearchFilterOpts) d.ProcessInstanceSearchFilterOpts {
-	return d.ProcessInstanceSearchFilterOpts{
+func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFilter {
+	return d.ProcessInstanceFilter{
 		Key:               x.Key,
 		BpmnProcessId:     x.BpmnProcessId,
 		ProcessVersion:    x.ProcessVersion,

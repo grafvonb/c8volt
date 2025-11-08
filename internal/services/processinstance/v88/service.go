@@ -91,7 +91,7 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	filter := d.ProcessInstanceSearchFilterOpts{
+	filter := d.ProcessInstanceFilter{
 		ParentKey: key,
 	}
 	resp, err := s.SearchForProcessInstances(ctx, filter, 1000, opts...)
@@ -111,7 +111,7 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 		if it.ParentKey == "" {
 			continue
 		}
-		_, err := s.GetProcessInstanceByKey(ctx, it.ParentKey, opts...)
+		_, err := s.GetProcessInstance(ctx, it.ParentKey, opts...)
 		if err != nil && strings.Contains(err.Error(), "404") {
 			result = append(result, it)
 		} else if err != nil {
@@ -121,7 +121,7 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 	return result, nil
 }
 
-func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceSearchFilterOpts, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
 	st := operatev88.ProcessInstanceState(filter.State)
@@ -274,7 +274,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	return d.DeleteResponse{StatusCode: resp.StatusCode()}, nil
 }
 
-func (s *Service) GetProcessInstanceByKey(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 
 	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)

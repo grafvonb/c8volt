@@ -3,27 +3,28 @@ package domain
 import "slices"
 
 type ProcessDefinition struct {
-	BpmnProcessId string
-	Key           string
-	Name          string
-	TenantId      string
-	Version       int32
-	VersionTag    string
+	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
+	Key               string `json:"key,omitempty"`
+	Name              string `json:"name,omitempty"`
+	TenantId          string `json:"tenantId,omitempty"`
+	ProcessVersion    int32  `json:"processVersion,omitempty"`
+	ProcessVersionTag string `json:"versionTag,omitempty"`
 }
 
-type ProcessDefinitionSearchFilterOpts struct {
-	Key           string
-	BpmnProcessId string
-	Version       int32
-	VersionTag    string
+type ProcessDefinitionFilter struct {
+	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
+	Key               string `json:"key,omitempty"`
+	TenantId          string `json:"tenantId,omitempty"`
+	ProcessVersion    int32  `json:"processVersion,omitempty"`
+	ProcessVersionTag string `json:"processVersionTag,omitempty"`
 }
 
 func SortByVersionDesc(pds []ProcessDefinition) {
 	slices.SortFunc(pds, func(a, b ProcessDefinition) int {
 		switch {
-		case a.Version > b.Version:
+		case a.ProcessVersion > b.ProcessVersion:
 			return -1 // a before b
-		case a.Version < b.Version:
+		case a.ProcessVersion < b.ProcessVersion:
 			return 1 // b before a
 		default:
 			return 0
@@ -40,9 +41,9 @@ func SortByBpmnProcessIdAscThenByVersionDesc(pds []ProcessDefinition) {
 			return 1
 		}
 		switch {
-		case a.Version > b.Version:
+		case a.ProcessVersion > b.ProcessVersion:
 			return -1
-		case a.Version < b.Version:
+		case a.ProcessVersion < b.ProcessVersion:
 			return 1
 		default:
 			return 0

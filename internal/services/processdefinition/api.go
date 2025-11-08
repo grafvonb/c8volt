@@ -9,14 +9,12 @@ import (
 	v88 "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
 )
 
-type API interface {
-	SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionSearchFilterOpts, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
-	GetProcessDefinitionsLatest(ctx context.Context, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+var MaxResultSize int32 = 1000
 
-	GetProcessDefinitionByKey(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
-	GetProcessDefinitionByBpmnProcessIdLatest(ctx context.Context, bpmnProcessId string, opts ...services.CallOption) (d.ProcessDefinition, error)
-	GetProcessDefinitionVersionsByBpmnProcessId(ctx context.Context, bpmnProcessId string, opts ...services.CallOption) ([]d.ProcessDefinition, error)
-	GetProcessDefinitionByBpmnProcessIdAndVersion(ctx context.Context, bpmnProcessId string, version int32, opts ...services.CallOption) (d.ProcessDefinition, error)
+type API interface {
+	SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+	SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+	GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
 }
 
 var _ API = (*v87.Service)(nil)

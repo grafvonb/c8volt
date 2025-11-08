@@ -16,7 +16,7 @@ type ProcessInstance struct {
 	Variables                 map[string]interface{}
 }
 
-type ProcessInstanceSearchFilterOpts struct {
+type ProcessInstanceFilter struct {
 	Key               string
 	BpmnProcessId     string
 	ProcessVersion    int32

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//nolint:unused
 func printFilter(cmd *cobra.Command) {
 	var filters []string
 	if flagGetPIParentKey != "" {

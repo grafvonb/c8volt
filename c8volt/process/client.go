@@ -26,6 +26,38 @@ func New(pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger) API {
 	}
 }
 
+func (c *client) SearchProcessDefinitions(ctx context.Context, filter ProcessDefinitionFilter, opts ...foptions.FacadeOption) (ProcessDefinitions, error) {
+	pds, err := c.pdApi.SearchProcessDefinitions(ctx, toDomainProcessDefinitionFilter(filter), pdsvc.MaxResultSize, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessDefinitions{}, ferrors.FromDomain(err)
+	}
+	return fromDomainProcessDefinitions(pds), nil
+}
+
+func (c *client) SearchProcessDefinitionsLatest(ctx context.Context, filter ProcessDefinitionFilter, opts ...foptions.FacadeOption) (ProcessDefinitions, error) {
+	pds, err := c.pdApi.SearchProcessDefinitionsLatest(ctx, toDomainProcessDefinitionFilter(filter), foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessDefinitions{}, ferrors.FromDomain(err)
+	}
+	return fromDomainProcessDefinitions(pds), nil
+}
+
+func (c *client) GetProcessDefinition(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessDefinition, error) {
+	pd, err := c.pdApi.GetProcessDefinition(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessDefinition{}, ferrors.FromDomain(err)
+	}
+	return fromDomainProcessDefinition(pd), nil
+}
+
+func (c *client) GetProcessInstance(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessInstance, error) {
+	pi, err := c.piApi.GetProcessInstance(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessInstance{}, ferrors.FromDomain(err)
+	}
+	return fromDomainProcessInstance(pi), nil
+}
+
 func (c *client) CreateProcessInstance(ctx context.Context, data ProcessInstanceData, opts ...foptions.FacadeOption) (ProcessInstance, error) {
 	pic, err := c.piApi.CreateProcessInstance(ctx, toProcessInstanceData(data), foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
@@ -46,63 +78,7 @@ func (c *client) CreateProcessInstances(ctx context.Context, datas []ProcessInst
 	return pis, nil
 }
 
-func (c *client) SearchProcessDefinitions(ctx context.Context, filter ProcessDefinitionSearchFilterOpts, size int32, opts ...foptions.FacadeOption) (ProcessDefinitions, error) {
-	pds, err := c.pdApi.SearchProcessDefinitions(ctx, toDomainProcessDefinitionFilter(filter), size, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessDefinitions{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessDefinitions(pds), nil
-}
-
-func (c *client) GetProcessDefinitionsLatest(ctx context.Context) (ProcessDefinitions, error) {
-	pds, err := c.pdApi.GetProcessDefinitionsLatest(ctx)
-	if err != nil {
-		return ProcessDefinitions{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessDefinitions(pds), nil
-}
-
-func (c *client) GetProcessDefinitionByKey(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessDefinition, error) {
-	pd, err := c.pdApi.GetProcessDefinitionByKey(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessDefinition{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessDefinition(pd), nil
-}
-
-func (c *client) GetProcessDefinitionsByBpmnProcessId(ctx context.Context, bpmnProcessId string, opts ...foptions.FacadeOption) (ProcessDefinitions, error) {
-	pds, err := c.pdApi.GetProcessDefinitionVersionsByBpmnProcessId(ctx, bpmnProcessId, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessDefinitions{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessDefinitions(pds), nil
-}
-
-func (c *client) GetProcessDefinitionByBpmnProcessIdLatest(ctx context.Context, bpmnProcessId string, opts ...foptions.FacadeOption) (ProcessDefinition, error) {
-	pd, err := c.pdApi.GetProcessDefinitionByBpmnProcessIdLatest(ctx, bpmnProcessId, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessDefinition{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessDefinition(pd), nil
-}
-
-func (c *client) GetProcessDefinitionByBpmnProcessIdAndVersion(ctx context.Context, bpmnProcessId string, version int32, opts ...foptions.FacadeOption) (ProcessDefinition, error) {
-	pd, err := c.pdApi.GetProcessDefinitionByBpmnProcessIdAndVersion(ctx, bpmnProcessId, version, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessDefinition{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessDefinition(pd), nil
-}
-
-func (c *client) GetProcessInstanceByKey(ctx context.Context, key string, opts ...foptions.FacadeOption) (ProcessInstance, error) {
-	pi, err := c.piApi.GetProcessInstanceByKey(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessInstance{}, ferrors.FromDomain(err)
-	}
-	return fromDomainProcessInstance(pi), nil
-}
-
-func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceSearchFilterOpts, size int32, opts ...foptions.FacadeOption) (ProcessInstances, error) {
+func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...foptions.FacadeOption) (ProcessInstances, error) {
 	pis, err := c.piApi.SearchForProcessInstances(ctx, toDomainProcessInstanceFilter(filter), size, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessInstances{}, ferrors.FromDomain(err)

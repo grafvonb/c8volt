@@ -8,14 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const maxPDSearchSize int32 = 1000
-
 var (
-	flagGetPDKey                 string
-	flagGetPDBpmnProcessId       string
-	flagGetPDBpmnProcessIdLatest bool
-	flagGetPDProcessVersion      int32
-	flagGetPDProcessVersionTag   string
+	flagGetPDKey               string
+	flagGetPDBpmnProcessId     string
+	flagGetPDProcessVersion    int32
+	flagGetPDProcessVersionTag string
+	flagGetPDLatest            bool
 )
 
 var getProcessDefinitionCmd = &cobra.Command{
@@ -29,64 +27,27 @@ var getProcessDefinitionCmd = &cobra.Command{
 		}
 
 		log.Debug("fetching process definitions")
-		searchFilterOpts := populatePDSearchFilterOpts()
-		if searchFilterOpts.Key != "" {
-			log.Debug(fmt.Sprintf("searching by key: %s", searchFilterOpts.Key))
-			pd, err := cli.GetProcessDefinitionByKey(cmd.Context(), searchFilterOpts.Key)
+		filter := populatePDSearchFilterOpts()
+		if filter.Key != "" {
+			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
+			pd, err := cli.GetProcessDefinition(cmd.Context(), filter.Key)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by key %s: %w", searchFilterOpts.Key, err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by key %s: %w", filter.Key, err))
 			}
 			err = processDefinitionView(cmd, pd)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
 			}
 		} else {
-			if flagGetPDProcessVersionTag == "" {
-				if flagGetPDProcessVersion != 0 && flagGetPDBpmnProcessId != "" {
-					log.Debug(fmt.Sprintf("searching by BPMN process ID: %s and version: %d", flagGetPDBpmnProcessId, flagGetPDProcessVersion))
-					pd, err := cli.GetProcessDefinitionByBpmnProcessIdAndVersion(cmd.Context(), flagGetPDBpmnProcessId, flagGetPDProcessVersion)
-					if err != nil {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and version %d: %w", flagGetPDBpmnProcessId, flagGetPDProcessVersion, err))
-					}
-					err = processDefinitionView(cmd, pd)
-					if err != nil {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering BPMN process ID and version view: %w", err))
-					}
-					log.Debug(fmt.Sprintf("searched by BPMN process ID and version, found process definition with key: %s", pd.Key))
-					return
-				} else if flagGetPDProcessVersionTag != "" {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: fetching by process version tag requires BPMN process ID to be set", ferrors.ErrBadRequest))
-				}
-				if flagGetPDBpmnProcessId != "" && flagGetPDBpmnProcessIdLatest {
-					log.Debug(fmt.Sprintf("searching by BPMN process ID: %s and latest version", flagGetPDBpmnProcessId))
-					pd, err := cli.GetProcessDefinitionByBpmnProcessIdLatest(cmd.Context(), flagGetPDBpmnProcessId)
-					if err != nil {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and latest version: %w", flagGetPDBpmnProcessId, err))
-					}
-					err = processDefinitionView(cmd, pd)
-					if err != nil {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering BPMN process ID latest version view: %w", err))
-					}
-					log.Debug(fmt.Sprintf("searched by BPMN process ID and latest version, found process definition with key: %s", pd.Key))
-					return
-				} else if flagGetPDBpmnProcessIdLatest {
-					log.Debug("searching latest versions of process definitions")
-					pds, err := cli.GetProcessDefinitionsLatest(cmd.Context())
-					if err != nil {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching latest process definitions: %w", err))
-					}
-					err = listProcessDefinitionsView(cmd, pds)
-					if err != nil {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering items view: %w", err))
-					}
-					log.Debug(fmt.Sprintf("fetched latest process definitions, found: %d items", pds.Total))
-					return
-				}
+			log.Debug(fmt.Sprintf("searching process definitions for filter %v", filter))
+			var pds process.ProcessDefinitions
+			if !flagGetPDLatest {
+				pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+			} else {
+				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
 			}
-			log.Debug(fmt.Sprintf("searching by filter: %v", searchFilterOpts))
-			pds, err := cli.SearchProcessDefinitions(cmd.Context(), searchFilterOpts, maxPDSearchSize)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definitions: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and version %d: %w", flagGetPDBpmnProcessId, flagGetPDProcessVersion, err))
 			}
 			err = listProcessDefinitionsView(cmd, pds)
 			if err != nil {
@@ -103,13 +64,13 @@ func init() {
 	fs := getProcessDefinitionCmd.Flags()
 	fs.StringVarP(&flagGetPDKey, "key", "k", "", "process definition key to fetch")
 	fs.StringVarP(&flagGetPDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
-	fs.BoolVar(&flagGetPDBpmnProcessIdLatest, "latest", false, "fetch the latest version of the given BPMN process(s)")
-	fs.Int32VarP(&flagGetPDProcessVersion, "process-version", "v", 0, "process definition version")
-	fs.StringVar(&flagGetPDProcessVersionTag, "process-version-tag", "", "process definition version tag")
+	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
+	fs.Int32VarP(&flagGetPDProcessVersion, "pd-version", "v", 0, "process definition version")
+	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 }
 
-func populatePDSearchFilterOpts() process.ProcessDefinitionSearchFilterOpts {
-	var filter process.ProcessDefinitionSearchFilterOpts
+func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
+	var filter process.ProcessDefinitionFilter
 	if flagGetPDKey != "" {
 		filter.Key = flagGetPDKey
 	}
@@ -117,10 +78,10 @@ func populatePDSearchFilterOpts() process.ProcessDefinitionSearchFilterOpts {
 		filter.BpmnProcessId = flagGetPDBpmnProcessId
 	}
 	if flagGetPDProcessVersion != 0 {
-		filter.Version = flagGetPDProcessVersion
+		filter.ProcessVersion = flagGetPDProcessVersion
 	}
 	if flagGetPDProcessVersionTag != "" {
-		filter.VersionTag = flagGetPDProcessVersionTag
+		filter.ProcessVersionTag = flagGetPDProcessVersionTag
 	}
 	return filter
 }

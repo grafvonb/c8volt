@@ -29,25 +29,27 @@ func (c *client) DeployProcessDefinition(ctx context.Context, tenantId string, u
 	return fromProcessDefinitionDeployment(pdd), nil
 }
 
-func (c *client) DeleteProcessDefinitionByKey(ctx context.Context, key string, opts ...foptions.FacadeOption) error {
+func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts ...foptions.FacadeOption) (DeleteReport, error) {
 	err := c.api.Delete(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
-		return ferrors.FromDomain(err)
+		return DeleteReport{Key: key, Ok: false}, ferrors.FromDomain(err)
 	}
-	return nil
+	return DeleteReport{Key: key, Ok: true}, nil
 }
 
-func (c *client) DeleteProcessDefinitionVersionsByBpmnProcessId(ctx context.Context, bpmnProcessId string, opts ...foptions.FacadeOption) error {
-	pds, err := c.papi.GetProcessDefinitionsByBpmnProcessId(ctx, bpmnProcessId, opts...)
+func (c *client) DeleteProcessDefinitions(ctx context.Context, filter process.ProcessDefinitionFilter, opts ...foptions.FacadeOption) (DeleteReports, error) {
+	pds, err := c.papi.SearchProcessDefinitions(ctx, filter, opts...)
 	if err != nil {
-		return ferrors.FromDomain(err)
+		return DeleteReports{}, ferrors.FromDomain(err)
 	}
 	var errs []error
+	var reps DeleteReports
 	for _, pd := range pds.Items {
-		err = c.DeleteProcessDefinitionByKey(ctx, pd.Key, opts...)
+		r, err := c.DeleteProcessDefinition(ctx, pd.Key, opts...)
 		if err != nil {
 			errs = append(errs, err)
 		}
+		reps.Items = append(reps.Items, r)
 	}
-	return errors.Join(errs...)
+	return reps, errors.Join(errs...)
 }

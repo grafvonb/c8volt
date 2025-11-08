@@ -1,12 +1,12 @@
 package process
 
 type ProcessDefinition struct {
-	BpmnProcessId string `json:"bpmnProcessId,omitempty"`
-	Key           string `json:"key,omitempty"`
-	Name          string `json:"name,omitempty"`
-	TenantId      string `json:"tenantId,omitempty"`
-	Version       int32  `json:"version,omitempty"`
-	VersionTag    string `json:"versionTag,omitempty"`
+	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
+	Key               string `json:"key,omitempty"`
+	Name              string `json:"name,omitempty"`
+	TenantId          string `json:"tenantId,omitempty"`
+	ProcessVersion    int32  `json:"processVersion,omitempty"`
+	ProcessVersionTag string `json:"processVersionTag,omitempty"`
 }
 
 type ProcessDefinitions struct {
@@ -14,11 +14,11 @@ type ProcessDefinitions struct {
 	Items []ProcessDefinition `json:"items,omitempty"`
 }
 
-type ProcessDefinitionSearchFilterOpts struct {
-	Key           string `json:"key,omitempty"`
-	BpmnProcessId string `json:"bpmnProcessId,omitempty"`
-	Version       int32  `json:"version,omitempty"`
-	VersionTag    string `json:"versionTag,omitempty"`
+type ProcessDefinitionFilter struct {
+	Key               string `json:"key,omitempty"`
+	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
+	ProcessVersion    int32  `json:"processVersion,omitempty"`
+	ProcessVersionTag string `json:"processVersionTag,omitempty"`
 }
 
 type ProcessInstanceData struct {
@@ -51,13 +51,13 @@ type ProcessInstances struct {
 	Items []ProcessInstance `json:"items,omitempty"`
 }
 
-type ProcessInstanceSearchFilterOpts struct {
-	Key               string
-	BpmnProcessId     string
-	ProcessVersion    int32
-	ProcessVersionTag string
-	State             State
-	ParentKey         string
+type ProcessInstanceFilter struct {
+	Key               string `json:"key,omitempty"`
+	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
+	ProcessVersion    int32  `json:"version,omitempty"`
+	ProcessVersionTag string `json:"versionTag,omitempty"`
+	State             State  `json:"state,omitempty"`
+	ParentKey         string `json:"parentKey,omitempty"`
 }
 
 type Reporter struct {

@@ -45,10 +45,10 @@ func listProcessDefinitionsView(cmd *cobra.Command, resp process.ProcessDefiniti
 
 func oneLinePD(it process.ProcessDefinition) string {
 	vTag := ""
-	if it.VersionTag != "" {
-		vTag = "/" + it.VersionTag
+	if it.ProcessVersionTag != "" {
+		vTag = "/" + it.ProcessVersionTag
 	}
 	return fmt.Sprintf("%-16s %s %s v%d%s",
-		it.Key, it.TenantId, it.BpmnProcessId, it.Version, vTag,
+		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag,
 	)
 }

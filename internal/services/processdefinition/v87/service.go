@@ -37,33 +37,13 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-func (s *Service) GetProcessDefinitionByKey(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
-	oldKey, err := toolx.StringToInt64(key)
-	if err != nil {
-		return d.ProcessDefinition{}, fmt.Errorf("converting process definition key %q to int64: %w", key, err)
-	}
-	resp, err := s.c.GetProcessDefinitionByKeyWithResponse(ctx, oldKey)
-	if err != nil {
-		return d.ProcessDefinition{}, err
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.ProcessDefinition{}, err
-	}
-	if resp.JSON200 == nil {
-		return d.ProcessDefinition{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	return fromProcessDefinitionResponse(*resp.JSON200), nil
-}
-
-func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionSearchFilterOpts, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	_ = services.ApplyCallOptions(opts)
 	body := operatev87.QueryProcessDefinition{
 		Filter: &operatev87.ProcessDefinition{
-			BpmnProcessId: &filter.BpmnProcessId,
-			Version:       toolx.PtrIfNonZero(filter.Version),
-			VersionTag:    &filter.VersionTag,
+			BpmnProcessId: toolx.PtrIf(filter.BpmnProcessId, ""),
+			Version:       toolx.PtrIfNonZero(filter.ProcessVersion),
+			VersionTag:    toolx.PtrIf(filter.ProcessVersionTag, ""),
 		},
 		Size: &size,
 	}
@@ -83,49 +63,14 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 	return out, nil
 }
 
-func (s *Service) GetProcessDefinitionByBpmnProcessIdLatest(ctx context.Context, bpmnProcessId string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
-	pds, err := s.GetProcessDefinitionVersionsByBpmnProcessId(ctx, bpmnProcessId, opts...)
-	if err != nil {
-		return d.ProcessDefinition{}, err
-	}
-	return pds[0], nil
-}
-
-func (s *Service) GetProcessDefinitionByBpmnProcessIdAndVersion(ctx context.Context, bpmnProcessId string, version int32, opts ...services.CallOption) (d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
-	body := operatev87.QueryProcessDefinition{
-		Filter: &operatev87.ProcessDefinition{
-			BpmnProcessId: &bpmnProcessId,
-			Version:       toolx.PtrIfNonZero(version),
-		},
-		Size: toolx.Ptr[int32](1),
-	}
-	resp, err := s.c.SearchProcessDefinitionsWithResponse(ctx, body)
-	if err != nil {
-		return d.ProcessDefinition{}, err
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.ProcessDefinition{}, err
-	}
-	if resp.JSON200 == nil {
-		return d.ProcessDefinition{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	if len(*resp.JSON200.Items) == 0 {
-		return d.ProcessDefinition{}, d.ErrNotFound
-	}
-	return fromProcessDefinitionResponse((*resp.JSON200.Items)[0]), nil
-}
-
-func (s *Service) GetProcessDefinitionsLatest(ctx context.Context, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
-	pds, err := s.SearchProcessDefinitions(ctx, d.ProcessDefinitionSearchFilterOpts{}, 1000, opts...)
+func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+	pds, err := s.SearchProcessDefinitions(ctx, filter, 1000, opts...)
 	if err != nil {
 		return nil, err
 	}
 	m := make(map[string]d.ProcessDefinition)
 	for _, pd := range pds {
-		if cur, ok := m[pd.BpmnProcessId]; !ok || pd.Version > cur.Version {
+		if cur, ok := m[pd.BpmnProcessId]; !ok || pd.ProcessVersion > cur.ProcessVersion {
 			m[pd.BpmnProcessId] = pd
 		}
 	}
@@ -137,26 +82,22 @@ func (s *Service) GetProcessDefinitionsLatest(ctx context.Context, opts ...servi
 	return out, nil
 }
 
-func (s *Service) GetProcessDefinitionVersionsByBpmnProcessId(ctx context.Context, bpmnProcessId string, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
 	_ = services.ApplyCallOptions(opts)
-	body := operatev87.QueryProcessDefinition{
-		Filter: &operatev87.ProcessDefinition{
-			BpmnProcessId: &bpmnProcessId,
-		},
-		Size: toolx.Ptr[int32](1000),
-	}
-	resp, err := s.c.SearchProcessDefinitionsWithResponse(ctx, body)
+	oldKey, err := toolx.StringToInt64(key)
 	if err != nil {
-		return nil, err
+		return d.ProcessDefinition{}, fmt.Errorf("converting process definition key %q to int64: %w", key, err)
+	}
+	resp, err := s.c.GetProcessDefinitionByKeyWithResponse(ctx, oldKey)
+	if err != nil {
+		return d.ProcessDefinition{}, err
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
+		return d.ProcessDefinition{}, err
 	}
 	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
+		return d.ProcessDefinition{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
-	ret := toolx.DerefSlicePtr(resp.JSON200.Items, fromProcessDefinitionResponse)
-	d.SortByVersionDesc(ret)
-	return ret, nil
+	return fromProcessDefinitionResponse(*resp.JSON200), nil
 }

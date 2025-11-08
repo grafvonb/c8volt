@@ -46,7 +46,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		searchFilterOpts, _ := populatePISearchFilterOpts()
 		if searchFilterOpts.Key != "" {
 			log.Debug(fmt.Sprintf("searching by key: %s", searchFilterOpts.Key))
-			pi, err := cli.GetProcessInstanceByKey(cmd.Context(), searchFilterOpts.Key)
+			pi, err := cli.GetProcessInstance(cmd.Context(), searchFilterOpts.Key)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instance by key %s: %w", searchFilterOpts.Key, err))
 			}
@@ -110,8 +110,8 @@ func init() {
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 }
 
-func populatePISearchFilterOpts() (process.ProcessInstanceSearchFilterOpts, bool) {
-	var f process.ProcessInstanceSearchFilterOpts
+func populatePISearchFilterOpts() (process.ProcessInstanceFilter, bool) {
+	var f process.ProcessInstanceFilter
 	var populated bool
 
 	if v := flagGetPIKey; v != "" {
