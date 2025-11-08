@@ -52,25 +52,10 @@ func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine 
 	return nil
 }
 
-func listOrJSON[Resp any, Item any](
-	cmd *cobra.Command,
-	resp Resp,
-	items []Item,
-	mode RenderMode,
-	oneLine func(Item) string,
-	keyOf func(Item) string,
-) error {
-	if len(items) == 0 {
-		cmd.Println("found: 0")
-		if mode == ModeJSON {
-			cmd.Println(toolx.ToJSONString(resp))
-		}
-		return nil
-	}
+func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
 	case ModeJSON:
-		cmd.Println(toolx.ToJSONString(resp))
-		cmd.Println("found:", len(items))
+		cmd.Print(toolx.ToJSONString(resp))
 	case ModeKeysOnly:
 		for _, it := range items {
 			cmd.Println(keyOf(it))

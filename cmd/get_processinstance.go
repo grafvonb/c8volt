@@ -44,7 +44,6 @@ var getProcessInstanceCmd = &cobra.Command{
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		searchFilterOpts, _ := populatePISearchFilterOpts()
-		printFilter(cmd)
 		if searchFilterOpts.Key != "" {
 			log.Debug(fmt.Sprintf("searching by key: %s", searchFilterOpts.Key))
 			pi, err := cli.GetProcessInstanceByKey(cmd.Context(), searchFilterOpts.Key)
