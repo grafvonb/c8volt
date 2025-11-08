@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
@@ -28,12 +29,26 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
 		}
 
-		var keys []string
+		keys := append([]string{}, flagCancelPIKeys...)
+		if inKeys, err := readKeysFromStdin(); err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
+		} else if len(inKeys) > 0 {
+			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
+				if strings.HasPrefix(firstBadKey, "filter: ") {
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
+				}
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
+			}
+			keys = append(keys, inKeys...)
+		}
+
 		switch {
-		case len(flagCancelPIKeys) > 0:
-			keys = flagCancelPIKeys
+		case len(keys) > 0:
 		default:
-			searchFilterOpts := populatePISearchFilterOpts()
+			searchFilterOpts, ok := populatePISearchFilterOpts()
+			if !ok {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
+			}
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, maxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))

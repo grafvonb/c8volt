@@ -43,7 +43,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
-		searchFilterOpts := populatePISearchFilterOpts()
+		searchFilterOpts, _ := populatePISearchFilterOpts()
 		printFilter(cmd)
 		if searchFilterOpts.Key != "" {
 			log.Debug(fmt.Sprintf("searching by key: %s", searchFilterOpts.Key))
@@ -111,27 +111,29 @@ func init() {
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 }
 
-func populatePISearchFilterOpts() process.ProcessInstanceSearchFilterOpts {
-	var filter process.ProcessInstanceSearchFilterOpts
-	if flagGetPIKey != "" {
-		filter.Key = flagGetPIKey
+func populatePISearchFilterOpts() (process.ProcessInstanceSearchFilterOpts, bool) {
+	var f process.ProcessInstanceSearchFilterOpts
+	var populated bool
+
+	if v := flagGetPIKey; v != "" {
+		f.Key, populated = v, true
 	}
-	if flagGetPIParentKey != "" {
-		filter.ParentKey = flagGetPIParentKey
+	if v := flagGetPIParentKey; v != "" {
+		f.ParentKey, populated = v, true
 	}
-	if flagGetPIBpmnProcessID != "" {
-		filter.BpmnProcessId = flagGetPIBpmnProcessID
+	if v := flagGetPIBpmnProcessID; v != "" {
+		f.BpmnProcessId, populated = v, true
 	}
-	if flagGetPIProcessVersion != 0 {
-		filter.ProcessVersion = flagGetPIProcessVersion
+	if v := flagGetPIProcessVersion; v != 0 {
+		f.ProcessVersion, populated = v, true
 	}
-	if flagGetPIProcessVersionTag != "" {
-		filter.ProcessVersionTag = flagGetPIProcessVersionTag
+	if v := flagGetPIProcessVersionTag; v != "" {
+		f.ProcessVersionTag, populated = v, true
 	}
-	if flagGetPIState != "" && flagGetPIState != "all" {
-		if state, ok := process.ParseState(flagGetPIState); ok {
-			filter.State = state
+	if s := flagGetPIState; s != "" && s != "all" {
+		if st, ok := process.ParseState(s); ok {
+			f.State, populated = st, true
 		}
 	}
-	return filter
+	return f, populated
 }
