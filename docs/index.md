@@ -2,7 +2,7 @@
 
 # c8volt - Yet Another Camunda 8 CLI Tool?
 
-No, [**c8volt**](https://github.com/grafvonb/c8volt) is different. Its design and development focus on operational effectiveness, ensuring that done is done.
+No, **c8volt** is different. Its design and development focus on operational effectiveness, ensuring that done is done.
 There are plenty of operational tasks where you want to be sure that:
 
 * A process instance was started – is it really active and running?
@@ -18,10 +18,10 @@ If some operation requires additional steps to reach the desired state, **c8volt
 * Traversing the process instance tree to perform operations like cancellation or deletion.
 
 **c8volt** focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
- 
+
 ## Quick Start with c8volt
 
-1. **Install Camunda 8.8 Run**  
+1. **Install Camunda 8.8 Run**
 
 Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run), unpack and start it with `./start.sh`.
 Use listed relevant URLs and default credentials to create the configuration for c8volt.
@@ -133,26 +133,33 @@ processdefinitions/C88_SimpleParentProcess.bpmn
 processdefinitions/C88_SimpleUserTaskProcess.bpmn
 processdefinitions/C88_SimpleUserTaskWithIncidentProcess.bpmn
 ```
-Deploy three embedded BPMN models to Camunda 8 that build a parent-child process instance tree:
+Deploy all embedded BPMN models to Camunda 8 at once:
 ```bash
-$ ./c8volt embed deploy -f processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn,processdefinitions/C88_SimpleParentProcess.bpmn,processdefinitions/C88_SimpleUserTaskProcess.bpmn
-2251799813685772 <default> C88_MultipleSubProcessesParentProcess v1 vprocessdefinitions/C88_MultipleSubProcessesParentProcess.bpmn (2251799813685771)
-2251799813685773 <default> C88_SimpleParentProcess v1 vprocessdefinitions/C88_SimpleParentProcess.bpmn (2251799813685771)
-2251799813685774 <default> C88_SimpleUserTask_Process v1 vprocessdefinitions/C88_SimpleUserTaskProcess.bpmn (2251799813685771)
-found: 3
+$ ./c8volt embed deploy --all
+2251799813686014 <default> C88_MultipleSubProcessesParentProcess v1 vprocessdefinitions/C88_MultipleSubProcessesParentProcess.bpmn (2251799813686013)
+2251799813686015 <default> C88_DoubleUserTask_Process v1 vprocessdefinitions/C88_DoubleUserTaskProcess.bpmn (2251799813686013)
+2251799813686016 <default> C88_SimpleParentProcess v1 vprocessdefinitions/C88_SimpleParentProcess.bpmn (2251799813686013)
+2251799813686017 <default> C88_SimpleUserTask_Process v1 vprocessdefinitions/C88_SimpleUserTaskProcess.bpmn (2251799813686013)
+2251799813686018 <default> C88_SimpleUserTaskWithIncident_Process v1 vprocessdefinitions/C88_SimpleUserTaskWithIncidentProcess.bpmn (2251799813686013)
+found: 5
+
 ```
 Check that the models are deployed:
 ```bash
 $ ./c8volt get pd
-2251799813685772 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0
-2251799813685773 <default> C88_SimpleParentProcess v1/v1.0.0
-2251799813685774 <default> C88_SimpleUserTask_Process v1/v1.0.0
-found: 3
+2251799813686015 <default> C88_DoubleUserTask_Process v1/v1.0.0
+2251799813686014 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0
+2251799813686016 <default> C88_SimpleParentProcess v1/v1.0.0
+2251799813686018 <default> C88_SimpleUserTaskWithIncident_Process v1/v1.0.0
+2251799813686017 <default> C88_SimpleUserTask_Process v1/v1.0.0
+found: 5
+
 ```
 And run a process instance using standard run command:
 ```bash
-INFO waiting for process instance with key 2251799813909860 to be started by workflow engine...
-INFO process instance 2251799813909860 succesfully created (start registered at 2025-11-04T09:06:36.161Z and confirmed at 2025-11-04T09:06:39Z) using process definition id 2251799813685772, C88_MultipleSubProcessesParentProcess, v1, tenant: <default>
+$ ./c8volt run pi -b C88_MultipleSubProcessesParentProcess
+INFO waiting for process instance of 2251799813686014 with key 2251799813686587 to be started by workflow engine...
+INFO process instance 2251799813686587 succesfully created (start registered at 2025-11-08T19:28:52.116Z and confirmed at 2025-11-08T19:28:59Z) using process definition id 2251799813686014, C88_MultipleSubProcessesParentProcess, v1, tenant: <default>
 ```
 If you want to modify the embedded BPMN models, you can export them to a local folder with:
 ```bash
@@ -162,121 +169,236 @@ INFO exported 1 embedded resource(s) to "exported_models"
 Modify it with Camunda Modeler or any text editor and deploy it back with "normal" deployment command:
 ```bash
 $ ./c8volt deploy pd -f ./exported_models/processdefinitions/C88_SimpleParentProcess.bpmn
-2251799813906559 <default> C88_SimpleParentProcess v2 vC88_SimpleParentProcess.bpmn (2251799813906558)
+2251799813687133 <default> C88_SimpleParentProcess v2 vC88_SimpleParentProcess.bpmn (2251799813687132)
 found: 1
 ```
 And run a process instance of the modified model:
 ```bash
 $ ./c8volt run pi -b C88_SimpleParentProcess
-INFO waiting for process instance with key 2251799813909382 to be started by workflow engine...
-INFO process instance 2251799813909382 succesfully created (start registered at 2025-11-04T09:03:27.05Z and confirmed at 2025-11-04T09:03:30Z) using process definition id 2251799813906559, C88_SimpleParentProcess, v2, tenant: <default>
+INFO waiting for process instance of 2251799813687133 with key 2251799813687256 to be started by workflow engine...
+INFO process instance 2251799813687256 succesfully created (start registered at 2025-11-08T19:33:12.933Z and confirmed at 2025-11-08T19:33:16Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
 ```
+
+### Running Process Instances
+
+A process instance can be started for a deployed BPMN model by its process definition key or BPMN process ID.
+In case of the latter you can also specify a version of the process definition to use. If no version is specified, the latest version is used by default.
+
+Running a process instance is asynchronous in Camunda 8, meaning that when the API call returns successfully, the process instance might not be actually started yet.
+**c8volt** provides a waiting mechanism that polls the process instance state until it reaches the desired `ACTIVE` state or a timeout occurs.
+You can switch off the waiting mechanism using the `--no-wait` flag.
+
+**c8volt** also supports starting multiple process instances concurrently by specifying the `--count` (`-n`) flag and the number of workers with `--workers` (`-w`) flag.
 
 #### Running Process Instances in Action
 
 First get the deployed process definitions:
 ```bash
-$ ./c8volt get pd
-2251799814192477 <default> C88_DoubleUserTask_Process v1/v1.0.0
-2251799814192481 <default> C88_MultipleSubProcessesParentProcess v2/v1.0.0
-2251799813685772 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0
-2251799814192478 <default> C88_SimpleParentProcess v3/v1.0.0
-2251799813906559 <default> C88_SimpleParentProcess v2/v1.0.0
-2251799813685773 <default> C88_SimpleParentProcess v1/v1.0.0
-2251799814192480 <default> C88_SimpleUserTaskWithIncident_Process v1/v1.0.0
-2251799814192479 <default> C88_SimpleUserTask_Process v4/v1.0.0
-2251799813885946 <default> C88_SimpleUserTask_Process v3/v1.0.2
-2251799813885862 <default> C88_SimpleUserTask_Process v2/v1.0.1
-2251799813685774 <default> C88_SimpleUserTask_Process v1/v1.0.0
-found: 11
+$ ./c8volt get get pd
+2251799813686015 <default> C88_DoubleUserTask_Process v1/v1.0.0
+2251799813686014 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0
+2251799813687133 <default> C88_SimpleParentProcess v2/v1.0.1
+2251799813686016 <default> C88_SimpleParentProcess v1/v1.0.0
+2251799813686018 <default> C88_SimpleUserTaskWithIncident_Process v1/v1.0.0
+2251799813686017 <default> C88_SimpleUserTask_Process v1/v1.0.0
+found: 6
 ```
 Start a single process instance of `C88_SimpleUserTask_Process` by its BPMN process ID and wait until it is active:
 ```bash
-$ ./c8volt run pi -b C88_SimpleUserTask_Process
-INFO waiting for process instance of 2251799814192479 with key 2251799814278292 to be started by workflow engine...
-INFO process instance 2251799814278292 succesfully created (start registered at 2025-11-07T15:02:48.981Z and confirmed at 2025-11-07T15:02:56Z) using process definition id 2251799814192479, C88_SimpleUserTask_Process, v4, tenant: <default>
+$ ./c8volt pi -b C88_SimpleUserTask_Process
+INFO waiting for process instance of 2251799813686017 with key 2251799813687872 to be started by workflow engine...
+INFO process instance 2251799813687872 succesfully created (start registered at 2025-11-08T19:37:21.745Z and confirmed at 2025-11-08T19:37:25Z) using process definition id 2251799813686017, C88_SimpleUserTask_Process, v1, tenant: <default>
 ```
-Start a version 2 of `C88_SimpleParentProcess` by its process definition key and wait until it is active:
+Start the 1st version of the `C88_SimpleParentProcess` by its BPMN process ID and wait until it is active:
 ```bash
-$ ./c8volt run pi -b C88_SimpleUserTask_Process --pd-version=2
-INFO waiting for process instance of 2251799813885862 with key 2251799814278567 to be started by workflow engine...
-INFO process instance 2251799814278567 succesfully created (start registered at 2025-11-07T15:04:37.306Z and confirmed at 2025-11-07T15:04:40Z) using process definition id 2251799813885862, C88_SimpleUserTask_Process, v2, tenant: <default>
+$ ./c8volt run pi -b C88_SimpleUserTask_Process --pd-version=1
+INFO waiting for process instance of 2251799813686017 with key 2251799813688140 to be started by workflow engine...
+INFO process instance 2251799813688140 succesfully created (start registered at 2025-11-08T19:39:08.557Z and confirmed at 2025-11-08T19:39:12Z) using process definition id 2251799813686017, C88_SimpleUserTask_Process, v1, tenant: <default>
 ```
-Start a version 3 of `C88_SimpleParentProcess` by its process definition ID without waiting for it to be active:
+Start a 1st version of `C88_SimpleParentProcess` by its process definition ID without waiting for it to be active:
 ```bash
-$ ./c8volt --config config-c8run-v88.yaml run pi --pd-id=2251799813885946 --no-wait
-INFO process instance creation with the key 2251799814279025 requested at 2025-11-07T15:04:37.306Z (run not confirmed, as no-wait is set) using process definition id 2251799813885946, C88_SimpleUserTask_Process, v3, tenant: <default>
+$ ./c8volt run run pi --pd-id=2251799813686016 --no-wait
+INFO process instance creation with the key 2251799813688590 requested at 2025-11-08T19:42:18Z (run not confirmed, as no-wait is set) using process definition id 2251799813686016, C88_SimpleParentProcess, v1, tenant: <default>
 ```
-Start 5 process instances of `C88_DoubleUserTask_Process` concurrently using 3 workers and wait until they are active:
+Start 5 process instances of latest version of `C88_DoubleUserTask_Process` concurrently using 3 workers and wait until they are active:
 ```bash
-$ ./c8volt --config config-c8run-v88.yaml run pi -b C88_SimpleParentProcess -n 5 -w 3
-INFO running 5 process instances using 3 workers with fail-fast=false
-INFO waiting for process instance of 2251799814192478 with key 2251799814279254 to be started by workflow engine...
-INFO waiting for process instance of 2251799814192478 with key 2251799814279264 to be started by workflow engine...
-INFO waiting for process instance of 2251799814192478 with key 2251799814279274 to be started by workflow engine...
-INFO process instance 2251799814279274 succesfully created (start registered at 2025-11-07T15:09:14.108Z and confirmed at 2025-11-07T15:09:21Z) using process definition id 2251799814192478, C88_SimpleParentProcess, v3, tenant: <default>
-INFO process instance 2251799814279264 succesfully created (start registered at 2025-11-07T15:09:14.103Z and confirmed at 2025-11-07T15:09:21Z) using process definition id 2251799814192478, C88_SimpleParentProcess, v3, tenant: <default>
-INFO process instance 2251799814279254 succesfully created (start registered at 2025-11-07T15:09:14.079Z and confirmed at 2025-11-07T15:09:21Z) using process definition id 2251799814192478, C88_SimpleParentProcess, v3, tenant: <default>
-INFO waiting for process instance of 2251799814192478 with key 2251799814279286 to be started by workflow engine...
-INFO waiting for process instance of 2251799814192478 with key 2251799814279296 to be started by workflow engine...
-INFO process instance 2251799814279286 succesfully created (start registered at 2025-11-07T15:09:21.647Z and confirmed at 2025-11-07T15:09:25Z) using process definition id 2251799814192478, C88_SimpleParentProcess, v3, tenant: <default>
-INFO process instance 2251799814279296 succesfully created (start registered at 2025-11-07T15:09:21.652Z and confirmed at 2025-11-07T15:09:25Z) using process definition id 2251799814192478, C88_SimpleParentProcess, v3, tenant: <default>
+$ ./c8volt run pi -b C88_SimpleParentProcess -n 5 -w 3
+INFO creating 5 process instances using 3 workers
+INFO waiting for process instance of 2251799813687133 with key 2251799813688787 to be started by workflow engine...
+INFO waiting for process instance of 2251799813687133 with key 2251799813688797 to be started by workflow engine...
+INFO waiting for process instance of 2251799813687133 with key 2251799813688807 to be started by workflow engine...
+INFO process instance 2251799813688807 succesfully created (start registered at 2025-11-08T19:43:36.275Z and confirmed at 2025-11-08T19:43:43Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
+INFO process instance 2251799813688787 succesfully created (start registered at 2025-11-08T19:43:36.253Z and confirmed at 2025-11-08T19:43:43Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
+INFO waiting for process instance of 2251799813687133 with key 2251799813688852 to be started by workflow engine...
+INFO waiting for process instance of 2251799813687133 with key 2251799813688862 to be started by workflow engine...
+INFO process instance 2251799813688797 succesfully created (start registered at 2025-11-08T19:43:36.267Z and confirmed at 2025-11-08T19:43:43Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
+INFO process instance 2251799813688862 succesfully created (start registered at 2025-11-08T19:43:43.843Z and confirmed at 2025-11-08T19:43:51Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
+INFO process instance 2251799813688852 succesfully created (start registered at 2025-11-08T19:43:43.837Z and confirmed at 2025-11-08T19:43:51Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
+INFO creation of 5 process instances completed
 ```
 
 ### Searching Process Instances
 
-TBD
+**c8volt** provides powerful searching capabilities for process instances.
+It not only can find process instances by standard criteria such as process definition ID, BPMN process ID, version, state, tenant, but also traverse their parent-child relationships.
+It offers different output formats suitable for scripting, such as one-liner or keys-only. The latter allows easy piping of results to other commands.
+
+#### Searching Process Instances in Action
+
+Get all process instances of `C88_SimpleUserTask_Process`:
+```bash
+$ ./c8volt get pi -b C88_SimpleUserTask_Process
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false
+2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+2251799813687261 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:33:12.933+0000 p:2251799813687256 i:false
+2251799813687872 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:37:21.745+0000 p:<root> i:false
+2251799813688140 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:39:08.557+0000 p:<root> i:false
+2251799813688595 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:42:18.756+0000 p:2251799813688590 i:false
+2251799813688792 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.253+0000 p:2251799813688787 i:false
+2251799813688802 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.267+0000 p:2251799813688797 i:false
+2251799813688812 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.275+0000 p:2251799813688807 i:false
+2251799813688857 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.837+0000 p:2251799813688852 i:false
+2251799813688867 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.843+0000 p:2251799813688862 i:false
+```
+Get all process instances of `C88_SimpleParentProcess` that are children of other process instances:
+```bash
+$ ./c8volt get pi -b C88_SimpleUserTask_Process --children-only
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false
+2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+2251799813687261 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:33:12.933+0000 p:2251799813687256 i:false
+2251799813688595 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:42:18.756+0000 p:2251799813688590 i:false
+2251799813688792 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.253+0000 p:2251799813688787 i:false
+2251799813688802 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.267+0000 p:2251799813688797 i:false
+2251799813688812 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.275+0000 p:2251799813688807 i:false
+2251799813688857 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.837+0000 p:2251799813688852 i:false
+2251799813688867 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.843+0000 p:2251799813688862 i:false
+found: 9
+```
+Find the root of a child process instance by its key:
+```bash
+$ ./c8volt walk pi --key=2251799813686596
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:2251799813686587 i:false ← 
+2251799813686587 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:<root> i:false
+```
+Or even the whole family tree of this child process instance:
+```bash
+$ ./c8volt walk pi --key=2251799813686596 --mode=family
+2251799813686587 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:<root> i:false ⇄ 
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 <default> C88_SimpleParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+```
 
 ### Cancellation of Process Instances
 
 Standard cancellation of process instances in Camunda 8 is asynchronous and does not guarantee that the instance is actually cancelled when the API call returns successfully.
 **c8volt** provides a waiting mechanism that polls the process instance state until it reaches the desired `CANCELED` state or a timeout occurs.
-It allows also forced cancellation a process instance even it is a child, by traversing the parent chain and cancelling its root ancestor. 
+It allows also forced cancellation a process instance even it is a child, by traversing the parent chain and cancelling its root ancestor.
 
 #### Cancellation in Action
 
 Assuming you have following process instance tree (look at the sections above how to achieve that with c8volt's embedded deployment and run features):
 ```bash
-$ ./c8volt get pi
-found: 4
-2251799813686374 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000 p:<root> i:false
-2251799813686383 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000 p:2251799813686374 i:false
-2251799813686384 <default> C88_SimpleParentProcess v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000 p:2251799813686374 i:false
-2251799813686392 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-02T12:47:25.352+0000 p:2251799813686384 i:false
+$ ./c8volt get pi -b C88_MultipleSubProcessesParentProcess
+2251799813686587 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:<root> i:false
+found: 1
+$ ./c8volt walk pi --key 2251799813686587 --mode=family
+2251799813686587 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:<root> i:false ⇄ 
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 <default> C88_SimpleParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
 ```
-Cancel the process instance `2251799813686384` (which is a child of `2251799813686374` and parent of `2251799813686392`):
+Cancel the process instance `2251799813686597` (which is a child of `2251799813686587` and parent of `2251799813686605`):
 ```bash
-$ ./c8volt cancel pi --key 2251799813686384
-INFO cannot cancel, process instance with key 2251799813686384 is a child process of a root parent with key 2251799813686374
-INFO use --force flag to cancel the root process instance with key 2251799813686374 and all its child processes
+$ ./c8volt cancel pi --key 2251799813686597
+You are about to cancel 1 process instance(s)? [y/N]: y
+INFO cancelling process instances requested for 1 unique key(s) using 1 worker(s)
+INFO cannot cancel, process instance with key 2251799813686597 is a child process of a root parent with key 2251799813686587
+INFO use --force flag to cancel the root process instance with key 2251799813686587 and all its child processes
+INFO cancelling 1 process instances completed: 0 succeeded or already cancelled/teminated, 1 failed
 ```
 You cannot cancel a child process instance directly. It is as standard behavior of Camunda 8.
-**c8volt** has a flag `--force` to find the root ancestor process instance and cancel it instead, which also cancels all its child process instances:
+However **c8volt** provides a flag `--force` to automatically find and cancel the root process instance, thus all its child processes:
 ```bash
-$ ./c8volt cancel pi --key 2251799813686384 --force
-INFO cannot cancel, process instance with key 2251799813686384 is a child process of a root parent with key 2251799813686374
-INFO force flag is set, cancelling root process instance with key 2251799813686374 and all its child processes
-INFO waiting for process instance with key 2251799813686374 to be cancelled by workflow engine...
-INFO process instance 2251799813686374 currently in state ACTIVE; waiting...
-INFO process instance 2251799813686374 currently in state ACTIVE; waiting...
-INFO process instance 2251799813686374 currently in state ACTIVE; waiting...
-INFO process instance with key 2251799813686374 was successfully cancelled
+$ ./c8volt cancel pi --key 2251799813686597 --force
+You are about to cancel 1 process instance(s)? [y/N]: y
+INFO cancelling process instances requested for 1 unique key(s) using 1 worker(s)
+INFO cannot cancel, process instance with key 2251799813686597 is a child process of a root parent with key 2251799813686587
+INFO force flag is set, cancelling root process instance with key 2251799813686587 and all its child processes
+INFO waiting for process instance with key 2251799813686587 to be cancelled by workflow engine...
+INFO process instance 2251799813686587 currently in state ACTIVE; waiting...
+INFO process instance 2251799813686587 currently in state ACTIVE; waiting...
+INFO process instance 2251799813686587 currently in state ACTIVE; waiting...
+INFO process instance with key 2251799813686587 was successfully (confirmed) cancelled
+INFO cancelling 1 process instances completed: 1 succeeded or already cancelled/teminated, 0 failed
 ```
-Standard behavior of **c8volt** is to wait until the process instance reaches the `CANCELED` state. 
-You can check it with a special `walk` command that traverses the process instance tree. To get the whole tree use `--mode family`:
+Confirm that the whole process instance family is cancelled/terminated running again the `walk` command:
 ```bash
-$ ./c8volt walk pi --key 2251799813686384 --mode family
-2251799813686374 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-02T12:47:25.352Z e:2025-11-02T12:53:43.594Z p:<root> i:false ⇄ 
-2251799813686383 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-02T12:47:25.352+0000 e:2025-11-02T12:53:43.594+0000 p:2251799813686374 i:false ⇄ 
-2251799813686384 <default> C88_SimpleParentProcess v1/v1.0.0 CANCELED s:2025-11-02T12:47:25.352+0000 e:2025-11-02T12:53:43.594+0000 p:2251799813686374 i:false ⇄ 
-2251799813686392 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-02T12:47:25.352+0000 e:2025-11-02T12:53:43.594+0000 p:2251799813686384 i:false
+$ ./c8volt walk pi --key 2251799813686587 --mode=family
+2251799813686587 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-08T19:28:52.116Z e:2025-11-08T20:31:03.312Z p:<root> i:false ⇄ 
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 <default> C88_SimpleParentProcess v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686597 i:false
 ```
+Every command that lists process instances or definitions has also a `--keys-only` flag that outputs only the process instance keys, one per line:
+```bash
+$ ./c8volt walk pi --key 2251799813686587 --mode=family --keys-only
+2251799813686587
+2251799813686596
+2251799813686597
+2251799813686605
+```
+This output type can be easily piped to other commands, e.g., to delete all these process instances.
 
 ### Deletion
 
-#### Deletion of Process Instances
+Deletion of process instances and even process definitions in Camunda 8 is not straightforward.
+Due to distribution of state across multiple components and asynchronous nature of operations, additional steps are required to ensure that the resource is really deleted.
+It is also possible to create an inconsistent state e.g. by deleting a process instance that is a parent of other active process instances as Camunda 8 API does
+not prevent that or cascades the deletion to child instances as in case of cancellation.
 
-TBD
+#### Deletion of Process Instances in Action
+
+Standard deletion of process instances in Camunda 8 is asynchronous and does not guarantee that the instance is actually deleted when the API call returns successfully.
+Additionally, Camunda 8 API does not allow deleting a process instance that is still active. It must be cancelled first.
+```bash
+$ ./c8volt get pi -b C88_SimpleUserTask_Process
+2251799813687261 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:33:12.933+0000 p:2251799813687256 i:false
+2251799813687872 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:37:21.745+0000 p:<root> i:false
+2251799813688140 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:39:08.557+0000 p:<root> i:false
+2251799813688595 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:42:18.756+0000 p:2251799813688590 i:false
+2251799813688792 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.253+0000 p:2251799813688787 i:false
+2251799813688802 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.267+0000 p:2251799813688797 i:false
+2251799813688812 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.275+0000 p:2251799813688807 i:false
+2251799813688857 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.837+0000 p:2251799813688852 i:false
+2251799813688867 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.843+0000 p:2251799813688862 i:false
+found: 9
+```
+Try to delete the process instance `2251799813687872` first:
+```bash
+$ ./c8volt delete pi --key 2251799813687872
+You are about to delete 1 process instance(s)? [y/N]: y
+INFO deleting process instances requested for 1 unique key(s) using 1 worker(s)
+INFO cannot delete, process instance 2251799813687872 is not in one of terminated states; use --force flag to cancel and then delete the process instance
+INFO deleting 1 process instances completed: 0 succeeded, 1 failed
+```
+Retry with `--force` flag to first cancel and then delete the process instance:
+```bash
+$ ./c8volt delete pi --key 2251799813687872 --force
+delete pi --key 2251799813687872 --force
+You are about to delete 1 process instance(s)? [y/N]: y
+INFO deleting process instances requested for 1 unique key(s) using 1 worker(s)
+INFO process instance with key 2251799813687872 not in one of terminated states; cancelling it first
+INFO waiting for process instance with key 2251799813687872 to be cancelled by workflow engine...
+INFO process instance 2251799813687872 currently in state ACTIVE; waiting...
+INFO process instance 2251799813687872 currently in state ACTIVE; waiting...
+INFO process instance 2251799813687872 currently in state ACTIVE; waiting...
+INFO process instance with key 2251799813687872 was successfully (confirmed) cancelled
+INFO waiting for process instance with key 2251799813687872 to be cancelled by workflow engine...
+INFO retrying deletion of process instance with key 2251799813687872
+INFO process instance with key 2251799813687872 was successfully deleted
+INFO deleting 1 process instances completed: 1 succeeded, 0 failed
+```
 
 #### Deletion of Process Definitions
 
@@ -295,7 +417,28 @@ If you do not want to deal with specific error codes, you can use the `--no-err-
 
 #### Command Pipelining
 
-TBD
+Even thought **c8volt** offers many switches to filter resources in cancel and delete commands, you can also use command pipelining to achieve complex scenarios.
+These commands recognize stdin input and read resource keys from it, one per line. The input can be provided by e.g. `echo` or `cat` commands, or by piping output of other c8volt commands with `--keys-only` flag.
+
+Here is an example of common scenario for deleting a whole process instance tree, which is not possible, in opposite to cancellation, with standard Camunda 8 API.
+Delete this process instance tree...
+```bash
+$ ./c8volt walk pi --key 2251799813686587 --mode=family
+2251799813686587 <default> C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-08T19:28:52.116Z e:2025-11-08T20:31:03.312Z p:<root> i:false ⇄ 
+2251799813686596 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 <default> C88_SimpleParentProcess v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686597 i:false
+```
+By piping the output of the above `walk` command with `--keys-only` flag to the `delete` command:
+```bash
+./bin/c8volt walk pi --key 2251799813686587 --mode=family --keys-only | ./bin/c8volt delete pi
+INFO deleting process instances requested for 4 unique key(s) using 4 worker(s)
+INFO process instance with key 2251799813686605 was successfully deleted
+INFO process instance with key 2251799813686596 was successfully deleted
+INFO process instance with key 2251799813686587 was successfully deleted
+INFO process instance with key 2251799813686597 was successfully deleted
+INFO deleting 4 process instances completed: 4 succeeded, 0 failed
+```
 
 ## Configuration
 
@@ -320,9 +463,9 @@ app:
 - Camunda 8 Operate API
 - Camunda 8 Tasklist API
 
-The base URL to Camunda 8 Orchestration Cluster API is usually in the form of `https://<host>:<port>/v2`, 
+The base URL to Camunda 8 Orchestration Cluster API is usually in the form of `https://<host>:<port>/v2`,
 while the Operate and Tasklist APIs are usually in the form of `https://<host>:<port>`.
-If you provide only the Camunda 8 Orchestration Cluster API base URL, **c8volt** will assume that Operate and Tasklist APIs 
+If you provide only the Camunda 8 Orchestration Cluster API base URL, **c8volt** will assume that Operate and Tasklist APIs
 are available under the same host and port without the `/v2` suffix.
 Here is an example configuration snippet for API base URLs for Camunda 8 running locally:
 
@@ -368,7 +511,7 @@ auth:
 
 #### Authentication with API Cookie (development with Camunda 8 Run only)
 
-This method is only suitable for local development with Camunda 8 Run (up to version 8.7), 
+This method is only suitable for local development with Camunda 8 Run (up to version 8.7),
 as it uses the API cookie set by the web interface.
 
 You need to provide the following settings:
@@ -502,7 +645,7 @@ example:
 Sensitive fields such as `auth.oauth2.client_secret` are **always masked** when
 the configuration is printed or logged. The raw values are still loaded and used internally, but they will never appear in output.
 
-## Archive Section 
+## Archive Section
 (for future documentation, might not work anymore in the current version, will be removed soon)
 
 - **Delete active process instances by cancelling them first**
@@ -587,4 +730,3 @@ Copyright © 2025 [Adam Bogdan Boczek](https://boczek.info)
 
 This project is licensed under the Apache License, Version 2.0.
 See the [LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE) file for the full text.
-
