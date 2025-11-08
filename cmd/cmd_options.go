@@ -7,7 +7,7 @@ func collectOptions() []foptions.FacadeOption {
 	if flagCancelNoWait || flagRunNoWait {
 		opts = append(opts, foptions.WithNoWait())
 	}
-	if flagCancelNoStateCheck {
+	if flagCancelNoStateCheck || flagDeleteNoStateCheck {
 		opts = append(opts, foptions.WithNoStateCheck())
 	}
 	if flagDeletePIWithForce || flagCancelPIWithForce {

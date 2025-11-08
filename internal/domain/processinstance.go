@@ -27,11 +27,13 @@ type ProcessInstanceFilter struct {
 }
 
 type CancelResponse struct {
+	Ok         bool
 	StatusCode int
 	Status     string
 }
 
 type DeleteResponse struct {
+	Ok         bool
 	StatusCode int
 	Status     string
 }

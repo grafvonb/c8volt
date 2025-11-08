@@ -262,6 +262,22 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	if err != nil {
 		return d.DeleteResponse{}, fmt.Errorf("parsing process instance key %q to int64: %w", key, err)
 	}
+
+	s.log.Debug(fmt.Sprintf("checking children of process instance with key %s before deletion", key))
+	_, edges, _, err := s.Descendants(ctx, key, opts...)
+	if err != nil {
+		return d.DeleteResponse{}, err
+	}
+	orphans := edges[key]
+	if len(edges[key]) > 0 {
+		if cCfg.NoStateCheck {
+			s.log.Warn(fmt.Sprintf("deleting process instance with key %s, will cause creation of %d orphaned child process instances: %v", key, len(orphans), orphans))
+		} else {
+			s.log.Info(fmt.Sprintf("cannot delete, process instance with key %s has %d child process instances: %v; use --no-state-check to ignore child process instances and delete anyway", key, len(orphans), orphans))
+			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
+		}
+	}
+
 	resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
 	if resp.StatusCode() == http.StatusBadRequest &&
 		resp.ApplicationproblemJSON400 != nil &&

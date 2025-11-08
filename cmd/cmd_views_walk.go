@@ -29,7 +29,7 @@ func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, s
 	case ModeJSON:
 		cmd.Println(toolx.ToJSONString(items))
 	case ModeKeysOnly:
-		cmd.Println(strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), sep))
+		cmd.Println(strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
 	default: // ModeOneLine
 		cmd.Println(strings.Join(mapItems(items, oneLinePI), sep))
 	}

@@ -33,7 +33,7 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys []string, para
 	ukeys := toolx.UniqueSlice(keys)
 
 	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
-	c.log.Info(fmt.Sprintf("cancelling process instances requested for %d unique keys using %d workers", len(ukeys), workers))
+	c.log.Info(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", len(ukeys), workers))
 	rs, err := fpool.ExecuteSlice[string, CancelReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (CancelReport, error) {
 		return c.CancelProcessInstance(ctx, key, opts...)
 	})
@@ -52,7 +52,7 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys []string, para
 	ukeys := toolx.UniqueSlice(keys)
 
 	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
-	c.log.Info(fmt.Sprintf("deleting process instances requested for %d unique keys using %d workers", len(ukeys), workers))
+	c.log.Info(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", len(ukeys), workers))
 	rs, err := fpool.ExecuteSlice[string, DeleteReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessInstance(ctx, key, opts...)
 	})
