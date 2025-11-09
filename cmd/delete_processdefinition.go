@@ -16,8 +16,9 @@ var (
 	flagDeletePDProcessVersionTag string
 	flagDeletePDLatest            bool
 
-	flagDeletePDWorkers  int
-	flagDeletePDFailFast bool
+	flagDeletePDWorkers   int
+	flagDeletePDFailFast  bool
+	flagDeletePDWithForce bool
 )
 
 var deleteProcessDefinitionCmd = &cobra.Command{
@@ -77,7 +78,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		}
 		_, err = cli.DeleteProcessDefinitions(cmd.Context(), keys, flagDeletePDWorkers, flagDeletePDFailFast, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancelling process instance(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definiton(s): %w", err))
 		}
 	},
 }
@@ -91,6 +92,7 @@ func init() {
 	fs.Int32Var(&flagDeletePDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagDeletePDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagDeletePDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
+	fs.BoolVar(&flagDeletePDWithForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
 	fs.IntVarP(&flagDeletePDWorkers, "workers", "w", 0, "Maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagDeletePDFailFast, "fail-fast", false, "Stop scheduling new instances after the first error")

@@ -8,6 +8,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/consts"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 )
 
@@ -38,7 +39,23 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 			return DeleteReport{Key: key, Ok: false}, ferrors.FromDomain(err)
 		}
 		if len(pis.Items) > 0 {
-			return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cannot delete process definition %s with active process instances; cancel or terminate them first", key)
+			if cCfg.Force {
+				c.log.Info(fmt.Sprintf("cancelling active process instance(s) for process definition %s before deletion", key))
+				pis, err = c.papi.SearchProcessInstances(ctx, filter, consts.MaxPISearchSize, opts...)
+				if err != nil {
+					return DeleteReport{Key: key, Ok: false}, ferrors.FromDomain(err)
+				}
+				var keys []string
+				for _, pi := range pis.Items {
+					keys = append(keys, pi.Key)
+				}
+				_, err := c.papi.CancelProcessInstances(ctx, keys, len(keys), true, opts...)
+				if err != nil {
+					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cancelling active process instances for process definition %s before deletion failed: %w", key, err)
+				}
+			} else {
+				return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cannot delete process definition %s with active process instances; user --force to cancel them automatically", key)
+			}
 		}
 	}
 	err := c.api.Delete(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)

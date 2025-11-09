@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +47,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			if !ok {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, maxPISearchSize, collectOptions()...)
+			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize, collectOptions()...)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
 			}

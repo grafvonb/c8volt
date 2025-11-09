@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +54,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if searchFilterOpts.State.In(process.StateCanceled, process.StateCompleted, process.StateTerminated) {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("it does not make sense to cancel process instances already in state %q", searchFilterOpts.State.String()))
 			}
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, maxPISearchSize)
+			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
 			}

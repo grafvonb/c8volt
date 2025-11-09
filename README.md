@@ -1,8 +1,6 @@
 <img src="./docs/logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
-# c8volt - Yet Another Camunda 8 CLI Tool?
-
-No, **c8volt** is different. Its design and development focus on operational effectiveness, ensuring that **done is done**.
+No, **[c8volt](https://github.com/grafvonb/c8volt)** is different. Its design and development focus on operational effectiveness, ensuring that **done is done**.
 There are plenty of operational tasks where you want to be sure that:
 
 * A process instance was started – is it really active and running?
@@ -72,7 +70,7 @@ $ ./c8volt walk pi --key 2251799813711967 --family
 2251799813711985 <default> C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T22:21:09.617+0000 e:2025-11-09T08:14:00.681+0000 p:2251799813711977 i:false
 ```
 
-**DONE IS DONE!**
+**DONE IS DONE!** [https://github.com/grafvonb/c8volt](https://github.com/grafvonb/c8volt)
 
 ## Quick Start with c8volt
 
@@ -407,7 +405,7 @@ This output type can be easily piped to other commands, e.g., to delete all thes
 
 ### Deletion
 
-Deletion of process instances and even process definitions in Camunda 8 is not straightforward.
+Deletion of process instances and process definitions in Camunda 8 is not straightforward.
 Due to distribution of state across multiple components and asynchronous nature of operations, additional steps are required to ensure that the resource is really deleted.
 It is also possible to create an inconsistent state e.g. by deleting a process instance that is a parent of other active process instances as Camunda 8 API does
 not prevent that or cascades the deletion to child instances as in case of cancellation.
@@ -455,9 +453,41 @@ INFO process instance with key 2251799813687872 was successfully deleted
 INFO deleting 1 process instances completed: 1 succeeded, 0 failed
 ```
 
-#### Deletion of Process Definitions
+#### Deletion of Process Definitions in Action
 
-TBD
+When deleting a process definition in Camunda 8, you must ensure that there are no active process instances running of that definition.
+If there are any, you must cancel them first.
+**c8volt** helps you with that by providing the `--force` flag that automatically finds and cancels all active process instances.
+
+Try to delete the 4th version of `C88_MultipleSubProcessesParentProcess` process definition that has active process instances:
+```bash
+$ ./c8volt delete pd -b C88_MultipleSubProcessesParentProcess --pd-version 4
+You are about to delete 1 process definition(s)? [y/N]: y
+INFO deleting process definitions requested for 1 unique key(s) using 1 worker(s)
+INFO deleting 1 process definitions completed: 0 succeeded, 1 failed
+ERROR deleting process definiton(s): cannot delete process definition 2251799813743350 with active process instances; user --force to cancel them automatically
+```
+Retry with `--force` flag to first cancel (confirmed!) all active process instances and then delete the process definition:
+```bash
+$ ./c8volt delete pd -b C88_MultipleSubProcessesParentProcess --pd-version 4 --force
+You are about to delete 1 process definition(s)? [y/N]: y
+INFO deleting process definitions requested for 1 unique key(s) using 1 worker(s)
+INFO cancelling active process instance(s) for process definition 2251799813743350 before deletion
+INFO cancelling process instances requested for 3 unique key(s) using 3 worker(s)
+INFO waiting for process instance with key 2251799813744466 to be cancelled by workflow engine...
+INFO waiting for process instance with key 2251799813749275 to be cancelled by workflow engine...
+INFO process instance 2251799813744466 currently in state ACTIVE; waiting...
+INFO process instance 2251799813749275 currently in state ACTIVE; waiting...
+INFO waiting for process instance with key 2251799813743626 to be cancelled by workflow engine...
+INFO process instance 2251799813743626 currently in state ACTIVE; waiting...
+INFO process instance 2251799813744466 currently in state ACTIVE; waiting...
+INFO process instance 2251799813743626 currently in state ACTIVE; waiting...
+INFO process instance with key 2251799813749275 was successfully (confirmed) cancelled
+INFO process instance with key 2251799813744466 was successfully (confirmed) cancelled
+INFO process instance with key 2251799813743626 was successfully (confirmed) cancelled
+INFO cancelling 3 process instance(s) completed: 3 succeeded or already cancelled/teminated, 0 failed
+INFO deleting 1 process definitions completed: 1 succeeded, 0 failed
+```
 
 ### Walking Process Instance Trees
 
@@ -699,71 +729,6 @@ example:
 
 Sensitive fields such as `auth.oauth2.client_secret` are **always masked** when
 the configuration is printed or logged. The raw values are still loaded and used internally, but they will never appear in output.
-
-## Archive Section
-(for future documentation, might not work anymore in the current version, will be removed soon)
-
-- **Delete active process instances by cancelling them first**
-  ```bash
-  ./c8volt delete pi --key <process-instance-key> --cancel
-  ```
-
-- **List process instances that are children (sub-processes) of other process instances**
-  ```bash
-  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --children-only
-  ```
-
-- **List process instances that are parents of other process instances**
-  ```bash
-  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --roots-only
-  ```
-
-- **List process instances that are children of orphan parent process instances**  
-  (i.e., their parent process instance no longer exists)
-  ```bash
-  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --orphan-roots-only
-  ```
-
-- **List process instances for a specific process definition (model) and its first version**
-  ```bash
-  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --process-version=1
-  ```
-
-- **List process instances with incidents**
-  ```bash
-  ./c8volt get pi --incidents-only
-  ```
-
-- **List process instances without incidents**
-  ```bash
-  ./c8volt get pi --no-incidents-only
-  ```
-
-- **Recursive search (walk) process instances with parent–child relationships**
-    - List all child process instances of a given process instance
-      ```bash
-      ./c8volt walk pi --mode children --start-key <process-instance-key>
-      ```
-    - List path from a given process instance to its root ancestor (top-level parent)
-      ```bash
-      ./c8volt walk pi --mode parent --start-key <process-instance-key>
-      ```
-    - List the entire family (parent, grandparent, …) of a given process instance (traverse up and down the tree)
-      ```bash
-      ./c8volt walk pi --mode family --start-key <process-instance-key>
-      ```
-
-- **List process instances in one line per instance (suitable for scripting)**  
-  Works with all `get` commands.
-  ```bash
-  ./c8volt get pi --one-line
-  ```
-
-- **List process instances just by their keys (suitable for scripting)**  
-  Works with all `get` commands.
-  ```bash
-  ./c8volt get pi --keys-only
-  ```
 
 ## Disclaimer
 

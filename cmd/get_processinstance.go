@@ -5,10 +5,9 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
-
-const maxPISearchSize int32 = 1000
 
 var (
 	flagGetPIKey                  string
@@ -63,7 +62,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			log.Debug(fmt.Sprintf("searched by key, found process instance with key: %s", pi.Key))
 		} else {
 			log.Debug(fmt.Sprintf("searching by filter: %v", filter))
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, maxPISearchSize)
+			pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, consts.MaxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
 			}
