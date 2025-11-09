@@ -22,7 +22,7 @@ var (
 
 // command options
 var (
-	flagGetPIParentsOnly       bool
+	flagGetPIRootsOnly         bool
 	flagGetPIChildrenOnly      bool
 	flagGetPIOrphanParentsOnly bool
 	flagGetPIIncidentsOnly     bool
@@ -67,14 +67,14 @@ var getProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
 			}
-			if flagGetPIChildrenOnly && flagGetPIParentsOnly {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: using both --children-only and --parents-only filters returns always no results", ferrors.ErrBadRequest))
+			if flagGetPIChildrenOnly && flagGetPIRootsOnly {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: using both --children-only and --roots-only filters returns always no results", ferrors.ErrBadRequest))
 			}
 			if flagGetPIChildrenOnly {
 				pisr = pisr.FilterChildrenOnly()
 			}
-			if flagGetPIParentsOnly {
-				pisr = pisr.FilterParentsOnly()
+			if flagGetPIRootsOnly {
+				pisr = pisr.FilterRootsOnly()
 			}
 			if flagGetPIOrphanParentsOnly {
 				pisr.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pisr.Items)
@@ -110,9 +110,9 @@ func init() {
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
-	fs.BoolVar(&flagGetPIParentsOnly, "parents-only", false, "show only parent process instances, meaning instances with no parent key set")
+	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances, meaning instances with empty parent key")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances, meaning instances that have a parent key set")
-	fs.BoolVar(&flagGetPIOrphanParentsOnly, "orphan-parents-only", false, "show only child instances whose parent does not exist (return 404 on get by key)")
+	fs.BoolVar(&flagGetPIOrphanParentsOnly, "orphan-parents-only", false, "show only child instances where parent key is set but the parent process instance does not exist (anymore)")
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 }

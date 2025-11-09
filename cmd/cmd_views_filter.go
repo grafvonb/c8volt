@@ -16,8 +16,8 @@ func printFilter(cmd *cobra.Command) {
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		filters = append(filters, fmt.Sprintf("state=%s", flagGetPIState))
 	}
-	if flagGetPIParentsOnly {
-		filters = append(filters, "parents-only=true")
+	if flagGetPIRootsOnly {
+		filters = append(filters, "roots-only=true")
 	}
 	if flagGetPIChildrenOnly {
 		filters = append(filters, "children-only=true")

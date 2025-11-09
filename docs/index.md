@@ -660,7 +660,7 @@ the configuration is printed or logged. The raw values are still loaded and used
 
 - **List process instances that are parents of other process instances**
   ```bash
-  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --parents-only
+  ./c8volt get pi --bpmn-process-id=<bpmn-process-id> --roots-only
   ```
 
 - **List process instances that are children of orphan parent process instances**  

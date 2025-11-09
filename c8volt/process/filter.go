@@ -8,7 +8,7 @@ func (r ProcessInstances) FilterChildrenOnly() ProcessInstances {
 	return r.filterByBool(func(pi ProcessInstance) bool { return pi.ParentKey != "" }, true)
 }
 
-func (r ProcessInstances) FilterParentsOnly() ProcessInstances {
+func (r ProcessInstances) FilterRootsOnly() ProcessInstances {
 	return r.filterByBool(func(pi ProcessInstance) bool { return pi.ParentKey == "" }, true)
 }
 

@@ -8,8 +8,11 @@ import (
 )
 
 var (
-	flagWalkKey  string
-	flagWalkMode string
+	flagWalkKey          string
+	flagWalkMode         string
+	flagWalkModeFamily   string
+	flagWalkModeParent   string
+	flagWalkModeChildren string
 )
 
 const (
