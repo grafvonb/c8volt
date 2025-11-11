@@ -3,9 +3,19 @@
 # auth
 ./api/generate-client.sh ./api/auth/oauth2-openapi.json ./internal/clients/auth/oauth2/client.gen.go oauth2
 
+# v89
+./api/generate-client.sh ./api/camunda-docs/api/administration-sm/administration-sm-openapi.yaml ./internal/clients/camunda/v89/administrationsm/client.gen.go administrationsm
+./api/generate-client.sh ./api/camunda-docs/api/camunda/camunda-openapi.yaml ./internal/clients/camunda/v89/camunda/client.gen.go camunda
+
+python ./api/mutate-operation-ids.py ./api/camunda-docs/api/operate/operate-openapi.yaml
+python ./api/mutate-remove-sort-values.py ./api/camunda-docs/api/operate/operate-openapi-oids-updated.yaml
+./api/generate-client.sh ./api/camunda-docs/api/operate/operate-openapi-oids-updated-sortvalues-removed.yaml ./internal/clients/camunda/v89/operate/client.gen.go operate
+
+./api/generate-client.sh ./api/camunda-docs/api/tasklist/tasklist-openapi.yaml ./internal/clients/camunda/v89/tasklist/client.gen.go tasklist
+
 # v88
 ./api/generate-client.sh ./api/camunda-docs/api/administration-sm/administration-sm-openapi.yaml ./internal/clients/camunda/v88/administrationsm/client.gen.go administrationsm
-./api/generate-client.sh ./api/camunda-docs/api/camunda/camunda-openapi.yaml ./internal/clients/camunda/v88/camunda/client.gen.go camunda
+./api/generate-client.sh ./api/camunda-docs/api/camunda/version-8.8/camunda-openapi.yaml ./internal/clients/camunda/v88/camunda/client.gen.go camunda
 
 python ./api/mutate-operation-ids.py ./api/camunda-docs/api/operate/operate-openapi.yaml
 python ./api/mutate-remove-sort-values.py ./api/camunda-docs/api/operate/operate-openapi-oids-updated.yaml

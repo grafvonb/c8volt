@@ -6108,6 +6108,7 @@ type PostProcessInstancesProcessInstanceKeyMigrationResponse struct {
 	HTTPResponse              *http.Response
 	ApplicationproblemJSON400 *ProblemDetail
 	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *ProblemDetail
 }
 
@@ -8399,6 +8400,13 @@ func ParsePostProcessInstancesProcessInstanceKeyMigrationResponse(rsp *http.Resp
 			return nil, err
 		}
 		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ProblemDetail
