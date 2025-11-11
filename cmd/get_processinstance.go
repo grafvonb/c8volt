@@ -17,6 +17,7 @@ var (
 	flagGetPIProcessDefinitionKey string
 	flagGetPIState                string
 	flagGetPIParentKey            string
+	flagGetPISize                 int32
 )
 
 // command options
@@ -49,6 +50,7 @@ var getProcessInstanceCmd = &cobra.Command{
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		filter, _ := populatePISearchFilterOpts()
+
 		if filter.Key != "" {
 			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
 			pi, err := cli.GetProcessInstance(cmd.Context(), filter.Key)
@@ -60,39 +62,40 @@ var getProcessInstanceCmd = &cobra.Command{
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering view: %w", err))
 			}
 			log.Debug(fmt.Sprintf("searched by key, found process instance with key: %s", pi.Key))
-		} else {
-			log.Debug(fmt.Sprintf("searching by filter: %v", filter))
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, consts.MaxPISearchSize)
-			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
-			}
-			if flagGetPIChildrenOnly && flagGetPIRootsOnly {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: using both --children-only and --roots-only filters returns always no results", ferrors.ErrBadRequest))
-			}
-			if flagGetPIChildrenOnly {
-				pisr = pisr.FilterChildrenOnly()
-			}
-			if flagGetPIRootsOnly {
-				pisr = pisr.FilterRootsOnly()
-			}
-			if flagGetPIOrphanParentsOnly {
-				pisr.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pisr.Items)
-				if err != nil {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error filtering orphan parents: %w", err))
-				}
-			}
-			if flagGetPIIncidentsOnly {
-				pisr = pisr.FilterByHavingIncidents(true)
-			}
-			if flagGetPINoIncidentsOnly {
-				pisr = pisr.FilterByHavingIncidents(false)
-			}
-			err = listProcessInstancesView(cmd, pisr)
-			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering items view: %w", err))
-			}
-			log.Debug(fmt.Sprintf("fetched process instances: %d", pisr.Total))
+			return
 		}
+
+		log.Debug(fmt.Sprintf("searching by filter: %v", filter))
+		pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
+		}
+		if flagGetPIChildrenOnly && flagGetPIRootsOnly {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: using both --children-only and --roots-only filters returns always no results", ferrors.ErrBadRequest))
+		}
+		if flagGetPIChildrenOnly {
+			pisr = pisr.FilterChildrenOnly()
+		}
+		if flagGetPIRootsOnly {
+			pisr = pisr.FilterRootsOnly()
+		}
+		if flagGetPIOrphanParentsOnly {
+			pisr.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pisr.Items)
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error filtering orphan parents: %w", err))
+			}
+		}
+		if flagGetPIIncidentsOnly {
+			pisr = pisr.FilterByHavingIncidents(true)
+		}
+		if flagGetPINoIncidentsOnly {
+			pisr = pisr.FilterByHavingIncidents(false)
+		}
+		err = listProcessInstancesView(cmd, pisr)
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering items view: %w", err))
+		}
+		log.Debug(fmt.Sprintf("fetched process instances: %d", pisr.Total))
 	},
 }
 
@@ -105,6 +108,7 @@ func init() {
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
+	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -144,4 +148,11 @@ func populatePISearchFilterOpts() (process.ProcessInstanceFilter, bool) {
 		}
 	}
 	return f, populated
+}
+
+func pickPISearchSize() int32 {
+	if flagGetPISize <= 0 || flagGetPISize > consts.MaxPISearchSize {
+		return consts.MaxPISearchSize
+	}
+	return flagGetPISize
 }
