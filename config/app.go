@@ -35,5 +35,8 @@ func (a *App) Normalize() error {
 			a.CamundaVersion = v
 		}
 	}
+	if err := a.Backoff.Normalize(); err != nil {
+		errs = append(errs, fmt.Errorf("backoff: %w", err))
+	}
 	return errors.Join(errs...)
 }
