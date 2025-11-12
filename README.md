@@ -1,21 +1,26 @@
 <img src="./docs/logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
-# c8volt: Not Yet Another Camunda 8 CLI
+# c8volt: Camunda 8 Operations CLI
+The tool for Camunda 8 admins and developers to verify outcomes.
 
-[**c8volt**](https://github.com/grafvonb/c8volt) is different. Its design and development focus on operational effectiveness, ensuring that done is done.
+[**c8volt**](https://github.com/grafvonb/c8volt)'s design and development focus on operational effectiveness, ensuring that **done is done**.
 There are plenty of operational tasks where you want to be sure that:
 
 - A process instance was started – is it really active and running?
 - A process instance was canceled – is it really in the cancelled state?
 - A process instance tree was deleted – are all instances truly gone?
-- A process variable was set – does it hold the correct value?
 
 If some operation requires additional steps to reach the desired state, **c8volt** takes care of it for you by:
 - Running multiple process instances concurrently, with configurable number of workers.
 - Cancelling the root process instance when you want to cancel a child process instance.
 - Deleting process instances by first cancelling them and then deleting them.
-- Waiting until the process instance reaches the desired state (e.g., `CANCELED`)
+- Waiting until the process instance reaches the desired state.
 - Traversing the process instance tree to perform operations like cancellation or deletion.
+- and much more...
+
+Bulk operations like running multiple process instances, cancelling or deleting multiple process instances are supported out-of-the-box.
+
+Proper exit codes, various output formats and piping capabilities make **c8volt** suitable for scripting and automation.
 
 **c8volt** focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.
 
@@ -104,16 +109,9 @@ Orchestration Cluster API:  http://localhost:8080/v2/
 ```
 2. **Install c8volt**
 
-Download the latest release relevant to your OS from the [c8volt Releases](https://github.com/grafvonb/c8volt/releases) page and unpack it.
-Here is an example for macOS ARM64:
-```bash
-$ wget -q --show-progress -c -O c8volt.tar.gz https://github.com/grafvonb/c8volt/releases/download/v0.1.61/c8volt_0.1.61_Darwin_arm64.tar.gz
-$ tar -xvf c8volt.tar.gz
-```
-Check the version:
+Download the latest release relevant to your OS from the [c8volt Releases](https://github.com/grafvonb/c8volt/releases) page, unpack it and check the version:
 ```bash
 $ ./c8volt version
-c8volt version 0.1.62, commit 5c38662a89a82ee82809752857a340129c20995e, built at 2025-11-01T16:46:41Z. Supported Camunda versions: 8.7, 8.8
 ```
 3. **Configure c8volt**
 
