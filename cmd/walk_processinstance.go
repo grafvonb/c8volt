@@ -8,17 +8,17 @@ import (
 )
 
 var (
-	flagWalkKey          string
-	flagWalkMode         string
-	flagWalkModeFamily   bool
-	flagWalkModeParent   bool
-	flagWalkModeChildren bool
+	flagWalkPIKey          string
+	flagWalkPIMode         string
+	flagWalkPIModeFamily   bool
+	flagWalkPIModeParent   bool
+	flagWalkPIModeChildren bool
 )
 
 const (
-	modeParent   = "parent"
-	modeChildren = "children"
-	modeFamily   = "family"
+	walkPIModeParent   = "parent"
+	walkPIModeChildren = "children"
+	walkPIModeFamily   = "family"
 )
 
 var walkProcessInstanceCmd = &cobra.Command{
@@ -31,45 +31,63 @@ var walkProcessInstanceCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 
+		if flagViewAsTree && (!flagWalkPIModeFamily && flagWalkPIMode != walkPIModeFamily) {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--tree is only valid with --family"))
+		}
+
 		type walker struct {
 			fetch func() (KeysPath, Chain, error)
 			view  func(*cobra.Command, KeysPath, Chain) error
 		}
+		var familyEdges map[string][]string
 
 		walkers := map[string]walker{
-			modeParent: {
+			walkPIModeParent: {
 				fetch: func() (KeysPath, Chain, error) {
-					_, path, chain, err := cli.Ancestry(cmd.Context(), flagWalkKey, collectOptions()...)
+					_, path, chain, err := cli.Ancestry(cmd.Context(), flagWalkPIKey, collectOptions()...)
 					return path, chain, err
 				},
 				view: ancestorsView,
 			},
-			modeChildren: {
+			walkPIModeChildren: {
 				fetch: func() (KeysPath, Chain, error) {
-					path, _, chain, err := cli.Descendants(cmd.Context(), flagWalkKey, collectOptions()...)
+					path, _, chain, err := cli.Descendants(cmd.Context(), flagWalkPIKey, collectOptions()...)
 					return path, chain, err
 				},
 				view: descendantsView,
 			},
-			modeFamily: {
+			walkPIModeFamily: {
 				fetch: func() (KeysPath, Chain, error) {
-					path, _, chain, err := cli.Family(cmd.Context(), flagWalkKey, collectOptions()...)
+					path, edges, chain, err := cli.Family(cmd.Context(), flagWalkPIKey, collectOptions()...)
+					if err == nil {
+						familyEdges = edges
+					}
 					return path, chain, err
 				},
-				view: familyView,
+				view: func(cmd *cobra.Command, path KeysPath, chain Chain) error {
+					mode := pickMode()
+					if mode == RenderModeTree {
+						if len(path) == 0 {
+							return nil
+						}
+						rootKey := path[0]
+						return renderFamilyTree(cmd, rootKey, familyEdges, chain, flagWalkPIKey)
+					}
+					return familyView(cmd, path, chain)
+				},
 			},
 		}
 		switch {
-		case flagWalkModeParent:
-			flagWalkMode = modeParent
-		case flagWalkModeChildren:
-			flagWalkMode = modeChildren
-		case flagWalkModeFamily:
-			flagWalkMode = modeFamily
+		case flagWalkPIModeParent:
+			flagWalkPIMode = walkPIModeParent
+		case flagWalkPIModeChildren:
+			flagWalkPIMode = walkPIModeChildren
+		case flagWalkPIModeFamily:
+			flagWalkPIMode = walkPIModeFamily
 		}
-		w, ok := walkers[flagWalkMode]
+		w, ok := walkers[flagWalkPIMode]
 		if !ok {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid --mode %q (must be %s, %s, or %s)", flagWalkMode, modeParent, modeChildren, modeFamily))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
 		}
 		path, chain, err := w.fetch()
 		if err != nil {
@@ -85,16 +103,17 @@ func init() {
 	walkCmd.AddCommand(walkProcessInstanceCmd)
 
 	fs := walkProcessInstanceCmd.Flags()
-	fs.StringVarP(&flagWalkKey, "key", "k", "", "start walking from this process instance key")
+	fs.StringVarP(&flagWalkPIKey, "key", "k", "", "start walking from this process instance key")
 	_ = walkProcessInstanceCmd.MarkFlagRequired("key")
 
-	fs.StringVar(&flagWalkMode, "mode", modeParent, "walk mode: parent, children, family")
-	fs.BoolVar(&flagWalkModeParent, "parent", false, "shorthand for --mode=parent")
-	fs.BoolVar(&flagWalkModeChildren, "children", false, "shorthand for --mode=children")
-	fs.BoolVar(&flagWalkModeFamily, "family", false, "shorthand for --mode=family")
+	fs.StringVar(&flagWalkPIMode, "mode", walkPIModeChildren, "walk mode: parent, children, family")
+	fs.BoolVar(&flagWalkPIModeParent, "parent", false, "shorthand for --mode=parent")
+	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "shorthand for --mode=children")
+	fs.BoolVar(&flagWalkPIModeFamily, "family", false, "shorthand for --mode=family")
+	fs.BoolVar(&flagViewAsTree, "tree", false, "render family mode as an ASCII tree (only valid with --family)")
 
 	// shell completion for --mode
 	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{modeParent, modeChildren, modeFamily}, cobra.ShellCompDirectiveNoFileComp
+		return []string{walkPIModeParent, walkPIModeChildren, walkPIModeFamily}, cobra.ShellCompDirectiveNoFileComp
 	})
 }

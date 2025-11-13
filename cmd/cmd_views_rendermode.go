@@ -11,19 +11,22 @@ import (
 type RenderMode int
 
 const (
-	ModeJSON RenderMode = iota
-	ModeOneLine
-	ModeKeysOnly
+	RenderModeJSON RenderMode = iota
+	RenderModeOneLine
+	RenderModeKeysOnly
+	RenderModeTree
 )
 
 func (m RenderMode) String() string {
 	switch m {
-	case ModeJSON:
+	case RenderModeJSON:
 		return "json"
-	case ModeOneLine:
+	case RenderModeOneLine:
 		return "one-line"
-	case ModeKeysOnly:
+	case RenderModeKeysOnly:
 		return "keys-only"
+	case RenderModeTree:
+		return "tree"
 	default:
 		return fmt.Sprintf("unknown(%d)", m)
 	}
@@ -32,19 +35,21 @@ func (m RenderMode) String() string {
 func pickMode() RenderMode {
 	switch {
 	case flagViewAsJson:
-		return ModeJSON
+		return RenderModeJSON
 	case flagViewKeysOnly:
-		return ModeKeysOnly
+		return RenderModeKeysOnly
+	case flagViewAsTree:
+		return RenderModeTree
 	default:
-		return ModeOneLine
+		return RenderModeOneLine
 	}
 }
 
 func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
-	case ModeJSON:
+	case RenderModeJSON:
 		cmd.Println(toolx.ToJSONString(item))
-	case ModeKeysOnly:
+	case RenderModeKeysOnly:
 		cmd.Println(keyOf(item))
 	default:
 		cmd.Println(strings.TrimSpace(oneLine(item)))
@@ -54,13 +59,13 @@ func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine 
 
 func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
-	case ModeJSON:
+	case RenderModeJSON:
 		cmd.Print(toolx.ToJSONString(resp))
-	case ModeKeysOnly:
+	case RenderModeKeysOnly:
 		for _, it := range items {
 			cmd.Println(keyOf(it))
 		}
-	default: // ModeOneLine
+	default: // RenderModeOneLine
 		for _, it := range items {
 			cmd.Println(strings.TrimSpace(oneLine(it)))
 		}
