@@ -18,14 +18,14 @@ import (
 )
 
 var (
-	flagViewAsJson     bool
-	flagViewKeysOnly   bool
-	flagViewAsTree     bool
-	flagQuiet          bool
-	flagVerbose        bool
-	flagDebug          bool
-	flagNoErrCodes     bool
-	flagCmdAutoConfirm bool
+	flagViewAsJson        bool
+	flagViewKeysOnly      bool
+	flagViewAsTree        bool
+	flagQuiet             bool
+	flagVerbose           bool
+	flagDebug             bool
+	flagSuppressExitCodes bool
+	flagCmdAutoConfirm    bool
 )
 
 var rootCmd = &cobra.Command{
@@ -74,14 +74,14 @@ var rootCmd = &cobra.Command{
 
 		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("create http service: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("create http service: %w", err))
 		}
 		ator, err := auth.BuildAuthenticator(cfg, httpSvc.Client(), log)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("create authenticator: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("create authenticator: %w", err))
 		}
 		if err := ator.Init(ctx); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initialize authenticator: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("initialize authenticator: %w", err))
 		}
 		httpSvc.InstallAuthEditor(ator.Editor())
 		ctx = httpSvc.ToContext(ctx)
@@ -125,7 +125,7 @@ func init() {
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
 	pf.String("tenant", "", "default tenant ID")
-	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
+	pf.BoolVar(&flagSuppressExitCodes, "suppress-exit-codes", false, "suppress exit codes on errors")
 
 	pf.String("auth-mode", "oauth2", "authentication mode (oauth2, cookie)")
 	pf.String("auth-oauth2-client-id", "", "auth client ID")
@@ -155,8 +155,8 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 
 	_ = v.BindPFlag("app.tenant", fs.Lookup("tenant"))
 	_ = v.BindPFlag("app.camunda_version", fs.Lookup("camunda-version"))
-	_ = v.BindPFlag("app.no_err_codes", fs.Lookup("no-err-codes"))
-	_ = v.BindPFlag("app.auto-confirm", fs.Lookup("auto-confirm"))
+	_ = v.BindPFlag("app.suppress_exit_codes", fs.Lookup("suppress-exit-codes"))
+	_ = v.BindPFlag("app.auto_confirm", fs.Lookup("auto-confirm"))
 
 	_ = v.BindPFlag("auth.mode", fs.Lookup("auth-mode"))
 	_ = v.BindPFlag("auth.oauth2.client_id", fs.Lookup("auth-oauth2-client-id"))

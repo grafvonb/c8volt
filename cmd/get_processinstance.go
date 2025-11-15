@@ -36,16 +36,16 @@ var getProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error creating c8volt client: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error creating c8volt client: %w", err))
 		}
 		if flagGetPIProcessDefinitionKey != "" && (flagGetPIBpmnProcessID != "" || flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: --pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag", ferrors.ErrBadRequest))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("%w: --pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag", ferrors.ErrBadRequest))
 		}
 		if flagGetPIBpmnProcessID == "" && (flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: --pd-version and --pd-version-tag require --bpmn-process-id to be set", ferrors.ErrBadRequest))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("%w: --pd-version and --pd-version-tag require --bpmn-process-id to be set", ferrors.ErrBadRequest))
 		}
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
@@ -55,11 +55,11 @@ var getProcessInstanceCmd = &cobra.Command{
 			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
 			pi, err := cli.GetProcessInstance(cmd.Context(), filter.Key)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instance by key %s: %w", filter.Key, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error fetching process instance by key %s: %w", filter.Key, err))
 			}
 			err = processInstanceView(cmd, pi)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering view: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error rendering view: %w", err))
 			}
 			log.Debug(fmt.Sprintf("searched by key, found process instance with key: %s", pi.Key))
 			return
@@ -68,10 +68,10 @@ var getProcessInstanceCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("searching by filter: %v", filter))
 		pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error fetching process instances: %w", err))
 		}
 		if flagGetPIChildrenOnly && flagGetPIRootsOnly {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: using both --children-only and --roots-only filters returns always no results", ferrors.ErrBadRequest))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("%w: using both --children-only and --roots-only filters returns always no results", ferrors.ErrBadRequest))
 		}
 		if flagGetPIChildrenOnly {
 			pisr = pisr.FilterChildrenOnly()
@@ -82,7 +82,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		if flagGetPIOrphanParentsOnly {
 			pisr.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pisr.Items)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error filtering orphan parents: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error filtering orphan parents: %w", err))
 			}
 		}
 		if flagGetPIIncidentsOnly {
@@ -93,7 +93,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 		err = listProcessInstancesView(cmd, pisr)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering items view: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error rendering items view: %w", err))
 		}
 		log.Debug(fmt.Sprintf("fetched process instances: %d", pisr.Total))
 	},

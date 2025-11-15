@@ -24,18 +24,18 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("initializing client: %w", err))
 		}
 
 		keys := append([]string{}, flagDeletePIKeys...)
 		if inKeys, err := readKeysFromStdin(); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("reading stdin: %w", err))
 		} else if len(inKeys) > 0 {
 			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
 				if strings.HasPrefix(firstBadKey, "filter: ") {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
+					ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
 				}
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
 			}
 			keys = append(keys, inKeys...)
 		}
@@ -45,11 +45,11 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		default:
 			searchFilterOpts, ok := populatePISearchFilterOpts()
 			if !ok {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize, collectOptions()...)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error fetching process instances: %w", err))
 			}
 			keys = make([]string, 0, len(pisr.Items))
 			for _, pi := range pisr.Items {
@@ -57,15 +57,15 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to delete"))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("no process instance keys provided or found to delete"))
 		}
 		prompt := fmt.Sprintf("You are about to delete %d process instance(s)?", len(keys))
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		_, err = cli.DeleteProcessInstances(cmd.Context(), keys, flagDeletePIWorkers, flagDeletePIFailFast, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process instance(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("deleting process instance(s): %w", err))
 		}
 	},
 }

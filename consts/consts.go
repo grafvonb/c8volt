@@ -1,5 +1,5 @@
 package consts
 
 const (
-	MaxPISearchSize int32 = 1000
+	MaxPISearchSize int32 = 500
 )

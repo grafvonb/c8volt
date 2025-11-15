@@ -20,23 +20,23 @@ var deployProcessDefinitionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		if err := validateFiles(flagDeployPDFiles); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating files with process definition(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("validating files with process definition(s): %w", err))
 		}
 		res, err := loadResources(flagDeployPDFiles, os.Stdin)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("collecting process definition(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("collecting process definition(s): %w", err))
 		}
 		log.Debug(fmt.Sprintf("deploying process definition(s) to tenant %q", cfg.App.ViewTenant()))
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), cfg.App.Tenant, res, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying process definition(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("deploying process definition(s): %w", err))
 		}
 		err = listProcessDefinitionDeploymentsView(cmd, pdds)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
 		}
 		log.Debug(fmt.Sprintf("%d process definition(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
 	},

@@ -47,12 +47,12 @@ func HandleAndExitOK(log *slog.Logger, message string) {
 	os.Exit(exitcode.OK)
 }
 
-func HandleAndExit(log *slog.Logger, noErrCodes bool, err error) {
+func HandleAndExit(log *slog.Logger, suppressExitCodes bool, err error) {
 	if err == nil {
 		os.Exit(exitcode.OK)
 	}
 	log.Error(err.Error())
-	if noErrCodes {
+	if suppressExitCodes {
 		os.Exit(exitcode.OK)
 	}
 	switch {

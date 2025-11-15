@@ -29,15 +29,15 @@ var runProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagRunPIWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--count and --workers must be positive integers"))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("--count and --workers must be positive integers"))
 		}
 		var vars map[string]interface{}
 		if flagRunPIVars != "" {
 			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("parsing --vars JSON: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("parsing --vars JSON: %w", err))
 			}
 		}
 		var datas []process.ProcessInstanceData
@@ -45,10 +45,10 @@ var runProcessInstanceCmd = &cobra.Command{
 		switch {
 		case len(flagRunPIProcessDefinitionSpecificId) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flags --pd-id and --bpmn-process-id are mutually exclusive"))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("flags --pd-id and --bpmn-process-id are mutually exclusive"))
 			}
 			if flagRunPIProcessDefinitionVersion != 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flag --pd-version is only valid with --bpmn-process-id"))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("flag --pd-version is only valid with --bpmn-process-id"))
 			}
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionSpecificId))
@@ -63,7 +63,7 @@ var runProcessInstanceCmd = &cobra.Command{
 
 		case len(flagRunPIProcessDefinitionBpmnProcessIds) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 1 && flagRunPIProcessDefinitionVersion != 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cannot specify --pd-version when running multiple BPMN process IDs"))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("cannot specify --pd-version when running multiple BPMN process IDs"))
 			}
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionBpmnProcessIds))
@@ -78,7 +78,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)
 
 		default:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("provide either --pd-id or --bpmn-process-id"))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("provide either --pd-id or --bpmn-process-id"))
 		}
 
 		fopts := collectOptions()
@@ -88,17 +88,17 @@ var runProcessInstanceCmd = &cobra.Command{
 		if flagRunPICount <= 1 {
 			_, err = cli.CreateProcessInstances(cmd.Context(), datas, fopts...)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
 			}
 			return
 		}
 		if len(datas) > 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes,
 				fmt.Errorf("--count requires exactly one target definition; got %d", len(datas)))
 		}
 		_, err = cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagRunPIWorkers, fopts...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
 	},
 }

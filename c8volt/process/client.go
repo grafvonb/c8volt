@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
@@ -27,7 +28,7 @@ func New(pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger) API {
 }
 
 func (c *client) SearchProcessDefinitions(ctx context.Context, filter ProcessDefinitionFilter, opts ...foptions.FacadeOption) (ProcessDefinitions, error) {
-	pds, err := c.pdApi.SearchProcessDefinitions(ctx, toDomainProcessDefinitionFilter(filter), pdsvc.MaxResultSize, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	pds, err := c.pdApi.SearchProcessDefinitions(ctx, toDomainProcessDefinitionFilter(filter), consts.MaxPISearchSize, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessDefinitions{}, ferrors.FromDomain(err)
 	}

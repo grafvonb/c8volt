@@ -29,11 +29,11 @@ var embedExportCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		all, err := embedded.List()
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		// index for case-insensitive exact lookups: lower -> canonical
 		index := make(map[string]string, len(all))
@@ -45,7 +45,7 @@ var embedExportCmd = &cobra.Command{
 		case flagEmbedExportAll:
 			toExport = append(toExport, all...)
 		case len(flagEmbedExportFileNames) == 0:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --all or at least one --file is required"))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("either --all or at least one --file is required"))
 		default:
 			seen := make(map[string]struct{})
 			matchFound := false
@@ -55,7 +55,7 @@ var embedExportCmd = &cobra.Command{
 					for _, cand := range all {
 						ok, err := path.Match(pat, strings.ToLower(cand))
 						if err != nil {
-							ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid pattern %q: %w", f, err))
+							ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("invalid pattern %q: %w", f, err))
 						}
 						if ok {
 							if _, dup := seen[cand]; !dup {
@@ -73,12 +73,12 @@ var embedExportCmd = &cobra.Command{
 							toExport = append(toExport, canon)
 						}
 					} else {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("embedded file %q not found (case-insensitive); run 'embed list' to see all files", f))
+						ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("embedded file %q not found (case-insensitive); run 'embed list' to see all files", f))
 					}
 				}
 			}
 			if embedExportAllAreGlobs(flagEmbedExportFileNames) && !matchFound {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("pattern(s) %v matched no embedded files; have you forgotten to quote them in the shell, or provide a pattern for folder like '*/*.bpmn'?", flagEmbedExportFileNames))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("pattern(s) %v matched no embedded files; have you forgotten to quote them in the shell, or provide a pattern for folder like '*/*.bpmn'?", flagEmbedExportFileNames))
 			}
 		}
 		sort.Strings(toExport)
@@ -90,20 +90,20 @@ var embedExportCmd = &cobra.Command{
 		for _, vpath := range toExport {
 			data, err := fs.ReadFile(embedded.FS, vpath)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("read embedded %q: %w", vpath, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("read embedded %q: %w", vpath, err))
 			}
 			dst := filepath.Clean(filepath.Join(outBase, vpath))
 			dir := filepath.Dir(dst)
 			if err := os.MkdirAll(dir, 0o755); err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("create dir %q: %w", dir, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("create dir %q: %w", dir, err))
 			}
 			if !flagEmbedExportWithForce {
 				if info, err := os.Stat(dst); err == nil && info.Mode().IsRegular() {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("destination file %q exists; use --force to overwrite", dst))
+					ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("destination file %q exists; use --force to overwrite", dst))
 				}
 			}
 			if err := os.WriteFile(dst, data, 0o644); err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("write %q: %w", dst, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("write %q: %w", dst, err))
 			}
 			log.Debug(fmt.Sprintf("exported %q > %q", vpath, dst))
 			exported++

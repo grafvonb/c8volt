@@ -23,7 +23,7 @@ var getProcessDefinitionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 
 		log.Debug("fetching process definitions")
@@ -32,11 +32,11 @@ var getProcessDefinitionCmd = &cobra.Command{
 			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
 			pd, err := cli.GetProcessDefinition(cmd.Context(), filter.Key)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by key %s: %w", filter.Key, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error fetching process definition by key %s: %w", filter.Key, err))
 			}
 			err = processDefinitionView(cmd, pd)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error rendering key-only view: %w", err))
 			}
 		} else {
 			log.Debug(fmt.Sprintf("searching process definitions for filter %v", filter))
@@ -47,11 +47,11 @@ var getProcessDefinitionCmd = &cobra.Command{
 				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
 			}
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and version %d: %w", flagGetPDBpmnProcessId, flagGetPDProcessVersion, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and version %d: %w", flagGetPDBpmnProcessId, flagGetPDProcessVersion, err))
 			}
 			err = listProcessDefinitionsView(cmd, pds)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering items view: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("error rendering items view: %w", err))
 			}
 			log.Debug(fmt.Sprintf("fetched process definitions by filter, found: %d items", pds.Total))
 		}

@@ -22,25 +22,25 @@ var configShowCmd = &cobra.Command{
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("loading configuration: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("loading configuration: %w", err))
 		}
 		if !flagShowConfigTemplate {
 			yCfg, err := cfg.ToSanitizedYAML()
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("marshaling configuration to YAML: %w", err))
 			}
 			cmd.Println(yCfg)
 			if flagShowConfigValidate {
 				err = cfg.Validate()
 				if err != nil {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("configuration is invalid:\n%w", err))
+					ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("configuration is invalid:\n%w", err))
 				}
 				ferrors.HandleAndExitOK(log, "configuration is valid")
 			}
 		} else {
 			yCfg, err := cfg.ToTemplateYAML()
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML template: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("marshaling configuration to YAML template: %w", err))
 			}
 			cmd.Println(yCfg)
 		}

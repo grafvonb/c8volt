@@ -24,12 +24,12 @@ var embedDeployCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 
 		all, err := embedded.List()
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		var toDeploy []string
 		switch {
@@ -40,14 +40,14 @@ var embedDeployCmd = &cobra.Command{
 				}
 			}
 			if len(toDeploy) == 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no deployable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String()))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("no deployable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String()))
 			}
 		case len(flagEmbedDeployFileNames) == 0:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --all or at least one --file is required"))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("either --all or at least one --file is required"))
 		default:
 			for _, f := range flagEmbedDeployFileNames {
 				if !slices.Contains(all, f) {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("embedded file %q not found, run command 'embed list' to see all available embedded files, no deployment done", f))
+					ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("embedded file %q not found, run command 'embed list' to see all available embedded files, no deployment done", f))
 				}
 			}
 			toDeploy = append(toDeploy, flagEmbedDeployFileNames...)
@@ -57,7 +57,7 @@ var embedDeployCmd = &cobra.Command{
 		for _, f := range toDeploy {
 			data, err := fs.ReadFile(embedded.FS, f)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("read embedded %q: %w", f, err))
+				ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("read embedded %q: %w", f, err))
 			}
 			log.Debug(fmt.Sprintf("deploying embedded resource(s) %q to tenant %s", f, cfg.App.ViewTenant()))
 			units = append(units, resource.DeploymentUnitData{Name: f, Data: data})
@@ -66,11 +66,11 @@ var embedDeployCmd = &cobra.Command{
 		// TODO (Adam): currently only deployment of process definitions is supported, extend to other resource types as needed
 		pdds, err := cli.DeployProcessDefinition(cmd.Context(), cfg.App.Tenant, units, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying embedded resource(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("deploying embedded resource(s): %w", err))
 		}
 		err = listProcessDefinitionDeploymentsView(cmd, pdds)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
 		}
 		log.Debug(fmt.Sprintf("%d embedded resource(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
 	},

@@ -28,11 +28,11 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 
 		if flagViewAsTree && (!flagWalkPIModeFamily && flagWalkPIMode != walkPIModeFamily) {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--tree is only valid with --family"))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("--tree is only valid with --family"))
 		}
 
 		type walker struct {
@@ -87,14 +87,14 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 		w, ok := walkers[flagWalkPIMode]
 		if !ok {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, fmt.Errorf("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
 		}
 		path, chain, err := w.fetch()
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 		if err := w.view(cmd, path, chain); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			ferrors.HandleAndExit(log, cfg.App.SuppressExitCodes, err)
 		}
 	},
 }

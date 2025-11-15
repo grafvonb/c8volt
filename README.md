@@ -533,7 +533,7 @@ INFO deleting 1 process definitions completed: 1 succeeded, 0 failed
 #### Error Codes
 
 In case of errors, c8volt returns specific exit codes that can be used in scripts to handle different error scenarios.
-If you do not want to deal with specific error codes, you can use the `--no-err-codes` flag to make c8volt always return exit code 0.
+If you do not want to deal with specific error codes, you can use the `--suppress-exit-codes` flag to make c8volt always return exit code 0.
 
 #### Command Pipelining
 

@@ -9,10 +9,10 @@ import (
 )
 
 type App struct {
-	CamundaVersion toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
-	Tenant         string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
-	Backoff        common.BackoffConfig `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
-	NoErrCodes     bool                 `mapstructure:"no_err_codes" json:"no_err_codes" yaml:"no_err_codes"`
+	CamundaVersion    toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
+	Tenant            string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
+	Backoff           common.BackoffConfig `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
+	SuppressExitCodes bool                 `mapstructure:"suppress_exit_codes" json:"suppress_exit_codes" yaml:"suppress_exit_codes"`
 }
 
 func (a *App) ViewTenant() string {
