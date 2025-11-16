@@ -48,7 +48,7 @@ var getProcessDefinitionCmd = &cobra.Command{
 				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
 			}
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and version %d: %w", flagGetPDBpmnProcessId, flagGetPDProcessVersion, err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition(s): %w", err))
 			}
 			err = listProcessDefinitionsView(cmd, pds)
 			if err != nil {
