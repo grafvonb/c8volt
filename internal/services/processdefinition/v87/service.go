@@ -38,7 +38,11 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 }
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
+	if cCfg.WithStat {
+		return nil, fmt.Errorf("process definition stats not supported in v8.7 API")
+	}
+
 	body := operatev87.QueryProcessDefinition{
 		Filter: &operatev87.ProcessDefinition{
 			BpmnProcessId: toolx.PtrIf(filter.BpmnProcessId, ""),
@@ -83,7 +87,11 @@ func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.P
 }
 
 func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
+	if cCfg.WithStat {
+		return d.ProcessDefinition{}, fmt.Errorf("process definition stats not supported in v8.7 API")
+	}
+
 	oldKey, err := toolx.StringToInt64(key)
 	if err != nil {
 		return d.ProcessDefinition{}, fmt.Errorf("converting process definition key %q to int64: %w", key, err)

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -17,6 +18,8 @@ var (
 	flagRunPICount    int
 	flagRunPIWorkers  int
 	flagRunPIFailFast bool
+
+	flagRunPIVars string // JSON string with variables
 )
 
 var runProcessInstanceCmd = &cobra.Command{
@@ -30,6 +33,12 @@ var runProcessInstanceCmd = &cobra.Command{
 		}
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagRunPIWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--count and --workers must be positive integers"))
+		}
+		var vars map[string]interface{}
+		if flagRunPIVars != "" {
+			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("parsing --vars JSON: %w", err))
+			}
 		}
 		var datas []process.ProcessInstanceData
 		var contextForErr string
@@ -46,6 +55,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			for _, pdID := range flagRunPIProcessDefinitionSpecificId {
 				datas = append(datas, process.ProcessInstanceData{
 					ProcessDefinitionSpecificId: pdID,
+					Variables:                   vars,
 					TenantId:                    cfg.App.Tenant,
 				})
 			}
@@ -61,6 +71,7 @@ var runProcessInstanceCmd = &cobra.Command{
 				datas = append(datas, process.ProcessInstanceData{
 					BpmnProcessId:            bpmnID,
 					ProcessDefinitionVersion: flagRunPIProcessDefinitionVersion, // 0 = latest
+					Variables:                vars,
 					TenantId:                 cfg.App.Tenant,
 				})
 			}
@@ -103,4 +114,6 @@ func init() {
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "Number of instances to start for a single process definition")
 	fs.IntVarP(&flagRunPIWorkers, "workers", "w", 0, "Maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagRunPIFailFast, "fail-fast", false, "Stop scheduling new instances after the first error")
+
+	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 }

@@ -1279,16 +1279,7 @@ type AuthorizationResult struct {
 }
 
 // AuthorizationSearchQuery defines model for AuthorizationSearchQuery.
-type AuthorizationSearchQuery struct {
-	// Filter Authorization search filter.
-	Filter *AuthorizationFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]AuthorizationSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type AuthorizationSearchQuery = SearchQueryRequest
 
 // AuthorizationSearchQuerySortRequest defines model for AuthorizationSearchQuerySortRequest.
 type AuthorizationSearchQuerySortRequest struct {
@@ -1303,13 +1294,7 @@ type AuthorizationSearchQuerySortRequest struct {
 type AuthorizationSearchQuerySortRequestField string
 
 // AuthorizationSearchResult defines model for AuthorizationSearchResult.
-type AuthorizationSearchResult struct {
-	// Items The matching authorizations.
-	Items *[]AuthorizationResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type AuthorizationSearchResult = SearchQueryResponse
 
 // BaseProcessInstanceFilterFields Base process instance search filter.
 type BaseProcessInstanceFilterFields struct {
@@ -1470,25 +1455,10 @@ type BatchOperationItemResponse struct {
 type BatchOperationItemResponseState string
 
 // BatchOperationItemSearchQuery defines model for BatchOperationItemSearchQuery.
-type BatchOperationItemSearchQuery struct {
-	// Filter Batch operation item filter request.
-	Filter *BatchOperationItemFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]BatchOperationItemSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type BatchOperationItemSearchQuery = SearchQueryRequest
 
 // BatchOperationItemSearchQueryResult defines model for BatchOperationItemSearchQueryResult.
-type BatchOperationItemSearchQueryResult struct {
-	// Items The matching batch operations.
-	Items *[]BatchOperationItemResponse `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type BatchOperationItemSearchQueryResult = SearchQueryResponse
 
 // BatchOperationItemSearchQuerySortRequest defines model for BatchOperationItemSearchQuerySortRequest.
 type BatchOperationItemSearchQuerySortRequest struct {
@@ -1550,25 +1520,10 @@ type BatchOperationResponse struct {
 type BatchOperationResponseState string
 
 // BatchOperationSearchQuery defines model for BatchOperationSearchQuery.
-type BatchOperationSearchQuery struct {
-	// Filter Batch operation filter request.
-	Filter *BatchOperationFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]BatchOperationSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type BatchOperationSearchQuery = SearchQueryRequest
 
 // BatchOperationSearchQueryResult defines model for BatchOperationSearchQueryResult.
-type BatchOperationSearchQueryResult struct {
-	// Items The matching batch operations.
-	Items *[]BatchOperationResponse `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type BatchOperationSearchQueryResult = SearchQueryResponse
 
 // BatchOperationSearchQuerySortRequest defines model for BatchOperationSearchQuerySortRequest.
 type BatchOperationSearchQuerySortRequest struct {
@@ -1781,25 +1736,10 @@ type CorrelatedMessageSubscriptionResult struct {
 }
 
 // CorrelatedMessageSubscriptionSearchQuery defines model for CorrelatedMessageSubscriptionSearchQuery.
-type CorrelatedMessageSubscriptionSearchQuery struct {
-	// Filter Correlated message subscriptions search filter.
-	Filter *CorrelatedMessageSubscriptionFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]CorrelatedMessageSubscriptionSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type CorrelatedMessageSubscriptionSearchQuery = SearchQueryRequest
 
 // CorrelatedMessageSubscriptionSearchQueryResult defines model for CorrelatedMessageSubscriptionSearchQueryResult.
-type CorrelatedMessageSubscriptionSearchQueryResult struct {
-	// Items The matching correlated message subscriptions.
-	Items *[]CorrelatedMessageSubscriptionResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type CorrelatedMessageSubscriptionSearchQueryResult = SearchQueryResponse
 
 // CorrelatedMessageSubscriptionSearchQuerySortRequest defines model for CorrelatedMessageSubscriptionSearchQuerySortRequest.
 type CorrelatedMessageSubscriptionSearchQuerySortRequest struct {
@@ -1928,25 +1868,10 @@ type DecisionDefinitionResult struct {
 }
 
 // DecisionDefinitionSearchQuery defines model for DecisionDefinitionSearchQuery.
-type DecisionDefinitionSearchQuery struct {
-	// Filter Decision definition search filter.
-	Filter *DecisionDefinitionFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]DecisionDefinitionSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type DecisionDefinitionSearchQuery = SearchQueryRequest
 
 // DecisionDefinitionSearchQueryResult defines model for DecisionDefinitionSearchQueryResult.
-type DecisionDefinitionSearchQueryResult struct {
-	// Items The matching decision definitions.
-	Items *[]DecisionDefinitionResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type DecisionDefinitionSearchQueryResult = SearchQueryResponse
 
 // DecisionDefinitionSearchQuerySortRequest defines model for DecisionDefinitionSearchQuerySortRequest.
 type DecisionDefinitionSearchQuerySortRequest struct {
@@ -2151,25 +2076,10 @@ type DecisionInstanceResult struct {
 }
 
 // DecisionInstanceSearchQuery defines model for DecisionInstanceSearchQuery.
-type DecisionInstanceSearchQuery struct {
-	// Filter Decision instance search filter.
-	Filter *DecisionInstanceFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]DecisionInstanceSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type DecisionInstanceSearchQuery = SearchQueryRequest
 
 // DecisionInstanceSearchQueryResult defines model for DecisionInstanceSearchQueryResult.
-type DecisionInstanceSearchQueryResult struct {
-	// Items The matching decision instances.
-	Items *[]DecisionInstanceResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type DecisionInstanceSearchQueryResult = SearchQueryResponse
 
 // DecisionInstanceSearchQuerySortRequest defines model for DecisionInstanceSearchQuerySortRequest.
 type DecisionInstanceSearchQuerySortRequest struct {
@@ -2232,25 +2142,10 @@ type DecisionRequirementsResult struct {
 }
 
 // DecisionRequirementsSearchQuery defines model for DecisionRequirementsSearchQuery.
-type DecisionRequirementsSearchQuery struct {
-	// Filter Decision requirements search filter.
-	Filter *DecisionRequirementsFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]DecisionRequirementsSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type DecisionRequirementsSearchQuery = SearchQueryRequest
 
 // DecisionRequirementsSearchQueryResult defines model for DecisionRequirementsSearchQueryResult.
-type DecisionRequirementsSearchQueryResult struct {
-	// Items The matching decision requirements.
-	Items *[]DecisionRequirementsResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type DecisionRequirementsSearchQueryResult = SearchQueryResponse
 
 // DecisionRequirementsSearchQuerySortRequest defines model for DecisionRequirementsSearchQuerySortRequest.
 type DecisionRequirementsSearchQuerySortRequest struct {
@@ -2596,25 +2491,10 @@ type ElementInstanceResult struct {
 type ElementInstanceResultType string
 
 // ElementInstanceSearchQuery defines model for ElementInstanceSearchQuery.
-type ElementInstanceSearchQuery struct {
-	// Filter Element instance filter.
-	Filter *ElementInstanceFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]ElementInstanceSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type ElementInstanceSearchQuery = SearchQueryRequest
 
 // ElementInstanceSearchQueryResult defines model for ElementInstanceSearchQueryResult.
-type ElementInstanceSearchQueryResult struct {
-	// Items The matching element instances.
-	Items *[]ElementInstanceResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type ElementInstanceSearchQueryResult = SearchQueryResponse
 
 // ElementInstanceSearchQuerySortRequest defines model for ElementInstanceSearchQuerySortRequest.
 type ElementInstanceSearchQuerySortRequest struct {
@@ -2773,13 +2653,7 @@ type GroupClientResult struct {
 }
 
 // GroupClientSearchQueryRequest defines model for GroupClientSearchQueryRequest.
-type GroupClientSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]GroupClientSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type GroupClientSearchQueryRequest = SearchQueryRequest
 
 // GroupClientSearchQuerySortRequest defines model for GroupClientSearchQuerySortRequest.
 type GroupClientSearchQuerySortRequest struct {
@@ -2794,13 +2668,7 @@ type GroupClientSearchQuerySortRequest struct {
 type GroupClientSearchQuerySortRequestField string
 
 // GroupClientSearchResult defines model for GroupClientSearchResult.
-type GroupClientSearchResult struct {
-	// Items The matching client IDs.
-	Items *[]GroupClientResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type GroupClientSearchResult = SearchQueryResponse
 
 // GroupCreateRequest defines model for GroupCreateRequest.
 type GroupCreateRequest struct {
@@ -2848,25 +2716,10 @@ type GroupResult struct {
 }
 
 // GroupSearchQueryRequest defines model for GroupSearchQueryRequest.
-type GroupSearchQueryRequest struct {
-	// Filter Group filter request
-	Filter *GroupFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]GroupSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type GroupSearchQueryRequest = SearchQueryRequest
 
 // GroupSearchQueryResult defines model for GroupSearchQueryResult.
-type GroupSearchQueryResult struct {
-	// Items The matching groups.
-	Items *[]GroupResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type GroupSearchQueryResult = SearchQueryResponse
 
 // GroupSearchQuerySortRequest defines model for GroupSearchQuerySortRequest.
 type GroupSearchQuerySortRequest struct {
@@ -2908,13 +2761,7 @@ type GroupUserResult struct {
 }
 
 // GroupUserSearchQueryRequest defines model for GroupUserSearchQueryRequest.
-type GroupUserSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]GroupUserSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type GroupUserSearchQueryRequest = SearchQueryRequest
 
 // GroupUserSearchQuerySortRequest defines model for GroupUserSearchQuerySortRequest.
 type GroupUserSearchQuerySortRequest struct {
@@ -2929,13 +2776,7 @@ type GroupUserSearchQuerySortRequest struct {
 type GroupUserSearchQuerySortRequestField string
 
 // GroupUserSearchResult defines model for GroupUserSearchResult.
-type GroupUserSearchResult struct {
-	// Items The matching members.
-	Items *[]GroupUserResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type GroupUserSearchResult = SearchQueryResponse
 
 // IncidentFilter Incident search filter.
 type IncidentFilter struct {
@@ -3038,25 +2879,10 @@ type IncidentResultErrorType string
 type IncidentResultState string
 
 // IncidentSearchQuery defines model for IncidentSearchQuery.
-type IncidentSearchQuery struct {
-	// Filter Incident search filter.
-	Filter *IncidentFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]IncidentSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type IncidentSearchQuery = SearchQueryRequest
 
 // IncidentSearchQueryResult defines model for IncidentSearchQueryResult.
-type IncidentSearchQueryResult struct {
-	// Items The matching incidents.
-	Items *[]IncidentResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type IncidentSearchQueryResult = SearchQueryResponse
 
 // IncidentSearchQuerySortRequest defines model for IncidentSearchQuerySortRequest.
 type IncidentSearchQuerySortRequest struct {
@@ -3349,25 +3175,10 @@ type JobResultUserTask struct {
 }
 
 // JobSearchQuery defines model for JobSearchQuery.
-type JobSearchQuery struct {
-	// Filter Job search filter.
-	Filter *JobFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]JobSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type JobSearchQuery = SearchQueryRequest
 
 // JobSearchQueryResult defines model for JobSearchQueryResult.
-type JobSearchQueryResult struct {
-	// Items The matching jobs.
-	Items *[]JobSearchResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type JobSearchQueryResult = SearchQueryResponse
 
 // JobSearchQuerySortRequest defines model for JobSearchQuerySortRequest.
 type JobSearchQuerySortRequest struct {
@@ -3408,7 +3219,7 @@ type JobSearchResult struct {
 	ErrorMessage *string `json:"errorMessage"`
 
 	// HasFailedWithRetriesLeft Indicates whether the job has failed with retries left.
-	HasFailedWithRetriesLeft bool `json:"hasFailedWithRetriesLeft"`
+	HasFailedWithRetriesLeft *bool `json:"hasFailedWithRetriesLeft,omitempty"`
 
 	// IsDenied Indicates whether the user task listener denies the work.
 	IsDenied *bool `json:"isDenied"`
@@ -3570,25 +3381,10 @@ type MappingRuleResult struct {
 }
 
 // MappingRuleSearchQueryRequest defines model for MappingRuleSearchQueryRequest.
-type MappingRuleSearchQueryRequest struct {
-	// Filter Mapping rule search filter.
-	Filter *MappingRuleFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]MappingRuleSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type MappingRuleSearchQueryRequest = SearchQueryRequest
 
 // MappingRuleSearchQueryResult defines model for MappingRuleSearchQueryResult.
-type MappingRuleSearchQueryResult struct {
-	// Items The matching mapping rules.
-	Items *[]MappingRuleResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type MappingRuleSearchQueryResult = SearchQueryResponse
 
 // MappingRuleSearchQuerySortRequest defines model for MappingRuleSearchQuerySortRequest.
 type MappingRuleSearchQuerySortRequest struct {
@@ -3766,25 +3562,10 @@ type MessageSubscriptionResult struct {
 }
 
 // MessageSubscriptionSearchQuery defines model for MessageSubscriptionSearchQuery.
-type MessageSubscriptionSearchQuery struct {
-	// Filter Message subscription search filter.
-	Filter *MessageSubscriptionFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]MessageSubscriptionSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type MessageSubscriptionSearchQuery = SearchQueryRequest
 
 // MessageSubscriptionSearchQueryResult defines model for MessageSubscriptionSearchQueryResult.
-type MessageSubscriptionSearchQueryResult struct {
-	// Items The matching message subscriptions.
-	Items *[]MessageSubscriptionResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type MessageSubscriptionSearchQueryResult = SearchQueryResponse
 
 // MessageSubscriptionSearchQuerySortRequest defines model for MessageSubscriptionSearchQuerySortRequest.
 type MessageSubscriptionSearchQuerySortRequest struct {
@@ -3970,25 +3751,10 @@ type ProcessDefinitionResult struct {
 }
 
 // ProcessDefinitionSearchQuery defines model for ProcessDefinitionSearchQuery.
-type ProcessDefinitionSearchQuery struct {
-	// Filter Process definition search filter.
-	Filter *ProcessDefinitionFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]ProcessDefinitionSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type ProcessDefinitionSearchQuery = SearchQueryRequest
 
 // ProcessDefinitionSearchQueryResult defines model for ProcessDefinitionSearchQueryResult.
-type ProcessDefinitionSearchQueryResult struct {
-	// Items The matching process definitions.
-	Items *[]ProcessDefinitionResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type ProcessDefinitionSearchQueryResult = SearchQueryResponse
 
 // ProcessDefinitionSearchQuerySortRequest defines model for ProcessDefinitionSearchQuerySortRequest.
 type ProcessDefinitionSearchQuerySortRequest struct {
@@ -4352,13 +4118,7 @@ type ProcessInstanceIncidentResolutionBatchOperationRequest struct {
 }
 
 // ProcessInstanceIncidentSearchQuery defines model for ProcessInstanceIncidentSearchQuery.
-type ProcessInstanceIncidentSearchQuery struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]IncidentSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type ProcessInstanceIncidentSearchQuery = SearchQueryRequest
 
 // ProcessInstanceKey Zeebe Engine resource key (Java long serialized as string)
 type ProcessInstanceKey = LongKey
@@ -4512,25 +4272,10 @@ type ProcessInstanceResult struct {
 }
 
 // ProcessInstanceSearchQuery defines model for ProcessInstanceSearchQuery.
-type ProcessInstanceSearchQuery struct {
-	// Filter Process instance search filter.
-	Filter *ProcessInstanceFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]ProcessInstanceSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type ProcessInstanceSearchQuery = SearchQueryRequest
 
 // ProcessInstanceSearchQueryResult defines model for ProcessInstanceSearchQueryResult.
-type ProcessInstanceSearchQueryResult struct {
-	// Items The matching process instances.
-	Items []ProcessInstanceResult `json:"items"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type ProcessInstanceSearchQueryResult = SearchQueryResponse
 
 // ProcessInstanceSearchQuerySortRequest defines model for ProcessInstanceSearchQuerySortRequest.
 type ProcessInstanceSearchQuerySortRequest struct {
@@ -4616,13 +4361,7 @@ type RoleClientResult struct {
 }
 
 // RoleClientSearchQueryRequest defines model for RoleClientSearchQueryRequest.
-type RoleClientSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]RoleClientSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type RoleClientSearchQueryRequest = SearchQueryRequest
 
 // RoleClientSearchQuerySortRequest defines model for RoleClientSearchQuerySortRequest.
 type RoleClientSearchQuerySortRequest struct {
@@ -4637,13 +4376,7 @@ type RoleClientSearchQuerySortRequest struct {
 type RoleClientSearchQuerySortRequestField string
 
 // RoleClientSearchResult defines model for RoleClientSearchResult.
-type RoleClientSearchResult struct {
-	// Items The matching clients.
-	Items *[]RoleClientResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type RoleClientSearchResult = SearchQueryResponse
 
 // RoleCreateRequest defines model for RoleCreateRequest.
 type RoleCreateRequest struct {
@@ -4685,13 +4418,7 @@ type RoleGroupResult struct {
 }
 
 // RoleGroupSearchQueryRequest defines model for RoleGroupSearchQueryRequest.
-type RoleGroupSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]RoleGroupSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type RoleGroupSearchQueryRequest = SearchQueryRequest
 
 // RoleGroupSearchQuerySortRequest defines model for RoleGroupSearchQuerySortRequest.
 type RoleGroupSearchQuerySortRequest struct {
@@ -4706,13 +4433,7 @@ type RoleGroupSearchQuerySortRequest struct {
 type RoleGroupSearchQuerySortRequestField string
 
 // RoleGroupSearchResult defines model for RoleGroupSearchResult.
-type RoleGroupSearchResult struct {
-	// Items The matching groups.
-	Items *[]RoleGroupResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type RoleGroupSearchResult = SearchQueryResponse
 
 // RoleResult Role search response item.
 type RoleResult struct {
@@ -4727,25 +4448,10 @@ type RoleResult struct {
 }
 
 // RoleSearchQueryRequest defines model for RoleSearchQueryRequest.
-type RoleSearchQueryRequest struct {
-	// Filter Role filter request
-	Filter *RoleFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]RoleSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type RoleSearchQueryRequest = SearchQueryRequest
 
 // RoleSearchQueryResult defines model for RoleSearchQueryResult.
-type RoleSearchQueryResult struct {
-	// Items The matching roles.
-	Items *[]RoleResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type RoleSearchQueryResult = SearchQueryResponse
 
 // RoleSearchQuerySortRequest defines model for RoleSearchQuerySortRequest.
 type RoleSearchQuerySortRequest struct {
@@ -4787,13 +4493,7 @@ type RoleUserResult struct {
 }
 
 // RoleUserSearchQueryRequest defines model for RoleUserSearchQueryRequest.
-type RoleUserSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]RoleUserSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type RoleUserSearchQueryRequest = SearchQueryRequest
 
 // RoleUserSearchQuerySortRequest defines model for RoleUserSearchQuerySortRequest.
 type RoleUserSearchQuerySortRequest struct {
@@ -4808,13 +4508,7 @@ type RoleUserSearchQuerySortRequest struct {
 type RoleUserSearchQuerySortRequestField string
 
 // RoleUserSearchResult defines model for RoleUserSearchResult.
-type RoleUserSearchResult struct {
-	// Items The matching users.
-	Items *[]RoleUserResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type RoleUserSearchResult = SearchQueryResponse
 
 // ScopeKey Zeebe Engine resource key (Java long serialized as string)
 type ScopeKey = LongKey
@@ -4937,13 +4631,7 @@ type TenantClientResult struct {
 }
 
 // TenantClientSearchQueryRequest defines model for TenantClientSearchQueryRequest.
-type TenantClientSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]TenantClientSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type TenantClientSearchQueryRequest = SearchQueryRequest
 
 // TenantClientSearchQuerySortRequest defines model for TenantClientSearchQuerySortRequest.
 type TenantClientSearchQuerySortRequest struct {
@@ -4958,13 +4646,7 @@ type TenantClientSearchQuerySortRequest struct {
 type TenantClientSearchQuerySortRequestField string
 
 // TenantClientSearchResult defines model for TenantClientSearchResult.
-type TenantClientSearchResult struct {
-	// Items The matching clients.
-	Items *[]TenantClientResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type TenantClientSearchResult = SearchQueryResponse
 
 // TenantCreateRequest defines model for TenantCreateRequest.
 type TenantCreateRequest struct {
@@ -5006,13 +4688,7 @@ type TenantGroupResult struct {
 }
 
 // TenantGroupSearchQueryRequest defines model for TenantGroupSearchQueryRequest.
-type TenantGroupSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]TenantGroupSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type TenantGroupSearchQueryRequest = SearchQueryRequest
 
 // TenantGroupSearchQuerySortRequest defines model for TenantGroupSearchQuerySortRequest.
 type TenantGroupSearchQuerySortRequest struct {
@@ -5027,13 +4703,7 @@ type TenantGroupSearchQuerySortRequest struct {
 type TenantGroupSearchQuerySortRequestField string
 
 // TenantGroupSearchResult defines model for TenantGroupSearchResult.
-type TenantGroupSearchResult struct {
-	// Items The matching groups.
-	Items *[]TenantGroupResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type TenantGroupSearchResult = SearchQueryResponse
 
 // TenantId The unique identifier of the tenant.
 type TenantId = string
@@ -5051,25 +4721,10 @@ type TenantResult struct {
 }
 
 // TenantSearchQueryRequest defines model for TenantSearchQueryRequest.
-type TenantSearchQueryRequest struct {
-	// Filter Tenant filter request
-	Filter *TenantFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]TenantSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type TenantSearchQueryRequest = SearchQueryRequest
 
 // TenantSearchQueryResult defines model for TenantSearchQueryResult.
-type TenantSearchQueryResult struct {
-	// Items The matching tenants.
-	Items *[]TenantResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type TenantSearchQueryResult = SearchQueryResponse
 
 // TenantSearchQuerySortRequest defines model for TenantSearchQuerySortRequest.
 type TenantSearchQuerySortRequest struct {
@@ -5111,13 +4766,7 @@ type TenantUserResult struct {
 }
 
 // TenantUserSearchQueryRequest defines model for TenantUserSearchQueryRequest.
-type TenantUserSearchQueryRequest struct {
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]TenantUserSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type TenantUserSearchQueryRequest = SearchQueryRequest
 
 // TenantUserSearchQuerySortRequest defines model for TenantUserSearchQuerySortRequest.
 type TenantUserSearchQuerySortRequest struct {
@@ -5132,13 +4781,7 @@ type TenantUserSearchQuerySortRequest struct {
 type TenantUserSearchQuerySortRequestField string
 
 // TenantUserSearchResult defines model for TenantUserSearchResult.
-type TenantUserSearchResult struct {
-	// Items The matching users.
-	Items *[]TenantUserResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type TenantUserSearchResult = SearchQueryResponse
 
 // TopologyResponse The response of a topology request.
 type TopologyResponse struct {
@@ -5228,16 +4871,7 @@ type UserResult struct {
 }
 
 // UserSearchQueryRequest defines model for UserSearchQueryRequest.
-type UserSearchQueryRequest struct {
-	// Filter User search filter.
-	Filter *UserFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]UserSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type UserSearchQueryRequest = SearchQueryRequest
 
 // UserSearchQuerySortRequest defines model for UserSearchQuerySortRequest.
 type UserSearchQuerySortRequest struct {
@@ -5252,13 +4886,7 @@ type UserSearchQuerySortRequest struct {
 type UserSearchQuerySortRequestField string
 
 // UserSearchResult defines model for UserSearchResult.
-type UserSearchResult struct {
-	// Items The matching users.
-	Items []UserResult `json:"items"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type UserSearchResult = SearchQueryResponse
 
 // UserTaskAssignmentRequest defines model for UserTaskAssignmentRequest.
 type UserTaskAssignmentRequest struct {
@@ -5447,25 +5075,10 @@ type UserTaskResult struct {
 }
 
 // UserTaskSearchQuery defines model for UserTaskSearchQuery.
-type UserTaskSearchQuery struct {
-	// Filter User task filter request.
-	Filter *UserTaskFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]UserTaskSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type UserTaskSearchQuery = SearchQueryRequest
 
 // UserTaskSearchQueryResult defines model for UserTaskSearchQueryResult.
-type UserTaskSearchQueryResult struct {
-	// Items The matching user tasks.
-	Items *[]UserTaskResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type UserTaskSearchQueryResult = SearchQueryResponse
 
 // UserTaskSearchQuerySortRequest defines model for UserTaskSearchQuerySortRequest.
 type UserTaskSearchQuerySortRequest struct {
@@ -5521,16 +5134,7 @@ type UserTaskVariableFilter struct {
 }
 
 // UserTaskVariableSearchQueryRequest defines model for UserTaskVariableSearchQueryRequest.
-type UserTaskVariableSearchQueryRequest struct {
-	// Filter The user task variable search filters.
-	Filter *UserTaskVariableFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]UserTaskVariableSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type UserTaskVariableSearchQueryRequest = SearchQueryRequest
 
 // UserTaskVariableSearchQuerySortRequest defines model for UserTaskVariableSearchQuerySortRequest.
 type UserTaskVariableSearchQuerySortRequest struct {
@@ -5628,25 +5232,10 @@ type VariableResultBase struct {
 }
 
 // VariableSearchQuery defines model for VariableSearchQuery.
-type VariableSearchQuery struct {
-	// Filter Variable filter request.
-	Filter *VariableFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *SearchQueryPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]VariableSearchQuerySortRequest `json:"sort,omitempty"`
-}
+type VariableSearchQuery = SearchQueryRequest
 
 // VariableSearchQueryResult defines model for VariableSearchQueryResult.
-type VariableSearchQueryResult struct {
-	// Items The matching variables.
-	Items *[]VariableSearchResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page SearchQueryPageResponse `json:"page"`
-}
+type VariableSearchQueryResult = SearchQueryResponse
 
 // VariableSearchQuerySortRequest defines model for VariableSearchQuerySortRequest.
 type VariableSearchQuerySortRequest struct {

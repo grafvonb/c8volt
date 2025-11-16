@@ -14,6 +14,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/clients/auth/oauth2"
+	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
@@ -154,7 +155,11 @@ func (s *Service) RetrieveTokenForAPI(ctx context.Context, target string) (strin
 	s.log.Debug(fmt.Sprintf("fetching bearer token for target: %s", target))
 	tok, err := s.requestToken(ctx, s.cfg.Auth.OAuth2.ClientID, s.cfg.Auth.OAuth2.ClientSecret, scope)
 	if err != nil {
-		return "", fmt.Errorf("retrieve token for %s: %w", target, err)
+		var t string
+		if strings.TrimSpace(target) != "" {
+			t = fmt.Sprintf(" for target %s", target)
+		}
+		return "", fmt.Errorf("retrieve token%s: %w", t, err)
 	}
 
 	s.log.Debug(fmt.Sprintf("puting bearer token in cache for target: %s", target))
@@ -173,11 +178,12 @@ func (s *Service) requestToken(ctx context.Context, clientID, clientSecret, scop
 	if resp == nil {
 		return "", errors.New("nil token response")
 	}
-	if resp.StatusCode() < http.StatusOK || resp.StatusCode() >= http.StatusMultipleChoices {
-		return "", fmt.Errorf("token request failed: status=%d body=%s", resp.StatusCode(), string(resp.Body))
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return "", err
 	}
-	if resp.JSON200 == nil || resp.JSON200.AccessToken == "" {
-		return "", fmt.Errorf("missing access token in successful response (status=%d)", resp.StatusCode())
+	if resp.JSON200 == nil {
+		return "", fmt.Errorf("%w: 200 OK but empty payload; body=%s",
+			d.ErrMalformedResponse, string(resp.Body))
 	}
 	return resp.JSON200.AccessToken, nil
 }

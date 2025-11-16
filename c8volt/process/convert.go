@@ -13,6 +13,16 @@ func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {
 		TenantId:          x.TenantId,
 		ProcessVersion:    x.ProcessVersion,
 		ProcessVersionTag: x.ProcessVersionTag,
+		Statistics:        toolx.MapPtr(x.Statistics, fromProcessDefinitionStatistics),
+	}
+}
+
+func fromProcessDefinitionStatistics(r d.ProcessDefinitionStatistics) ProcessDefinitionStatistics {
+	return ProcessDefinitionStatistics{
+		Active:    r.Active,
+		Canceled:  r.Canceled,
+		Completed: r.Completed,
+		Incidents: r.Incidents,
 	}
 }
 

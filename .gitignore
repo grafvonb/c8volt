@@ -54,3 +54,8 @@ api/camunda-docs/
 
 # c8volt's exported resources
 processdefinitions
+
+# JetBrains IDEs
+*.iml
+*.iws
+out/

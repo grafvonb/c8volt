@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -26,11 +27,11 @@ func familyView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, sep string) error {
 	items := pathItems(path, chain)
 	switch mode {
-	case ModeJSON:
+	case RenderModeJSON:
 		cmd.Println(toolx.ToJSONString(items))
-	case ModeKeysOnly:
+	case RenderModeKeysOnly:
 		cmd.Println(strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
-	default: // ModeOneLine
+	default: // RenderModeOneLine
 		cmd.Println(strings.Join(mapItems(items, oneLinePI), sep))
 	}
 	return nil
@@ -52,4 +53,39 @@ func mapItems[T any, R any](in []T, f func(T) R) []R {
 		out[i] = f(in[i])
 	}
 	return out
+}
+
+// renderFamilyTree prints descendants as an ASCII tree starting from rootKey.
+// It uses the edges map returned by Descendants/Family and the existing chain.
+func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]string, chain Chain, markerKey string) error {
+	rootPI, ok := chain[rootKey]
+	if !ok {
+		return fmt.Errorf("root %s not found in chain", rootKey)
+	}
+	cmd.Println(oneLinePI(rootPI))
+	var walk func(parentKey, prefix string)
+	walk = func(parentKey, prefix string) {
+		children := edges[parentKey]
+		for i, childKey := range children {
+			last := i == len(children)-1
+			branch := "├─ "
+			nextPrefix := prefix + "│  "
+			if last {
+				branch = "└─ "
+				nextPrefix = prefix + "   "
+			}
+			pi, ok := chain[childKey]
+			if !ok {
+				continue
+			}
+			marker := ""
+			if childKey == markerKey {
+				marker = " (--key)"
+			}
+			cmd.Println(prefix + branch + oneLinePI(pi) + marker)
+			walk(childKey, nextPrefix)
+		}
+	}
+	walk(rootKey, "")
+	return nil
 }

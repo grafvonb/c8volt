@@ -3,12 +3,13 @@ package v88
 import (
 	"context"
 
-	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
+	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 )
 
-type GenProcessDefinitionClientOperate interface {
-	GetProcessDefinitionByKeyWithResponse(ctx context.Context, key int64, reqEditors ...operatev88.RequestEditorFn) (*operatev88.GetProcessDefinitionByKeyResponse, error)
-	SearchProcessDefinitionsWithResponse(ctx context.Context, body operatev88.SearchProcessDefinitionsJSONRequestBody, reqEditors ...operatev88.RequestEditorFn) (*operatev88.SearchProcessDefinitionsResponse, error)
+type GenProcessDefinitionClientCamunda interface {
+	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error)
+	SearchProcessDefinitionsWithResponse(ctx context.Context, body camundav88.SearchProcessDefinitionsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessDefinitionsResponse, error)
+	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body camundav88.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionStatisticsResponse, error)
 }
 
-var _ GenProcessDefinitionClientOperate = (*operatev88.ClientWithResponses)(nil)
+var _ GenProcessDefinitionClientCamunda = (*camundav88.ClientWithResponses)(nil)

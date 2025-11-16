@@ -12,7 +12,7 @@ import (
 
 	config2 "github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services/auth/oauth2"
-	"github.com/grafvonb/c8volt/internal/testx"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 

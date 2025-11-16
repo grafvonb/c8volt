@@ -48,7 +48,25 @@ func oneLinePD(it process.ProcessDefinition) string {
 	if it.ProcessVersionTag != "" {
 		vTag = "/" + it.ProcessVersionTag
 	}
-	return fmt.Sprintf("%-16s %s %s v%d%s",
+	core := fmt.Sprintf("%-16s %s %s v%d%s",
 		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag,
 	)
+	if it.Statistics != nil {
+		stats := it.Statistics
+		return fmt.Sprintf("%s [ac:%s cp:%s cx:%s in:%s]",
+			core,
+			zeroAsMinus(stats.Active),
+			zeroAsMinus(stats.Completed),
+			zeroAsMinus(stats.Canceled),
+			zeroAsMinus(stats.Incidents),
+		)
+	}
+	return core
+}
+
+func zeroAsMinus(v int64) string {
+	if v == 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%d", v)
 }

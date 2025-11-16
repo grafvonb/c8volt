@@ -1,12 +1,20 @@
 package process
 
 type ProcessDefinition struct {
-	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
-	Key               string `json:"key,omitempty"`
-	Name              string `json:"name,omitempty"`
-	TenantId          string `json:"tenantId,omitempty"`
-	ProcessVersion    int32  `json:"processVersion,omitempty"`
-	ProcessVersionTag string `json:"processVersionTag,omitempty"`
+	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
+	Key               string                       `json:"key,omitempty"`
+	Name              string                       `json:"name,omitempty"`
+	TenantId          string                       `json:"tenantId,omitempty"`
+	ProcessVersion    int32                        `json:"processVersion,omitempty"`
+	ProcessVersionTag string                       `json:"processVersionTag,omitempty"`
+	Statistics        *ProcessDefinitionStatistics `json:"statistics,omitempty"`
+}
+
+type ProcessDefinitionStatistics struct {
+	Active    int64 `json:"active"`
+	Canceled  int64 `json:"canceled"`
+	Completed int64 `json:"completed"`
+	Incidents int64 `json:"incidents"`
 }
 
 type ProcessDefinitions struct {

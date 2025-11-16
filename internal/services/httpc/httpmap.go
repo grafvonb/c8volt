@@ -3,6 +3,7 @@ package httpc
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 )
@@ -11,13 +12,31 @@ func HttpStatusErr(hr *http.Response, body []byte) error {
 	if hr == nil || hr.Request == nil || hr.Request.URL == nil {
 		return fmt.Errorf("%w: invalid http response; body=%s", d.ErrUpstream, string(body))
 	}
+	sb := strings.TrimSpace(string(body))
+	if sb == "" {
+		sb = "<empty body>"
+	}
 	if err := MapHTTPToDomain(hr.StatusCode); err != nil {
-		return fmt.Errorf("%w: %s %s; status: %d; body: %s",
+		reason := http.StatusText(hr.StatusCode)
+		// avoid e.g. "unauthorized" twice
+		if strings.EqualFold(reason, err.Error()) {
+			return fmt.Errorf(
+				"%w: %d %s %s (%s)",
+				err,
+				hr.StatusCode,
+				hr.Request.Method,
+				hr.Request.URL.String(),
+				sb,
+			)
+		}
+		return fmt.Errorf(
+			"%w: %d %s %s %s (%s)",
 			err,
+			hr.StatusCode,
+			reason,
 			hr.Request.Method,
 			hr.Request.URL.String(),
-			hr.StatusCode,
-			string(body),
+			sb,
 		)
 	}
 	return nil
