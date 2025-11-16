@@ -8,6 +8,7 @@ func WithNoWait() FacadeOption       { return func(c *FacadeCfg) { c.NoWait = tr
 func WithRun() FacadeOption          { return func(c *FacadeCfg) { c.Run = true } }
 func WithFailFast() FacadeOption     { return func(c *FacadeCfg) { c.FailFast = true } }
 func WithVerbose() FacadeOption      { return func(c *FacadeCfg) { c.Verbose = true } }
+func WithStat() FacadeOption         { return func(c *FacadeCfg) { c.Stat = true } }
 
 type FacadeOption func(*FacadeCfg)
 
@@ -18,6 +19,7 @@ type FacadeCfg struct {
 	Run          bool
 	FailFast     bool
 	Verbose      bool
+	Stat         bool
 }
 
 func ApplyFacadeOptions(opts []FacadeOption) *FacadeCfg {
@@ -45,6 +47,9 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	}
 	if c.FailFast {
 		out = append(out, services.WithFailFast())
+	}
+	if c.Stat {
+		out = append(out, services.WithStat())
 	}
 	return out
 }

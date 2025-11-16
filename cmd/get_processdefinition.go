@@ -14,6 +14,7 @@ var (
 	flagGetPDProcessVersion    int32
 	flagGetPDProcessVersionTag string
 	flagGetPDLatest            bool
+	flagGetPDWithStat          bool
 )
 
 var getProcessDefinitionCmd = &cobra.Command{
@@ -30,7 +31,7 @@ var getProcessDefinitionCmd = &cobra.Command{
 		filter := populatePDSearchFilterOpts()
 		if filter.Key != "" {
 			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
-			pd, err := cli.GetProcessDefinition(cmd.Context(), filter.Key)
+			pd, err := cli.GetProcessDefinition(cmd.Context(), filter.Key, collectOptions()...)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by key %s: %w", filter.Key, err))
 			}
@@ -39,12 +40,12 @@ var getProcessDefinitionCmd = &cobra.Command{
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
 			}
 		} else {
-			log.Debug(fmt.Sprintf("searching process definitions for filter %v", filter))
+			log.Debug(fmt.Sprintf("searching process definitions for filter %+v", filter))
 			var pds process.ProcessDefinitions
 			if !flagGetPDLatest {
-				pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter)
+				pds, err = cli.SearchProcessDefinitions(cmd.Context(), filter, collectOptions()...)
 			} else {
-				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
+				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
 			}
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition by BPMN process ID %s and version %d: %w", flagGetPDBpmnProcessId, flagGetPDProcessVersion, err))
@@ -67,6 +68,7 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 	fs.Int32VarP(&flagGetPDProcessVersion, "pd-version", "v", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
+	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics")
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {

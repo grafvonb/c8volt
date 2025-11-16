@@ -39,7 +39,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 }
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
 
 	bodyFilter := &camundav88.ProcessDefinitionFilter{
 		ProcessDefinitionId: common.NewStringEqFilterPtr(filter.BpmnProcessId),
@@ -83,6 +83,17 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 	}
 	out := toolx.DerefSlicePtr(resp.JSON200.Items, fromProcessDefinitionResult)
 	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+
+	if cCfg.WithStat {
+		for i := range out {
+			if out[i].Key == "" {
+				continue
+			}
+			if err = s.retrieveProcessDefinitionStats(ctx, &out[i]); err != nil {
+				return nil, err
+			}
+		}
+	}
 	return out, nil
 }
 
@@ -92,7 +103,7 @@ func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.P
 }
 
 func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
 	resp, err := s.cc.GetProcessDefinitionWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessDefinition{}, err
@@ -104,5 +115,37 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 		return d.ProcessDefinition{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
-	return fromProcessDefinitionResult(*resp.JSON200), nil
+	pd := fromProcessDefinitionResult(*resp.JSON200)
+	if cCfg.WithStat {
+		if err := s.retrieveProcessDefinitionStats(ctx, &pd); err != nil {
+			return d.ProcessDefinition{}, err
+		}
+	}
+	return pd, nil
+}
+
+func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
+	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
+	stats, err := s.cc.GetProcessDefinitionStatisticsWithResponse(ctx, pd.Key, camundav88.GetProcessDefinitionStatisticsJSONRequestBody{
+		Filter: &camundav88.ProcessDefinitionStatisticsFilter{},
+	})
+	if err != nil {
+		return err
+	}
+	if err = httpc.HttpStatusErr(stats.HTTPResponse, stats.Body); err != nil {
+		return err
+	}
+	if stats.JSON200 == nil || stats.JSON200.Items == nil {
+		s.log.Warn(fmt.Sprintf("no process definition stats found for key %s", pd.Key))
+		return nil
+	}
+	items := stats.JSON200.Items
+	var ret d.ProcessDefinitionStatistics
+	if len(*items) > 0 {
+		ret = fromProcessElementStatisticsResult((*items)[len(*items)-1])
+	} else {
+		ret = d.ProcessDefinitionStatistics{}
+	}
+	pd.Statistics = &ret
+	return nil
 }

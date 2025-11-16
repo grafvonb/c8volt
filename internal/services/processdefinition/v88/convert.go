@@ -28,3 +28,12 @@ func fromProcessDefinitionResult(r camundav88.ProcessDefinitionResult) d.Process
 		ProcessVersionTag: toolx.Deref(r.VersionTag, ""),
 	}
 }
+
+func fromProcessElementStatisticsResult(r camundav88.ProcessElementStatisticsResult) d.ProcessDefinitionStatistics {
+	return d.ProcessDefinitionStatistics{
+		Active:    toolx.Deref(r.Active, int64(0)),
+		Canceled:  toolx.Deref(r.Canceled, int64(0)),
+		Completed: toolx.Deref(r.Completed, int64(0)),
+		Incidents: toolx.Deref(r.Incidents, int64(0)),
+	}
+}

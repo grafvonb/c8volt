@@ -16,5 +16,8 @@ func collectOptions() []foptions.FacadeOption {
 	if flagDeployPDWithRun {
 		opts = append(opts, foptions.WithRun())
 	}
+	if flagGetPDWithStat {
+		opts = append(opts, foptions.WithStat())
+	}
 	return opts
 }
