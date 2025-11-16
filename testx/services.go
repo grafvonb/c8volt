@@ -63,14 +63,6 @@ func ITConfigFromEnv(t *testing.T) *config.Config {
 		App: config.App{
 			CamundaVersion: toolx.CamundaVersion(RequireEnvWithPrefix(t, "API_VERSION")),
 		},
-		Auth: config.Auth{
-			Mode: "cookie",
-			Cookie: config.AuthCookieSession{
-				BaseURL:  RequireEnvWithPrefix(t, "COOKIE_BASE_URL"),
-				Username: RequireEnvWithPrefix(t, "COOKIE_USER"),
-				Password: RequireEnvWithPrefix(t, "COOKIE_PASSWORD"),
-			},
-		},
 		APIs: config.APIs{
 			Camunda: config.API{
 				BaseURL: RequireEnvWithPrefix(t, "CAMUNDA_API_BASE_URL"),
