@@ -35,11 +35,14 @@ type Config struct {
 
 func (c *Config) Normalize() error {
 	var errs []error
-	if err := c.APIs.Normalize(); err != nil {
-		errs = append(errs, fmt.Errorf("apis: %w", err))
-	}
 	if err := c.App.Normalize(); err != nil {
 		errs = append(errs, fmt.Errorf("app: %w", err))
+	}
+	if err := c.Auth.Normalize(); err != nil {
+		errs = append(errs, fmt.Errorf("auth: %w", err))
+	}
+	if err := c.APIs.Normalize(); err != nil {
+		errs = append(errs, fmt.Errorf("apis: %w", err))
 	}
 	c.Log.Normalize()
 	return errors.Join(errs...)

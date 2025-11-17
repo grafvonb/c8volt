@@ -60,6 +60,16 @@ var rootCmd = &cobra.Command{
 			log.Debug("config loaded: " + pathcfg)
 		} else {
 			log.Debug("no config file loaded, using defaults and environment variables")
+			var configKeys = []string{
+				"app.camunda_version",
+				"apis.camunda_api.base_url",
+				"auth.mode",
+			}
+			hasFlags := hasUserFlags(cmd)
+			hasEnv := hasEnvConfigByKeys(configKeys)
+			if !hasFlags && !hasEnv {
+				log.Warn("no configuration found (no flags, environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show' and use the output to create a config.yaml file")
+			}
 		}
 		if isUtilityCommand(cmd) {
 			cmd.SetContext(ctx)
@@ -127,7 +137,7 @@ func init() {
 	pf.String("tenant", "", "default tenant ID")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
-	pf.String("auth-mode", "oauth2", "authentication mode (oauth2, cookie)")
+	pf.String("auth-mode", string(config.ModeNone), "authentication mode (oauth2, cookie, none)")
 	pf.String("auth-oauth2-client-id", "", "auth client ID")
 	pf.String("auth-oauth2-client-secret", "", "auth client secret")
 	pf.String("auth-oauth2-token-url", "", "auth token URL")
@@ -214,4 +224,31 @@ func retrieveAndNormalizeConfig(v *viper.Viper) (*config.Config, error) {
 		return nil, fmt.Errorf("normalize config: %w", err)
 	}
 	return &cfg, nil
+}
+
+func hasUserFlags(cmd *cobra.Command) bool {
+	if cmd.Flags().NFlag() > 0 {
+		return true
+	}
+	if cmd.InheritedFlags().NFlag() > 0 {
+		return true
+	}
+	return false
+}
+
+func envNameForKey(key string) string {
+	key = strings.ReplaceAll(key, ".", "_")
+	key = strings.ReplaceAll(key, "-", "_")
+	key = strings.ToUpper(key)
+	return "C8VOLT_" + key
+}
+
+func hasEnvConfigByKeys(configKeys []string) bool {
+	for _, key := range configKeys {
+		envName := envNameForKey(key)
+		if _, ok := os.LookupEnv(envName); ok {
+			return true
+		}
+	}
+	return false
 }
