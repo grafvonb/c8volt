@@ -22,6 +22,13 @@ type Auth struct {
 	Cookie AuthCookieSession           `mapstructure:"cookie" json:"cookie" yaml:"cookie"`
 }
 
+func (c *Auth) Normalize() error {
+	if strings.TrimSpace(string(c.Mode)) == "" {
+		c.Mode = ModeNone
+	}
+	return nil
+}
+
 func (c *Auth) Validate() error {
 	var errs []error
 	if !c.Mode.IsValid() {
