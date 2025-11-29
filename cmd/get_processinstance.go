@@ -64,8 +64,6 @@ var getProcessInstanceCmd = &cobra.Command{
 			log.Debug(fmt.Sprintf("searched by key, found process instance with key: %s", pi.Key))
 			return
 		}
-
-		log.Debug(fmt.Sprintf("searching by filter: %v", filter))
 		pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
