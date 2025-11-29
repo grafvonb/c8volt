@@ -48,6 +48,10 @@ bin/
 .DS_Store
 Thumbs.db
 
+# camunda-docs
+api/camunda-docs*/
+
+# c8volt's exported resources
 # c8volt
 config*.yaml
 config*.yaml.bak
@@ -57,3 +61,8 @@ processdefinitions
 *.iml
 *.iws
 out/
+
+# Node modules
+node_modules/
+package-lock.json
+package.json

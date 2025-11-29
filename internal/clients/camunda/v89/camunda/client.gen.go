@@ -24,12 +24,94 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for AuditLogActorTypeEnum.
+const (
+	AuditLogActorTypeEnumCLIENT AuditLogActorTypeEnum = "CLIENT"
+	AuditLogActorTypeEnumUSER   AuditLogActorTypeEnum = "USER"
+)
+
+// Defines values for AuditLogCategoryEnum.
+const (
+	AuditLogCategoryEnumADMIN    AuditLogCategoryEnum = "ADMIN"
+	AuditLogCategoryEnumOPERATOR AuditLogCategoryEnum = "OPERATOR"
+	AuditLogCategoryEnumUSERTASK AuditLogCategoryEnum = "USER_TASK"
+)
+
+// Defines values for AuditLogEntityTypeEnum.
+const (
+	AuditLogEntityTypeEnumAUTHORIZATION   AuditLogEntityTypeEnum = "AUTHORIZATION"
+	AuditLogEntityTypeEnumBATCH           AuditLogEntityTypeEnum = "BATCH"
+	AuditLogEntityTypeEnumDECISION        AuditLogEntityTypeEnum = "DECISION"
+	AuditLogEntityTypeEnumGROUP           AuditLogEntityTypeEnum = "GROUP"
+	AuditLogEntityTypeEnumINCIDENT        AuditLogEntityTypeEnum = "INCIDENT"
+	AuditLogEntityTypeEnumMAPPINGRULE     AuditLogEntityTypeEnum = "MAPPING_RULE"
+	AuditLogEntityTypeEnumPROCESSINSTANCE AuditLogEntityTypeEnum = "PROCESS_INSTANCE"
+	AuditLogEntityTypeEnumRESOURCE        AuditLogEntityTypeEnum = "RESOURCE"
+	AuditLogEntityTypeEnumROLE            AuditLogEntityTypeEnum = "ROLE"
+	AuditLogEntityTypeEnumTENANT          AuditLogEntityTypeEnum = "TENANT"
+	AuditLogEntityTypeEnumUSER            AuditLogEntityTypeEnum = "USER"
+	AuditLogEntityTypeEnumUSERTASK        AuditLogEntityTypeEnum = "USER_TASK"
+	AuditLogEntityTypeEnumVARIABLE        AuditLogEntityTypeEnum = "VARIABLE"
+)
+
+// Defines values for AuditLogOperationTypeEnum.
+const (
+	AuditLogOperationTypeEnumASSIGN   AuditLogOperationTypeEnum = "ASSIGN"
+	AuditLogOperationTypeEnumCANCEL   AuditLogOperationTypeEnum = "CANCEL"
+	AuditLogOperationTypeEnumCOMPLETE AuditLogOperationTypeEnum = "COMPLETE"
+	AuditLogOperationTypeEnumCREATE   AuditLogOperationTypeEnum = "CREATE"
+	AuditLogOperationTypeEnumDELETE   AuditLogOperationTypeEnum = "DELETE"
+	AuditLogOperationTypeEnumEVALUATE AuditLogOperationTypeEnum = "EVALUATE"
+	AuditLogOperationTypeEnumMIGRATE  AuditLogOperationTypeEnum = "MIGRATE"
+	AuditLogOperationTypeEnumMODIFY   AuditLogOperationTypeEnum = "MODIFY"
+	AuditLogOperationTypeEnumRESOLVE  AuditLogOperationTypeEnum = "RESOLVE"
+	AuditLogOperationTypeEnumRESUME   AuditLogOperationTypeEnum = "RESUME"
+	AuditLogOperationTypeEnumSUSPEND  AuditLogOperationTypeEnum = "SUSPEND"
+	AuditLogOperationTypeEnumUNASSIGN AuditLogOperationTypeEnum = "UNASSIGN"
+	AuditLogOperationTypeEnumUPDATE   AuditLogOperationTypeEnum = "UPDATE"
+)
+
+// Defines values for AuditLogResultEnum.
+const (
+	FAIL    AuditLogResultEnum = "FAIL"
+	SUCCESS AuditLogResultEnum = "SUCCESS"
+)
+
+// Defines values for AuditLogSearchQuerySortRequestField.
+const (
+	AuditLogSearchQuerySortRequestFieldActorId                 AuditLogSearchQuerySortRequestField = "actorId"
+	AuditLogSearchQuerySortRequestFieldActorType               AuditLogSearchQuerySortRequestField = "actorType"
+	AuditLogSearchQuerySortRequestFieldAnnotation              AuditLogSearchQuerySortRequestField = "annotation"
+	AuditLogSearchQuerySortRequestFieldAuditLogKey             AuditLogSearchQuerySortRequestField = "auditLogKey"
+	AuditLogSearchQuerySortRequestFieldBatchOperationKey       AuditLogSearchQuerySortRequestField = "batchOperationKey"
+	AuditLogSearchQuerySortRequestFieldBatchOperationType      AuditLogSearchQuerySortRequestField = "batchOperationType"
+	AuditLogSearchQuerySortRequestFieldCategory                AuditLogSearchQuerySortRequestField = "category"
+	AuditLogSearchQuerySortRequestFieldDecisionDefinitionId    AuditLogSearchQuerySortRequestField = "decisionDefinitionId"
+	AuditLogSearchQuerySortRequestFieldDecisionDefinitionKey   AuditLogSearchQuerySortRequestField = "decisionDefinitionKey"
+	AuditLogSearchQuerySortRequestFieldDecisionEvaluationKey   AuditLogSearchQuerySortRequestField = "decisionEvaluationKey"
+	AuditLogSearchQuerySortRequestFieldDecisionRequirementsId  AuditLogSearchQuerySortRequestField = "decisionRequirementsId"
+	AuditLogSearchQuerySortRequestFieldDecisionRequirementsKey AuditLogSearchQuerySortRequestField = "decisionRequirementsKey"
+	AuditLogSearchQuerySortRequestFieldElementInstanceKey      AuditLogSearchQuerySortRequestField = "elementInstanceKey"
+	AuditLogSearchQuerySortRequestFieldEntityKey               AuditLogSearchQuerySortRequestField = "entityKey"
+	AuditLogSearchQuerySortRequestFieldEntityType              AuditLogSearchQuerySortRequestField = "entityType"
+	AuditLogSearchQuerySortRequestFieldJobKey                  AuditLogSearchQuerySortRequestField = "jobKey"
+	AuditLogSearchQuerySortRequestFieldOperationType           AuditLogSearchQuerySortRequestField = "operationType"
+	AuditLogSearchQuerySortRequestFieldProcessDefinitionId     AuditLogSearchQuerySortRequestField = "processDefinitionId"
+	AuditLogSearchQuerySortRequestFieldProcessDefinitionKey    AuditLogSearchQuerySortRequestField = "processDefinitionKey"
+	AuditLogSearchQuerySortRequestFieldProcessInstanceKey      AuditLogSearchQuerySortRequestField = "processInstanceKey"
+	AuditLogSearchQuerySortRequestFieldResult                  AuditLogSearchQuerySortRequestField = "result"
+	AuditLogSearchQuerySortRequestFieldTenantId                AuditLogSearchQuerySortRequestField = "tenantId"
+	AuditLogSearchQuerySortRequestFieldTimestamp               AuditLogSearchQuerySortRequestField = "timestamp"
+	AuditLogSearchQuerySortRequestFieldUserTaskKey             AuditLogSearchQuerySortRequestField = "userTaskKey"
+)
+
 // Defines values for AuthorizationSearchQuerySortRequestField.
 const (
-	OwnerId      AuthorizationSearchQuerySortRequestField = "ownerId"
-	OwnerType    AuthorizationSearchQuerySortRequestField = "ownerType"
-	ResourceId   AuthorizationSearchQuerySortRequestField = "resourceId"
-	ResourceType AuthorizationSearchQuerySortRequestField = "resourceType"
+	OwnerId              AuthorizationSearchQuerySortRequestField = "ownerId"
+	OwnerType            AuthorizationSearchQuerySortRequestField = "ownerType"
+	ResourceId           AuthorizationSearchQuerySortRequestField = "resourceId"
+	ResourcePropertyName AuthorizationSearchQuerySortRequestField = "resourcePropertyName"
+	ResourceType         AuthorizationSearchQuerySortRequestField = "resourceType"
 )
 
 // Defines values for BatchOperationErrorType.
@@ -63,17 +145,6 @@ const (
 	BatchOperationItemStateEnumFAILED    BatchOperationItemStateEnum = "FAILED"
 )
 
-// Defines values for BatchOperationResponseState.
-const (
-	BatchOperationResponseStateACTIVE             BatchOperationResponseState = "ACTIVE"
-	BatchOperationResponseStateCANCELED           BatchOperationResponseState = "CANCELED"
-	BatchOperationResponseStateCOMPLETED          BatchOperationResponseState = "COMPLETED"
-	BatchOperationResponseStateCREATED            BatchOperationResponseState = "CREATED"
-	BatchOperationResponseStateFAILED             BatchOperationResponseState = "FAILED"
-	BatchOperationResponseStatePARTIALLYCOMPLETED BatchOperationResponseState = "PARTIALLY_COMPLETED"
-	BatchOperationResponseStateSUSPENDED          BatchOperationResponseState = "SUSPENDED"
-)
-
 // Defines values for BatchOperationSearchQuerySortRequestField.
 const (
 	BatchOperationSearchQuerySortRequestFieldBatchOperationKey BatchOperationSearchQuerySortRequestField = "batchOperationKey"
@@ -96,15 +167,29 @@ const (
 
 // Defines values for BatchOperationTypeEnum.
 const (
-	BatchOperationTypeEnumADDVARIABLE              BatchOperationTypeEnum = "ADD_VARIABLE"
-	BatchOperationTypeEnumCANCELPROCESSINSTANCE    BatchOperationTypeEnum = "CANCEL_PROCESS_INSTANCE"
-	BatchOperationTypeEnumDELETEDECISIONDEFINITION BatchOperationTypeEnum = "DELETE_DECISION_DEFINITION"
-	BatchOperationTypeEnumDELETEPROCESSDEFINITION  BatchOperationTypeEnum = "DELETE_PROCESS_DEFINITION"
-	BatchOperationTypeEnumDELETEPROCESSINSTANCE    BatchOperationTypeEnum = "DELETE_PROCESS_INSTANCE"
-	BatchOperationTypeEnumMIGRATEPROCESSINSTANCE   BatchOperationTypeEnum = "MIGRATE_PROCESS_INSTANCE"
-	BatchOperationTypeEnumMODIFYPROCESSINSTANCE    BatchOperationTypeEnum = "MODIFY_PROCESS_INSTANCE"
-	BatchOperationTypeEnumRESOLVEINCIDENT          BatchOperationTypeEnum = "RESOLVE_INCIDENT"
-	BatchOperationTypeEnumUPDATEVARIABLE           BatchOperationTypeEnum = "UPDATE_VARIABLE"
+	ADDVARIABLE              BatchOperationTypeEnum = "ADD_VARIABLE"
+	CANCELPROCESSINSTANCE    BatchOperationTypeEnum = "CANCEL_PROCESS_INSTANCE"
+	DELETEDECISIONDEFINITION BatchOperationTypeEnum = "DELETE_DECISION_DEFINITION"
+	DELETEPROCESSDEFINITION  BatchOperationTypeEnum = "DELETE_PROCESS_DEFINITION"
+	DELETEPROCESSINSTANCE    BatchOperationTypeEnum = "DELETE_PROCESS_INSTANCE"
+	MIGRATEPROCESSINSTANCE   BatchOperationTypeEnum = "MIGRATE_PROCESS_INSTANCE"
+	MODIFYPROCESSINSTANCE    BatchOperationTypeEnum = "MODIFY_PROCESS_INSTANCE"
+	RESOLVEINCIDENT          BatchOperationTypeEnum = "RESOLVE_INCIDENT"
+	UPDATEVARIABLE           BatchOperationTypeEnum = "UPDATE_VARIABLE"
+)
+
+// Defines values for ClusterVariableScopeEnum.
+const (
+	ClusterVariableScopeEnumGLOBAL ClusterVariableScopeEnum = "GLOBAL"
+	ClusterVariableScopeEnumTENANT ClusterVariableScopeEnum = "TENANT"
+)
+
+// Defines values for ClusterVariableSearchQuerySortRequestField.
+const (
+	ClusterVariableSearchQuerySortRequestFieldName     ClusterVariableSearchQuerySortRequestField = "name"
+	ClusterVariableSearchQuerySortRequestFieldScope    ClusterVariableSearchQuerySortRequestField = "scope"
+	ClusterVariableSearchQuerySortRequestFieldTenantId ClusterVariableSearchQuerySortRequestField = "tenantId"
+	ClusterVariableSearchQuerySortRequestFieldValue    ClusterVariableSearchQuerySortRequestField = "value"
 )
 
 // Defines values for CorrelatedMessageSubscriptionSearchQuerySortRequestField.
@@ -139,7 +224,6 @@ const (
 	DecisionDefinitionTypeEnumDECISIONTABLE     DecisionDefinitionTypeEnum = "DECISION_TABLE"
 	DecisionDefinitionTypeEnumLITERALEXPRESSION DecisionDefinitionTypeEnum = "LITERAL_EXPRESSION"
 	DecisionDefinitionTypeEnumUNKNOWN           DecisionDefinitionTypeEnum = "UNKNOWN"
-	DecisionDefinitionTypeEnumUNSPECIFIED       DecisionDefinitionTypeEnum = "UNSPECIFIED"
 )
 
 // Defines values for DecisionInstanceSearchQuerySortRequestField.
@@ -156,6 +240,7 @@ const (
 	DecisionInstanceSearchQuerySortRequestFieldEvaluationFailure             DecisionInstanceSearchQuerySortRequestField = "evaluationFailure"
 	DecisionInstanceSearchQuerySortRequestFieldProcessDefinitionKey          DecisionInstanceSearchQuerySortRequestField = "processDefinitionKey"
 	DecisionInstanceSearchQuerySortRequestFieldProcessInstanceKey            DecisionInstanceSearchQuerySortRequestField = "processInstanceKey"
+	DecisionInstanceSearchQuerySortRequestFieldRootDecisionDefinitionKey     DecisionInstanceSearchQuerySortRequestField = "rootDecisionDefinitionKey"
 	DecisionInstanceSearchQuerySortRequestFieldState                         DecisionInstanceSearchQuerySortRequestField = "state"
 	DecisionInstanceSearchQuerySortRequestFieldTenantId                      DecisionInstanceSearchQuerySortRequestField = "tenantId"
 )
@@ -164,7 +249,6 @@ const (
 const (
 	DecisionInstanceStateEnumEVALUATED   DecisionInstanceStateEnum = "EVALUATED"
 	DecisionInstanceStateEnumFAILED      DecisionInstanceStateEnum = "FAILED"
-	DecisionInstanceStateEnumUNKNOWN     DecisionInstanceStateEnum = "UNKNOWN"
 	DecisionInstanceStateEnumUNSPECIFIED DecisionInstanceStateEnum = "UNSPECIFIED"
 )
 
@@ -283,62 +367,6 @@ const (
 	GroupUserSearchQuerySortRequestFieldUsername GroupUserSearchQuerySortRequestField = "username"
 )
 
-// Defines values for IncidentFilterErrorType.
-const (
-	IncidentFilterErrorTypeADHOCSUBPROCESSNORETRIES   IncidentFilterErrorType = "AD_HOC_SUB_PROCESS_NO_RETRIES"
-	IncidentFilterErrorTypeCALLEDDECISIONERROR        IncidentFilterErrorType = "CALLED_DECISION_ERROR"
-	IncidentFilterErrorTypeCALLEDELEMENTERROR         IncidentFilterErrorType = "CALLED_ELEMENT_ERROR"
-	IncidentFilterErrorTypeCONDITIONERROR             IncidentFilterErrorType = "CONDITION_ERROR"
-	IncidentFilterErrorTypeDECISIONEVALUATIONERROR    IncidentFilterErrorType = "DECISION_EVALUATION_ERROR"
-	IncidentFilterErrorTypeEXECUTIONLISTENERNORETRIES IncidentFilterErrorType = "EXECUTION_LISTENER_NO_RETRIES"
-	IncidentFilterErrorTypeEXTRACTVALUEERROR          IncidentFilterErrorType = "EXTRACT_VALUE_ERROR"
-	IncidentFilterErrorTypeFORMNOTFOUND               IncidentFilterErrorType = "FORM_NOT_FOUND"
-	IncidentFilterErrorTypeIOMAPPINGERROR             IncidentFilterErrorType = "IO_MAPPING_ERROR"
-	IncidentFilterErrorTypeJOBNORETRIES               IncidentFilterErrorType = "JOB_NO_RETRIES"
-	IncidentFilterErrorTypeMESSAGESIZEEXCEEDED        IncidentFilterErrorType = "MESSAGE_SIZE_EXCEEDED"
-	IncidentFilterErrorTypeRESOURCENOTFOUND           IncidentFilterErrorType = "RESOURCE_NOT_FOUND"
-	IncidentFilterErrorTypeTASKLISTENERNORETRIES      IncidentFilterErrorType = "TASK_LISTENER_NO_RETRIES"
-	IncidentFilterErrorTypeUNHANDLEDERROREVENT        IncidentFilterErrorType = "UNHANDLED_ERROR_EVENT"
-	IncidentFilterErrorTypeUNKNOWN                    IncidentFilterErrorType = "UNKNOWN"
-	IncidentFilterErrorTypeUNSPECIFIED                IncidentFilterErrorType = "UNSPECIFIED"
-)
-
-// Defines values for IncidentFilterState.
-const (
-	IncidentFilterStateACTIVE   IncidentFilterState = "ACTIVE"
-	IncidentFilterStateMIGRATED IncidentFilterState = "MIGRATED"
-	IncidentFilterStatePENDING  IncidentFilterState = "PENDING"
-	IncidentFilterStateRESOLVED IncidentFilterState = "RESOLVED"
-)
-
-// Defines values for IncidentResultErrorType.
-const (
-	IncidentResultErrorTypeADHOCSUBPROCESSNORETRIES   IncidentResultErrorType = "AD_HOC_SUB_PROCESS_NO_RETRIES"
-	IncidentResultErrorTypeCALLEDDECISIONERROR        IncidentResultErrorType = "CALLED_DECISION_ERROR"
-	IncidentResultErrorTypeCALLEDELEMENTERROR         IncidentResultErrorType = "CALLED_ELEMENT_ERROR"
-	IncidentResultErrorTypeCONDITIONERROR             IncidentResultErrorType = "CONDITION_ERROR"
-	IncidentResultErrorTypeDECISIONEVALUATIONERROR    IncidentResultErrorType = "DECISION_EVALUATION_ERROR"
-	IncidentResultErrorTypeEXECUTIONLISTENERNORETRIES IncidentResultErrorType = "EXECUTION_LISTENER_NO_RETRIES"
-	IncidentResultErrorTypeEXTRACTVALUEERROR          IncidentResultErrorType = "EXTRACT_VALUE_ERROR"
-	IncidentResultErrorTypeFORMNOTFOUND               IncidentResultErrorType = "FORM_NOT_FOUND"
-	IncidentResultErrorTypeIOMAPPINGERROR             IncidentResultErrorType = "IO_MAPPING_ERROR"
-	IncidentResultErrorTypeJOBNORETRIES               IncidentResultErrorType = "JOB_NO_RETRIES"
-	IncidentResultErrorTypeMESSAGESIZEEXCEEDED        IncidentResultErrorType = "MESSAGE_SIZE_EXCEEDED"
-	IncidentResultErrorTypeRESOURCENOTFOUND           IncidentResultErrorType = "RESOURCE_NOT_FOUND"
-	IncidentResultErrorTypeTASKLISTENERNORETRIES      IncidentResultErrorType = "TASK_LISTENER_NO_RETRIES"
-	IncidentResultErrorTypeUNHANDLEDERROREVENT        IncidentResultErrorType = "UNHANDLED_ERROR_EVENT"
-	IncidentResultErrorTypeUNKNOWN                    IncidentResultErrorType = "UNKNOWN"
-	IncidentResultErrorTypeUNSPECIFIED                IncidentResultErrorType = "UNSPECIFIED"
-)
-
-// Defines values for IncidentResultState.
-const (
-	IncidentResultStateACTIVE   IncidentResultState = "ACTIVE"
-	IncidentResultStateMIGRATED IncidentResultState = "MIGRATED"
-	IncidentResultStatePENDING  IncidentResultState = "PENDING"
-	IncidentResultStateRESOLVED IncidentResultState = "RESOLVED"
-)
-
 // Defines values for IncidentSearchQuerySortRequestField.
 const (
 	IncidentSearchQuerySortRequestFieldCreationTime         IncidentSearchQuerySortRequestField = "creationTime"
@@ -375,10 +403,14 @@ const (
 	JobListenerEventTypeEnumUPDATING    JobListenerEventTypeEnum = "UPDATING"
 )
 
-// Defines values for JobResultType.
+// Defines values for JobResultAdHocSubProcessType.
 const (
-	AdHocSubProcess JobResultType = "adHocSubProcess"
-	UserTask        JobResultType = "userTask"
+	AdHocSubProcess JobResultAdHocSubProcessType = "adHocSubProcess"
+)
+
+// Defines values for JobResultUserTaskType.
+const (
+	UserTask JobResultUserTaskType = "userTask"
 )
 
 // Defines values for JobSearchQuerySortRequestField.
@@ -475,6 +507,8 @@ const (
 const (
 	PermissionTypeEnumACCESS                                       PermissionTypeEnum = "ACCESS"
 	PermissionTypeEnumCANCELPROCESSINSTANCE                        PermissionTypeEnum = "CANCEL_PROCESS_INSTANCE"
+	PermissionTypeEnumCLAIM                                        PermissionTypeEnum = "CLAIM"
+	PermissionTypeEnumCOMPLETE                                     PermissionTypeEnum = "COMPLETE"
 	PermissionTypeEnumCREATE                                       PermissionTypeEnum = "CREATE"
 	PermissionTypeEnumCREATEBATCHOPERATIONCANCELPROCESSINSTANCE    PermissionTypeEnum = "CREATE_BATCH_OPERATION_CANCEL_PROCESS_INSTANCE"
 	PermissionTypeEnumCREATEBATCHOPERATIONDELETEDECISIONDEFINITION PermissionTypeEnum = "CREATE_BATCH_OPERATION_DELETE_DECISION_DEFINITION"
@@ -506,6 +540,23 @@ const (
 	PermissionTypeEnumUPDATEUSERTASK                               PermissionTypeEnum = "UPDATE_USER_TASK"
 )
 
+// Defines values for ProcessDefinitionInstanceStatisticsQuerySortRequestField.
+const (
+	ProcessDefinitionInstanceStatisticsQuerySortRequestFieldActiveInstancesWithIncidentCount    ProcessDefinitionInstanceStatisticsQuerySortRequestField = "activeInstancesWithIncidentCount"
+	ProcessDefinitionInstanceStatisticsQuerySortRequestFieldActiveInstancesWithoutIncidentCount ProcessDefinitionInstanceStatisticsQuerySortRequestField = "activeInstancesWithoutIncidentCount"
+	ProcessDefinitionInstanceStatisticsQuerySortRequestFieldProcessDefinitionId                 ProcessDefinitionInstanceStatisticsQuerySortRequestField = "processDefinitionId"
+)
+
+// Defines values for ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField.
+const (
+	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldActiveInstancesWithIncidentCount    ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "activeInstancesWithIncidentCount"
+	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldActiveInstancesWithoutIncidentCount ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "activeInstancesWithoutIncidentCount"
+	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionId                 ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionId"
+	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionKey                ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionKey"
+	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionName               ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionName"
+	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionVersion            ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionVersion"
+)
+
 // Defines values for ProcessDefinitionSearchQuerySortRequestField.
 const (
 	ProcessDefinitionSearchQuerySortRequestFieldName                 ProcessDefinitionSearchQuerySortRequestField = "name"
@@ -517,9 +568,9 @@ const (
 	ProcessDefinitionSearchQuerySortRequestFieldVersionTag           ProcessDefinitionSearchQuerySortRequestField = "versionTag"
 )
 
-// Defines values for ProcessInstanceCreationRuntimeInstructionType.
+// Defines values for ProcessInstanceCreationTerminateInstructionType.
 const (
-	TERMINATEPROCESSINSTANCE ProcessInstanceCreationRuntimeInstructionType = "TERMINATE_PROCESS_INSTANCE"
+	ProcessInstanceCreationTerminateInstructionTypeProcessInstanceCreationTerminateInstruction ProcessInstanceCreationTerminateInstructionType = "ProcessInstanceCreationTerminateInstruction"
 )
 
 // Defines values for ProcessInstanceSearchQuerySortRequestField.
@@ -548,21 +599,22 @@ const (
 
 // Defines values for ResourceTypeEnum.
 const (
-	AUTHORIZATION                  ResourceTypeEnum = "AUTHORIZATION"
-	BATCH                          ResourceTypeEnum = "BATCH"
-	COMPONENT                      ResourceTypeEnum = "COMPONENT"
-	DECISIONDEFINITION             ResourceTypeEnum = "DECISION_DEFINITION"
-	DECISIONREQUIREMENTSDEFINITION ResourceTypeEnum = "DECISION_REQUIREMENTS_DEFINITION"
-	DOCUMENT                       ResourceTypeEnum = "DOCUMENT"
-	GROUP                          ResourceTypeEnum = "GROUP"
-	MAPPINGRULE                    ResourceTypeEnum = "MAPPING_RULE"
-	MESSAGE                        ResourceTypeEnum = "MESSAGE"
-	PROCESSDEFINITION              ResourceTypeEnum = "PROCESS_DEFINITION"
-	RESOURCE                       ResourceTypeEnum = "RESOURCE"
-	ROLE                           ResourceTypeEnum = "ROLE"
-	SYSTEM                         ResourceTypeEnum = "SYSTEM"
-	TENANT                         ResourceTypeEnum = "TENANT"
-	USER                           ResourceTypeEnum = "USER"
+	ResourceTypeEnumAUTHORIZATION                  ResourceTypeEnum = "AUTHORIZATION"
+	ResourceTypeEnumBATCH                          ResourceTypeEnum = "BATCH"
+	ResourceTypeEnumCOMPONENT                      ResourceTypeEnum = "COMPONENT"
+	ResourceTypeEnumDECISIONDEFINITION             ResourceTypeEnum = "DECISION_DEFINITION"
+	ResourceTypeEnumDECISIONREQUIREMENTSDEFINITION ResourceTypeEnum = "DECISION_REQUIREMENTS_DEFINITION"
+	ResourceTypeEnumDOCUMENT                       ResourceTypeEnum = "DOCUMENT"
+	ResourceTypeEnumGROUP                          ResourceTypeEnum = "GROUP"
+	ResourceTypeEnumMAPPINGRULE                    ResourceTypeEnum = "MAPPING_RULE"
+	ResourceTypeEnumMESSAGE                        ResourceTypeEnum = "MESSAGE"
+	ResourceTypeEnumPROCESSDEFINITION              ResourceTypeEnum = "PROCESS_DEFINITION"
+	ResourceTypeEnumRESOURCE                       ResourceTypeEnum = "RESOURCE"
+	ResourceTypeEnumROLE                           ResourceTypeEnum = "ROLE"
+	ResourceTypeEnumSYSTEM                         ResourceTypeEnum = "SYSTEM"
+	ResourceTypeEnumTENANT                         ResourceTypeEnum = "TENANT"
+	ResourceTypeEnumUSER                           ResourceTypeEnum = "USER"
+	ResourceTypeEnumUSERTASK                       ResourceTypeEnum = "USER_TASK"
 )
 
 // Defines values for RoleClientSearchQuerySortRequestField.
@@ -673,9 +725,7 @@ type ActivatedJobResult struct {
 	Deadline int64 `json:"deadline"`
 
 	// ElementId The associated task element ID.
-	ElementId ElementId `json:"elementId"`
-
-	// ElementInstanceKey The unique key identifying the associated task, unique within the scope of the process instance.
+	ElementId          ElementId          `json:"elementId"`
 	ElementInstanceKey ElementInstanceKey `json:"elementInstanceKey"`
 
 	// JobKey The key, a unique identifier for the job.
@@ -737,6 +787,24 @@ type AdHocSubProcessActivateActivityReference struct {
 
 	// Variables Variables to be set when activating the element.
 	Variables *map[string]interface{} `json:"variables,omitempty"`
+}
+
+// AdvancedAuditLogKeyFilter Advanced AuditLogKey filter.
+type AdvancedAuditLogKeyFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *AuditLogKey `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]AuditLogKey `json:"$in,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *AuditLogKey `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property matches none of the provided values.
+	NotIn *[]AuditLogKey `json:"$notIn,omitempty"`
 }
 
 // AdvancedBatchOperationItemStateFilter Advanced BatchOperationItemStateEnum filter.
@@ -814,6 +882,56 @@ type AdvancedBatchOperationTypeFilter struct {
 	Neq *BatchOperationTypeEnum `json:"$neq,omitempty"`
 }
 
+// AdvancedCategoryFilter Advanced AuditLogCategoryEnum filter.
+type AdvancedCategoryFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *AuditLogCategoryEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]AuditLogCategoryEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *AuditLogCategoryEnum `json:"$neq,omitempty"`
+}
+
+// AdvancedClusterVariableScopeFilter Advanced ClusterVariableScopeEnum filter.
+type AdvancedClusterVariableScopeFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *ClusterVariableScopeEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]ClusterVariableScopeEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *ClusterVariableScopeEnum `json:"$neq,omitempty"`
+}
+
 // AdvancedDateTimeFilter Advanced date-time filter.
 type AdvancedDateTimeFilter struct {
 	// Eq Checks for equality with the provided value.
@@ -859,6 +977,52 @@ type AdvancedDecisionDefinitionKeyFilter struct {
 	NotIn *[]DecisionDefinitionKey `json:"$notIn,omitempty"`
 }
 
+// AdvancedDecisionEvaluationInstanceKeyFilter Advanced DecisionEvaluationInstanceKey filter.
+type AdvancedDecisionEvaluationInstanceKeyFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *DecisionEvaluationInstanceKey `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]DecisionEvaluationInstanceKey `json:"$in,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *DecisionEvaluationInstanceKey `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property matches none of the provided values.
+	NotIn *[]DecisionEvaluationInstanceKey `json:"$notIn,omitempty"`
+}
+
+// AdvancedDecisionInstanceStateFilter Advanced DecisionInstanceStateEnum filter.
+type AdvancedDecisionInstanceStateFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *DecisionInstanceStateEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]DecisionInstanceStateEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *DecisionInstanceStateEnum `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property matches none of the provided values.
+	NotIn *[]DecisionInstanceStateEnum `json:"$notIn,omitempty"`
+}
+
 // AdvancedElementInstanceKeyFilter Advanced ElementInstanceKey filter.
 type AdvancedElementInstanceKeyFilter struct {
 	// Eq Checks for equality with the provided value.
@@ -870,7 +1034,7 @@ type AdvancedElementInstanceKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]ElementInstanceKey `json:"$in,omitempty"`
 
-	// Neq Checks for equality with the provided value.
+	// Neq Checks for inequality with the provided value.
 	Neq *ElementInstanceKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
@@ -900,6 +1064,87 @@ type AdvancedElementInstanceStateFilter struct {
 
 	// Neq Checks for inequality with the provided value.
 	Neq *ElementInstanceStateEnum `json:"$neq,omitempty"`
+}
+
+// AdvancedEntityTypeFilter Advanced AuditLogEntityTypeEnum filter.
+type AdvancedEntityTypeFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *AuditLogEntityTypeEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]AuditLogEntityTypeEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *AuditLogEntityTypeEnum `json:"$neq,omitempty"`
+}
+
+// AdvancedIncidentErrorTypeFilter Advanced IncidentErrorTypeEnum filter
+type AdvancedIncidentErrorTypeFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *IncidentErrorTypeEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]IncidentErrorTypeEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *IncidentErrorTypeEnum `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property does not match any of the provided values.
+	NotIn *[]IncidentErrorTypeEnum `json:"$notIn,omitempty"`
+}
+
+// AdvancedIncidentStateFilter Advanced IncidentStateEnum filter
+type AdvancedIncidentStateFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *IncidentStateEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]IncidentStateEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *IncidentStateEnum `json:"$neq,omitempty"`
+
+	// NotIn Checks if the property does not match any of the provided values.
+	NotIn *[]IncidentStateEnum `json:"$notIn,omitempty"`
 }
 
 // AdvancedIntegerFilter Advanced integer (int32) filter.
@@ -940,7 +1185,7 @@ type AdvancedJobKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]JobKey `json:"$in,omitempty"`
 
-	// Neq Checks for equality with the provided value.
+	// Neq Checks for inequality with the provided value.
 	Neq *JobKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
@@ -1065,6 +1310,31 @@ type AdvancedMessageSubscriptionStateFilter struct {
 	Neq *MessageSubscriptionStateEnum `json:"$neq,omitempty"`
 }
 
+// AdvancedOperationTypeFilter Advanced AuditLogOperationTypeEnum filter.
+type AdvancedOperationTypeFilter struct {
+	// Eq Checks for equality with the provided value.
+	Eq *AuditLogOperationTypeEnum `json:"$eq,omitempty"`
+
+	// Exists Checks if the current property exists.
+	Exists *bool `json:"$exists,omitempty"`
+
+	// In Checks if the property matches any of the provided values.
+	In *[]AuditLogOperationTypeEnum `json:"$in,omitempty"`
+
+	// Like Checks if the property matches the provided like value.
+	//
+	// Supported wildcard characters are:
+	//
+	// * `*`: matches zero, one, or multiple characters.
+	// * `?`: matches one, single character.
+	//
+	// Wildcard characters can be escaped with backslash, for instance: `\*`.
+	Like *LikeFilter `json:"$like,omitempty"`
+
+	// Neq Checks for inequality with the provided value.
+	Neq *AuditLogOperationTypeEnum `json:"$neq,omitempty"`
+}
+
 // AdvancedProcessDefinitionKeyFilter Advanced ProcessDefinitionKey filter.
 type AdvancedProcessDefinitionKeyFilter struct {
 	// Eq Checks for equality with the provided value.
@@ -1137,7 +1407,7 @@ type AdvancedScopeKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]ScopeKey `json:"$in,omitempty"`
 
-	// Neq Checks for equality with the provided value.
+	// Neq Checks for inequality with the provided value.
 	Neq *ScopeKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
@@ -1208,12 +1478,170 @@ type AdvancedVariableKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]VariableKey `json:"$in,omitempty"`
 
-	// Neq Checks for equality with the provided value.
+	// Neq Checks for inequality with the provided value.
 	Neq *VariableKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
 	NotIn *[]VariableKey `json:"$notIn,omitempty"`
 }
+
+// AuditLogActorTypeEnum defines model for AuditLogActorTypeEnum.
+type AuditLogActorTypeEnum string
+
+// AuditLogCategoryEnum defines model for AuditLogCategoryEnum.
+type AuditLogCategoryEnum string
+
+// AuditLogEntityTypeEnum defines model for AuditLogEntityTypeEnum.
+type AuditLogEntityTypeEnum string
+
+// AuditLogFilter Audit log filter request
+type AuditLogFilter struct {
+	// ActorId The actor ID search filter.
+	ActorId *StringFilterProperty `json:"actorId,omitempty"`
+
+	// ActorType The actor type search filter.
+	ActorType *AuditLogActorTypeEnum `json:"actorType,omitempty"`
+
+	// AuditLogKey The audit log key search filter.
+	AuditLogKey *AuditLogKeyFilterProperty `json:"auditLogKey,omitempty"`
+
+	// Category The category search filter.
+	Category *CategoryFilterProperty `json:"category,omitempty"`
+
+	// ElementInstanceKey The element instance key search filter.
+	ElementInstanceKey *ElementInstanceKeyFilterProperty `json:"elementInstanceKey,omitempty"`
+
+	// EntityType The entity type search filter.
+	EntityType *EntityTypeFilterProperty `json:"entityType,omitempty"`
+
+	// OperationType The operation type search filter.
+	OperationType *OperationTypeFilterProperty `json:"operationType,omitempty"`
+
+	// ProcessDefinitionKey The process definition key search filter.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+
+	// ProcessInstanceKey The process instance key search filter.
+	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
+
+	// Result The result search filter.
+	Result *AuditLogResultEnum `json:"result,omitempty"`
+
+	// TenantId The tenant ID search filter.
+	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
+
+	// Timestamp The timestamp search filter.
+	Timestamp *DateTimeFilterProperty `json:"timestamp,omitempty"`
+}
+
+// AuditLogKey Zeebe Engine resource key (Java long serialized as string)
+type AuditLogKey = LongKey
+
+// AuditLogKeyFilterProperty AuditLogKey property with full advanced search capabilities.
+type AuditLogKeyFilterProperty struct {
+	union json.RawMessage
+}
+
+// AuditLogKeyFilterProperty0 System-generated key for an audit log entry.
+type AuditLogKeyFilterProperty0 = AuditLogKey
+
+// AuditLogOperationTypeEnum defines model for AuditLogOperationTypeEnum.
+type AuditLogOperationTypeEnum string
+
+// AuditLogResult Audit log item.
+type AuditLogResult struct {
+	// ActorId The ID of the actor who performed the operation.
+	ActorId *string `json:"actorId,omitempty"`
+
+	// ActorType The type of the actor.
+	ActorType *AuditLogActorTypeEnum `json:"actorType,omitempty"`
+
+	// Annotation Additional notes about the operation.
+	Annotation *string `json:"annotation,omitempty"`
+
+	// AuditLogKey The unique key of the audit log entry.
+	AuditLogKey *AuditLogKey `json:"auditLogKey,omitempty"`
+
+	// BatchOperationKey Key of the batch operation.
+	BatchOperationKey *BatchOperationKey `json:"batchOperationKey,omitempty"`
+
+	// BatchOperationType The type of batch operation performed, if this is part of a batch.
+	BatchOperationType *BatchOperationTypeEnum `json:"batchOperationType,omitempty"`
+
+	// Category The category of the audit log.
+	Category *AuditLogCategoryEnum `json:"category,omitempty"`
+
+	// DecisionDefinitionId The decision definition ID.
+	DecisionDefinitionId *DecisionDefinitionId `json:"decisionDefinitionId,omitempty"`
+
+	// DecisionDefinitionKey The key of the decision definition.
+	DecisionDefinitionKey *DecisionDefinitionKey `json:"decisionDefinitionKey,omitempty"`
+
+	// DecisionEvaluationKey The key of the decision evaluation.
+	DecisionEvaluationKey *DecisionEvaluationKey `json:"decisionEvaluationKey,omitempty"`
+
+	// DecisionRequirementsId The decision requirements ID.
+	DecisionRequirementsId *string `json:"decisionRequirementsId,omitempty"`
+
+	// DecisionRequirementsKey The assigned key of the decision requirements.
+	DecisionRequirementsKey *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
+
+	// ElementInstanceKey The key of the element instance.
+	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
+
+	// EntityKey The key of the entity this audit log refers to.
+	EntityKey *string `json:"entityKey,omitempty"`
+
+	// EntityType The type of the entity.
+	EntityType *AuditLogEntityTypeEnum `json:"entityType,omitempty"`
+
+	// JobKey The key of the job.
+	JobKey *JobKey `json:"jobKey,omitempty"`
+
+	// OperationType The type of operation performed.
+	OperationType *AuditLogOperationTypeEnum `json:"operationType,omitempty"`
+
+	// ProcessDefinitionId The process definition ID.
+	ProcessDefinitionId *ProcessDefinitionId `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The key of the process definition.
+	ProcessDefinitionKey *ProcessDefinitionKey `json:"processDefinitionKey,omitempty"`
+
+	// ProcessInstanceKey The key of the process instance.
+	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+
+	// Result The result of the audit log.
+	Result *AuditLogResultEnum `json:"result,omitempty"`
+
+	// TenantId The tenant ID of the audit log.
+	TenantId *TenantId `json:"tenantId,omitempty"`
+
+	// Timestamp The timestamp when the operation occurred.
+	Timestamp *time.Time `json:"timestamp,omitempty"`
+
+	// UserTaskKey The key of the user task.
+	UserTaskKey *UserTaskKey `json:"userTaskKey,omitempty"`
+}
+
+// AuditLogResultEnum defines model for AuditLogResultEnum.
+type AuditLogResultEnum string
+
+// AuditLogSearchQueryRequest defines model for AuditLogSearchQueryRequest.
+type AuditLogSearchQueryRequest = SearchQueryRequest
+
+// AuditLogSearchQueryResult defines model for AuditLogSearchQueryResult.
+type AuditLogSearchQueryResult = SearchQueryResponse
+
+// AuditLogSearchQuerySortRequest defines model for AuditLogSearchQuerySortRequest.
+type AuditLogSearchQuerySortRequest struct {
+	// Field The field to sort by.
+	Field AuditLogSearchQuerySortRequestField `json:"field"`
+
+	// Order The order in which to sort the related field.
+	Order *SortOrderEnum `json:"order,omitempty"`
+}
+
+// AuditLogSearchQuerySortRequestField The field to sort by.
+type AuditLogSearchQuerySortRequestField string
 
 // AuthorizationCreateResult defines model for AuthorizationCreateResult.
 type AuthorizationCreateResult struct {
@@ -1232,15 +1660,15 @@ type AuthorizationFilter struct {
 	// ResourceIds The IDs of the resource to search permissions for.
 	ResourceIds *[]string `json:"resourceIds,omitempty"`
 
+	// ResourcePropertyNames The names of the resource properties to search permissions for.
+	ResourcePropertyNames *[]string `json:"resourcePropertyNames,omitempty"`
+
 	// ResourceType The type of resource to search permissions for.
 	ResourceType *ResourceTypeEnum `json:"resourceType,omitempty"`
 }
 
-// AuthorizationKey Zeebe Engine resource key (Java long serialized as string)
-type AuthorizationKey = LongKey
-
-// AuthorizationRequest defines model for AuthorizationRequest.
-type AuthorizationRequest struct {
+// AuthorizationIdBasedRequest defines model for AuthorizationIdBasedRequest.
+type AuthorizationIdBasedRequest struct {
 	// OwnerId The ID of the owner of the permissions.
 	OwnerId string `json:"ownerId"`
 
@@ -1257,6 +1685,33 @@ type AuthorizationRequest struct {
 	ResourceType ResourceTypeEnum `json:"resourceType"`
 }
 
+// AuthorizationKey Zeebe Engine resource key (Java long serialized as string)
+type AuthorizationKey = LongKey
+
+// AuthorizationPropertyBasedRequest defines model for AuthorizationPropertyBasedRequest.
+type AuthorizationPropertyBasedRequest struct {
+	// OwnerId The ID of the owner of the permissions.
+	OwnerId string `json:"ownerId"`
+
+	// OwnerType The type of the owner of permissions.
+	OwnerType OwnerTypeEnum `json:"ownerType"`
+
+	// PermissionTypes The permission types to add.
+	PermissionTypes []PermissionTypeEnum `json:"permissionTypes"`
+
+	// ResourcePropertyName The name of the resource property on which this authorization is based.
+	ResourcePropertyName string `json:"resourcePropertyName"`
+
+	// ResourceType The type of resource to add permissions to.
+	ResourceType ResourceTypeEnum `json:"resourceType"`
+}
+
+// AuthorizationRequest Defines an authorization request.
+// Either an id-based or a property-based authorization can be provided.
+type AuthorizationRequest struct {
+	union json.RawMessage
+}
+
 // AuthorizationResult defines model for AuthorizationResult.
 type AuthorizationResult struct {
 	// AuthorizationKey The key of the authorization.
@@ -1271,8 +1726,11 @@ type AuthorizationResult struct {
 	// PermissionTypes Specifies the types of the permissions.
 	PermissionTypes *[]PermissionTypeEnum `json:"permissionTypes,omitempty"`
 
-	// ResourceId ID of the resource the permission relates to.
+	// ResourceId ID of the resource the permission relates to (mutually exclusive with `resourcePropertyName`).
 	ResourceId *string `json:"resourceId,omitempty"`
+
+	// ResourcePropertyName The name of the resource property the permission relates to (mutually exclusive with `resourceId`).
+	ResourcePropertyName *string `json:"resourcePropertyName,omitempty"`
 
 	// ResourceType The type of resource that the permissions relate to.
 	ResourceType *ResourceTypeEnum `json:"resourceType,omitempty"`
@@ -1472,7 +1930,7 @@ type BatchOperationItemSearchQuerySortRequest struct {
 // BatchOperationItemSearchQuerySortRequestField The field to sort by.
 type BatchOperationItemSearchQuerySortRequestField string
 
-// BatchOperationItemStateEnum The state, one of ACTIVE, COMPLETED, TERMINATED.
+// BatchOperationItemStateEnum The batch operation item state.
 type BatchOperationItemStateEnum string
 
 // BatchOperationItemStateFilterProperty BatchOperationItemStateEnum property with full advanced search capabilities.
@@ -1480,7 +1938,7 @@ type BatchOperationItemStateFilterProperty struct {
 	union json.RawMessage
 }
 
-// BatchOperationItemStateFilterProperty0 The state, one of ACTIVE, COMPLETED, TERMINATED.
+// BatchOperationItemStateFilterProperty0 The batch operation item state.
 type BatchOperationItemStateFilterProperty0 = BatchOperationItemStateEnum
 
 // BatchOperationKey System-generated key for an batch operation.
@@ -1512,12 +1970,9 @@ type BatchOperationResponse struct {
 	// StartDate The start date of the batch operation.
 	StartDate *time.Time `json:"startDate,omitempty"`
 
-	// State The state of the batch operation.
-	State *BatchOperationResponseState `json:"state,omitempty"`
+	// State The batch operation state.
+	State *BatchOperationStateEnum `json:"state,omitempty"`
 }
-
-// BatchOperationResponseState The state of the batch operation.
-type BatchOperationResponseState string
 
 // BatchOperationSearchQuery defines model for BatchOperationSearchQuery.
 type BatchOperationSearchQuery = SearchQueryRequest
@@ -1617,6 +2072,14 @@ type CancelProcessInstanceRequest struct {
 	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
+// CategoryFilterProperty AuditLogCategoryEnum property with full advanced search capabilities.
+type CategoryFilterProperty struct {
+	union json.RawMessage
+}
+
+// CategoryFilterProperty0 defines model for .
+type CategoryFilterProperty0 = AuditLogCategoryEnum
+
 // Changeset JSON object with changed task attribute values.
 //
 // The following attributes can be adjusted with this endpoint, additional attributes
@@ -1657,6 +2120,71 @@ type ClockPinRequest struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
+// ClusterVariableResult Cluster variable response item.
+type ClusterVariableResult = ClusterVariableResultBase
+
+// ClusterVariableResultBase Cluster variable response item.
+type ClusterVariableResultBase struct {
+	// Name The name of the cluster variable. Unique within its scope (global or tenant-specific).
+	Name string `json:"name"`
+
+	// Scope The scope of a cluster variable.
+	Scope ClusterVariableScopeEnum `json:"scope"`
+
+	// TenantId Only provided if the cluster variable scope is TENANT.
+	TenantId *string `json:"tenantId,omitempty"`
+}
+
+// ClusterVariableScopeEnum The scope of a cluster variable.
+type ClusterVariableScopeEnum string
+
+// ClusterVariableScopeFilterProperty ClusterVariableScopeEnum property with full advanced search capabilities.
+type ClusterVariableScopeFilterProperty struct {
+	union json.RawMessage
+}
+
+// ClusterVariableScopeFilterProperty0 The scope of a cluster variable.
+type ClusterVariableScopeFilterProperty0 = ClusterVariableScopeEnum
+
+// ClusterVariableSearchQueryFilterRequest Cluster variable filter request.
+type ClusterVariableSearchQueryFilterRequest struct {
+	// IsTruncated Filter cluster variables by truncation status of their stored values. When true, returns only variables whose stored values are truncated (i.e., the value exceeds the storage size limit and is truncated in storage). When false, returns only variables with non-truncated stored values. This filter is based on the underlying storage characteristic, not the response format.
+	IsTruncated *bool `json:"isTruncated,omitempty"`
+
+	// Name Name of the cluster variable.
+	Name *StringFilterProperty `json:"name,omitempty"`
+
+	// Scope The scope filter for cluster variables.
+	Scope *ClusterVariableScopeFilterProperty `json:"scope,omitempty"`
+
+	// TenantId Tenant ID of this variable.
+	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
+
+	// Value The value of the cluster variable.
+	Value *StringFilterProperty `json:"value,omitempty"`
+}
+
+// ClusterVariableSearchQueryRequest defines model for ClusterVariableSearchQueryRequest.
+type ClusterVariableSearchQueryRequest = SearchQueryRequest
+
+// ClusterVariableSearchQueryResult defines model for ClusterVariableSearchQueryResult.
+type ClusterVariableSearchQueryResult = SearchQueryResponse
+
+// ClusterVariableSearchQuerySortRequest defines model for ClusterVariableSearchQuerySortRequest.
+type ClusterVariableSearchQuerySortRequest struct {
+	// Field The field to sort by.
+	Field ClusterVariableSearchQuerySortRequestField `json:"field"`
+
+	// Order The order in which to sort the related field.
+	Order *SortOrderEnum `json:"order,omitempty"`
+}
+
+// ClusterVariableSearchQuerySortRequestField The field to sort by.
+type ClusterVariableSearchQuerySortRequestField string
+
+// ClusterVariableSearchResult Cluster variable response item.
+type ClusterVariableSearchResult = ClusterVariableResultBase
+
 // CorrelatedMessageSubscriptionFilter Correlated message subscriptions search filter.
 type CorrelatedMessageSubscriptionFilter struct {
 	// CorrelationKey The correlation key of the message.
@@ -1683,14 +2211,14 @@ type CorrelatedMessageSubscriptionFilter struct {
 	// ProcessDefinitionId The process definition ID associated with this correlated message subscription.
 	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
 
-	// ProcessDefinitionKey The process definition key associated with this correlated message subscription.
-	ProcessDefinitionKey *BasicStringFilterProperty `json:"processDefinitionKey,omitempty"`
+	// ProcessDefinitionKey The process definition key associated with this correlated message subscription. For intermediate message events, this only works for data created with 8.9 and later.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
 
 	// ProcessInstanceKey The process instance key associated with this correlated message subscription.
-	ProcessInstanceKey *BasicStringFilterProperty `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
 
 	// SubscriptionKey The subscription key that received the message.
-	SubscriptionKey *BasicStringFilterProperty `json:"subscriptionKey,omitempty"`
+	SubscriptionKey *MessageSubscriptionKeyFilterProperty `json:"subscriptionKey,omitempty"`
 
 	// TenantId The tenant ID associated with this correlated message subscription.
 	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
@@ -1752,6 +2280,15 @@ type CorrelatedMessageSubscriptionSearchQuerySortRequest struct {
 
 // CorrelatedMessageSubscriptionSearchQuerySortRequestField The field to sort by.
 type CorrelatedMessageSubscriptionSearchQuerySortRequestField string
+
+// CreateClusterVariableRequest defines model for CreateClusterVariableRequest.
+type CreateClusterVariableRequest struct {
+	// Name The name of the cluster variable. Must be unique within its scope (global or tenant-specific).
+	Name string `json:"name"`
+
+	// Value The value of the cluster variable. Can be any JSON object or primitive value. Will be serialized as a JSON string in responses.
+	Value map[string]interface{} `json:"value"`
+}
 
 // CreateProcessInstanceResult defines model for CreateProcessInstanceResult.
 type CreateProcessInstanceResult struct {
@@ -1826,7 +2363,7 @@ type DecisionDefinitionFilter struct {
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// Version The assigned version of the decision definition.
-	Version *int32 `json:"version,omitempty"`
+	Version *int `json:"version,omitempty"`
 }
 
 // DecisionDefinitionId Id of a decision definition, from the model. Only ids of decision definitions that are deployed are useful.
@@ -1864,7 +2401,7 @@ type DecisionDefinitionResult struct {
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// Version The assigned version of the decision definition.
-	Version *int32 `json:"version,omitempty"`
+	Version *int `json:"version,omitempty"`
 }
 
 // DecisionDefinitionSearchQuery defines model for DecisionDefinitionSearchQuery.
@@ -1917,6 +2454,14 @@ type DecisionEvaluationByKey struct {
 // DecisionEvaluationInstanceKey Zeebe Engine resource key (Java long serialized as string)
 type DecisionEvaluationInstanceKey = LongKey
 
+// DecisionEvaluationInstanceKeyFilterProperty DecisionEvaluationInstanceKey property with full advanced search capabilities.
+type DecisionEvaluationInstanceKeyFilterProperty struct {
+	union json.RawMessage
+}
+
+// DecisionEvaluationInstanceKeyFilterProperty0 System-generated key for a decision evaluation instance.
+type DecisionEvaluationInstanceKeyFilterProperty0 = DecisionEvaluationInstanceKey
+
 // DecisionEvaluationInstruction defines model for DecisionEvaluationInstruction.
 type DecisionEvaluationInstruction struct {
 	union json.RawMessage
@@ -1942,8 +2487,8 @@ type DecisionInstanceFilter struct {
 	// DecisionDefinitionVersion The version of the decision.
 	DecisionDefinitionVersion *int32 `json:"decisionDefinitionVersion,omitempty"`
 
-	// DecisionEvaluationInstanceKey System-generated key for a decision evaluation instance.
-	DecisionEvaluationInstanceKey *DecisionEvaluationInstanceKey `json:"decisionEvaluationInstanceKey,omitempty"`
+	// DecisionEvaluationInstanceKey The key of the decision evaluation instance.
+	DecisionEvaluationInstanceKey *DecisionEvaluationInstanceKeyFilterProperty `json:"decisionEvaluationInstanceKey,omitempty"`
 
 	// DecisionEvaluationKey The key of the parent decision evaluation. Note that this is not the identifier of an individual decision instance; the `decisionEvaluationInstanceKey` is the identifier for a decision instance.
 	DecisionEvaluationKey *DecisionEvaluationKey `json:"decisionEvaluationKey,omitempty"`
@@ -1963,8 +2508,11 @@ type DecisionInstanceFilter struct {
 	// ProcessInstanceKey The key of the process instance.
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
 
+	// RootDecisionDefinitionKey The key of the root decision definition.
+	RootDecisionDefinitionKey *DecisionDefinitionKeyFilterProperty `json:"rootDecisionDefinitionKey,omitempty"`
+
 	// State The state of the decision instance.
-	State *DecisionInstanceStateEnum `json:"state,omitempty"`
+	State *DecisionInstanceStateFilterProperty `json:"state,omitempty"`
 
 	// TenantId The tenant ID of the decision instance.
 	TenantId *TenantId `json:"tenantId,omitempty"`
@@ -2017,6 +2565,9 @@ type DecisionInstanceGetQueryResult struct {
 	// Result The result of the decision instance.
 	Result *string `json:"result,omitempty"`
 
+	// RootDecisionDefinitionKey The key of the root decision definition.
+	RootDecisionDefinitionKey *DecisionDefinitionKey `json:"rootDecisionDefinitionKey,omitempty"`
+
 	// State The state of the decision instance.
 	State *DecisionInstanceStateEnum `json:"state,omitempty"`
 
@@ -2068,6 +2619,9 @@ type DecisionInstanceResult struct {
 	// Result The result of the decision instance.
 	Result *string `json:"result,omitempty"`
 
+	// RootDecisionDefinitionKey The key of the root decision definition.
+	RootDecisionDefinitionKey *DecisionDefinitionKey `json:"rootDecisionDefinitionKey,omitempty"`
+
 	// State The state of the decision instance.
 	State *DecisionInstanceStateEnum `json:"state,omitempty"`
 
@@ -2096,18 +2650,26 @@ type DecisionInstanceSearchQuerySortRequestField string
 // DecisionInstanceStateEnum The state of the decision instance.
 type DecisionInstanceStateEnum string
 
+// DecisionInstanceStateFilterProperty DecisionInstanceStateEnum property with full advanced search capabilities.
+type DecisionInstanceStateFilterProperty struct {
+	union json.RawMessage
+}
+
+// DecisionInstanceStateFilterProperty0 The state of the decision instance.
+type DecisionInstanceStateFilterProperty0 = DecisionInstanceStateEnum
+
 // DecisionRequirementsFilter Decision requirements search filter.
 type DecisionRequirementsFilter struct {
 	// DecisionRequirementsId the DMN ID of the decision requirements.
 	DecisionRequirementsId *string `json:"decisionRequirementsId,omitempty"`
 
-	// DecisionRequirementsKey The assigned key, which acts as a unique identifier for this decision requirements.
+	// DecisionRequirementsKey System-generated key for a deployed decision requirements definition.
 	DecisionRequirementsKey *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
 
 	// DecisionRequirementsName The DMN name of the decision requirements.
 	DecisionRequirementsName *string `json:"decisionRequirementsName,omitempty"`
 
-	// ResourceName The name of the resource from which the decision requirements were parsed.
+	// ResourceName The name of the resource from which the decision requirements were parsed
 	ResourceName *string `json:"resourceName,omitempty"`
 
 	// TenantId The tenant ID of the decision requirements.
@@ -2168,23 +2730,16 @@ type DeleteResourceRequest struct {
 
 // DeploymentDecisionRequirementsResult Deployed decision requirements.
 type DeploymentDecisionRequirementsResult struct {
-	// DecisionRequirementsId The dmn decision requirements ID, as parsed during deployment; together with the versions forms a unique identifier for a specific decision.
 	DecisionRequirementsId *string `json:"decisionRequirementsId,omitempty"`
 
 	// DecisionRequirementsKey The assigned decision requirements key, which acts as a unique identifier for this decision requirements.
-	DecisionRequirementsKey *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
-
-	// DecisionRequirementsName The DMN name of the decision requirements, as parsed during deployment.
-	DecisionRequirementsName *string `json:"decisionRequirementsName,omitempty"`
-
-	// ResourceName The resource name from which this decision requirements was parsed.
-	ResourceName *string `json:"resourceName,omitempty"`
+	DecisionRequirementsKey  *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
+	DecisionRequirementsName *string                  `json:"decisionRequirementsName,omitempty"`
+	ResourceName             *string                  `json:"resourceName,omitempty"`
 
 	// TenantId The tenant ID of the deployed decision requirements.
 	TenantId *TenantId `json:"tenantId,omitempty"`
-
-	// Version The assigned decision requirements version.
-	Version *int32 `json:"version,omitempty"`
+	Version  *int32    `json:"version,omitempty"`
 }
 
 // DeploymentDecisionResult A deployed decision.
@@ -2219,16 +2774,12 @@ type DeploymentFormResult struct {
 	FormId *FormId `json:"formId,omitempty"`
 
 	// FormKey The assigned key, which acts as a unique identifier for this form.
-	FormKey *FormKey `json:"formKey,omitempty"`
-
-	// ResourceName The resource name from which this form was parsed.
-	ResourceName *string `json:"resourceName,omitempty"`
+	FormKey      *FormKey `json:"formKey,omitempty"`
+	ResourceName *string  `json:"resourceName,omitempty"`
 
 	// TenantId The unique identifier of the tenant.
 	TenantId *TenantId `json:"tenantId,omitempty"`
-
-	// Version The assigned form version.
-	Version *int32 `json:"version,omitempty"`
+	Version  *int32    `json:"version,omitempty"`
 }
 
 // DeploymentKey Zeebe Engine resource key (Java long serialized as string)
@@ -2273,21 +2824,15 @@ type DeploymentProcessResult struct {
 
 // DeploymentResourceResult A deployed Resource.
 type DeploymentResourceResult struct {
-	// ResourceId The resource ID, as parsed during deployment, together with the version forms a
-	// unique identifier for a specific form.
 	ResourceId *string `json:"resourceId,omitempty"`
 
 	// ResourceKey The assigned key, which acts as a unique identifier for this Resource.
-	ResourceKey *ResourceKey `json:"resourceKey,omitempty"`
-
-	// ResourceName The resource name from which this resource was parsed.
-	ResourceName *string `json:"resourceName,omitempty"`
+	ResourceKey  *ResourceKey `json:"resourceKey,omitempty"`
+	ResourceName *string      `json:"resourceName,omitempty"`
 
 	// TenantId The unique identifier of the tenant.
 	TenantId *TenantId `json:"tenantId,omitempty"`
-
-	// Version The assigned resource version.
-	Version *int32 `json:"version,omitempty"`
+	Version  *int32    `json:"version,omitempty"`
 }
 
 // DeploymentResult defines model for DeploymentResult.
@@ -2304,20 +2849,26 @@ type DeploymentResult struct {
 
 // DocumentCreationBatchResponse defines model for DocumentCreationBatchResponse.
 type DocumentCreationBatchResponse struct {
-	// CreatedDocuments Documents that were successfully created.
+	// CreatedDocuments Documents that failed creation.
 	CreatedDocuments *[]DocumentReference `json:"createdDocuments,omitempty"`
 
-	// FailedDocuments Documents that failed creation.
+	// FailedDocuments Documents that were successfully created.
 	FailedDocuments *[]DocumentCreationFailureDetail `json:"failedDocuments,omitempty"`
 }
 
 // DocumentCreationFailureDetail defines model for DocumentCreationFailureDetail.
 type DocumentCreationFailureDetail struct {
-	// Detail The detail of the failure.
+	// Detail A human-readable explanation specific to this occurrence of the problem.
 	Detail *string `json:"detail,omitempty"`
 
-	// FileName The name of the file.
+	// FileName The name of the file that failed to upload.
 	FileName *string `json:"fileName,omitempty"`
+
+	// Status The HTTP status code of the failure.
+	Status *int32 `json:"status,omitempty"`
+
+	// Title A short, human-readable summary of the problem type.
+	Title *string `json:"title,omitempty"`
 }
 
 // DocumentId Document Id that uniquely identifies a document.
@@ -2522,6 +3073,14 @@ type ElementInstanceStateFilterProperty0 = ElementInstanceStateEnum
 // EndCursor The end cursor in a search query result set.
 type EndCursor = string
 
+// EntityTypeFilterProperty AuditLogEntityTypeEnum property with full advanced search capabilities.
+type EntityTypeFilterProperty struct {
+	union json.RawMessage
+}
+
+// EntityTypeFilterProperty0 defines model for .
+type EntityTypeFilterProperty0 = AuditLogEntityTypeEnum
+
 // EvaluateDecisionResult defines model for EvaluateDecisionResult.
 type EvaluateDecisionResult struct {
 	// DecisionDefinitionId The ID of the decision which was evaluated.
@@ -2567,26 +3126,18 @@ type EvaluateDecisionResult struct {
 
 // EvaluatedDecisionInputItem A decision input that was evaluated within this decision evaluation.
 type EvaluatedDecisionInputItem struct {
-	// InputId The ID of the evaluated decision input.
-	InputId *string `json:"inputId,omitempty"`
-
-	// InputName The name of the evaluated decision input.
-	InputName *string `json:"inputName,omitempty"`
-
-	// InputValue The value of the evaluated decision input.
+	InputId    *string `json:"inputId,omitempty"`
+	InputName  *string `json:"inputName,omitempty"`
 	InputValue *string `json:"inputValue,omitempty"`
 }
 
 // EvaluatedDecisionOutputItem The evaluated decision outputs.
 type EvaluatedDecisionOutputItem struct {
-	// OutputId The ID of the evaluated decision output.
-	OutputId *string `json:"outputId,omitempty"`
-
-	// OutputName The name of the evaluated decision output.
-	OutputName *string `json:"outputName,omitempty"`
-
-	// OutputValue The value of the evaluated decision output.
+	OutputId    *string `json:"outputId,omitempty"`
+	OutputName  *string `json:"outputName,omitempty"`
 	OutputValue *string `json:"outputValue,omitempty"`
+	RuleId      *string `json:"ruleId,omitempty"`
+	RuleIndex   *int32  `json:"ruleIndex,omitempty"`
 }
 
 // EvaluatedDecisionResult A decision that was evaluated.
@@ -2778,50 +3329,53 @@ type GroupUserSearchQuerySortRequestField string
 // GroupUserSearchResult defines model for GroupUserSearchResult.
 type GroupUserSearchResult = SearchQueryResponse
 
+// IncidentErrorTypeEnum Incident error type with a defined set of values.
+type IncidentErrorTypeEnum = interface{}
+
+// IncidentErrorTypeFilterProperty IncidentErrorTypeEnum with full advanced search capabilities.
+type IncidentErrorTypeFilterProperty struct {
+	union json.RawMessage
+}
+
+// IncidentErrorTypeFilterProperty0 Incident error type with a defined set of values.
+type IncidentErrorTypeFilterProperty0 = IncidentErrorTypeEnum
+
 // IncidentFilter Incident search filter.
 type IncidentFilter struct {
 	// CreationTime Date of incident creation.
-	CreationTime *time.Time `json:"creationTime,omitempty"`
+	CreationTime *DateTimeFilterProperty `json:"creationTime,omitempty"`
 
 	// ElementId The element ID associated to this incident.
-	ElementId *ElementId `json:"elementId,omitempty"`
+	ElementId *StringFilterProperty `json:"elementId,omitempty"`
 
 	// ElementInstanceKey The element instance key associated to this incident.
-	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
-
-	// ErrorMessage Error message which describes the error in more detail.
-	ErrorMessage *string `json:"errorMessage,omitempty"`
+	ElementInstanceKey *ElementInstanceKeyFilterProperty `json:"elementInstanceKey,omitempty"`
+	ErrorMessage       *StringFilterProperty             `json:"errorMessage,omitempty"`
 
 	// ErrorType Incident error type with a defined set of values.
-	ErrorType *IncidentFilterErrorType `json:"errorType,omitempty"`
+	ErrorType *IncidentErrorTypeFilterProperty `json:"errorType,omitempty"`
 
 	// IncidentKey The assigned key, which acts as a unique identifier for this incident.
-	IncidentKey *IncidentKey `json:"incidentKey,omitempty"`
+	IncidentKey *BasicStringFilterProperty `json:"incidentKey,omitempty"`
 
 	// JobKey The job key, if exists, associated with this incident.
-	JobKey *JobKey `json:"jobKey,omitempty"`
+	JobKey *JobKeyFilterProperty `json:"jobKey,omitempty"`
 
 	// ProcessDefinitionId The process definition ID associated to this incident.
-	ProcessDefinitionId *ProcessDefinitionId `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
 
 	// ProcessDefinitionKey The process definition key associated to this incident.
-	ProcessDefinitionKey *ProcessDefinitionKey `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
 
 	// ProcessInstanceKey The process instance key associated to this incident.
-	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
 
 	// State State of this incident with a defined set of values.
-	State *IncidentFilterState `json:"state,omitempty"`
+	State *IncidentStateFilterProperty `json:"state,omitempty"`
 
 	// TenantId The tenant ID of the incident.
-	TenantId *TenantId `json:"tenantId,omitempty"`
+	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
 }
-
-// IncidentFilterErrorType Incident error type with a defined set of values.
-type IncidentFilterErrorType string
-
-// IncidentFilterState State of this incident with a defined set of values.
-type IncidentFilterState string
 
 // IncidentKey Zeebe Engine resource key (Java long serialized as string)
 type IncidentKey = LongKey
@@ -2835,7 +3389,6 @@ type IncidentResolutionRequest struct {
 
 // IncidentResult defines model for IncidentResult.
 type IncidentResult struct {
-	// CreationTime Date of incident creation.
 	CreationTime *time.Time `json:"creationTime,omitempty"`
 
 	// ElementId The element ID associated to this incident.
@@ -2845,10 +3398,8 @@ type IncidentResult struct {
 	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
 
 	// ErrorMessage Error message which describes the error in more detail.
-	ErrorMessage *string `json:"errorMessage,omitempty"`
-
-	// ErrorType Incident error type with a defined set of values.
-	ErrorType *IncidentResultErrorType `json:"errorType,omitempty"`
+	ErrorMessage *string                `json:"errorMessage,omitempty"`
+	ErrorType    *IncidentErrorTypeEnum `json:"errorType,omitempty"`
 
 	// IncidentKey The assigned key, which acts as a unique identifier for this incident.
 	IncidentKey *IncidentKey `json:"incidentKey,omitempty"`
@@ -2864,19 +3415,11 @@ type IncidentResult struct {
 
 	// ProcessInstanceKey The process instance key associated to this incident.
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
-
-	// State State of this incident with a defined set of values.
-	State *IncidentResultState `json:"state,omitempty"`
+	State              *IncidentStateEnum  `json:"state,omitempty"`
 
 	// TenantId The tenant ID of the incident.
 	TenantId *TenantId `json:"tenantId,omitempty"`
 }
-
-// IncidentResultErrorType Incident error type with a defined set of values.
-type IncidentResultErrorType string
-
-// IncidentResultState State of this incident with a defined set of values.
-type IncidentResultState string
 
 // IncidentSearchQuery defines model for IncidentSearchQuery.
 type IncidentSearchQuery = SearchQueryRequest
@@ -2895,6 +3438,17 @@ type IncidentSearchQuerySortRequest struct {
 
 // IncidentSearchQuerySortRequestField The field to sort by.
 type IncidentSearchQuerySortRequestField string
+
+// IncidentStateEnum Incident states with a defined set of values.
+type IncidentStateEnum = interface{}
+
+// IncidentStateFilterProperty IncidentStateEnum with full advanced search capabilities.
+type IncidentStateFilterProperty struct {
+	union json.RawMessage
+}
+
+// IncidentStateFilterProperty0 Incident states with a defined set of values.
+type IncidentStateFilterProperty0 = IncidentStateEnum
 
 // IntegerFilterProperty Integer property with advanced search capabilities.
 type IntegerFilterProperty struct {
@@ -2921,7 +3475,7 @@ type JobActivationRequest struct {
 	// Timeout A job returned after this call will not be activated by another call until the timeout (in ms) has been reached.
 	Timeout int64 `json:"timeout"`
 
-	// Type The job type, as defined in the BPMN process (e.g. <zeebe:taskDefinition type="payment-service" />).
+	// Type The job type, as defined in the BPMN process (e.g. <zeebe:taskDefinition type="payment-service" />)
 	Type string `json:"type"`
 
 	// Worker The name of the worker activating the jobs, mostly used for logging purposes.
@@ -2934,22 +3488,12 @@ type JobActivationResult struct {
 	Jobs []ActivatedJobResult `json:"jobs"`
 }
 
-// JobChangeset JSON object with changed job attribute values.
-//
-// The following attributes can be adjusted with this endpoint, additional attributes
-// will be ignored:
-//
-// * `retries` - The new amount of retries for the job; must be a positive number.
-// * `timeout` - The duration of the new timeout in ms, starting from the current moment.
-//
-// Providing any of those attributes with a null value or omitting it preserves the persisted attribute’s value.
-//
-// The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
+// JobChangeset JSON object with changed job attribute values. The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
 type JobChangeset struct {
-	// Retries The new amount of retries for the job; must be a positive number.
+	// Retries The new number of retries for the job.
 	Retries *int32 `json:"retries"`
 
-	// Timeout The duration of the new timeout in ms, starting from the current moment.
+	// Timeout The new timeout for the job in milliseconds.
 	Timeout *int64 `json:"timeout"`
 }
 
@@ -2976,13 +3520,13 @@ type JobErrorRequest struct {
 
 // JobFailRequest defines model for JobFailRequest.
 type JobFailRequest struct {
-	// ErrorMessage An optional message describing why the job failed. This is particularly useful if a job runs out of retries and an incident is raised, as this message can help explain why an incident was raised.
+	// ErrorMessage An optional error message describing why the job failed; if not provided, an empty string is used.
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 
 	// Retries The amount of retries the job should have left
 	Retries *int32 `json:"retries,omitempty"`
 
-	// RetryBackOff The backoff timeout (in ms) for the next retry.
+	// RetryBackOff An optional retry back off for the failed job. The job will not be retryable before the current time plus the back off time. The default is 0 which means the job is retryable immediately.
 	RetryBackOff *int64 `json:"retryBackOff,omitempty"`
 
 	// Variables JSON object that will instantiate the variables at the local scope of the job's associated task.
@@ -2991,6 +3535,9 @@ type JobFailRequest struct {
 
 // JobFilter Job search filter.
 type JobFilter struct {
+	// CreationTime When the job was created. Field is present for jobs created after 8.9.
+	CreationTime *DateTimeFilterProperty `json:"creationTime,omitempty"`
+
 	// Deadline When the job can next be activated.
 	Deadline *DateTimeFilterProperty `json:"deadline"`
 
@@ -3023,6 +3570,9 @@ type JobFilter struct {
 
 	// Kind The kind of the job.
 	Kind *JobKindFilterProperty `json:"kind,omitempty"`
+
+	// LastUpdateTime When the job was last updated. Field is present for jobs created after 8.9.
+	LastUpdateTime *DateTimeFilterProperty `json:"lastUpdateTime,omitempty"`
 
 	// ListenerEventType The listener event type of the job.
 	ListenerEventType *JobListenerEventTypeFilterProperty `json:"listenerEventType,omitempty"`
@@ -3087,25 +3637,19 @@ type JobListenerEventTypeFilterProperty0 = JobListenerEventTypeEnum
 
 // JobResult The result of the completed job as determined by the worker.
 type JobResult struct {
-	// Type Used to distinguish between different types of job results.
-	Type  JobResultType `json:"type"`
 	union json.RawMessage
 }
 
-// JobResultType Used to distinguish between different types of job results.
-type JobResultType string
-
-// JobResultActivateElement defines model for JobResultActivateElement.
+// JobResultActivateElement Instruction to activate a single BPMN element within an ad‑hoc sub‑process, optionally providing variables scoped to that element.
 type JobResultActivateElement struct {
-	// ElementId The ID of the element to activate.
+	// ElementId The element ID to activate.
 	ElementId *ElementId `json:"elementId,omitempty"`
 
-	// Variables JSON document that will create the variables on the scope of the activated element.
-	// It must be a JSON object, as variables will be mapped in a key-value fashion.
-	Variables *map[string]interface{} `json:"variables"`
+	// Variables Variables for the element.
+	Variables *map[string]interface{} `json:"variables,omitempty"`
 }
 
-// JobResultAdHocSubProcess defines model for JobResultAdHocSubProcess.
+// JobResultAdHocSubProcess Job result details for an ad‑hoc sub‑process, including elements to activate and flags indicating completion or cancellation behavior.
 type JobResultAdHocSubProcess struct {
 	// ActivateElements Indicates which elements need to be activated in the ad-hoc subprocess.
 	ActivateElements *[]JobResultActivateElement `json:"activateElements,omitempty"`
@@ -3115,7 +3659,13 @@ type JobResultAdHocSubProcess struct {
 
 	// IsCompletionConditionFulfilled Indicates whether the completion condition of the ad-hoc subprocess is fulfilled.
 	IsCompletionConditionFulfilled *bool `json:"isCompletionConditionFulfilled,omitempty"`
+
+	// Type Used to distinguish between different types of job results.
+	Type JobResultAdHocSubProcessType `json:"type"`
 }
+
+// JobResultAdHocSubProcessType Used to distinguish between different types of job results.
+type JobResultAdHocSubProcessType string
 
 // JobResultCorrections JSON object with attributes that were corrected by the worker.
 //
@@ -3150,7 +3700,7 @@ type JobResultCorrections struct {
 	Priority *int32 `json:"priority"`
 }
 
-// JobResultUserTask defines model for JobResultUserTask.
+// JobResultUserTask Job result details for a user task completion, optionally including a denial reason and corrected task properties.
 type JobResultUserTask struct {
 	// Corrections JSON object with attributes that were corrected by the worker.
 	//
@@ -3172,7 +3722,13 @@ type JobResultUserTask struct {
 
 	// DeniedReason The reason provided by the user task listener for denying the work.
 	DeniedReason *string `json:"deniedReason"`
+
+	// Type Used to distinguish between different types of job results.
+	Type JobResultUserTaskType `json:"type"`
 }
+
+// JobResultUserTaskType Used to distinguish between different types of job results.
+type JobResultUserTaskType string
 
 // JobSearchQuery defines model for JobSearchQuery.
 type JobSearchQuery = SearchQueryRequest
@@ -3194,6 +3750,9 @@ type JobSearchQuerySortRequestField string
 
 // JobSearchResult defines model for JobSearchResult.
 type JobSearchResult struct {
+	// CreationTime When the job was created. Field is present for jobs created after 8.9.
+	CreationTime *time.Time `json:"creationTime,omitempty"`
+
 	// CustomHeaders A set of custom headers defined during modelling.
 	CustomHeaders map[string]string `json:"customHeaders"`
 
@@ -3219,7 +3778,7 @@ type JobSearchResult struct {
 	ErrorMessage *string `json:"errorMessage"`
 
 	// HasFailedWithRetriesLeft Indicates whether the job has failed with retries left.
-	HasFailedWithRetriesLeft *bool `json:"hasFailedWithRetriesLeft,omitempty"`
+	HasFailedWithRetriesLeft bool `json:"hasFailedWithRetriesLeft"`
 
 	// IsDenied Indicates whether the user task listener denies the work.
 	IsDenied *bool `json:"isDenied"`
@@ -3229,6 +3788,9 @@ type JobSearchResult struct {
 
 	// Kind The job kind.
 	Kind JobKindEnum `json:"kind"`
+
+	// LastUpdateTime When the job was last updated. Field is present for jobs created after 8.9.
+	LastUpdateTime *time.Time `json:"lastUpdateTime,omitempty"`
 
 	// ListenerEventType The listener event type of the job.
 	ListenerEventType JobListenerEventTypeEnum `json:"listenerEventType"`
@@ -3271,17 +3833,7 @@ type JobStateFilterProperty0 = JobStateEnum
 
 // JobUpdateRequest defines model for JobUpdateRequest.
 type JobUpdateRequest struct {
-	// Changeset JSON object with changed job attribute values.
-	//
-	// The following attributes can be adjusted with this endpoint, additional attributes
-	// will be ignored:
-	//
-	// * `retries` - The new amount of retries for the job; must be a positive number.
-	// * `timeout` - The duration of the new timeout in ms, starting from the current moment.
-	//
-	// Providing any of those attributes with a null value or omitting it preserves the persisted attribute’s value.
-	//
-	// The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
+	// Changeset JSON object with changed job attribute values. The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
 	Changeset JobChangeset `json:"changeset"`
 
 	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
@@ -3313,6 +3865,12 @@ type LicenseResponse struct {
 //
 // Wildcard characters can be escaped with backslash, for instance: `\*`.
 type LikeFilter = string
+
+// LimitPagination defines model for LimitPagination.
+type LimitPagination struct {
+	// Limit The maximum number of items to return in one request.
+	Limit *int32 `json:"limit,omitempty"`
+}
 
 // LongKey Zeebe Engine resource key (Java long serialized as string)
 type LongKey = string
@@ -3437,8 +3995,8 @@ type MessageCorrelationRequest struct {
 // MessageCorrelationResult The message key of the correlated message, as well as the first process instance key it
 // correlated with.
 type MessageCorrelationResult struct {
-	// MessageKey The key of the correlated message
-	MessageKey *MessageCorrelationKey `json:"messageKey,omitempty"`
+	// MessageKey The key of the correlated message.
+	MessageKey *MessageKey `json:"messageKey,omitempty"`
 
 	// ProcessInstanceKey The key of the first process instance the message correlated with
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
@@ -3474,7 +4032,7 @@ type MessagePublicationRequest struct {
 
 // MessagePublicationResult The message key of the published message.
 type MessagePublicationResult struct {
-	// MessageKey The key of the message
+	// MessageKey The key of the published message.
 	MessageKey *MessageKey `json:"messageKey,omitempty"`
 
 	// TenantId The tenant ID of the message.
@@ -3506,6 +4064,9 @@ type MessageSubscriptionFilter struct {
 
 	// ProcessDefinitionId The process definition ID associated with this message subscription.
 	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The process definition key associated with this correlated message subscription. This only works for data created with 8.9 and later.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
 
 	// ProcessInstanceKey The process instance key associated with this message subscription.
 	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
@@ -3623,6 +4184,14 @@ type OffsetPagination struct {
 // Must be > 0 if provided.
 type OperationReference = int64
 
+// OperationTypeFilterProperty AuditLogOperationTypeEnum property with full advanced search capabilities.
+type OperationTypeFilterProperty struct {
+	union json.RawMessage
+}
+
+// OperationTypeFilterProperty0 defines model for .
+type OperationTypeFilterProperty0 = AuditLogOperationTypeEnum
+
 // OwnerTypeEnum The type of the owner of permissions.
 type OwnerTypeEnum string
 
@@ -3711,6 +4280,126 @@ type ProcessDefinitionFilter struct {
 
 // ProcessDefinitionId Id of a process definition, from the model. Only ids of process definitions that are deployed are useful.
 type ProcessDefinitionId = string
+
+// ProcessDefinitionInstanceStatisticsPageRequest defines model for ProcessDefinitionInstanceStatisticsPageRequest.
+type ProcessDefinitionInstanceStatisticsPageRequest struct {
+	// From The index of items to start searching from.
+	From *int32 `json:"from,omitempty"`
+
+	// Limit The maximum number of items to return in one request.
+	Limit *int `json:"limit,omitempty"`
+}
+
+// ProcessDefinitionInstanceStatisticsPageResponse Pagination information about the search results.
+type ProcessDefinitionInstanceStatisticsPageResponse struct {
+	// HasMoreTotalItems Indicates whether there are more items matching the criteria.
+	HasMoreTotalItems *bool `json:"hasMoreTotalItems,omitempty"`
+
+	// TotalItems Total items matching the criteria.
+	TotalItems *int64 `json:"totalItems,omitempty"`
+}
+
+// ProcessDefinitionInstanceStatisticsQuery defines model for ProcessDefinitionInstanceStatisticsQuery.
+type ProcessDefinitionInstanceStatisticsQuery struct {
+	// Filter The process definition instance statistics filters.
+	Filter *ProcessInstanceFilter `json:"filter,omitempty"`
+
+	// Page Pagination criteria.
+	Page *ProcessDefinitionInstanceStatisticsPageRequest `json:"page,omitempty"`
+
+	// Sort Sort field criteria.
+	Sort *[]ProcessDefinitionInstanceStatisticsQuerySortRequest `json:"sort,omitempty"`
+}
+
+// ProcessDefinitionInstanceStatisticsQueryResult Process definition instance statistics query response.
+type ProcessDefinitionInstanceStatisticsQueryResult struct {
+	// Items The process definition instance statistics result.
+	Items *[]ProcessDefinitionInstanceStatisticsResult `json:"items,omitempty"`
+
+	// Page Pagination information about the search results.
+	Page *ProcessDefinitionInstanceStatisticsPageResponse `json:"page,omitempty"`
+}
+
+// ProcessDefinitionInstanceStatisticsQuerySortRequest defines model for ProcessDefinitionInstanceStatisticsQuerySortRequest.
+type ProcessDefinitionInstanceStatisticsQuerySortRequest struct {
+	// Field The field to sort by.
+	Field ProcessDefinitionInstanceStatisticsQuerySortRequestField `json:"field"`
+
+	// Order The order in which to sort the related field.
+	Order *SortOrderEnum `json:"order,omitempty"`
+}
+
+// ProcessDefinitionInstanceStatisticsQuerySortRequestField The field to sort by.
+type ProcessDefinitionInstanceStatisticsQuerySortRequestField string
+
+// ProcessDefinitionInstanceStatisticsResult Process definition instance statistics response.
+type ProcessDefinitionInstanceStatisticsResult struct {
+	// ActiveInstancesWithIncidentCount Total number of currently active process instances of this definition that have at least one incident.
+	ActiveInstancesWithIncidentCount *int64 `json:"activeInstancesWithIncidentCount,omitempty"`
+
+	// ActiveInstancesWithoutIncidentCount Total number of currently active process instances of this definition that do not have incidents.
+	ActiveInstancesWithoutIncidentCount *int64 `json:"activeInstancesWithoutIncidentCount,omitempty"`
+
+	// HasMultipleVersions Indicates whether multiple versions of this process definition instance are deployed.
+	HasMultipleVersions *bool `json:"hasMultipleVersions,omitempty"`
+
+	// LatestProcessDefinitionName Name of the latest deployed process definition instance version.
+	LatestProcessDefinitionName *string `json:"latestProcessDefinitionName,omitempty"`
+
+	// ProcessDefinitionId Id of a process definition, from the model. Only ids of process definitions that are deployed are useful.
+	ProcessDefinitionId *ProcessDefinitionId `json:"processDefinitionId,omitempty"`
+}
+
+// ProcessDefinitionInstanceVersionStatisticsQuery defines model for ProcessDefinitionInstanceVersionStatisticsQuery.
+type ProcessDefinitionInstanceVersionStatisticsQuery struct {
+	// Page Pagination criteria.
+	Page *ProcessDefinitionInstanceStatisticsPageRequest `json:"page,omitempty"`
+
+	// Sort Sort field criteria.
+	Sort *[]ProcessDefinitionInstanceVersionStatisticsQuerySortRequest `json:"sort,omitempty"`
+}
+
+// ProcessDefinitionInstanceVersionStatisticsQueryResult Process definition instance version statistics query response.
+type ProcessDefinitionInstanceVersionStatisticsQueryResult struct {
+	// Items The process definition instance version statistics result.
+	Items *[]ProcessDefinitionInstanceVersionStatisticsResult `json:"items,omitempty"`
+
+	// Page Pagination information about the search results.
+	Page *ProcessDefinitionInstanceStatisticsPageResponse `json:"page,omitempty"`
+}
+
+// ProcessDefinitionInstanceVersionStatisticsQuerySortRequest defines model for ProcessDefinitionInstanceVersionStatisticsQuerySortRequest.
+type ProcessDefinitionInstanceVersionStatisticsQuerySortRequest struct {
+	// Field The field to sort by.
+	Field ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField `json:"field"`
+
+	// Order The order in which to sort the related field.
+	Order *SortOrderEnum `json:"order,omitempty"`
+}
+
+// ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField The field to sort by.
+type ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField string
+
+// ProcessDefinitionInstanceVersionStatisticsResult Process definition instance version statistics response.
+type ProcessDefinitionInstanceVersionStatisticsResult struct {
+	// ActiveInstancesWithIncidentCount The number of active process instances for this version that currently have incidents.
+	ActiveInstancesWithIncidentCount int64 `json:"activeInstancesWithIncidentCount"`
+
+	// ActiveInstancesWithoutIncidentCount The number of active process instances for this version that do not have any incidents.
+	ActiveInstancesWithoutIncidentCount int64 `json:"activeInstancesWithoutIncidentCount"`
+
+	// ProcessDefinitionId The ID associated with the process definition.
+	ProcessDefinitionId ProcessDefinitionId `json:"processDefinitionId"`
+
+	// ProcessDefinitionKey The unique key of the process definition.
+	ProcessDefinitionKey ProcessDefinitionKey `json:"processDefinitionKey"`
+
+	// ProcessDefinitionName The name of the process definition.
+	ProcessDefinitionName string `json:"processDefinitionName"`
+
+	// ProcessDefinitionVersion The version number of the process definition.
+	ProcessDefinitionVersion int32 `json:"processDefinitionVersion"`
+}
 
 // ProcessDefinitionKey Zeebe Engine resource key (Java long serialized as string)
 type ProcessDefinitionKey = LongKey
@@ -3886,8 +4575,12 @@ type ProcessInstanceCallHierarchyEntry struct {
 
 // ProcessInstanceCancellationBatchOperationRequest The process instance filter that defines which process instances should be canceled.
 type ProcessInstanceCancellationBatchOperationRequest struct {
-	// Filter Process instance search filter.
+	// Filter The process instance filter.
 	Filter ProcessInstanceFilter `json:"filter"`
+
+	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
+	// Must be > 0 if provided.
+	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
 // ProcessInstanceCreationInstruction Instructions for creating a process instance. The process definition can be specified
@@ -3990,15 +4683,10 @@ type ProcessInstanceCreationInstructionByKey struct {
 	Variables *map[string]interface{} `json:"variables,omitempty"`
 }
 
-// ProcessInstanceCreationRuntimeInstruction Runtime instructions
+// ProcessInstanceCreationRuntimeInstruction defines model for ProcessInstanceCreationRuntimeInstruction.
 type ProcessInstanceCreationRuntimeInstruction struct {
-	// Type The type of the runtime instruction
-	Type  ProcessInstanceCreationRuntimeInstructionType `json:"type"`
 	union json.RawMessage
 }
-
-// ProcessInstanceCreationRuntimeInstructionType The type of the runtime instruction
-type ProcessInstanceCreationRuntimeInstructionType string
 
 // ProcessInstanceCreationStartInstruction defines model for ProcessInstanceCreationStartInstruction.
 type ProcessInstanceCreationStartInstruction struct {
@@ -4014,7 +4702,13 @@ type ProcessInstanceCreationStartInstruction struct {
 type ProcessInstanceCreationTerminateInstruction struct {
 	// AfterElementId The ID of the element that, once completed or terminated, will cause the process to be terminated.
 	AfterElementId ElementId `json:"afterElementId"`
+
+	// Type The type of the runtime instruction
+	Type ProcessInstanceCreationTerminateInstructionType `json:"type"`
 }
+
+// ProcessInstanceCreationTerminateInstructionType The type of the runtime instruction
+type ProcessInstanceCreationTerminateInstructionType string
 
 // ProcessInstanceElementStatisticsQueryResult Process instance element statistics query response.
 type ProcessInstanceElementStatisticsQueryResult struct {
@@ -4113,12 +4807,13 @@ type ProcessInstanceFilterFields = BaseProcessInstanceFilterFields
 
 // ProcessInstanceIncidentResolutionBatchOperationRequest The process instance filter that defines which process instances should have their incidents resolved.
 type ProcessInstanceIncidentResolutionBatchOperationRequest struct {
-	// Filter Process instance search filter.
+	// Filter The process instance filter.
 	Filter ProcessInstanceFilter `json:"filter"`
-}
 
-// ProcessInstanceIncidentSearchQuery defines model for ProcessInstanceIncidentSearchQuery.
-type ProcessInstanceIncidentSearchQuery = SearchQueryRequest
+	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
+	// Must be > 0 if provided.
+	OperationReference *OperationReference `json:"operationReference,omitempty"`
+}
 
 // ProcessInstanceKey Zeebe Engine resource key (Java long serialized as string)
 type ProcessInstanceKey = LongKey
@@ -4133,20 +4828,24 @@ type ProcessInstanceKeyFilterProperty0 = ProcessInstanceKey
 
 // ProcessInstanceMigrationBatchOperationPlan The migration instructions describe how to migrate a process instance from one process definition to another.
 type ProcessInstanceMigrationBatchOperationPlan struct {
-	// MappingInstructions Element mappings from the source process instance to the target process instance.
+	// MappingInstructions The mapping instructions.
 	MappingInstructions []MigrateProcessInstanceMappingInstruction `json:"mappingInstructions"`
 
-	// TargetProcessDefinitionKey The key of process definition to migrate the process instance to.
+	// TargetProcessDefinitionKey The target process definition key.
 	TargetProcessDefinitionKey ProcessDefinitionKey `json:"targetProcessDefinitionKey"`
 }
 
 // ProcessInstanceMigrationBatchOperationRequest defines model for ProcessInstanceMigrationBatchOperationRequest.
 type ProcessInstanceMigrationBatchOperationRequest struct {
-	// Filter Process instance search filter.
+	// Filter The process instance filter.
 	Filter ProcessInstanceFilter `json:"filter"`
 
-	// MigrationPlan The migration instructions describe how to migrate a process instance from one process definition to another.
+	// MigrationPlan The migration plan.
 	MigrationPlan ProcessInstanceMigrationBatchOperationPlan `json:"migrationPlan"`
+
+	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
+	// Must be > 0 if provided.
+	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
 // ProcessInstanceMigrationInstruction The migration instructions describe how to migrate a process instance from one process definition to another.
@@ -4187,14 +4886,17 @@ type ProcessInstanceModificationActivateInstruction_AncestorElementInstanceKey s
 }
 
 // ProcessInstanceModificationBatchOperationRequest The process instance filter to define on which process instances tokens should be moved,
-// as well as mapping instructions which active element instances should be terminated and which
-// new element instances should be activated
+// and new element instances should be activated or terminated.
 type ProcessInstanceModificationBatchOperationRequest struct {
-	// Filter Process instance search filter.
+	// Filter The process instance filter.
 	Filter ProcessInstanceFilter `json:"filter"`
 
-	// MoveInstructions Instructions describing which elements should be activated in which scopes and which variables should be created.
+	// MoveInstructions Instructions for moving tokens between elements.
 	MoveInstructions []ProcessInstanceModificationMoveBatchOperationInstruction `json:"moveInstructions"`
+
+	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
+	// Must be > 0 if provided.
+	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
 // ProcessInstanceModificationInstruction defines model for ProcessInstanceModificationInstruction.
@@ -4213,10 +4915,10 @@ type ProcessInstanceModificationInstruction struct {
 // ProcessInstanceModificationMoveBatchOperationInstruction Instructions describing a move operation. This instruction will terminate all active elementInstance
 // at sourceElementId and activate a new element instance for each terminated one at targetElementId.
 type ProcessInstanceModificationMoveBatchOperationInstruction struct {
-	// SourceElementId The ID of the element that should be terminated.
+	// SourceElementId The source element ID.
 	SourceElementId ElementId `json:"sourceElementId"`
 
-	// TargetElementId The ID of the element that should be activated.
+	// TargetElementId The target element ID.
 	TargetElementId ElementId `json:"targetElementId"`
 }
 
@@ -4228,7 +4930,6 @@ type ProcessInstanceModificationTerminateInstruction struct {
 
 // ProcessInstanceResult Process instance search response item.
 type ProcessInstanceResult struct {
-	// EndDate The end date.
 	EndDate *time.Time `json:"endDate,omitempty"`
 
 	// HasIncident Whether this process instance has a related incident or not.
@@ -4247,19 +4948,15 @@ type ProcessInstanceResult struct {
 	ProcessDefinitionKey ProcessDefinitionKey `json:"processDefinitionKey"`
 
 	// ProcessDefinitionName The process definition name.
-	ProcessDefinitionName string `json:"processDefinitionName"`
-
-	// ProcessDefinitionVersion The process definition version.
-	ProcessDefinitionVersion int32 `json:"processDefinitionVersion"`
+	ProcessDefinitionName    string `json:"processDefinitionName"`
+	ProcessDefinitionVersion int32  `json:"processDefinitionVersion"`
 
 	// ProcessDefinitionVersionTag The process definition version tag.
 	ProcessDefinitionVersionTag *string `json:"processDefinitionVersionTag,omitempty"`
 
 	// ProcessInstanceKey The key of this process instance.
 	ProcessInstanceKey ProcessInstanceKey `json:"processInstanceKey"`
-
-	// StartDate The start date.
-	StartDate time.Time `json:"startDate"`
+	StartDate          time.Time          `json:"startDate"`
 
 	// State Process instance states
 	State ProcessInstanceStateEnum `json:"state"`
@@ -4531,7 +5228,8 @@ type SearchQueryPageResponse struct {
 	// EndCursor The cursor value for getting the next page of results. Use this in the `after` field of an ensuing request.
 	EndCursor *EndCursor `json:"endCursor,omitempty"`
 
-	// HasMoreTotalItems Indicates if more results exist beyond the reported totalItems value. Due to system limitations, the totalItems value can be capped.
+	// HasMoreTotalItems Indicates whether there are more items matching the criteria beyond the returned items.
+	// This is useful for determining if additional requests are needed to retrieve all results.
 	HasMoreTotalItems *bool `json:"hasMoreTotalItems,omitempty"`
 
 	// StartCursor The cursor value for getting the previous page of results. Use this in the `before` field of an ensuing request.
@@ -4557,17 +5255,13 @@ type SearchQueryResponse struct {
 type SetVariableRequest struct {
 	// Local If set to true, the variables are merged strictly into the local scope (as specified by the `elementInstanceKey`).
 	// Otherwise, the variables are propagated to upper scopes and set at the outermost one.
-	//
 	// Let’s consider the following example:
-	//
 	// There are two scopes '1' and '2'.
 	// Scope '1' is the parent scope of '2'. The effective variables of the scopes are:
 	// 1 => { "foo" : 2 }
 	// 2 => { "bar" : 1 }
-	//
 	// An update request with elementInstanceKey as '2', variables { "foo" : 5 }, and local set
 	// to true leaves scope '1' unchanged and adjusts scope '2' to { "bar" : 1, "foo" 5 }.
-	//
 	// By default, with local set to false, scope '1' will be { "foo": 5 }
 	// and scope '2' will be { "bar" : 1 }.
 	Local *bool `json:"local,omitempty"`
@@ -4594,7 +5288,7 @@ type SignalBroadcastRequest struct {
 
 // SignalBroadcastResult defines model for SignalBroadcastResult.
 type SignalBroadcastResult struct {
-	// SignalKey The unique ID of the signal that was broadcast.
+	// SignalKey The key of the broadcasted signal.
 	SignalKey SignalKey `json:"signalKey"`
 
 	// TenantId The tenant ID of the signal that was broadcast.
@@ -4788,6 +5482,9 @@ type TopologyResponse struct {
 	// Brokers A list of brokers that are part of this cluster.
 	Brokers []BrokerInfo `json:"brokers"`
 
+	// ClusterId The cluster Id.
+	ClusterId *string `json:"clusterId"`
+
 	// ClusterSize The number of brokers in the cluster.
 	ClusterSize int32 `json:"clusterSize"`
 
@@ -4936,9 +5633,7 @@ type UserTaskFilter struct {
 	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
 
 	// FollowUpDate The user task follow-up date.
-	FollowUpDate *DateTimeFilterProperty `json:"followUpDate,omitempty"`
-
-	// LocalVariables Local variables associated with the user task.
+	FollowUpDate   *DateTimeFilterProperty        `json:"followUpDate,omitempty"`
 	LocalVariables *[]VariableValueFilterProperty `json:"localVariables,omitempty"`
 
 	// Name The task name. This only works for data created with 8.8 and onwards. Instances from prior versions don't contain this data and cannot be found.
@@ -4954,13 +5649,14 @@ type UserTaskFilter struct {
 	ProcessDefinitionKey *ProcessDefinitionKey `json:"processDefinitionKey,omitempty"`
 
 	// ProcessInstanceKey The key of the process instance.
-	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
-
-	// ProcessInstanceVariables Process instance variables associated with the user task.
+	ProcessInstanceKey       *ProcessInstanceKey            `json:"processInstanceKey,omitempty"`
 	ProcessInstanceVariables *[]VariableValueFilterProperty `json:"processInstanceVariables,omitempty"`
 
 	// State The user task state.
 	State *UserTaskStateFilterProperty `json:"state,omitempty"`
+
+	// Tags List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
+	Tags *TagSet `json:"tags,omitempty"`
 
 	// TenantId Tenant ID of this user task.
 	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
@@ -4990,10 +5686,10 @@ type UserTaskProperties struct {
 	ChangedAttributes *[]string `json:"changedAttributes,omitempty"`
 
 	// DueDate The due date of the user task in ISO 8601 format.
-	DueDate *time.Time `json:"dueDate"`
+	DueDate *string `json:"dueDate"`
 
 	// FollowUpDate The follow-up date of the user task in ISO 8601 format.
-	FollowUpDate *time.Time `json:"followUpDate"`
+	FollowUpDate *string `json:"followUpDate"`
 
 	// FormKey The key of the form associated with the user task.
 	FormKey *FormKey `json:"formKey,omitempty"`
@@ -5066,6 +5762,9 @@ type UserTaskResult struct {
 
 	// State The state of the user task.
 	State *UserTaskStateEnum `json:"state,omitempty"`
+
+	// Tags List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
+	Tags *TagSet `json:"tags,omitempty"`
 
 	// TenantId The unique identifier of the tenant.
 	TenantId *TenantId `json:"tenantId,omitempty"`
@@ -5288,13 +5987,19 @@ type ResumeBatchOperationJSONBody interface{}
 // SuspendBatchOperationJSONBody defines parameters for SuspendBatchOperation.
 type SuspendBatchOperationJSONBody interface{}
 
+// SearchClusterVariablesParams defines parameters for SearchClusterVariables.
+type SearchClusterVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
+}
+
 // CreateDeploymentMultipartBody defines parameters for CreateDeployment.
 type CreateDeploymentMultipartBody struct {
 	// Resources The binary data to create the deployment resources. It is possible to have more than one form part with different form part names for the binary data to create a deployment.
 	Resources []openapi_types.File `json:"resources"`
 
-	// TenantId The tenant to deploy the resources to.
-	TenantId *string `json:"tenantId,omitempty"`
+	// TenantId The unique identifier of the tenant.
+	TenantId *TenantId `json:"tenantId,omitempty"`
 }
 
 // CreateDocumentMultipartBody defines parameters for CreateDocument.
@@ -5311,7 +6016,7 @@ type CreateDocumentParams struct {
 	StoreId *string `form:"storeId,omitempty" json:"storeId,omitempty"`
 
 	// DocumentId The ID of the document to upload. If not provided, a new ID will be generated. Specifying an existing ID will result in an error if the document already exists.
-	DocumentId *string `form:"documentId,omitempty" json:"documentId,omitempty"`
+	DocumentId *DocumentId `form:"documentId,omitempty" json:"documentId,omitempty"`
 }
 
 // CreateDocumentsMultipartBody defines parameters for CreateDocuments.
@@ -5341,16 +6046,16 @@ type GetDocumentParams struct {
 	StoreId *string `form:"storeId,omitempty" json:"storeId,omitempty"`
 
 	// ContentHash The hash of the document content that was computed by the document store during upload. The hash is part of the document reference that is returned when uploading a document. If the client fails to provide the correct hash, the request will be rejected.
-	ContentHash string `form:"contentHash" json:"contentHash"`
+	ContentHash *string `form:"contentHash,omitempty" json:"contentHash,omitempty"`
 }
 
 // CreateDocumentLinkParams defines parameters for CreateDocumentLink.
 type CreateDocumentLinkParams struct {
-	// StoreId The ID of the document store to link the document from.
+	// StoreId The ID of the document store where the document is located.
 	StoreId *string `form:"storeId,omitempty" json:"storeId,omitempty"`
 
 	// ContentHash The hash of the document content that was computed by the document store during upload. The hash is part of the document reference that is returned when uploading a document. If the client fails to provide the correct hash, the request will be rejected.
-	ContentHash string `form:"contentHash" json:"contentHash"`
+	ContentHash *string `form:"contentHash,omitempty" json:"contentHash,omitempty"`
 }
 
 // GetUsageMetricsParams defines parameters for GetUsageMetrics.
@@ -5367,6 +6072,21 @@ type GetUsageMetricsParams struct {
 	// WithTenants Whether to return tenant metrics in addition to the total metrics or not. Default false.
 	WithTenants *bool `form:"withTenants,omitempty" json:"withTenants,omitempty"`
 }
+
+// SearchUserTaskVariablesParams defines parameters for SearchUserTaskVariables.
+type SearchUserTaskVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
+}
+
+// SearchVariablesParams defines parameters for SearchVariables.
+type SearchVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
+}
+
+// SearchAuditLogsJSONRequestBody defines body for SearchAuditLogs for application/json ContentType.
+type SearchAuditLogsJSONRequestBody = AuditLogSearchQueryRequest
 
 // CreateAuthorizationJSONRequestBody defines body for CreateAuthorization for application/json ContentType.
 type CreateAuthorizationJSONRequestBody = AuthorizationRequest
@@ -5394,6 +6114,15 @@ type SuspendBatchOperationJSONRequestBody SuspendBatchOperationJSONBody
 
 // PinClockJSONRequestBody defines body for PinClock for application/json ContentType.
 type PinClockJSONRequestBody = ClockPinRequest
+
+// CreateGlobalClusterVariableJSONRequestBody defines body for CreateGlobalClusterVariable for application/json ContentType.
+type CreateGlobalClusterVariableJSONRequestBody = CreateClusterVariableRequest
+
+// SearchClusterVariablesJSONRequestBody defines body for SearchClusterVariables for application/json ContentType.
+type SearchClusterVariablesJSONRequestBody = ClusterVariableSearchQueryRequest
+
+// CreateTenantClusterVariableJSONRequestBody defines body for CreateTenantClusterVariable for application/json ContentType.
+type CreateTenantClusterVariableJSONRequestBody = CreateClusterVariableRequest
 
 // SearchCorrelatedMessageSubscriptionsJSONRequestBody defines body for SearchCorrelatedMessageSubscriptions for application/json ContentType.
 type SearchCorrelatedMessageSubscriptionsJSONRequestBody = CorrelatedMessageSubscriptionSearchQuery
@@ -5427,6 +6156,9 @@ type ActivateAdHocSubProcessActivitiesJSONRequestBody = AdHocSubProcessActivateA
 
 // SearchElementInstancesJSONRequestBody defines body for SearchElementInstances for application/json ContentType.
 type SearchElementInstancesJSONRequestBody = ElementInstanceSearchQuery
+
+// SearchElementInstanceIncidentsJSONRequestBody defines body for SearchElementInstanceIncidents for application/json ContentType.
+type SearchElementInstanceIncidentsJSONRequestBody = IncidentSearchQuery
 
 // CreateElementInstanceVariablesJSONRequestBody defines body for CreateElementInstanceVariables for application/json ContentType.
 type CreateElementInstanceVariablesJSONRequestBody = SetVariableRequest
@@ -5497,6 +6229,12 @@ type PublishMessageJSONRequestBody = MessagePublicationRequest
 // SearchProcessDefinitionsJSONRequestBody defines body for SearchProcessDefinitions for application/json ContentType.
 type SearchProcessDefinitionsJSONRequestBody = ProcessDefinitionSearchQuery
 
+// GetProcessDefinitionInstanceStatisticsJSONRequestBody defines body for GetProcessDefinitionInstanceStatistics for application/json ContentType.
+type GetProcessDefinitionInstanceStatisticsJSONRequestBody = ProcessDefinitionInstanceStatisticsQuery
+
+// GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody defines body for GetProcessDefinitionInstanceVersionStatistics for application/json ContentType.
+type GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody = ProcessDefinitionInstanceVersionStatisticsQuery
+
 // GetProcessDefinitionStatisticsJSONRequestBody defines body for GetProcessDefinitionStatistics for application/json ContentType.
 type GetProcessDefinitionStatisticsJSONRequestBody = ProcessDefinitionElementStatisticsQuery
 
@@ -5522,7 +6260,7 @@ type SearchProcessInstancesJSONRequestBody = ProcessInstanceSearchQuery
 type CancelProcessInstanceJSONRequestBody = CancelProcessInstanceRequest
 
 // SearchProcessInstanceIncidentsJSONRequestBody defines body for SearchProcessInstanceIncidents for application/json ContentType.
-type SearchProcessInstanceIncidentsJSONRequestBody = ProcessInstanceIncidentSearchQuery
+type SearchProcessInstanceIncidentsJSONRequestBody = IncidentSearchQuery
 
 // MigrateProcessInstanceJSONRequestBody defines body for MigrateProcessInstance for application/json ContentType.
 type MigrateProcessInstanceJSONRequestBody = ProcessInstanceMigrationInstruction
@@ -5737,6 +6475,130 @@ func (a Changeset) MarshalJSON() ([]byte, error) {
 		}
 	}
 	return json.Marshal(object)
+}
+
+// AsAuditLogKeyFilterProperty0 returns the union data inside the AuditLogKeyFilterProperty as a AuditLogKeyFilterProperty0
+func (t AuditLogKeyFilterProperty) AsAuditLogKeyFilterProperty0() (AuditLogKeyFilterProperty0, error) {
+	var body AuditLogKeyFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAuditLogKeyFilterProperty0 overwrites any union data inside the AuditLogKeyFilterProperty as the provided AuditLogKeyFilterProperty0
+func (t *AuditLogKeyFilterProperty) FromAuditLogKeyFilterProperty0(v AuditLogKeyFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAuditLogKeyFilterProperty0 performs a merge with any union data inside the AuditLogKeyFilterProperty, using the provided AuditLogKeyFilterProperty0
+func (t *AuditLogKeyFilterProperty) MergeAuditLogKeyFilterProperty0(v AuditLogKeyFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedAuditLogKeyFilter returns the union data inside the AuditLogKeyFilterProperty as a AdvancedAuditLogKeyFilter
+func (t AuditLogKeyFilterProperty) AsAdvancedAuditLogKeyFilter() (AdvancedAuditLogKeyFilter, error) {
+	var body AdvancedAuditLogKeyFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedAuditLogKeyFilter overwrites any union data inside the AuditLogKeyFilterProperty as the provided AdvancedAuditLogKeyFilter
+func (t *AuditLogKeyFilterProperty) FromAdvancedAuditLogKeyFilter(v AdvancedAuditLogKeyFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedAuditLogKeyFilter performs a merge with any union data inside the AuditLogKeyFilterProperty, using the provided AdvancedAuditLogKeyFilter
+func (t *AuditLogKeyFilterProperty) MergeAdvancedAuditLogKeyFilter(v AdvancedAuditLogKeyFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t AuditLogKeyFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *AuditLogKeyFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsAuthorizationIdBasedRequest returns the union data inside the AuthorizationRequest as a AuthorizationIdBasedRequest
+func (t AuthorizationRequest) AsAuthorizationIdBasedRequest() (AuthorizationIdBasedRequest, error) {
+	var body AuthorizationIdBasedRequest
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAuthorizationIdBasedRequest overwrites any union data inside the AuthorizationRequest as the provided AuthorizationIdBasedRequest
+func (t *AuthorizationRequest) FromAuthorizationIdBasedRequest(v AuthorizationIdBasedRequest) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAuthorizationIdBasedRequest performs a merge with any union data inside the AuthorizationRequest, using the provided AuthorizationIdBasedRequest
+func (t *AuthorizationRequest) MergeAuthorizationIdBasedRequest(v AuthorizationIdBasedRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAuthorizationPropertyBasedRequest returns the union data inside the AuthorizationRequest as a AuthorizationPropertyBasedRequest
+func (t AuthorizationRequest) AsAuthorizationPropertyBasedRequest() (AuthorizationPropertyBasedRequest, error) {
+	var body AuthorizationPropertyBasedRequest
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAuthorizationPropertyBasedRequest overwrites any union data inside the AuthorizationRequest as the provided AuthorizationPropertyBasedRequest
+func (t *AuthorizationRequest) FromAuthorizationPropertyBasedRequest(v AuthorizationPropertyBasedRequest) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAuthorizationPropertyBasedRequest performs a merge with any union data inside the AuthorizationRequest, using the provided AuthorizationPropertyBasedRequest
+func (t *AuthorizationRequest) MergeAuthorizationPropertyBasedRequest(v AuthorizationPropertyBasedRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t AuthorizationRequest) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *AuthorizationRequest) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
 }
 
 // AsBasicStringFilterProperty0 returns the union data inside the BasicStringFilterProperty as a BasicStringFilterProperty0
@@ -5987,6 +6849,130 @@ func (t *BatchOperationTypeFilterProperty) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsCategoryFilterProperty0 returns the union data inside the CategoryFilterProperty as a CategoryFilterProperty0
+func (t CategoryFilterProperty) AsCategoryFilterProperty0() (CategoryFilterProperty0, error) {
+	var body CategoryFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCategoryFilterProperty0 overwrites any union data inside the CategoryFilterProperty as the provided CategoryFilterProperty0
+func (t *CategoryFilterProperty) FromCategoryFilterProperty0(v CategoryFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCategoryFilterProperty0 performs a merge with any union data inside the CategoryFilterProperty, using the provided CategoryFilterProperty0
+func (t *CategoryFilterProperty) MergeCategoryFilterProperty0(v CategoryFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedCategoryFilter returns the union data inside the CategoryFilterProperty as a AdvancedCategoryFilter
+func (t CategoryFilterProperty) AsAdvancedCategoryFilter() (AdvancedCategoryFilter, error) {
+	var body AdvancedCategoryFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedCategoryFilter overwrites any union data inside the CategoryFilterProperty as the provided AdvancedCategoryFilter
+func (t *CategoryFilterProperty) FromAdvancedCategoryFilter(v AdvancedCategoryFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedCategoryFilter performs a merge with any union data inside the CategoryFilterProperty, using the provided AdvancedCategoryFilter
+func (t *CategoryFilterProperty) MergeAdvancedCategoryFilter(v AdvancedCategoryFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CategoryFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CategoryFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsClusterVariableScopeFilterProperty0 returns the union data inside the ClusterVariableScopeFilterProperty as a ClusterVariableScopeFilterProperty0
+func (t ClusterVariableScopeFilterProperty) AsClusterVariableScopeFilterProperty0() (ClusterVariableScopeFilterProperty0, error) {
+	var body ClusterVariableScopeFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromClusterVariableScopeFilterProperty0 overwrites any union data inside the ClusterVariableScopeFilterProperty as the provided ClusterVariableScopeFilterProperty0
+func (t *ClusterVariableScopeFilterProperty) FromClusterVariableScopeFilterProperty0(v ClusterVariableScopeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeClusterVariableScopeFilterProperty0 performs a merge with any union data inside the ClusterVariableScopeFilterProperty, using the provided ClusterVariableScopeFilterProperty0
+func (t *ClusterVariableScopeFilterProperty) MergeClusterVariableScopeFilterProperty0(v ClusterVariableScopeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedClusterVariableScopeFilter returns the union data inside the ClusterVariableScopeFilterProperty as a AdvancedClusterVariableScopeFilter
+func (t ClusterVariableScopeFilterProperty) AsAdvancedClusterVariableScopeFilter() (AdvancedClusterVariableScopeFilter, error) {
+	var body AdvancedClusterVariableScopeFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedClusterVariableScopeFilter overwrites any union data inside the ClusterVariableScopeFilterProperty as the provided AdvancedClusterVariableScopeFilter
+func (t *ClusterVariableScopeFilterProperty) FromAdvancedClusterVariableScopeFilter(v AdvancedClusterVariableScopeFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedClusterVariableScopeFilter performs a merge with any union data inside the ClusterVariableScopeFilterProperty, using the provided AdvancedClusterVariableScopeFilter
+func (t *ClusterVariableScopeFilterProperty) MergeAdvancedClusterVariableScopeFilter(v AdvancedClusterVariableScopeFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ClusterVariableScopeFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ClusterVariableScopeFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsDateTimeFilterProperty0 returns the union data inside the DateTimeFilterProperty as a DateTimeFilterProperty0
 func (t DateTimeFilterProperty) AsDateTimeFilterProperty0() (DateTimeFilterProperty0, error) {
 	var body DateTimeFilterProperty0
@@ -6111,6 +7097,68 @@ func (t *DecisionDefinitionKeyFilterProperty) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsDecisionEvaluationInstanceKeyFilterProperty0 returns the union data inside the DecisionEvaluationInstanceKeyFilterProperty as a DecisionEvaluationInstanceKeyFilterProperty0
+func (t DecisionEvaluationInstanceKeyFilterProperty) AsDecisionEvaluationInstanceKeyFilterProperty0() (DecisionEvaluationInstanceKeyFilterProperty0, error) {
+	var body DecisionEvaluationInstanceKeyFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDecisionEvaluationInstanceKeyFilterProperty0 overwrites any union data inside the DecisionEvaluationInstanceKeyFilterProperty as the provided DecisionEvaluationInstanceKeyFilterProperty0
+func (t *DecisionEvaluationInstanceKeyFilterProperty) FromDecisionEvaluationInstanceKeyFilterProperty0(v DecisionEvaluationInstanceKeyFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDecisionEvaluationInstanceKeyFilterProperty0 performs a merge with any union data inside the DecisionEvaluationInstanceKeyFilterProperty, using the provided DecisionEvaluationInstanceKeyFilterProperty0
+func (t *DecisionEvaluationInstanceKeyFilterProperty) MergeDecisionEvaluationInstanceKeyFilterProperty0(v DecisionEvaluationInstanceKeyFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedDecisionEvaluationInstanceKeyFilter returns the union data inside the DecisionEvaluationInstanceKeyFilterProperty as a AdvancedDecisionEvaluationInstanceKeyFilter
+func (t DecisionEvaluationInstanceKeyFilterProperty) AsAdvancedDecisionEvaluationInstanceKeyFilter() (AdvancedDecisionEvaluationInstanceKeyFilter, error) {
+	var body AdvancedDecisionEvaluationInstanceKeyFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedDecisionEvaluationInstanceKeyFilter overwrites any union data inside the DecisionEvaluationInstanceKeyFilterProperty as the provided AdvancedDecisionEvaluationInstanceKeyFilter
+func (t *DecisionEvaluationInstanceKeyFilterProperty) FromAdvancedDecisionEvaluationInstanceKeyFilter(v AdvancedDecisionEvaluationInstanceKeyFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedDecisionEvaluationInstanceKeyFilter performs a merge with any union data inside the DecisionEvaluationInstanceKeyFilterProperty, using the provided AdvancedDecisionEvaluationInstanceKeyFilter
+func (t *DecisionEvaluationInstanceKeyFilterProperty) MergeAdvancedDecisionEvaluationInstanceKeyFilter(v AdvancedDecisionEvaluationInstanceKeyFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DecisionEvaluationInstanceKeyFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DecisionEvaluationInstanceKeyFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsDecisionEvaluationById returns the union data inside the DecisionEvaluationInstruction as a DecisionEvaluationById
 func (t DecisionEvaluationInstruction) AsDecisionEvaluationById() (DecisionEvaluationById, error) {
 	var body DecisionEvaluationById
@@ -6169,6 +7217,68 @@ func (t DecisionEvaluationInstruction) MarshalJSON() ([]byte, error) {
 }
 
 func (t *DecisionEvaluationInstruction) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDecisionInstanceStateFilterProperty0 returns the union data inside the DecisionInstanceStateFilterProperty as a DecisionInstanceStateFilterProperty0
+func (t DecisionInstanceStateFilterProperty) AsDecisionInstanceStateFilterProperty0() (DecisionInstanceStateFilterProperty0, error) {
+	var body DecisionInstanceStateFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDecisionInstanceStateFilterProperty0 overwrites any union data inside the DecisionInstanceStateFilterProperty as the provided DecisionInstanceStateFilterProperty0
+func (t *DecisionInstanceStateFilterProperty) FromDecisionInstanceStateFilterProperty0(v DecisionInstanceStateFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDecisionInstanceStateFilterProperty0 performs a merge with any union data inside the DecisionInstanceStateFilterProperty, using the provided DecisionInstanceStateFilterProperty0
+func (t *DecisionInstanceStateFilterProperty) MergeDecisionInstanceStateFilterProperty0(v DecisionInstanceStateFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedDecisionInstanceStateFilter returns the union data inside the DecisionInstanceStateFilterProperty as a AdvancedDecisionInstanceStateFilter
+func (t DecisionInstanceStateFilterProperty) AsAdvancedDecisionInstanceStateFilter() (AdvancedDecisionInstanceStateFilter, error) {
+	var body AdvancedDecisionInstanceStateFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedDecisionInstanceStateFilter overwrites any union data inside the DecisionInstanceStateFilterProperty as the provided AdvancedDecisionInstanceStateFilter
+func (t *DecisionInstanceStateFilterProperty) FromAdvancedDecisionInstanceStateFilter(v AdvancedDecisionInstanceStateFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedDecisionInstanceStateFilter performs a merge with any union data inside the DecisionInstanceStateFilterProperty, using the provided AdvancedDecisionInstanceStateFilter
+func (t *DecisionInstanceStateFilterProperty) MergeAdvancedDecisionInstanceStateFilter(v AdvancedDecisionInstanceStateFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DecisionInstanceStateFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DecisionInstanceStateFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -6293,6 +7403,192 @@ func (t ElementInstanceStateFilterProperty) MarshalJSON() ([]byte, error) {
 }
 
 func (t *ElementInstanceStateFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsEntityTypeFilterProperty0 returns the union data inside the EntityTypeFilterProperty as a EntityTypeFilterProperty0
+func (t EntityTypeFilterProperty) AsEntityTypeFilterProperty0() (EntityTypeFilterProperty0, error) {
+	var body EntityTypeFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromEntityTypeFilterProperty0 overwrites any union data inside the EntityTypeFilterProperty as the provided EntityTypeFilterProperty0
+func (t *EntityTypeFilterProperty) FromEntityTypeFilterProperty0(v EntityTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeEntityTypeFilterProperty0 performs a merge with any union data inside the EntityTypeFilterProperty, using the provided EntityTypeFilterProperty0
+func (t *EntityTypeFilterProperty) MergeEntityTypeFilterProperty0(v EntityTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedEntityTypeFilter returns the union data inside the EntityTypeFilterProperty as a AdvancedEntityTypeFilter
+func (t EntityTypeFilterProperty) AsAdvancedEntityTypeFilter() (AdvancedEntityTypeFilter, error) {
+	var body AdvancedEntityTypeFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedEntityTypeFilter overwrites any union data inside the EntityTypeFilterProperty as the provided AdvancedEntityTypeFilter
+func (t *EntityTypeFilterProperty) FromAdvancedEntityTypeFilter(v AdvancedEntityTypeFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedEntityTypeFilter performs a merge with any union data inside the EntityTypeFilterProperty, using the provided AdvancedEntityTypeFilter
+func (t *EntityTypeFilterProperty) MergeAdvancedEntityTypeFilter(v AdvancedEntityTypeFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t EntityTypeFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *EntityTypeFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsIncidentErrorTypeFilterProperty0 returns the union data inside the IncidentErrorTypeFilterProperty as a IncidentErrorTypeFilterProperty0
+func (t IncidentErrorTypeFilterProperty) AsIncidentErrorTypeFilterProperty0() (IncidentErrorTypeFilterProperty0, error) {
+	var body IncidentErrorTypeFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromIncidentErrorTypeFilterProperty0 overwrites any union data inside the IncidentErrorTypeFilterProperty as the provided IncidentErrorTypeFilterProperty0
+func (t *IncidentErrorTypeFilterProperty) FromIncidentErrorTypeFilterProperty0(v IncidentErrorTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeIncidentErrorTypeFilterProperty0 performs a merge with any union data inside the IncidentErrorTypeFilterProperty, using the provided IncidentErrorTypeFilterProperty0
+func (t *IncidentErrorTypeFilterProperty) MergeIncidentErrorTypeFilterProperty0(v IncidentErrorTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedIncidentErrorTypeFilter returns the union data inside the IncidentErrorTypeFilterProperty as a AdvancedIncidentErrorTypeFilter
+func (t IncidentErrorTypeFilterProperty) AsAdvancedIncidentErrorTypeFilter() (AdvancedIncidentErrorTypeFilter, error) {
+	var body AdvancedIncidentErrorTypeFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedIncidentErrorTypeFilter overwrites any union data inside the IncidentErrorTypeFilterProperty as the provided AdvancedIncidentErrorTypeFilter
+func (t *IncidentErrorTypeFilterProperty) FromAdvancedIncidentErrorTypeFilter(v AdvancedIncidentErrorTypeFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedIncidentErrorTypeFilter performs a merge with any union data inside the IncidentErrorTypeFilterProperty, using the provided AdvancedIncidentErrorTypeFilter
+func (t *IncidentErrorTypeFilterProperty) MergeAdvancedIncidentErrorTypeFilter(v AdvancedIncidentErrorTypeFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t IncidentErrorTypeFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *IncidentErrorTypeFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsIncidentStateFilterProperty0 returns the union data inside the IncidentStateFilterProperty as a IncidentStateFilterProperty0
+func (t IncidentStateFilterProperty) AsIncidentStateFilterProperty0() (IncidentStateFilterProperty0, error) {
+	var body IncidentStateFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromIncidentStateFilterProperty0 overwrites any union data inside the IncidentStateFilterProperty as the provided IncidentStateFilterProperty0
+func (t *IncidentStateFilterProperty) FromIncidentStateFilterProperty0(v IncidentStateFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeIncidentStateFilterProperty0 performs a merge with any union data inside the IncidentStateFilterProperty, using the provided IncidentStateFilterProperty0
+func (t *IncidentStateFilterProperty) MergeIncidentStateFilterProperty0(v IncidentStateFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedIncidentStateFilter returns the union data inside the IncidentStateFilterProperty as a AdvancedIncidentStateFilter
+func (t IncidentStateFilterProperty) AsAdvancedIncidentStateFilter() (AdvancedIncidentStateFilter, error) {
+	var body AdvancedIncidentStateFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedIncidentStateFilter overwrites any union data inside the IncidentStateFilterProperty as the provided AdvancedIncidentStateFilter
+func (t *IncidentStateFilterProperty) FromAdvancedIncidentStateFilter(v AdvancedIncidentStateFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedIncidentStateFilter performs a merge with any union data inside the IncidentStateFilterProperty, using the provided AdvancedIncidentStateFilter
+func (t *IncidentStateFilterProperty) MergeAdvancedIncidentStateFilter(v AdvancedIncidentStateFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t IncidentStateFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *IncidentStateFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -6554,8 +7850,7 @@ func (t JobResult) AsJobResultUserTask() (JobResultUserTask, error) {
 
 // FromJobResultUserTask overwrites any union data inside the JobResult as the provided JobResultUserTask
 func (t *JobResult) FromJobResultUserTask(v JobResultUserTask) error {
-	t.Type = "userTask"
-
+	v.Type = "userTask"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -6563,8 +7858,7 @@ func (t *JobResult) FromJobResultUserTask(v JobResultUserTask) error {
 
 // MergeJobResultUserTask performs a merge with any union data inside the JobResult, using the provided JobResultUserTask
 func (t *JobResult) MergeJobResultUserTask(v JobResultUserTask) error {
-	t.Type = "userTask"
-
+	v.Type = "userTask"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -6584,8 +7878,7 @@ func (t JobResult) AsJobResultAdHocSubProcess() (JobResultAdHocSubProcess, error
 
 // FromJobResultAdHocSubProcess overwrites any union data inside the JobResult as the provided JobResultAdHocSubProcess
 func (t *JobResult) FromJobResultAdHocSubProcess(v JobResultAdHocSubProcess) error {
-	t.Type = "adHocSubProcess"
-
+	v.Type = "adHocSubProcess"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -6593,8 +7886,7 @@ func (t *JobResult) FromJobResultAdHocSubProcess(v JobResultAdHocSubProcess) err
 
 // MergeJobResultAdHocSubProcess performs a merge with any union data inside the JobResult, using the provided JobResultAdHocSubProcess
 func (t *JobResult) MergeJobResultAdHocSubProcess(v JobResultAdHocSubProcess) error {
-	t.Type = "adHocSubProcess"
-
+	v.Type = "adHocSubProcess"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -6630,44 +7922,11 @@ func (t JobResult) ValueByDiscriminator() (interface{}, error) {
 
 func (t JobResult) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	object := make(map[string]json.RawMessage)
-	if t.union != nil {
-		err = json.Unmarshal(b, &object)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	object["type"], err = json.Marshal(t.Type)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling 'type': %w", err)
-	}
-
-	b, err = json.Marshal(object)
 	return b, err
 }
 
 func (t *JobResult) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
-	if err != nil {
-		return err
-	}
-	object := make(map[string]json.RawMessage)
-	err = json.Unmarshal(b, &object)
-	if err != nil {
-		return err
-	}
-
-	if raw, found := object["type"]; found {
-		err = json.Unmarshal(raw, &t.Type)
-		if err != nil {
-			return fmt.Errorf("error reading 'type': %w", err)
-		}
-	}
-
 	return err
 }
 
@@ -6857,6 +8116,68 @@ func (t *MessageSubscriptionStateFilterProperty) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsOperationTypeFilterProperty0 returns the union data inside the OperationTypeFilterProperty as a OperationTypeFilterProperty0
+func (t OperationTypeFilterProperty) AsOperationTypeFilterProperty0() (OperationTypeFilterProperty0, error) {
+	var body OperationTypeFilterProperty0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromOperationTypeFilterProperty0 overwrites any union data inside the OperationTypeFilterProperty as the provided OperationTypeFilterProperty0
+func (t *OperationTypeFilterProperty) FromOperationTypeFilterProperty0(v OperationTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeOperationTypeFilterProperty0 performs a merge with any union data inside the OperationTypeFilterProperty, using the provided OperationTypeFilterProperty0
+func (t *OperationTypeFilterProperty) MergeOperationTypeFilterProperty0(v OperationTypeFilterProperty0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsAdvancedOperationTypeFilter returns the union data inside the OperationTypeFilterProperty as a AdvancedOperationTypeFilter
+func (t OperationTypeFilterProperty) AsAdvancedOperationTypeFilter() (AdvancedOperationTypeFilter, error) {
+	var body AdvancedOperationTypeFilter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromAdvancedOperationTypeFilter overwrites any union data inside the OperationTypeFilterProperty as the provided AdvancedOperationTypeFilter
+func (t *OperationTypeFilterProperty) FromAdvancedOperationTypeFilter(v AdvancedOperationTypeFilter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeAdvancedOperationTypeFilter performs a merge with any union data inside the OperationTypeFilterProperty, using the provided AdvancedOperationTypeFilter
+func (t *OperationTypeFilterProperty) MergeAdvancedOperationTypeFilter(v AdvancedOperationTypeFilter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t OperationTypeFilterProperty) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *OperationTypeFilterProperty) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsProcessDefinitionKeyFilterProperty0 returns the union data inside the ProcessDefinitionKeyFilterProperty as a ProcessDefinitionKeyFilterProperty0
 func (t ProcessDefinitionKeyFilterProperty) AsProcessDefinitionKeyFilterProperty0() (ProcessDefinitionKeyFilterProperty0, error) {
 	var body ProcessDefinitionKeyFilterProperty0
@@ -6990,8 +8311,7 @@ func (t ProcessInstanceCreationRuntimeInstruction) AsProcessInstanceCreationTerm
 
 // FromProcessInstanceCreationTerminateInstruction overwrites any union data inside the ProcessInstanceCreationRuntimeInstruction as the provided ProcessInstanceCreationTerminateInstruction
 func (t *ProcessInstanceCreationRuntimeInstruction) FromProcessInstanceCreationTerminateInstruction(v ProcessInstanceCreationTerminateInstruction) error {
-	t.Type = "TERMINATE_PROCESS_INSTANCE"
-
+	v.Type = "ProcessInstanceCreationTerminateInstruction"
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -6999,8 +8319,7 @@ func (t *ProcessInstanceCreationRuntimeInstruction) FromProcessInstanceCreationT
 
 // MergeProcessInstanceCreationTerminateInstruction performs a merge with any union data inside the ProcessInstanceCreationRuntimeInstruction, using the provided ProcessInstanceCreationTerminateInstruction
 func (t *ProcessInstanceCreationRuntimeInstruction) MergeProcessInstanceCreationTerminateInstruction(v ProcessInstanceCreationTerminateInstruction) error {
-	t.Type = "TERMINATE_PROCESS_INSTANCE"
-
+	v.Type = "ProcessInstanceCreationTerminateInstruction"
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -7025,7 +8344,7 @@ func (t ProcessInstanceCreationRuntimeInstruction) ValueByDiscriminator() (inter
 		return nil, err
 	}
 	switch discriminator {
-	case "TERMINATE_PROCESS_INSTANCE":
+	case "ProcessInstanceCreationTerminateInstruction":
 		return t.AsProcessInstanceCreationTerminateInstruction()
 	default:
 		return nil, errors.New("unknown discriminator value: " + discriminator)
@@ -7034,44 +8353,11 @@ func (t ProcessInstanceCreationRuntimeInstruction) ValueByDiscriminator() (inter
 
 func (t ProcessInstanceCreationRuntimeInstruction) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	object := make(map[string]json.RawMessage)
-	if t.union != nil {
-		err = json.Unmarshal(b, &object)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	object["type"], err = json.Marshal(t.Type)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling 'type': %w", err)
-	}
-
-	b, err = json.Marshal(object)
 	return b, err
 }
 
 func (t *ProcessInstanceCreationRuntimeInstruction) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
-	if err != nil {
-		return err
-	}
-	object := make(map[string]json.RawMessage)
-	err = json.Unmarshal(b, &object)
-	if err != nil {
-		return err
-	}
-
-	if raw, found := object["type"]; found {
-		err = json.Unmarshal(raw, &t.Type)
-		if err != nil {
-			return fmt.Errorf("error reading 'type': %w", err)
-		}
-	}
-
 	return err
 }
 
@@ -7320,6 +8606,32 @@ func (t ScopeKeyFilterProperty) MarshalJSON() ([]byte, error) {
 
 func (t *ScopeKeyFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsLimitPagination returns the union data inside the SearchQueryPageRequest as a LimitPagination
+func (t SearchQueryPageRequest) AsLimitPagination() (LimitPagination, error) {
+	var body LimitPagination
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromLimitPagination overwrites any union data inside the SearchQueryPageRequest as the provided LimitPagination
+func (t *SearchQueryPageRequest) FromLimitPagination(v LimitPagination) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeLimitPagination performs a merge with any union data inside the SearchQueryPageRequest, using the provided LimitPagination
+func (t *SearchQueryPageRequest) MergeLimitPagination(v LimitPagination) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
 	return err
 }
 
@@ -7670,6 +8982,14 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// SearchAuditLogsWithBody request with any body
+	SearchAuditLogsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchAuditLogs(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAuditLog request
+	GetAuditLog(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAuthentication request
 	GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -7684,15 +9004,15 @@ type ClientInterface interface {
 	SearchAuthorizations(ctx context.Context, body SearchAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteAuthorization request
-	DeleteAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAuthorization request
-	GetAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateAuthorizationWithBody request with any body
-	UpdateAuthorizationWithBody(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAuthorizationWithBody(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateAuthorization(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAuthorization(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchBatchOperationItemsWithBody request with any body
 	SearchBatchOperationItemsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -7729,6 +9049,33 @@ type ClientInterface interface {
 
 	// ResetClock request
 	ResetClock(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGlobalClusterVariableWithBody request with any body
+	CreateGlobalClusterVariableWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateGlobalClusterVariable(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteGlobalClusterVariable request
+	DeleteGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGlobalClusterVariable request
+	GetGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchClusterVariablesWithBody request with any body
+	SearchClusterVariablesWithBody(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchClusterVariables(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTenantClusterVariableWithBody request with any body
+	CreateTenantClusterVariableWithBody(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTenantClusterVariable(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteTenantClusterVariable request
+	DeleteTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTenantClusterVariable request
+	GetTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchCorrelatedMessageSubscriptionsWithBody request with any body
 	SearchCorrelatedMessageSubscriptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -7802,6 +9149,11 @@ type ClientInterface interface {
 
 	// GetElementInstance request
 	GetElementInstance(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchElementInstanceIncidentsWithBody request with any body
+	SearchElementInstanceIncidentsWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SearchElementInstanceIncidents(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateElementInstanceVariablesWithBody request with any body
 	CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -7954,6 +9306,16 @@ type ClientInterface interface {
 
 	SearchProcessDefinitions(ctx context.Context, body SearchProcessDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetProcessDefinitionInstanceStatisticsWithBody request with any body
+	GetProcessDefinitionInstanceStatisticsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GetProcessDefinitionInstanceStatistics(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetProcessDefinitionInstanceVersionStatisticsWithBody request with any body
+	GetProcessDefinitionInstanceVersionStatisticsWithBody(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GetProcessDefinitionInstanceVersionStatistics(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetProcessDefinition request
 	GetProcessDefinition(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -8008,6 +9370,9 @@ type ClientInterface interface {
 	CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CancelProcessInstance(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResolveProcessInstanceIncidents request
+	ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProcessInstanceIncidentsWithBody request with any body
 	SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8231,9 +9596,9 @@ type ClientInterface interface {
 	GetUserTaskForm(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchUserTaskVariablesWithBody request with any body
-	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchUserTaskVariables(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariables(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUserWithBody request with any body
 	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8257,12 +9622,48 @@ type ClientInterface interface {
 	UpdateUser(ctx context.Context, username Username, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchVariablesWithBody request with any body
-	SearchVariablesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchVariablesWithBody(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchVariables(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVariable request
 	GetVariable(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) SearchAuditLogsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchAuditLogsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchAuditLogs(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchAuditLogsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetAuditLog(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAuditLogRequest(c.Server, auditLogKey)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -8325,7 +9726,7 @@ func (c *Client) SearchAuthorizations(ctx context.Context, body SearchAuthorizat
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteAuthorizationRequest(c.Server, authorizationKey)
 	if err != nil {
 		return nil, err
@@ -8337,7 +9738,7 @@ func (c *Client) DeleteAuthorization(ctx context.Context, authorizationKey strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthorizationRequest(c.Server, authorizationKey)
 	if err != nil {
 		return nil, err
@@ -8349,7 +9750,7 @@ func (c *Client) GetAuthorization(ctx context.Context, authorizationKey string, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAuthorizationRequestWithBody(c.Server, authorizationKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -8361,7 +9762,7 @@ func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationK
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateAuthorization(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAuthorization(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAuthorizationRequest(c.Server, authorizationKey, body)
 	if err != nil {
 		return nil, err
@@ -8531,6 +9932,126 @@ func (c *Client) PinClock(ctx context.Context, body PinClockJSONRequestBody, req
 
 func (c *Client) ResetClock(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetClockRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateGlobalClusterVariableWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGlobalClusterVariableRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateGlobalClusterVariable(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGlobalClusterVariableRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteGlobalClusterVariableRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGlobalClusterVariableRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchClusterVariablesWithBody(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchClusterVariablesRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchClusterVariables(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchClusterVariablesRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTenantClusterVariableWithBody(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTenantClusterVariableRequestWithBody(c.Server, tenantId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTenantClusterVariable(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTenantClusterVariableRequest(c.Server, tenantId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteTenantClusterVariableRequest(c.Server, tenantId, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTenantClusterVariableRequest(c.Server, tenantId, name)
 	if err != nil {
 		return nil, err
 	}
@@ -8855,6 +10376,30 @@ func (c *Client) SearchElementInstances(ctx context.Context, body SearchElementI
 
 func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetElementInstanceRequest(c.Server, elementInstanceKey)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchElementInstanceIncidentsWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchElementInstanceIncidentsRequestWithBody(c.Server, elementInstanceKey, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SearchElementInstanceIncidents(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchElementInstanceIncidentsRequest(c.Server, elementInstanceKey, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9561,6 +11106,54 @@ func (c *Client) SearchProcessDefinitions(ctx context.Context, body SearchProces
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetProcessDefinitionInstanceStatisticsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProcessDefinitionInstanceStatisticsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetProcessDefinitionInstanceStatistics(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProcessDefinitionInstanceStatisticsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetProcessDefinitionInstanceVersionStatisticsWithBody(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody(c.Server, processDefinitionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetProcessDefinitionInstanceVersionStatistics(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProcessDefinitionInstanceVersionStatisticsRequest(c.Server, processDefinitionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionRequest(c.Server, processDefinitionKey)
 	if err != nil {
@@ -9803,6 +11396,18 @@ func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInsta
 
 func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCancelProcessInstanceRequest(c.Server, processInstanceKey, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolveProcessInstanceIncidentsRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
 	}
@@ -10797,8 +12402,8 @@ func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, contentType, body)
+func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10809,8 +12414,8 @@ func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKe
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, body)
+func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10917,8 +12522,8 @@ func (c *Client) UpdateUser(ctx context.Context, username Username, body UpdateU
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchVariablesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchVariablesRequestWithBody(c.Server, contentType, body)
+func (c *Client) SearchVariablesWithBody(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVariablesRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10929,8 +12534,8 @@ func (c *Client) SearchVariablesWithBody(ctx context.Context, contentType string
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchVariables(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchVariablesRequest(c.Server, body)
+func (c *Client) SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVariablesRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10951,6 +12556,80 @@ func (c *Client) GetVariable(ctx context.Context, variableKey string, reqEditors
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewSearchAuditLogsRequest calls the generic SearchAuditLogs builder with application/json body
+func NewSearchAuditLogsRequest(server string, body SearchAuditLogsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchAuditLogsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchAuditLogsRequestWithBody generates requests for SearchAuditLogs with any type of body
+func NewSearchAuditLogsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/audit-logs/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAuditLogRequest generates requests for GetAuditLog
+func NewGetAuditLogRequest(server string, auditLogKey string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "auditLogKey", runtime.ParamLocationPath, auditLogKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/audit-logs/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetAuthenticationRequest generates requests for GetAuthentication
@@ -11061,7 +12740,7 @@ func NewSearchAuthorizationsRequestWithBody(server string, contentType string, b
 }
 
 // NewDeleteAuthorizationRequest generates requests for DeleteAuthorization
-func NewDeleteAuthorizationRequest(server string, authorizationKey string) (*http.Request, error) {
+func NewDeleteAuthorizationRequest(server string, authorizationKey AuthorizationKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11095,7 +12774,7 @@ func NewDeleteAuthorizationRequest(server string, authorizationKey string) (*htt
 }
 
 // NewGetAuthorizationRequest generates requests for GetAuthorization
-func NewGetAuthorizationRequest(server string, authorizationKey string) (*http.Request, error) {
+func NewGetAuthorizationRequest(server string, authorizationKey AuthorizationKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11129,7 +12808,7 @@ func NewGetAuthorizationRequest(server string, authorizationKey string) (*http.R
 }
 
 // NewUpdateAuthorizationRequest calls the generic UpdateAuthorization builder with application/json body
-func NewUpdateAuthorizationRequest(server string, authorizationKey string, body UpdateAuthorizationJSONRequestBody) (*http.Request, error) {
+func NewUpdateAuthorizationRequest(server string, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11140,7 +12819,7 @@ func NewUpdateAuthorizationRequest(server string, authorizationKey string, body 
 }
 
 // NewUpdateAuthorizationRequestWithBody generates requests for UpdateAuthorization with any type of body
-func NewUpdateAuthorizationRequestWithBody(server string, authorizationKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateAuthorizationRequestWithBody(server string, authorizationKey AuthorizationKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11490,6 +13169,305 @@ func NewResetClockRequest(server string) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateGlobalClusterVariableRequest calls the generic CreateGlobalClusterVariable builder with application/json body
+func NewCreateGlobalClusterVariableRequest(server string, body CreateGlobalClusterVariableJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGlobalClusterVariableRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateGlobalClusterVariableRequestWithBody generates requests for CreateGlobalClusterVariable with any type of body
+func NewCreateGlobalClusterVariableRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/global")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteGlobalClusterVariableRequest generates requests for DeleteGlobalClusterVariable
+func NewDeleteGlobalClusterVariableRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/global/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetGlobalClusterVariableRequest generates requests for GetGlobalClusterVariable
+func NewGetGlobalClusterVariableRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/global/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSearchClusterVariablesRequest calls the generic SearchClusterVariables builder with application/json body
+func NewSearchClusterVariablesRequest(server string, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchClusterVariablesRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewSearchClusterVariablesRequestWithBody generates requests for SearchClusterVariables with any type of body
+func NewSearchClusterVariablesRequestWithBody(server string, params *SearchClusterVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateTenantClusterVariableRequest calls the generic CreateTenantClusterVariable builder with application/json body
+func NewCreateTenantClusterVariableRequest(server string, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTenantClusterVariableRequestWithBody(server, tenantId, "application/json", bodyReader)
+}
+
+// NewCreateTenantClusterVariableRequestWithBody generates requests for CreateTenantClusterVariable with any type of body
+func NewCreateTenantClusterVariableRequestWithBody(server string, tenantId TenantId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/tenants/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteTenantClusterVariableRequest generates requests for DeleteTenantClusterVariable
+func NewDeleteTenantClusterVariableRequest(server string, tenantId TenantId, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/tenants/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTenantClusterVariableRequest generates requests for GetTenantClusterVariable
+func NewGetTenantClusterVariableRequest(server string, tenantId TenantId, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster-variables/tenants/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12115,16 +14093,20 @@ func NewGetDocumentRequest(server string, documentId DocumentId, params *GetDocu
 
 		}
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, params.ContentHash); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+		if params.ContentHash != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, *params.ContentHash); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -12194,16 +14176,20 @@ func NewCreateDocumentLinkRequestWithBody(server string, documentId DocumentId, 
 
 		}
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, params.ContentHash); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+		if params.ContentHash != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, *params.ContentHash); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -12336,6 +14322,53 @@ func NewGetElementInstanceRequest(server string, elementInstanceKey string) (*ht
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewSearchElementInstanceIncidentsRequest calls the generic SearchElementInstanceIncidents builder with application/json body
+func NewSearchElementInstanceIncidentsRequest(server string, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchElementInstanceIncidentsRequestWithBody(server, elementInstanceKey, "application/json", bodyReader)
+}
+
+// NewSearchElementInstanceIncidentsRequestWithBody generates requests for SearchElementInstanceIncidents with any type of body
+func NewSearchElementInstanceIncidentsRequestWithBody(server string, elementInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "elementInstanceKey", runtime.ParamLocationPath, elementInstanceKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/element-instances/%s/incidents/search", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -13787,6 +15820,93 @@ func NewSearchProcessDefinitionsRequestWithBody(server string, contentType strin
 	return req, nil
 }
 
+// NewGetProcessDefinitionInstanceStatisticsRequest calls the generic GetProcessDefinitionInstanceStatistics builder with application/json body
+func NewGetProcessDefinitionInstanceStatisticsRequest(server string, body GetProcessDefinitionInstanceStatisticsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetProcessDefinitionInstanceStatisticsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGetProcessDefinitionInstanceStatisticsRequestWithBody generates requests for GetProcessDefinitionInstanceStatistics with any type of body
+func NewGetProcessDefinitionInstanceStatisticsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/process-definitions/statistics/process-instances")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetProcessDefinitionInstanceVersionStatisticsRequest calls the generic GetProcessDefinitionInstanceVersionStatistics builder with application/json body
+func NewGetProcessDefinitionInstanceVersionStatisticsRequest(server string, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody(server, processDefinitionId, "application/json", bodyReader)
+}
+
+// NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody generates requests for GetProcessDefinitionInstanceVersionStatistics with any type of body
+func NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody(server string, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "processDefinitionId", runtime.ParamLocationPath, processDefinitionId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/process-definitions/%s/statistics/process-instances", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetProcessDefinitionRequest generates requests for GetProcessDefinition
 func NewGetProcessDefinitionRequest(server string, processDefinitionKey string) (*http.Request, error) {
 	var err error
@@ -14287,6 +16407,40 @@ func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey s
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewResolveProcessInstanceIncidentsRequest generates requests for ResolveProcessInstanceIncidents
+func NewResolveProcessInstanceIncidentsRequest(server string, processInstanceKey string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "processInstanceKey", runtime.ParamLocationPath, processInstanceKey)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/process-instances/%s/incident-resolution", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -16673,18 +18827,18 @@ func NewGetUserTaskFormRequest(server string, userTaskKey string) (*http.Request
 }
 
 // NewSearchUserTaskVariablesRequest calls the generic SearchUserTaskVariables builder with application/json body
-func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchUserTaskVariablesRequestWithBody(server, userTaskKey, "application/json", bodyReader)
+	return NewSearchUserTaskVariablesRequestWithBody(server, userTaskKey, params, "application/json", bodyReader)
 }
 
 // NewSearchUserTaskVariablesRequestWithBody generates requests for SearchUserTaskVariables with any type of body
-func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16707,6 +18861,28 @@ func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -16915,18 +19091,18 @@ func NewUpdateUserRequestWithBody(server string, username Username, contentType 
 }
 
 // NewSearchVariablesRequest calls the generic SearchVariables builder with application/json body
-func NewSearchVariablesRequest(server string, body SearchVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchVariablesRequest(server string, params *SearchVariablesParams, body SearchVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchVariablesRequestWithBody(server, "application/json", bodyReader)
+	return NewSearchVariablesRequestWithBody(server, params, "application/json", bodyReader)
 }
 
 // NewSearchVariablesRequestWithBody generates requests for SearchVariables with any type of body
-func NewSearchVariablesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchVariablesRequestWithBody(server string, params *SearchVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -16942,6 +19118,28 @@ func NewSearchVariablesRequestWithBody(server string, contentType string, body i
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -17031,6 +19229,14 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// SearchAuditLogsWithBodyWithResponse request with any body
+	SearchAuditLogsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error)
+
+	SearchAuditLogsWithResponse(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error)
+
+	// GetAuditLogWithResponse request
+	GetAuditLogWithResponse(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*GetAuditLogResponse, error)
+
 	// GetAuthenticationWithResponse request
 	GetAuthenticationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthenticationResponse, error)
 
@@ -17045,15 +19251,15 @@ type ClientWithResponsesInterface interface {
 	SearchAuthorizationsWithResponse(ctx context.Context, body SearchAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuthorizationsResponse, error)
 
 	// DeleteAuthorizationWithResponse request
-	DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error)
+	DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error)
 
 	// GetAuthorizationWithResponse request
-	GetAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error)
+	GetAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error)
 
 	// UpdateAuthorizationWithBodyWithResponse request with any body
-	UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
+	UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
 
-	UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
+	UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
 
 	// SearchBatchOperationItemsWithBodyWithResponse request with any body
 	SearchBatchOperationItemsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchBatchOperationItemsResponse, error)
@@ -17090,6 +19296,33 @@ type ClientWithResponsesInterface interface {
 
 	// ResetClockWithResponse request
 	ResetClockWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ResetClockResponse, error)
+
+	// CreateGlobalClusterVariableWithBodyWithResponse request with any body
+	CreateGlobalClusterVariableWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error)
+
+	CreateGlobalClusterVariableWithResponse(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error)
+
+	// DeleteGlobalClusterVariableWithResponse request
+	DeleteGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteGlobalClusterVariableResponse, error)
+
+	// GetGlobalClusterVariableWithResponse request
+	GetGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetGlobalClusterVariableResponse, error)
+
+	// SearchClusterVariablesWithBodyWithResponse request with any body
+	SearchClusterVariablesWithBodyWithResponse(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error)
+
+	SearchClusterVariablesWithResponse(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error)
+
+	// CreateTenantClusterVariableWithBodyWithResponse request with any body
+	CreateTenantClusterVariableWithBodyWithResponse(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error)
+
+	CreateTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error)
+
+	// DeleteTenantClusterVariableWithResponse request
+	DeleteTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*DeleteTenantClusterVariableResponse, error)
+
+	// GetTenantClusterVariableWithResponse request
+	GetTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*GetTenantClusterVariableResponse, error)
 
 	// SearchCorrelatedMessageSubscriptionsWithBodyWithResponse request with any body
 	SearchCorrelatedMessageSubscriptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchCorrelatedMessageSubscriptionsResponse, error)
@@ -17163,6 +19396,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetElementInstanceWithResponse request
 	GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error)
+
+	// SearchElementInstanceIncidentsWithBodyWithResponse request with any body
+	SearchElementInstanceIncidentsWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error)
+
+	SearchElementInstanceIncidentsWithResponse(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error)
 
 	// CreateElementInstanceVariablesWithBodyWithResponse request with any body
 	CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
@@ -17315,6 +19553,16 @@ type ClientWithResponsesInterface interface {
 
 	SearchProcessDefinitionsWithResponse(ctx context.Context, body SearchProcessDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessDefinitionsResponse, error)
 
+	// GetProcessDefinitionInstanceStatisticsWithBodyWithResponse request with any body
+	GetProcessDefinitionInstanceStatisticsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error)
+
+	GetProcessDefinitionInstanceStatisticsWithResponse(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error)
+
+	// GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse request with any body
+	GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error)
+
+	GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error)
+
 	// GetProcessDefinitionWithResponse request
 	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error)
 
@@ -17369,6 +19617,9 @@ type ClientWithResponsesInterface interface {
 	CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
 
 	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
+
+	// ResolveProcessInstanceIncidentsWithResponse request
+	ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*ResolveProcessInstanceIncidentsResponse, error)
 
 	// SearchProcessInstanceIncidentsWithBodyWithResponse request with any body
 	SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
@@ -17592,9 +19843,9 @@ type ClientWithResponsesInterface interface {
 	GetUserTaskFormWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error)
 
 	// SearchUserTaskVariablesWithBodyWithResponse request with any body
-	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
-	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
 	// CreateUserWithBodyWithResponse request with any body
 	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
@@ -17618,12 +19869,63 @@ type ClientWithResponsesInterface interface {
 	UpdateUserWithResponse(ctx context.Context, username Username, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	// SearchVariablesWithBodyWithResponse request with any body
-	SearchVariablesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
+	SearchVariablesWithBodyWithResponse(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
-	SearchVariablesWithResponse(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
+	SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
 	// GetVariableWithResponse request
 	GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
+}
+
+type SearchAuditLogsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *AuditLogSearchQueryResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchAuditLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchAuditLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetAuditLogResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *AuditLogResult
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAuditLogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAuditLogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetAuthenticationResponse struct {
@@ -17978,6 +20280,190 @@ func (r ResetClockResponse) StatusCode() int {
 	return 0
 }
 
+type CreateGlobalClusterVariableResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterVariableResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGlobalClusterVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGlobalClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteGlobalClusterVariableResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteGlobalClusterVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteGlobalClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetGlobalClusterVariableResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterVariableResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGlobalClusterVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGlobalClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SearchClusterVariablesResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterVariableSearchQueryResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchClusterVariablesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchClusterVariablesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateTenantClusterVariableResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterVariableResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTenantClusterVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTenantClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteTenantClusterVariableResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteTenantClusterVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteTenantClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTenantClusterVariableResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ClusterVariableResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTenantClusterVariableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTenantClusterVariableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type SearchCorrelatedMessageSubscriptionsResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -18009,7 +20495,6 @@ type EvaluateDecisionResponse struct {
 	HTTPResponse              *http.Response
 	JSON200                   *EvaluateDecisionResult
 	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
 }
@@ -18465,6 +20950,33 @@ func (r GetElementInstanceResponse) StatusCode() int {
 	return 0
 }
 
+type SearchElementInstanceIncidentsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *IncidentSearchQueryResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchElementInstanceIncidentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchElementInstanceIncidentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type CreateElementInstanceVariablesResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -18523,7 +21035,6 @@ type SearchGroupsResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *ProblemDetail
 }
 
 // Status returns HTTPResponse.Status
@@ -18703,7 +21214,7 @@ func (r AssignClientToGroupResponse) StatusCode() int {
 type SearchMappingRulesForGroupResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *MappingRuleSearchQueryResult
+	JSON200                   *SearchQueryResponse
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -18783,7 +21294,7 @@ func (r AssignMappingRuleToGroupResponse) StatusCode() int {
 type SearchRolesForGroupResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *RoleSearchQueryResult
+	JSON200                   *SearchQueryResponse
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -18971,7 +21482,7 @@ type ActivateJobsResponse struct {
 	JSON200                   *JobActivationResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON500 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
 }
 
@@ -19377,6 +21888,58 @@ func (r SearchProcessDefinitionsResponse) StatusCode() int {
 	return 0
 }
 
+type GetProcessDefinitionInstanceStatisticsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ProcessDefinitionInstanceStatisticsQueryResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProcessDefinitionInstanceStatisticsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProcessDefinitionInstanceStatisticsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetProcessDefinitionInstanceVersionStatisticsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *ProcessDefinitionInstanceVersionStatisticsQueryResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProcessDefinitionInstanceVersionStatisticsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProcessDefinitionInstanceVersionStatisticsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetProcessDefinitionResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -19719,6 +22282,33 @@ func (r CancelProcessInstanceResponse) StatusCode() int {
 	return 0
 }
 
+type ResolveProcessInstanceIncidentsResponse struct {
+	Body                      []byte
+	HTTPResponse              *http.Response
+	JSON200                   *BatchOperationCreatedResult
+	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON401 *Unauthorized
+	ApplicationproblemJSON404 *ProblemDetail
+	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON503 *ServiceUnavailable
+}
+
+// Status returns HTTPResponse.Status
+func (r ResolveProcessInstanceIncidentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResolveProcessInstanceIncidentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type SearchProcessInstanceIncidentsResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -19876,7 +22466,6 @@ func (r GetResourceResponse) StatusCode() int {
 type GetResourceContentResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *string
 	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
@@ -19956,7 +22545,6 @@ type SearchRolesResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *ProblemDetail
 }
 
 // Status returns HTTPResponse.Status
@@ -20216,7 +22804,7 @@ func (r AssignRoleToGroupResponse) StatusCode() int {
 type SearchMappingRulesForRoleResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *MappingRuleSearchQueryResult
+	JSON200                   *SearchQueryResponse
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -20376,7 +22964,6 @@ func (r AssignRoleToUserResponse) StatusCode() int {
 type CreateAdminUserResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON201                   *UserCreateResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON403 *Forbidden
 	ApplicationproblemJSON500 *InternalServerError
@@ -20506,7 +23093,6 @@ type SearchTenantsResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -20757,7 +23343,7 @@ func (r AssignGroupToTenantResponse) StatusCode() int {
 type SearchMappingRulesForTenantResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MappingRuleSearchQueryResult
+	JSON200      *SearchQueryResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -20831,7 +23417,7 @@ func (r AssignMappingRuleToTenantResponse) StatusCode() int {
 type SearchRolesForTenantResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *RoleSearchQueryResult
+	JSON200      *SearchQueryResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -21393,6 +23979,32 @@ func (r GetVariableResponse) StatusCode() int {
 	return 0
 }
 
+// SearchAuditLogsWithBodyWithResponse request with arbitrary body returning *SearchAuditLogsResponse
+func (c *ClientWithResponses) SearchAuditLogsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error) {
+	rsp, err := c.SearchAuditLogsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchAuditLogsResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchAuditLogsWithResponse(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error) {
+	rsp, err := c.SearchAuditLogs(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchAuditLogsResponse(rsp)
+}
+
+// GetAuditLogWithResponse request returning *GetAuditLogResponse
+func (c *ClientWithResponses) GetAuditLogWithResponse(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*GetAuditLogResponse, error) {
+	rsp, err := c.GetAuditLog(ctx, auditLogKey, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAuditLogResponse(rsp)
+}
+
 // GetAuthenticationWithResponse request returning *GetAuthenticationResponse
 func (c *ClientWithResponses) GetAuthenticationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthenticationResponse, error) {
 	rsp, err := c.GetAuthentication(ctx, reqEditors...)
@@ -21437,7 +24049,7 @@ func (c *ClientWithResponses) SearchAuthorizationsWithResponse(ctx context.Conte
 }
 
 // DeleteAuthorizationWithResponse request returning *DeleteAuthorizationResponse
-func (c *ClientWithResponses) DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error) {
+func (c *ClientWithResponses) DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error) {
 	rsp, err := c.DeleteAuthorization(ctx, authorizationKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21446,7 +24058,7 @@ func (c *ClientWithResponses) DeleteAuthorizationWithResponse(ctx context.Contex
 }
 
 // GetAuthorizationWithResponse request returning *GetAuthorizationResponse
-func (c *ClientWithResponses) GetAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error) {
+func (c *ClientWithResponses) GetAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error) {
 	rsp, err := c.GetAuthorization(ctx, authorizationKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21455,7 +24067,7 @@ func (c *ClientWithResponses) GetAuthorizationWithResponse(ctx context.Context, 
 }
 
 // UpdateAuthorizationWithBodyWithResponse request with arbitrary body returning *UpdateAuthorizationResponse
-func (c *ClientWithResponses) UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
+func (c *ClientWithResponses) UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
 	rsp, err := c.UpdateAuthorizationWithBody(ctx, authorizationKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21463,7 +24075,7 @@ func (c *ClientWithResponses) UpdateAuthorizationWithBodyWithResponse(ctx contex
 	return ParseUpdateAuthorizationResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
+func (c *ClientWithResponses) UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
 	rsp, err := c.UpdateAuthorization(ctx, authorizationKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21589,6 +24201,93 @@ func (c *ClientWithResponses) ResetClockWithResponse(ctx context.Context, reqEdi
 		return nil, err
 	}
 	return ParseResetClockResponse(rsp)
+}
+
+// CreateGlobalClusterVariableWithBodyWithResponse request with arbitrary body returning *CreateGlobalClusterVariableResponse
+func (c *ClientWithResponses) CreateGlobalClusterVariableWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error) {
+	rsp, err := c.CreateGlobalClusterVariableWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGlobalClusterVariableResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateGlobalClusterVariableWithResponse(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error) {
+	rsp, err := c.CreateGlobalClusterVariable(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGlobalClusterVariableResponse(rsp)
+}
+
+// DeleteGlobalClusterVariableWithResponse request returning *DeleteGlobalClusterVariableResponse
+func (c *ClientWithResponses) DeleteGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteGlobalClusterVariableResponse, error) {
+	rsp, err := c.DeleteGlobalClusterVariable(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteGlobalClusterVariableResponse(rsp)
+}
+
+// GetGlobalClusterVariableWithResponse request returning *GetGlobalClusterVariableResponse
+func (c *ClientWithResponses) GetGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetGlobalClusterVariableResponse, error) {
+	rsp, err := c.GetGlobalClusterVariable(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGlobalClusterVariableResponse(rsp)
+}
+
+// SearchClusterVariablesWithBodyWithResponse request with arbitrary body returning *SearchClusterVariablesResponse
+func (c *ClientWithResponses) SearchClusterVariablesWithBodyWithResponse(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error) {
+	rsp, err := c.SearchClusterVariablesWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchClusterVariablesResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchClusterVariablesWithResponse(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error) {
+	rsp, err := c.SearchClusterVariables(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchClusterVariablesResponse(rsp)
+}
+
+// CreateTenantClusterVariableWithBodyWithResponse request with arbitrary body returning *CreateTenantClusterVariableResponse
+func (c *ClientWithResponses) CreateTenantClusterVariableWithBodyWithResponse(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error) {
+	rsp, err := c.CreateTenantClusterVariableWithBody(ctx, tenantId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTenantClusterVariableResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error) {
+	rsp, err := c.CreateTenantClusterVariable(ctx, tenantId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTenantClusterVariableResponse(rsp)
+}
+
+// DeleteTenantClusterVariableWithResponse request returning *DeleteTenantClusterVariableResponse
+func (c *ClientWithResponses) DeleteTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*DeleteTenantClusterVariableResponse, error) {
+	rsp, err := c.DeleteTenantClusterVariable(ctx, tenantId, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteTenantClusterVariableResponse(rsp)
+}
+
+// GetTenantClusterVariableWithResponse request returning *GetTenantClusterVariableResponse
+func (c *ClientWithResponses) GetTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*GetTenantClusterVariableResponse, error) {
+	rsp, err := c.GetTenantClusterVariable(ctx, tenantId, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTenantClusterVariableResponse(rsp)
 }
 
 // SearchCorrelatedMessageSubscriptionsWithBodyWithResponse request with arbitrary body returning *SearchCorrelatedMessageSubscriptionsResponse
@@ -21824,6 +24523,23 @@ func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetElementInstanceResponse(rsp)
+}
+
+// SearchElementInstanceIncidentsWithBodyWithResponse request with arbitrary body returning *SearchElementInstanceIncidentsResponse
+func (c *ClientWithResponses) SearchElementInstanceIncidentsWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error) {
+	rsp, err := c.SearchElementInstanceIncidentsWithBody(ctx, elementInstanceKey, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchElementInstanceIncidentsResponse(rsp)
+}
+
+func (c *ClientWithResponses) SearchElementInstanceIncidentsWithResponse(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error) {
+	rsp, err := c.SearchElementInstanceIncidents(ctx, elementInstanceKey, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchElementInstanceIncidentsResponse(rsp)
 }
 
 // CreateElementInstanceVariablesWithBodyWithResponse request with arbitrary body returning *CreateElementInstanceVariablesResponse
@@ -22325,6 +25041,40 @@ func (c *ClientWithResponses) SearchProcessDefinitionsWithResponse(ctx context.C
 	return ParseSearchProcessDefinitionsResponse(rsp)
 }
 
+// GetProcessDefinitionInstanceStatisticsWithBodyWithResponse request with arbitrary body returning *GetProcessDefinitionInstanceStatisticsResponse
+func (c *ClientWithResponses) GetProcessDefinitionInstanceStatisticsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error) {
+	rsp, err := c.GetProcessDefinitionInstanceStatisticsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProcessDefinitionInstanceStatisticsResponse(rsp)
+}
+
+func (c *ClientWithResponses) GetProcessDefinitionInstanceStatisticsWithResponse(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error) {
+	rsp, err := c.GetProcessDefinitionInstanceStatistics(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProcessDefinitionInstanceStatisticsResponse(rsp)
+}
+
+// GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse request with arbitrary body returning *GetProcessDefinitionInstanceVersionStatisticsResponse
+func (c *ClientWithResponses) GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
+	rsp, err := c.GetProcessDefinitionInstanceVersionStatisticsWithBody(ctx, processDefinitionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProcessDefinitionInstanceVersionStatisticsResponse(rsp)
+}
+
+func (c *ClientWithResponses) GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
+	rsp, err := c.GetProcessDefinitionInstanceVersionStatistics(ctx, processDefinitionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProcessDefinitionInstanceVersionStatisticsResponse(rsp)
+}
+
 // GetProcessDefinitionWithResponse request returning *GetProcessDefinitionResponse
 func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error) {
 	rsp, err := c.GetProcessDefinition(ctx, processDefinitionKey, reqEditors...)
@@ -22504,6 +25254,15 @@ func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseCancelProcessInstanceResponse(rsp)
+}
+
+// ResolveProcessInstanceIncidentsWithResponse request returning *ResolveProcessInstanceIncidentsResponse
+func (c *ClientWithResponses) ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*ResolveProcessInstanceIncidentsResponse, error) {
+	rsp, err := c.ResolveProcessInstanceIncidents(ctx, processInstanceKey, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolveProcessInstanceIncidentsResponse(rsp)
 }
 
 // SearchProcessInstanceIncidentsWithBodyWithResponse request with arbitrary body returning *SearchProcessInstanceIncidentsResponse
@@ -23220,16 +25979,16 @@ func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, u
 }
 
 // SearchUserTaskVariablesWithBodyWithResponse request with arbitrary body returning *SearchUserTaskVariablesResponse
-func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
-	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchUserTaskVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
-	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, body, reqEditors...)
+func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23306,16 +26065,16 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userna
 }
 
 // SearchVariablesWithBodyWithResponse request with arbitrary body returning *SearchVariablesResponse
-func (c *ClientWithResponses) SearchVariablesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
-	rsp, err := c.SearchVariablesWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchVariablesWithBodyWithResponse(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
+	rsp, err := c.SearchVariablesWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
-	rsp, err := c.SearchVariables(ctx, body, reqEditors...)
+func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
+	rsp, err := c.SearchVariables(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23329,6 +26088,107 @@ func (c *ClientWithResponses) GetVariableWithResponse(ctx context.Context, varia
 		return nil, err
 	}
 	return ParseGetVariableResponse(rsp)
+}
+
+// ParseSearchAuditLogsResponse parses an HTTP response from a SearchAuditLogsWithResponse call
+func ParseSearchAuditLogsResponse(rsp *http.Response) (*SearchAuditLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchAuditLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditLogSearchQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAuditLogResponse parses an HTTP response from a GetAuditLogWithResponse call
+func ParseGetAuditLogResponse(rsp *http.Response) (*GetAuditLogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAuditLogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditLogResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetAuthenticationResponse parses an HTTP response from a GetAuthenticationWithResponse call
@@ -24003,6 +26863,398 @@ func ParseResetClockResponse(rsp *http.Response) (*ResetClockResponse, error) {
 	return response, nil
 }
 
+// ParseCreateGlobalClusterVariableResponse parses an HTTP response from a CreateGlobalClusterVariableWithResponse call
+func ParseCreateGlobalClusterVariableResponse(rsp *http.Response) (*CreateGlobalClusterVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGlobalClusterVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterVariableResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteGlobalClusterVariableResponse parses an HTTP response from a DeleteGlobalClusterVariableWithResponse call
+func ParseDeleteGlobalClusterVariableResponse(rsp *http.Response) (*DeleteGlobalClusterVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteGlobalClusterVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGlobalClusterVariableResponse parses an HTTP response from a GetGlobalClusterVariableWithResponse call
+func ParseGetGlobalClusterVariableResponse(rsp *http.Response) (*GetGlobalClusterVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGlobalClusterVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterVariableResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchClusterVariablesResponse parses an HTTP response from a SearchClusterVariablesWithResponse call
+func ParseSearchClusterVariablesResponse(rsp *http.Response) (*SearchClusterVariablesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchClusterVariablesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterVariableSearchQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTenantClusterVariableResponse parses an HTTP response from a CreateTenantClusterVariableWithResponse call
+func ParseCreateTenantClusterVariableResponse(rsp *http.Response) (*CreateTenantClusterVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTenantClusterVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterVariableResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteTenantClusterVariableResponse parses an HTTP response from a DeleteTenantClusterVariableWithResponse call
+func ParseDeleteTenantClusterVariableResponse(rsp *http.Response) (*DeleteTenantClusterVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteTenantClusterVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTenantClusterVariableResponse parses an HTTP response from a GetTenantClusterVariableWithResponse call
+func ParseGetTenantClusterVariableResponse(rsp *http.Response) (*GetTenantClusterVariableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTenantClusterVariableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterVariableResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSearchCorrelatedMessageSubscriptionsResponse parses an HTTP response from a SearchCorrelatedMessageSubscriptionsWithResponse call
 func ParseSearchCorrelatedMessageSubscriptionsResponse(rsp *http.Response) (*SearchCorrelatedMessageSubscriptionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -24084,13 +27336,6 @@ func ParseEvaluateDecisionResponse(rsp *http.Response) (*EvaluateDecisionRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
@@ -24980,6 +28225,67 @@ func ParseGetElementInstanceResponse(rsp *http.Response) (*GetElementInstanceRes
 	return response, nil
 }
 
+// ParseSearchElementInstanceIncidentsResponse parses an HTTP response from a SearchElementInstanceIncidentsWithResponse call
+func ParseSearchElementInstanceIncidentsResponse(rsp *http.Response) (*SearchElementInstanceIncidentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchElementInstanceIncidentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest IncidentSearchQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateElementInstanceVariablesResponse parses an HTTP response from a CreateElementInstanceVariablesWithResponse call
 func ParseCreateElementInstanceVariablesResponse(rsp *http.Response) (*CreateElementInstanceVariablesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -25122,13 +28428,6 @@ func ParseSearchGroupsResponse(rsp *http.Response) (*SearchGroupsResponse, error
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
 
 	}
 
@@ -25488,7 +28787,7 @@ func ParseSearchMappingRulesForGroupResponse(rsp *http.Response) (*SearchMapping
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MappingRuleSearchQueryResult
+		var dest SearchQueryResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -25664,7 +28963,7 @@ func ParseSearchRolesForGroupResponse(rsp *http.Response) (*SearchRolesForGroupR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest RoleSearchQueryResult
+		var dest SearchQueryResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -26084,7 +29383,7 @@ func ParseActivateJobsResponse(rsp *http.Response) (*ActivateJobsResponse, error
 		response.ApplicationproblemJSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ProblemDetail
+		var dest InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -26884,6 +30183,114 @@ func ParseSearchProcessDefinitionsResponse(rsp *http.Response) (*SearchProcessDe
 	return response, nil
 }
 
+// ParseGetProcessDefinitionInstanceStatisticsResponse parses an HTTP response from a GetProcessDefinitionInstanceStatisticsWithResponse call
+func ParseGetProcessDefinitionInstanceStatisticsResponse(rsp *http.Response) (*GetProcessDefinitionInstanceStatisticsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProcessDefinitionInstanceStatisticsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProcessDefinitionInstanceStatisticsQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProcessDefinitionInstanceVersionStatisticsResponse parses an HTTP response from a GetProcessDefinitionInstanceVersionStatisticsWithResponse call
+func ParseGetProcessDefinitionInstanceVersionStatisticsResponse(rsp *http.Response) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProcessDefinitionInstanceVersionStatisticsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProcessDefinitionInstanceVersionStatisticsQueryResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetProcessDefinitionResponse parses an HTTP response from a GetProcessDefinitionWithResponse call
 func ParseGetProcessDefinitionResponse(rsp *http.Response) (*GetProcessDefinitionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27614,6 +31021,67 @@ func ParseCancelProcessInstanceResponse(rsp *http.Response) (*CancelProcessInsta
 	return response, nil
 }
 
+// ParseResolveProcessInstanceIncidentsResponse parses an HTTP response from a ResolveProcessInstanceIncidentsWithResponse call
+func ParseResolveProcessInstanceIncidentsResponse(rsp *http.Response) (*ResolveProcessInstanceIncidentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResolveProcessInstanceIncidentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BatchOperationCreatedResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ServiceUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSearchProcessInstanceIncidentsResponse parses an HTTP response from a SearchProcessInstanceIncidentsWithResponse call
 func ParseSearchProcessInstanceIncidentsResponse(rsp *http.Response) (*SearchProcessInstanceIncidentsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27938,13 +31406,6 @@ func ParseGetResourceContentResponse(rsp *http.Response) (*GetResourceContentRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest string
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest ProblemDetail
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -28113,13 +31574,6 @@ func ParseSearchRolesResponse(rsp *http.Response) (*SearchRolesResponse, error) 
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
 
 	}
 
@@ -28655,7 +32109,7 @@ func ParseSearchMappingRulesForRoleResponse(rsp *http.Response) (*SearchMappingR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MappingRuleSearchQueryResult
+		var dest SearchQueryResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -29006,13 +32460,6 @@ func ParseCreateAdminUserResponse(rsp *http.Response) (*CreateAdminUserResponse,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest UserCreateResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest InvalidData
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -29272,13 +32719,6 @@ func ParseSearchTenantsResponse(rsp *http.Response) (*SearchTenantsResponse, err
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
@@ -29751,7 +33191,7 @@ func ParseSearchMappingRulesForTenantResponse(rsp *http.Response) (*SearchMappin
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MappingRuleSearchQueryResult
+		var dest SearchQueryResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -29885,7 +33325,7 @@ func ParseSearchRolesForTenantResponse(rsp *http.Response) (*SearchRolesForTenan
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest RoleSearchQueryResult
+		var dest SearchQueryResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

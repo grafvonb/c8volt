@@ -7,7 +7,7 @@ COVER_HTML := $(COVER_DIR)/coverage.html
 
 .PHONY: all tidy generate build test lint fmt vet clean install run cover cover.html release
 
-all: tidy generate fmt vet lint test build
+all: tidy fmt vet lint test build
 
 tidy:
 	go mod tidy
