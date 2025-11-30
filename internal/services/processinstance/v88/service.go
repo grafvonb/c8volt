@@ -13,6 +13,7 @@ import (
 	operatev88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/operate"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
@@ -124,26 +125,40 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
-	st := operatev88.ProcessInstanceState(filter.State)
-	pk, err := toolx.StringToInt64Ptr(filter.ParentKey)
-	if err != nil {
-		return nil, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
+
+	bodyFilter := camundav88.ProcessInstanceFilter{
+		TenantId:                    common.NewStringEqFilterPtr(s.cfg.App.Tenant),
+		ProcessInstanceKey:          common.NewProcessInstanceKeyEqFilterPtr(filter.Key),
+		ProcessDefinitionId:         common.NewStringEqFilterPtr(filter.BpmnProcessId),
+		ProcessDefinitionVersion:    common.NewIntegerEqFilterPtr(filter.ProcessVersion),
+		ProcessDefinitionVersionTag: common.NewStringEqFilterPtr(filter.ProcessVersionTag),
+		State:                       common.NewProcessInstanceStateEqFilterPtr(string(filter.State)),
+		ParentProcessInstanceKey:    common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey),
 	}
-	pdk, _ := toolx.StringToInt64Ptr(filter.ProcessDefinitionKey)
-	f := operatev88.ProcessInstance{
-		TenantId:             toolx.Ptr(s.cfg.App.Tenant),
-		BpmnProcessId:        toolx.Ptr(filter.BpmnProcessId),
-		ProcessDefinitionKey: pdk,
-		ProcessVersion:       toolx.PtrIfNonZero(filter.ProcessVersion),
-		ProcessVersionTag:    toolx.Ptr(filter.ProcessVersionTag),
-		State:                toolx.Ptr(st),
-		ParentKey:            pk,
+	page := camundav88.SearchQueryPageRequest{}
+	from := int32(0)
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
+		From:  &from,
+		Limit: &size,
+	})
+	orderDesc := camundav88.DESC
+	orderAsc := camundav88.ASC
+	sort := []camundav88.ProcessInstanceSearchQuerySortRequest{
+		{
+			Field: camundav88.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionName,
+			Order: &orderDesc,
+		},
+		{
+			Field: camundav88.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionVersion,
+			Order: &orderAsc,
+		},
 	}
-	body := operatev88.SearchProcessInstancesJSONRequestBody{
-		Filter: &f,
-		Size:   &size,
+	body := camundav88.SearchProcessInstancesJSONRequestBody{
+		Filter: &bodyFilter,
+		Page:   &page,
+		Sort:   &sort,
 	}
-	resp, err := s.co.SearchProcessInstancesWithResponse(ctx, body)
+	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +169,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		return nil, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
-	return toolx.DerefSlicePtr(resp.JSON200.Items, fromProcessInstanceResponse), nil
+	return toolx.MapSlice(resp.JSON200.Items, fromProcessInstanceResult), nil
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, error) {

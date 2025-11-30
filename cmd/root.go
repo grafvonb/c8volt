@@ -148,7 +148,9 @@ func init() {
 
 	pf.String("http-timeout", "", "HTTP timeout (Go duration, e.g. 30s)")
 
-	pf.StringP("camunda-version", "a", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
+	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
+	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
+
 	pf.String("api-camunda-base-url", "", "Camunda API base URL")
 	pf.String("api-operate-base-url", "", "Operate API base URL")
 	pf.String("api-tasklist-base-url", "", "Tasklist API base URL")

@@ -11,10 +11,10 @@ type GenProcessInstanceClientCamunda interface {
 	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error)
 	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error)
 	CreateProcessInstanceWithResponse(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error)
+	SearchProcessInstancesWithResponse(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error)
 }
 
 type GenProcessInstanceClientOperate interface {
-	SearchProcessInstancesWithResponse(ctx context.Context, body operatev88.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev88.RequestEditorFn) (*operatev88.SearchProcessInstancesResponse, error)
 	DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx context.Context, key int64, reqEditors ...operatev88.RequestEditorFn) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error)
 }
 

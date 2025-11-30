@@ -22,8 +22,8 @@ func printFilter(cmd *cobra.Command) {
 	if flagGetPIChildrenOnly {
 		filters = append(filters, "children-only=true")
 	}
-	if flagGetPIOrphanParentsOnly {
-		filters = append(filters, "orphan-parents-only=true")
+	if flagGetPIOrphanChildrenOnly {
+		filters = append(filters, "orphan-children-only=true")
 	}
 	if flagGetPIIncidentsOnly {
 		filters = append(filters, "incidents-only=true")

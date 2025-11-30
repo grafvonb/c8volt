@@ -32,7 +32,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 
 		if flagViewAsTree && (!flagWalkPIModeFamily && flagWalkPIMode != walkPIModeFamily) {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--tree is only valid with --family"))
+			flagWalkPIModeFamily = true
+			flagWalkPIModeChildren = false
+			flagWalkPIModeParent = false
 		}
 
 		type walker struct {

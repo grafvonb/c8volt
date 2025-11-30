@@ -19,7 +19,8 @@
 
 ./mutate-search-query-schemas.py ./camunda-docs/api/camunda/version-8.8/camunda-openapi.yaml
 ./mutate-search-result-schemas.py ./camunda-docs/api/camunda/version-8.8/camunda-openapi-search-query-patched.yaml
-./generate-client.sh ./camunda-docs/api/camunda/version-8.8/camunda-openapi-search-query-patched-search-result-patched.yaml ../internal/clients/camunda/v88/camunda/client.gen.go camunda
+./mutate-fix-process-instance-filter-fields.py ./camunda-docs/api/camunda/version-8.8/camunda-openapi-search-query-patched-search-result-patched.yaml
+./generate-client.sh ./camunda-docs/api/camunda/version-8.8/camunda-openapi-search-query-patched-search-result-patched-process-instance-filter-fields-fixed.yaml ../internal/clients/camunda/v88/camunda/client.gen.go camunda
 
 ./mutate-operation-ids.py ./camunda-docs/api/operate/operate-openapi.yaml
 ./mutate-remove-sort-values.py ./camunda-docs/api/operate/operate-openapi-oids-updated.yaml

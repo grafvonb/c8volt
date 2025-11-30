@@ -4323,6 +4323,21 @@ type ProcessInstanceFilter struct {
 	// ParentProcessInstanceKey The parent process instance key.
 	ParentProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"parentProcessInstanceKey,omitempty"`
 
+	// ProcessDefinitionId The process definition ID.
+	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The process definition key.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+
+	// ProcessDefinitionName The process definition name.
+	ProcessDefinitionName *StringFilterProperty `json:"processDefinitionName,omitempty"`
+
+	// ProcessDefinitionVersion The process definition version.
+	ProcessDefinitionVersion *IntegerFilterProperty `json:"processDefinitionVersion,omitempty"`
+
+	// ProcessDefinitionVersionTag The process definition version tag.
+	ProcessDefinitionVersionTag *StringFilterProperty `json:"processDefinitionVersionTag,omitempty"`
+
 	// ProcessInstanceKey The key of this process instance.
 	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
 
@@ -4342,8 +4357,74 @@ type ProcessInstanceFilter struct {
 	Variables *[]VariableValueFilterProperty `json:"variables,omitempty"`
 }
 
-// ProcessInstanceFilterFields Base process instance search filter.
-type ProcessInstanceFilterFields = BaseProcessInstanceFilterFields
+// ProcessInstanceFilterFields defines model for ProcessInstanceFilterFields.
+type ProcessInstanceFilterFields struct {
+	// BatchOperationId The batch operation ID.
+	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// ElementId The element ID associated with the process instance.
+	ElementId *StringFilterProperty `json:"elementId,omitempty"`
+
+	// ElementInstanceState The state of the element instances associated with the process instance.
+	ElementInstanceState *ElementInstanceStateFilterProperty `json:"elementInstanceState,omitempty"`
+
+	// EndDate The end date.
+	EndDate *DateTimeFilterProperty `json:"endDate,omitempty"`
+
+	// ErrorMessage The error message related to the process.
+	ErrorMessage *StringFilterProperty `json:"errorMessage,omitempty"`
+
+	// HasElementInstanceIncident Whether the element instance has an incident or not.
+	HasElementInstanceIncident *bool `json:"hasElementInstanceIncident,omitempty"`
+
+	// HasIncident Whether this process instance has a related incident or not.
+	HasIncident *bool `json:"hasIncident,omitempty"`
+
+	// HasRetriesLeft Whether the process has failed jobs with retries left.
+	HasRetriesLeft *bool `json:"hasRetriesLeft,omitempty"`
+
+	// IncidentErrorHashCode The incident error hash code, associated with this process.
+	IncidentErrorHashCode *IntegerFilterProperty `json:"incidentErrorHashCode,omitempty"`
+
+	// ParentElementInstanceKey The parent element instance key.
+	ParentElementInstanceKey *ElementInstanceKeyFilterProperty `json:"parentElementInstanceKey,omitempty"`
+
+	// ParentProcessInstanceKey The parent process instance key.
+	ParentProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"parentProcessInstanceKey,omitempty"`
+
+	// ProcessDefinitionId The process definition ID.
+	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The process definition key.
+	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+
+	// ProcessDefinitionName The process definition name.
+	ProcessDefinitionName *StringFilterProperty `json:"processDefinitionName,omitempty"`
+
+	// ProcessDefinitionVersion The process definition version.
+	ProcessDefinitionVersion *IntegerFilterProperty `json:"processDefinitionVersion,omitempty"`
+
+	// ProcessDefinitionVersionTag The process definition version tag.
+	ProcessDefinitionVersionTag *StringFilterProperty `json:"processDefinitionVersionTag,omitempty"`
+
+	// ProcessInstanceKey The key of this process instance.
+	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
+
+	// StartDate The start date.
+	StartDate *DateTimeFilterProperty `json:"startDate,omitempty"`
+
+	// State The process instance state.
+	State *ProcessInstanceStateFilterProperty `json:"state,omitempty"`
+
+	// Tags List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
+	Tags *TagSet `json:"tags,omitempty"`
+
+	// TenantId The tenant ID.
+	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
+
+	// Variables The process instance variables.
+	Variables *[]VariableValueFilterProperty `json:"variables,omitempty"`
+}
 
 // ProcessInstanceIncidentResolutionBatchOperationRequest The process instance filter that defines which process instances should have their incidents resolved.
 type ProcessInstanceIncidentResolutionBatchOperationRequest struct {

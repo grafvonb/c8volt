@@ -22,11 +22,11 @@ var (
 
 // command options
 var (
-	flagGetPIRootsOnly         bool
-	flagGetPIChildrenOnly      bool
-	flagGetPIOrphanParentsOnly bool
-	flagGetPIIncidentsOnly     bool
-	flagGetPINoIncidentsOnly   bool
+	flagGetPIRootsOnly          bool
+	flagGetPIChildrenOnly       bool
+	flagGetPIOrphanChildrenOnly bool
+	flagGetPIIncidentsOnly      bool
+	flagGetPINoIncidentsOnly    bool
 )
 
 var getProcessInstanceCmd = &cobra.Command{
@@ -36,64 +36,61 @@ var getProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
-		}
-		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error creating c8volt client: %w", err))
 		}
-		if flagGetPIProcessDefinitionKey != "" && (flagGetPIBpmnProcessID != "" || flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: --pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag", ferrors.ErrBadRequest))
+		fail := func(err error) {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		if flagGetPIBpmnProcessID == "" && (flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: --pd-version and --pd-version-tag require --bpmn-process-id to be set", ferrors.ErrBadRequest))
+		if err := validatePISearchFlags(); err != nil {
+			fail(err)
 		}
-
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
-		filter, _ := populatePISearchFilterOpts()
+		filter, populated := populatePISearchFilterOpts()
 
-		if filter.Key != "" {
-			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
-			pi, err := cli.GetProcessInstance(cmd.Context(), filter.Key)
-			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instance by key %s: %w", filter.Key, err))
+		if flagGetPIKey != "" {
+			log.Debug(fmt.Sprintf("searching by key: %s", flagGetPIKey))
+			if populated || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
+				fail(fmt.Errorf("%w: --key cannot be combined with other filters", ErrMutuallyExclusiveFlags))
 			}
-			err = processInstanceView(cmd, pi)
+			pi, err := cli.GetProcessInstance(cmd.Context(), flagGetPIKey)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering view: %w", err))
+				fail(fmt.Errorf("error fetching process instance by key %s: %w", flagGetPIKey, err))
 			}
-			log.Debug(fmt.Sprintf("searched by key, found process instance with key: %s", pi.Key))
+
+			if err := processInstanceView(cmd, pi); err != nil {
+				fail(fmt.Errorf("error rendering view: %w", err))
+			}
 			return
 		}
-		pisr, err := cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
+
+		filter.Key = flagGetPIKey
+		log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
+
+		pis, err := cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
-		}
-		if flagGetPIChildrenOnly && flagGetPIRootsOnly {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: using both --children-only and --roots-only filters returns always no results", ferrors.ErrBadRequest))
+			fail(fmt.Errorf("error fetching process instances: %w", err))
 		}
 		if flagGetPIChildrenOnly {
-			pisr = pisr.FilterChildrenOnly()
+			pis = pis.FilterChildrenOnly()
 		}
 		if flagGetPIRootsOnly {
-			pisr = pisr.FilterRootsOnly()
+			pis = pis.FilterRootsOnly()
 		}
-		if flagGetPIOrphanParentsOnly {
-			pisr.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pisr.Items)
+		if flagGetPIOrphanChildrenOnly {
+			pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error filtering orphan parents: %w", err))
+				fail(fmt.Errorf("error filtering orphan children: %w", err))
 			}
 		}
 		if flagGetPIIncidentsOnly {
-			pisr = pisr.FilterByHavingIncidents(true)
+			pis = pis.FilterByHavingIncidents(true)
 		}
 		if flagGetPINoIncidentsOnly {
-			pisr = pisr.FilterByHavingIncidents(false)
+			pis = pis.FilterByHavingIncidents(false)
 		}
-		err = listProcessInstancesView(cmd, pisr)
-		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error rendering items view: %w", err))
+		if err := listProcessInstancesView(cmd, pis); err != nil {
+			fail(fmt.Errorf("error rendering items view: %w", err))
 		}
-		log.Debug(fmt.Sprintf("fetched process instances: %d", pisr.Total))
 	},
 }
 
@@ -111,9 +108,12 @@ func init() {
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
+
 	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances, meaning instances with empty parent key")
 	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances, meaning instances that have a parent key set")
-	fs.BoolVar(&flagGetPIOrphanParentsOnly, "orphan-parents-only", false, "show only child instances where parent key is set but the parent process instance does not exist (anymore)")
+
+	fs.BoolVar(&flagGetPIOrphanChildrenOnly, "orphan-children-only", false, "show only child instances where parent key is set but the parent process instance does not exist (anymore)")
+
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 }
@@ -122,9 +122,6 @@ func populatePISearchFilterOpts() (process.ProcessInstanceFilter, bool) {
 	var f process.ProcessInstanceFilter
 	var populated bool
 
-	if v := flagGetPIKey; v != "" {
-		f.Key, populated = v, true
-	}
 	if v := flagGetPIParentKey; v != "" {
 		f.ParentKey, populated = v, true
 	}
@@ -153,4 +150,24 @@ func pickPISearchSize() int32 {
 		return consts.MaxPISearchSize
 	}
 	return flagGetPISize
+}
+
+func validatePISearchFlags() error {
+	if flagGetPIProcessDefinitionKey != "" &&
+		(flagGetPIBpmnProcessID != "" ||
+			flagGetPIProcessVersion != 0 ||
+			flagGetPIProcessVersionTag != "") {
+		return fmt.Errorf("%w: --pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag", ErrMutuallyExclusiveFlags)
+	}
+	if flagGetPIBpmnProcessID == "" &&
+		(flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
+		return fmt.Errorf("%w: --pd-version and --pd-version-tag require --bpmn-process-id to be set", ErrMissingDependentFlags)
+	}
+	if flagGetPIChildrenOnly && flagGetPIRootsOnly {
+		return fmt.Errorf("%w: using both --children-only and --roots-only filters returns does not make sense", ErrForbiddenFlagCombination)
+	}
+	if flagGetPIIncidentsOnly && flagGetPINoIncidentsOnly {
+		return fmt.Errorf("%w: using both --incidents-only and --no-incidents-only filters does not make sense", ErrForbiddenFlagCombination)
+	}
+	return nil
 }
