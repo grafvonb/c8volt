@@ -79,8 +79,6 @@ produce:
 }
 
 // ExecuteSlice maps a slice of inputs with concurrency, same semantics
-//
-//nolint:unused
 func ExecuteSlice[In any, Out any](ctx context.Context, in []In, parallel int, failFast bool, fn func(context.Context, In, int) (Out, error)) ([]Out, error) {
 	return ExecuteNTimes[Out](ctx, len(in), parallel, failFast, func(ctx context.Context, i int) (Out, error) {
 		return fn(ctx, in[i], i)

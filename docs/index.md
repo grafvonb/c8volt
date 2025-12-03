@@ -120,6 +120,23 @@ The whole process instance tree is now cancelled!
 
 **DONE IS DONE!**
 
+## CLI Reference
+
+The full command/flag reference is generated from the code.
+
+- [c8volt root command](./cli/c8volt.md)
+- [get commands](./cli/c8volt_get.md)
+- [run commands](./cli/c8volt_run.md)
+- [walk commands](./cli/c8volt_walk.md)
+- [deploy commands](./cli/c8volt_deploy.md)
+- [embed commands](./cli/c8volt_embed.md)
+- [cancel commands](./cli/c8volt_cancel.md)
+- [delete commands](./cli/c8volt_delete.md)
+- [expect commands](./cli/c8volt_expect.md)
+- [config commands](./cli/c8volt_config.md)
+- [version command](./cli/c8volt_version.md)
+- ... and more to come!
+
 ## Quick Start with c8volt
 
 1. **Install Camunda 8.8 Run**

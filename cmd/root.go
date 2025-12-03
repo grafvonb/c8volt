@@ -28,6 +28,8 @@ var (
 	flagCmdAutoConfirm bool
 )
 
+func Root() *cobra.Command { return rootCmd }
+
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
 	Short: "c8volt is a CLI tool to interact with Camunda 8",
