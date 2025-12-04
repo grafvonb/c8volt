@@ -1,0 +1,1065 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.27.3 by Michael Rose
+  Copyright 2013-2025 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE
+-->
+
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>c8volt: Camunda 8 Operations CLI</title>
+<meta name="description" content="The tool for Camunda 8 admins and developers to verify outcomes.">
+
+
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="c8volt: Camunda 8 Operations CLI">
+<meta property="og:title" content="c8volt: Camunda 8 Operations CLI">
+<meta property="og:url" content="http://localhost:4000/c8volt/">
+
+
+  <meta property="og:description" content="The tool for Camunda 8 admins and developers to verify outcomes.">
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/c8volt/">
+
+
+
+
+
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+    "name": null,
+    "url": "http://localhost:4000/c8volt/"
+}
+</script>
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+  <link href="/c8volt/feed.xml" type="application/atom+xml" rel="alternate" title="c8volt: Camunda 8 Operations CLI Feed">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+  
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/c8volt/assets/css/main.css">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@latest/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@latest/css/all.min.css"></noscript>
+
+
+
+    <link rel="icon" href="/c8volt/favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="/c8volt/favicon.ico" type="image/x-icon">
+
+  </head>
+
+  <body class="layout--single wide" dir="ltr">
+    <nav class="skip-links">
+  <ul>
+    <li><a href="#site-nav" class="screen-reader-shortcut">Skip to primary navigation</a></li>
+    <li><a href="#main" class="screen-reader-shortcut">Skip to content</a></li>
+    <li><a href="#footer" class="screen-reader-shortcut">Skip to footer</a></li>
+  </ul>
+</nav>
+
+    
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        
+        <a class="site-title" href="/c8volt/">
+          c8volt: Camunda 8 Operations CLI
+          
+        </a>
+        <ul class="visible-links"></ul>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+
+    <div class="initial-content">
+      
+
+
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+      
+    
+    
+      <nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      
+      
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+
+  <article class="page" itemscope itemtype="https://schema.org/CreativeWork">
+    
+    
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          
+          
+
+
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+        <p><img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" /></p>
+
+<h1 id="c8volt-camunda-8-operations-cli">c8volt: Camunda 8 Operations CLI</h1>
+<p>The tool for Camunda 8 admins and developers to verify outcomes.</p>
+
+<p><a href="https://github.com/grafvonb/c8volt"><strong>c8volt</strong></a>’s design and development focus on operational effectiveness, ensuring that <strong>done is done</strong>.
+There are plenty of operational tasks where you want to be sure that:</p>
+
+<ul>
+  <li>A process instance was started – is it really active and running?</li>
+  <li>A process instance was canceled – is it really in the cancelled state?</li>
+  <li>A process instance tree was deleted – are all instances truly gone?</li>
+</ul>
+
+<p>If some operation requires additional steps to reach the desired state, <strong>c8volt</strong> takes care of it for you by:</p>
+<ul>
+  <li>Running multiple process instances concurrently, with configurable number of workers.</li>
+  <li>Cancelling the root process instance when you want to cancel a child process instance.</li>
+  <li>Deleting process instances by first cancelling them and then deleting them.</li>
+  <li>Waiting until the process instance reaches the desired state.</li>
+  <li>Traversing the process instance tree to perform operations like cancellation or deletion.</li>
+  <li>and much more…</li>
+</ul>
+
+<p>Bulk operations like running multiple process instances, cancelling or deleting multiple process instances are supported out-of-the-box.</p>
+
+<p>Proper exit codes, various output formats and piping capabilities make <strong>c8volt</strong> suitable for scripting and automation.</p>
+
+<p><strong>c8volt</strong> focuses on real operational use cases while still providing the familiar CLI functionality such as standard CRUD commands on various resources.</p>
+
+<h2 id="not-already-convinced">Not Already Convinced?</h2>
+
+<p>Here two short examples of what <strong>c8volt</strong> can do for you.</p>
+
+<h3 id="running-a-process-instance-with-activation-confirmation">Running a Process Instance with Activation Confirmation</h3>
+
+<p>You want to start a process instance and be sure that it is really active and running. Standard use case, isn’t it?</p>
+
+<p>Let’s list latest deployed process definitions first:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get pd <span class="nt">--latest</span>
+2251799813686015 &lt;default&gt; C88_DoubleUserTask_Process v1/v1.0.0
+2251799813743379 &lt;default&gt; C88_MultipleSubProcessesParentProcess v5/v1.0.4
+2251799813687133 &lt;default&gt; C88_SimpleParentProcess v2/v1.0.1
+2251799813686018 &lt;default&gt; C88_SimpleUserTaskWithIncident_Process v1/v1.0.0
+2251799813686017 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0
+found: 5
+</code></pre></div></div>
+<p>Now start a process instance of <code class="language-plaintext highlighter-rouge">C88_SimpleUserTask_Process</code> (<strong>c8volt</strong> automatically picks the latest version) and wait until it is active:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run pi <span class="nt">-b</span> C88_SimpleUserTask_Process
+INFO waiting <span class="k">for </span>process instance of 2251799813686017 with key 2251799814015823 to be started by workflow engine...
+INFO process instance 2251799814015823 succesfully created <span class="o">(</span>start registered at 2025-11-13T05:07:46.105Z and confirmed at 2025-11-13T05:07:49Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813686017, C88_SimpleUserTask_Process, v1, tenant: &lt;default&gt;
+</code></pre></div></div>
+<p>Yes, it’s really started and active! <strong>c8volt</strong> assured that by polling the process instance state until it reached <code class="language-plaintext highlighter-rouge">ACTIVE</code>.</p>
+
+<p>Awaiting the confirmation is default behavior of <strong>c8volt</strong> when starting process instances and other operations.</p>
+
+<p><strong>DONE IS DONE!</strong></p>
+
+<p>However, if you don’t want that, you can use the <code class="language-plaintext highlighter-rouge">--no-wait</code> flag, to switch off the waiting mechanism:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run pi <span class="nt">-b</span> C88_SimpleUserTask_Process <span class="nt">--no-wait</span>
+INFO process instance creation with the key 2251799814016994 requested at 2025-11-13T05:15:46Z <span class="o">(</span>run not confirmed, as no-wait is <span class="nb">set</span><span class="o">)</span> using process definition <span class="nb">id </span>2251799813686017, C88_SimpleUserTask_Process, v1, tenant: &lt;default&gt;
+</code></pre></div></div>
+
+<h3 id="cancelling-a-process-instance-tree">Cancelling a Process Instance Tree</h3>
+<p>Here something more complex: You have a process instance tree with parent-child relationships and you want to cancel a mid-child process instance.</p>
+
+<p>Let’s see the current process instance family tree first:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span> 2251799813711967 <span class="nt">--family</span>
+2251799813711967 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T22:21:09.617Z p:&lt;root&gt; i:false ⇄ 
+2251799813711976 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T22:21:09.617+0000 p:2251799813711967 i:false ⇄ 
+2251799813711977 &lt;default&gt; C88_SimpleParentProcess v2/v1.0.1 ACTIVE s:2025-11-08T22:21:09.617+0000 p:2251799813711967 i:false ⇄ 
+2251799813711985 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T22:21:09.617+0000 p:2251799813711977 i:false
+</code></pre></div></div>
+<p>The relationship between the process instances can be visualized like this:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2251799813711967  C88_MultipleSubProcessesParentProcess  v1/v1.0.0  (root)
+├─ 2251799813711976  C88_SimpleUserTask_Process          v1/v1.0.0
+└─ 2251799813711977  C88_SimpleParentProcess             v2/v1.0.1
+   └─ 2251799813711985  C88_SimpleUserTask_Process       v1/v1.0.0
+</code></pre></div></div>
+<p>Try to cancel the mid-child process instance <code class="language-plaintext highlighter-rouge">2251799813711977</code>:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt cancel pi <span class="nt">--key</span><span class="o">=</span>2251799813711977
+You are about to cancel 1 process instance<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO cancelling process instances requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO cannot cancel, process instance with key 2251799813711977 is a child process of a root parent with key 2251799813711967
+INFO use <span class="nt">--force</span> flag to cancel the root process instance with key 2251799813711967 and all its child processes
+INFO cancelling 1 process instance<span class="o">(</span>s<span class="o">)</span> completed: 0 succeeded or already cancelled/teminated, 1 failed
+</code></pre></div></div>
+<p>You cannot cancel a child process instance directly. It is as standard behavior of Camunda 8. You need to cancel the root process instance to cancel all its children.</p>
+
+<p><strong>c8volt</strong> provides a flag <code class="language-plaintext highlighter-rouge">--force</code> to automatically find and cancel the root process instance, thus all its child processes:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt cancel pi <span class="nt">--key</span><span class="o">=</span>2251799813711977 <span class="nt">--force</span>
+You are about to cancel 1 process instance<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO cancelling process instances requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO cannot cancel, process instance with key 2251799813711977 is a child process of a root parent with key 2251799813711967
+INFO force flag is <span class="nb">set</span>, cancelling root process instance with key 2251799813711967 and all its child processes
+INFO waiting <span class="k">for </span>process instance with key 2251799813711967 to be cancelled by workflow engine...
+INFO process instance 2251799813711967 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813711967 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813711967 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance with key 2251799813711967 was successfully <span class="o">(</span>confirmed<span class="o">)</span> cancelled
+INFO cancelling the family of 1 process instance<span class="o">(</span>s<span class="o">)</span> completed: 1 succeeded or already cancelled/teminated, 0 failed
+</code></pre></div></div>
+<p>What has happened?</p>
+<ol>
+  <li><strong>c8volt</strong> detected that the specified process instance 2251799813711977 is a child and found its root ancestor 2251799813711967.</li>
+  <li>It cancelled the root process instance 2251799813711967, which in turn cancelled all its child process instances.</li>
+  <li>It waited until the root process instance reached the <code class="language-plaintext highlighter-rouge">CANCELED</code> (in C8.8 <code class="language-plaintext highlighter-rouge">TERMINATED</code>) state.</li>
+</ol>
+
+<p>Let’s check the family tree again:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span> 2251799813711967 <span class="nt">--family</span>
+2251799813711967 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-08T22:21:09.617Z e:2025-11-09T08:14:00.681Z p:&lt;root&gt; i:false ⇄ 
+2251799813711976 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T22:21:09.617+0000 e:2025-11-09T08:14:00.681+0000 p:2251799813711967 i:false ⇄ 
+2251799813711977 &lt;default&gt; C88_SimpleParentProcess v2/v1.0.1 CANCELED s:2025-11-08T22:21:09.617+0000 e:2025-11-09T08:14:00.681+0000 p:2251799813711967 i:false ⇄ 
+2251799813711985 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T22:21:09.617+0000 e:2025-11-09T08:14:00.681+0000 p:2251799813711977 i:false
+</code></pre></div></div>
+<p>The whole process instance tree is now cancelled!</p>
+
+<p><strong>DONE IS DONE!</strong></p>
+
+<h2 id="cli-reference">CLI Reference</h2>
+
+<p>The full command/flag reference generated from the code is available in the <a href="/c8volt/cli/">c8volt CLI Reference</a>.</p>
+
+<h2 id="quick-start-with-c8volt">Quick Start with c8volt</h2>
+
+<ol>
+  <li><strong>Install Camunda 8.8 Run</strong></li>
+</ol>
+
+<p>Download <a href="https://downloads.camunda.cloud/release/camunda/c8run">Camunda 8 Run</a>, unpack and start it with <code class="language-plaintext highlighter-rouge">./start.sh</code>.
+Use listed relevant URLs and default credentials to create the configuration for c8volt.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./start.sh
+
+System Version Information
+<span class="nt">--------------------------</span>
+Camunda Details:
+  Version: 8.8.2
+<span class="nt">--------------------------</span>
+<span class="o">[</span>...]
+<span class="nt">-------------------------------------------</span>
+Access each component at the following urls with these default credentials:
+- username: demo
+- password: demo
+
+Operate:                    http://localhost:8080/operate
+Tasklist:                   http://localhost:8080/tasklist
+Identity:                   http://localhost:8080/identity
+
+Orchestration Cluster API:  http://localhost:8080/v2/
+<span class="o">[</span>...]
+</code></pre></div></div>
+<ol>
+  <li><strong>Install c8volt</strong></li>
+</ol>
+
+<p>Download the latest release relevant to your OS from the <a href="https://github.com/grafvonb/c8volt/releases">c8volt Releases</a> page, unpack it and check the version:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt version
+</code></pre></div></div>
+<ol>
+  <li><strong>Configure c8volt</strong></li>
+</ol>
+
+<p>Create a configuration file (YAML) in the folder where you unpacked c8volt with the name <code class="language-plaintext highlighter-rouge">config.yaml</code> or in <code class="language-plaintext highlighter-rouge">$HOME/.c8volt/config.yaml</code> with the minimal connection details.
+c8run v8.8 uses no authentication by default for local development, so the minimal config looks like this:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apis</span><span class="pi">:</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">88"</span>
+  <span class="na">camunda_api</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080/v2"</span>
+<span class="na">auth</span><span class="pi">:</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">none</span>
+<span class="na">log</span><span class="pi">:</span>
+  <span class="na">level</span><span class="pi">:</span> <span class="s">info</span>
+</code></pre></div></div>
+<ol>
+  <li><strong>Run c8volt</strong></li>
+</ol>
+
+<p>Test the connection and list cluster topology:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./c8volt get cluster-topology
+</code></pre></div></div>
+<p>or use explicit path to config file:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./c8volt get cluster-topology <span class="nt">--config</span> ./config-minimal.yaml
+</code></pre></div></div>
+<p>You should see output like this:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">{</span>
+  <span class="s2">"Brokers"</span>: <span class="o">[</span>
+    <span class="o">{</span>
+      <span class="s2">"Host"</span>: <span class="s2">"localhost"</span>,
+      <span class="s2">"NodeId"</span>: 0,
+      <span class="s2">"Partitions"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+          <span class="s2">"Health"</span>: <span class="s2">"healthy"</span>,
+          <span class="s2">"PartitionId"</span>: 1,
+          <span class="s2">"Role"</span>: <span class="s2">"leader"</span>
+        <span class="o">}</span>
+      <span class="o">]</span>,
+      <span class="s2">"Port"</span>: 26501,
+      <span class="s2">"Version"</span>: <span class="s2">"8.8.2"</span>
+    <span class="o">}</span>
+  <span class="o">]</span>,
+  <span class="s2">"ClusterSize"</span>: 1,
+  <span class="s2">"GatewayVersion"</span>: <span class="s2">"8.8.2"</span>,
+  <span class="s2">"PartitionsCount"</span>: 1,
+  <span class="s2">"ReplicationFactor"</span>: 1,
+  <span class="s2">"LastCompletedChangeId"</span>: <span class="s2">""</span>
+<span class="o">}</span>
+</code></pre></div></div>
+<h2 id="highlights">Highlights</h2>
+
+<p>The comprehensive documentation is on its way, but here are some highlights of what <strong>c8volt</strong> can do for you, with concrete usage examples.</p>
+
+<h3 id="embedded-deployment-of-bpmn-models">Embedded Deployment of BPMN Models</h3>
+
+<p>Quite often, we need to deploy some BPMN models to Camunda 8 for testing or operational tasks.
+<strong>c8volt</strong> has embedded models in its binary that can be deployed on demand, without to use Camunda Modeler or other tools.</p>
+
+<h4 id="embedded-deployment-in-action">Embedded Deployment in Action</h4>
+
+<p>List embedded BPMN models:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt embed list
+processdefinitions/C87_DoubleUserTaskProcess.bpmn
+processdefinitions/C87_MultipleSubProcessesParentProcess.bpmn
+processdefinitions/C87_SimpleParentProcess.bpmn
+processdefinitions/C87_SimpleUserTaskProcess.bpmn
+processdefinitions/C87_SimpleUserTaskWithIncidentProcess.bpmn
+processdefinitions/C88_DoubleUserTaskProcess.bpmn
+processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn
+processdefinitions/C88_SimpleParentProcess.bpmn
+processdefinitions/C88_SimpleUserTaskProcess.bpmn
+processdefinitions/C88_SimpleUserTaskWithIncidentProcess.bpmn
+</code></pre></div></div>
+<p>Deploy all embedded BPMN models to Camunda 8 at once:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt embed deploy <span class="nt">--all</span>
+2251799813686014 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1 vprocessdefinitions/C88_MultipleSubProcessesParentProcess.bpmn <span class="o">(</span>2251799813686013<span class="o">)</span>
+2251799813686015 &lt;default&gt; C88_DoubleUserTask_Process v1 vprocessdefinitions/C88_DoubleUserTaskProcess.bpmn <span class="o">(</span>2251799813686013<span class="o">)</span>
+2251799813686016 &lt;default&gt; C88_SimpleParentProcess v1 vprocessdefinitions/C88_SimpleParentProcess.bpmn <span class="o">(</span>2251799813686013<span class="o">)</span>
+2251799813686017 &lt;default&gt; C88_SimpleUserTask_Process v1 vprocessdefinitions/C88_SimpleUserTaskProcess.bpmn <span class="o">(</span>2251799813686013<span class="o">)</span>
+2251799813686018 &lt;default&gt; C88_SimpleUserTaskWithIncident_Process v1 vprocessdefinitions/C88_SimpleUserTaskWithIncidentProcess.bpmn <span class="o">(</span>2251799813686013<span class="o">)</span>
+found: 5
+</code></pre></div></div>
+<p>Check that the models are deployed:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get pd
+2251799813686015 &lt;default&gt; C88_DoubleUserTask_Process v1/v1.0.0
+2251799813686014 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0
+2251799813686016 &lt;default&gt; C88_SimpleParentProcess v1/v1.0.0
+2251799813686018 &lt;default&gt; C88_SimpleUserTaskWithIncident_Process v1/v1.0.0
+2251799813686017 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0
+found: 5
+</code></pre></div></div>
+<p>And run a process instance using standard run command:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run pi <span class="nt">-b</span> C88_MultipleSubProcessesParentProcess
+INFO waiting <span class="k">for </span>process instance of 2251799813686014 with key 2251799813686587 to be started by workflow engine...
+INFO process instance 2251799813686587 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:28:52.116Z and confirmed at 2025-11-08T19:28:59Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813686014, C88_MultipleSubProcessesParentProcess, v1, tenant: &lt;default&gt;
+</code></pre></div></div>
+<p>If you want to modify the embedded BPMN models, you can export them to a local folder with:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt embed <span class="nb">export</span> <span class="nt">-f</span> processdefinitions/C88_SimpleParentProcess.bpmn <span class="nt">-o</span> ./exported_models
+INFO exported 1 embedded resource<span class="o">(</span>s<span class="o">)</span> to <span class="s2">"exported_models"</span>
+</code></pre></div></div>
+<p>Modify it with Camunda Modeler or any text editor and deploy it back with “normal” deployment command:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt deploy pd <span class="nt">-f</span> ./exported_models/processdefinitions/C88_SimpleParentProcess.bpmn
+2251799813687133 &lt;default&gt; C88_SimpleParentProcess v2 vC88_SimpleParentProcess.bpmn <span class="o">(</span>2251799813687132<span class="o">)</span>
+found: 1
+</code></pre></div></div>
+<p>And run a process instance of the modified model:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run pi <span class="nt">-b</span> C88_SimpleParentProcess
+INFO waiting <span class="k">for </span>process instance of 2251799813687133 with key 2251799813687256 to be started by workflow engine...
+INFO process instance 2251799813687256 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:33:12.933Z and confirmed at 2025-11-08T19:33:16Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813687133, C88_SimpleParentProcess, v2, tenant: &lt;default&gt;
+</code></pre></div></div>
+
+<h3 id="running-process-instances">Running Process Instances</h3>
+
+<p>A process instance can be started for a deployed BPMN model by its process definition key or BPMN process ID.
+In case of the latter you can also specify a version of the process definition to use. If no version is specified, the latest version is used by default.</p>
+
+<p>Running a process instance is asynchronous in Camunda 8, meaning that when the API call returns successfully, the process instance might not be actually started yet.
+<strong>c8volt</strong> provides a waiting mechanism that polls the process instance state until it reaches the desired <code class="language-plaintext highlighter-rouge">ACTIVE</code> state or a timeout occurs.
+You can switch off the waiting mechanism using the <code class="language-plaintext highlighter-rouge">--no-wait</code> flag.</p>
+
+<p><strong>c8volt</strong> also supports starting multiple process instances concurrently by specifying the <code class="language-plaintext highlighter-rouge">--count</code> (<code class="language-plaintext highlighter-rouge">-n</code>) flag and the number of workers with <code class="language-plaintext highlighter-rouge">--workers</code> (<code class="language-plaintext highlighter-rouge">-w</code>) flag.</p>
+
+<h4 id="running-process-instances-in-action">Running Process Instances in Action</h4>
+
+<p>First get the deployed process definitions:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get get pd
+2251799813686015 &lt;default&gt; C88_DoubleUserTask_Process v1/v1.0.0
+2251799813686014 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0
+2251799813687133 &lt;default&gt; C88_SimpleParentProcess v2/v1.0.1
+2251799813686016 &lt;default&gt; C88_SimpleParentProcess v1/v1.0.0
+2251799813686018 &lt;default&gt; C88_SimpleUserTaskWithIncident_Process v1/v1.0.0
+2251799813686017 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0
+found: 6
+</code></pre></div></div>
+<p>Start a single process instance of <code class="language-plaintext highlighter-rouge">C88_SimpleUserTask_Process</code> by its BPMN process ID and wait until it is active:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt pi <span class="nt">-b</span> C88_SimpleUserTask_Process
+INFO waiting <span class="k">for </span>process instance of 2251799813686017 with key 2251799813687872 to be started by workflow engine...
+INFO process instance 2251799813687872 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:37:21.745Z and confirmed at 2025-11-08T19:37:25Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813686017, C88_SimpleUserTask_Process, v1, tenant: &lt;default&gt;
+</code></pre></div></div>
+<p>Start the 1st version of the <code class="language-plaintext highlighter-rouge">C88_SimpleParentProcess</code> by its BPMN process ID and wait until it is active:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run pi <span class="nt">-b</span> C88_SimpleUserTask_Process <span class="nt">--pd-version</span><span class="o">=</span>1
+INFO waiting <span class="k">for </span>process instance of 2251799813686017 with key 2251799813688140 to be started by workflow engine...
+INFO process instance 2251799813688140 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:39:08.557Z and confirmed at 2025-11-08T19:39:12Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813686017, C88_SimpleUserTask_Process, v1, tenant: &lt;default&gt;
+</code></pre></div></div>
+<p>Start a 1st version of <code class="language-plaintext highlighter-rouge">C88_SimpleParentProcess</code> by its process definition ID without waiting for it to be active:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run run pi <span class="nt">--pd-id</span><span class="o">=</span>2251799813686016 <span class="nt">--no-wait</span>
+INFO process instance creation with the key 2251799813688590 requested at 2025-11-08T19:42:18Z <span class="o">(</span>run not confirmed, as no-wait is <span class="nb">set</span><span class="o">)</span> using process definition <span class="nb">id </span>2251799813686016, C88_SimpleParentProcess, v1, tenant: &lt;default&gt;
+</code></pre></div></div>
+<p>Start 5 process instances of latest version of <code class="language-plaintext highlighter-rouge">C88_DoubleUserTask_Process</code> concurrently using 3 workers and wait until they are active:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt run pi <span class="nt">-b</span> C88_SimpleParentProcess <span class="nt">-n</span> 5 <span class="nt">-w</span> 3
+INFO creating 5 process instances using 3 workers
+INFO waiting <span class="k">for </span>process instance of 2251799813687133 with key 2251799813688787 to be started by workflow engine...
+INFO waiting <span class="k">for </span>process instance of 2251799813687133 with key 2251799813688797 to be started by workflow engine...
+INFO waiting <span class="k">for </span>process instance of 2251799813687133 with key 2251799813688807 to be started by workflow engine...
+INFO process instance 2251799813688807 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:43:36.275Z and confirmed at 2025-11-08T19:43:43Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813687133, C88_SimpleParentProcess, v2, tenant: &lt;default&gt;
+INFO process instance 2251799813688787 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:43:36.253Z and confirmed at 2025-11-08T19:43:43Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813687133, C88_SimpleParentProcess, v2, tenant: &lt;default&gt;
+INFO waiting <span class="k">for </span>process instance of 2251799813687133 with key 2251799813688852 to be started by workflow engine...
+INFO waiting <span class="k">for </span>process instance of 2251799813687133 with key 2251799813688862 to be started by workflow engine...
+INFO process instance 2251799813688797 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:43:36.267Z and confirmed at 2025-11-08T19:43:43Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813687133, C88_SimpleParentProcess, v2, tenant: &lt;default&gt;
+INFO process instance 2251799813688862 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:43:43.843Z and confirmed at 2025-11-08T19:43:51Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813687133, C88_SimpleParentProcess, v2, tenant: &lt;default&gt;
+INFO process instance 2251799813688852 succesfully created <span class="o">(</span>start registered at 2025-11-08T19:43:43.837Z and confirmed at 2025-11-08T19:43:51Z<span class="o">)</span> using process definition <span class="nb">id </span>2251799813687133, C88_SimpleParentProcess, v2, tenant: &lt;default&gt;
+INFO creation of 5 process instances completed
+</code></pre></div></div>
+
+<h3 id="searching-process-instances">Searching Process Instances</h3>
+
+<p><strong>c8volt</strong> provides powerful searching capabilities for process instances.
+It not only can find process instances by standard criteria such as process definition ID, BPMN process ID, version, state, tenant, but also traverse their parent-child relationships.
+It offers different output formats suitable for scripting, such as one-liner or keys-only. The latter allows easy piping of results to other commands.</p>
+
+<h4 id="searching-process-instances-in-action">Searching Process Instances in Action</h4>
+
+<p>Get all process instances of <code class="language-plaintext highlighter-rouge">C88_SimpleUserTask_Process</code>:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get pi <span class="nt">-b</span> C88_SimpleUserTask_Process
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false
+2251799813686605 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+2251799813687261 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:33:12.933+0000 p:2251799813687256 i:false
+2251799813687872 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:37:21.745+0000 p:&lt;root&gt; i:false
+2251799813688140 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:39:08.557+0000 p:&lt;root&gt; i:false
+2251799813688595 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:42:18.756+0000 p:2251799813688590 i:false
+2251799813688792 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.253+0000 p:2251799813688787 i:false
+2251799813688802 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.267+0000 p:2251799813688797 i:false
+2251799813688812 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.275+0000 p:2251799813688807 i:false
+2251799813688857 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.837+0000 p:2251799813688852 i:false
+2251799813688867 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.843+0000 p:2251799813688862 i:false
+</code></pre></div></div>
+<p>Get all process instances of <code class="language-plaintext highlighter-rouge">C88_SimpleParentProcess</code> that are children of other process instances:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get pi <span class="nt">-b</span> C88_SimpleUserTask_Process <span class="nt">--children-only</span>
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false
+2251799813686605 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+2251799813687261 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:33:12.933+0000 p:2251799813687256 i:false
+2251799813688595 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:42:18.756+0000 p:2251799813688590 i:false
+2251799813688792 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.253+0000 p:2251799813688787 i:false
+2251799813688802 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.267+0000 p:2251799813688797 i:false
+2251799813688812 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.275+0000 p:2251799813688807 i:false
+2251799813688857 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.837+0000 p:2251799813688852 i:false
+2251799813688867 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.843+0000 p:2251799813688862 i:false
+found: 9
+</code></pre></div></div>
+<p>Find the root of a child process instance by its key:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span><span class="o">=</span>2251799813686596
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:2251799813686587 i:false ← 
+2251799813686587 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:&lt;root&gt; i:false
+</code></pre></div></div>
+<p>Or even the whole family tree of this child process instance:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span><span class="o">=</span>2251799813686596 <span class="nt">--mode</span><span class="o">=</span>family
+2251799813686587 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:&lt;root&gt; i:false ⇄ 
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 &lt;default&gt; C88_SimpleParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+</code></pre></div></div>
+
+<h3 id="cancellation-of-process-instances">Cancellation of Process Instances</h3>
+
+<p>Standard cancellation of process instances in Camunda 8 is asynchronous and does not guarantee that the instance is actually cancelled when the API call returns successfully.
+<strong>c8volt</strong> provides a waiting mechanism that polls the process instance state until it reaches the desired <code class="language-plaintext highlighter-rouge">CANCELED</code> state or a timeout occurs.
+It allows also forced cancellation a process instance even it is a child, by traversing the parent chain and cancelling its root ancestor.</p>
+
+<h4 id="cancellation-in-action">Cancellation in Action</h4>
+
+<p>Assuming you have following process instance tree (look at the sections above how to achieve that with c8volt’s embedded deployment and run features):</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get pi <span class="nt">-b</span> C88_MultipleSubProcessesParentProcess
+2251799813686587 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:&lt;root&gt; i:false
+found: 1
+<span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span> 2251799813686587 <span class="nt">--mode</span><span class="o">=</span>family
+2251799813686587 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116Z p:&lt;root&gt; i:false ⇄ 
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 &lt;default&gt; C88_SimpleParentProcess v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
+</code></pre></div></div>
+<p>Cancel the process instance <code class="language-plaintext highlighter-rouge">2251799813686597</code> (which is a child of <code class="language-plaintext highlighter-rouge">2251799813686587</code> and parent of <code class="language-plaintext highlighter-rouge">2251799813686605</code>):</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt cancel pi <span class="nt">--key</span> 2251799813686597
+You are about to cancel 1 process instance<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO cancelling process instances requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO cannot cancel, process instance with key 2251799813686597 is a child process of a root parent with key 2251799813686587
+INFO use <span class="nt">--force</span> flag to cancel the root process instance with key 2251799813686587 and all its child processes
+INFO cancelling 1 process instances completed: 0 succeeded or already cancelled/teminated, 1 failed
+</code></pre></div></div>
+<p>You cannot cancel a child process instance directly. It is as standard behavior of Camunda 8.
+However <strong>c8volt</strong> provides a flag <code class="language-plaintext highlighter-rouge">--force</code> to automatically find and cancel the root process instance, thus all its child processes:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt cancel pi <span class="nt">--key</span> 2251799813686597 <span class="nt">--force</span>
+You are about to cancel 1 process instance<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO cancelling process instances requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO cannot cancel, process instance with key 2251799813686597 is a child process of a root parent with key 2251799813686587
+INFO force flag is <span class="nb">set</span>, cancelling root process instance with key 2251799813686587 and all its child processes
+INFO waiting <span class="k">for </span>process instance with key 2251799813686587 to be cancelled by workflow engine...
+INFO process instance 2251799813686587 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813686587 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813686587 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance with key 2251799813686587 was successfully <span class="o">(</span>confirmed<span class="o">)</span> cancelled
+INFO cancelling 1 process instances completed: 1 succeeded or already cancelled/teminated, 0 failed
+</code></pre></div></div>
+<p>Confirm that the whole process instance family is cancelled/terminated running again the <code class="language-plaintext highlighter-rouge">walk</code> command:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span> 2251799813686587 <span class="nt">--mode</span><span class="o">=</span>family
+2251799813686587 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-08T19:28:52.116Z e:2025-11-08T20:31:03.312Z p:&lt;root&gt; i:false ⇄ 
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 &lt;default&gt; C88_SimpleParentProcess v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686597 i:false
+</code></pre></div></div>
+<p>Every command that lists process instances or definitions has also a <code class="language-plaintext highlighter-rouge">--keys-only</code> flag that outputs only the process instance keys, one per line:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span> 2251799813686587 <span class="nt">--mode</span><span class="o">=</span>family <span class="nt">--keys-only</span>
+2251799813686587
+2251799813686596
+2251799813686597
+2251799813686605
+</code></pre></div></div>
+<p>This output type can be easily piped to other commands, e.g., to delete all these process instances.</p>
+
+<h3 id="deletion">Deletion</h3>
+
+<p>Deletion of process instances and process definitions in Camunda 8 is not straightforward.
+Due to distribution of state across multiple components and asynchronous nature of operations, additional steps are required to ensure that the resource is really deleted.
+It is also possible to create an inconsistent state e.g. by deleting a process instance that is a parent of other active process instances as Camunda 8 API does
+not prevent that or cascades the deletion to child instances as in case of cancellation.</p>
+
+<h4 id="deletion-of-process-instances-in-action">Deletion of Process Instances in Action</h4>
+
+<p>Standard deletion of process instances in Camunda 8 is asynchronous and does not guarantee that the instance is actually deleted when the API call returns successfully.
+Additionally, Camunda 8 API does not allow deleting a process instance that is still active. It must be cancelled first.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt get pi <span class="nt">-b</span> C88_SimpleUserTask_Process
+2251799813687261 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:33:12.933+0000 p:2251799813687256 i:false
+2251799813687872 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:37:21.745+0000 p:&lt;root&gt; i:false
+2251799813688140 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:39:08.557+0000 p:&lt;root&gt; i:false
+2251799813688595 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:42:18.756+0000 p:2251799813688590 i:false
+2251799813688792 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.253+0000 p:2251799813688787 i:false
+2251799813688802 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.267+0000 p:2251799813688797 i:false
+2251799813688812 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:36.275+0000 p:2251799813688807 i:false
+2251799813688857 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.837+0000 p:2251799813688852 i:false
+2251799813688867 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:43:43.843+0000 p:2251799813688862 i:false
+found: 9
+</code></pre></div></div>
+<p>Try to delete the process instance <code class="language-plaintext highlighter-rouge">2251799813687872</code> first:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt delete pi <span class="nt">--key</span> 2251799813687872
+You are about to delete 1 process instance<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO deleting process instances requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO cannot delete, process instance 2251799813687872 is not <span class="k">in </span>one of terminated states<span class="p">;</span> use <span class="nt">--force</span> flag to cancel and <span class="k">then </span>delete the process instance
+INFO deleting 1 process instances completed: 0 succeeded, 1 failed
+</code></pre></div></div>
+<p>Retry with <code class="language-plaintext highlighter-rouge">--force</code> flag to first cancel and then delete the process instance:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt delete pi <span class="nt">--key</span> 2251799813687872 <span class="nt">--force</span>
+delete pi <span class="nt">--key</span> 2251799813687872 <span class="nt">--force</span>
+You are about to delete 1 process instance<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO deleting process instances requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO process instance with key 2251799813687872 not <span class="k">in </span>one of terminated states<span class="p">;</span> cancelling it first
+INFO waiting <span class="k">for </span>process instance with key 2251799813687872 to be cancelled by workflow engine...
+INFO process instance 2251799813687872 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813687872 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813687872 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance with key 2251799813687872 was successfully <span class="o">(</span>confirmed<span class="o">)</span> cancelled
+INFO waiting <span class="k">for </span>process instance with key 2251799813687872 to be cancelled by workflow engine...
+INFO retrying deletion of process instance with key 2251799813687872
+INFO process instance with key 2251799813687872 was successfully deleted
+INFO deleting 1 process instances completed: 1 succeeded, 0 failed
+</code></pre></div></div>
+
+<h4 id="deletion-of-process-definitions-in-action">Deletion of Process Definitions in Action</h4>
+
+<p>When deleting a process definition in Camunda 8, you must ensure that there are no active process instances running of that definition.
+If there are any, you must cancel them first.
+<strong>c8volt</strong> helps you with that by providing the <code class="language-plaintext highlighter-rouge">--force</code> flag that automatically finds and cancels all active process instances.</p>
+
+<p>Try to delete the 4th version of <code class="language-plaintext highlighter-rouge">C88_MultipleSubProcessesParentProcess</code> process definition that has active process instances:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt delete pd <span class="nt">-b</span> C88_MultipleSubProcessesParentProcess <span class="nt">--pd-version</span> 4
+You are about to delete 1 process definition<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO deleting process definitions requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO deleting 1 process definitions completed: 0 succeeded, 1 failed
+ERROR deleting process definiton<span class="o">(</span>s<span class="o">)</span>: cannot delete process definition 2251799813743350 with active process instances<span class="p">;</span> user <span class="nt">--force</span> to cancel them automatically
+</code></pre></div></div>
+<p>Retry with <code class="language-plaintext highlighter-rouge">--force</code> flag to first cancel (confirmed!) all active process instances and then delete the process definition:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt delete pd <span class="nt">-b</span> C88_MultipleSubProcessesParentProcess <span class="nt">--pd-version</span> 4 <span class="nt">--force</span>
+You are about to delete 1 process definition<span class="o">(</span>s<span class="o">)</span>? <span class="o">[</span>y/N]: y
+INFO deleting process definitions requested <span class="k">for </span>1 unique key<span class="o">(</span>s<span class="o">)</span> using 1 worker<span class="o">(</span>s<span class="o">)</span>
+INFO cancelling active process instance<span class="o">(</span>s<span class="o">)</span> <span class="k">for </span>process definition 2251799813743350 before deletion
+INFO cancelling process instances requested <span class="k">for </span>3 unique key<span class="o">(</span>s<span class="o">)</span> using 3 worker<span class="o">(</span>s<span class="o">)</span>
+INFO waiting <span class="k">for </span>process instance with key 2251799813744466 to be cancelled by workflow engine...
+INFO waiting <span class="k">for </span>process instance with key 2251799813749275 to be cancelled by workflow engine...
+INFO process instance 2251799813744466 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813749275 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO waiting <span class="k">for </span>process instance with key 2251799813743626 to be cancelled by workflow engine...
+INFO process instance 2251799813743626 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813744466 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance 2251799813743626 currently <span class="k">in </span>state ACTIVE<span class="p">;</span> waiting...
+INFO process instance with key 2251799813749275 was successfully <span class="o">(</span>confirmed<span class="o">)</span> cancelled
+INFO process instance with key 2251799813744466 was successfully <span class="o">(</span>confirmed<span class="o">)</span> cancelled
+INFO process instance with key 2251799813743626 was successfully <span class="o">(</span>confirmed<span class="o">)</span> cancelled
+INFO cancelling 3 process instance<span class="o">(</span>s<span class="o">)</span> completed: 3 succeeded or already cancelled/teminated, 0 failed
+INFO deleting 1 process definitions completed: 1 succeeded, 0 failed
+</code></pre></div></div>
+
+<h3 id="scripting-support">Scripting Support</h3>
+
+<h4 id="error-codes">Error Codes</h4>
+
+<p>In case of errors, c8volt returns specific exit codes that can be used in scripts to handle different error scenarios.
+If you do not want to deal with specific error codes, you can use the <code class="language-plaintext highlighter-rouge">--no-err-codes</code> flag to make c8volt always return exit code 0.</p>
+
+<h4 id="command-pipelining">Command Pipelining</h4>
+
+<p>Even thought <strong>c8volt</strong> offers many switches to filter resources in cancel and delete commands, you can also use command pipelining to achieve complex scenarios.
+These commands recognize stdin input and read resource keys from it, one per line. The input can be provided by e.g. <code class="language-plaintext highlighter-rouge">echo</code> or <code class="language-plaintext highlighter-rouge">cat</code> commands, or by piping output of other c8volt commands with <code class="language-plaintext highlighter-rouge">--keys-only</code> flag.</p>
+
+<p>Here is an example of common scenario for deleting a whole process instance tree, which is not possible, in opposite to cancellation, with standard Camunda 8 API.
+Delete this process instance tree…</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt walk pi <span class="nt">--key</span> 2251799813686587 <span class="nt">--mode</span><span class="o">=</span>family
+2251799813686587 &lt;default&gt; C88_MultipleSubProcessesParentProcess v1/v1.0.0 TERMINATED s:2025-11-08T19:28:52.116Z e:2025-11-08T20:31:03.312Z p:&lt;root&gt; i:false ⇄ 
+2251799813686596 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686597 &lt;default&gt; C88_SimpleParentProcess v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686587 i:false ⇄ 
+2251799813686605 &lt;default&gt; C88_SimpleUserTask_Process v1/v1.0.0 CANCELED s:2025-11-08T19:28:52.116+0000 e:2025-11-08T20:31:03.312+0000 p:2251799813686597 i:false
+</code></pre></div></div>
+<p>By piping the output of the above <code class="language-plaintext highlighter-rouge">walk</code> command with <code class="language-plaintext highlighter-rouge">--keys-only</code> flag to the <code class="language-plaintext highlighter-rouge">delete</code> command:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./bin/c8volt walk pi <span class="nt">--key</span> 2251799813686587 <span class="nt">--mode</span><span class="o">=</span>family <span class="nt">--keys-only</span> | ./bin/c8volt delete pi
+INFO deleting process instances requested <span class="k">for </span>4 unique key<span class="o">(</span>s<span class="o">)</span> using 4 worker<span class="o">(</span>s<span class="o">)</span>
+INFO process instance with key 2251799813686605 was successfully deleted
+INFO process instance with key 2251799813686596 was successfully deleted
+INFO process instance with key 2251799813686587 was successfully deleted
+INFO process instance with key 2251799813686597 was successfully deleted
+INFO deleting 4 process instances completed: 4 succeeded, 0 failed
+</code></pre></div></div>
+
+<h2 id="configuration">Configuration</h2>
+
+<h3 id="supported-camunda-8-versions">Supported Camunda 8 Versions</h3>
+
+<p><strong>c8volt</strong> supports the following Camunda 8 versions:</p>
+
+<ul>
+  <li>8.7.x</li>
+  <li>8.8.x</li>
+</ul>
+
+<p>As the changes between Camunda 8.8+ and previous versions are significant, you need to specify the version you are using in the configuration file.
+Here is an example configuration snippet for Camunda 8.8:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">app</span><span class="pi">:</span>
+  <span class="na">camunda_version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8.8"</span>
+</code></pre></div></div>
+
+<h3 id="api-base-urls">API Base URLs</h3>
+
+<p><strong>c8volt</strong> needs to connect to Camunda 8 APIs. You need to provide the base URLs for the following APIs:</p>
+<ul>
+  <li>Camunda 8 Orchestration Cluster API (formerly known as Zeebe API or Camunda API)</li>
+  <li>Camunda 8 Operate API</li>
+  <li>Camunda 8 Tasklist API</li>
+</ul>
+
+<p>The base URL to Camunda 8 Orchestration Cluster API is usually in the form of <code class="language-plaintext highlighter-rouge">https://&lt;host&gt;:&lt;port&gt;/v2</code>,
+while the Operate and Tasklist APIs are usually in the form of <code class="language-plaintext highlighter-rouge">https://&lt;host&gt;:&lt;port&gt;</code>.
+If you provide only the Camunda 8 Orchestration Cluster API base URL, <strong>c8volt</strong> will assume that Operate and Tasklist APIs
+are available under the same host and port without the <code class="language-plaintext highlighter-rouge">/v2</code> suffix.
+Here is an example configuration snippet for API base URLs for Camunda 8 running locally:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apis</span><span class="pi">:</span>
+  <span class="na">camunda_api</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080/v2"</span>
+  <span class="na">operate_api</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080"</span>
+  <span class="na">tasklist_api</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080"</span>
+</code></pre></div></div>
+
+<h3 id="choose-authentication-method">Choose authentication method</h3>
+
+<p><strong>c8volt</strong> supports following authentication methods for connecting to Camunda 8 APIs:</p>
+<ul>
+  <li>OAuth2 (OIDC)</li>
+  <li>API Cookie (for local development with Camunda 8.7 Run only)</li>
+  <li>No Authentication (for local development with Camunda 8.8+ Run only)</li>
+</ul>
+
+<h4 id="authentication-with-oauth2-oidc">Authentication with OAuth2 (OIDC)</h4>
+
+<p><strong>c8volt</strong> supports OAuth2 (OIDC) authentication with client credentials flow.
+You need to provide the following settings:</p>
+<ul>
+  <li>Token URL</li>
+  <li>Client ID</li>
+  <li>Client Secret</li>
+  <li>Scopes (optional, depending on your identity provider and API setup)</li>
+</ul>
+
+<p>Here is an example configuration snippet for OAuth2 authentication for Camunda 8 running locally with Keycloak:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">auth</span><span class="pi">:</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s2">"</span><span class="s">oauth2"</span>
+  <span class="na">oauth2</span><span class="pi">:</span>
+    <span class="na">token_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect"</span>
+    <span class="na">client_id</span><span class="pi">:</span> <span class="s2">"</span><span class="s">*******"</span> <span class="c1"># use environment variable C8VOLT_AUTH_OAUTH2_CLIENT_ID in PROD</span>
+    <span class="na">client_secret</span><span class="pi">:</span> <span class="s2">"</span><span class="s">*******"</span> <span class="c1"># use environment variable C8VOLT_AUTH_OAUTH2_CLIENT_SECRET in PROD</span>
+    <span class="na">scopes</span><span class="pi">:</span>
+      <span class="na">camunda_api</span><span class="pi">:</span> <span class="s2">"</span><span class="s">profile"</span>
+      <span class="na">operate_api</span><span class="pi">:</span> <span class="s2">"</span><span class="s">profile"</span>
+      <span class="na">tasklist_api</span><span class="pi">:</span> <span class="s2">"</span><span class="s">profile"</span>
+</code></pre></div></div>
+
+<h4 id="authentication-with-api-cookie-development-with-camunda-8-run-only">Authentication with API Cookie (development with Camunda 8 Run only)</h4>
+
+<p>This method is only suitable for local development with Camunda 8 Run (up to version 8.7),
+as it uses the API cookie set by the web interface.</p>
+
+<p>You need to provide the following settings:</p>
+<ul>
+  <li>API base URL</li>
+  <li>(optional) Username and Password (if not set, defaults to <code class="language-plaintext highlighter-rouge">demo</code>/<code class="language-plaintext highlighter-rouge">demo</code>)</li>
+</ul>
+
+<p>Here is an example configuration snippet for API Cookie authentication for Camunda 8 Run running locally:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">app</span><span class="pi">:</span>
+  <span class="na">camunda_version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8.7"</span>
+<span class="na">apis</span><span class="pi">:</span>
+  <span class="na">camunda_api</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080/v2"</span>
+<span class="na">auth</span><span class="pi">:</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">cookie</span>
+  <span class="na">cookie</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080"</span>
+    <span class="na">username</span><span class="pi">:</span> <span class="s2">"</span><span class="s">demo"</span>
+    <span class="na">password</span><span class="pi">:</span> <span class="s2">"</span><span class="s">demo"</span>
+<span class="na">log</span><span class="pi">:</span>
+  <span class="na">level</span><span class="pi">:</span> <span class="s">debug</span>
+</code></pre></div></div>
+
+<h4 id="no-authentication-development-with-camunda-88-run-only">No Authentication (development with Camunda 8.8+ Run only)</h4>
+
+<p>This method is only suitable for local development with Camunda 8.8+ Run, as it disables authentication entirely.</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">app</span><span class="pi">:</span>
+  <span class="na">camunda_version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8.8"</span>
+<span class="na">apis</span><span class="pi">:</span>
+  <span class="na">camunda_api</span><span class="pi">:</span>
+    <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://localhost:8080/v2"</span>
+<span class="na">auth</span><span class="pi">:</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">none</span>
+<span class="na">log</span><span class="pi">:</span>
+  <span class="na">level</span><span class="pi">:</span> <span class="s">debug</span>
+</code></pre></div></div>
+
+<h3 id="ways-to-provide-settings">Ways to provide settings</h3>
+
+<p>c8volt uses <a href="https://github.com/spf13/viper">Viper</a> under the hood. Configuration values can come from:</p>
+
+<ul>
+  <li>Flags (<code class="language-plaintext highlighter-rouge">--auth-oauth2-client-id=...</code>)</li>
+  <li>Environment variables (<code class="language-plaintext highlighter-rouge">C8VOLT_AUTH_OAUTH2_CLIENT_ID</code>)</li>
+  <li>Config file (YAML)</li>
+  <li>Defaults (hardcoded fallbacks)</li>
+</ul>
+
+<h3 id="precedence">Precedence</h3>
+
+<p>When multiple sources define the same setting, the <strong>highest-priority value wins</strong>:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Priority</th>
+      <th>Source</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1 (highest)</td>
+      <td>Command-line flags</td>
+      <td><code class="language-plaintext highlighter-rouge">--auth-oauth2-client-id=c8volt</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Environment vars</td>
+      <td><code class="language-plaintext highlighter-rouge">C8VOLT_AUTH_OAUTH2_CLIENT_ID=c8volt</code></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Config file (YAML)</td>
+      <td><code class="language-plaintext highlighter-rouge">auth.oauth2.client_id: c8volt</code></td>
+    </tr>
+    <tr>
+      <td>4 (lowest)</td>
+      <td>Defaults</td>
+      <td><code class="language-plaintext highlighter-rouge">http.timeout: "30s"</code> (built-in)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="default-configuration-file-locations">Default configuration file locations</h3>
+
+<p>When searching for a config file, c8volt checks these paths in order and uses the first one it finds:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Priority</th>
+      <th>Location</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><code class="language-plaintext highlighter-rouge">./config.yaml</code></td>
+      <td>Current working directory</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><code class="language-plaintext highlighter-rouge">$XDG_CONFIG_HOME/c8volt/config.yaml</code></td>
+      <td>Skipped if <code class="language-plaintext highlighter-rouge">$XDG_CONFIG_HOME</code> is not set</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><code class="language-plaintext highlighter-rouge">$HOME/.config/c8volt/config.yaml</code></td>
+      <td>XDG default on Linux/macOS</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><code class="language-plaintext highlighter-rouge">$HOME/.c8volt/config.yaml</code></td>
+      <td>Legacy fallback</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><code class="language-plaintext highlighter-rouge">%AppData%\c8volt\config.yaml</code> (Windows only)</td>
+      <td><code class="language-plaintext highlighter-rouge">%AppData%</code> usually expands to <code class="language-plaintext highlighter-rouge">C:\Users\&lt;User&gt;\AppData\Roaming</code><br />Example: <code class="language-plaintext highlighter-rouge">C:\Users\Alice\AppData\Roaming\c8volt\config.yaml</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="file-format">File format</h3>
+
+<p>Config files must be <strong>YAML</strong>. You can inspect the effective configuration (after merging defaults, config file, env vars, and flags) with:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt config show
+</code></pre></div></div>
+<p>You will see output like this:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">app</span><span class="pi">:</span>
+    <span class="na">tenant</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+    <span class="na">camunda_version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">88"</span>
+<span class="na">apis</span><span class="pi">:</span>
+    <span class="na">camunda_api</span><span class="pi">:</span>
+        <span class="na">base_url</span><span class="pi">:</span> <span class="s">http://localhost:8080/v2</span>
+        <span class="na">key</span><span class="pi">:</span> <span class="s">camunda_api</span>
+        <span class="na">require_scope</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">operate_api</span><span class="pi">:</span>
+        <span class="na">base_url</span><span class="pi">:</span> <span class="s">http://localhost:8080</span>
+        <span class="na">key</span><span class="pi">:</span> <span class="s">operate_api</span>
+        <span class="na">require_scope</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">tasklist_api</span><span class="pi">:</span>
+        <span class="na">base_url</span><span class="pi">:</span> <span class="s">http://localhost:8080</span>
+        <span class="na">key</span><span class="pi">:</span> <span class="s">tasklist_api</span>
+        <span class="na">require_scope</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">auth</span><span class="pi">:</span>
+    <span class="na">mode</span><span class="pi">:</span> <span class="s">oauth2</span>
+    <span class="na">oauth2</span><span class="pi">:</span>
+        <span class="na">client_id</span><span class="pi">:</span> <span class="s">c8volt</span>
+        <span class="na">client_secret</span><span class="pi">:</span> <span class="s1">'</span><span class="s">*****'</span>
+        <span class="na">scopes</span><span class="pi">:</span>
+            <span class="na">camunda_api</span><span class="pi">:</span> <span class="s">profile</span>
+            <span class="na">operate_api</span><span class="pi">:</span> <span class="s">profile</span>
+            <span class="na">tasklist_api</span><span class="pi">:</span> <span class="s">profile</span>
+        <span class="na">token_url</span><span class="pi">:</span> <span class="s">http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect</span>
+<span class="na">http</span><span class="pi">:</span>
+    <span class="na">timeout</span><span class="pi">:</span> <span class="s">23s</span>
+<span class="na">log</span><span class="pi">:</span>
+    <span class="na">level</span><span class="pi">:</span> <span class="s">debug</span>
+</code></pre></div></div>
+<p>You can output the config as empty (no values) template with:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt config show <span class="nt">--template</span>
+</code></pre></div></div>
+<p>In case of any issues with loading or parsing the config file, use validation with:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>./c8volt config show <span class="nt">--validate</span>
+</code></pre></div></div>
+
+<h3 id="environment-variables">Environment variables</h3>
+
+<p>Each config key can also be set via environment variable.<br />
+The prefix is <code class="language-plaintext highlighter-rouge">C8VOLT_</code>, and nested keys are joined with <code class="language-plaintext highlighter-rouge">_</code>. For
+example:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">C8VOLT_AUTH_OAUTH2_CLIENT_ID</code></li>
+  <li><code class="language-plaintext highlighter-rouge">C8VOLT_AUTH_OAUTH2_CLIENT_SECRET</code></li>
+  <li><code class="language-plaintext highlighter-rouge">C8VOLT_HTTP_OAUTH2_TOKEN_URL</code></li>
+</ul>
+
+<h3 id="security-note">Security note</h3>
+
+<p>Sensitive fields such as <code class="language-plaintext highlighter-rouge">auth.oauth2.client_secret</code> are <strong>always masked</strong> when
+the configuration is printed or logged. The raw values are still loaded and used internally, but they will never appear in output.</p>
+
+<h2 id="disclaimer">Disclaimer</h2>
+
+<p>Use <strong>c8volt</strong> at your own risk. It can modify system state.</p>
+
+<ul>
+  <li>Always create a verified backup before write operations, especially in production.</li>
+  <li>Test commands in a non-production environment first.</li>
+  <li>Batch operations and parallel runs can reduce system performance and availability.</li>
+  <li>Review commands and flags before execution; dry-run where available.</li>
+  <li>Ensure you have proper authorization. Changes may be irreversible.</li>
+  <li>Network or API issues can leave partial state changes; validate results.</li>
+  <li>Keep credentials secure and rotate them regularly.</li>
+</ul>
+
+<p><strong>c8volt</strong> is provided “AS IS”, without warranties or conditions of any kind, as stated in the Apache License 2.0.</p>
+
+<h2 id="copyright">Copyright</h2>
+
+<p>Copyright © 2025 <a href="https://boczek.info">Adam Bogdan Boczek</a></p>
+
+<p>This project is licensed under the Apache License, Version 2.0.
+See the <a href="https://github.com/grafvonb/c8volt/blob/main/LICENSE">LICENSE</a> file for the full text.</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+
+      </footer>
+
+      
+
+      
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+
+      
+    </div>
+
+    
+
+    <div id="footer" class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        
+
+<div class="page__footer-follow">
+  <ul class="social-icons">
+    
+
+    
+
+    
+      <li><a href="/c8volt/feed.xml"><i class="fas fa-fw fa-rss-square" aria-hidden="true"></i> Feed</a></li>
+    
+  </ul>
+</div>
+
+
+<div class="page__footer-copyright">&copy; 2025 <a href="http://localhost:4000">c8volt: Camunda 8 Operations CLI</a>. Powered by <a href="https://jekyllrb.com" rel="nofollow">Jekyll</a> &amp; <a href="https://mademistakes.com/work/jekyll-themes/minimal-mistakes/" rel="nofollow">Minimal Mistakes</a>.</div>
+
+      </footer>
+    </div>
+
+    
+  <script src="/c8volt/assets/js/main.min.js"></script>
+
+
+
+
+
+
+
+
+
+  </body>
+</html>

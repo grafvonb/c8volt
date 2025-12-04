@@ -5,15 +5,18 @@ COVER_DIR := .coverage
 COVER_OUT := $(COVER_DIR)/coverage.out
 COVER_HTML := $(COVER_DIR)/coverage.html
 
-.PHONY: all tidy generate build test lint fmt vet clean install run cover cover.html release
+.PHONY: all tidy generate build test lint fmt vet clean install run cover cover.html release docs
 
-all: tidy fmt vet lint test build
+all: tidy fmt vet lint test build docs
 
 tidy:
 	go mod tidy
 
 generate:
 	go generate $(PKG)
+
+docs:
+	go run ./docsgen -out ./docs/cli -format markdown
 
 build:
 	mkdir -p $(BIN_DIR)

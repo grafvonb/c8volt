@@ -1,0 +1,57 @@
+---
+---
+
+/* make content a bit lighter and links more vivid */
+$body-color: #121212;
+$background-color: #181a1f;
+$text-color: #e6e6e6;
+$link-color: #ff9d4d;
+$link-hover-color: #ff9d4d;
+$link-color-visited: #d67c33;
+$masthead-link-color: #ffffff;
+
+@import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}";
+@import "minimal-mistakes";
+
+.layout--single .page__content,
+.layout--default .initial-content {
+  max-width: 1600px;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2.5rem);
+}
+
+@media (min-width: 768px) {
+  .initial-content {
+    padding-inline: 2.5rem;
+  }
+}
+
+.page__title {
+  display: none;
+}
+
+.page {
+  width: 100%;
+  padding-inline-end: 0px;
+}
+
+.masthead {
+  display: none;
+}
+
+.page__footer {
+  display: none;
+}
+
+body.cli-doc .page__content > h2:first-child {
+  margin-top: 0;
+}
+
+body.cli-doc .page__inner-wrap {
+  padding-top: 0;   /* or 0 if you want it completely tight */
+}
+
+/* if needed, also adjust the outer page container */
+body.cli-doc .page {
+  margin-top: 0;         /* override any margin-top from the theme */
+}

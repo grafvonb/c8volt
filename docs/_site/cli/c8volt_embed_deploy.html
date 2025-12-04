@@ -1,0 +1,271 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.27.3 by Michael Rose
+  Copyright 2013-2025 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE
+-->
+
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>c8volt embed deploy - c8volt: Camunda 8 Operations CLI</title>
+<meta name="description" content="The tool for Camunda 8 admins and developers to verify outcomes.">
+
+
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="c8volt: Camunda 8 Operations CLI">
+<meta property="og:title" content="c8volt embed deploy">
+<meta property="og:url" content="http://localhost:4000/c8volt/cli/c8volt_embed_deploy.html">
+
+
+  <meta property="og:description" content="The tool for Camunda 8 admins and developers to verify outcomes.">
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/c8volt/cli/c8volt_embed_deploy.html">
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+  <link href="/c8volt/feed.xml" type="application/atom+xml" rel="alternate" title="c8volt: Camunda 8 Operations CLI Feed">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+  
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/c8volt/assets/css/main.css">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@latest/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@latest/css/all.min.css"></noscript>
+
+
+
+    <link rel="icon" href="/c8volt/favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="/c8volt/favicon.ico" type="image/x-icon">
+
+  </head>
+
+  <body class="layout--single wide cli-doc" dir="ltr">
+    <nav class="skip-links">
+  <ul>
+    <li><a href="#site-nav" class="screen-reader-shortcut">Skip to primary navigation</a></li>
+    <li><a href="#main" class="screen-reader-shortcut">Skip to content</a></li>
+    <li><a href="#footer" class="screen-reader-shortcut">Skip to footer</a></li>
+  </ul>
+</nav>
+
+    
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        
+        <a class="site-title" href="/c8volt/">
+          c8volt: Camunda 8 Operations CLI
+          
+        </a>
+        <ul class="visible-links"></ul>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+
+    <div class="initial-content">
+      
+
+
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+      
+    
+    
+      <nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      
+      
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+
+  <article class="page" itemscope itemtype="https://schema.org/CreativeWork">
+    <meta itemprop="headline" content="c8volt embed deploy">
+    
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">
+            <a href="http://localhost:4000/c8volt/cli/c8volt_embed_deploy.html" itemprop="url">c8volt embed deploy
+</a>
+          </h1>
+          
+
+
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+        <p><a href="/c8volt/cli/">CLI Reference</a></p>
+<h2 id="c8volt-embed-deploy">c8volt embed deploy</h2>
+
+<p>Deploy embedded (virtual) resources</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>c8volt embed deploy [flags]
+</code></pre></div></div>
+
+<h3 id="options">Options</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>      --all            deploy all embedded files for the configured Camunda version
+  -f, --file strings   embedded file(s) to deploy (repeatable)
+  -h, --help           help for deploy
+</code></pre></div></div>
+
+<h3 id="options-inherited-from-parent-commands">Options inherited from parent commands</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  -y, --auto-confirm        auto-confirm prompts for non-interactive use
+      --config string       path to config file
+      --debug               enable debug logging, overwrites and is shorthand for --log-level=debug
+  -j, --json                output as JSON (where applicable)
+      --keys-only           output as keys only (where applicable), can be used for piping to other commands, like cancel or delete
+      --log-format string   log format (json, plain, text) (default "plain")
+      --log-level string    log level (debug, info, warn, error) (default "info")
+      --log-with-source     include source file and line number in logs
+      --no-err-codes        suppress error codes in error outputs
+      --profile string      config active profile name to use (e.g. dev, prod)
+  -q, --quiet               suppress all output, except errors, overrides --log-level
+      --tenant string       default tenant ID
+</code></pre></div></div>
+
+<h3 id="see-also">SEE ALSO</h3>
+
+<ul>
+  <li><a href="/c8volt/cli/c8volt_embed.html">c8volt embed</a>	 - Manage embedded resources</li>
+</ul>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+
+      </footer>
+
+      
+
+      
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+
+      
+    </div>
+
+    
+
+    <div id="footer" class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        
+
+<div class="page__footer-follow">
+  <ul class="social-icons">
+    
+
+    
+
+    
+      <li><a href="/c8volt/feed.xml"><i class="fas fa-fw fa-rss-square" aria-hidden="true"></i> Feed</a></li>
+    
+  </ul>
+</div>
+
+
+<div class="page__footer-copyright">&copy; 2025 <a href="http://localhost:4000">c8volt: Camunda 8 Operations CLI</a>. Powered by <a href="https://jekyllrb.com" rel="nofollow">Jekyll</a> &amp; <a href="https://mademistakes.com/work/jekyll-themes/minimal-mistakes/" rel="nofollow">Minimal Mistakes</a>.</div>
+
+      </footer>
+    </div>
+
+    
+  <script src="/c8volt/assets/js/main.min.js"></script>
+
+
+
+
+
+
+
+
+
+  </body>
+</html>
