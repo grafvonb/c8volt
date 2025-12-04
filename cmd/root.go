@@ -67,10 +67,9 @@ var rootCmd = &cobra.Command{
 				"apis.camunda_api.base_url",
 				"auth.mode",
 			}
-			hasFlags := hasUserFlags(cmd)
 			hasEnv := hasEnvConfigByKeys(configKeys)
-			if !hasFlags && !hasEnv {
-				log.Warn("no configuration found (no flags, environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show' and use the output to create a config.yaml file")
+			if !hasEnv {
+				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
 		if isUtilityCommand(cmd) {
@@ -209,6 +208,7 @@ func retrieveAndNormalizeConfig(v *viper.Viper) (*config.Config, error) {
 	return cfg, nil
 }
 
+//nolint:unused
 func hasUserFlags(cmd *cobra.Command) bool {
 	if cmd.Flags().NFlag() > 0 {
 		return true
