@@ -79,6 +79,11 @@ var rootCmd = &cobra.Command{
 		if err = cfg.Validate(); err != nil {
 			return fmt.Errorf("validate config:\n%w", err)
 		}
+		if cfg.ActiveProfile != "" {
+			log.Debug("using configuration profile: " + cfg.ActiveProfile)
+		} else {
+			log.Debug("no active profile provided in configuration, using default settings")
+		}
 		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
 		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
 
@@ -103,7 +108,7 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	},
-	SilenceUsage:  true,
+	SilenceUsage:  false,
 	SilenceErrors: false,
 }
 
@@ -129,6 +134,7 @@ func init() {
 	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable), can be used for piping to other commands, like cancel or delete")
 
 	pf.String("config", "", "path to config file")
+	pf.String("profile", "", "config active profile name to use (e.g. dev, prod)")
 
 	pf.String("log-level", "info", "log level (debug, info, warn, error)")
 	pf.String("log-format", "plain", "log format (json, plain, text)")
@@ -137,29 +143,15 @@ func init() {
 	pf.String("tenant", "", "default tenant ID")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
-	pf.String("auth-mode", string(config.ModeNone), "authentication mode (oauth2, cookie, none)")
-	pf.String("auth-oauth2-client-id", "", "auth client ID")
-	pf.String("auth-oauth2-client-secret", "", "auth client secret")
-	pf.String("auth-oauth2-token-url", "", "auth token URL")
-	pf.StringToString("auth-oauth2-scopes", nil, "auth scopes as key=value (repeatable or comma-separated)")
-	pf.String("auth-cookie-base-url", "", "auth cookie base URL")
-	pf.String("auth-cookie-username", "", "auth cookie username")
-	pf.String("auth-cookie-password", "", "auth cookie password")
-
-	pf.String("http-timeout", "", "HTTP timeout (Go duration, e.g. 30s)")
-
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
-
-	pf.String("api-camunda-base-url", "", "Camunda API base URL")
-	pf.String("api-operate-base-url", "", "Operate API base URL")
-	pf.String("api-tasklist-base-url", "", "Tasklist API base URL")
 }
 
 func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	fs := cmd.Flags()
 
 	_ = v.BindPFlag("config", fs.Lookup("config"))
+	_ = v.BindPFlag("active_profile", fs.Lookup("profile"))
 
 	_ = v.BindPFlag("log.level", fs.Lookup("log-level"))
 	_ = v.BindPFlag("log.format", fs.Lookup("log-format"))
@@ -169,23 +161,6 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	_ = v.BindPFlag("app.camunda_version", fs.Lookup("camunda-version"))
 	_ = v.BindPFlag("app.no_err_codes", fs.Lookup("no-err-codes"))
 	_ = v.BindPFlag("app.auto-confirm", fs.Lookup("auto-confirm"))
-
-	_ = v.BindPFlag("auth.mode", fs.Lookup("auth-mode"))
-	_ = v.BindPFlag("auth.oauth2.client_id", fs.Lookup("auth-oauth2-client-id"))
-	_ = v.BindPFlag("auth.oauth2.client_secret", fs.Lookup("auth-oauth2-client-secret"))
-	_ = v.BindPFlag("auth.oauth2.token_url", fs.Lookup("auth-oauth2-token-url"))
-	_ = v.BindPFlag("auth.oauth2.scopes", fs.Lookup("auth-oauth2-scopes"))
-	_ = v.BindPFlag("auth.cookie.base_url", fs.Lookup("auth-cookie-base-url"))
-	_ = v.BindPFlag("auth.cookie.username", fs.Lookup("auth-cookie-username"))
-	_ = v.BindPFlag("auth.cookie.password", fs.Lookup("auth-cookie-password"))
-
-	_ = v.BindPFlag("http.timeout", fs.Lookup("http-timeout"))
-
-	_ = v.BindPFlag("apis.camunda_api.base_url", fs.Lookup("api-camunda-base-url"))
-	_ = v.BindPFlag("apis.operate_api.base_url", fs.Lookup("api-operate-base-url"))
-	_ = v.BindPFlag("apis.tasklist_api.base_url", fs.Lookup("api-tasklist-base-url"))
-
-	v.SetDefault("http.timeout", "30s")
 
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.format", "plain")
@@ -218,14 +193,18 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 }
 
 func retrieveAndNormalizeConfig(v *viper.Viper) (*config.Config, error) {
-	var cfg config.Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	var base config.Config
+	if err := v.Unmarshal(&base); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+	cfg, err := base.WithProfile()
+	if err != nil {
+		return nil, fmt.Errorf("apply profile: %w", err)
 	}
 	if err := cfg.Normalize(); err != nil {
 		return nil, fmt.Errorf("normalize config: %w", err)
 	}
-	return &cfg, nil
+	return cfg, nil
 }
 
 func hasUserFlags(cmd *cobra.Command) bool {

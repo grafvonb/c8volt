@@ -94,6 +94,6 @@ func init() {
 	fs.BoolVar(&flagDeletePDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 	fs.BoolVar(&flagDeletePDWithForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
-	fs.IntVarP(&flagDeletePDWorkers, "workers", "w", 0, "Maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagDeletePDFailFast, "fail-fast", false, "Stop scheduling new instances after the first error")
+	fs.IntVarP(&flagDeletePDWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagDeletePDFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 }

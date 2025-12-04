@@ -17,10 +17,10 @@ const (
 )
 
 type APIs struct {
-	Camunda               API  `mapstructure:"camunda_api" json:"camunda_api" yaml:"camunda_api"`
-	Operate               API  `mapstructure:"operate_api" json:"operate_api" yaml:"operate_api"`
-	Tasklist              API  `mapstructure:"tasklist_api" json:"tasklist_api" yaml:"tasklist_api"`
-	DisableAutoVersioning bool `mapstructure:"disable_auto_versioning" json:"disable_auto_versioning" yaml:"disable_auto_versioning"`
+	Camunda           API  `mapstructure:"camunda_api" json:"camunda_api" yaml:"camunda_api"`
+	Operate           API  `mapstructure:"operate_api" json:"operate_api" yaml:"operate_api"`
+	Tasklist          API  `mapstructure:"tasklist_api" json:"tasklist_api" yaml:"tasklist_api"`
+	VersioningDisable bool `mapstructure:"versioning_disable" json:"versioning_disable" yaml:"versioning_disable"`
 }
 
 type API struct {
@@ -56,7 +56,7 @@ func (a *APIs) Normalize() error {
 	if a.Tasklist.BaseURL == "" {
 		a.Tasklist.BaseURL = a.Camunda.BaseURL
 	}
-	if !a.DisableAutoVersioning {
+	if !a.VersioningDisable {
 		a.Camunda.BaseURL = withAPIVersion(a.Camunda.BaseURL, a.Camunda.Version)
 		a.Operate.BaseURL = withAPIVersion(a.Operate.BaseURL, a.Operate.Version)
 		a.Tasklist.BaseURL = withAPIVersion(a.Tasklist.BaseURL, a.Tasklist.Version)

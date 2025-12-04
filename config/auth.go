@@ -54,7 +54,7 @@ type AuthOAuth2ClientCredentials struct {
 	TokenURL     string `mapstructure:"token_url" json:"token_url" yaml:"token_url"`
 	ClientID     string `mapstructure:"client_id" json:"client_id" yaml:"client_id"`
 	ClientSecret string `mapstructure:"client_secret" json:"client_secret" yaml:"client_secret"`
-	Scopes       Scopes `mapstructure:"scopes" json:"scopes" yaml:"scopes"`
+	Scopes       Scopes `mapstructure:"scopes" json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
 func (a *AuthOAuth2ClientCredentials) Validate() error {

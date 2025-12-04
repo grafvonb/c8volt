@@ -17,7 +17,7 @@ var (
 var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show effective configuration",
-	Long:  "Show effective configuration with sensitive values sanitized. Use --validate to validate the configuration or --template to show a blanked-out template.",
+	Long:  `Show the effective configuration with sensitive values sanitized.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
@@ -38,6 +38,8 @@ var configShowCmd = &cobra.Command{
 				ferrors.HandleAndExitOK(log, "configuration is valid")
 			}
 		} else {
+			cfg := config.New()
+			_ = cfg.Normalize()
 			yCfg, err := cfg.ToTemplateYAML()
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML template: %w", err))
@@ -50,6 +52,7 @@ var configShowCmd = &cobra.Command{
 func init() {
 	configCmd.AddCommand(configShowCmd)
 
-	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "Validate the effective configuration and exit with an error code if invalid")
-	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "Template configuration with all values blanked out (copy-paste ready)")
+	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "validate the effective configuration and exit with an error code if invalid")
+	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "template configuration with values blanked out (copy-paste ready)")
+	configShowCmd.MarkFlagsMutuallyExclusive("validate", "template")
 }
