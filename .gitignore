@@ -66,3 +66,9 @@ out/
 node_modules/
 package-lock.json
 package.json
+
+# Jekyll
+/docs/_site/
+/docs/.jekyll-cache/
+/docs/.jekyll-metadata
+/docs/.sass-cache/

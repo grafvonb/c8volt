@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://grafvonb.github.io/c8volt/sitemap.xml
