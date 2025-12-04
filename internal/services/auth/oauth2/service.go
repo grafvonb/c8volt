@@ -57,7 +57,7 @@ func New(cfg *config.Config, apiHTTP *http.Client, log *slog.Logger, opts ...Opt
 	if log == nil {
 		return nil, errors.New("logger must not be nil")
 	}
-	log.Debug("Using 'oauth2' authenticator. OAuth2 Client Credentials flow will be used to obtain bearer tokens.")
+	log.Debug("using 'oauth2' authenticator. OAuth2 Client Credentials flow will be used to obtain bearer tokens.")
 	if apiHTTP == nil {
 		apiHTTP = http.DefaultClient
 	}

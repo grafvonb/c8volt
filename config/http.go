@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -14,4 +15,12 @@ func (h *HTTP) Validate() error {
 		return fmt.Errorf("timeout must not be empty")
 	}
 	return nil
+}
+
+func (h *HTTP) Normalize() error {
+	var errs []error
+	if h.Timeout == "" {
+		h.Timeout = "30s"
+	}
+	return errors.Join(errs...)
 }

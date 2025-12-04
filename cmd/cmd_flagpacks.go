@@ -23,8 +23,8 @@ var (
 func addBackoffFlagsAndBindings(cmd *cobra.Command, v *viper.Viper) {
 	fs := cmd.PersistentFlags()
 
-	fs.Duration("backoff-timeout", defaultBackoffTimeout, "Overall timeout for the retry loop")
-	fs.Int("backoff-max-retries", defaultBackoffMaxRetries, "Max retry attempts (0 = unlimited)")
+	fs.Duration("backoff-timeout", defaultBackoffTimeout, "overall timeout for the retry loop")
+	fs.Int("backoff-max-retries", defaultBackoffMaxRetries, "max retry attempts (0 = unlimited)")
 
 	_ = v.BindPFlag("app.backoff.timeout", fs.Lookup("backoff-timeout"))
 	_ = v.BindPFlag("app.backoff.max_retries", fs.Lookup("backoff-max-retries"))

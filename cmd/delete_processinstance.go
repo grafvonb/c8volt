@@ -79,8 +79,8 @@ func init() {
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete")
 	fs.BoolVar(&flagDeletePIWithForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
-	fs.IntVarP(&flagDeletePIWorkers, "workers", "w", 0, "Maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagDeletePIFailFast, "fail-fast", false, "Stop scheduling new instances after the first error")
+	fs.IntVarP(&flagDeletePIWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagDeletePIFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")

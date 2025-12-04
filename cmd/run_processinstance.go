@@ -108,12 +108,12 @@ func init() {
 
 	fs := runProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-id). Runs latest version unless --pd-version is specified")
-	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "Specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)")
-	fs.StringSliceVar(&flagRunPIProcessDefinitionSpecificId, "pd-id", nil, "Specific process definition ID(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
+	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)")
+	fs.StringSliceVar(&flagRunPIProcessDefinitionSpecificId, "pd-id", nil, "specific process definition ID(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
 
-	fs.IntVarP(&flagRunPICount, "count", "n", 1, "Number of instances to start for a single process definition")
-	fs.IntVarP(&flagRunPIWorkers, "workers", "w", 0, "Maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagRunPIFailFast, "fail-fast", false, "Stop scheduling new instances after the first error")
+	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
+	fs.IntVarP(&flagRunPIWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagRunPIFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 }

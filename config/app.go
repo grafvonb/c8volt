@@ -12,7 +12,7 @@ type App struct {
 	CamundaVersion toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
 	Tenant         string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
 	Backoff        common.BackoffConfig `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
-	NoErrCodes     bool                 `mapstructure:"no_err_codes" json:"no_err_codes" yaml:"no_err_codes"`
+	NoErrCodes     bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`
 }
 
 func (a *App) ViewTenant() string {
