@@ -1,32 +1,25 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
+//nolint:unused
 var getVariableCmd = &cobra.Command{
 	Use:     "variable",
 	Short:   "Get a variable by its name from a process instance",
 	Aliases: []string{"var"},
 	Run: func(cmd *cobra.Command, args []string) {
-		cli, log, cfg, err := NewCli(cmd)
+		_, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 
-		log.Debug("getting variable")
-		topology, err := cli.GetClusterTopology(cmd.Context())
-		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error getting variable: %w", err))
-		}
-		cmd.Println(toolx.ToJSONString(topology))
+		log.Info("Not implemented yet: get variable by name from process instance")
 	},
 }
 
 func init() {
-	getCmd.AddCommand(getVariableCmd)
+	// getCmd.AddCommand(getVariableCmd)
 }

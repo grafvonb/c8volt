@@ -1,6 +1,23 @@
+---
+layout: single
+title: "c8volt: Camunda 8 Operations CLI"
+permalink: /
+toc: false
+sidebar:
+  nav: "docs"
+classes: wide
+---
+
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
 # c8volt: Camunda 8 Operations CLI
+{: .no_toc}
+
+* TOC
+{:toc}
+
+## What is c8volt?
+
 The tool for Camunda 8 admins and developers to verify outcomes.
 
 [**c8volt**](https://github.com/grafvonb/c8volt)'s design and development focus on operational effectiveness, ensuring that **done is done**.
@@ -275,7 +292,7 @@ INFO waiting for process instance of 2251799813687133 with key 2251799813687256 
 INFO process instance 2251799813687256 succesfully created (start registered at 2025-11-08T19:33:12.933Z and confirmed at 2025-11-08T19:33:16Z) using process definition id 2251799813687133, C88_SimpleParentProcess, v2, tenant: <default>
 ```
 
-### Running Process Instances
+### Running
 
 A process instance can be started for a deployed BPMN model by its process definition key or BPMN process ID.
 In case of the latter you can also specify a version of the process definition to use. If no version is specified, the latest version is used by default.
@@ -333,7 +350,7 @@ INFO process instance 2251799813688852 succesfully created (start registered at 
 INFO creation of 5 process instances completed
 ```
 
-### Searching Process Instances
+### Searching
 
 **c8volt** provides powerful searching capabilities for process instances.
 It not only can find process instances by standard criteria such as process definition ID, BPMN process ID, version, state, tenant, but also traverse their parent-child relationships.
@@ -385,7 +402,7 @@ $ ./c8volt walk pi --key=2251799813686596 --mode=family
 2251799813686605 <default> C88_SimpleUserTask_Process v1/v1.0.0 ACTIVE s:2025-11-08T19:28:52.116+0000 p:2251799813686597 i:false
 ```
 
-### Cancellation of Process Instances
+### Cancellation
 
 Standard cancellation of process instances in Camunda 8 is asynchronous and does not guarantee that the instance is actually cancelled when the API call returns successfully.
 **c8volt** provides a waiting mechanism that polls the process instance state until it reaches the desired `CANCELED` state or a timeout occurs.
@@ -603,7 +620,7 @@ apis:
     base_url: "http://localhost:8080"
 ```
 
-### Choose authentication method
+### Choose Authentication Method
 
 **c8volt** supports following authentication methods for connecting to Camunda 8 APIs:
 - OAuth2 (OIDC)
@@ -674,7 +691,7 @@ log:
   level: debug
 ```
 
-### Ways to provide settings
+### Ways to Provide Settings
 
 c8volt uses [Viper](https://github.com/spf13/viper) under the hood. Configuration values can come from:
 
@@ -694,7 +711,7 @@ When multiple sources define the same setting, the **highest-priority value wins
 | 3           | Config file (YAML) | `auth.oauth2.client_id: c8volt`       |
 | 4 (lowest)  | Defaults           | `http.timeout: "30s"` (built-in)      |
 
-### Default configuration file locations
+### Default Configuration File Locations
 
 When searching for a config file, c8volt checks these paths in order and uses the first one it finds:
 
@@ -754,7 +771,7 @@ In case of any issues with loading or parsing the config file, use validation wi
 $ ./c8volt config show --validate
 ```
 
-### Environment variables
+### Environment Variables
 
 Each config key can also be set via environment variable.\
 The prefix is `C8VOLT_`, and nested keys are joined with `_`. For
@@ -765,11 +782,13 @@ example:
 -   `C8VOLT_HTTP_OAUTH2_TOKEN_URL`
 
 ### Security note
+{: .no_toc}
 
 Sensitive fields such as `auth.oauth2.client_secret` are **always masked** when
 the configuration is printed or logged. The raw values are still loaded and used internally, but they will never appear in output.
 
 ## Disclaimer
+{: .no_toc}
 
 Use **c8volt** at your own risk. It can modify system state.
 
@@ -784,6 +803,7 @@ Use **c8volt** at your own risk. It can modify system state.
 **c8volt** is provided "AS IS", without warranties or conditions of any kind, as stated in the Apache License 2.0.
 
 ## Copyright
+{: .no_toc}
 
 Copyright © 2025 [Adam Bogdan Boczek](https://boczek.info)
 
