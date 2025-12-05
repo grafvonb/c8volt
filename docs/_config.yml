@@ -2,6 +2,12 @@ title: "c8volt: Camunda 8 Operations CLI"
 description: "The tool for Camunda 8 admins and developers to verify outcomes."
 
 remote_theme: "mmistakes/minimal-mistakes@4.27.3"
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  toc_levels: 1..3
+
 plugins:
   - jekyll-include-cache
   - jekyll-remote-theme
@@ -13,29 +19,23 @@ plugins:
 url: "https://grafvonb.github.io"
 baseurl: "/c8volt"
 
-show_downloads: false
-
 minimal_mistakes_skin : "dark"
 
-# search
 search               : false
 search_full_content  : false
 
-# _config.yml
 defaults:
   - scope:
-      path: ""          # root/index
+      path: ""
       type: "pages"
     values:
       layout: single
       sidebar:
         nav: "docs"
-      toc: false
-      toc_sticky: false
       classes: wide
 
   - scope:
-      path: "cli"       # everything under cli/
+      path: "cli"
       type: "pages"
     values:
       layout: single

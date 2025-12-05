@@ -1,7 +1,6 @@
 ---
 ---
 
-/* make content a bit lighter and links more vivid */
 $body-color: #121212;
 $background-color: #181a1f;
 $text-color: #e6e6e6;
@@ -48,10 +47,17 @@ body.cli-doc .page__content > h2:first-child {
 }
 
 body.cli-doc .page__inner-wrap {
-  padding-top: 0;   /* or 0 if you want it completely tight */
+  padding-top: 0;
 }
 
-/* if needed, also adjust the outer page container */
 body.cli-doc .page {
-  margin-top: 0;         /* override any margin-top from the theme */
+  margin-top: 0;
+}
+
+.toc {
+  margin-top: 1.5rem;
+}
+
+.markdown-toc {
+  font-size: small;
 }

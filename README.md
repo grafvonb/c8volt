@@ -442,7 +442,7 @@ $ ./c8volt walk pi --key 2251799813686587 --mode=family --keys-only
 ```
 This output type can be easily piped to other commands, e.g., to delete all these process instances.
 
-### Deletion
+### Deletion of Process Instances and Process Definitions
 
 Deletion of process instances and process definitions in Camunda 8 is not straightforward.
 Due to distribution of state across multiple components and asynchronous nature of operations, additional steps are required to ensure that the resource is really deleted.
@@ -599,7 +599,7 @@ apis:
     base_url: "http://localhost:8080"
 ```
 
-### Choose authentication method
+### Choose Authentication Method
 
 **c8volt** supports following authentication methods for connecting to Camunda 8 APIs:
 - OAuth2 (OIDC)
@@ -670,7 +670,7 @@ log:
   level: debug
 ```
 
-### Ways to provide settings
+### Ways to Provide Settings
 
 c8volt uses [Viper](https://github.com/spf13/viper) under the hood. Configuration values can come from:
 
@@ -702,7 +702,7 @@ When searching for a config file, c8volt checks these paths in order and uses th
 | 4        | `$HOME/.c8volt/config.yaml`                   | Legacy fallback                                                                                                                    |
 | 5        | `%AppData%\c8volt\config.yaml` (Windows only) | `%AppData%` usually expands to `C:\Users\<User>\AppData\Roaming`<br>Example: `C:\Users\Alice\AppData\Roaming\c8volt\config.yaml` |
 
-### File format
+### File Format
 
 Config files must be **YAML**. You can inspect the effective configuration (after merging defaults, config file, env vars, and flags) with:
 ```bash
@@ -760,7 +760,7 @@ example:
 -   `C8VOLT_AUTH_OAUTH2_CLIENT_SECRET`
 -   `C8VOLT_HTTP_OAUTH2_TOKEN_URL`
 
-### Security note
+### Security Note
 
 Sensitive fields such as `auth.oauth2.client_secret` are **always masked** when
 the configuration is printed or logged. The raw values are still loaded and used internally, but they will never appear in output.
