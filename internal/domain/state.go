@@ -8,11 +8,14 @@ type State string
 
 const (
 	StateAll        State = "ALL"
-	StateActive     State = "ACTIVE"
-	StateCompleted  State = "COMPLETED"
-	StateCanceled   State = "CANCELED"
-	StateTerminated State = "TERMINATED"
-	StateAbsent     State = "ABSENT"
+	StateActive     State = "ACTIVE"     // pi, inc
+	StateCompleted  State = "COMPLETED"  // pi
+	StateCanceled   State = "CANCELED"   // pi
+	StateTerminated State = "TERMINATED" // pi
+	StateAbsent     State = "ABSENT"     // pi
+	StateMigrated   State = "MIGRATED"   // inc
+	StateResolved   State = "RESOLVED"   // inc
+	StatePending    State = "PENDING"    // inc
 )
 
 func (s State) String() string { return string(s) }
