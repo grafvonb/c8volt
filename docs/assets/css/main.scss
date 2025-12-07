@@ -6,7 +6,7 @@ $background-color: #181a1f;
 $text-color: #e6e6e6;
 $link-color: #ff9d4d;
 $link-hover-color: #ff9d4d;
-$link-color-visited: #ff9d4d;
+$link-color-visited: #d67c33;
 $masthead-link-color: #ffffff;
 
 @import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}";
@@ -61,9 +61,3 @@ body.cli-doc .page {
 .markdown-toc {
   font-size: small;
 }
-
-a {
-  text-decoration: none;
-  box-shadow: none;
-}
-
