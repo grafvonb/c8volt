@@ -2,6 +2,7 @@ package waiter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,6 +11,9 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 type PIWaiter interface {
@@ -17,7 +21,23 @@ type PIWaiter interface {
 	GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error)
 }
 
-func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, desired d.States, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
+func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, keys typex.Keys, desired d.States, wantedWorkers int, opts ...services.CallOption) (d.StateResponses, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	ukeys := keys.Unique()
+	lk := len(ukeys)
+	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
+
+	rs, err := pool.ExecuteSlice[string, d.StateResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.StateResponse, error) {
+		sr, _, werr := WaitForProcessInstanceState(ctx, s, cfg, log, key, desired, opts...)
+		return sr, werr
+	})
+	r := d.StateResponses{
+		Items: rs,
+	}
+	return r, err
+}
+
+func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -33,12 +53,11 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 	attempts := 0
 	delay := backoff.InitialDelay
 	for {
-		if errInDelay := ctx.Err(); errInDelay != nil {
-			{
-				elapsed := time.Since(start)
-				log.Info(fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s (context error: %v)", key, attempts, elapsed, errInDelay))
-			}
-			return "", d.ProcessInstance{}, errInDelay
+		if errCtx := ctx.Err(); errCtx != nil {
+			elapsed := time.Since(start)
+			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context error", key, attempts, elapsed)
+			log.Debug(status)
+			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errCtx, status)
 		}
 		attempts++
 		log.Debug(fmt.Sprintf("attempt #%d to fetch state for process instance %s", attempts, key))
@@ -46,58 +65,47 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 		if errInDelay == nil {
 			if stateIn(got, desired) {
 				if attempts == 1 {
-					{
-						elapsed := time.Since(start)
-						log.Info(fmt.Sprintf("process instance %s is already in one of the desired state(s) [%s] (current: %s); attempts=%d, elapsed=%s", key, desired, got, attempts, elapsed))
-					}
-					log.Debug(fmt.Sprintf("process instance %s is already in one of the desired state(s) [%s] (current: %s)", key, desired, got))
-					return got, pi, nil
+					status := fmt.Sprintf("process instance %s is already in one of the desired state(s) [%s] (current: %s)", key, desired, got)
+					log.Debug(status)
+					return d.StateResponse{Ok: true, State: got, Status: status}, pi, nil
 				}
-				{
-					elapsed := time.Since(start)
-					log.Info(fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks in %s", key, desired, got, attempts, elapsed))
-				}
-				log.Debug(fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks", key, desired, got, attempts))
-				return got, pi, nil
+				elapsed := time.Since(start)
+				status := fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks in %s", key, desired, got, attempts, elapsed)
+				log.Debug(status)
+				return d.StateResponse{Ok: true, State: got, Status: status}, pi, nil
 			}
-			log.Info(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt %d)", key, got, attempts))
+			log.Info(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt #%d)", key, got, attempts))
 		} else if errInDelay != nil {
 			if strings.Contains(errInDelay.Error(), "404") {
 				got = d.StateAbsent
 				if stateIn(got, desired) {
-					{
-						elapsed := time.Since(start)
-						log.Info(fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks in %s", key, desired, got, attempts, elapsed))
-					}
-					log.Debug(fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks", key, desired, got, attempts))
-					return got, d.ProcessInstance{}, nil
-				}
-				log.Debug(fmt.Sprintf("process instance %s is absent (not found); waiting... (attempt %d)", key, attempts))
-			} else {
-				log.Error(fmt.Sprintf("fetching state for %q failed: %v (will NOT retry)", key, errInDelay))
-				{
 					elapsed := time.Since(start)
-					log.Info(fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed))
+					status := fmt.Sprintf("process instance %s reached one of the desired state(s) [%s] (current: %s) after %d checks in %s", key, desired, got, attempts, elapsed)
+					log.Debug(status)
+					return d.StateResponse{Ok: true, State: got, Status: status}, d.ProcessInstance{}, nil
 				}
-				return "", d.ProcessInstance{}, fmt.Errorf("fetching state for %q failed: %w", key, errInDelay)
+				log.Info(fmt.Sprintf("process instance %s is absent (not found); waiting... (attempt #%d)", key, attempts))
+			} else {
+				elapsed := time.Since(start)
+				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)
+				log.Error(status)
+				return d.StateResponse{Ok: false, State: got, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", errInDelay, status)
 			}
 		}
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
-			{
-				elapsed := time.Since(start)
-				log.Info(fmt.Sprintf("exceeded max_retries (%d) waiting for state %q of process instance %s after %d attempts in %s", backoff.MaxRetries, desired, key, attempts, elapsed))
-			}
-			return "", d.ProcessInstance{}, fmt.Errorf("exceeded max_retries (%d) waiting for state %q", backoff.MaxRetries, desired)
+			elapsed := time.Since(start)
+			status := fmt.Sprintf("exceeded max_retries (%d) waiting for state %q of process instance %s after %d attempts in %s", backoff.MaxRetries, desired, key, attempts, elapsed)
+			log.Debug(status)
+			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, errors.New(status)
 		}
 		select {
 		case <-time.After(delay):
 			delay = backoff.NextDelay(delay)
 		case <-ctx.Done():
-			{
-				elapsed := time.Since(start)
-				log.Info(fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s (context done: %v)", key, attempts, elapsed, ctx.Err()))
-			}
-			return "", d.ProcessInstance{}, fmt.Errorf("%w: %s", d.ErrGatewayTimeout, ctx.Err().Error())
+			elapsed := time.Since(start)
+			status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to context done", key, attempts, elapsed)
+			log.Debug(status)
+			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", ctx.Err(), status)
 		}
 	}
 }

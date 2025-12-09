@@ -3,14 +3,15 @@ package resource
 import (
 	"context"
 
-	"github.com/grafvonb/c8volt/c8volt/foptions"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	types "github.com/grafvonb/c8volt/typex"
 )
 
 type API interface {
-	DeployProcessDefinition(ctx context.Context, tenantId string, units []DeploymentUnitData, opts ...foptions.FacadeOption) ([]ProcessDefinitionDeployment, error)
+	DeployProcessDefinition(ctx context.Context, tenantId string, units []DeploymentUnitData, opts ...options.FacadeOption) ([]ProcessDefinitionDeployment, error)
 
-	DeleteProcessDefinition(ctx context.Context, key string, opts ...foptions.FacadeOption) (DeleteReport, error)
-	DeleteProcessDefinitions(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (DeleteReports, error)
+	DeleteProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (DeleteReport, error)
+	DeleteProcessDefinitions(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error)
 }
 
 var _ API = (*client)(nil)

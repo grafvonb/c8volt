@@ -1,23 +1,35 @@
 package cmd
 
-import "github.com/grafvonb/c8volt/c8volt/foptions"
+import options "github.com/grafvonb/c8volt/c8volt/foptions"
 
-func collectOptions() []foptions.FacadeOption {
-	var opts []foptions.FacadeOption
-	if flagCancelNoWait || flagRunNoWait {
-		opts = append(opts, foptions.WithNoWait())
+func collectOptions() []options.FacadeOption {
+	var opts []options.FacadeOption
+	if flagNoWait {
+		opts = append(opts, options.WithNoWait())
 	}
-	if flagCancelNoStateCheck || flagDeleteNoStateCheck {
-		opts = append(opts, foptions.WithNoStateCheck())
+	if flagNoStateCheck {
+		opts = append(opts, options.WithNoStateCheck())
 	}
-	if flagDeletePIWithForce || flagCancelPIWithForce || flagDeletePDWithForce {
-		opts = append(opts, foptions.WithForce())
+	if flagForce {
+		opts = append(opts, options.WithForce())
 	}
 	if flagDeployPDWithRun {
-		opts = append(opts, foptions.WithRun())
+		opts = append(opts, options.WithRun())
 	}
 	if flagGetPDWithStat {
-		opts = append(opts, foptions.WithStat())
+		opts = append(opts, options.WithStat())
+	}
+	if flagDryRun {
+		opts = append(opts, options.WithDryRun())
+	}
+	if flagVerbose {
+		opts = append(opts, options.WithVerbose())
+	}
+	if flagFailFast {
+		opts = append(opts, options.WithFailFast())
+	}
+	if flagNoWorkerLimit {
+		opts = append(opts, options.WithNoWorkerLimit())
 	}
 	return opts
 }

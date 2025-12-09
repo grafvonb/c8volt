@@ -4,18 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/foptions"
-	"github.com/grafvonb/c8volt/c8volt/fpool"
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/grafvonb/c8volt/toolx/pool"
+	types "github.com/grafvonb/c8volt/typex"
 )
 
-func (c *client) DeleteProcessDefinitions(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (DeleteReports, error) {
-	cCfg := foptions.ApplyFacadeOptions(opts)
-	ukeys := toolx.UniqueSlice(keys)
+func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error) {
+	cCfg := options.ApplyFacadeOptions(opts)
+	ukeys := keys.Unique()
+	lk := len(ukeys)
 
-	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
-	c.log.Info(fmt.Sprintf("deleting process definitions requested for %d unique key(s) using %d worker(s)", len(ukeys), workers))
-	rs, err := fpool.ExecuteSlice[string, DeleteReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
+	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
+	logging.InfoV(fmt.Sprintf("deleting process definitions requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	rs, err := pool.ExecuteSlice[string, DeleteReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessDefinition(ctx, key, opts...)
 	})
 	r := DeleteReports{

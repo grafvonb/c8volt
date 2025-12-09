@@ -21,6 +21,7 @@ c8volt delete process-instance [flags]
   -k, --key strings              process instance key(s) to delete
       --no-state-check           skip checking the current state of the process instance before deleting it
       --no-wait                  skip waiting for the deletion to be fully processed (no status checks)
+      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
   -s, --state string             state to filter process instances: all, active, completed, canceled (default "all")
@@ -44,6 +45,7 @@ c8volt delete process-instance [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

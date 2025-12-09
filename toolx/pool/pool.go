@@ -1,4 +1,4 @@
-package fpool
+package pool
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"sync/atomic"
 )
 
-func ExecuteNTimes[T any](ctx context.Context, n int, parallel int, failFast bool, fn func(context.Context, int) (T, error)) ([]T, error) {
+func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFast bool, fn func(context.Context, int) (T, error)) ([]T, error) {
 	if n <= 0 {
 		return nil, nil
 	}
-	if parallel <= 0 {
-		parallel = 1
+	if wantedWorkers <= 0 {
+		wantedWorkers = 1
 	}
-	if parallel > n {
-		parallel = n
+	if wantedWorkers > n {
+		wantedWorkers = n
 	}
 
 	out := make([]T, n)
@@ -26,7 +26,7 @@ func ExecuteNTimes[T any](ctx context.Context, n int, parallel int, failFast boo
 
 	jobs := make(chan int)
 	var wg sync.WaitGroup
-	wg.Add(parallel)
+	wg.Add(wantedWorkers)
 
 	var sawErr atomic.Bool
 
@@ -55,7 +55,7 @@ func ExecuteNTimes[T any](ctx context.Context, n int, parallel int, failFast boo
 		}
 	}
 
-	for w := 0; w < parallel; w++ {
+	for w := 0; w < wantedWorkers; w++ {
 		go worker()
 	}
 
@@ -79,8 +79,8 @@ produce:
 }
 
 // ExecuteSlice maps a slice of inputs with concurrency, same semantics
-func ExecuteSlice[In any, Out any](ctx context.Context, in []In, parallel int, failFast bool, fn func(context.Context, In, int) (Out, error)) ([]Out, error) {
-	return ExecuteNTimes[Out](ctx, len(in), parallel, failFast, func(ctx context.Context, i int) (Out, error) {
+func ExecuteSlice[In any, Out any](ctx context.Context, in []In, wantedWorkers int, failFast bool, fn func(context.Context, In, int) (Out, error)) ([]Out, error) {
+	return ExecuteNTimes[Out](ctx, len(in), wantedWorkers, failFast, func(ctx context.Context, i int) (Out, error) {
 		return fn(ctx, in[i], i)
 	})
 }

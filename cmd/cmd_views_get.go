@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//nolint:unused
 func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
 	return itemView(cmd, item, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -15,10 +14,6 @@ var (
 	flagDeletePDProcessVersion    int32
 	flagDeletePDProcessVersionTag string
 	flagDeletePDLatest            bool
-
-	flagDeletePDWorkers   int
-	flagDeletePDFailFast  bool
-	flagDeletePDWithForce bool
 )
 
 var deleteProcessDefinitionCmd = &cobra.Command{
@@ -30,22 +25,13 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
+		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
+		}
 		if len(flagDeletePDKeys) == 0 && flagDeletePDBpmnProcessId == "" {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
 		}
-
-		keys := append([]string{}, flagDeletePDKeys...)
-		if inKeys, err := readKeysFromStdin(); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
-		} else if len(inKeys) > 0 {
-			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
-				if strings.HasPrefix(firstBadKey, "filter: ") {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
-				}
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
-			}
-			keys = append(keys, inKeys...)
-		}
+		keys := mergeAndValidateKeys(flagDeletePDKeys, log, cfg)
 
 		switch {
 		case len(flagDeletePDKeys) > 0:
@@ -76,7 +62,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.DeleteProcessDefinitions(cmd.Context(), keys, flagDeletePDWorkers, flagDeletePDFailFast, collectOptions()...)
+		_, err = cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definiton(s): %w", err))
 		}
@@ -92,8 +78,9 @@ func init() {
 	fs.Int32Var(&flagDeletePDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagDeletePDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagDeletePDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
-	fs.BoolVar(&flagDeletePDWithForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
-	fs.IntVarP(&flagDeletePDWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagDeletePDFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 }

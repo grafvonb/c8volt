@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -11,11 +10,7 @@ import (
 )
 
 var (
-	flagCancelPIKeys      []string
-	flagCancelPIWithForce bool
-
-	flagCancelPIWorkers  int
-	flagCancelPIFailFast bool
+	flagCancelPIKeys []string
 )
 
 var cancelProcessInstanceCmd = &cobra.Command{
@@ -27,22 +22,10 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
 		}
-		if cmd.Flags().Changed("workers") && flagCancelPIWorkers < 1 {
+		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
 		}
-
-		keys := append([]string{}, flagCancelPIKeys...)
-		if inKeys, err := readKeysFromStdin(); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
-		} else if len(inKeys) > 0 {
-			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
-				if strings.HasPrefix(firstBadKey, "filter: ") {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
-				}
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
-			}
-			keys = append(keys, inKeys...)
-		}
+		keys := mergeAndValidateKeys(flagCancelPIKeys, log, cfg)
 
 		switch {
 		case len(keys) > 0:
@@ -70,7 +53,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagCancelPIWorkers, flagCancelPIFailFast, collectOptions()...)
+		_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancelling process instance(s): %w", err))
 		}
@@ -81,13 +64,16 @@ func init() {
 	cancelCmd.AddCommand(cancelProcessInstanceCmd)
 
 	fs := cancelProcessInstanceCmd.Flags()
-	fs.BoolVar(&flagCancelNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed (no status checks)")
-	fs.BoolVar(&flagCancelNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
-	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
-	fs.BoolVar(&flagCancelPIWithForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed (no status checks)")
+	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "perform a dry-run; show which process instances would be cancelled without actually cancelling them")
 
-	fs.IntVarP(&flagCancelPIWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagCancelPIFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
+	fs.BoolVar(&flagForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")
+
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	flagGetPIKey                  string
+	flagGetPIKeys                 []string
 	flagGetPIBpmnProcessID        string
 	flagGetPIProcessVersion       int32
 	flagGetPIProcessVersionTag    string
@@ -44,49 +44,49 @@ var getProcessInstanceCmd = &cobra.Command{
 		if err := validatePISearchFlags(); err != nil {
 			fail(err)
 		}
-		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		filter, populated := populatePISearchFilterOpts()
 
-		if flagGetPIKey != "" {
-			log.Debug(fmt.Sprintf("searching by key: %s", flagGetPIKey))
+		keys := mergeAndValidateKeys(flagGetPIKeys, log, cfg)
+		ukeys := keys.Unique()
+		lk := len(ukeys)
+
+		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
+		var pis process.ProcessInstances
+		switch {
+		case lk > 0:
+			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if populated || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(fmt.Errorf("%w: --key cannot be combined with other filters", ErrMutuallyExclusiveFlags))
 			}
-			pi, err := cli.GetProcessInstance(cmd.Context(), flagGetPIKey)
+			pis, err = cli.GetProcessInstances(cmd.Context(), ukeys, lk, collectOptions()...)
 			if err != nil {
-				fail(fmt.Errorf("error fetching process instance by key %s: %w", flagGetPIKey, err))
-			}
-
-			if err := processInstanceView(cmd, pi); err != nil {
-				fail(fmt.Errorf("error rendering view: %w", err))
+				fail(fmt.Errorf("error fetching process instance for key(s) [%s]: %w", keys, err))
 			}
 			return
-		}
-
-		filter.Key = flagGetPIKey
-		log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
-
-		pis, err := cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
-		if err != nil {
-			fail(fmt.Errorf("error fetching process instances: %w", err))
-		}
-		if flagGetPIChildrenOnly {
-			pis = pis.FilterChildrenOnly()
-		}
-		if flagGetPIRootsOnly {
-			pis = pis.FilterRootsOnly()
-		}
-		if flagGetPIOrphanChildrenOnly {
-			pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items)
+		default:
+			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
+			pis, err = cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
 			if err != nil {
-				fail(fmt.Errorf("error filtering orphan children: %w", err))
+				fail(fmt.Errorf("error fetching process instances: %w", err))
 			}
-		}
-		if flagGetPIIncidentsOnly {
-			pis = pis.FilterByHavingIncidents(true)
-		}
-		if flagGetPINoIncidentsOnly {
-			pis = pis.FilterByHavingIncidents(false)
+			if flagGetPIChildrenOnly {
+				pis = pis.FilterChildrenOnly()
+			}
+			if flagGetPIRootsOnly {
+				pis = pis.FilterRootsOnly()
+			}
+			if flagGetPIOrphanChildrenOnly {
+				pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items)
+				if err != nil {
+					fail(fmt.Errorf("error filtering orphan children: %w", err))
+				}
+			}
+			if flagGetPIIncidentsOnly {
+				pis = pis.FilterByHavingIncidents(true)
+			}
+			if flagGetPINoIncidentsOnly {
+				pis = pis.FilterByHavingIncidents(false)
+			}
 		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
 			fail(fmt.Errorf("error rendering items view: %w", err))
@@ -98,7 +98,7 @@ func init() {
 	getCmd.AddCommand(getProcessInstanceCmd)
 
 	fs := getProcessInstanceCmd.Flags()
-	fs.StringVarP(&flagGetPIKey, "key", "k", "", "process instance key to fetch")
+	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")

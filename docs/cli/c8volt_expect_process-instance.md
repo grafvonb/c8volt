@@ -5,7 +5,7 @@ title: "c8volt expect process-instance"
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt expect process-instance
 
-Expect a process instance to reach a certain state
+Expect a process instance(s) to reach a certain state from list of states
 
 ```
 c8volt expect process-instance [flags]
@@ -14,9 +14,12 @@ c8volt expect process-instance [flags]
 ### Options
 
 ```
-  -h, --help            help for process-instance
-  -k, --key string      process instance key to expect a state for
-  -s, --state strings   state of a process instance; valid values aer: [active, completed, canceled, terminated or absent]
+      --fail-fast         stop scheduling new instances after the first error
+  -h, --help              help for process-instance
+  -k, --key strings       process instance key(s) to expect a state for
+      --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
+  -s, --state strings     state of a process instance; valid values aer: [active, completed, canceled, terminated or absent]
+  -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +39,7 @@ c8volt expect process-instance [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

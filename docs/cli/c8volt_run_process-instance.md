@@ -18,6 +18,8 @@ c8volt run process-instance [flags]
   -n, --count int                 number of instances to start for a single process definition (default 1)
       --fail-fast                 stop scheduling new instances after the first error
   -h, --help                      help for process-instance
+      --no-wait                   skip waiting for the creation to be fully processed (no status checks)
+      --no-worker-limit           disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-id strings             specific process definition ID(s) to run process instance for (mutually exclusive with --bpmn-process-id)
       --pd-version int32          specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)
       --vars string               JSON-encoded variables to pass to the started process instance(s)
@@ -38,10 +40,10 @@ c8volt run process-instance [flags]
       --log-level string           log level (debug, info, warn, error) (default "info")
       --log-with-source            include source file and line number in logs
       --no-err-codes               suppress error codes in error outputs
-      --no-wait                    skip waiting for the creation to be fully processed (no status checks)
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

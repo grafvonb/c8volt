@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 )
 
 type State string
@@ -16,6 +16,7 @@ const (
 	StateCanceled   State = "CANCELED"
 	StateTerminated State = "TERMINATED"
 	StateAbsent     State = "ABSENT"
+	StateUnknown    State = "UNKNOWN"
 )
 
 func (s State) String() string { return string(s) }
@@ -48,7 +49,7 @@ func ParseState(in string) (State, bool) {
 	case "absent":
 		return StateAbsent, true
 	default:
-		return "", false
+		return StateUnknown, false
 	}
 }
 
@@ -76,7 +77,7 @@ func (sx States) Strings() []string {
 }
 
 func (sx States) String() string {
-	return strings.Join(sx.Strings(), ", ")
+	return strings.Join(sx.Strings(), ",")
 }
 
 func ParseStates(in []string) (States, error) {
@@ -84,7 +85,7 @@ func ParseStates(in []string) (States, error) {
 	for _, s := range in {
 		parsed, ok := ParseState(s)
 		if !ok {
-			return nil, fmt.Errorf("%w: %s", ferrors.ErrInvalidState, s)
+			return nil, fmt.Errorf("%w: %s", ferr.ErrInvalidState, s)
 		}
 		out = append(out, parsed)
 	}

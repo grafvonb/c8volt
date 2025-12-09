@@ -17,7 +17,6 @@ import (
 var (
 	flagEmbedExportFileNames []string // may contain exact names or globs
 	flagEmbedExportOut       string
-	flagEmbedExportWithForce bool
 	flagEmbedExportAll       bool
 )
 
@@ -97,7 +96,7 @@ var embedExportCmd = &cobra.Command{
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("create dir %q: %w", dir, err))
 			}
-			if !flagEmbedExportWithForce {
+			if !flagForce {
 				if info, err := os.Stat(dst); err == nil && info.Mode().IsRegular() {
 					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("destination file %q exists; use --force to overwrite", dst))
 				}
@@ -116,7 +115,7 @@ func init() {
 	embedCmd.AddCommand(embedExportCmd)
 	embedExportCmd.Flags().StringSliceVarP(&flagEmbedExportFileNames, "file", "f", nil, "embedded file(s) or a glob pattern to export (repeatable, quote patterns in the shell like zsh)")
 	embedExportCmd.Flags().StringVarP(&flagEmbedExportOut, "out", "o", ".", "output base directory")
-	embedExportCmd.Flags().BoolVar(&flagEmbedExportWithForce, "force", false, "overwrite if destination file exists")
+	embedExportCmd.Flags().BoolVar(&flagForce, "force", false, "overwrite if destination file exists")
 	embedExportCmd.Flags().BoolVar(&flagEmbedExportAll, "all", false, "export all embedded files")
 }
 

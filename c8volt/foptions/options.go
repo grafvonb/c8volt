@@ -2,24 +2,28 @@ package foptions
 
 import "github.com/grafvonb/c8volt/internal/services"
 
-func WithNoStateCheck() FacadeOption { return func(c *FacadeCfg) { c.NoStateCheck = true } }
-func WithForce() FacadeOption        { return func(c *FacadeCfg) { c.Force = true } }
-func WithNoWait() FacadeOption       { return func(c *FacadeCfg) { c.NoWait = true } }
-func WithRun() FacadeOption          { return func(c *FacadeCfg) { c.Run = true } }
-func WithFailFast() FacadeOption     { return func(c *FacadeCfg) { c.FailFast = true } }
-func WithVerbose() FacadeOption      { return func(c *FacadeCfg) { c.Verbose = true } }
-func WithStat() FacadeOption         { return func(c *FacadeCfg) { c.Stat = true } }
+func WithNoStateCheck() FacadeOption  { return func(c *FacadeCfg) { c.NoStateCheck = true } }
+func WithForce() FacadeOption         { return func(c *FacadeCfg) { c.Force = true } }
+func WithNoWait() FacadeOption        { return func(c *FacadeCfg) { c.NoWait = true } }
+func WithRun() FacadeOption           { return func(c *FacadeCfg) { c.Run = true } }
+func WithFailFast() FacadeOption      { return func(c *FacadeCfg) { c.FailFast = true } }
+func WithVerbose() FacadeOption       { return func(c *FacadeCfg) { c.Verbose = true } }
+func WithStat() FacadeOption          { return func(c *FacadeCfg) { c.Stat = true } }
+func WithDryRun() FacadeOption        { return func(c *FacadeCfg) { c.DryRun = true } }
+func WithNoWorkerLimit() FacadeOption { return func(c *FacadeCfg) { c.NoWorkerLimit = true } }
 
 type FacadeOption func(*FacadeCfg)
 
 type FacadeCfg struct {
-	NoStateCheck bool
-	Force        bool
-	NoWait       bool
-	Run          bool
-	FailFast     bool
-	Verbose      bool
-	Stat         bool
+	NoStateCheck  bool
+	Force         bool
+	NoWait        bool
+	Run           bool
+	FailFast      bool
+	Verbose       bool
+	Stat          bool
+	DryRun        bool
+	NoWorkerLimit bool
 }
 
 func ApplyFacadeOptions(opts []FacadeOption) *FacadeCfg {
@@ -50,6 +54,15 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	}
 	if c.Stat {
 		out = append(out, services.WithStat())
+	}
+	if c.DryRun {
+		out = append(out, services.WithDryRun())
+	}
+	if c.Verbose {
+		out = append(out, services.WithVerbose())
+	}
+	if c.NoWorkerLimit {
+		out = append(out, services.WithNoWorkerLimit())
 	}
 	return out
 }

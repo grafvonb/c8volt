@@ -5,11 +5,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	flagCancelNoWait       bool
-	flagCancelNoStateCheck bool
-)
-
 var cancelCmd = &cobra.Command{
 	Use:   "cancel",
 	Short: "Cancel resources",

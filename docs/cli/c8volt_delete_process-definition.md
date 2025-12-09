@@ -20,6 +20,7 @@ c8volt delete process-definition [flags]
   -h, --help                     help for process-definition
   -k, --key strings              process definition key(s) to delete
       --latest                   fetch the latest version(s) of the given BPMN process(s)
+      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
   -w, --workers int              maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
@@ -42,6 +43,7 @@ c8volt delete process-definition [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

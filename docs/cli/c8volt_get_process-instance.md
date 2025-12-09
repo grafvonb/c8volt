@@ -19,7 +19,7 @@ c8volt get process-instance [flags]
   -n, --count int32              number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
   -h, --help                     help for process-instance
       --incidents-only           show only process instances that have incidents
-  -k, --key string               process instance key to fetch
+  -k, --key strings              process instance key(s) to fetch
       --no-incidents-only        show only process instances that have no incidents
       --orphan-children-only     show only child instances where parent key is set but the parent process instance does not exist (anymore)
       --parent-key string        parent process instance key to filter process instances
@@ -47,6 +47,7 @@ c8volt get process-instance [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

@@ -65,3 +65,9 @@ func FromContext(ctx context.Context) (*slog.Logger, error) {
 	}
 	return l, nil
 }
+
+func InfoV(msg string, log *slog.Logger, verbose bool) {
+	if verbose {
+		log.Info(msg)
+	}
+}

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/consts"
@@ -10,11 +9,7 @@ import (
 )
 
 var (
-	flagDeletePIKeys      []string
-	flagDeletePIWithForce bool
-
-	flagDeletePIWorkers  int
-	flagDeletePIFailFast bool
+	flagDeletePIKeys []string
 )
 
 var deleteProcessInstanceCmd = &cobra.Command{
@@ -26,19 +21,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
 		}
-
-		keys := append([]string{}, flagDeletePIKeys...)
-		if inKeys, err := readKeysFromStdin(); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
-		} else if len(inKeys) > 0 {
-			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
-				if strings.HasPrefix(firstBadKey, "filter: ") {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
-				}
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
-			}
-			keys = append(keys, inKeys...)
-		}
+		keys := mergeAndValidateKeys(flagDeletePIKeys, log, cfg)
 
 		switch {
 		case len(keys) > 0:
@@ -63,7 +46,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.DeleteProcessInstances(cmd.Context(), keys, flagDeletePIWorkers, flagDeletePIFailFast, collectOptions()...)
+		_, err = cli.DeleteProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process instance(s): %w", err))
 		}
@@ -74,13 +57,14 @@ func init() {
 	deleteCmd.AddCommand(deleteProcessInstanceCmd)
 
 	fs := deleteProcessInstanceCmd.Flags()
-	fs.BoolVar(&flagDeleteNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed (no status checks)")
-	fs.BoolVar(&flagDeleteNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed (no status checks)")
+	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete")
-	fs.BoolVar(&flagDeletePIWithForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
-	fs.IntVarP(&flagDeletePIWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagDeletePIFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
