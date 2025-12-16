@@ -9,12 +9,16 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
-// Reporter is an interface for operation reports that can indicate success/failure
+// Reporter is an interface for operation reports that can indicate success/failure.
+// Note: This interface is defined here to keep fpool package independent of domain models.
+// Similar interfaces may exist in domain packages (e.g., process.OKer) for their specific use cases.
 type Reporter interface {
 	OK() bool
 }
 
-// CalculateTotals returns the total count, successful count, and failed count from a slice of reporters
+// CalculateTotals returns the total count, successful count, and failed count from a slice of reporters.
+// Note: This function is designed for use within the fpool package for bulk operation logging.
+// Domain packages may have similar functions (e.g., process.TotalsOf) for their specific model types.
 func CalculateTotals[R Reporter](items []R) (total int, oks int, noks int) {
 	for _, item := range items {
 		if item.OK() {
