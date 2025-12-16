@@ -14,19 +14,14 @@ type Reporter interface {
 	OK() bool
 }
 
-// Reports wraps a collection of reports and provides total counts
-type Reports[T Reporter] struct {
-	Items []T
-}
-
-// Totals returns the total count, successful count, and failed count
-func (r Reports[T]) Totals() (total int, oks int, noks int) {
-	for _, item := range r.Items {
+// CalculateTotals returns the total count, successful count, and failed count from a slice of reporters
+func CalculateTotals[R Reporter](items []R) (total int, oks int, noks int) {
+	for _, item := range items {
 		if item.OK() {
 			oks++
 		}
 	}
-	total = len(r.Items)
+	total = len(items)
 	noks = total - oks
 	return
 }
@@ -54,15 +49,7 @@ func ExecuteBulkOperation[R Reporter](
 	})
 
 	if !cCfg.NoWait {
-		total := len(rs)
-		oks := 0
-		noks := 0
-		for _, r := range rs {
-			if r.OK() {
-				oks++
-			}
-		}
-		noks = total - oks
+		_, oks, noks := CalculateTotals(rs)
 		log.Info(fmt.Sprintf("%s completed: %d succeeded, %d failed", operationName, oks, noks))
 	}
 

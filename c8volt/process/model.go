@@ -100,10 +100,12 @@ func (c DeleteReports) Totals() (total int, oks int, noks int) {
 	return TotalsOf(c.Items)
 }
 
+// OKer is an interface for items that can report their success status
 type OKer interface {
 	OK() bool
 }
 
+// TotalsOf calculates totals from a slice of items that implement OKer
 func TotalsOf[T OKer](items []T) (total, oks, noks int) {
 	for _, r := range items {
 		if r.OK() {
