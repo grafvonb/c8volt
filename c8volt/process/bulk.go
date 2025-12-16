@@ -29,39 +29,21 @@ func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstan
 }
 
 func (c *client) CancelProcessInstances(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (CancelReports, error) {
-	cCfg := foptions.ApplyFacadeOptions(opts)
-	ukeys := toolx.UniqueSlice(keys)
-
-	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
-	c.log.Info(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", len(ukeys), workers))
-	rs, err := fpool.ExecuteSlice[string, CancelReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (CancelReport, error) {
-		return c.CancelProcessInstance(ctx, key, opts...)
-	})
-	r := CancelReports{
-		Items: rs,
-	}
-	if !cCfg.NoWait {
-		t, oks, noks := r.Totals()
-		c.log.Info(fmt.Sprintf("cancelling %d process instance(s) completed: %d succeeded or already cancelled/teminated, %d failed", t, oks, noks))
-	}
-	return r, err
+	rs, err := fpool.ExecuteBulkOperation[CancelReport](
+		ctx, keys, parallel, failFast,
+		"cancelling process instances",
+		c.log, opts,
+		c.CancelProcessInstance,
+	)
+	return CancelReports{Items: rs}, err
 }
 
 func (c *client) DeleteProcessInstances(ctx context.Context, keys []string, parallel int, failFast bool, opts ...foptions.FacadeOption) (DeleteReports, error) {
-	cCfg := foptions.ApplyFacadeOptions(opts)
-	ukeys := toolx.UniqueSlice(keys)
-
-	workers := toolx.DetermineNoOfWorkers(len(keys), parallel)
-	c.log.Info(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", len(ukeys), workers))
-	rs, err := fpool.ExecuteSlice[string, DeleteReport](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
-		return c.DeleteProcessInstance(ctx, key, opts...)
-	})
-	r := DeleteReports{
-		Items: rs,
-	}
-	if !cCfg.NoWait {
-		t, oks, noks := r.Totals()
-		c.log.Info(fmt.Sprintf("deleting %d process instances completed: %d succeeded, %d failed", t, oks, noks))
-	}
-	return r, err
+	rs, err := fpool.ExecuteBulkOperation[DeleteReport](
+		ctx, keys, parallel, failFast,
+		"deleting process instances",
+		c.log, opts,
+		c.DeleteProcessInstance,
+	)
+	return DeleteReports{Items: rs}, err
 }
