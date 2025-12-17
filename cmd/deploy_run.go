@@ -76,14 +76,15 @@ func runProcessInstancesAfterDeploy(
 		if runCount == 1 {
 			instances, err = cli.CreateProcessInstances(cmd.Context(), []process.ProcessInstanceData{data}, fopts...)
 		} else {
+			// 0 workers means use default (min(count, GOMAXPROCS))
 			instances, err = cli.CreateNProcessInstances(cmd.Context(), data, runCount, 0, fopts...)
 		}
 
 		if err != nil {
-			return fmt.Errorf("running process instance(s) for %s (key %s): %w", pdd.DefinitionKey, pdd.DefinitionId, err)
+			return fmt.Errorf("running process instance(s) for %s (ID %s): %w", pdd.DefinitionKey, pdd.DefinitionId, err)
 		}
 
-		log.Debug(fmt.Sprintf("%d process instance(s) started for process definition %s (key %s)", len(instances), pdd.DefinitionKey, pdd.DefinitionId))
+		log.Debug(fmt.Sprintf("%d process instance(s) started for process definition %s (ID %s)", len(instances), pdd.DefinitionKey, pdd.DefinitionId))
 	}
 
 	return nil
