@@ -52,7 +52,7 @@ func runProcessInstancesAfterDeploy(
 		}
 	} else if varsJSON != "" {
 		if err := json.Unmarshal([]byte(varsJSON), &vars); err != nil {
-			return fmt.Errorf("parsing --run-vars JSON: %w", err)
+			return fmt.Errorf("parsing --vars JSON: %w", err)
 		}
 	}
 
