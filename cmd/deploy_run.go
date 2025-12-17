@@ -21,17 +21,7 @@ type ProcessInstanceCreator interface {
 }
 
 // runProcessInstancesAfterDeploy runs process instances after successful deployment
-func runProcessInstancesAfterDeploy(
-	cmd *cobra.Command,
-	cli ProcessInstanceCreator,
-	log *slog.Logger,
-	cfg *config.Config,
-	pdds []resource.ProcessDefinitionDeployment,
-	runCount int,
-	varsJSON string,
-	varsFile string,
-	autoConfirm bool,
-) error {
+func runProcessInstancesAfterDeploy(cmd *cobra.Command, cli ProcessInstanceCreator, log *slog.Logger, cfg *config.Config, pdds []resource.ProcessDefinitionDeployment, runCount int, varsJSON string, varsFile string, autoConfirm bool) error {
 	// Validate run count (should be at least 1 if function is called)
 	if runCount < 1 {
 		return fmt.Errorf("--run must be a positive integer")
