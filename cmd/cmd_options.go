@@ -13,9 +13,6 @@ func collectOptions() []foptions.FacadeOption {
 	if flagDeletePIWithForce || flagCancelPIWithForce || flagDeletePDWithForce {
 		opts = append(opts, foptions.WithForce())
 	}
-	if flagDeployPDWithRun {
-		opts = append(opts, foptions.WithRun())
-	}
 	if flagGetPDWithStat {
 		opts = append(opts, foptions.WithStat())
 	}

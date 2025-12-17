@@ -32,15 +32,15 @@ func runProcessInstancesAfterDeploy(
 	varsFile string,
 	autoConfirm bool,
 ) error {
-	// Validate run count
+	// Validate run count (should be at least 1 if function is called)
 	if runCount < 1 {
-		return fmt.Errorf("--run-count must be a positive integer")
+		return fmt.Errorf("--run must be a positive integer")
 	}
 
 	// Load variables from file or flag
 	var vars map[string]interface{}
 	if varsFile != "" && varsJSON != "" {
-		return fmt.Errorf("--run-vars and --run-vars-file are mutually exclusive")
+		return fmt.Errorf("--vars and --vars-file are mutually exclusive")
 	}
 	if varsFile != "" {
 		data, err := os.ReadFile(varsFile)

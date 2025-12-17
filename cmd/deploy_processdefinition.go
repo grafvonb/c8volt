@@ -9,11 +9,10 @@ import (
 )
 
 var (
-	flagDeployPDFiles       []string
-	flagDeployPDWithRun     bool
-	flagDeployPDRunCount    int
-	flagDeployPDRunVars     string
-	flagDeployPDRunVarsFile string
+	flagDeployPDFiles    []string
+	flagDeployPDRunCount int
+	flagDeployPDVars     string
+	flagDeployPDVarsFile string
 )
 
 var deployProcessDefinitionCmd = &cobra.Command{
@@ -44,8 +43,8 @@ var deployProcessDefinitionCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("%d process definition(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
 
 		// Run process instances if --run flag is set
-		if flagDeployPDWithRun {
-			if err := runProcessInstancesAfterDeploy(cmd, cli, log, cfg, pdds, flagDeployPDRunCount, flagDeployPDRunVars, flagDeployPDRunVarsFile, flagCmdAutoConfirm); err != nil {
+		if flagDeployPDRunCount > 0 {
+			if err := runProcessInstancesAfterDeploy(cmd, cli, log, cfg, pdds, flagDeployPDRunCount, flagDeployPDVars, flagDeployPDVarsFile, flagCmdAutoConfirm); err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}
 		}
@@ -57,8 +56,7 @@ func init() {
 	deployProcessDefinitionCmd.Flags().StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
 	_ = deployProcessDefinitionCmd.MarkFlagRequired("file")
 
-	deployProcessDefinitionCmd.Flags().BoolVar(&flagDeployPDWithRun, "run", false, "run process instance(s) after deploying process definition(s)")
-	deployProcessDefinitionCmd.Flags().IntVar(&flagDeployPDRunCount, "run-count", 1, "number of process instances to start (requires --run)")
-	deployProcessDefinitionCmd.Flags().StringVar(&flagDeployPDRunVars, "run-vars", "", "JSON-encoded variables for process instance(s) (requires --run)")
-	deployProcessDefinitionCmd.Flags().StringVar(&flagDeployPDRunVarsFile, "run-vars-file", "", "path to JSON file with variables for process instance(s) (requires --run)")
+	deployProcessDefinitionCmd.Flags().IntVarP(&flagDeployPDRunCount, "run", "n", 0, "run N process instance(s) after deploying process definition(s)")
+	deployProcessDefinitionCmd.Flags().StringVar(&flagDeployPDVars, "vars", "", "JSON-encoded variables for process instance(s) (requires --run)")
+	deployProcessDefinitionCmd.Flags().StringVar(&flagDeployPDVarsFile, "vars-file", "", "path to JSON file with variables for process instance(s) (requires --run)")
 }

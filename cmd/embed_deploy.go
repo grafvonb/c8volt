@@ -13,12 +13,11 @@ import (
 )
 
 var (
-	flagEmbedDeployFileNames   []string
-	flagEmbedDeployAll         bool
-	flagEmbedDeployWithRun     bool
-	flagEmbedDeployRunCount    int
-	flagEmbedDeployRunVars     string
-	flagEmbedDeployRunVarsFile string
+	flagEmbedDeployFileNames []string
+	flagEmbedDeployAll       bool
+	flagEmbedDeployRunCount  int
+	flagEmbedDeployVars      string
+	flagEmbedDeployVarsFile  string
 )
 
 var embedDeployCmd = &cobra.Command{
@@ -79,8 +78,8 @@ var embedDeployCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("%d embedded resource(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
 
 		// Run process instances if --run flag is set
-		if flagEmbedDeployWithRun {
-			if err := runProcessInstancesAfterDeploy(cmd, cli, log, cfg, pdds, flagEmbedDeployRunCount, flagEmbedDeployRunVars, flagEmbedDeployRunVarsFile, flagCmdAutoConfirm); err != nil {
+		if flagEmbedDeployRunCount > 0 {
+			if err := runProcessInstancesAfterDeploy(cmd, cli, log, cfg, pdds, flagEmbedDeployRunCount, flagEmbedDeployVars, flagEmbedDeployVarsFile, flagCmdAutoConfirm); err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}
 		}
@@ -92,8 +91,7 @@ func init() {
 	embedDeployCmd.Flags().StringSliceVarP(&flagEmbedDeployFileNames, "file", "f", nil, "embedded file(s) to deploy (repeatable)")
 	embedDeployCmd.Flags().BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
 
-	embedDeployCmd.Flags().BoolVar(&flagEmbedDeployWithRun, "run", false, "run process instance(s) after deploying process definition(s)")
-	embedDeployCmd.Flags().IntVar(&flagEmbedDeployRunCount, "run-count", 1, "number of process instances to start (requires --run)")
-	embedDeployCmd.Flags().StringVar(&flagEmbedDeployRunVars, "run-vars", "", "JSON-encoded variables for process instance(s) (requires --run)")
-	embedDeployCmd.Flags().StringVar(&flagEmbedDeployRunVarsFile, "run-vars-file", "", "path to JSON file with variables for process instance(s) (requires --run)")
+	embedDeployCmd.Flags().IntVarP(&flagEmbedDeployRunCount, "run", "n", 0, "run N process instance(s) after deploying process definition(s)")
+	embedDeployCmd.Flags().StringVar(&flagEmbedDeployVars, "vars", "", "JSON-encoded variables for process instance(s) (requires --run)")
+	embedDeployCmd.Flags().StringVar(&flagEmbedDeployVarsFile, "vars-file", "", "path to JSON file with variables for process instance(s) (requires --run)")
 }
