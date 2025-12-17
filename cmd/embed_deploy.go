@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	flagEmbedDeployFileNames  []string
-	flagEmbedDeployAll        bool
-	flagEmbedDeployWithRun    bool
-	flagEmbedDeployRunCount   int
-	flagEmbedDeployRunVars    string
+	flagEmbedDeployFileNames   []string
+	flagEmbedDeployAll         bool
+	flagEmbedDeployWithRun     bool
+	flagEmbedDeployRunCount    int
+	flagEmbedDeployRunVars     string
 	flagEmbedDeployRunVarsFile string
 )
 

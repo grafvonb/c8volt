@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	flagDeployPDFiles        []string
-	flagDeployPDWithRun      bool
-	flagDeployPDRunCount     int
-	flagDeployPDRunVars      string
-	flagDeployPDRunVarsFile  string
+	flagDeployPDFiles       []string
+	flagDeployPDWithRun     bool
+	flagDeployPDRunCount    int
+	flagDeployPDRunVars     string
+	flagDeployPDRunVarsFile string
 )
 
 var deployProcessDefinitionCmd = &cobra.Command{
