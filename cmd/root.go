@@ -170,7 +170,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	v.SetDefault("log.with_request_body", false)
 
 	v.SetEnvPrefix("c8volt")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
 	// Config file resolution and read
@@ -195,6 +195,10 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 }
 
 func retrieveAndNormalizeConfig(v *viper.Viper) (*config.Config, error) {
+	// Bind environment variables to config struct fields
+	// This makes sure that environment variables are used even if the key is not in the config file
+	config.BindConfigEnvVars(v)
+
 	var base config.Config
 	if err := v.Unmarshal(&base); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
