@@ -14,7 +14,11 @@ import (
 
 func testConfig() *config.Config {
 	return &config.Config{
-		APIs: config.APIs{},
+		APIs: config.APIs{
+			Camunda: config.API{
+				BaseURL: "http://localhost:8080/v2",
+			},
+		},
 	}
 }
 

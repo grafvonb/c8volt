@@ -1,4 +1,4 @@
-package v88_test
+package v87
 
 import (
 	"context"
@@ -10,27 +10,27 @@ import (
 	"testing"
 	"time"
 
-	v88 "github.com/grafvonb/c8volt/internal/services/cluster/v88"
-	"github.com/stretchr/testify/require"
-
-	"github.com/grafvonb/c8volt/config"
-	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
-	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafvonb/c8volt/config"
+	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type mockClusterClient struct {
 	mock.Mock
 }
 
-func (m *mockClusterClient) GetTopologyWithResponse(ctx context.Context, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetTopologyResponse, error) {
+func (m *mockClusterClient) GetTopologyWithResponse(ctx context.Context, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetTopologyResponse, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*camundav88.GetTopologyResponse), args.Error(1)
+	return args.Get(0).(*camundav87.GetTopologyResponse), args.Error(1)
 }
 
 var testTopologyURL = &url.URL{Scheme: "https", Host: "camunda.local", Path: "/cluster/topology"}
@@ -50,21 +50,25 @@ func TestService_GetClusterTopology(t *testing.T) {
 	mockErr := errors.New("network error")
 	ctx := context.Background()
 
-	validTopology := camundav88.TopologyResponse{
-		ClusterSize:       3,
-		GatewayVersion:    "8.8.0",
-		PartitionsCount:   3,
-		ReplicationFactor: 3,
-		Brokers: []camundav88.BrokerInfo{
+	validTopology := camundav87.TopologyResponse{
+		ClusterSize:       toolx.Ptr(int32(3)),
+		GatewayVersion:    toolx.Ptr("8.7.0"),
+		PartitionsCount:   toolx.Ptr(int32(3)),
+		ReplicationFactor: toolx.Ptr(int32(3)),
+		Brokers: toolx.Ptr([]camundav87.BrokerInfo{
 			{
-				Host:   "broker-0",
-				NodeId: 0,
-				Port:   26501,
-				Partitions: []camundav88.Partition{
-					{PartitionId: 1, Role: camundav88.Leader, Health: camundav88.Healthy},
-				},
+				Host:   toolx.Ptr("broker-0"),
+				NodeId: toolx.Ptr(int32(0)),
+				Port:   toolx.Ptr(int32(26501)),
+				Partitions: toolx.Ptr([]camundav87.Partition{
+					{
+						PartitionId: toolx.Ptr(int32(1)),
+						Role:        toolx.Ptr(camundav87.Leader),
+						Health:      toolx.Ptr(camundav87.Healthy),
+					},
+				}),
 			},
-		},
+		}),
 	}
 
 	tests := []struct {
@@ -76,29 +80,29 @@ func TestService_GetClusterTopology(t *testing.T) {
 		{
 			name: "Success",
 			setupMock: func(m *mockClusterClient) {
-				m.On("GetTopologyWithResponse", mock.Anything).Return(&camundav88.GetTopologyResponse{
+				m.On("GetTopologyWithResponse", mock.Anything).Return(&camundav87.GetTopologyResponse{
 					JSON200:      &validTopology,
 					HTTPResponse: newHTTPResponse(http.StatusOK, "200 OK"),
 				}, nil)
 			},
 			validateResp: func(t *testing.T, top d.Topology) {
-				assert.Equal(t, "8.8.0", top.GatewayVersion)
+				assert.Equal(t, "8.7.0", top.GatewayVersion)
 				assert.Equal(t, int32(3), top.ClusterSize)
-				assert.Equal(t, 1, len(top.Brokers))
+				assert.Len(t, top.Brokers, 1)
 				assert.Equal(t, int32(0), top.Brokers[0].NodeId)
 			},
 		},
 		{
 			name: "Client Error",
 			setupMock: func(m *mockClusterClient) {
-				m.On("GetTopologyWithResponse", mock.Anything).Return((*camundav88.GetTopologyResponse)(nil), mockErr)
+				m.On("GetTopologyWithResponse", mock.Anything).Return((*camundav87.GetTopologyResponse)(nil), mockErr)
 			},
 			expectedError: mockErr,
 		},
 		{
 			name: "HTTP Error",
 			setupMock: func(m *mockClusterClient) {
-				m.On("GetTopologyWithResponse", mock.Anything).Return(&camundav88.GetTopologyResponse{
+				m.On("GetTopologyWithResponse", mock.Anything).Return(&camundav87.GetTopologyResponse{
 					HTTPResponse: newHTTPResponse(http.StatusInternalServerError, "500 Internal Server Error"),
 					Body:         []byte("error"),
 				}, nil)
@@ -108,10 +112,17 @@ func TestService_GetClusterTopology(t *testing.T) {
 		{
 			name: "Empty Payload",
 			setupMock: func(m *mockClusterClient) {
-				m.On("GetTopologyWithResponse", mock.Anything).Return(&camundav88.GetTopologyResponse{
+				m.On("GetTopologyWithResponse", mock.Anything).Return(&camundav87.GetTopologyResponse{
 					JSON200:      nil,
 					HTTPResponse: newHTTPResponse(http.StatusOK, "200 OK"),
 				}, nil)
+			},
+			expectedError: d.ErrMalformedResponse,
+		},
+		{
+			name: "Nil Response",
+			setupMock: func(m *mockClusterClient) {
+				m.On("GetTopologyWithResponse", mock.Anything).Return((*camundav87.GetTopologyResponse)(nil), nil)
 			},
 			expectedError: d.ErrMalformedResponse,
 		},
@@ -124,14 +135,11 @@ func TestService_GetClusterTopology(t *testing.T) {
 				tt.setupMock(m)
 			}
 
-			svc, err := v88.New(&config.Config{
-				APIs: config.APIs{
-					Camunda: config.API{
-						BaseURL: "http://localhost:8080/v2",
-					},
-				},
-			}, &http.Client{}, slog.Default(), v88.WithClient(m))
-			require.NoError(t, err)
+			svc := &Service{
+				c:   m,
+				cfg: &config.Config{},
+				log: slog.Default(),
+			}
 
 			resp, err := svc.GetClusterTopology(ctx)
 
@@ -152,11 +160,11 @@ func TestService_GetClusterTopology(t *testing.T) {
 func TestService_GetClusterTopology_FakeServer(t *testing.T) {
 	fs := testx.NewFakeServer(t)
 	cfg := testx.TestConfig(t)
-	cfg.APIs.Camunda.BaseURL = fs.BaseURL + "/v2"
+	cfg.APIs.Camunda.BaseURL = fs.BaseURL
 	log := testx.Logger(t)
 	ctx := testx.ITCtx(t, time.Second*10)
 
-	svc, err := v88.New(cfg, fs.FS.Client(), log)
+	svc, err := New(cfg, fs.FS.Client(), log)
 	require.NoError(t, err)
 
 	resp, err := svc.GetClusterTopology(ctx)
@@ -164,46 +172,42 @@ func TestService_GetClusterTopology_FakeServer(t *testing.T) {
 	require.Equal(t, int32(1), resp.ClusterSize)
 	require.Len(t, resp.Brokers, 1)
 	require.Equal(t, int32(0), resp.Brokers[0].NodeId)
-	require.Equal(t, "8.8.0", resp.GatewayVersion)
+	require.Equal(t, "8.7.0", resp.GatewayVersion)
 }
 
 func TestService_WithClient(t *testing.T) {
 	mc := &mockClusterClient{}
-	svc, err := v88.New(&config.Config{
-		APIs: config.APIs{
-			Camunda: config.API{
-				BaseURL: "http://localhost:8080/v2",
-			},
-		},
-	}, &http.Client{}, slog.Default())
-	require.NoError(t, err)
-	v88.WithClient(mc)(svc)
-	require.Equal(t, mc, svc.Client())
+	svc := &Service{}
+	WithClient(mc)(svc)
+	require.Equal(t, mc, svc.c)
 }
 
 func TestService_WithLogger(t *testing.T) {
 	t.Run("non-nil logger", func(t *testing.T) {
+		svc := &Service{}
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		svc, err := v88.New(&config.Config{
-			APIs: config.APIs{
-				Camunda: config.API{
-					BaseURL: "http://localhost:8080/v2",
-				},
-			},
-		}, &http.Client{}, slog.Default(), v88.WithLogger(logger))
-		require.NoError(t, err)
-		require.Equal(t, logger, svc.Logger())
+		WithLogger(logger)(svc)
+		require.Equal(t, logger, svc.log)
 	})
 	t.Run("nil logger does not override", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		svc, err := v88.New(&config.Config{
-			APIs: config.APIs{
-				Camunda: config.API{
-					BaseURL: "http://localhost:8080/v2",
-				},
-			},
-		}, &http.Client{}, logger, v88.WithLogger(nil))
-		require.NoError(t, err)
-		require.Equal(t, logger, svc.Logger())
+		svc := &Service{log: logger}
+		WithLogger(nil)(svc)
+		require.Equal(t, logger, svc.log)
 	})
+}
+
+func TestService_New_AppliesOptions(t *testing.T) {
+	fs := testx.NewFakeServer(t)
+	cfg := testx.TestConfig(t)
+	cfg.APIs.Camunda.BaseURL = fs.BaseURL
+	log := testx.Logger(t)
+
+	customClient := &mockClusterClient{}
+	customLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	svc, err := New(cfg, fs.FS.Client(), log, WithClient(customClient), WithLogger(customLogger))
+	require.NoError(t, err)
+	require.Equal(t, customClient, svc.c)
+	require.Equal(t, customLogger, svc.log)
 }
