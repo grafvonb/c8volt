@@ -115,6 +115,13 @@ func TestService_GetClusterTopology(t *testing.T) {
 			},
 			expectedError: d.ErrMalformedResponse,
 		},
+		{
+			name: "Nil Response",
+			setupMock: func(m *mockClusterClient) {
+				m.On("GetTopologyWithResponse", mock.Anything).Return((*camundav88.GetTopologyResponse)(nil), nil)
+			},
+			expectedError: d.ErrMalformedResponse,
+		},
 	}
 
 	for _, tt := range tests {
@@ -205,5 +212,35 @@ func TestService_WithLogger(t *testing.T) {
 		}, &http.Client{}, logger, v88.WithLogger(nil))
 		require.NoError(t, err)
 		require.Equal(t, logger, svc.Logger())
+	})
+}
+
+func TestService_New_AppliesOptions(t *testing.T) {
+	t.Run("non-nil client", func(t *testing.T) {
+		fs := testx.NewFakeServer(t)
+		cfg := testx.TestConfig(t)
+		cfg.APIs.Camunda.BaseURL = fs.BaseURL
+		log := testx.Logger(t)
+
+		customClient := &mockClusterClient{}
+		customLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+		svc, err := v88.New(cfg, fs.FS.Client(), log, v88.WithClient(customClient), v88.WithLogger(customLogger))
+		require.NoError(t, err)
+		require.Equal(t, customClient, svc.Client())
+		require.Equal(t, customLogger, svc.Logger())
+	})
+	t.Run("nil client does not override", func(t *testing.T) {
+		originalClient := &mockClusterClient{}
+		svc, err := v88.New(&config.Config{
+			APIs: config.APIs{
+				Camunda: config.API{
+					BaseURL: "http://localhost:8080/v2",
+				},
+			},
+		}, &http.Client{}, slog.Default(), v88.WithClient(originalClient))
+		require.NoError(t, err)
+		v88.WithClient(nil)(svc)
+		require.Equal(t, originalClient, svc.Client())
 	})
 }

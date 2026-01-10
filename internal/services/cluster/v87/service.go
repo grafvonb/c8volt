@@ -26,7 +26,13 @@ func (s *Service) Logger() *slog.Logger     { return s.log }
 
 type Option func(*Service)
 
-func WithClient(c GenClusterClient) Option { return func(s *Service) { s.c = c } }
+func WithClient(c GenClusterClient) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.c = c
+		}
+	}
+}
 
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
@@ -52,7 +58,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	for _, opt := range opts {
 		opt(s)
 	}
-	logger, err := common.EnsureClientAndLogger(s.c, s.log)
+	logger, err := common.EnsureLoggerAndClients(s.log, s.c)
 	if err != nil {
 		return nil, err
 	}
@@ -61,9 +67,6 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 }
 
 func (s *Service) GetClusterTopology(ctx context.Context, opts ...services.CallOption) (d.Topology, error) {
-	if err := common.ValidateCall(ctx, s.c); err != nil {
-		return d.Topology{}, err
-	}
 	callCfg := services.ApplyCallOptions(opts)
 	common.VerboseLog(ctx, callCfg, s.log, "requesting cluster topology", "baseURL", s.cfg.APIs.Camunda.BaseURL)
 	resp, err := s.c.GetTopologyWithResponse(ctx)

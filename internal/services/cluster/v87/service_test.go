@@ -1,4 +1,4 @@
-package v87
+package v87_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	v87 "github.com/grafvonb/c8volt/internal/services/cluster/v87"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -135,11 +136,14 @@ func TestService_GetClusterTopology(t *testing.T) {
 				tt.setupMock(m)
 			}
 
-			svc := &Service{
-				c:   m,
-				cfg: &config.Config{},
-				log: slog.Default(),
-			}
+			svc, err := v87.New(&config.Config{
+				APIs: config.APIs{
+					Camunda: config.API{
+						BaseURL: "http://localhost:8080/v2",
+					},
+				},
+			}, &http.Client{}, slog.Default(), v87.WithClient(m))
+			require.NoError(t, err)
 
 			resp, err := svc.GetClusterTopology(ctx)
 
@@ -164,7 +168,7 @@ func TestService_GetClusterTopology_FakeServer(t *testing.T) {
 	log := testx.Logger(t)
 	ctx := testx.ITCtx(t, time.Second*10)
 
-	svc, err := New(cfg, fs.FS.Client(), log)
+	svc, err := v87.New(cfg, fs.FS.Client(), log)
 	require.NoError(t, err)
 
 	resp, err := svc.GetClusterTopology(ctx)
@@ -176,24 +180,58 @@ func TestService_GetClusterTopology_FakeServer(t *testing.T) {
 }
 
 func TestService_WithClient(t *testing.T) {
-	mc := &mockClusterClient{}
-	svc := &Service{}
-	WithClient(mc)(svc)
-	require.Equal(t, mc, svc.c)
+	t.Run("non-nil client", func(t *testing.T) {
+		mc := &mockClusterClient{}
+		svc, err := v87.New(&config.Config{
+			APIs: config.APIs{
+				Camunda: config.API{
+					BaseURL: "http://localhost:8080/v2",
+				},
+			},
+		}, &http.Client{}, slog.Default())
+		require.NoError(t, err)
+		v87.WithClient(mc)(svc)
+		require.Equal(t, mc, svc.Client())
+	})
+	t.Run("nil client does not override", func(t *testing.T) {
+		originalClient := &mockClusterClient{}
+		svc, err := v87.New(&config.Config{
+			APIs: config.APIs{
+				Camunda: config.API{
+					BaseURL: "http://localhost:8080/v2",
+				},
+			},
+		}, &http.Client{}, slog.Default(), v87.WithClient(originalClient))
+		require.NoError(t, err)
+		v87.WithClient(nil)(svc)
+		require.Equal(t, originalClient, svc.Client())
+	})
 }
 
 func TestService_WithLogger(t *testing.T) {
 	t.Run("non-nil logger", func(t *testing.T) {
-		svc := &Service{}
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		WithLogger(logger)(svc)
-		require.Equal(t, logger, svc.log)
+		svc, err := v87.New(&config.Config{
+			APIs: config.APIs{
+				Camunda: config.API{
+					BaseURL: "http://localhost:8080/v2",
+				},
+			},
+		}, &http.Client{}, slog.Default(), v87.WithLogger(logger))
+		require.NoError(t, err)
+		require.Equal(t, logger, svc.Logger())
 	})
 	t.Run("nil logger does not override", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		svc := &Service{log: logger}
-		WithLogger(nil)(svc)
-		require.Equal(t, logger, svc.log)
+		svc, err := v87.New(&config.Config{
+			APIs: config.APIs{
+				Camunda: config.API{
+					BaseURL: "http://localhost:8080/v2",
+				},
+			},
+		}, &http.Client{}, logger, v87.WithLogger(nil))
+		require.NoError(t, err)
+		require.Equal(t, logger, svc.Logger())
 	})
 }
 
@@ -206,8 +244,8 @@ func TestService_New_AppliesOptions(t *testing.T) {
 	customClient := &mockClusterClient{}
 	customLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	svc, err := New(cfg, fs.FS.Client(), log, WithClient(customClient), WithLogger(customLogger))
+	svc, err := v87.New(cfg, fs.FS.Client(), log, v87.WithClient(customClient), v87.WithLogger(customLogger))
 	require.NoError(t, err)
-	require.Equal(t, customClient, svc.c)
-	require.Equal(t, customLogger, svc.log)
+	require.Equal(t, customClient, svc.Client())
+	require.Equal(t, customLogger, svc.Logger())
 }
