@@ -21,20 +21,49 @@ type Service struct {
 	log *slog.Logger
 }
 
+func (s *Service) ClientCamunda() GenProcessDefinitionClientCamunda { return s.cc }
+func (s *Service) Config() *config.Config                           { return s.cfg }
+func (s *Service) Logger() *slog.Logger                             { return s.log }
+
 type Option func(*Service)
 
+func WithClientCamunda(c GenProcessDefinitionClientCamunda) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.cc = c
+		}
+	}
+}
+
+func WithLogger(logger *slog.Logger) Option {
+	return func(s *Service) {
+		if logger != nil {
+			s.log = logger
+		}
+	}
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
+	if err != nil {
+		return nil, err
+	}
 	c, err := camundav88.NewClientWithResponses(
-		cfg.APIs.Camunda.BaseURL,
-		camundav88.WithHTTPClient(httpClient),
+		deps.Config.APIs.Camunda.BaseURL,
+		camundav88.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{cc: c, cfg: cfg, log: log}
+	s := &Service{cc: c, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
+	logger, err := common.EnsureLoggerAndClients(s.log, s.cc)
+	if err != nil {
+		return nil, err
+	}
+	s.log = logger
 	return s, nil
 }
 
@@ -70,6 +99,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		Page:   &page,
 		Sort:   &sort,
 	}
+	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
 	resp, err := s.cc.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
@@ -94,6 +124,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 			}
 		}
 	}
+	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
 }
 
@@ -104,6 +135,7 @@ func (s *Service) SearchProcessDefinitionsLatest(ctx context.Context, filter d.P
 
 func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
 	cCfg := services.ApplyCallOptions(opts)
+	common.VerboseLog(ctx, cCfg, s.log, "retrieving process definition", "key", key)
 	resp, err := s.cc.GetProcessDefinitionWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessDefinition{}, err
@@ -121,6 +153,7 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 			return d.ProcessDefinition{}, err
 		}
 	}
+	common.VerboseLog(ctx, cCfg, s.log, "process definition retrieved", "bpmnProcessId", pd.BpmnProcessId, "version", pd.ProcessVersion)
 	return pd, nil
 }
 

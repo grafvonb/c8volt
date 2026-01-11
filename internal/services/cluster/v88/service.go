@@ -43,7 +43,7 @@ func WithLogger(logger *slog.Logger) Option {
 }
 
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
-	deps, err := common.PrepareCamundaDeps(cfg, httpClient, log)
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
 		return nil, err
 	}

@@ -15,18 +15,18 @@ var (
 	ErrNoClientConfigured = errors.New("client must not be nil")
 )
 
-type CamundaDeps struct {
+type ServiceDeps struct {
 	Config     *config.Config
 	HTTPClient *http.Client
 	Logger     *slog.Logger
 }
 
-func PrepareCamundaDeps(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (CamundaDeps, error) {
+func PrepareServiceDeps(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (ServiceDeps, error) {
 	if cfg == nil {
-		return CamundaDeps{}, ErrNilConfig
+		return ServiceDeps{}, ErrNilConfig
 	}
 	if cfg.APIs.Camunda.BaseURL == "" {
-		return CamundaDeps{}, ErrEmptyCamundaURL
+		return ServiceDeps{}, ErrEmptyCamundaURL
 	}
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -34,7 +34,7 @@ func PrepareCamundaDeps(cfg *config.Config, httpClient *http.Client, log *slog.L
 	if log == nil {
 		log = slog.Default()
 	}
-	return CamundaDeps{Config: cfg, HTTPClient: httpClient, Logger: log}, nil
+	return ServiceDeps{Config: cfg, HTTPClient: httpClient, Logger: log}, nil
 }
 
 func EnsureLoggerAndClients(logger *slog.Logger, clients ...interface{}) (*slog.Logger, error) {
