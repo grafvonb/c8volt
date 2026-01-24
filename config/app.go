@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
 type App struct {
 	CamundaVersion toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
 	Tenant         string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
-	Backoff        common.BackoffConfig `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
+	Backoff        BackoffConfig        `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
 	NoErrCodes     bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`
 }
 

@@ -15,7 +15,6 @@ c8volt cancel process-instance [flags]
 
 ```
   -b, --bpmn-process-id string   BPMN process ID to filter process instances
-      --dry-run                  perform a dry-run; show which process instances would be cancelled without actually cancelling them
       --fail-fast                stop scheduling new instances after the first error
       --force                    force cancellation of the root process instance if a process instance is a child, including all its child instances
   -h, --help                     help for process-instance

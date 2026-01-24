@@ -38,13 +38,17 @@ var getProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error creating c8volt client: %w", err))
 		}
+		ctx := cmd.Context()
 		fail := func(err error) {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
+		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
+			fail(fmt.Errorf("--workers must be positive integer"))
 		}
 		if err := validatePISearchFlags(); err != nil {
 			fail(err)
 		}
-		filter, populated := populatePISearchFilterOpts()
+		filterFlagsSet := hasPISearchFilterFlags()
 
 		keys := mergeAndValidateKeys(flagGetPIKeys, log, cfg)
 		ukeys := keys.Unique()
@@ -55,17 +59,25 @@ var getProcessInstanceCmd = &cobra.Command{
 		switch {
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
-			if populated || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
+			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(fmt.Errorf("%w: --key cannot be combined with other filters", ErrMutuallyExclusiveFlags))
 			}
-			pis, err = cli.GetProcessInstances(cmd.Context(), ukeys, lk, collectOptions()...)
+			if cmd.Flags().Changed("workers") {
+				lk = flagWorkers
+			}
+			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, collectOptions()...)
 			if err != nil {
-				fail(fmt.Errorf("error fetching process instance for key(s) [%s]: %w", keys, err))
+				msg := fmt.Errorf("error fetching %d process instances: %w", lk, err)
+				if flagVerbose {
+					msg = fmt.Errorf("error fetching %d process instances for key(s) [%s]: %w", lk, ukeys, err)
+				}
+				fail(msg)
 			}
 			return
 		default:
+			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
-			pis, err = cli.SearchProcessInstances(cmd.Context(), filter, pickPISearchSize())
+			pis, err = cli.SearchProcessInstances(ctx, filter, pickPISearchSize())
 			if err != nil {
 				fail(fmt.Errorf("error fetching process instances: %w", err))
 			}
@@ -76,7 +88,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				pis = pis.FilterRootsOnly()
 			}
 			if flagGetPIOrphanChildrenOnly {
-				pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items)
+				pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(ctx, pis.Items)
 				if err != nil {
 					fail(fmt.Errorf("error filtering orphan children: %w", err))
 				}
@@ -116,33 +128,36 @@ func init() {
 
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
+
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 }
 
-func populatePISearchFilterOpts() (process.ProcessInstanceFilter, bool) {
-	var f process.ProcessInstanceFilter
-	var populated bool
+func populatePISearchFilterOpts() process.ProcessInstanceFilter {
+	f := process.ProcessInstanceFilter{
+		ParentKey:            flagGetPIParentKey,
+		BpmnProcessId:        flagGetPIBpmnProcessID,
+		ProcessVersion:       flagGetPIProcessVersion,
+		ProcessVersionTag:    flagGetPIProcessVersionTag,
+		ProcessDefinitionKey: flagGetPIProcessDefinitionKey,
+	}
 
-	if v := flagGetPIParentKey; v != "" {
-		f.ParentKey, populated = v, true
-	}
-	if v := flagGetPIBpmnProcessID; v != "" {
-		f.BpmnProcessId, populated = v, true
-	}
-	if v := flagGetPIProcessVersion; v != 0 {
-		f.ProcessVersion, populated = v, true
-	}
-	if v := flagGetPIProcessVersionTag; v != "" {
-		f.ProcessVersionTag, populated = v, true
-	}
-	if v := flagGetPIProcessDefinitionKey; v != "" {
-		f.ProcessDefinitionKey, populated = v, true
-	}
 	if s := flagGetPIState; s != "" && s != "all" {
 		if st, ok := process.ParseState(s); ok {
-			f.State, populated = st, true
+			f.State = st
 		}
 	}
-	return f, populated
+	return f
+}
+
+func hasPISearchFilterFlags() bool {
+	return flagGetPIParentKey != "" ||
+		flagGetPIBpmnProcessID != "" ||
+		flagGetPIProcessVersion != 0 ||
+		flagGetPIProcessVersionTag != "" ||
+		flagGetPIProcessDefinitionKey != "" ||
+		(flagGetPIState != "" && flagGetPIState != "all")
 }
 
 func pickPISearchSize() int32 {

@@ -78,6 +78,8 @@ var embedDeployCmd = &cobra.Command{
 
 func init() {
 	embedCmd.AddCommand(embedDeployCmd)
-	embedDeployCmd.Flags().StringSliceVarP(&flagEmbedDeployFileNames, "file", "f", nil, "embedded file(s) to deploy (repeatable)")
-	embedDeployCmd.Flags().BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
+	fs := embedDeployCmd.Flags()
+	fs.StringSliceVarP(&flagEmbedDeployFileNames, "file", "f", nil, "embedded file(s) to deploy (repeatable)")
+	fs.BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
+	embedDeployCmd.MarkFlagsMutuallyExclusive("file", "all")
 }

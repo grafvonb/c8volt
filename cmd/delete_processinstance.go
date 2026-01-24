@@ -26,10 +26,10 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		switch {
 		case len(keys) > 0:
 		default:
-			searchFilterOpts, ok := populatePISearchFilterOpts()
-			if !ok {
+			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
+			searchFilterOpts := populatePISearchFilterOpts()
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize, collectOptions()...)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))

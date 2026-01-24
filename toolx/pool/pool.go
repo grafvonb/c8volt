@@ -7,6 +7,10 @@ import (
 	"sync/atomic"
 )
 
+// ExecuteNTimes runs fn for indices [0,n) with at most wantedWorkers concurrent goroutines,
+// cancelling all work on context cancellation or the first error when failFast is true.
+// It normalizes worker counts (clamping to [1,n]), allocates result/error slots up front,
+// and returns a slice of outputs along with a joined error capturing every failure.
 func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFast bool, fn func(context.Context, int) (T, error)) ([]T, error) {
 	if n <= 0 {
 		return nil, nil
@@ -24,29 +28,29 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	jobs := make(chan int)
+	// Buffered to let producers enqueue up to worker-count tasks without blocking,
+	// smoothing bursts and keeping memory bounded.
+	jobs := make(chan int, wantedWorkers)
 	var wg sync.WaitGroup
 	wg.Add(wantedWorkers)
 
 	var sawErr atomic.Bool
 
+	// Worker consumes indices, short-circuits on ctx errors, and records results.
 	worker := func() {
 		defer wg.Done()
 		for i := range jobs {
-			select {
-			case <-ctx.Done():
+			if err := ctx.Err(); err != nil {
 				if failFast && errs[i] == nil {
-					errs[i] = ctx.Err()
+					errs[i] = err
 				}
 				continue
-			default:
 			}
 
 			res, err := fn(ctx, i)
 			if err != nil {
 				errs[i] = err
-				if failFast && !sawErr.Load() {
-					sawErr.Store(true)
+				if failFast && sawErr.CompareAndSwap(false, true) {
 					cancel()
 				}
 				continue
@@ -60,15 +64,21 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 	}
 
 produce:
+	// Feed job indices until either fail-fast trips or the context is canceled.
 	for i := 0; i < n; i++ {
 		if failFast && sawErr.Load() {
 			break produce
 		}
-		jobs <- i
+		select {
+		case <-ctx.Done():
+			break produce
+		case jobs <- i:
+		}
 	}
 	close(jobs)
 	wg.Wait()
 
+	// Join all collected errors so callers can inspect every failure.
 	var agg error
 	for _, e := range errs {
 		if e != nil {

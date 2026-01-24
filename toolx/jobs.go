@@ -12,7 +12,7 @@ func DetermineNoOfWorkers(jobsCount, wantedWorkers int, noWorkerLimit bool) int 
 			}
 		}
 	}
-	if !noWorkerLimit && workers > jobsCount {
+	if workers > jobsCount {
 		workers = jobsCount
 	}
 	return workers

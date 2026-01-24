@@ -17,7 +17,7 @@ func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, 
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoV(fmt.Sprintf("deleting process definitions requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("deleting process definitions requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
 	rs, err := pool.ExecuteSlice[string, DeleteReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessDefinition(ctx, key, opts...)
 	})

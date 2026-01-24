@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
@@ -31,7 +30,7 @@ var (
 func New() *Config {
 	return &Config{
 		App: App{
-			Backoff: common.BackoffConfig{},
+			Backoff: BackoffConfig{},
 		},
 		Auth: Auth{
 			OAuth2: AuthOAuth2ClientCredentials{
@@ -126,6 +125,15 @@ func (c *Config) WithProfile() (*Config, error) {
 	}
 	if eff.Auth.OAuth2.TokenURL == "" && c.Auth.OAuth2.TokenURL != "" {
 		eff.Auth.OAuth2.TokenURL = c.Auth.OAuth2.TokenURL
+	}
+	if eff.Auth.Cookie.Password == "" && c.Auth.Cookie.Password != "" {
+		eff.Auth.Cookie.Password = c.Auth.Cookie.Password
+	}
+	if eff.Auth.Cookie.Username == "" && c.Auth.Cookie.Username != "" {
+		eff.Auth.Cookie.Username = c.Auth.Cookie.Username
+	}
+	if eff.Auth.Cookie.BaseURL == "" && c.Auth.Cookie.BaseURL != "" {
+		eff.Auth.Cookie.BaseURL = c.Auth.Cookie.BaseURL
 	}
 
 	return &eff, nil

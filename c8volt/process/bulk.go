@@ -17,7 +17,7 @@ func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstan
 	cCfg := options.ApplyFacadeOptions(opts)
 
 	nw := toolx.DetermineNoOfWorkers(n, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoV(fmt.Sprintf("creating %d process instances using %d workers", n, nw), c.log, cCfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("creating %d process instances using %d workers", n, nw), c.log, cCfg.Verbose)
 	pics, err := pool.ExecuteNTimes[ProcessInstance](ctx, n, nw, cCfg.FailFast, func(ctx context.Context, _ int) (ProcessInstance, error) {
 		pic, err := c.piApi.CreateProcessInstance(ctx, toProcessInstanceData(data), options.MapFacadeOptionsToCallOptions(opts)...)
 		if err != nil {
@@ -37,7 +37,7 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wa
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoV(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
 	rs, err := pool.ExecuteSlice[string, CancelReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (CancelReport, error) {
 		cr, _, cerr := c.CancelProcessInstance(ctx, key, opts...)
 		return cr, cerr
@@ -58,7 +58,7 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoV(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
 	rs, err := pool.ExecuteSlice[string, DeleteReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessInstance(ctx, key, opts...)
 	})
@@ -78,7 +78,7 @@ func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Ke
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoV(fmt.Sprintf("waiting for %d unique process instance(s) to reach desired state(s) %v using %d worker(s)", lk, desired, nw), c.log, cCfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("waiting for %d unique process instance(s) to reach desired state(s) %v using %d worker(s)", lk, desired, nw), c.log, cCfg.Verbose)
 	got, err := c.piApi.WaitForProcessInstancesState(ctx, ukeys, toolx.MapSlice(desired, func(s State) d.State { return d.State(s) }), nw, options.MapFacadeOptionsToCallOptions(opts)...)
 	srs := MapStateResponsesToReports(got)
 	if err != nil {
@@ -88,13 +88,9 @@ func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Ke
 }
 
 func (c *client) GetProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstances, error) {
-	cCfg := options.ApplyFacadeOptions(opts)
+	_ = options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()
-	lk := len(ukeys)
-
-	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoV(fmt.Sprintf("getting processinstances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
-	pis, err := c.piApi.GetProcessInstances(ctx, ukeys, nw, options.MapFacadeOptionsToCallOptions(opts)...)
+	pis, err := c.piApi.GetProcessInstances(ctx, ukeys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessInstances{}, ferr.FromDomain(err)
 	}
