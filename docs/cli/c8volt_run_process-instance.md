@@ -11,6 +11,12 @@ Run process instance(s) by process definition
 c8volt run process-instance [flags]
 ```
 
+### Examples
+
+```
+./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --no-worker-limit
+```
+
 ### Options
 
 ```

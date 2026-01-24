@@ -17,6 +17,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Short:   "Cancel process instance(s) by key(s) and wait for the cancellation to complete",
 	Aliases: []string{"pi"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateOptionalDashArg(args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
@@ -25,7 +28,12 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
 		}
-		keys := mergeAndValidateKeys(flagCancelPIKeys, log, cfg)
+
+		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
+		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg)
 
 		switch {
 		case len(keys) > 0:

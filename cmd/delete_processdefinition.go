@@ -20,6 +20,9 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:     "process-definition",
 	Short:   "Delete a process definition(s)",
 	Aliases: []string{"pd"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateOptionalDashArg(args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
@@ -31,7 +34,12 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if len(flagDeletePDKeys) == 0 && flagDeletePDBpmnProcessId == "" {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
 		}
-		keys := mergeAndValidateKeys(flagDeletePDKeys, log, cfg)
+
+		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
+		keys := mergeAndValidateKeys(flagDeletePDKeys, stdinKeys, log, cfg)
 
 		switch {
 		case len(flagDeletePDKeys) > 0:

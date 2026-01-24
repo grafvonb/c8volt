@@ -16,12 +16,20 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Short:   "Delete a process instance by its key",
 	Aliases: []string{"pi"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateOptionalDashArg(args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
 		}
-		keys := mergeAndValidateKeys(flagDeletePIKeys, log, cfg)
+
+		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
+		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg)
 
 		switch {
 		case len(keys) > 0:

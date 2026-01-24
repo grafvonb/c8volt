@@ -19,6 +19,9 @@ var expectProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Short:   "Expect a process instance(s) to reach a certain state from list of states",
 	Aliases: []string{"pi"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateOptionalDashArg(args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
@@ -32,7 +35,12 @@ var expectProcessInstanceCmd = &cobra.Command{
 			log.Error(fmt.Sprintf("error parsing states: %v; valid values are: [active, completed, canceled, terminated or absent]", err))
 			os.Exit(exitcode.NotFound)
 		}
-		keys := mergeAndValidateKeys(flagExpectPIKeys, log, cfg)
+
+		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
+		keys := mergeAndValidateKeys(flagExpectPIKeys, stdinKeys, log, cfg)
 		if len(keys) == 0 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to watch"))
 		}

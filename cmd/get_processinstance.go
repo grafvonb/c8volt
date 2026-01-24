@@ -33,6 +33,9 @@ var getProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Short:   "Get process instances",
 	Aliases: []string{"process-instances", "pi", "pis"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateOptionalDashArg(args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
@@ -50,7 +53,11 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 		filterFlagsSet := hasPISearchFilterFlags()
 
-		keys := mergeAndValidateKeys(flagGetPIKeys, log, cfg)
+		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
+		if err != nil {
+			fail(err)
+		}
+		keys := mergeAndValidateKeys(flagGetPIKeys, stdinKeys, log, cfg)
 		ukeys := keys.Unique()
 		lk := len(ukeys)
 
@@ -73,7 +80,6 @@ var getProcessInstanceCmd = &cobra.Command{
 				}
 				fail(msg)
 			}
-			return
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
