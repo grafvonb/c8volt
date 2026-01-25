@@ -49,14 +49,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 }
 
 func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
 
-	resp, err := s.c.DeleteResourceWithResponse(ctx, resourceKey, camundav88.DeleteResourceJSONRequestBody{})
-	if err != nil {
-		return err
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return err
+	if cCfg.AllowInconsistent {
+		resp, err := s.c.DeleteResourceWithResponse(ctx, resourceKey, camundav88.DeleteResourceJSONRequestBody{})
+		if err != nil {
+			return err
+		}
+		if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+			return err
+		}
+		return nil
 	}
 	return nil
 }

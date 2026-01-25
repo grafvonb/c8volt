@@ -16,6 +16,7 @@ c8volt deploy process-definition [flags]
 ```
   -f, --file strings   paths to BPMN/YAML file(s) or '-' for stdin
   -h, --help           help for process-definition
+      --no-wait        skip waiting for the deployment to be fully processed
 ```
 
 ### Options inherited from parent commands

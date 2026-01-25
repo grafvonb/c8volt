@@ -111,7 +111,7 @@ func init() {
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
 	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the creation to be fully processed (no status checks)")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the creation to be fully processed")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")

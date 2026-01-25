@@ -44,9 +44,12 @@ var deployProcessDefinitionCmd = &cobra.Command{
 
 func init() {
 	deployCmd.AddCommand(deployProcessDefinitionCmd)
-	deployProcessDefinitionCmd.Flags().StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
+
+	fs := deployProcessDefinitionCmd.Flags()
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deployment to be fully processed")
+	fs.StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
 	_ = deployProcessDefinitionCmd.MarkFlagRequired("file")
 
-	deployProcessDefinitionCmd.Flags().BoolVar(&flagDeployPDWithRun, "run", false, "run a process instance after deploying process definition(s)")
+	fs.BoolVar(&flagDeployPDWithRun, "run", false, "run a process instance after deploying process definition(s)")
 	_ = deployProcessDefinitionCmd.Flags().MarkHidden("run")
 }

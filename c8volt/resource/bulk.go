@@ -26,7 +26,11 @@ func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, 
 	}
 	if !cCfg.NoWait {
 		t, oks, noks := r.Totals()
-		c.log.Info(fmt.Sprintf("deleting %d process definitions completed: %d succeeded, %d failed", t, oks, noks))
+		if cCfg.AllowInconsistent {
+			c.log.Info(fmt.Sprintf("deleting %d process definitions completed: %d succeeded, %d failed", t, oks, noks))
+		} else {
+			c.log.Info(fmt.Sprintf("preparation for deleting %d process definitions completed: %d succeeded, %d failed", t, oks, noks))
+		}
 	}
 	return r, err
 }

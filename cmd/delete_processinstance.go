@@ -65,7 +65,7 @@ func init() {
 	deleteCmd.AddCommand(deleteProcessInstanceCmd)
 
 	fs := deleteProcessInstanceCmd.Flags()
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed (no status checks)")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")

@@ -18,14 +18,15 @@ import (
 )
 
 var (
-	flagViewAsJson     bool
-	flagViewKeysOnly   bool
-	flagViewAsTree     bool
-	flagQuiet          bool
-	flagVerbose        bool
-	flagDebug          bool
-	flagNoErrCodes     bool
-	flagCmdAutoConfirm bool
+	flagViewAsJson        bool
+	flagViewKeysOnly      bool
+	flagViewAsTree        bool
+	flagQuiet             bool
+	flagVerbose           bool
+	flagDebug             bool
+	flagNoErrCodes        bool
+	flagCmdAutoConfirm    bool
+	flagAllowInconsistent bool
 )
 
 func Root() *cobra.Command { return rootCmd }

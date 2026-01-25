@@ -24,7 +24,7 @@ c8volt run process-instance [flags]
   -n, --count int                 number of instances to start for a single process definition (default 1)
       --fail-fast                 stop scheduling new instances after the first error
   -h, --help                      help for process-instance
-      --no-wait                   skip waiting for the creation to be fully processed (no status checks)
+      --no-wait                   skip waiting for the creation to be fully processed
       --no-worker-limit           disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-key strings            specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)
       --pd-version int32          specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
+	"github.com/grafvonb/c8volt/toolx/poller"
 )
 
 type client struct {
@@ -58,9 +60,39 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 			}
 		}
 	}
-	err := c.api.Delete(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return DeleteReport{Key: key, Ok: false}, ferr.FromDomain(err)
+	if cCfg.AllowInconsistent {
+		err := c.api.Delete(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+		if err != nil {
+			return DeleteReport{Key: key, Ok: false}, ferr.FromDomain(err)
+		}
+		/*
+			if !cCfg.NoWait {
+				if err := c.waitForProcessDefinitionRemoval(ctx, key, opts...); err != nil {
+					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("waiting for process definition %s removal failed: %w", key, err)
+				}
+			}
+		*/
 	}
 	return DeleteReport{Key: key, Ok: true}, nil
+}
+
+//nolint:unused
+func (c *client) waitForProcessDefinitionRemoval(ctx context.Context, key string, opts ...options.FacadeOption) error {
+	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
+		_, err := c.papi.GetProcessDefinition(ctx, key, opts...)
+		if err != nil {
+			if errors.Is(err, ferr.ErrNotFound) {
+				return poller.JobPollStatus{
+					Success: true,
+					Message: fmt.Sprintf("process definition %s no longer listed", key),
+				}, nil
+			}
+			return poller.JobPollStatus{}, err
+		}
+		return poller.JobPollStatus{
+			Success: false,
+			Message: fmt.Sprintf("process definition %s still listed", key),
+		}, nil
+	}
+	return poller.WaitForCompletion(ctx, c.log, poller.DefaultCompletionTimeout, true, poll)
 }

@@ -66,13 +66,20 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if len(keys) == 0 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process definitions found to delete"))
 		}
+
+		fmt.Println("WARNING: Camunda's API v8.8+ deletion process removes process definition resources (from Zeebe) only; historic/Operate data remain.")
+		fmt.Println("To avoid inconsistent data state c8volt cancels running instances (if any) to make definitions deletable, but final removal must be done manually in Operate.")
 		prompt := fmt.Sprintf("You are about to delete %d process definition(s)?", len(keys))
+		if !flagForce {
+			fmt.Println("If you want to delete resource(s) from Zeebe without purging Operate data, please use --allow-inconsistent to confirm.")
+			prompt = fmt.Sprintf("You are about to prepare %d process definition(s) for deletion in Operate?", len(keys))
+		}
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 		_, err = cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definiton(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
 		}
 	},
 }
@@ -81,6 +88,9 @@ func init() {
 	deleteCmd.AddCommand(deleteProcessDefinitionCmd)
 
 	fs := deleteProcessDefinitionCmd.Flags()
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed")
+	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance(s) of the process definition before deleting it")
+	fs.BoolVar(&flagAllowInconsistent, "allow-inconsistent", false, "allow deletion of process definitions even if their state will become inconsistent (not deleted from Operate's data)")
 	fs.StringSliceVarP(&flagDeletePDKeys, "key", "k", nil, "process definition key(s) to delete")
 	fs.StringVarP(&flagDeletePDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID of the process definition (all versions) to delete")
 	fs.Int32Var(&flagDeletePDProcessVersion, "pd-version", 0, "process definition version")

@@ -20,7 +20,7 @@ c8volt cancel process-instance [flags]
   -h, --help                     help for process-instance
   -k, --key strings              process instance key(s) to cancel
       --no-state-check           skip checking the current state of the process instance before cancelling it
-      --no-wait                  skip waiting for the cancellation to be fully processed (no status checks)
+      --no-wait                  skip waiting for the cancellation to be fully processed
       --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
