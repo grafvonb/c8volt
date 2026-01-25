@@ -17,6 +17,8 @@ c8volt embed deploy [flags]
       --all            deploy all embedded files for the configured Camunda version
   -f, --file strings   embedded file(s) to deploy (repeatable)
   -h, --help           help for deploy
+      --no-wait        skip waiting for the deployment to be fully processed
+      --run            run single process instance without vars after deploying process definition(s)
 ```
 
 ### Options inherited from parent commands
