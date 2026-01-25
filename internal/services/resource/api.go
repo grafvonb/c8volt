@@ -10,7 +10,7 @@ import (
 )
 
 type API interface {
-	Deploy(ctx context.Context, tenantId string, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
+	Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
 	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error
 }
 

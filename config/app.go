@@ -16,7 +16,7 @@ type App struct {
 
 func (a *App) ViewTenant() string {
 	if a.Tenant == "" {
-		return "default"
+		return "<default>"
 	}
 	return a.Tenant
 }

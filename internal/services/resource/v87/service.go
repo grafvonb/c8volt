@@ -55,8 +55,9 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	return nil
 }
 
-func (s *Service) Deploy(ctx context.Context, tenantId string, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
+func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
 	_ = services.ApplyCallOptions(opts)
+	tenantId, vtenantId := s.cfg.App.Tenant, s.cfg.App.ViewTenant()
 
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
@@ -92,6 +93,6 @@ func (s *Service) Deploy(ctx context.Context, tenantId string, units []d.Deploym
 		return d.Deployment{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
-	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), tenantId))
+	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), vtenantId))
 	return fromDeploymentResult(*resp.JSON200), nil
 }

@@ -64,7 +64,7 @@ var embedDeployCmd = &cobra.Command{
 		}
 
 		// TODO (Adam): currently only deployment of process definitions is supported, extend to other resource types as needed
-		pdds, err := cli.DeployProcessDefinition(cmd.Context(), cfg.App.Tenant, units, collectOptions()...)
+		pdds, err := cli.DeployProcessDefinition(cmd.Context(), units, collectOptions()...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying embedded resource(s): %w", err))
 		}

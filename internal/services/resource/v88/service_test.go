@@ -23,7 +23,7 @@ func Test_Internal_Deployment_v88_Deploy_OK(t *testing.T) {
 	require.NoError(t, err)
 
 	s := "<xml>content</xml>"
-	d, err := svc.Deploy(ctx, "", []domain.DeploymentUnitData{
+	d, err := svc.Deploy(ctx, []domain.DeploymentUnitData{
 		{Data: []byte(s)},
 	})
 	require.NoError(t, err)

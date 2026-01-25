@@ -12,7 +12,7 @@ import (
 
 var (
 	flagRunPIProcessDefinitionBpmnProcessIds []string
-	flagRunPIProcessDefinitionSpecificId     []string
+	flagRunPIProcessDefinitionKey            []string
 	flagRunPIProcessDefinitionVersion        int32
 
 	flagRunPICount int
@@ -41,23 +41,23 @@ var runProcessInstanceCmd = &cobra.Command{
 		var datas []process.ProcessInstanceData
 		var contextForErr string
 		switch {
-		case len(flagRunPIProcessDefinitionSpecificId) > 0:
+		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flags --pd-id and --bpmn-process-id are mutually exclusive"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flags --pd-key and --bpmn-process-id are mutually exclusive"))
 			}
 			if flagRunPIProcessDefinitionVersion != 0 {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flag --pd-version is only valid with --bpmn-process-id"))
 			}
 
-			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionSpecificId))
-			for _, pdID := range flagRunPIProcessDefinitionSpecificId {
+			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionKey))
+			for _, pdID := range flagRunPIProcessDefinitionKey {
 				datas = append(datas, process.ProcessInstanceData{
 					ProcessDefinitionSpecificId: pdID,
 					Variables:                   vars,
 					TenantId:                    cfg.App.Tenant,
 				})
 			}
-			contextForErr = fmt.Sprintf("process definition ID(s) %v", flagRunPIProcessDefinitionSpecificId)
+			contextForErr = fmt.Sprintf("process definition ID(s) %v", flagRunPIProcessDefinitionKey)
 
 		case len(flagRunPIProcessDefinitionBpmnProcessIds) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 1 && flagRunPIProcessDefinitionVersion != 0 {
@@ -76,7 +76,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)
 
 		default:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("provide either --pd-id or --bpmn-process-id"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("provide either --pd-key or --bpmn-process-id"))
 		}
 
 		fopts := collectOptions()
@@ -105,9 +105,9 @@ func init() {
 	runCmd.AddCommand(runProcessInstanceCmd)
 
 	fs := runProcessInstanceCmd.Flags()
-	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-id). Runs latest version unless --pd-version is specified")
+	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified")
 	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)")
-	fs.StringSliceVar(&flagRunPIProcessDefinitionSpecificId, "pd-id", nil, "specific process definition ID(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
+	fs.StringSliceVar(&flagRunPIProcessDefinitionKey, "pd-key", nil, "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
 	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 
