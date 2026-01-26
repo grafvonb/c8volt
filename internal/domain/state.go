@@ -13,6 +13,7 @@ const (
 	StateCanceled   State = "CANCELED"
 	StateTerminated State = "TERMINATED"
 	StateAbsent     State = "ABSENT"
+	StateUnknown    State = "UNKNOWN"
 )
 
 func (s State) String() string { return string(s) }

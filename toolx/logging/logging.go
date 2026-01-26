@@ -65,3 +65,17 @@ func FromContext(ctx context.Context) (*slog.Logger, error) {
 	}
 	return l, nil
 }
+
+func InfoIfVerbose(msg string, log *slog.Logger, verbose bool) {
+	if verbose {
+		log.Info(msg)
+	}
+}
+
+func InfoOrVerbose(info, vinfo string, log *slog.Logger, verbose bool) {
+	if verbose {
+		log.Info(vinfo)
+	} else {
+		log.Info(info)
+	}
+}

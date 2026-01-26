@@ -10,30 +10,60 @@ import (
 	operatev87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/operate"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
 type Service struct {
-	c   GenProcessDefinitionClientOperate
+	co  GenProcessDefinitionClientOperate
 	cfg *config.Config
 	log *slog.Logger
 }
 
+func (s *Service) ClientOperate() GenProcessDefinitionClientOperate { return s.co }
+func (s *Service) Config() *config.Config                           { return s.cfg }
+func (s *Service) Logger() *slog.Logger                             { return s.log }
+
 type Option func(*Service)
 
+func WithClientOperate(c GenProcessDefinitionClientOperate) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.co = c
+		}
+	}
+}
+
+func WithLogger(logger *slog.Logger) Option {
+	return func(s *Service) {
+		if logger != nil {
+			s.log = logger
+		}
+	}
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
+	if err != nil {
+		return nil, err
+	}
 	c, err := operatev87.NewClientWithResponses(
-		cfg.APIs.Operate.BaseURL,
-		operatev87.WithHTTPClient(httpClient),
+		deps.Config.APIs.Operate.BaseURL,
+		operatev87.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{c: c, cfg: cfg, log: log}
+	s := &Service{co: c, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
+	logger, err := common.EnsureLoggerAndClients(s.log, s.co)
+	if err != nil {
+		return nil, err
+	}
+	s.log = logger
 	return s, nil
 }
 
@@ -51,7 +81,8 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		},
 		Size: &size,
 	}
-	resp, err := s.c.SearchProcessDefinitionsWithResponse(ctx, body)
+	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Operate.BaseURL, "body", body)
+	resp, err := s.co.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +95,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 	}
 	out := toolx.DerefSlicePtr(resp.JSON200.Items, fromProcessDefinitionResponse)
 	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
+	common.VerboseLog(ctx, cCfg, s.log, "found process definitions", "count", len(out))
 	return out, nil
 }
 
@@ -96,7 +128,8 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 	if err != nil {
 		return d.ProcessDefinition{}, fmt.Errorf("converting process definition key %q to int64: %w", key, err)
 	}
-	resp, err := s.c.GetProcessDefinitionByKeyWithResponse(ctx, oldKey)
+	common.VerboseLog(ctx, cCfg, s.log, "retrieving process definition", "key", key)
+	resp, err := s.co.GetProcessDefinitionByKeyWithResponse(ctx, oldKey)
 	if err != nil {
 		return d.ProcessDefinition{}, err
 	}
@@ -107,5 +140,6 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 		return d.ProcessDefinition{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
+	common.VerboseLog(ctx, cCfg, s.log, "process definition retrieved", "bpmnProcessId", resp.JSON200.BpmnProcessId, "version", resp.JSON200.Version)
 	return fromProcessDefinitionResponse(*resp.JSON200), nil
 }

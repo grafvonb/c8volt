@@ -16,6 +16,8 @@ c8volt deploy process-definition [flags]
 ```
   -f, --file strings   paths to BPMN/YAML file(s) or '-' for stdin
   -h, --help           help for process-definition
+      --no-wait        skip waiting for the deployment to be fully processed
+      --run            run single process instance without vars after deploying process definition(s)
 ```
 
 ### Options inherited from parent commands
@@ -35,6 +37,7 @@ c8volt deploy process-definition [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

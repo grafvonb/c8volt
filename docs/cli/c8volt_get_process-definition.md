@@ -18,7 +18,7 @@ c8volt get process-definition [flags]
   -h, --help                     help for process-definition
   -k, --key string               process definition key to fetch
       --latest                   fetch the latest version(s) of the given BPMN process(s)
-  -v, --pd-version int32         process definition version
+      --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
       --stat                     include process definition statistics
 ```
@@ -40,6 +40,7 @@ c8volt get process-definition [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

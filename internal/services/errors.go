@@ -9,4 +9,5 @@ var (
 
 	ErrUnknownAPIVersion = errors.New("unknown API version")
 	ErrCycleDetected     = errors.New("cycle detected in process instance ancestry")
+	ErrOrphanedInstance  = errors.New("orphaned process instance")
 )

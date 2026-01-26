@@ -5,11 +5,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	flagDeleteNoWait       bool
-	flagDeleteNoStateCheck bool
-)
-
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete resources",

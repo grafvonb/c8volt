@@ -17,10 +17,12 @@ c8volt get process-instance [flags]
   -b, --bpmn-process-id string   BPMN process ID to filter process instances
       --children-only            show only child process instances, meaning instances that have a parent key set
   -n, --count int32              number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
+      --fail-fast                stop scheduling new instances after the first error
   -h, --help                     help for process-instance
       --incidents-only           show only process instances that have incidents
-  -k, --key string               process instance key to fetch
+  -k, --key strings              process instance key(s) to fetch
       --no-incidents-only        show only process instances that have no incidents
+      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --orphan-children-only     show only child instances where parent key is set but the parent process instance does not exist (anymore)
       --parent-key string        parent process instance key to filter process instances
       --pd-key string            process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)
@@ -28,6 +30,7 @@ c8volt get process-instance [flags]
       --pd-version-tag string    process definition version tag
       --roots-only               show only root process instances, meaning instances with empty parent key
   -s, --state string             state to filter process instances: all, active, completed, canceled (default "all")
+  -w, --workers int              maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands
@@ -47,6 +50,7 @@ c8volt get process-instance [flags]
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
       --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

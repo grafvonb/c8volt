@@ -39,10 +39,11 @@ c8volt expect [flags]
       --profile string      config active profile name to use (e.g. dev, prod)
   -q, --quiet               suppress all output, except errors, overrides --log-level
       --tenant string       default tenant ID
+  -v, --verbose             adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
 * [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt expect process-instance](c8volt_expect_process-instance.md)	 - Expect a process instance to reach a certain state
+* [c8volt expect process-instance](c8volt_expect_process-instance.md)	 - Expect a process instance(s) to reach a certain state from list of states
 

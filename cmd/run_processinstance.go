@@ -12,26 +12,24 @@ import (
 
 var (
 	flagRunPIProcessDefinitionBpmnProcessIds []string
-	flagRunPIProcessDefinitionSpecificId     []string
+	flagRunPIProcessDefinitionKey            []string
 	flagRunPIProcessDefinitionVersion        int32
 
-	flagRunPICount    int
-	flagRunPIWorkers  int
-	flagRunPIFailFast bool
-
-	flagRunPIVars string // JSON string with variables
+	flagRunPICount int
+	flagRunPIVars  string // JSON string with variables
 )
 
 var runProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Short:   "Run process instance(s) by process definition",
+	Example: `./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --no-worker-limit`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagRunPIWorkers < 1 {
+		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--count and --workers must be positive integers"))
 		}
 		var vars map[string]interface{}
@@ -43,23 +41,23 @@ var runProcessInstanceCmd = &cobra.Command{
 		var datas []process.ProcessInstanceData
 		var contextForErr string
 		switch {
-		case len(flagRunPIProcessDefinitionSpecificId) > 0:
+		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flags --pd-id and --bpmn-process-id are mutually exclusive"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flags --pd-key and --bpmn-process-id are mutually exclusive"))
 			}
 			if flagRunPIProcessDefinitionVersion != 0 {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flag --pd-version is only valid with --bpmn-process-id"))
 			}
 
-			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionSpecificId))
-			for _, pdID := range flagRunPIProcessDefinitionSpecificId {
+			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionKey))
+			for _, pdID := range flagRunPIProcessDefinitionKey {
 				datas = append(datas, process.ProcessInstanceData{
 					ProcessDefinitionSpecificId: pdID,
 					Variables:                   vars,
 					TenantId:                    cfg.App.Tenant,
 				})
 			}
-			contextForErr = fmt.Sprintf("process definition ID(s) %v", flagRunPIProcessDefinitionSpecificId)
+			contextForErr = fmt.Sprintf("process definition ID(s) %v", flagRunPIProcessDefinitionKey)
 
 		case len(flagRunPIProcessDefinitionBpmnProcessIds) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 1 && flagRunPIProcessDefinitionVersion != 0 {
@@ -78,11 +76,11 @@ var runProcessInstanceCmd = &cobra.Command{
 			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)
 
 		default:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("provide either --pd-id or --bpmn-process-id"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("provide either --pd-key or --bpmn-process-id"))
 		}
 
 		fopts := collectOptions()
-		if flagRunPIFailFast {
+		if flagFailFast {
 			fopts = append(fopts, foptions.WithFailFast())
 		}
 		if flagRunPICount <= 1 {
@@ -94,9 +92,9 @@ var runProcessInstanceCmd = &cobra.Command{
 		}
 		if len(datas) > 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
-				fmt.Errorf("--count requires exactly one target definition; got %d", len(datas)))
+				fmt.Errorf("--count requires exactly one process definition; got %d", len(datas)))
 		}
-		_, err = cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagRunPIWorkers, fopts...)
+		_, err = cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
 		}
@@ -107,13 +105,14 @@ func init() {
 	runCmd.AddCommand(runProcessInstanceCmd)
 
 	fs := runProcessInstanceCmd.Flags()
-	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-id). Runs latest version unless --pd-version is specified")
+	fs.StringSliceVarP(&flagRunPIProcessDefinitionBpmnProcessIds, "bpmn-process-id", "b", nil, "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified")
 	fs.Int32Var(&flagRunPIProcessDefinitionVersion, "pd-version", 0, "specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)")
-	fs.StringSliceVar(&flagRunPIProcessDefinitionSpecificId, "pd-id", nil, "specific process definition ID(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
-
+	fs.StringSliceVar(&flagRunPIProcessDefinitionKey, "pd-key", nil, "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)")
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
-	fs.IntVarP(&flagRunPIWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagRunPIFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
-
 	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
+
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the creation to be fully processed")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 }

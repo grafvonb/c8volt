@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/embedded"
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 var (
 	flagEmbedDeployFileNames []string
 	flagEmbedDeployAll       bool
+	flagEmbedDeployWithRun   bool
 )
 
 var embedDeployCmd = &cobra.Command{
@@ -64,7 +66,8 @@ var embedDeployCmd = &cobra.Command{
 		}
 
 		// TODO (Adam): currently only deployment of process definitions is supported, extend to other resource types as needed
-		pdds, err := cli.DeployProcessDefinition(cmd.Context(), cfg.App.Tenant, units, collectOptions()...)
+		opts := collectOptions()
+		pdds, err := cli.DeployProcessDefinition(cmd.Context(), units, opts...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying embedded resource(s): %w", err))
 		}
@@ -73,11 +76,32 @@ var embedDeployCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
 		}
 		log.Debug(fmt.Sprintf("%d embedded resource(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
+
+		if flagEmbedDeployWithRun {
+			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
+			datas := make([]process.ProcessInstanceData, 0, len(pdds))
+			for _, pdd := range pdds {
+				datas = append(datas, process.ProcessInstanceData{
+					ProcessDefinitionSpecificId: pdd.DefinitionKey,
+					Variables:                   nil,
+					TenantId:                    cfg.App.Tenant,
+				})
+			}
+			_, err = cli.CreateProcessInstances(cmd.Context(), datas, opts...)
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: running process instance(s)", err))
+			}
+		}
 	},
 }
 
 func init() {
 	embedCmd.AddCommand(embedDeployCmd)
-	embedDeployCmd.Flags().StringSliceVarP(&flagEmbedDeployFileNames, "file", "f", nil, "embedded file(s) to deploy (repeatable)")
-	embedDeployCmd.Flags().BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
+	fs := embedDeployCmd.Flags()
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deployment to be fully processed")
+	fs.StringSliceVarP(&flagEmbedDeployFileNames, "file", "f", nil, "embedded file(s) to deploy (repeatable)")
+	fs.BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
+	embedDeployCmd.MarkFlagsMutuallyExclusive("file", "all")
+
+	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "run single process instance without vars after deploying process definition(s)")
 }

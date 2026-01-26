@@ -9,7 +9,7 @@ Run resources
 
 ### Synopsis
 
-Run resources such as process definitions.
+Run resources such as process instances.
 It is a root command and requires a subcommand to specify the resource type to run.
 
 ```
@@ -22,7 +22,6 @@ c8volt run [flags]
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
   -h, --help                       help for run
-      --no-wait                    skip waiting for the creation to be fully processed (no status checks)
 ```
 
 ### Options inherited from parent commands
@@ -40,6 +39,7 @@ c8volt run [flags]
       --profile string      config active profile name to use (e.g. dev, prod)
   -q, --quiet               suppress all output, except errors, overrides --log-level
       --tenant string       default tenant ID
+  -v, --verbose             adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO

@@ -38,6 +38,16 @@ type DeleteResponse struct {
 	Status     string
 }
 
+type StateResponse struct {
+	Ok     bool
+	State  State
+	Status string
+}
+
+type StateResponses struct {
+	Items []StateResponse
+}
+
 type ProcessInstanceData struct {
 	BpmnProcessId               string // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string // ProcessDefinitionKey in API

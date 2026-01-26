@@ -18,7 +18,7 @@ func listProcessDefinitionDeploymentsView(cmd *cobra.Command, resp []resource.Pr
 
 func oneLinePDDeploy(it resource.ProcessDefinitionDeployment) string {
 	return fmt.Sprintf(
-		"%-16s %s %s v%d v%s (%s)",
+		"%-16s %s %s v%d v%s (deployId: %s)",
 		it.DefinitionKey, it.TenantId, it.DefinitionId, it.DefinitionVersion, it.ResourceName, it.Key,
 	)
 }

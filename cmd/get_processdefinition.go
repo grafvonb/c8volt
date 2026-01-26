@@ -66,7 +66,7 @@ func init() {
 	fs.StringVarP(&flagGetPDKey, "key", "k", "", "process definition key to fetch")
 	fs.StringVarP(&flagGetPDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
-	fs.Int32VarP(&flagGetPDProcessVersion, "pd-version", "v", 0, "process definition version")
+	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics")
 }

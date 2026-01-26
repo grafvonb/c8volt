@@ -9,8 +9,10 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -49,4 +51,22 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 	default:
 		return ErrCmdAborted
 	}
+}
+
+func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
+	keys := append([]string{}, baseKeys...)
+
+	if len(stdinKeys) > 0 {
+		if ok, firstBadKey, firstBadIndex := validateKeys(stdinKeys); !ok {
+			if strings.HasPrefix(firstBadKey, "filter: ") {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+					fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
+			}
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+				fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
+					firstBadKey, firstBadIndex))
+		}
+		keys = append(keys, stdinKeys...)
+	}
+	return keys
 }

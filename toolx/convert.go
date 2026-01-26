@@ -302,3 +302,15 @@ func PtrCopyMap[K comparable, V any](in map[K]V) *map[K]V {
 	out := CopyMap(in)
 	return &out
 }
+
+// ExtractSlice extracts a slice of K from a slice of T using extractor function.
+func ExtractSlice[T any, K any](items []T, extractor func(T) K) []K {
+	if items == nil {
+		return nil
+	}
+	out := make([]K, 0, len(items))
+	for _, it := range items {
+		out = append(out, extractor(it))
+	}
+	return out
+}

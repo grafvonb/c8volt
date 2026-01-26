@@ -6,6 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 func validateKeys(keys []string) (ok bool, firstBadKey string, firstBadIndex int) {
@@ -21,20 +23,26 @@ func validateKeys(keys []string) (ok bool, firstBadKey string, firstBadIndex int
 	return
 }
 
-// reads newline-separated keys from stdin if piped; returns nil if stdin is a TTY
-func readKeysFromStdin() ([]string, error) {
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		return nil, err
+func validateOptionalDashArg(args []string) error {
+	if len(args) == 0 {
+		return nil
 	}
-	isTTY := (info.Mode() & os.ModeCharDevice) != 0
-	if isTTY {
-		return nil, nil // not piped
+	if len(args) == 1 && args[0] == "-" {
+		return nil
 	}
+	return fmt.Errorf("unexpected args: %v (use '-' to read keys from stdin)", args)
+}
+
+func readKeysIfDash(args []string) ([]string, error) {
+	if len(args) != 1 || args[0] != "-" {
+		return nil, nil
+	}
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		return nil, fmt.Errorf("'-' requires piped/redirected stdin (example: printf 'k1\\nk2\\n' | c8volt <cmd> -)")
+	}
+
 	sc := bufio.NewScanner(os.Stdin)
-	// allow long lines if needed
-	buf := make([]byte, 0, 64*1024)
-	sc.Buffer(buf, 10*1024*1024)
+	sc.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 
 	var out []string
 	for sc.Scan() {
@@ -43,11 +51,11 @@ func readKeysFromStdin() ([]string, error) {
 			out = append(out, s)
 		}
 	}
-	if err = sc.Err(); err != nil {
+	if err := sc.Err(); err != nil {
 		return nil, err
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("stdin was piped but contained no keys")
+		return nil, fmt.Errorf("stdin contained no keys")
 	}
 	return out, nil
 }

@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
-	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,7 +30,7 @@ var (
 func New() *Config {
 	return &Config{
 		App: App{
-			Backoff: common.BackoffConfig{},
+			Backoff: BackoffConfig{},
 		},
 		Auth: Auth{
 			OAuth2: AuthOAuth2ClientCredentials{
@@ -66,6 +68,38 @@ type Profile struct {
 	HTTP HTTP `mapstructure:"http" json:"http" yaml:"http"`
 }
 
+// BindConfigEnvVars binds all config fields to their environment variables using mapstructure tags
+func BindConfigEnvVars(v *viper.Viper) {
+	BindAllEnvVars(v, "C8VOLT_", reflect.TypeOf(Config{}), nil)
+}
+
+func BindConfigEnvVarsForProfile(v *viper.Viper, cfg *Config) {
+	BindAllEnvVars(v, "C8VOLT_", reflect.TypeOf(*cfg), nil)
+}
+
+// BindAllEnvVars recursively binds all config fields to their environment variables using mapstructure tags
+func BindAllEnvVars(v *viper.Viper, prefix string, t reflect.Type, path []string) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("mapstructure")
+		if tag == "" || tag == "-" {
+			continue
+		}
+		keyPath := append(path, tag)
+		ft := field.Type
+		// Handle pointers to structs
+		if ft.Kind() == reflect.Ptr {
+			ft = ft.Elem()
+		}
+		if ft.Kind() == reflect.Struct {
+			BindAllEnvVars(v, prefix, ft, keyPath)
+		} else {
+			envKey := prefix + strings.ToUpper(strings.Join(keyPath, "_"))
+			_ = v.BindEnv(strings.Join(keyPath, "."), envKey)
+		}
+	}
+}
+
 // WithProfile returns an effective config for the selected profile.
 func (c *Config) WithProfile() (*Config, error) {
 	if c.ActiveProfile == "" {
@@ -81,6 +115,26 @@ func (c *Config) WithProfile() (*Config, error) {
 	eff.Auth = p.Auth
 	eff.APIs = p.APIs
 	eff.HTTP = p.HTTP
+
+	// Fallback for missing auth credentials from root configuration (allows env var overrides)
+	if eff.Auth.OAuth2.ClientSecret == "" && c.Auth.OAuth2.ClientSecret != "" {
+		eff.Auth.OAuth2.ClientSecret = c.Auth.OAuth2.ClientSecret
+	}
+	if eff.Auth.OAuth2.ClientID == "" && c.Auth.OAuth2.ClientID != "" {
+		eff.Auth.OAuth2.ClientID = c.Auth.OAuth2.ClientID
+	}
+	if eff.Auth.OAuth2.TokenURL == "" && c.Auth.OAuth2.TokenURL != "" {
+		eff.Auth.OAuth2.TokenURL = c.Auth.OAuth2.TokenURL
+	}
+	if eff.Auth.Cookie.Password == "" && c.Auth.Cookie.Password != "" {
+		eff.Auth.Cookie.Password = c.Auth.Cookie.Password
+	}
+	if eff.Auth.Cookie.Username == "" && c.Auth.Cookie.Username != "" {
+		eff.Auth.Cookie.Username = c.Auth.Cookie.Username
+	}
+	if eff.Auth.Cookie.BaseURL == "" && c.Auth.Cookie.BaseURL != "" {
+		eff.Auth.Cookie.BaseURL = c.Auth.Cookie.BaseURL
+	}
 
 	return &eff, nil
 }

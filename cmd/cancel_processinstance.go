@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -11,49 +11,43 @@ import (
 )
 
 var (
-	flagCancelPIKeys      []string
-	flagCancelPIWithForce bool
-
-	flagCancelPIWorkers  int
-	flagCancelPIFailFast bool
+	flagCancelPIKeys []string
 )
 
 var cancelProcessInstanceCmd = &cobra.Command{
 	Use:     "process-instance",
 	Short:   "Cancel process instance(s) by key(s) and wait for the cancellation to complete",
 	Aliases: []string{"pi"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateOptionalDashArg(args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
 		}
-		if cmd.Flags().Changed("workers") && flagCancelPIWorkers < 1 {
+		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
 		}
 
-		keys := append([]string{}, flagCancelPIKeys...)
-		if inKeys, err := readKeysFromStdin(); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("reading stdin: %w", err))
-		} else if len(inKeys) > 0 {
-			if ok, firstBadKey, firstBadIndex := validateKeys(inKeys); !ok {
-				if strings.HasPrefix(firstBadKey, "filter: ") {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
-				}
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?", firstBadKey, firstBadIndex))
-			}
-			keys = append(keys, inKeys...)
+		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
+		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg).Unique()
 
 		switch {
 		case len(keys) > 0:
 		default:
-			searchFilterOpts, ok := populatePISearchFilterOpts()
-			if !ok {
+			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
-			if searchFilterOpts.State.In(process.StateCanceled, process.StateCompleted, process.StateTerminated) {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("it does not make sense to cancel process instances already in state %q", searchFilterOpts.State.String()))
+			if flagGetPIState != "" && flagGetPIState != "all" {
+				if _, ok := process.ParseState(flagGetPIState); !ok {
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings()))
+				}
 			}
+			searchFilterOpts := populatePISearchFilterOpts()
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
@@ -66,11 +60,19 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if len(keys) == 0 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to cancel"))
 		}
-		prompt := fmt.Sprintf("You are about to cancel %d process instance(s)?", len(keys))
+		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating process instance keys for cancellation: %w", err))
+		}
+		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
+		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
+		if affectedCount > requestedCount {
+			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+		}
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagCancelPIWorkers, flagCancelPIFailFast, collectOptions()...)
+		_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancelling process instance(s): %w", err))
 		}
@@ -81,13 +83,16 @@ func init() {
 	cancelCmd.AddCommand(cancelProcessInstanceCmd)
 
 	fs := cancelProcessInstanceCmd.Flags()
-	fs.BoolVar(&flagCancelNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed (no status checks)")
-	fs.BoolVar(&flagCancelNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
-	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
-	fs.BoolVar(&flagCancelPIWithForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed")
+	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
+	// fs.BoolVar(&flagDryRun, "dry-run", false, "perform a dry-run; show which process instances would be canceled without actually cancelling them")
 
-	fs.IntVarP(&flagCancelPIWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagCancelPIFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
+	fs.BoolVar(&flagForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")
+
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")

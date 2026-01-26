@@ -5,26 +5,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-var (
-	flagRunNoWait bool
-)
-
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run resources",
-	Long: "Run resources such as process definitions.\n" +
+	Long: "Run resources such as process instances.\n" +
 		"It is a root command and requires a subcommand to specify the resource type to run.",
 	Aliases: []string{"r"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	},
-	SuggestFor: []string{"rum", "runn"},
+	SuggestFor: []string{"rum", "runn", "execute"},
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
 
 	addBackoffFlagsAndBindings(runCmd, viper.GetViper())
-
-	runCmd.PersistentFlags().BoolVar(&flagRunNoWait, "no-wait", false, "skip waiting for the creation to be fully processed (no status checks)")
 }

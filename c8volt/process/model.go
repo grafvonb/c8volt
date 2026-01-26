@@ -114,3 +114,13 @@ func TotalsOf[T OKer](items []T) (total, oks, noks int) {
 	noks = total - oks
 	return
 }
+
+type StateReport struct {
+	Key    string `json:"key,omitempty"`
+	State  State  `json:"state,omitempty"`
+	Status string `json:"status,omitempty"`
+}
+
+type StateReports struct {
+	Items []StateReport `json:"items,omitempty"`
+}

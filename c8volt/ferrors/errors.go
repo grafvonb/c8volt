@@ -19,6 +19,7 @@ var (
 	ErrConflict     = errors.New("conflict")
 	ErrUnavailable  = errors.New("service unavailable")
 	ErrInternal     = errors.New("internal error")
+	ErrFailedFast   = errors.New("operation failed fast due to context cancellation")
 )
 
 func FromDomain(err error) error {
@@ -37,8 +38,10 @@ func FromDomain(err error) error {
 		return fmt.Errorf("%w: %s", ErrTimeout, err)
 	case errors.Is(err, domain.ErrUnavailable) || errors.Is(err, context.Canceled):
 		return fmt.Errorf("%w: %s", ErrUnavailable, err)
+	case errors.Is(err, context.Canceled):
+		return ErrFailedFast
 	default:
-		return fmt.Errorf("%w: %s", ErrInternal, err)
+		return err
 	}
 }
 

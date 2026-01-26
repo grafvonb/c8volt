@@ -3,6 +3,8 @@ package common
 import (
 	"context"
 	"sync"
+
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // Result holds the outcome for one item.
@@ -19,31 +21,24 @@ type WorkFunc[T any] func(ctx context.Context, item T) error
 // - If parallel <= 0, it defaults to min(8, len(items)).
 // - Results preserve input order (results[i] corresponds to items[i]).
 // - Honors context cancellation; any not-yet-dispatched items are marked with ctx.Err().
-func RunBulk[T any](ctx context.Context, items []T, parallel int, fn WorkFunc[T]) []Result[T] {
+func RunBulk[T any](ctx context.Context, items []T, wantedWorkers int, fn WorkFunc[T]) []Result[T] {
 	n := len(items)
 	results := make([]Result[T], n)
 	if n == 0 {
 		return results
 	}
 
-	if parallel <= 0 || parallel > n {
-		if n < 8 {
-			parallel = n
-		} else {
-			parallel = 8
-		}
-	}
-
+	nw := toolx.DetermineNoOfWorkers(n, wantedWorkers, false)
 	type job struct {
 		idx  int
 		item T
 	}
 	jobs := make(chan job)
 	var wg sync.WaitGroup
-	wg.Add(parallel)
+	wg.Add(nw)
 
 	// workers
-	for w := 0; w < parallel; w++ {
+	for w := 0; w < nw; w++ {
 		go func() {
 			defer wg.Done()
 			for j := range jobs {

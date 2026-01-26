@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +31,8 @@ var deployProcessDefinitionCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("collecting process definition(s): %w", err))
 		}
 		log.Debug(fmt.Sprintf("deploying process definition(s) to tenant %q", cfg.App.ViewTenant()))
-		pdds, err := cli.DeployProcessDefinition(cmd.Context(), cfg.App.Tenant, res, collectOptions()...)
+		opts := collectOptions()
+		pdds, err := cli.DeployProcessDefinition(cmd.Context(), res, opts...)
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deploying process definition(s): %w", err))
 		}
@@ -39,14 +41,32 @@ var deployProcessDefinitionCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
 		}
 		log.Debug(fmt.Sprintf("%d process definition(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
+
+		if flagDeployPDWithRun {
+			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
+			datas := make([]process.ProcessInstanceData, 0, len(pdds))
+			for _, pdd := range pdds {
+				datas = append(datas, process.ProcessInstanceData{
+					ProcessDefinitionSpecificId: pdd.DefinitionKey,
+					Variables:                   nil,
+					TenantId:                    cfg.App.Tenant,
+				})
+			}
+			_, err = cli.CreateProcessInstances(cmd.Context(), datas, opts...)
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("%w: running process instance(s)", err))
+			}
+		}
 	},
 }
 
 func init() {
 	deployCmd.AddCommand(deployProcessDefinitionCmd)
-	deployProcessDefinitionCmd.Flags().StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
+
+	fs := deployProcessDefinitionCmd.Flags()
+	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deployment to be fully processed")
+	fs.StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
 	_ = deployProcessDefinitionCmd.MarkFlagRequired("file")
 
-	deployProcessDefinitionCmd.Flags().BoolVar(&flagDeployPDWithRun, "run", false, "run a process instance after deploying process definition(s)")
-	_ = deployProcessDefinitionCmd.Flags().MarkHidden("run")
+	fs.BoolVar(&flagDeployPDWithRun, "run", false, "run single process instance without vars after deploying process definition(s)")
 }
