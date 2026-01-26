@@ -174,6 +174,11 @@ func pickPISearchSize() int32 {
 }
 
 func validatePISearchFlags() error {
+	if flagGetPIState != "" && flagGetPIState != "all" {
+		if _, ok := process.ParseState(flagGetPIState); !ok {
+			return fmt.Errorf("%w: invalid value for --state: %q, valid values are: %s", ErrInvalidFlagValue, flagGetPIState, process.ValidStateStrings())
+		}
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||

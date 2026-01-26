@@ -91,3 +91,16 @@ func ParseStates(in []string) (States, error) {
 	}
 	return out, nil
 }
+
+var validStates = States{
+	StateAll,
+	StateActive,
+	StateCompleted,
+	StateCanceled,
+	StateTerminated,
+	StateAbsent,
+}
+
+func ValidStateStrings() []string {
+	return validStates.Strings()
+}

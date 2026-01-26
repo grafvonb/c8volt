@@ -76,7 +76,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			}
 			log.Info(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt #%d)", key, got, attempts))
 		} else if errInDelay != nil {
-			if strings.Contains(errInDelay.Error(), "404") {
+			if errors.Is(errInDelay, d.ErrNotFound) || strings.Contains(errInDelay.Error(), "404") {
 				got = d.StateAbsent
 				if stateIn(got, desired) {
 					elapsed := time.Since(start)

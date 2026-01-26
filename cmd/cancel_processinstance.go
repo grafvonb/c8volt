@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -33,7 +34,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg).Unique()
 
 		switch {
 		case len(keys) > 0:
@@ -41,10 +42,12 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
-			searchFilterOpts := populatePISearchFilterOpts()
-			if searchFilterOpts.State.In(process.StateCanceled, process.StateCompleted, process.StateTerminated) {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("it does not make sense to cancel process instances already in state %q", searchFilterOpts.State.String()))
+			if flagGetPIState != "" && flagGetPIState != "all" {
+				if _, ok := process.ParseState(flagGetPIState); !ok {
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings()))
+				}
 			}
+			searchFilterOpts := populatePISearchFilterOpts()
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize)
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
@@ -57,7 +60,15 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if len(keys) == 0 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to cancel"))
 		}
-		prompt := fmt.Sprintf("You are about to cancel %d process instance(s)?", len(keys))
+		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
+		if err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating process instance keys for cancellation: %w", err))
+		}
+		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
+		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
+		if affectedCount > requestedCount {
+			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+		}
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}

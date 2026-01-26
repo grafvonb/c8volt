@@ -290,14 +290,23 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	if err != nil {
 		return d.DeleteResponse{}, err
 	}
-	orphans := edges[key]
-	if len(edges[key]) > 0 {
-		if cCfg.NoStateCheck {
-			s.log.Warn(fmt.Sprintf("deleting process instance with key %s, will cause creation of %d orphaned child process instance(s): %v", key, len(orphans), orphans))
-		} else {
-			s.log.Info(fmt.Sprintf("cannot delete, process instance with key %s has %d child process instance(s): %v; use --no-state-check to ignore and delete anyway", key, len(orphans), orphans))
-			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
+	children := edges[key]
+	if len(children) > 0 {
+		for _, ch := range children {
+			s.log.Debug(fmt.Sprintf("found child process instance with key %s of process instance with key %s, deleting...", ch, key))
+			_, err = s.DeleteProcessInstance(ctx, ch, opts...)
+			if err != nil {
+				return d.DeleteResponse{}, fmt.Errorf("deleting child process instance with key %s of process instance with key %s: %w", ch, key, err)
+			}
 		}
+		/*
+			if cCfg.NoStateCheck {
+				s.log.Warn(fmt.Sprintf("deleting process instance with key %s, will cause creation of %d orphaned child process instance(s): %v", key, len(orphans), orphans))
+			} else {
+				s.log.Info(fmt.Sprintf("cannot delete, process instance with key %s has %d child process instance(s): %v; use --no-state-check to ignore and delete anyway", key, len(orphans), orphans))
+				return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
+			}
+		*/
 	}
 
 	resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)

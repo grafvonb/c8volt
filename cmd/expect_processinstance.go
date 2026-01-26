@@ -32,7 +32,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 		}
 		states, err := process.ParseStates(flagExpectPIStates)
 		if err != nil {
-			log.Error(fmt.Sprintf("error parsing states: %v; valid values are: [active, completed, canceled, terminated or absent]", err))
+			log.Error(fmt.Sprintf("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
 			os.Exit(exitcode.NotFound)
 		}
 

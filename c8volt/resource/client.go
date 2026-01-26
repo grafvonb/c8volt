@@ -51,7 +51,12 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 				for _, pi := range pis.Items {
 					keys = append(keys, pi.Key)
 				}
-				_, err := c.papi.CancelProcessInstances(ctx, keys, len(keys), opts...)
+				roots, collected, err := c.papi.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, opts...)
+				if err != nil {
+					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("validating process instance keys for cancellation: %w", err)
+				}
+				c.log.Debug(fmt.Sprintf("found %d process instance(s) to cancel (requested %d, root %d) for process definition %s", len(collected), len(keys), len(roots), key))
+				_, err = c.papi.CancelProcessInstances(ctx, roots, len(roots), opts...)
 				if err != nil {
 					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cancelling active process instances for process definition %s before deletion failed: %w", key, err)
 				}
