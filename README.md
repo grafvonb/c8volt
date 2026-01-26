@@ -781,7 +781,7 @@ Use **c8volt** at your own risk. It can modify system state.
 
 ## Copyright
 
-Copyright © 2025 [Adam Bogdan Boczek](https://boczek.info)
+Copyright © 2025-2026 [Adam Bogdan Boczek](https://boczek.info)
 
 This project is licensed under the Apache License, Version 2.0.
 See the [LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE) file for the full text.
