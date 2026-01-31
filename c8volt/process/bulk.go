@@ -47,7 +47,7 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wa
 	}
 	if !cCfg.NoWait {
 		t, oks, noks := r.Totals()
-		c.log.Info(fmt.Sprintf("cancelling %d process instance(s) completed: %d succeeded or already cancelled/teminated, %d failed", t, oks, noks))
+		c.log.Info(fmt.Sprintf("cancelling %d process instance(s) completed: %d succeeded or already cancelled/terminated, %d failed", t, oks, noks))
 	}
 	return r, err
 }
