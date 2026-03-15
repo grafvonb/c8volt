@@ -1,50 +1,99 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: template -> 1.0.0
+Modified principles:
+- template principle 1 -> I. Operational Proof Over Intent
+- template principle 2 -> II. CLI-First, Script-Safe Interfaces
+- template principle 3 -> III. Tests and Validation Are Mandatory
+- template principle 4 -> IV. Documentation Matches User Behavior
+- template principle 5 -> V. Small, Compatible, Repository-Native Changes
+Added sections:
+- Project Constraints
+- Delivery Workflow
+Removed sections:
+- None
+Templates requiring updates:
+- ✅ updated /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/plan-template.md
+- ✅ updated /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/spec-template.md
+- ✅ updated /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/tasks-template.md
+- ✅ reviewed /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/agent-file-template.md
+- ⚠ pending directory not present: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/.specify/templates/commands/
+Follow-up TODOs:
+- None
+-->
+# c8volt Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Operational Proof Over Intent
+Every user-facing command MUST verify the operational outcome it claims unless an
+explicit opt-out flag already exists for that workflow. Features MUST preserve the
+project's "done is done" standard: report success only after the observable target
+state is reached or clearly state that confirmation was skipped. This keeps c8volt
+trustworthy for administrators and automation.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. CLI-First, Script-Safe Interfaces
+Behavior MUST be exposed through stable CLI commands, flags, exit codes, and text or
+structured output that work in interactive and scripted environments. New commands
+MUST follow existing Cobra layouts, naming, and flag propagation rules already used in
+the repository. Changes that break documented command behavior require an explicit
+compatibility note in the plan and accompanying documentation updates.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Tests and Validation Are Mandatory
+Every code change MUST add or update automated tests at the closest useful level, with
+preference for realistic command execution paths when inherited flags or wiring matter.
+Before merge or commit, contributors MUST run `make test`; a change is incomplete if
+validation is skipped or knowingly failing. When a defect cannot be reproduced in an
+automated test, the implementation plan MUST explain the gap and define the manual
+verification path.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Documentation Matches User Behavior
+User-visible command changes MUST update `README.md` and any relevant generated CLI
+documentation in the same unit of work. Examples, flags, defaults, and caveats MUST
+match shipped behavior so operators do not need to infer hidden rules from code. If a
+change is internal-only, documentation may stay unchanged, but that decision MUST be
+explicit in the plan or task list.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Small, Compatible, Repository-Native Changes
+Work MUST reuse existing repository patterns, dependencies, and command structures
+before introducing new abstractions. Feature slices, PRDs, and tasks MUST stay small,
+dependency-ordered, and independently verifiable so work can be implemented in short
+iterations. New complexity requires a written justification in the implementation plan,
+including why simpler repository-native alternatives were rejected.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Project Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- The canonical implementation stack is Go with Cobra-based CLI commands and the
+  existing internal service layout.
+- Command trees and subcommands MUST mirror established repository structure rather
+  than inventing parallel hierarchies.
+- Configuration-sensitive commands MUST honor root-level flag resolution and explicit
+  kubeconfig or config-file persistence rules documented in repository guidance.
+- Changes that affect operational state transitions, process polling, or bulk actions
+  MUST preserve deterministic exit behavior and user-facing status reporting.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Delivery Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Specifications MUST describe independently testable user stories ordered by
+  delivery priority.
+- Implementation plans MUST include a Constitution Check that confirms operational
+  verification, CLI compatibility, required tests, documentation impact, and any
+  justified complexity.
+- Task lists MUST include concrete validation tasks and documentation tasks whenever a
+  story changes user-visible behavior.
+- Reviews MUST block merges when constitution requirements are unmet, even if code is
+  otherwise functional.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes informal local practice for planning, implementation,
+review, and documentation in this repository. Amendments require: (1) updating this
+file, (2) recording sync impact at the top of the document, and (3) updating affected
+templates or runtime guidance in the same change. Versioning follows semantic rules for
+governance: MAJOR for incompatible principle changes or removals, MINOR for new
+principles or materially stronger obligations, PATCH for clarifications that do not
+change expected behavior. Compliance review is required in every feature plan and code
+review, with unresolved exceptions documented under the plan's complexity or risk
+tracking section.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-03-15 | **Last Amended**: 2026-03-15

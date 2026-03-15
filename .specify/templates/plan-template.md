@@ -31,7 +31,16 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- `Operational proof`: confirm how the feature preserves or explicitly opts out of
+  "done is done" outcome verification for every affected command.
+- `CLI compatibility`: confirm command names, flags, output, exit codes, and Cobra
+  wiring follow existing repository patterns or document the required break.
+- `Validation`: list the automated tests to add or update and state how `make test`
+  will cover the change.
+- `Documentation parity`: identify required `README.md` and CLI-doc updates, or state
+  why the change is internal-only.
+- `Complexity control`: justify any new dependency, abstraction, or command structure
+  that does not reuse an existing repository pattern.
 
 ## Project Structure
 

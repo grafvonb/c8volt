@@ -74,6 +74,8 @@
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+- How does the operator know the requested outcome was actually confirmed?
+- What happens when confirmation is intentionally skipped, delayed, or partially fails?
 
 ## Requirements *(mandatory)*
 
@@ -89,6 +91,12 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-00X**: System MUST define the user-visible command behavior, output, and exit
+  semantics for any affected CLI workflow.
+- **FR-00Y**: System MUST define how the feature verifies the claimed operational
+  outcome, or explicitly document the conditions where verification is skipped.
+- **FR-00Z**: System MUST identify required automated test coverage and documentation
+  changes for the feature.
 
 *Example of marking unclear requirements:*
 
@@ -113,3 +121,5 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-00X**: Operators can verify the feature's primary outcome through documented CLI
+  behavior without reading source code.
