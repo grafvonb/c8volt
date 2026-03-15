@@ -48,9 +48,6 @@ bin/
 .DS_Store
 Thumbs.db
 
-# camunda-docs
-api/camunda-docs*/
-
 # c8volt's exported resources
 # c8volt
 config*.yaml
