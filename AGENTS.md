@@ -6,48 +6,59 @@
 - Prioritize stories by dependency and execution order.
 - Keep each story narrowly scoped and independently verifiable.
 - Write precise, minimal, testable acceptance criteria.
-- Reuse existing project patterns and avoid introducing parallel command structures.
-- If `scripts/ralph/prd.json` already exists and the task is an update, prefer adding follow-up stories instead of rewriting completed stories, unless they are incorrect.
+- Reuse existing project patterns and avoid introducing parallel structures.
+- If `scripts/ralph/prd.json` already exists and the task is an update, prefer adding follow-up stories instead of rewriting completed stories, unless they are no longer valid.
 
 ## Git and GitHub branch rules
-- For GitHub issues like #47, always check the existence of the branch on GitHib and use it, or create a branch accoring to GitHib algorithm if it does not exist, like:
-  - for issue https://github.com/NTTDATA-DACH/viewnode/issues/47, the branch name should be `47-add-ns-command-list-subcommand-for-listing-namespaces-in-a-context`.
-  - the branch name should be in the format `<issue_number>-<short-description>`, where:
-    - `<issue_number>` is the number of the GitHub issue (e.g., `47`).
-    - `<short-description>` is a concise, hyphen-separated description of the issue (e.g., `add-ns-command-list-subcommand-for-listing-namespaces-in-a-context`).
-- Do not create or switch to any other feature branch unless the user explicitly asks.
+- For issue-based work, first check whether a matching local or remote branch already exists and reuse it when appropriate.
+- If the issue already has a linked or existing branch, use that exact branch name.
+- Do not invent a different branch name when an issue branch already exists.
+- If no matching branch exists, create one using GitHub-style issue naming:
+  - format: `<issue-padded>-<description>`
+  - example: for issue #58 with the description "Review and refactor internal service cluster api implementation", use `058-review-and-refactor-internal-service-cluster-api-implementation`
+- Use a three-digit zero-padded GitHub issue number prefix for new issue branches:
+  - use `058-...`, not `58-...`
+- If the existing matching branch does not use the required three-digit zero-padded prefix, stop and report that the branch format is incompatible with subsequent Spec Kit skills, which expect a `NNN-description` branch name.
+- Keep `<description>` concise, lowercase, and hyphen-separated.
+- Do not add extra prefixes such as `codex/` unless the user explicitly asks or the repository explicitly requires them.
+- Do not create or switch to a different feature branch unless the user explicitly asks.
 
 ## Commit rules
-- Commit messages must follow Conventional Commits format (https://www.conventionalcommits.org/en/v1.0.0/).
-- Use formats like, use capital letters only for text elements where it makes sense (e.g., README.md), and avoid unnecessary capitalization.
-- Add a scope in parentheses after the type.
-- Add GitHub issue reference in commit message like `feat(cli): add ns list command #47` if applicable.
-- Example commit messages:
-    - `feat(cli): add ns list command #47`
-    - `test(cli): add tests for ns list #47`
-    - `docs(readme): document ns list #47`
+- Commit messages must follow Conventional Commits format.
+- Add a scope in parentheses after the type when a clear scope exists.
+- Reference the GitHub issue in the subject when applicable, for example:
+  - `feat(cli): add command #<issue>`
+  - `fix(api): handle empty response #<issue>`
+  - `refactor(service): simplify implementation #<issue>`
+  - `test(module): add coverage for edge cases #<issue>`
+  - `docs(readme): update usage examples #<issue>`
+- Use lowercase by default, except where capitalization is required for correct names such as `README.md` or product/library names.
 - Prefer small commits grouped by purpose.
-- Do not use vague commit messages like `update`, `fix stuff`, or `changes`.
+- Do not use vague commit messages such as `update`, `fix stuff`, or `changes`.
 
 ## Validation
 - Before committing, run:
-    - `make test`
+  - `make test`
 
-## Command conventions
-- Cobra subcommands that need the global `--kubeconfig` value should call `config.Initialize` with the root command (`cmd.Root()` fallback to the current command) so flag lookup resolves the root-level flag correctly.
-- Commands that persist kubeconfig changes must set `clientcmd.ClientConfigLoadingRules.ExplicitPath` from `setup.KubeCfgPath` before calling `clientcmd.ModifyConfig`, otherwise `--kubeconfig` updates can be written to the default config file instead of the requested one.
-- Cobra command groups should mirror the existing `cmd/ctx` and `cmd/ns` layout: keep the group command in `<group>.go`, put each subcommand in its own file, and register all subcommands from the group package `init()`.
-- Namespace current-state commands should inspect `setup.ClientConfig.RawConfig()` for the active context value and treat an empty context namespace as `default`; this preserves kubeconfig semantics better than relying only on `Setup.Namespace`.
+## Project conventions
+- Prefer existing project patterns over introducing new structural styles.
+- For refactoring work, preserve externally observable behavior unless the issue explicitly asks for behavioral change.
+- Favor incremental refactors with verification over broad rewrites.
+- When changing generated or generated-adjacent artifacts, update the source and regenerate rather than editing derived output by hand when the repository already provides a generation path.
 
 ## Testing conventions
-- For Cobra subcommands that depend on inherited persistent flags, prefer executing through a small root command tree with `Execute()` in tests instead of calling the leaf command's `RunE` directly; this matches Cobra's real flag propagation.
+- Add or update tests alongside refactoring and bug fixes.
+- Prefer targeted tests near the changed package, then run the broader repository test suite.
+- For refactors, ensure tests verify preserved behavior, not just new internal structure.
 
 ## Documentation conventions
-- `README.md` command listings and CLI examples are maintained manually; when adding or changing user-facing commands, update the README command reference and relevant usage examples in the same change.
+- User-facing documentation and examples should stay in sync with behavior changes.
+- When changing user-facing commands, APIs, or workflows, update the relevant documentation in the same change.
 
-## Active Technologies
-- Go 1.25.0 (toolchain go1.25.7) + `github.com/spf13/cobra`, `k8s.io/client-go`, `k8s.io/apimachinery`, `github.com/stretchr/testify` (48-refactor-ctx-list-ns-list-commands)
-- Kubeconfig files plus live Kubernetes API data for namespace discovery (48-refactor-ctx-list-ns-list-commands)
+## Technology baseline
+- Follow the repository's current toolchain, dependency, and framework conventions.
+- Prefer the libraries and frameworks already established in the project unless the user explicitly asks for a change.
 
-## Recent Changes
-- 48-refactor-ctx-list-ns-list-commands: Added Go 1.25.0 (toolchain go1.25.7) + `github.com/spf13/cobra`, `k8s.io/client-go`, `k8s.io/apimachinery`, `github.com/stretchr/testify`
+## Issue-specific guidance
+- Issue-specific requirements belong in the GitHub issue, the Spec Kit feature artifacts, and the PRD.
+- Do not add changing issue-specific details to this file unless they become stable repository rules.
