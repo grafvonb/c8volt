@@ -1,0 +1,58 @@
+{
+  "branchName": "058-review-and-refactor-internal-service-cluster-api-implementation",
+  "overview": "Refactor the internal cluster service to reduce duplication across supported Camunda versions while preserving current topology behavior, explicitly review supported generated-client coverage, and prove completion with focused tests plus conditional documentation updates.",
+  "userStories": [
+    {
+      "id": "#58-001",
+      "title": "Stabilize the shared cluster contract",
+      "description": "Lock the reviewed cluster service surface and baseline factory behavior so later refactoring happens against an explicit, tested contract within the existing package structure.",
+      "acceptanceCriteria": [
+        "The cluster service entry point remains the single version-selection path in the existing package layout.",
+        "Factory tests cover supported-version selection and unknown-version failure behavior.",
+        "The reviewed shared service surface is aligned across the cluster API and both version-specific contracts."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Reuse the current factory-plus-versioned-service pattern. Keep this slice limited to contract and baseline test stabilization before core refactoring."
+    },
+    {
+      "id": "#58-002",
+      "title": "Refactor topology handling without behavior change",
+      "description": "Improve readability and reduce avoidable duplication in the shared cluster entry point and the v87/v88 topology implementations while preserving current observable topology and error behavior.",
+      "acceptanceCriteria": [
+        "Shared responsibilities between the factory, API surface, and version-specific services are clearer and duplication is reduced.",
+        "Existing topology-fetch behavior, including current error handling, remains unchanged from the caller perspective.",
+        "Updated v87 and v88 service tests pass with preserved success and failure-path coverage."
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Prefer small shared helpers or localized normalization improvements over new abstraction layers. Do not rename packages or change layout."
+    },
+    {
+      "id": "#58-003",
+      "title": "Complete supported-version capability review",
+      "description": "Review supported generated cluster capabilities against the current service surface and either add one justified low-risk missing capability or record an explicit no-addition decision.",
+      "acceptanceCriteria": [
+        "The supported generated cluster capabilities are explicitly reviewed against the service surface.",
+        "Any added capability fits the current boundaries and is covered by automated tests, or the no-addition decision is explicitly documented.",
+        "The final capability decision is traceable in project artifacts and does not introduce broad structural change."
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "This story depends on the stabilized service surface. Treat the review as mandatory and the new capability as conditional."
+    },
+    {
+      "id": "#58-004",
+      "title": "Prove completion with integration validation and docs parity",
+      "description": "Finalize the feature by updating integration coverage, making documentation impact explicit, and running the repository validation path required for safe merge.",
+      "acceptanceCriteria": [
+        "Integration coverage validates the final cluster service behavior for supported versions.",
+        "Documentation impact is explicit: either no user-visible change is confirmed or affected docs are updated in the same change.",
+        "The final validation path includes targeted cluster verification and a successful `make test` run."
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Keep this slice focused on proof of completion. Update README and CLI docs only if a user-visible cluster workflow or output changes."
+    }
+  ]
+}
