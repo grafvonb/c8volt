@@ -62,3 +62,9 @@
 ## Issue-specific guidance
 - Issue-specific requirements belong in the GitHub issue, the Spec Kit feature artifacts, and the PRD.
 - Do not add changing issue-specific details to this file unless they become stable repository rules.
+
+## Active Technologies
+- Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...` (058-review-and-refactor-internal-service-cluster-api-implementation)
+
+## Recent Changes
+- 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`
