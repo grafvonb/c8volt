@@ -68,4 +68,5 @@ package.json
 /docs/_site/
 /docs/.jekyll-cache/
 /docs/.jekyll-metadata
-/docs/.sass-cache/
+/docs/.sass-cache/scripts/ralph/.last-branch
+scripts/ralph/.codex-last-message*.txt
