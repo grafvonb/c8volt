@@ -12,14 +12,22 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+type constructor func(*config.Config, *http.Client, *slog.Logger) (API, error)
+
+var constructors = map[toolx.CamundaVersion]constructor{
+	toolx.V87: func(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
+		return v87.New(cfg, httpClient, log)
+	},
+	toolx.V88: func(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
+		return v88.New(cfg, httpClient, log)
+	},
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 	v := cfg.App.CamundaVersion
-	switch v {
-	case toolx.V88:
-		return v88.New(cfg, httpClient, log)
-	case toolx.V87:
-		return v87.New(cfg, httpClient, log)
-	default:
+	build, ok := constructors[v]
+	if !ok {
 		return nil, fmt.Errorf("%w: %q (supported: %v)", services.ErrUnknownAPIVersion, v, toolx.SupportedCamundaVersionsString())
 	}
+	return build(cfg, httpClient, log)
 }

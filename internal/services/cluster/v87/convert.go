@@ -16,6 +16,13 @@ func fromTopologyResponse(r camundav87.TopologyResponse) d.Topology {
 	}
 }
 
+func fromLicenseResponse(r camundav87.LicenseResponse) d.License {
+	return d.License{
+		LicenseType:  toolx.Deref(r.LicenseType, ""),
+		ValidLicense: toolx.Deref(r.ValidLicense, false),
+	}
+}
+
 func fromBrokerInfo(b camundav87.BrokerInfo) d.Broker {
 	return d.Broker{
 		Host:       toolx.Deref(b.Host, ""),

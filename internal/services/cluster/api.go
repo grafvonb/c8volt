@@ -11,7 +11,10 @@ import (
 
 type API interface {
 	GetClusterTopology(ctx context.Context, opts ...services.CallOption) (d.Topology, error)
+	GetClusterLicense(ctx context.Context, opts ...services.CallOption) (d.License, error)
 }
 
 var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
+var _ API = (v87.API)(nil)
+var _ API = (v88.API)(nil)

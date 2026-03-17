@@ -73,7 +73,7 @@ func deployTestProcessDefinitions(t *testing.T, ctx context.Context, api c8volt.
 		units = append(units, resource.DeploymentUnitData{Name: f, Data: data})
 	}
 
-	pdds, err := api.DeployProcessDefinition(ctx, cfg.App.Tenant, units)
+	pdds, err := api.DeployProcessDefinition(ctx, units)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(pdds))
 }

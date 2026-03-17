@@ -1,3 +1,55 @@
 # Ralph Progress Log
 Started: Mon Mar 16 23:24:40 CET 2026
+## Codebase Patterns
+- Keep `internal/services/cluster/api.go` and each version package `contract.go` on the same method set, with compile-time interface assertions in both places to catch drift before refactors land.
+- Put the shared cluster topology fetch/log/validation flow in `internal/services/cluster/common`, and keep version packages focused on generated-client calls plus payload conversion.
+- When extending cluster capabilities, prefer endpoints that exist in every supported generated Camunda client and normalize version-specific optional fields in `internal/domain/cluster.go` before exposing them through `c8volt/cluster`.
+- Integration helpers should call facade methods with the current signatures; resource deployment uses `cfg.App.Tenant` from config, so `DeployProcessDefinition` takes deployment units plus options, not an explicit tenant argument.
+---
+
+## 2026-03-16 23:28:00 CET - #58-001
+Codex output: not found (`scripts/ralph/.codex-last-message-iter-*.txt` was not present)
+- Stabilized the shared cluster contract by defining the same cluster service API in `internal/services/cluster` and in both versioned contract files, with compile-time assertions for the shared method surface.
+- Expanded cluster factory coverage into table-driven supported-version checks and explicit unknown-version error assertions.
+- Files changed: `internal/services/cluster/api.go`, `internal/services/cluster/factory_test.go`, `internal/services/cluster/v87/contract.go`, `internal/services/cluster/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: cluster contract drift is easiest to catch with interface assertions between the root service API and each version package contract.
+  - Gotchas encountered: unsupported `toolx.CamundaVersion` values format as `\"unknown\"` in factory errors because the type implements `String()`.
+  - Useful context: factory tests can assert concrete version selection with `require.IsType` without bypassing the public `cluster.New` entry point.
+---
+
+## 2026-03-16 23:31:14 CET - #58-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored the shared cluster topology request path into `internal/services/cluster/common.GetClusterTopology`, so logging, nil-response handling, HTTP status validation, and empty-payload checks are defined once while v87/v88 keep only their generated fetch and conversion logic.
+- Replaced the factory `switch` with an explicit version-to-constructor map to keep the root cluster package focused on version selection instead of per-version construction details.
+- Verified preserved topology behavior with `go test ./internal/services/cluster/...` and a successful `make test`.
+- Files changed: `internal/services/cluster/common/topology.go`, `internal/services/cluster/factory.go`, `internal/services/cluster/v87/service.go`, `internal/services/cluster/v88/service.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: the versioned cluster services should delegate common topology response validation to the shared cluster helper and keep version-specific code limited to adapting generated response types.
+  - Gotchas encountered: nil generated responses need to stay distinguishable from empty `JSON200` payloads because they map to different malformed-response branches in service behavior.
+  - Useful context: the cluster factory can stay data-driven with a constructor registry without changing the public `cluster.New` entry point or the concrete service types returned by tests.
+---
+
+## 2026-03-16 23:37:00 CET - #58-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Reviewed the supported generated cluster surface for v87 and v88, then added shared `GetClusterLicense` support because `/license` exists in both generated clients while `/status` does not.
+- Extended the cluster domain and `c8volt/cluster` facade with a normalized license model that preserves v87/v88 payload differences through optional `ExpiresAt` and `IsCommercial` fields.
+- Added unit coverage for license success, HTTP failure, empty payload, and nil-response paths in both versioned services, plus fake-server-backed cluster license checks for the shared test fixtures.
+- Files changed: `internal/domain/cluster.go`, `internal/services/cluster/api.go`, `internal/services/cluster/common/topology.go`, `internal/services/cluster/common/license.go`, `internal/services/cluster/v87/contract.go`, `internal/services/cluster/v87/convert.go`, `internal/services/cluster/v87/service.go`, `internal/services/cluster/v87/service_test.go`, `internal/services/cluster/v88/contract.go`, `internal/services/cluster/v88/convert.go`, `internal/services/cluster/v88/service.go`, `internal/services/cluster/v88/service_test.go`, `c8volt/cluster/api.go`, `c8volt/cluster/client.go`, `c8volt/cluster/convert.go`, `c8volt/cluster/model.go`, `testx/fake_server.go`, `testx/integration87/cluster_test.go`, `testx/integration88/cluster_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: cluster capability additions should go through the same root service API, per-version contracts, and `c8volt/cluster` facade in one change so public and internal surfaces do not drift.
+  - Gotchas encountered: the tagged integration packages currently fail to compile on this branch because `testx/integration87/client_test.go` and `testx/integration88/client_test.go` still call `DeployProcessDefinition` with an outdated signature, so they are not a valid gate for cluster stories until repaired.
+  - Useful context: v87 `/license` responses only provide `licenseType` and `validLicense`, while v88 also returns `expiresAt` and `isCommercial`, so the shared model needs optional fields for those version-specific values.
+---
+
+## 2026-03-16 23:39:27 CET - #58-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Restored the tagged integration packages as a usable validation gate by updating both integration deployment helpers to the current `DeployProcessDefinition(ctx, units, opts...)` facade signature.
+- Re-ran cluster completion checks with `go test ./internal/services/cluster/...`, `go test -tags=integration ./testx/integration87 ./testx/integration88 -run '^$'`, and `make test`, all of which passed.
+- Recorded docs parity in the PRD: no README or CLI documentation update was required because the user-visible cluster workflow and output did not change.
+- Files changed: `AGENTS.md`, `testx/integration87/client_test.go`, `testx/integration88/client_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: tagged integration packages are a useful compile gate even without environment-backed execution when you run them with `-run '^$'`.
+  - Gotchas encountered: facade API drift can hide in integration helpers because those packages are excluded from the default `make test` path unless explicitly built with `-tags=integration`.
+  - Useful context: this cluster refactor produced no user-visible CLI change, so docs parity for the final story is satisfied by explicitly recording the no-doc-change decision in the PRD/progress artifacts.
 ---

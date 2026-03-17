@@ -12,7 +12,7 @@
         "The reviewed shared service surface is aligned across the cluster API and both version-specific contracts."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Reuse the current factory-plus-versioned-service pattern. Keep this slice limited to contract and baseline test stabilization before core refactoring."
     },
     {
@@ -25,7 +25,7 @@
         "Updated v87 and v88 service tests pass with preserved success and failure-path coverage."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Prefer small shared helpers or localized normalization improvements over new abstraction layers. Do not rename packages or change layout."
     },
     {
@@ -38,8 +38,8 @@
         "The final capability decision is traceable in project artifacts and does not introduce broad structural change."
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "This story depends on the stabilized service surface. Treat the review as mandatory and the new capability as conditional."
+      "passes": true,
+      "notes": "Reviewed the shared cluster surface against the supported v87/v88 generated clients and added `GetClusterLicense` because `/license` exists on both versions while `/status` is v88-only. The new capability keeps the current package boundaries and normalizes version-specific optional fields in the shared cluster model."
     },
     {
       "id": "#58-004",
@@ -51,8 +51,8 @@
         "The final validation path includes targeted cluster verification and a successful `make test` run."
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Keep this slice focused on proof of completion. Update README and CLI docs only if a user-visible cluster workflow or output changes."
+      "passes": true,
+      "notes": "Completed with cluster-focused validation via `go test ./internal/services/cluster/...`, tagged integration package compilation for `./testx/integration87` and `./testx/integration88`, and a successful `make test` run. No README or CLI doc update was needed because the user-visible cluster workflow and output stayed unchanged."
     }
   ]
 }

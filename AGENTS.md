@@ -50,6 +50,7 @@
 - Add or update tests alongside refactoring and bug fixes.
 - Prefer targeted tests near the changed package, then run the broader repository test suite.
 - For refactors, ensure tests verify preserved behavior, not just new internal structure.
+- Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
 
 ## Documentation conventions
 - User-facing documentation and examples should stay in sync with behavior changes.

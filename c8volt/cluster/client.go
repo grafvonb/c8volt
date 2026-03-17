@@ -23,3 +23,11 @@ func (c *client) GetClusterTopology(ctx context.Context, opts ...foptions.Facade
 	}
 	return fromDomainTopology(t), nil
 }
+
+func (c *client) GetClusterLicense(ctx context.Context, opts ...foptions.FacadeOption) (License, error) {
+	l, err := c.api.GetClusterLicense(ctx, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return License{}, ferrors.FromDomain(err)
+	}
+	return fromDomainLicense(l), nil
+}
