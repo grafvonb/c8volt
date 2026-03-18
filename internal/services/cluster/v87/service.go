@@ -2,7 +2,6 @@ package v87
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -10,8 +9,8 @@ import (
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	clustercommon "github.com/grafvonb/c8volt/internal/services/cluster/common"
 	"github.com/grafvonb/c8volt/internal/services/common"
-	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
 type Service struct {
@@ -67,23 +66,31 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 }
 
 func (s *Service) GetClusterTopology(ctx context.Context, opts ...services.CallOption) (d.Topology, error) {
-	callCfg := services.ApplyCallOptions(opts)
-	common.VerboseLog(ctx, callCfg, s.log, "requesting cluster topology", "baseURL", s.cfg.APIs.Camunda.BaseURL)
-	resp, err := s.c.GetTopologyWithResponse(ctx)
-	if err != nil {
-		return d.Topology{}, fmt.Errorf("fetch cluster topology: %w", err)
-	}
-	if resp == nil {
-		return d.Topology{}, fmt.Errorf("%w: topology response is nil", d.ErrMalformedResponse)
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.Topology{}, fmt.Errorf("fetch cluster topology: %w", err)
-	}
-	if resp.JSON200 == nil {
-		return d.Topology{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	topology := fromTopologyResponse(*resp.JSON200)
-	common.VerboseLog(ctx, callCfg, s.log, "cluster topology retrieved", "brokers", len(topology.Brokers), "clusterSize", topology.ClusterSize)
-	return topology, nil
+	return clustercommon.GetClusterTopology(ctx, s.log, s.cfg.APIs.Camunda.BaseURL, opts, func(ctx context.Context) (clustercommon.PayloadResponse[camundav87.TopologyResponse], error) {
+		resp, err := s.c.GetTopologyWithResponse(ctx)
+		if resp == nil || err != nil {
+			return clustercommon.PayloadResponse[camundav87.TopologyResponse]{Received: resp != nil}, err
+		}
+		return clustercommon.PayloadResponse[camundav87.TopologyResponse]{
+			Received:     true,
+			HTTPResponse: resp.HTTPResponse,
+			Body:         resp.Body,
+			Payload:      resp.JSON200,
+		}, nil
+	}, fromTopologyResponse)
+}
+
+func (s *Service) GetClusterLicense(ctx context.Context, opts ...services.CallOption) (d.License, error) {
+	return clustercommon.GetClusterLicense(ctx, s.log, s.cfg.APIs.Camunda.BaseURL, opts, func(ctx context.Context) (clustercommon.PayloadResponse[camundav87.LicenseResponse], error) {
+		resp, err := s.c.GetLicenseWithResponse(ctx)
+		if resp == nil || err != nil {
+			return clustercommon.PayloadResponse[camundav87.LicenseResponse]{Received: resp != nil}, err
+		}
+		return clustercommon.PayloadResponse[camundav87.LicenseResponse]{
+			Received:     true,
+			HTTPResponse: resp.HTTPResponse,
+			Body:         resp.Body,
+			Payload:      resp.JSON200,
+		}, nil
+	}, fromLicenseResponse)
 }

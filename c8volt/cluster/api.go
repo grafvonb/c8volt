@@ -8,6 +8,7 @@ import (
 
 type API interface {
 	GetClusterTopology(ctx context.Context, opts ...foptions.FacadeOption) (Topology, error)
+	GetClusterLicense(ctx context.Context, opts ...foptions.FacadeOption) (License, error)
 }
 
 var _ API = (*client)(nil)

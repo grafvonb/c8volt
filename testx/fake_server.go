@@ -39,6 +39,10 @@ var objectResponses = map[string]string{
 	  "ReplicationFactor": 1,
 	  "LastCompletedChangeId": ""
 	}`,
+	"/license": `{
+	  "licenseType": "SaaS",
+	  "validLicense": true
+	}`,
 }
 
 var objectResponsesV2 = map[string]string{
@@ -63,6 +67,12 @@ var objectResponsesV2 = map[string]string{
 	  "PartitionsCount": 1,
 	  "ReplicationFactor": 1,
 	  "LastCompletedChangeId": ""
+	}`,
+	"/v2/license": `{
+	  "expiresAt": "2030-01-01T00:00:00Z",
+	  "isCommercial": true,
+	  "licenseType": "Self-Managed Enterprise",
+	  "validLicense": true
 	}`,
 }
 

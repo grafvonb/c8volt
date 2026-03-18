@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type Topology struct {
 	Brokers               []Broker
 	ClusterSize           int32
@@ -25,3 +27,10 @@ type Partition struct {
 
 type PartitionHealth string
 type PartitionRole string
+
+type License struct {
+	ExpiresAt    *time.Time
+	IsCommercial *bool
+	LicenseType  string
+	ValidLicense bool
+}
