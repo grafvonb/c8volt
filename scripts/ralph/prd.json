@@ -25,7 +25,7 @@
         "Command tests cover successful and failing nested-command execution."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Keep the implementation bounded to command wiring in `cmd/`; do not change the underlying cluster service behavior."
     },
     {

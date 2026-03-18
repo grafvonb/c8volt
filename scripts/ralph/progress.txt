@@ -4,6 +4,7 @@
 - When extending cluster capabilities, prefer endpoints that exist in every supported generated Camunda client and normalize version-specific optional fields in `internal/domain/cluster.go` before exposing them through `c8volt/cluster`.
 - Integration helpers should call facade methods with the current signatures; resource deployment uses `cfg.App.Tenant` from config, so `DeployProcessDefinition` takes deployment units plus options, not an explicit tenant argument.
 - Command help tests can execute the shared root command directly with `SetArgs`, `SetOut`, and `ExecuteC` to verify Cobra tree wiring without standing up service dependencies.
+- For CLI command tests that execute real handlers, write an explicit temp `--config` file instead of relying on ambient env or repo-local config, and use a subprocess helper when you need to assert `os.Exit` paths.
 
 # Ralph Progress Log
 Started: Mon Mar 16 23:24:40 CET 2026
@@ -66,4 +67,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: Cobra command-tree coverage can be added in `cmd` by driving `Root()` directly and asserting help output from a shared buffer.
   - Gotchas encountered: `get cluster` has no subcommands in this slice, so its help output should be validated against usage text rather than `Available Commands`.
   - Useful context: the legacy `get cluster-topology` command still hangs directly off `get` and now routes through the shared topology runner for follow-up reuse.
+---
+
+## 2026-03-18 22:25:00 CET - #61-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Added the preferred `c8volt get cluster topology` command under the new `get cluster` hierarchy and wired it to the existing shared `runGetClusterTopology` execution path.
+- Added command coverage for nested help discoverability, successful nested execution against a local HTTP server, and failing nested execution with subprocess-based exit-code assertions.
+- Verified the story with `go test ./cmd/...` and `make test`.
+- Files changed: `AGENTS.md`, `cmd/get_cluster_topology.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: real CLI execution tests are stable when they pass a temp `--config` file instead of depending on ambient config discovery.
+  - Gotchas encountered: command failure paths in `cmd` terminate via `ferrors.HandleAndExit`, so error semantics need subprocess tests rather than direct in-process assertions.
+  - Useful context: the nested `get cluster topology` command now shares the exact runtime path and output behavior of the legacy `get cluster-topology` command.
 ---

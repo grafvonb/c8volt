@@ -15,8 +15,15 @@ var getClusterTopologyCmd = &cobra.Command{
 	Run:     runGetClusterTopology,
 }
 
+var getClusterTopologyNestedCmd = &cobra.Command{
+	Use:   "topology",
+	Short: "Get the cluster topology of the connected Camunda 8 cluster",
+	Run:   runGetClusterTopology,
+}
+
 func init() {
 	getCmd.AddCommand(getClusterTopologyCmd)
+	getClusterCmd.AddCommand(getClusterTopologyNestedCmd)
 }
 
 func runGetClusterTopology(cmd *cobra.Command, args []string) {

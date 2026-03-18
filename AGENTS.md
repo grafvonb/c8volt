@@ -44,6 +44,8 @@
 - Prefer targeted tests near the changed package, then run the broader repository test suite.
 - For refactors, ensure tests verify preserved behavior, not just new internal structure.
 - Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
+- CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
+- When command failures go through `ferrors.HandleAndExit`, assert exit codes with a subprocess helper because the handlers terminate via `os.Exit`.
 
 ## Documentation conventions
 - User-facing documentation and examples should stay in sync with behavior changes.
