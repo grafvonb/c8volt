@@ -12,20 +12,22 @@ var getClusterTopologyCmd = &cobra.Command{
 	Use:     "cluster-topology",
 	Short:   "Get the cluster topology of the connected Camunda 8 cluster",
 	Aliases: []string{"ct", "cluster-info", "ci"},
-	Run: func(cmd *cobra.Command, args []string) {
-		cli, log, cfg, err := NewCli(cmd)
-		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
-		}
-		log.Debug("fetching cluster topology")
-		topology, err := cli.GetClusterTopology(cmd.Context())
-		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching topology: %w", err))
-		}
-		cmd.Println(toolx.ToJSONString(topology))
-	},
+	Run:     runGetClusterTopology,
 }
 
 func init() {
 	getCmd.AddCommand(getClusterTopologyCmd)
+}
+
+func runGetClusterTopology(cmd *cobra.Command, args []string) {
+	cli, log, cfg, err := NewCli(cmd)
+	if err != nil {
+		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+	}
+	log.Debug("fetching cluster topology")
+	topology, err := cli.GetClusterTopology(cmd.Context())
+	if err != nil {
+		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching topology: %w", err))
+	}
+	cmd.Println(toolx.ToJSONString(topology))
 }

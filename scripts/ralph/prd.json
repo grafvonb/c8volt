@@ -12,7 +12,7 @@
         "Foundational command-tree tests cover `get` and `get cluster` help behavior."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Reuse existing Cobra command patterns in `cmd/`. Keep this slice limited to parent-command wiring, shared execution setup, and baseline help coverage."
     },
     {

@@ -1,10 +1,12 @@
-# Ralph Progress Log
-Started: Mon Mar 16 23:24:40 CET 2026
 ## Codebase Patterns
 - Keep `internal/services/cluster/api.go` and each version package `contract.go` on the same method set, with compile-time interface assertions in both places to catch drift before refactors land.
 - Put the shared cluster topology fetch/log/validation flow in `internal/services/cluster/common`, and keep version packages focused on generated-client calls plus payload conversion.
 - When extending cluster capabilities, prefer endpoints that exist in every supported generated Camunda client and normalize version-specific optional fields in `internal/domain/cluster.go` before exposing them through `c8volt/cluster`.
 - Integration helpers should call facade methods with the current signatures; resource deployment uses `cfg.App.Tenant` from config, so `DeployProcessDefinition` takes deployment units plus options, not an explicit tenant argument.
+- Command help tests can execute the shared root command directly with `SetArgs`, `SetOut`, and `ExecuteC` to verify Cobra tree wiring without standing up service dependencies.
+
+# Ralph Progress Log
+Started: Mon Mar 16 23:24:40 CET 2026
 ---
 
 ## 2026-03-16 23:28:00 CET - #58-001
@@ -52,4 +54,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: tagged integration packages are a useful compile gate even without environment-backed execution when you run them with `-run '^$'`.
   - Gotchas encountered: facade API drift can hide in integration helpers because those packages are excluded from the default `make test` path unless explicitly built with `-tags=integration`.
   - Useful context: this cluster refactor produced no user-visible CLI change, so docs parity for the final story is satisfied by explicitly recording the no-doc-change decision in the PRD/progress artifacts.
+---
+
+## 2026-03-18 22:07:47 CET - #61-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Added the `get cluster` parent command beneath `c8volt get` with baseline help behavior.
+- Moved cluster topology execution into a shared `runGetClusterTopology` function so later command entries can reuse the same implementation path.
+- Added `cmd` help tests covering `c8volt get --help` and `c8volt get cluster --help`, then ran `go test ./cmd/...` and `make test`.
+- Files changed: `cmd/get_cluster.go`, `cmd/get_cluster_topology.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`, `scripts/ralph/.codex-last-message-iter-1.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: Cobra command-tree coverage can be added in `cmd` by driving `Root()` directly and asserting help output from a shared buffer.
+  - Gotchas encountered: `get cluster` has no subcommands in this slice, so its help output should be validated against usage text rather than `Available Commands`.
+  - Useful context: the legacy `get cluster-topology` command still hangs directly off `get` and now routes through the shared topology runner for follow-up reuse.
 ---

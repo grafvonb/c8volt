@@ -1,0 +1,1 @@
+Implemented story `#61-001` by adding the `get cluster` parent command, extracting shared cluster topology execution into `runGetClusterTopology`, and adding baseline `cmd` help tests. Validation passed with `go test ./cmd/...` and `make test`.
