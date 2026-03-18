@@ -1,58 +1,58 @@
 {
-  "branchName": "61-cluster-topology-refactor",
-  "overview": "Refactor cluster topology retrieval into the nested `c8volt get cluster topology` hierarchy, preserve `c8volt get cluster-topology` as a quiet compatibility path, and prove the migration through command tests plus synchronized help and documentation updates.",
+  "branchName": "63-cluster-license",
+  "overview": "Add `c8volt get cluster license` under the existing `get cluster` hierarchy, reuse the current cluster license service and JSON output pattern, and finish with focused command tests plus synchronized documentation and CLI doc updates.",
   "userStories": [
     {
-      "id": "#61-001",
-      "title": "Establish the shared cluster command structure",
-      "description": "Introduce the `get cluster` parent command and stabilize a shared topology execution path so later command entries reuse existing behavior instead of duplicating it.",
+      "id": "#63-001",
+      "title": "Establish the cluster license command entry point",
+      "description": "Add the base `get cluster license` Cobra command and shared handler in the existing `cmd/` structure so the new feature has a repository-native entry point before behavior and docs are expanded.",
       "acceptanceCriteria": [
-        "A `cluster` command exists beneath `get` in the Cobra tree.",
-        "The topology command logic is routed through one shared execution path rather than separate duplicated implementations.",
-        "Foundational command-tree tests cover `get` and `get cluster` help behavior."
+        "A `license` command exists beneath `get cluster` in the Cobra tree.",
+        "The new command is wired in `cmd/` without introducing a parallel or legacy direct `cluster-license` command path.",
+        "The command entry point reuses existing CLI construction patterns already used by neighboring cluster read commands."
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Reuse existing Cobra command patterns in `cmd/`. Keep this slice limited to parent-command wiring, shared execution setup, and baseline help coverage."
+      "passes": false,
+      "notes": "Keep this slice limited to command registration and handler setup in `cmd/get_cluster_license.go` using existing repository patterns."
     },
     {
-      "id": "#61-002",
-      "title": "Deliver the preferred nested topology command",
-      "description": "Expose topology retrieval at `c8volt get cluster topology` while preserving the current output, failure behavior, exit semantics, and inherited flags from the existing command.",
+      "id": "#63-002",
+      "title": "Deliver successful cluster license retrieval",
+      "description": "Implement the success path for `c8volt get cluster license` by calling the existing cluster service and printing the returned `domain.License` payload through the standard JSON helper.",
       "acceptanceCriteria": [
-        "`c8volt get cluster topology` is available under the new `get cluster` hierarchy.",
-        "Running the nested command yields the same observable topology output and failure semantics as the prior behavior.",
-        "Command tests cover successful and failing nested-command execution."
+        "Running `c8volt get cluster license` with a valid config returns the structured license payload successfully.",
+        "Optional license fields remain absent when the service does not provide them instead of being replaced with invented values.",
+        "Command tests cover the successful execution path with an explicit temp config."
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Keep the implementation bounded to command wiring in `cmd/`; do not change the underlying cluster service behavior."
+      "passes": false,
+      "notes": "Route directly to `cli.GetClusterLicense(cmd.Context())`. Keep the implementation bounded to the CLI command and reuse the existing service/domain model."
     },
     {
-      "id": "#61-003",
-      "title": "Preserve the legacy cluster-topology compatibility path",
-      "description": "Keep `c8volt get cluster-topology` working during the deprecation period by routing it through the shared topology behavior and documenting deprecation only in help-oriented surfaces.",
+      "id": "#63-003",
+      "title": "Lock down help discovery and failure semantics",
+      "description": "Make the new command discoverable through `get` help surfaces and prove that failure handling matches existing `get` command behavior, including exit-code assertions through subprocess-based tests where needed.",
       "acceptanceCriteria": [
-        "`c8volt get cluster-topology` continues to execute successfully during the migration period.",
-        "The legacy path produces the same observable behavior as `c8volt get cluster topology`.",
-        "The legacy path does not emit a runtime deprecation warning."
+        "`c8volt get` and `c8volt get cluster` help expose `license` as a supported subcommand.",
+        "A failing `c8volt get cluster license` execution yields the established CLI failure semantics and exit code.",
+        "Command tests cover help discovery and failing execution behavior."
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Preserve or explicitly review existing legacy aliases such as `ct`, `cluster-info`, and `ci`. Keep deprecation messaging out of runtime output."
+      "passes": false,
+      "notes": "Follow the repository testing guidance in `cmd/get_test.go`: reset Cobra flags between in-process runs and use subprocess helpers when `ferrors.HandleAndExit` terminates via `os.Exit`."
     },
     {
-      "id": "#61-004",
-      "title": "Make the new hierarchy discoverable and validate completion",
-      "description": "Update help-facing documentation to prefer the nested command path, mark the legacy path as deprecated but supported, regenerate CLI docs, and run the repository validation flow.",
+      "id": "#63-004",
+      "title": "Align documentation and complete validation",
+      "description": "Update the source documentation surfaces that describe cluster read commands, regenerate the CLI reference pages from Cobra metadata, and run the targeted plus repository-wide validation flow.",
       "acceptanceCriteria": [
-        "`c8volt get` help exposes `cluster`, and `c8volt get cluster` help exposes `topology`.",
-        "README examples and generated CLI docs prefer `c8volt get cluster topology` and mark `c8volt get cluster-topology` as deprecated but supported.",
-        "Validation includes targeted command tests, relevant cluster regression checks, regenerated docs, and a successful `make test` run."
+        "README and `docs/index.md` mention `c8volt get cluster license` wherever cluster read command discovery is documented.",
+        "Generated CLI docs include the new cluster license command and are refreshed from source help text rather than hand-edited.",
+        "Validation includes `go test ./cmd/... -race -count=1`, `go test ./internal/services/cluster/... -race -count=1`, `make docs`, and `make test`."
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Update source docs such as `README.md`, `docs/index.md`, and `docs/cli/` files, then regenerate derived CLI documentation instead of editing generated site output directly."
+      "passes": false,
+      "notes": "Update source docs first, then regenerate `docs/cli/`. Do not hand-edit generated output when the repository already provides `make docs`."
     }
   ]
 }
