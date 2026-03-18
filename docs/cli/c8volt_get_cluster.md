@@ -1,26 +1,25 @@
 ---
-title: "c8volt get cluster-topology"
+title: "c8volt get cluster"
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt get cluster-topology
+## c8volt get cluster
 
-Get the cluster topology of the connected Camunda 8 cluster
+Get cluster resources
 
 ### Synopsis
 
-Get the cluster topology of the connected Camunda 8 cluster.
-
-Deprecated but supported: use `c8volt get cluster topology`.
+Get cluster resources such as the topology of the connected Camunda 8 cluster.
+It is a parent command and requires a subcommand to specify the cluster resource to get.
 
 ```
-c8volt get cluster-topology [flags]
+c8volt get cluster [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for cluster-topology
+  -h, --help   help for cluster
 ```
 
 ### Options inherited from parent commands
@@ -46,4 +45,5 @@ c8volt get cluster-topology [flags]
 ### SEE ALSO
 
 * [c8volt get](c8volt_get.md)	 - Get resources
+* [c8volt get cluster topology](c8volt_get_cluster_topology.md)	 - Get the cluster topology of the connected Camunda 8 cluster
 

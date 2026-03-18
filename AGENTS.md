@@ -13,13 +13,6 @@
 - For issue-based work, first check whether a matching local or remote branch already exists and reuse it when appropriate.
 - If the issue already has a linked or existing branch, use that exact branch name.
 - Do not invent a different branch name when an issue branch already exists.
-- If no matching branch exists, create one using GitHub-style issue naming:
-  - format: `<issue-padded>-<description>`
-  - example: for issue #58 with the description "Review and refactor internal service cluster api implementation", use `058-review-and-refactor-internal-service-cluster-api-implementation`
-- Use a three-digit zero-padded GitHub issue number prefix for new issue branches:
-  - use `058-...`, not `58-...`
-- If the existing matching branch does not use the required three-digit zero-padded prefix, stop and report that the branch format is incompatible with subsequent Spec Kit skills, which expect a `NNN-description` branch name.
-- Keep `<description>` concise, lowercase, and hyphen-separated.
 - Do not add extra prefixes such as `codex/` unless the user explicitly asks or the repository explicitly requires them.
 - Do not create or switch to a different feature branch unless the user explicitly asks.
 
@@ -51,10 +44,14 @@
 - Prefer targeted tests near the changed package, then run the broader repository test suite.
 - For refactors, ensure tests verify preserved behavior, not just new internal structure.
 - Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
+- CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
+- `cmd` tests that reuse `Root()` across multiple in-process executions should reset Cobra flag state first, because help-oriented executions leave flags set on the shared command tree.
+- When command failures go through `ferrors.HandleAndExit`, assert exit codes with a subprocess helper because the handlers terminate via `os.Exit`.
 
 ## Documentation conventions
 - User-facing documentation and examples should stay in sync with behavior changes.
 - When changing user-facing commands, APIs, or workflows, update the relevant documentation in the same change.
+- CLI reference pages under `docs/cli/` are generated from Cobra command metadata via `make docs`; update command help text first, then regenerate instead of hand-editing those files.
 
 ## Technology baseline
 - Follow the repository's current toolchain, dependency, and framework conventions.
