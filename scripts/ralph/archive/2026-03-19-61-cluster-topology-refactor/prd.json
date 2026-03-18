@@ -12,7 +12,7 @@
         "The command entry point reuses existing CLI construction patterns already used by neighboring cluster read commands."
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "Keep this slice limited to command registration and handler setup in `cmd/get_cluster_license.go` using existing repository patterns."
     },
     {

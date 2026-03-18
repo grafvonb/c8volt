@@ -7,7 +7,6 @@
 - For CLI command tests that execute real handlers, write an explicit temp `--config` file instead of relying on ambient env or repo-local config, and use a subprocess helper when you need to assert `os.Exit` paths.
 - When `cmd` tests reuse `Root()` in-process, reset Cobra flag state between executions; help runs leave flags set on the shared command tree and can make later command executions show help unexpectedly.
 - Treat `docs/cli/` as generated output from Cobra command metadata and regenerate it with `make docs` after command-tree or help-text changes instead of hand-editing the Markdown pages.
-- New nested `get cluster` subcommands belong in `cmd/get_cluster_<resource>.go`, register themselves from `init()`, and reuse the standard `NewCli` + `ferrors.HandleAndExit` + `toolx.ToJSONString` read-command flow.
 
 # Ralph Progress Log
 Started: Mon Mar 16 23:24:40 CET 2026
@@ -106,15 +105,4 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: CLI doc discoverability changes should be driven from Cobra command metadata and then regenerated into `docs/cli/` with `make docs`.
   - Gotchas encountered: legacy-command support messaging belongs in help-facing surfaces only, so wording updates should go into command `Long` text rather than runtime deprecation hooks.
   - Useful context: the generated `docs/cli` tree now publishes both the preferred nested command page and the compatibility-path page, so README/docs examples should prefer the nested path to stay aligned.
----
-
-## [2026-03-19 00:02:16 CET] - #63-001
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
-- Added `get cluster license` as a nested Cobra command in the existing cluster command hierarchy with a shared `runGetClusterLicense` handler.
-- Extended `cmd/get_test.go` help coverage so `c8volt get cluster` and `c8volt get cluster license --help` prove the new entry point is discoverable.
-- Files changed: `cmd/get_cluster_license.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
-- **Learnings for future iterations:**
-  - Patterns discovered: cluster read commands follow the same `NewCli` / `ferrors.HandleAndExit` / JSON print structure used by `get cluster topology`.
-  - Gotchas encountered: `cmd` tests must call `resetCommandTreeFlags(root)` before reusing `Root()` or help executions leave Cobra flags dirty.
-  - Useful context: there is no legacy `cluster-license` command path; only the nested `get cluster license` command should be exposed for this feature.
 ---
