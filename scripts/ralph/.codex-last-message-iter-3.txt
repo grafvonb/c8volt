@@ -1,0 +1,7 @@
+Implemented `#61-003` on branch `61-cluster-topology-refactor`.
+
+The legacy `c8volt get cluster-topology` command still routes through the shared topology runner, now carries a help-only deprecation note, and keeps the existing aliases (`ct`, `cluster-info`, `ci`) intact in [cmd/get_cluster_topology.go](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster_topology.go). I expanded [cmd/get_test.go](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go) with legacy help coverage, success and failure parity checks for the compatibility path, an alias execution check, and a shared flag reset helper so repeated `Root()` executions do not leak `--help` state between tests.
+
+I recorded the reusable Cobra test-state rule in [AGENTS.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/AGENTS.md), will mark the story passed in [scripts/ralph/prd.json](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/prd.json), and will append progress in [scripts/ralph/progress.txt](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/progress.txt).
+
+Validation passed with `go test ./cmd/...` and `make test`.

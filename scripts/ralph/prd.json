@@ -38,7 +38,7 @@
         "The legacy path does not emit a runtime deprecation warning."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Preserve or explicitly review existing legacy aliases such as `ct`, `cluster-info`, and `ci`. Keep deprecation messaging out of runtime output."
     },
     {

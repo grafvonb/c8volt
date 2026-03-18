@@ -11,6 +11,7 @@ import (
 var getClusterTopologyCmd = &cobra.Command{
 	Use:     "cluster-topology",
 	Short:   "Get the cluster topology of the connected Camunda 8 cluster",
+	Long:    "Get the cluster topology of the connected Camunda 8 cluster.\n\nDeprecated: use `c8volt get cluster topology`.",
 	Aliases: []string{"ct", "cluster-info", "ci"},
 	Run:     runGetClusterTopology,
 }

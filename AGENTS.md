@@ -45,6 +45,7 @@
 - For refactors, ensure tests verify preserved behavior, not just new internal structure.
 - Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
 - CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
+- `cmd` tests that reuse `Root()` across multiple in-process executions should reset Cobra flag state first, because help-oriented executions leave flags set on the shared command tree.
 - When command failures go through `ferrors.HandleAndExit`, assert exit codes with a subprocess helper because the handlers terminate via `os.Exit`.
 
 ## Documentation conventions

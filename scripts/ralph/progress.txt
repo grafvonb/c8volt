@@ -5,6 +5,7 @@
 - Integration helpers should call facade methods with the current signatures; resource deployment uses `cfg.App.Tenant` from config, so `DeployProcessDefinition` takes deployment units plus options, not an explicit tenant argument.
 - Command help tests can execute the shared root command directly with `SetArgs`, `SetOut`, and `ExecuteC` to verify Cobra tree wiring without standing up service dependencies.
 - For CLI command tests that execute real handlers, write an explicit temp `--config` file instead of relying on ambient env or repo-local config, and use a subprocess helper when you need to assert `os.Exit` paths.
+- When `cmd` tests reuse `Root()` in-process, reset Cobra flag state between executions; help runs leave flags set on the shared command tree and can make later command executions show help unexpectedly.
 
 # Ralph Progress Log
 Started: Mon Mar 16 23:24:40 CET 2026
@@ -79,4 +80,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: real CLI execution tests are stable when they pass a temp `--config` file instead of depending on ambient config discovery.
   - Gotchas encountered: command failure paths in `cmd` terminate via `ferrors.HandleAndExit`, so error semantics need subprocess tests rather than direct in-process assertions.
   - Useful context: the nested `get cluster topology` command now shares the exact runtime path and output behavior of the legacy `get cluster-topology` command.
+---
+
+## 2026-03-18 22:18:11 CET - #61-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Kept `c8volt get cluster-topology` and its existing aliases working through the shared topology runner, while adding a help-only deprecation note that does not leak into runtime output.
+- Added `cmd` coverage for legacy help text, successful and failing compatibility-path execution, alias execution, and a shared flag reset helper to keep repeated `Root()` executions stable in one process.
+- Verified the story with `go test ./cmd/...` and `make test`.
+- Files changed: `AGENTS.md`, `cmd/get_cluster_topology.go`, `cmd/get_test.go`, `scripts/ralph/.codex-last-message-iter-3.txt`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: shared Cobra test helpers should reset flag state before each execution when they reuse the singleton root command.
+  - Gotchas encountered: a prior help test can leave `--help` set on the legacy command and make later execution tests print help instead of running the handler.
+  - Useful context: the legacy `cluster-topology` path can advertise deprecation through help text without using Cobra's runtime deprecation warning mechanism.
 ---
