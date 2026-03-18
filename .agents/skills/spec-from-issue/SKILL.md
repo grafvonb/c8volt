@@ -71,11 +71,13 @@ Examples:
 5. Run the script with `--number <issue-number>`.
 6. Read the JSON output and inspect `BRANCH_NAME`, `SPEC_FILE`, and `FEATURE_NUM`.
 7. If the script output uses zero-padded numbering, rename the branch and feature directory so they use the exact raw issue number instead.
-8. Continue with the normal `speckit-specify` workflow to write and validate the spec using the normalized names.
+8. After normalization, ensure downstream Spec Kit scripts resolve the normalized branch and spec directory names correctly before handing off to follow-on commands such as `speckit-clarify` or `speckit-plan`.
+9. Continue with the normal `speckit-specify` workflow to write and validate the spec using the normalized names.
 
 ## Notes
 
 - Only override branch numbering. Keep the rest of the `speckit-specify` workflow the same.
 - Do not run the feature creation script more than once per feature.
 - Do not treat zero-padded output from the wrapped script as authoritative when an issue URL is present.
+- Prefer fixing shared Spec Kit branch-prefix validation to accept raw issue-number branches instead of relying on a one-off clarify workaround.
 - If both a GitHub issue URL and an explicit conflicting `--number` are supplied by the user, prefer the issue number and mention that choice in the final report.
