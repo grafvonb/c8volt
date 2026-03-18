@@ -1,58 +1,58 @@
 {
-  "branchName": "058-review-and-refactor-internal-service-cluster-api-implementation",
-  "overview": "Refactor the internal cluster service to reduce duplication across supported Camunda versions while preserving current topology behavior, explicitly review supported generated-client coverage, and prove completion with focused tests plus conditional documentation updates.",
+  "branchName": "61-cluster-topology-refactor",
+  "overview": "Refactor cluster topology retrieval into the nested `c8volt get cluster topology` hierarchy, preserve `c8volt get cluster-topology` as a quiet compatibility path, and prove the migration through command tests plus synchronized help and documentation updates.",
   "userStories": [
     {
-      "id": "#58-001",
-      "title": "Stabilize the shared cluster contract",
-      "description": "Lock the reviewed cluster service surface and baseline factory behavior so later refactoring happens against an explicit, tested contract within the existing package structure.",
+      "id": "#61-001",
+      "title": "Establish the shared cluster command structure",
+      "description": "Introduce the `get cluster` parent command and stabilize a shared topology execution path so later command entries reuse existing behavior instead of duplicating it.",
       "acceptanceCriteria": [
-        "The cluster service entry point remains the single version-selection path in the existing package layout.",
-        "Factory tests cover supported-version selection and unknown-version failure behavior.",
-        "The reviewed shared service surface is aligned across the cluster API and both version-specific contracts."
+        "A `cluster` command exists beneath `get` in the Cobra tree.",
+        "The topology command logic is routed through one shared execution path rather than separate duplicated implementations.",
+        "Foundational command-tree tests cover `get` and `get cluster` help behavior."
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Reuse the current factory-plus-versioned-service pattern. Keep this slice limited to contract and baseline test stabilization before core refactoring."
+      "passes": false,
+      "notes": "Reuse existing Cobra command patterns in `cmd/`. Keep this slice limited to parent-command wiring, shared execution setup, and baseline help coverage."
     },
     {
-      "id": "#58-002",
-      "title": "Refactor topology handling without behavior change",
-      "description": "Improve readability and reduce avoidable duplication in the shared cluster entry point and the v87/v88 topology implementations while preserving current observable topology and error behavior.",
+      "id": "#61-002",
+      "title": "Deliver the preferred nested topology command",
+      "description": "Expose topology retrieval at `c8volt get cluster topology` while preserving the current output, failure behavior, exit semantics, and inherited flags from the existing command.",
       "acceptanceCriteria": [
-        "Shared responsibilities between the factory, API surface, and version-specific services are clearer and duplication is reduced.",
-        "Existing topology-fetch behavior, including current error handling, remains unchanged from the caller perspective.",
-        "Updated v87 and v88 service tests pass with preserved success and failure-path coverage."
+        "`c8volt get cluster topology` is available under the new `get cluster` hierarchy.",
+        "Running the nested command yields the same observable topology output and failure semantics as the prior behavior.",
+        "Command tests cover successful and failing nested-command execution."
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Prefer small shared helpers or localized normalization improvements over new abstraction layers. Do not rename packages or change layout."
+      "passes": false,
+      "notes": "Keep the implementation bounded to command wiring in `cmd/`; do not change the underlying cluster service behavior."
     },
     {
-      "id": "#58-003",
-      "title": "Complete supported-version capability review",
-      "description": "Review supported generated cluster capabilities against the current service surface and either add one justified low-risk missing capability or record an explicit no-addition decision.",
+      "id": "#61-003",
+      "title": "Preserve the legacy cluster-topology compatibility path",
+      "description": "Keep `c8volt get cluster-topology` working during the deprecation period by routing it through the shared topology behavior and documenting deprecation only in help-oriented surfaces.",
       "acceptanceCriteria": [
-        "The supported generated cluster capabilities are explicitly reviewed against the service surface.",
-        "Any added capability fits the current boundaries and is covered by automated tests, or the no-addition decision is explicitly documented.",
-        "The final capability decision is traceable in project artifacts and does not introduce broad structural change."
+        "`c8volt get cluster-topology` continues to execute successfully during the migration period.",
+        "The legacy path produces the same observable behavior as `c8volt get cluster topology`.",
+        "The legacy path does not emit a runtime deprecation warning."
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Reviewed the shared cluster surface against the supported v87/v88 generated clients and added `GetClusterLicense` because `/license` exists on both versions while `/status` is v88-only. The new capability keeps the current package boundaries and normalizes version-specific optional fields in the shared cluster model."
+      "passes": false,
+      "notes": "Preserve or explicitly review existing legacy aliases such as `ct`, `cluster-info`, and `ci`. Keep deprecation messaging out of runtime output."
     },
     {
-      "id": "#58-004",
-      "title": "Prove completion with integration validation and docs parity",
-      "description": "Finalize the feature by updating integration coverage, making documentation impact explicit, and running the repository validation path required for safe merge.",
+      "id": "#61-004",
+      "title": "Make the new hierarchy discoverable and validate completion",
+      "description": "Update help-facing documentation to prefer the nested command path, mark the legacy path as deprecated but supported, regenerate CLI docs, and run the repository validation flow.",
       "acceptanceCriteria": [
-        "Integration coverage validates the final cluster service behavior for supported versions.",
-        "Documentation impact is explicit: either no user-visible change is confirmed or affected docs are updated in the same change.",
-        "The final validation path includes targeted cluster verification and a successful `make test` run."
+        "`c8volt get` help exposes `cluster`, and `c8volt get cluster` help exposes `topology`.",
+        "README examples and generated CLI docs prefer `c8volt get cluster topology` and mark `c8volt get cluster-topology` as deprecated but supported.",
+        "Validation includes targeted command tests, relevant cluster regression checks, regenerated docs, and a successful `make test` run."
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Completed with cluster-focused validation via `go test ./internal/services/cluster/...`, tagged integration package compilation for `./testx/integration87` and `./testx/integration88`, and a successful `make test` run. No README or CLI doc update was needed because the user-visible cluster workflow and output stayed unchanged."
+      "passes": false,
+      "notes": "Update source docs such as `README.md`, `docs/index.md`, and `docs/cli/` files, then regenerate derived CLI documentation instead of editing generated site output directly."
     }
   ]
 }
