@@ -87,6 +87,28 @@ func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
 	require.Contains(t, output, `"ClusterSize": 1`)
 }
 
+func TestGetClusterLicenseCommand_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "licenseType": "SaaS",
+  "validLicense": true
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigWithVersion(t, srv.URL, "8.7")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
+
+	require.Contains(t, output, `"licenseType": "SaaS"`)
+	require.Contains(t, output, `"validLicense": true`)
+	require.NotContains(t, output, `"expiresAt"`)
+	require.NotContains(t, output, `"isCommercial"`)
+}
+
 func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -259,15 +281,21 @@ func resetCommandTreeFlags(cmd *cobra.Command) {
 func writeTestConfig(t *testing.T, baseURL string) string {
 	t.Helper()
 
+	return writeTestConfigWithVersion(t, baseURL, "8.8")
+}
+
+func writeTestConfigWithVersion(t *testing.T, baseURL, camundaVersion string) string {
+	t.Helper()
+
 	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
 	content := fmt.Sprintf(`app:
-  camunda_version: "8.8"
+  camunda_version: %q
 auth:
   mode: none
 apis:
   camunda_api:
     base_url: %q
-`, baseURL)
+`, camundaVersion, baseURL)
 	require.NoError(t, os.WriteFile(cfgPath, []byte(content), 0o600))
 	return cfgPath
 }

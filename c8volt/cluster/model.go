@@ -29,8 +29,8 @@ type PartitionHealth string
 type PartitionRole string
 
 type License struct {
-	ExpiresAt    *time.Time
-	IsCommercial *bool
-	LicenseType  string
-	ValidLicense bool
+	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`
+	IsCommercial *bool      `json:"isCommercial,omitempty"`
+	LicenseType  string     `json:"licenseType"`
+	ValidLicense bool       `json:"validLicense"`
 }

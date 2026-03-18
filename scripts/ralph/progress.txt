@@ -2,6 +2,7 @@
 - Keep `internal/services/cluster/api.go` and each version package `contract.go` on the same method set, with compile-time interface assertions in both places to catch drift before refactors land.
 - Put the shared cluster topology fetch/log/validation flow in `internal/services/cluster/common`, and keep version packages focused on generated-client calls plus payload conversion.
 - When extending cluster capabilities, prefer endpoints that exist in every supported generated Camunda client and normalize version-specific optional fields in `internal/domain/cluster.go` before exposing them through `c8volt/cluster`.
+- CLI-facing facade models should define explicit JSON tags when command output depends on lower-camel names or omitting nil optional fields.
 - Integration helpers should call facade methods with the current signatures; resource deployment uses `cfg.App.Tenant` from config, so `DeployProcessDefinition` takes deployment units plus options, not an explicit tenant argument.
 - Command help tests can execute the shared root command directly with `SetArgs`, `SetOut`, and `ExecuteC` to verify Cobra tree wiring without standing up service dependencies.
 - For CLI command tests that execute real handlers, write an explicit temp `--config` file instead of relying on ambient env or repo-local config, and use a subprocess helper when you need to assert `os.Exit` paths.
@@ -117,4 +118,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: cluster read commands follow the same `NewCli` / `ferrors.HandleAndExit` / JSON print structure used by `get cluster topology`.
   - Gotchas encountered: `cmd` tests must call `resetCommandTreeFlags(root)` before reusing `Root()` or help executions leave Cobra flags dirty.
   - Useful context: there is no legacy `cluster-license` command path; only the nested `get cluster license` command should be exposed for this feature.
+---
+
+## [2026-03-19 00:07:27 CET] - #63-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Added a success-path command test for `c8volt get cluster license` that exercises the real handler with an explicit temp config and validates the JSON payload returned from `/v2/license`.
+- Updated the CLI-facing cluster license model to use JSON tags with `omitempty` on optional fields so version-specific license fields stay absent when the underlying service does not provide them.
+- Verified the story with `go test ./cmd/... -race -count=1` and `make test`.
+- Files changed: `c8volt/cluster/model.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: CLI-facing facade models should carry explicit JSON tags when command output needs lower-camel field names or omission of nil optionals.
+  - Gotchas encountered: testing optional cluster license fields requires a v87 temp config; the v88 generated client treats `isCommercial` as a concrete bool and will surface `false` even when omitted from a hand-written fixture.
+  - Useful context: `writeTestConfigWithVersion` lets `cmd` tests pin Camunda version behavior without depending on repo-local config.
 ---

@@ -25,7 +25,7 @@
         "Command tests cover the successful execution path with an explicit temp config."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Route directly to `cli.GetClusterLicense(cmd.Context())`. Keep the implementation bounded to the CLI command and reuse the existing service/domain model."
     },
     {
