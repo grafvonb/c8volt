@@ -131,3 +131,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Gotchas encountered: testing optional cluster license fields requires a v87 temp config; the v88 generated client treats `isCommercial` as a concrete bool and will surface `false` even when omitted from a hand-written fixture.
   - Useful context: `writeTestConfigWithVersion` lets `cmd` tests pin Camunda version behavior without depending on repo-local config.
 ---
+
+## [2026-03-19 00:09:53 CET] - #63-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Added subprocess-backed failure coverage for `c8volt get cluster license` so the command's `ferrors.HandleAndExit` path is asserted with the established unavailable exit code and error message.
+- Kept help discoverability coverage in place for both `c8volt get --help` and `c8volt get cluster --help`, which already expose the cluster hierarchy and nested `license` command.
+- Verified the story with `go test ./cmd/... -race -count=1` and `make test`.
+- Files changed: `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: nested cluster read-command failure tests can reuse the same subprocess helper shape as topology by swapping only the subcommand args and expected error text.
+  - Gotchas encountered: exit-code assertions for license failures need a standard `writeTestConfig` v88 config, since the failure branch is version-agnostic and should not overconstrain the fixture.
+  - Useful context: the existing help tests already satisfy the story's discoverability requirement, so this slice only needed the failing execution coverage.
+---

@@ -38,7 +38,7 @@
         "Command tests cover help discovery and failing execution behavior."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Follow the repository testing guidance in `cmd/get_test.go`: reset Cobra flags between in-process runs and use subprocess helpers when `ferrors.HandleAndExit` terminates via `os.Exit`."
     },
     {
