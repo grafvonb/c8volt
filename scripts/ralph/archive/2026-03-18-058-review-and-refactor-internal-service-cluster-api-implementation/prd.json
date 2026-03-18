@@ -12,7 +12,7 @@
         "Foundational command-tree tests cover `get` and `get cluster` help behavior."
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "Reuse existing Cobra command patterns in `cmd/`. Keep this slice limited to parent-command wiring, shared execution setup, and baseline help coverage."
     },
     {
@@ -25,7 +25,7 @@
         "Command tests cover successful and failing nested-command execution."
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": "Keep the implementation bounded to command wiring in `cmd/`; do not change the underlying cluster service behavior."
     },
     {
@@ -38,7 +38,7 @@
         "The legacy path does not emit a runtime deprecation warning."
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": "Preserve or explicitly review existing legacy aliases such as `ct`, `cluster-info`, and `ci`. Keep deprecation messaging out of runtime output."
     },
     {
@@ -51,7 +51,7 @@
         "Validation includes targeted command tests, relevant cluster regression checks, regenerated docs, and a successful `make test` run."
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": "Update source docs such as `README.md`, `docs/index.md`, and `docs/cli/` files, then regenerate derived CLI documentation instead of editing generated site output directly."
     }
   ]

@@ -192,12 +192,14 @@ log:
 
 Test the connection and list cluster topology:
 ```bash
-./c8volt get cluster-topology
+./c8volt get cluster topology
 ```
 or use explicit path to config file:
 ```bash
-./c8volt get cluster-topology --config ./config-minimal.yaml
+./c8volt get cluster topology --config ./config-minimal.yaml
 ```
+The legacy path `./c8volt get cluster-topology` remains supported during the migration period.
+
 You should see output like this:
 ```bash
 {

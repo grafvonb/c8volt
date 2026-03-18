@@ -51,6 +51,7 @@
 ## Documentation conventions
 - User-facing documentation and examples should stay in sync with behavior changes.
 - When changing user-facing commands, APIs, or workflows, update the relevant documentation in the same change.
+- CLI reference pages under `docs/cli/` are generated from Cobra command metadata via `make docs`; update command help text first, then regenerate instead of hand-editing those files.
 
 ## Technology baseline
 - Follow the repository's current toolchain, dependency, and framework conventions.

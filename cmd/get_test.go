@@ -37,7 +37,7 @@ func TestGetClusterTopologyLegacyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster-topology", "--help")
 
 	require.Contains(t, output, "Get the cluster topology of the connected Camunda 8 cluster")
-	require.Contains(t, output, "Deprecated: use `c8volt get cluster topology`.")
+	require.Contains(t, output, "Deprecated but supported: use `c8volt get cluster topology`.")
 }
 
 func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
