@@ -13,13 +13,6 @@
 - For issue-based work, first check whether a matching local or remote branch already exists and reuse it when appropriate.
 - If the issue already has a linked or existing branch, use that exact branch name.
 - Do not invent a different branch name when an issue branch already exists.
-- If no matching branch exists, create one using GitHub-style issue naming:
-  - format: `<issue-padded>-<description>`
-  - example: for issue #58 with the description "Review and refactor internal service cluster api implementation", use `058-review-and-refactor-internal-service-cluster-api-implementation`
-- Use a three-digit zero-padded GitHub issue number prefix for new issue branches:
-  - use `058-...`, not `58-...`
-- If the existing matching branch does not use the required three-digit zero-padded prefix, stop and report that the branch format is incompatible with subsequent Spec Kit skills, which expect a `NNN-description` branch name.
-- Keep `<description>` concise, lowercase, and hyphen-separated.
 - Do not add extra prefixes such as `codex/` unless the user explicitly asks or the repository explicitly requires them.
 - Do not create or switch to a different feature branch unless the user explicitly asks.
 

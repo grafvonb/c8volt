@@ -26,19 +26,26 @@ Use this skill when the feature is tied to a GitHub issue and the branch number 
    - `--short-name "<generated-short-name>"`
    - `--number "<issue-number>"`
    - the feature description text
-5. Do not use the script's auto-number detection when an issue URL is present.
-6. If the issue URL is missing or malformed, stop and tell the user what was missing instead of guessing the issue number.
+5. Treat the raw issue number as authoritative for the final branch and feature directory names.
+6. If the script returns a zero-padded feature number such as `061`, normalize it back to the raw issue number form such as `61` for:
+   - the branch name
+   - the spec directory under `specs/`
+   - any reported paths or follow-on workflow state
+7. Do not use the script's auto-number detection when an issue URL is present.
+8. If the issue URL is missing or malformed, stop and tell the user what was missing instead of guessing the issue number.
 
 ## Branch Number Override
 
 This skill intentionally overrides the default `speckit-specify` instruction that says not to pass `--number`.
 
 When a valid GitHub issue URL is provided, the issue number is the branch number.
+Use the exact issue number text for the final branch and folder prefix. Do not keep zero-padded formatting from the wrapped script.
 
 Examples:
 
-- `https://github.com/grafvonb/c8volt/issues/45` -> branch must start with `45-`
-- `https://github.com/NTTDATA-DACH/viewnode/issues/47` -> branch must start with `47-`
+- `https://github.com/grafvonb/c8volt/issues/45` -> branch must start with `45-`, not `045-`
+- `https://github.com/grafvonb/c8volt/issues/61` -> branch must start with `61-`, not `061-`
+- `https://github.com/NTTDATA-DACH/viewnode/issues/47` -> branch must start with `47-`, not `047-`
 
 ## Short Name Rules
 
@@ -62,11 +69,13 @@ Examples:
    - the issue title/summary if it is already available in the conversation
 4. Generate the short name.
 5. Run the script with `--number <issue-number>`.
-6. Read the JSON output and use its `BRANCH_NAME` and `SPEC_FILE` values.
-7. Continue with the normal `speckit-specify` workflow to write and validate the spec.
+6. Read the JSON output and inspect `BRANCH_NAME`, `SPEC_FILE`, and `FEATURE_NUM`.
+7. If the script output uses zero-padded numbering, rename the branch and feature directory so they use the exact raw issue number instead.
+8. Continue with the normal `speckit-specify` workflow to write and validate the spec using the normalized names.
 
 ## Notes
 
 - Only override branch numbering. Keep the rest of the `speckit-specify` workflow the same.
 - Do not run the feature creation script more than once per feature.
+- Do not treat zero-padded output from the wrapped script as authoritative when an issue URL is present.
 - If both a GitHub issue URL and an explicit conflicting `--number` are supplied by the user, prefer the issue number and mention that choice in the final report.
