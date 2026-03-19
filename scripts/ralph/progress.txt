@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - Cluster subresources belong under `getClusterCmd`; keep each nested Cobra command in its own `cmd/get_cluster_<resource>.go` file and register it from `init()`.
+- CLI tests that depend on version-specific API payloads should set `app.camunda_version` in the temp config explicitly instead of relying on the default test config version.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -13,4 +14,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: cluster resource commands are split into dedicated `cmd/get_cluster_<resource>.go` files and attached to `getClusterCmd` during `init()`.
   - Gotchas encountered: `scripts/ralph/` already had unrelated local changes; avoid overwriting or sweeping those into the iteration commit.
   - Useful context: `cmd/get_test.go` already provides shared helpers for Cobra help assertions and explicit temp-config execution paths.
+---
+## 2026-03-19 22:06:03 CET - #63-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Implemented `c8volt get cluster license` so it now calls the existing cluster service, emits the license payload via the standard pretty-JSON output path, and surfaces service errors with the established CLI exit handling.
+- Added command coverage for a successful nested license fetch and for an empty 200 OK license response that must fail clearly instead of being accepted.
+- Files changed: `cmd/get_cluster_license.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: `get` subcommands that fetch a single cluster resource follow the same `NewCli` + `ferrors.HandleAndExit` + `toolx.ToJSONString` execution shape as topology.
+  - Gotchas encountered: version-specific generated clients can normalize omitted fields differently, so command tests should pin `app.camunda_version` when asserting optional-field output.
+  - Useful context: an empty 200 OK body on the license endpoint triggers the malformed-response path; a JSON `null` body does not exercise that branch in the generated client.
 ---

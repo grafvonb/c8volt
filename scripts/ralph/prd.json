@@ -25,7 +25,7 @@
         "Malformed or empty successful responses are surfaced clearly instead of being silently accepted."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Reuse the existing cluster service and domain payload. Keep the change bounded to CLI exposure of current license behavior rather than redesigning the service layer."
     },
     {
