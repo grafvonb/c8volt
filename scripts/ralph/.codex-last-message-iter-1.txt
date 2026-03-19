@@ -1,7 +1,0 @@
-Implemented story `#61-001` and committed it as `cdc637d` with message `feat: #61-001 - Establish the shared cluster command structure`.
-
-The change adds the new `get cluster` parent command in [cmd/get_cluster.go](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster.go), extracts shared topology execution in [cmd/get_cluster_topology.go](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster_topology.go), and adds baseline Cobra help coverage in [cmd/get_test.go](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go). I also marked the story passed in [scripts/ralph/prd.json](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/prd.json) and appended the iteration log in [scripts/ralph/progress.txt](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/progress.txt).
-
-Validation passed with `go test ./cmd/...` and `make test`.
-
-Unrelated pre-existing worktree changes remain in `scripts/ralph/.last-branch` and `scripts/ralph/archive/...`; I left those out of the commit.
