@@ -1,25 +1,26 @@
 ---
-title: "c8volt get cluster"
+title: "c8volt get cluster license"
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt get cluster
+## c8volt get cluster license
 
-Get cluster resources
+Get the cluster license of the connected Camunda 8 cluster
 
 ### Synopsis
 
-Get cluster resources such as the topology or license of the connected Camunda 8 cluster.
-It is a parent command and requires a subcommand to specify the cluster resource to get.
+Get the cluster license of the connected Camunda 8 cluster.
+
+This command requires a configured Camunda 8 connection.
 
 ```
-c8volt get cluster [flags]
+c8volt get cluster license [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for cluster
+  -h, --help   help for license
 ```
 
 ### Options inherited from parent commands
@@ -44,7 +45,5 @@ c8volt get cluster [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get.md)	 - Get resources
-* [c8volt get cluster license](c8volt_get_cluster_license.md)	 - Get the cluster license of the connected Camunda 8 cluster
-* [c8volt get cluster topology](c8volt_get_cluster_topology.md)	 - Get the cluster topology of the connected Camunda 8 cluster
+* [c8volt get cluster](c8volt_get_cluster.md)	 - Get cluster resources
 

@@ -2,6 +2,7 @@
 - Cluster subresources belong under `getClusterCmd`; keep each nested Cobra command in its own `cmd/get_cluster_<resource>.go` file and register it from `init()`.
 - CLI tests that depend on version-specific API payloads should set `app.camunda_version` in the temp config explicitly instead of relying on the default test config version.
 - CLI failure-path tests for Cobra commands should run `Root()` in a helper subprocess with `GO_WANT_HELPER_PROCESS=1` and a temp `C8VOLT_TEST_CONFIG` so `ferrors.HandleAndExit` exit codes can be asserted cleanly.
+- Treat `docs/cli/` as generated output from Cobra command metadata and regenerate it with `make docs` after command-tree or help-text changes instead of hand-editing the Markdown pages.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -35,4 +36,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: Cobra commands that terminate through `ferrors.HandleAndExit` should be exercised through helper subprocess tests rather than direct `ExecuteC()` assertions.
   - Gotchas encountered: the license command's transport failures map to `exitcode.Unavailable`, while malformed 200 OK responses map to `exitcode.Error`; both are worth keeping distinct in test coverage.
   - Useful context: the existing help tests in `cmd/get_test.go` already cover the discovery requirements for `get`, `get cluster`, and `get cluster license`, so failure-path work can stay narrowly focused.
+---
+
+## 2026-03-19 22:13:12 CET - #63-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Updated the user-facing quick-start docs to show `c8volt get cluster license` anywhere the cluster read examples needed the new nested command.
+- Regenerated the CLI reference so `docs/cli/` now includes the new `c8volt get cluster license` page and the parent `get cluster` page advertises both topology and license subcommands.
+- Verified the required validation flow with `go test ./cmd/... -race -count=1`, `go test ./internal/services/cluster/... -race -count=1`, `make docs`, and `make test`.
+- Files changed: `README.md`, `docs/index.md`, `docs/cli/c8volt_get_cluster.md`, `docs/cli/c8volt_get_cluster_license.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: quick-start cluster read examples in `README.md` and `docs/index.md` should stay aligned whenever nested `get cluster` commands are added or renamed.
+  - Gotchas encountered: `make docs` only rewrites the affected generated Markdown under `docs/cli/`, so inspect the resulting diff rather than assuming the entire tree changes.
+  - Useful context: the generated `docs/cli/c8volt_get_cluster.md` page is the discoverability checkpoint for new cluster subcommands because its SEE ALSO section reflects the current nested command tree.
 ---
