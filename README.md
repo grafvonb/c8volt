@@ -169,13 +169,15 @@ log:
 ```
 4. **Run c8volt**
 
-Test the connection and list cluster topology:
+Test the connection and inspect cluster topology or license details:
 ```bash
 ./c8volt get cluster topology
+./c8volt get cluster license
 ```
 or use explicit path to config file:
 ```bash
 ./c8volt get cluster topology --config ./config-minimal.yaml
+./c8volt get cluster license --config ./config-minimal.yaml
 ```
 The legacy path `./c8volt get cluster-topology` remains supported during the migration period.
 

@@ -30,7 +30,15 @@ func TestGetClusterHelp(t *testing.T) {
 	require.Contains(t, output, "Get cluster resources")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt get cluster")
+	require.Contains(t, output, "license")
 	require.Contains(t, output, "topology")
+}
+
+func TestGetClusterLicenseHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "cluster", "license", "--help")
+
+	require.Contains(t, output, "Get the cluster license of the connected Camunda 8 cluster")
+	require.Contains(t, output, "c8volt get cluster license")
 }
 
 func TestGetClusterTopologyLegacyHelp(t *testing.T) {
@@ -70,7 +78,7 @@ func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfig(t, srv.URL)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
 
@@ -108,7 +116,7 @@ func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfig(t, srv.URL)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster-topology")
 
@@ -133,12 +141,58 @@ func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfig(t, srv.URL)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "ct")
 
 	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
 	require.NotContains(t, output, "Deprecated:")
+}
+
+func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "licenseType": "SaaS",
+  "validLicense": true
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
+
+	require.Contains(t, output, `"LicenseType": "SaaS"`)
+	require.Contains(t, output, `"ValidLicense": true`)
+	require.Contains(t, output, `"ExpiresAt": null`)
+	require.Contains(t, output, `"IsCommercial": null`)
+}
+
+func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		http.Error(w, "boom", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterLicenseNestedCommand_FailureHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching cluster license")
 }
 
 func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
@@ -188,6 +242,30 @@ func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "Deprecated:")
 }
 
+func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterLicenseNestedCommand_MalformedResponseHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching cluster license")
+	require.Contains(t, string(output), "malformed response")
+}
+
 func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -209,6 +287,32 @@ func TestGetClusterTopologyLegacyCommand_FailureHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster-topology"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetClusterLicenseNestedCommand_MalformedResponseHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "license"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetClusterLicenseNestedCommand_FailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "license"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
@@ -249,16 +353,21 @@ func resetCommandTreeFlags(cmd *cobra.Command) {
 
 func writeTestConfig(t *testing.T, baseURL string) string {
 	t.Helper()
+	return writeTestConfigForVersion(t, baseURL, "8.8")
+}
+
+func writeTestConfigForVersion(t *testing.T, baseURL string, camundaVersion string) string {
+	t.Helper()
 
 	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
 	content := fmt.Sprintf(`app:
-  camunda_version: "8.8"
+  camunda_version: %q
 auth:
   mode: none
 apis:
   camunda_api:
     base_url: %q
-`, baseURL)
+`, camundaVersion, baseURL)
 	require.NoError(t, os.WriteFile(cfgPath, []byte(content), 0o600))
 	return cfgPath
 }

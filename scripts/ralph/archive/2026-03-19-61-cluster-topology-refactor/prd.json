@@ -12,7 +12,7 @@
         "No alternate direct command such as `c8volt get cluster-license` is introduced."
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "Keep this slice limited to command registration and shared wiring in `cmd/`. Reuse the active branch `63-cluster-license` per repository branch guidance."
     },
     {
@@ -25,7 +25,7 @@
         "Malformed or empty successful responses are surfaced clearly instead of being silently accepted."
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": "Reuse the existing cluster service and domain payload. Keep the change bounded to CLI exposure of current license behavior rather than redesigning the service layer."
     },
     {
@@ -38,7 +38,7 @@
         "Command tests cover representative failing execution and verify the established exit-code or `os.Exit` behavior for the CLI."
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": "Follow existing `cmd` testing conventions, including explicit temp `--config` usage and subprocess assertions when failure handling exits the process."
     },
     {
@@ -51,7 +51,7 @@
         "Validation includes `go test ./cmd/... -race -count=1`, `go test ./internal/services/cluster/... -race -count=1`, `make docs`, and `make test`."
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": "Update source docs first and regenerate derived CLI docs instead of hand-editing generated output."
     }
   ]
