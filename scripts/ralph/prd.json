@@ -38,7 +38,7 @@
         "Command tests cover representative failing execution and verify the established exit-code or `os.Exit` behavior for the CLI."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Follow existing `cmd` testing conventions, including explicit temp `--config` usage and subprocess assertions when failure handling exits the process."
     },
     {

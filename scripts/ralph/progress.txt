@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Cluster subresources belong under `getClusterCmd`; keep each nested Cobra command in its own `cmd/get_cluster_<resource>.go` file and register it from `init()`.
 - CLI tests that depend on version-specific API payloads should set `app.camunda_version` in the temp config explicitly instead of relying on the default test config version.
+- CLI failure-path tests for Cobra commands should run `Root()` in a helper subprocess with `GO_WANT_HELPER_PROCESS=1` and a temp `C8VOLT_TEST_CONFIG` so `ferrors.HandleAndExit` exit codes can be asserted cleanly.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -24,4 +25,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: `get` subcommands that fetch a single cluster resource follow the same `NewCli` + `ferrors.HandleAndExit` + `toolx.ToJSONString` execution shape as topology.
   - Gotchas encountered: version-specific generated clients can normalize omitted fields differently, so command tests should pin `app.camunda_version` when asserting optional-field output.
   - Useful context: an empty 200 OK body on the license endpoint triggers the malformed-response path; a JSON `null` body does not exercise that branch in the generated client.
+---
+## 2026-03-19 22:08:17 CET - #63-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Added subprocess-backed command coverage for a failing `c8volt get cluster license` execution so the CLI's exit code and error surface are asserted on a service-unavailable response.
+- Reused the existing help and success coverage for `get`, `get cluster`, and `get cluster license` to complete the story's command-test matrix.
+- Files changed: `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: Cobra commands that terminate through `ferrors.HandleAndExit` should be exercised through helper subprocess tests rather than direct `ExecuteC()` assertions.
+  - Gotchas encountered: the license command's transport failures map to `exitcode.Unavailable`, while malformed 200 OK responses map to `exitcode.Error`; both are worth keeping distinct in test coverage.
+  - Useful context: the existing help tests in `cmd/get_test.go` already cover the discovery requirements for `get`, `get cluster`, and `get cluster license`, so failure-path work can stay narrowly focused.
 ---

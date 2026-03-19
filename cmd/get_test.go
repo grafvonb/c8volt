@@ -171,6 +171,30 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	require.Contains(t, output, `"IsCommercial": null`)
 }
 
+func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		http.Error(w, "boom", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterLicenseNestedCommand_FailureHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching cluster license")
+}
+
 func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
@@ -269,6 +293,19 @@ func TestGetClusterTopologyLegacyCommand_FailureHelper(t *testing.T) {
 }
 
 func TestGetClusterLicenseNestedCommand_MalformedResponseHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "license"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetClusterLicenseNestedCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
