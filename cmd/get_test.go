@@ -30,7 +30,15 @@ func TestGetClusterHelp(t *testing.T) {
 	require.Contains(t, output, "Get cluster resources")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt get cluster")
+	require.Contains(t, output, "license")
 	require.Contains(t, output, "topology")
+}
+
+func TestGetClusterLicenseHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "cluster", "license", "--help")
+
+	require.Contains(t, output, "Get the cluster license of the connected Camunda 8 cluster")
+	require.Contains(t, output, "c8volt get cluster license")
 }
 
 func TestGetClusterTopologyLegacyHelp(t *testing.T) {

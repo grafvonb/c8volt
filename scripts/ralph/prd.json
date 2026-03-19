@@ -12,7 +12,7 @@
         "No alternate direct command such as `c8volt get cluster-license` is introduced."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Keep this slice limited to command registration and shared wiring in `cmd/`. Reuse the active branch `63-cluster-license` per repository branch guidance."
     },
     {
