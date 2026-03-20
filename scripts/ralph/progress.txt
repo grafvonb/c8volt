@@ -4,6 +4,7 @@
 - CLI failure-path tests for Cobra commands should run `Root()` in a helper subprocess with `GO_WANT_HELPER_PROCESS=1` and a temp `C8VOLT_TEST_CONFIG` so `ferrors.HandleAndExit` exit codes can be asserted cleanly.
 - Treat `docs/cli/` as generated output from Cobra command metadata and regenerate it with `make docs` after command-tree or help-text changes instead of hand-editing the Markdown pages.
 - Versioned service packages mirror the shared facade by defining a local `API` interface in each `v87`/`v88` contract file, and factory tests should assert the concrete service type plus `services.ErrUnknownAPIVersion` for unsupported versions.
+- When a generated-client service method uses the standard success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation and keep version-specific exceptions, such as tolerant stats enrichment, explicit at the call site.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -59,4 +60,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: versioned service packages in this repo should expose a local `API` interface in `contract.go` when the shared package wants compile-time assertions against both the service implementation and the version-specific facade.
   - Gotchas encountered: unsupported Camunda versions can be normalized to `"unknown"` before `services.ErrUnknownAPIVersion` is rendered, so tests should assert the sentinel error and supported-version list rather than the raw invalid input.
   - Useful context: `cluster` already models the stronger factory-test shape used here, so service-factory cleanups can usually follow that package instead of inventing a new pattern.
+---
+## 2026-03-20 14:12:19 CET - #67-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored the v8.7 and v8.8 processdefinition services to extract their request-body builders, centralize the standard HTTP-status plus payload validation through `internal/services/common.RequirePayload`, and keep the existing version-specific latest/statistics behavior intact.
+- Kept v8.7's unsupported-statistics rejection explicit through a small helper and localized its latest-selection reduction, while preserving v8.8's current tolerant statistics enrichment path for empty 200 responses.
+- Verified the refactor with `go test ./internal/services/processdefinition/... -race -count=1` and `make test`.
+- Files changed: `AGENTS.md`, `internal/services/common/response.go`, `internal/services/processdefinition/v87/service.go`, `internal/services/processdefinition/v88/service.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: processdefinition service methods can share the standard generated-client response validation through `common.RequirePayload` while leaving version-specific follow-up behavior, such as stats enrichment, in the versioned service.
+  - Gotchas encountered: not every 200 OK path should use the shared payload helper; v8.8 stats retrieval intentionally treats a nil JSON body as a warning-only no-stats case rather than a malformed-response failure.
+  - Useful context: extracting the per-version search request builders made the mixed v8.7/v8.8 filter and sorting differences easier to preserve during refactors without adding a new package.
 ---

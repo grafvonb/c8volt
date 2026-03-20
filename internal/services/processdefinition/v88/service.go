@@ -69,49 +69,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	cCfg := services.ApplyCallOptions(opts)
-
-	bodyFilter := &camundav88.ProcessDefinitionFilter{
-		ProcessDefinitionId: common.NewStringEqFilterPtr(filter.BpmnProcessId),
-		Version:             toolx.PtrIfNonZero(filter.ProcessVersion),
-		VersionTag:          toolx.PtrIf(filter.ProcessVersionTag, ""),
-		IsLatestVersion:     toolx.PtrIf(filter.IsLatestVersion, false),
-	}
-	page := camundav88.SearchQueryPageRequest{}
-	from := int32(0)
-	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
-		From:  &from,
-		Limit: &size,
-	})
-	orderDesc := camundav88.DESC
-	orderAsc := camundav88.ASC
-	sort := []camundav88.ProcessDefinitionSearchQuerySortRequest{
-		{
-			Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldVersion,
-			Order: &orderDesc,
-		},
-		{
-			Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldName,
-			Order: &orderAsc,
-		},
-	}
-	body := camundav88.SearchProcessDefinitionsJSONRequestBody{
-		Filter: bodyFilter,
-		Page:   &page,
-		Sort:   &sort,
-	}
+	body := searchProcessDefinitionsRequest(filter, size)
 	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
 	resp, err := s.cc.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	out := toolx.DerefSlicePtr(resp.JSON200.Items, fromProcessDefinitionResult)
+	out := toolx.DerefSlicePtr(payload.Items, fromProcessDefinitionResult)
 	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
 
 	if cCfg.WithStat {
@@ -140,14 +108,11 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 	if err != nil {
 		return d.ProcessDefinition{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return d.ProcessDefinition{}, err
 	}
-	if resp.JSON200 == nil {
-		return d.ProcessDefinition{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	pd := fromProcessDefinitionResult(*resp.JSON200)
+	pd := fromProcessDefinitionResult(*payload)
 	if cCfg.WithStat {
 		if err := s.retrieveProcessDefinitionStats(ctx, &pd); err != nil {
 			return d.ProcessDefinition{}, err
@@ -181,4 +146,36 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	}
 	pd.Statistics = &ret
 	return nil
+}
+
+func searchProcessDefinitionsRequest(filter d.ProcessDefinitionFilter, size int32) camundav88.SearchProcessDefinitionsJSONRequestBody {
+	bodyFilter := &camundav88.ProcessDefinitionFilter{
+		ProcessDefinitionId: common.NewStringEqFilterPtr(filter.BpmnProcessId),
+		Version:             toolx.PtrIfNonZero(filter.ProcessVersion),
+		VersionTag:          toolx.PtrIf(filter.ProcessVersionTag, ""),
+		IsLatestVersion:     toolx.PtrIf(filter.IsLatestVersion, false),
+	}
+	page := camundav88.SearchQueryPageRequest{}
+	from := int32(0)
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
+		From:  &from,
+		Limit: &size,
+	})
+	orderDesc := camundav88.DESC
+	orderAsc := camundav88.ASC
+	sort := []camundav88.ProcessDefinitionSearchQuerySortRequest{
+		{
+			Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldVersion,
+			Order: &orderDesc,
+		},
+		{
+			Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldName,
+			Order: &orderAsc,
+		},
+	}
+	return camundav88.SearchProcessDefinitionsJSONRequestBody{
+		Filter: bodyFilter,
+		Page:   &page,
+		Sort:   &sort,
+	}
 }

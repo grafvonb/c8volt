@@ -25,7 +25,7 @@
         "The refactor reduces avoidable duplication without introducing new packages, new dependency layers, or behavioral regressions in existing processdefinition paths."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Use small shared helper extraction or localized cleanup only where it makes the code clearer. Preserve current mixed-version semantics rather than forcing convergence."
     },
     {

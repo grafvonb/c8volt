@@ -38,6 +38,7 @@
 - For refactoring work, preserve externally observable behavior unless the issue explicitly asks for behavioral change.
 - Favor incremental refactors with verification over broad rewrites.
 - When changing generated or generated-adjacent artifacts, update the source and regenerate rather than editing derived output by hand when the repository already provides a generation path.
+- When a service method follows the standard generated-client success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation instead of re-implementing the malformed-response check inline.
 
 ## Testing conventions
 - Add or update tests alongside refactoring and bug fixes.
