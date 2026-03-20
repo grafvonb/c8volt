@@ -350,6 +350,52 @@ func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	require.Contains(t, string(output), "xml output requires --key")
 }
 
+func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "xml output only supports --key")
+	require.Contains(t, string(output), "--json")
+	require.Contains(t, string(output), "--latest")
+}
+
+func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
+		http.Error(w, "boom", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetProcessDefinitionXMLCommand_FailureHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching process definition xml by key 2251799813685255")
+	require.NotContains(t, string(output), "<definitions")
+}
+
 func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -410,6 +456,32 @@ func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--xml"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "process-definition", "--key", "2251799813685255", "--xml", "--latest"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetProcessDefinitionXMLCommand_FailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--key", "2251799813685255", "--xml"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

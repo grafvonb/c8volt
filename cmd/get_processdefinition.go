@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -32,8 +33,8 @@ var getProcessDefinitionCmd = &cobra.Command{
 		log.Debug("fetching process definitions")
 		filter := populatePDSearchFilterOpts()
 		if flagGetPDAsXML {
-			if filter.Key == "" {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("xml output requires --key to select a single process definition"))
+			if err := validateProcessDefinitionXMLFlags(filter); err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}
 
 			log.Debug(fmt.Sprintf("fetching process definition xml by key: %s", filter.Key))
@@ -105,4 +106,38 @@ func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
 		filter.ProcessVersionTag = flagGetPDProcessVersionTag
 	}
 	return filter
+}
+
+func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) error {
+	if filter.Key == "" {
+		return fmt.Errorf("xml output requires --key to select a single process definition")
+	}
+
+	var incompatible []string
+	if filter.BpmnProcessId != "" {
+		incompatible = append(incompatible, "--bpmn-process-id")
+	}
+	if flagGetPDProcessVersion != 0 {
+		incompatible = append(incompatible, "--pd-version")
+	}
+	if filter.ProcessVersionTag != "" {
+		incompatible = append(incompatible, "--pd-version-tag")
+	}
+	if flagGetPDLatest {
+		incompatible = append(incompatible, "--latest")
+	}
+	if flagGetPDWithStat {
+		incompatible = append(incompatible, "--stat")
+	}
+	if flagViewAsJson {
+		incompatible = append(incompatible, "--json")
+	}
+	if flagViewKeysOnly {
+		incompatible = append(incompatible, "--keys-only")
+	}
+	if len(incompatible) > 0 {
+		return fmt.Errorf("xml output only supports --key; incompatible with %s", strings.Join(incompatible, ", "))
+	}
+
+	return nil
 }

@@ -38,7 +38,7 @@
         "Validation includes targeted Go test runs for the affected command and processdefinition packages."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Prefer tests that verify observable command behavior. Follow the repository conventions for temp config usage, explicit Camunda version selection in tests, and subprocess assertions when command failures exit via `os.Exit`."
     },
     {
