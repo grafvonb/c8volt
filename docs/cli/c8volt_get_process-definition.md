@@ -7,8 +7,19 @@ title: "c8volt get process-definition"
 
 Get deployed process definitions
 
+### Synopsis
+
+Get deployed process definitions.
+Use --xml together with --key to write the raw BPMN XML for a single deployed definition to stdout.
+
 ```
 c8volt get process-definition [flags]
+```
+
+### Examples
+
+```
+./c8volt get pd --key 2251799813686017 --xml > process.bpmn
 ```
 
 ### Options
@@ -21,6 +32,7 @@ c8volt get process-definition [flags]
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
       --stat                     include process definition statistics
+      --xml                      output the selected process definition as raw XML (requires --key and no other filters)
 ```
 
 ### Options inherited from parent commands

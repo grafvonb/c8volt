@@ -23,7 +23,10 @@ var (
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:     "process-definition",
 	Short:   "Get deployed process definitions",
+	Long: "Get deployed process definitions.\n" +
+		"Use --xml together with --key to write the raw BPMN XML for a single deployed definition to stdout.",
 	Aliases: []string{"pd", "pds"},
+	Example: `./c8volt get pd --key 2251799813686017 --xml > process.bpmn`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
@@ -88,7 +91,7 @@ func init() {
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics")
-	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML")
+	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {

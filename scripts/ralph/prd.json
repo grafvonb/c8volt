@@ -51,7 +51,7 @@
         "Final validation includes `make docs` and `make test`."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Do not hand-edit generated CLI docs beyond the repository's normal generation flow. Keep documentation changes tightly scoped to the user-visible XML workflow."
     }
   ]

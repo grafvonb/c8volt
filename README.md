@@ -299,6 +299,10 @@ $ ./c8volt get get pd
 2251799813686017 <default> C88_SimpleUserTask_Process v1/v1.0.0
 found: 6
 ```
+Export one deployed BPMN model as raw XML for scripting or redirection by selecting its process definition key explicitly:
+```bash
+$ ./c8volt get pd --key 2251799813686017 --xml > C88_SimpleUserTask_Process.bpmn
+```
 Start a single process instance of `C88_SimpleUserTask_Process` by its BPMN process ID and wait until it is active:
 ```bash
 $ ./c8volt pi -b C88_SimpleUserTask_Process

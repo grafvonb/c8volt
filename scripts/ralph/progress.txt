@@ -5,6 +5,7 @@ Started: Fri Mar 20 19:17:13 CET 2026
 - Public `c8volt/process` facade methods should delegate to `internal/services/processdefinition` and map facade options with `options.MapFacadeOptionsToCallOptions` instead of adding command-specific service paths.
 - Generated XML responses can populate `XML200` with an empty string even when `Body` contains the BPMN XML; versioned XML service methods should validate via `common.RequirePayload` and then fall back to the raw response body when needed.
 - `get process-definition --xml` is a dedicated raw-output path: it must reject global render flags like `--json`/`--keys-only` and extra process-definition filters instead of silently mixing XML mode with list/detail rendering behavior.
+- Generated CLI reference pages come from Cobra command metadata such as `Long`, `Example`, and flag help text; update the command definition first and regenerate with `make docs` instead of hand-editing `docs/cli`.
 
 ---
 
@@ -42,4 +43,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: the public process facade is a thin adapter over internal services and should keep new capabilities in that shared facade instead of exposing command-only plumbing.
   - Gotchas encountered: `c8volt/process` did not have existing tests, so a small interface stub is the simplest way to verify delegate behavior without pulling CLI concerns into the facade package.
   - Useful context: the underlying XML retrieval already exists in both process-definition service versions, so later CLI work can call the facade directly.
+---
+
+## 2026-03-20 19:30:11 CET - #69-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Expanded `get process-definition` Cobra metadata with XML-specific synopsis, example, and flag help so the single-key raw XML workflow is visible in command help.
+- Regenerated `docs/cli/c8volt_get_process-definition.md` with `make docs` and added a matching XML export example to `README.md` and `docs/index.md`.
+- Re-ran the required repository validation with `make test` after doc generation.
+- Files changed: `README.md`, `cmd/get_processdefinition.go`, `docs/cli/c8volt_get_process-definition.md`, `docs/index.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: Cobra `Long` and `Example` fields are the source for generated synopsis/example sections in `docs/cli`.
+  - Gotchas encountered: updating only the `--xml` flag help is not enough for generated docs; add command-level metadata when the workflow needs user-facing context.
+  - Useful context: the repository expects both `make docs` and `make test` for finishing user-visible CLI changes, even when the code path itself was already implemented.
 ---
