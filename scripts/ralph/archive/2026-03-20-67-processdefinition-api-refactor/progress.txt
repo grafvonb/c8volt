@@ -1,0 +1,97 @@
+## Codebase Patterns
+- Cluster subresources belong under `getClusterCmd`; keep each nested Cobra command in its own `cmd/get_cluster_<resource>.go` file and register it from `init()`.
+- CLI tests that depend on version-specific API payloads should set `app.camunda_version` in the temp config explicitly instead of relying on the default test config version.
+- CLI failure-path tests for Cobra commands should run `Root()` in a helper subprocess with `GO_WANT_HELPER_PROCESS=1` and a temp `C8VOLT_TEST_CONFIG` so `ferrors.HandleAndExit` exit codes can be asserted cleanly.
+- Treat `docs/cli/` as generated output from Cobra command metadata and regenerate it with `make docs` after command-tree or help-text changes instead of hand-editing the Markdown pages.
+- Versioned service packages mirror the shared facade by defining a local `API` interface in each `v87`/`v88` contract file, and factory tests should assert the concrete service type plus `services.ErrUnknownAPIVersion` for unsupported versions.
+- When a generated-client service method uses the standard success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation and keep version-specific exceptions, such as tolerant stats enrichment, explicit at the call site.
+- For generated client endpoints that return XML or plain string payloads through `XML200`, use `internal/services/common.RequirePayload` as the empty-200 guard instead of duplicating string-specific malformed-response checks.
+- The v8.8 processdefinition stats enrichment path intentionally treats a `200 OK` response with no stats payload as a warning-only no-stats case, so regression tests should assert success with `Statistics == nil` instead of expecting a malformed-response error.
+
+# Ralph Progress Log
+Started: Thu Mar 19 22:00:20 CET 2026
+---
+## 2026-03-19 22:02:01 CET - #63-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Added the nested `c8volt get cluster license` Cobra command as a help-only entry point for the existing `get cluster` hierarchy.
+- Updated cluster help text and command tests so license discovery is visible from `get cluster --help` and `get cluster license --help`.
+- Files changed: `cmd/get_cluster.go`, `cmd/get_cluster_license.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: cluster resource commands are split into dedicated `cmd/get_cluster_<resource>.go` files and attached to `getClusterCmd` during `init()`.
+  - Gotchas encountered: `scripts/ralph/` already had unrelated local changes; avoid overwriting or sweeping those into the iteration commit.
+  - Useful context: `cmd/get_test.go` already provides shared helpers for Cobra help assertions and explicit temp-config execution paths.
+---
+## 2026-03-19 22:06:03 CET - #63-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Implemented `c8volt get cluster license` so it now calls the existing cluster service, emits the license payload via the standard pretty-JSON output path, and surfaces service errors with the established CLI exit handling.
+- Added command coverage for a successful nested license fetch and for an empty 200 OK license response that must fail clearly instead of being accepted.
+- Files changed: `cmd/get_cluster_license.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: `get` subcommands that fetch a single cluster resource follow the same `NewCli` + `ferrors.HandleAndExit` + `toolx.ToJSONString` execution shape as topology.
+  - Gotchas encountered: version-specific generated clients can normalize omitted fields differently, so command tests should pin `app.camunda_version` when asserting optional-field output.
+  - Useful context: an empty 200 OK body on the license endpoint triggers the malformed-response path; a JSON `null` body does not exercise that branch in the generated client.
+---
+## 2026-03-19 22:08:17 CET - #63-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Added subprocess-backed command coverage for a failing `c8volt get cluster license` execution so the CLI's exit code and error surface are asserted on a service-unavailable response.
+- Reused the existing help and success coverage for `get`, `get cluster`, and `get cluster license` to complete the story's command-test matrix.
+- Files changed: `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: Cobra commands that terminate through `ferrors.HandleAndExit` should be exercised through helper subprocess tests rather than direct `ExecuteC()` assertions.
+  - Gotchas encountered: the license command's transport failures map to `exitcode.Unavailable`, while malformed 200 OK responses map to `exitcode.Error`; both are worth keeping distinct in test coverage.
+  - Useful context: the existing help tests in `cmd/get_test.go` already cover the discovery requirements for `get`, `get cluster`, and `get cluster license`, so failure-path work can stay narrowly focused.
+---
+
+## 2026-03-19 22:13:12 CET - #63-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Updated the user-facing quick-start docs to show `c8volt get cluster license` anywhere the cluster read examples needed the new nested command.
+- Regenerated the CLI reference so `docs/cli/` now includes the new `c8volt get cluster license` page and the parent `get cluster` page advertises both topology and license subcommands.
+- Verified the required validation flow with `go test ./cmd/... -race -count=1`, `go test ./internal/services/cluster/... -race -count=1`, `make docs`, and `make test`.
+- Files changed: `README.md`, `docs/index.md`, `docs/cli/c8volt_get_cluster.md`, `docs/cli/c8volt_get_cluster_license.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: quick-start cluster read examples in `README.md` and `docs/index.md` should stay aligned whenever nested `get cluster` commands are added or renamed.
+  - Gotchas encountered: `make docs` only rewrites the affected generated Markdown under `docs/cli/`, so inspect the resulting diff rather than assuming the entire tree changes.
+- Useful context: the generated `docs/cli/c8volt_get_cluster.md` page is the discoverability checkpoint for new cluster subcommands because its SEE ALSO section reflects the current nested command tree.
+---
+## 2026-03-20 14:07:26 CET - #67-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Made the shared processdefinition facade explicitly assert the per-version `API` contracts, so the preserved service surface is now checked in both the shared package and the versioned contract files.
+- Replaced the loose processdefinition factory tests with supported-version table coverage that asserts the concrete `v87.Service` and `v88.Service` return types, plus the normalized unknown-version error path.
+- Files changed: `AGENTS.md`, `internal/services/processdefinition/api.go`, `internal/services/processdefinition/factory_test.go`, `internal/services/processdefinition/v87/contract.go`, `internal/services/processdefinition/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: versioned service packages in this repo should expose a local `API` interface in `contract.go` when the shared package wants compile-time assertions against both the service implementation and the version-specific facade.
+  - Gotchas encountered: unsupported Camunda versions can be normalized to `"unknown"` before `services.ErrUnknownAPIVersion` is rendered, so tests should assert the sentinel error and supported-version list rather than the raw invalid input.
+  - Useful context: `cluster` already models the stronger factory-test shape used here, so service-factory cleanups can usually follow that package instead of inventing a new pattern.
+---
+## 2026-03-20 14:12:19 CET - #67-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored the v8.7 and v8.8 processdefinition services to extract their request-body builders, centralize the standard HTTP-status plus payload validation through `internal/services/common.RequirePayload`, and keep the existing version-specific latest/statistics behavior intact.
+- Kept v8.7's unsupported-statistics rejection explicit through a small helper and localized its latest-selection reduction, while preserving v8.8's current tolerant statistics enrichment path for empty 200 responses.
+- Verified the refactor with `go test ./internal/services/processdefinition/... -race -count=1` and `make test`.
+- Files changed: `AGENTS.md`, `internal/services/common/response.go`, `internal/services/processdefinition/v87/service.go`, `internal/services/processdefinition/v88/service.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: processdefinition service methods can share the standard generated-client response validation through `common.RequirePayload` while leaving version-specific follow-up behavior, such as stats enrichment, in the versioned service.
+  - Gotchas encountered: not every 200 OK path should use the shared payload helper; v8.8 stats retrieval intentionally treats a nil JSON body as a warning-only no-stats case rather than a malformed-response failure.
+  - Useful context: extracting the per-version search request builders made the mixed v8.7/v8.8 filter and sorting differences easier to preserve during refactors without adding a new package.
+---
+## 2026-03-20 14:16:43 CET - #67-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Added `GetProcessDefinitionXML` to the shared processdefinition facade and both versioned contracts, making the generated-client coverage decision explicit as a bounded XML retrieval capability supported in v8.7 and v8.8.
+- Implemented the XML retrieval path in both versioned services using the generated client XML endpoints and the shared malformed-response validation path, while preserving v8.7 key conversion and stat-option behavior.
+- Added focused service tests for successful XML retrieval plus client, HTTP, empty-200, and v8.7 key-conversion failures, then verified with `go test ./internal/services/processdefinition/... -race -count=1` and `make test`.
+- Files changed: `AGENTS.md`, `internal/services/processdefinition/api.go`, `internal/services/processdefinition/v87/contract.go`, `internal/services/processdefinition/v87/service.go`, `internal/services/processdefinition/v87/service_test.go`, `internal/services/processdefinition/v88/contract.go`, `internal/services/processdefinition/v88/service.go`, `internal/services/processdefinition/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: when both supported generated clients already expose process-definition XML, the shared service facade can add `GetProcessDefinitionXML` without introducing a new package or changing version selection behavior.
+  - Gotchas encountered: v8.7 still requires string-to-int64 key conversion for the XML endpoint just like the JSON get path, so XML coverage should assert both the conversion error and the forwarded int64 key.
+  - Useful context: `common.RequirePayload` works for generated `XML200 *string` responses as well as JSON payloads, which keeps the empty-200 malformed-response behavior aligned across response types.
+---
+## 2026-03-20 14:19:27 CET - #67-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Added focused v8.8 regression coverage for the preserved best-effort stats enrichment behavior so search and get requests still succeed when the stats endpoint returns `200 OK` with no payload.
+- Re-ran the required validation flow with `go test ./internal/services/processdefinition/... -race -count=1` and `make test`, both of which passed.
+- Files changed: `internal/services/processdefinition/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: v8.8 processdefinition tests should treat nil stats payloads on a successful stats response as a tolerated no-stats outcome, not as malformed-response failures.
+  - Gotchas encountered: the tolerant stats behavior is specific to the follow-up stats enrichment call; the primary search/get/XML success paths should still keep using `common.RequirePayload` to reject empty `200 OK` payloads.
+  - Useful context: this story needed no documentation updates because the final capability decision stayed inside the internal service surface and did not change the CLI or generated docs.
+---

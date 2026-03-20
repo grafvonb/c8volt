@@ -1,0 +1,58 @@
+{
+  "branchName": "69-process-definition-xml",
+  "overview": "Add a repository-native XML retrieval mode to `c8volt get process-definition` by reusing the existing versioned processdefinition XML service capability, keeping stdout safe for shell redirection, preserving current non-XML behavior, and finishing with focused tests, generated docs, and repository validation.",
+  "userStories": [
+    {
+      "id": "#69-001",
+      "title": "Expose process definition XML through the public facade",
+      "description": "Extend the existing `c8volt/process` API and client wiring so the CLI can request process definition XML through the same repository-native facade used for other process-definition operations.",
+      "acceptanceCriteria": [
+        "The public process API in `c8volt/process/api.go` includes one XML retrieval method for a single process definition.",
+        "The process client in `c8volt/process/client.go` delegates XML retrieval to the existing versioned processdefinition service surface without introducing a new command-only path.",
+        "The resulting wiring remains compatible with the current branch `69-process-definition-xml` and existing repository structure."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Keep this slice limited to shared wiring. Reuse the existing service patterns and avoid changing package layout or introducing a parallel abstraction."
+    },
+    {
+      "id": "#69-002",
+      "title": "Add the XML command path for a single process definition",
+      "description": "Implement `c8volt get process-definition --key <key> --xml` so a successful call emits only the raw XML payload for one explicitly selected definition while leaving non-XML behavior unchanged.",
+      "acceptanceCriteria": [
+        "The command handler in `cmd/get_processdefinition.go` supports XML retrieval only when a single process definition is explicitly selected with `--key`.",
+        "A successful XML request writes only the XML payload to stdout through the dedicated command path, without list summaries or JSON wrapping.",
+        "Existing non-XML `get process-definition` list and detail behavior still works when `--xml` is not used."
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "The upstream issue mentions `--id`, but the current CLI surface uses `--key`; keep the implementation aligned with the existing command contract unless a separate rename is approved."
+    },
+    {
+      "id": "#69-003",
+      "title": "Make XML mode script-safe and fully verified",
+      "description": "Tighten XML flag validation, preserve predictable failure semantics, and add focused regression coverage so redirection and error handling work cleanly in automation.",
+      "acceptanceCriteria": [
+        "XML mode rejects incompatible filter or render combinations in `cmd/get_processdefinition.go` instead of silently choosing precedence.",
+        "Focused tests cover XML success, retrieval failure, redirect-safe stdout behavior, and any needed facade or versioned service regression cases in `cmd/get_test.go`, `internal/services/processdefinition/v87/service_test.go`, and `internal/services/processdefinition/v88/service_test.go`.",
+        "Validation includes targeted Go test runs for the affected command and processdefinition packages."
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Prefer tests that verify observable command behavior. Follow the repository conventions for temp config usage, explicit Camunda version selection in tests, and subprocess assertions when command failures exit via `os.Exit`."
+    },
+    {
+      "id": "#69-004",
+      "title": "Update help text, regenerate docs, and finish repository validation",
+      "description": "Document the XML workflow through command help and generated CLI docs, adjust user-facing examples only where needed, and complete the final repository validation sequence.",
+      "acceptanceCriteria": [
+        "Help text in `cmd/get_processdefinition.go` describes the XML option and its single-definition usage constraints.",
+        "Generated CLI reference output under `docs/cli/` is regenerated from command metadata and reflects the XML workflow, and any needed `README.md` or `docs/index.md` examples stay consistent with shipped behavior.",
+        "Final validation includes `make docs` and `make test`."
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Do not hand-edit generated CLI docs beyond the repository's normal generation flow. Keep documentation changes tightly scoped to the user-visible XML workflow."
+    }
+  ]
+}
