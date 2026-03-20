@@ -51,7 +51,7 @@
         "If the final capability decision introduces a user-visible workflow, the affected source documentation is updated and generated CLI docs are regenerated from repository tooling."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Prefer tests that verify preserved external behavior rather than internal structure. Only touch documentation if the final coverage decision changes user-visible behavior."
     }
   ]

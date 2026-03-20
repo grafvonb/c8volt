@@ -6,6 +6,7 @@
 - Versioned service packages mirror the shared facade by defining a local `API` interface in each `v87`/`v88` contract file, and factory tests should assert the concrete service type plus `services.ErrUnknownAPIVersion` for unsupported versions.
 - When a generated-client service method uses the standard success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation and keep version-specific exceptions, such as tolerant stats enrichment, explicit at the call site.
 - For generated client endpoints that return XML or plain string payloads through `XML200`, use `internal/services/common.RequirePayload` as the empty-200 guard instead of duplicating string-specific malformed-response checks.
+- The v8.8 processdefinition stats enrichment path intentionally treats a `200 OK` response with no stats payload as a warning-only no-stats case, so regression tests should assert success with `Statistics == nil` instead of expecting a malformed-response error.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -83,4 +84,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: when both supported generated clients already expose process-definition XML, the shared service facade can add `GetProcessDefinitionXML` without introducing a new package or changing version selection behavior.
   - Gotchas encountered: v8.7 still requires string-to-int64 key conversion for the XML endpoint just like the JSON get path, so XML coverage should assert both the conversion error and the forwarded int64 key.
   - Useful context: `common.RequirePayload` works for generated `XML200 *string` responses as well as JSON payloads, which keeps the empty-200 malformed-response behavior aligned across response types.
+---
+## 2026-03-20 14:19:27 CET - #67-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Added focused v8.8 regression coverage for the preserved best-effort stats enrichment behavior so search and get requests still succeed when the stats endpoint returns `200 OK` with no payload.
+- Re-ran the required validation flow with `go test ./internal/services/processdefinition/... -race -count=1` and `make test`, both of which passed.
+- Files changed: `internal/services/processdefinition/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: v8.8 processdefinition tests should treat nil stats payloads on a successful stats response as a tolerated no-stats outcome, not as malformed-response failures.
+  - Gotchas encountered: the tolerant stats behavior is specific to the follow-up stats enrichment call; the primary search/get/XML success paths should still keep using `common.RequirePayload` to reject empty `200 OK` payloads.
+  - Useful context: this story needed no documentation updates because the final capability decision stayed inside the internal service surface and did not change the CLI or generated docs.
 ---

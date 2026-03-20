@@ -46,6 +46,7 @@
 - Prefer targeted tests near the changed package, then run the broader repository test suite.
 - For refactors, ensure tests verify preserved behavior, not just new internal structure.
 - Versioned service factory tests should assert the concrete v8.7/v8.8 service type returned for each supported version and verify unsupported versions through `services.ErrUnknownAPIVersion`, which may normalize invalid inputs to `"unknown"` in the rendered error.
+- Processdefinition v8.8 service tests should preserve the tolerant stats-enrichment behavior by asserting successful search/get results when the follow-up stats endpoint returns `200 OK` with a nil payload, leaving `Statistics` unset instead of treating the response as malformed.
 - Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
 - CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
 - CLI command tests that assert version-specific payloads should set `app.camunda_version` explicitly in that temp config; otherwise the default test version can route to a different generated client shape.

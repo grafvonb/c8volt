@@ -150,6 +150,27 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 			opts:          []services.CallOption{services.WithStat()},
 			expectedError: mockErr,
 		},
+		{
+			name: "Stats missing payload is tolerated",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav88.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+						Items: &[]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+					},
+				}
+				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+				}
+				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
+				require.Len(t, defs, 1)
+				assert.Nil(t, defs[0].Statistics)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -300,6 +321,25 @@ func TestService_GetProcessDefinition(t *testing.T) {
 			},
 			opts:          []services.CallOption{services.WithStat()},
 			expectedError: mockErr,
+		},
+		{
+			name: "Stats missing payload is tolerated",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				json200 := makeProcessDefinitionResult("proc", "123", 2)
+				resp := &camundav88.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+					JSON200:      &json200,
+				}
+				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
+				assert.Nil(t, pd.Statistics)
+			},
 		},
 	}
 
