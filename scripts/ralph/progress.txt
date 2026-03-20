@@ -3,6 +3,7 @@
 - CLI tests that depend on version-specific API payloads should set `app.camunda_version` in the temp config explicitly instead of relying on the default test config version.
 - CLI failure-path tests for Cobra commands should run `Root()` in a helper subprocess with `GO_WANT_HELPER_PROCESS=1` and a temp `C8VOLT_TEST_CONFIG` so `ferrors.HandleAndExit` exit codes can be asserted cleanly.
 - Treat `docs/cli/` as generated output from Cobra command metadata and regenerate it with `make docs` after command-tree or help-text changes instead of hand-editing the Markdown pages.
+- Versioned service packages mirror the shared facade by defining a local `API` interface in each `v87`/`v88` contract file, and factory tests should assert the concrete service type plus `services.ErrUnknownAPIVersion` for unsupported versions.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -47,5 +48,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
 - **Learnings for future iterations:**
   - Patterns discovered: quick-start cluster read examples in `README.md` and `docs/index.md` should stay aligned whenever nested `get cluster` commands are added or renamed.
   - Gotchas encountered: `make docs` only rewrites the affected generated Markdown under `docs/cli/`, so inspect the resulting diff rather than assuming the entire tree changes.
-  - Useful context: the generated `docs/cli/c8volt_get_cluster.md` page is the discoverability checkpoint for new cluster subcommands because its SEE ALSO section reflects the current nested command tree.
+- Useful context: the generated `docs/cli/c8volt_get_cluster.md` page is the discoverability checkpoint for new cluster subcommands because its SEE ALSO section reflects the current nested command tree.
+---
+## 2026-03-20 14:07:26 CET - #67-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Made the shared processdefinition facade explicitly assert the per-version `API` contracts, so the preserved service surface is now checked in both the shared package and the versioned contract files.
+- Replaced the loose processdefinition factory tests with supported-version table coverage that asserts the concrete `v87.Service` and `v88.Service` return types, plus the normalized unknown-version error path.
+- Files changed: `AGENTS.md`, `internal/services/processdefinition/api.go`, `internal/services/processdefinition/factory_test.go`, `internal/services/processdefinition/v87/contract.go`, `internal/services/processdefinition/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: versioned service packages in this repo should expose a local `API` interface in `contract.go` when the shared package wants compile-time assertions against both the service implementation and the version-specific facade.
+  - Gotchas encountered: unsupported Camunda versions can be normalized to `"unknown"` before `services.ErrUnknownAPIVersion` is rendered, so tests should assert the sentinel error and supported-version list rather than the raw invalid input.
+  - Useful context: `cluster` already models the stronger factory-test shape used here, so service-factory cleanups can usually follow that package instead of inventing a new pattern.
 ---

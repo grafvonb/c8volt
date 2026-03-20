@@ -12,7 +12,7 @@
         "Factory expectations in `internal/services/processdefinition/factory.go` and `internal/services/processdefinition/factory_test.go` remain aligned with the preserved version-selection behavior."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Keep this slice limited to shared contract and wiring clarity. Reuse the existing issue branch `67-processdefinition-api-refactor` and existing service/factory patterns."
     },
     {
