@@ -122,6 +122,21 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 	return pd, nil
 }
 
+func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts ...services.CallOption) (string, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	common.VerboseLog(ctx, cCfg, s.log, "retrieving process definition xml", "key", key)
+	resp, err := s.cc.GetProcessDefinitionXMLWithResponse(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.XML200)
+	if err != nil {
+		return "", err
+	}
+	common.VerboseLog(ctx, cCfg, s.log, "process definition xml retrieved", "key", key)
+	return *payload, nil
+}
+
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
 	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
 	stats, err := s.cc.GetProcessDefinitionStatisticsWithResponse(ctx, pd.Key, camundav88.GetProcessDefinitionStatisticsJSONRequestBody{

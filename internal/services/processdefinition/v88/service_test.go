@@ -40,6 +40,14 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionWithResponse(ctx conte
 	return args.Get(0).(*camundav88.GetProcessDefinitionResponse), args.Error(1)
 }
 
+func (m *mockProcessDefinitionClient) GetProcessDefinitionXMLWithResponse(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionXMLResponse, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav88.GetProcessDefinitionXMLResponse), args.Error(1)
+}
+
 func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, key string, body camundav88.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionStatisticsResponse, error) {
 	args := m.Called(ctx, key)
 	if args.Get(0) == nil {
@@ -315,6 +323,82 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				if tt.assertResult != nil {
 					tt.assertResult(t, pd)
 				}
+			}
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+func TestService_GetProcessDefinitionXML(t *testing.T) {
+	ctx := context.Background()
+	mockErr := errors.New("xml failed")
+
+	tests := []struct {
+		name          string
+		setupMock     func(*mockProcessDefinitionClient)
+		expectedError error
+		expectedXML   string
+	}{
+		{
+			name: "Success",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				xml := "<definitions id=\"proc\"/>"
+				resp := &camundav88.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+					XML200:       &xml,
+				}
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "HTTP error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav88.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusInternalServerError, "500"),
+					Body:         []byte("fail"),
+				}
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedError: domain.ErrInternal,
+		},
+		{
+			name: "Nil payload",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav88.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+				}
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedError: domain.ErrMalformedResponse,
+		},
+		{
+			name: "Client error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return((*camundav88.GetProcessDefinitionXMLResponse)(nil), mockErr)
+			},
+			expectedError: mockErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			if tt.setupMock != nil {
+				tt := tt
+				tt.setupMock(m)
+			}
+
+			svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+			require.NoError(t, err)
+			xml, err := svc.GetProcessDefinitionXML(ctx, "123")
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedXML, xml)
 			}
 			m.AssertExpectations(t)
 		})

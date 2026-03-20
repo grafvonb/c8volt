@@ -38,7 +38,7 @@
         "If no capability is added, the implementation and notes make the bounded no-addition decision explicit instead of leaving the review implicit."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Treat XML retrieval as the leading candidate because both supported generated clients expose it, but do not force that outcome if the bounded review shows it should remain deferred."
     },
     {

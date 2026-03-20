@@ -102,9 +102,9 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 		return d.ProcessDefinition{}, err
 	}
 
-	oldKey, err := toolx.StringToInt64(key)
+	oldKey, err := processDefinitionKeyInt64(key)
 	if err != nil {
-		return d.ProcessDefinition{}, fmt.Errorf("converting process definition key %q to int64: %w", key, err)
+		return d.ProcessDefinition{}, err
 	}
 	common.VerboseLog(ctx, cCfg, s.log, "retrieving process definition", "key", key)
 	resp, err := s.co.GetProcessDefinitionByKeyWithResponse(ctx, oldKey)
@@ -117,6 +117,37 @@ func (s *Service) GetProcessDefinition(ctx context.Context, key string, opts ...
 	}
 	common.VerboseLog(ctx, cCfg, s.log, "process definition retrieved", "bpmnProcessId", payload.BpmnProcessId, "version", payload.Version)
 	return fromProcessDefinitionResponse(*payload), nil
+}
+
+func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts ...services.CallOption) (string, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	if err := ensureStatsSupported(cCfg); err != nil {
+		return "", err
+	}
+
+	oldKey, err := processDefinitionKeyInt64(key)
+	if err != nil {
+		return "", err
+	}
+	common.VerboseLog(ctx, cCfg, s.log, "retrieving process definition xml", "key", key)
+	resp, err := s.co.GetProcessDefinitionAsXmlByKeyWithResponse(ctx, oldKey)
+	if err != nil {
+		return "", err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.XML200)
+	if err != nil {
+		return "", err
+	}
+	common.VerboseLog(ctx, cCfg, s.log, "process definition xml retrieved", "key", key)
+	return *payload, nil
+}
+
+func processDefinitionKeyInt64(key string) (int64, error) {
+	oldKey, err := toolx.StringToInt64(key)
+	if err != nil {
+		return 0, fmt.Errorf("converting process definition key %q to int64: %w", key, err)
+	}
+	return oldKey, nil
 }
 
 func ensureStatsSupported(cCfg *services.CallCfg) error {

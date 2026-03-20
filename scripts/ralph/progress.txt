@@ -5,6 +5,7 @@
 - Treat `docs/cli/` as generated output from Cobra command metadata and regenerate it with `make docs` after command-tree or help-text changes instead of hand-editing the Markdown pages.
 - Versioned service packages mirror the shared facade by defining a local `API` interface in each `v87`/`v88` contract file, and factory tests should assert the concrete service type plus `services.ErrUnknownAPIVersion` for unsupported versions.
 - When a generated-client service method uses the standard success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation and keep version-specific exceptions, such as tolerant stats enrichment, explicit at the call site.
+- For generated client endpoints that return XML or plain string payloads through `XML200`, use `internal/services/common.RequirePayload` as the empty-200 guard instead of duplicating string-specific malformed-response checks.
 
 # Ralph Progress Log
 Started: Thu Mar 19 22:00:20 CET 2026
@@ -71,4 +72,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: processdefinition service methods can share the standard generated-client response validation through `common.RequirePayload` while leaving version-specific follow-up behavior, such as stats enrichment, in the versioned service.
   - Gotchas encountered: not every 200 OK path should use the shared payload helper; v8.8 stats retrieval intentionally treats a nil JSON body as a warning-only no-stats case rather than a malformed-response failure.
   - Useful context: extracting the per-version search request builders made the mixed v8.7/v8.8 filter and sorting differences easier to preserve during refactors without adding a new package.
+---
+## 2026-03-20 14:16:43 CET - #67-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Added `GetProcessDefinitionXML` to the shared processdefinition facade and both versioned contracts, making the generated-client coverage decision explicit as a bounded XML retrieval capability supported in v8.7 and v8.8.
+- Implemented the XML retrieval path in both versioned services using the generated client XML endpoints and the shared malformed-response validation path, while preserving v8.7 key conversion and stat-option behavior.
+- Added focused service tests for successful XML retrieval plus client, HTTP, empty-200, and v8.7 key-conversion failures, then verified with `go test ./internal/services/processdefinition/... -race -count=1` and `make test`.
+- Files changed: `AGENTS.md`, `internal/services/processdefinition/api.go`, `internal/services/processdefinition/v87/contract.go`, `internal/services/processdefinition/v87/service.go`, `internal/services/processdefinition/v87/service_test.go`, `internal/services/processdefinition/v88/contract.go`, `internal/services/processdefinition/v88/service.go`, `internal/services/processdefinition/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: when both supported generated clients already expose process-definition XML, the shared service facade can add `GetProcessDefinitionXML` without introducing a new package or changing version selection behavior.
+  - Gotchas encountered: v8.7 still requires string-to-int64 key conversion for the XML endpoint just like the JSON get path, so XML coverage should assert both the conversion error and the forwarded int64 key.
+  - Useful context: `common.RequirePayload` works for generated `XML200 *string` responses as well as JSON payloads, which keeps the empty-200 malformed-response behavior aligned across response types.
 ---
