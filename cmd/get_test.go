@@ -167,8 +167,34 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 
 	require.Contains(t, output, `"LicenseType": "SaaS"`)
 	require.Contains(t, output, `"ValidLicense": true`)
-	require.Contains(t, output, `"ExpiresAt": null`)
-	require.Contains(t, output, `"IsCommercial": null`)
+	require.NotContains(t, output, `"ExpiresAt": null`)
+	require.NotContains(t, output, `"IsCommercial": null`)
+	require.NotContains(t, output, `"ExpiresAt"`)
+	require.NotContains(t, output, `"IsCommercial"`)
+}
+
+func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "expiresAt": "2030-01-02T03:04:05Z",
+  "isCommercial": true,
+  "licenseType": "Enterprise",
+  "validLicense": true
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
+
+	require.Contains(t, output, `"ExpiresAt": "2030-01-02T03:04:05Z"`)
+	require.Contains(t, output, `"IsCommercial": true`)
+	require.Contains(t, output, `"LicenseType": "Enterprise"`)
+	require.Contains(t, output, `"ValidLicense": true`)
 }
 
 func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
