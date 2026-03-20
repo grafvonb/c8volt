@@ -12,7 +12,7 @@
         "The resulting wiring remains compatible with the current branch `69-process-definition-xml` and existing repository structure."
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": "Keep this slice limited to shared wiring. Reuse the existing service patterns and avoid changing package layout or introducing a parallel abstraction."
     },
     {
@@ -25,7 +25,7 @@
         "Existing non-XML `get process-definition` list and detail behavior still works when `--xml` is not used."
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": "The upstream issue mentions `--id`, but the current CLI surface uses `--key`; keep the implementation aligned with the existing command contract unless a separate rename is approved."
     },
     {
@@ -38,7 +38,7 @@
         "Validation includes targeted Go test runs for the affected command and processdefinition packages."
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": "Prefer tests that verify observable command behavior. Follow the repository conventions for temp config usage, explicit Camunda version selection in tests, and subprocess assertions when command failures exit via `os.Exit`."
     },
     {
@@ -51,7 +51,7 @@
         "Final validation includes `make docs` and `make test`."
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": "Do not hand-edit generated CLI docs beyond the repository's normal generation flow. Keep documentation changes tightly scoped to the user-visible XML workflow."
     }
   ]

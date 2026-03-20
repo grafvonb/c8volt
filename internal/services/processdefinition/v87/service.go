@@ -1,6 +1,7 @@
 package v87
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -137,6 +138,9 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.XML200)
 	if err != nil {
 		return "", err
+	}
+	if len(bytes.TrimSpace([]byte(*payload))) == 0 && len(bytes.TrimSpace(resp.Body)) > 0 {
+		return string(resp.Body), nil
 	}
 	common.VerboseLog(ctx, cCfg, s.log, "process definition xml retrieved", "key", key)
 	return *payload, nil
