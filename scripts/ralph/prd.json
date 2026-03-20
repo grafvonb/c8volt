@@ -1,58 +1,58 @@
 {
-  "branchName": "63-cluster-license",
-  "overview": "Expose the existing cluster license capability at `c8volt get cluster license`, keep the change aligned with the current `get cluster` Cobra patterns, and complete the feature with focused command tests, regenerated docs, and repository validation.",
+  "branchName": "67-processdefinition-api-refactor",
+  "overview": "Refactor the internal processdefinition service to reduce duplication across supported Camunda versions, preserve existing search/latest/get behavior, explicitly review generated-client coverage, and complete the work with focused service tests plus repository validation.",
   "userStories": [
     {
-      "id": "#63-001",
-      "title": "Establish the cluster license command entry point",
-      "description": "Add the nested `get cluster license` Cobra command in the existing command tree and wire it through the current CLI construction path without introducing a parallel command structure.",
+      "id": "#67-001",
+      "title": "Stabilize the shared processdefinition service contract",
+      "description": "Clarify the shared API, versioned client contracts, and factory expectations for the processdefinition service so the refactor has a stable, repository-native surface to preserve.",
       "acceptanceCriteria": [
-        "`c8volt get cluster license` exists beneath the existing `get cluster` hierarchy.",
-        "The command reuses the repository's current Cobra patterns and inherits the standard `get` command behavior.",
-        "No alternate direct command such as `c8volt get cluster-license` is introduced."
+        "The shared processdefinition API in `internal/services/processdefinition/api.go` reflects the preserved service surface without changing package layout or version selection behavior.",
+        "Version-specific contracts in `internal/services/processdefinition/v87/contract.go` and `internal/services/processdefinition/v88/contract.go` cover the methods needed for the approved service surface.",
+        "Factory expectations in `internal/services/processdefinition/factory.go` and `internal/services/processdefinition/factory_test.go` remain aligned with the preserved version-selection behavior."
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Keep this slice limited to command registration and shared wiring in `cmd/`. Reuse the active branch `63-cluster-license` per repository branch guidance."
+      "passes": false,
+      "notes": "Keep this slice limited to shared contract and wiring clarity. Reuse the existing issue branch `67-processdefinition-api-refactor` and existing service/factory patterns."
     },
     {
-      "id": "#63-002",
-      "title": "Deliver observable cluster license retrieval behavior",
-      "description": "Connect the new command to the existing cluster service so operators can retrieve license details through the CLI with the repository's standard structured output and defined handling for optional or malformed fields.",
+      "id": "#67-002",
+      "title": "Refactor the versioned processdefinition services without behavior change",
+      "description": "Simplify duplicated request construction, response validation, and latest-result handling across the v8.7 and v8.8 processdefinition services while preserving all current observable behavior and supported version differences.",
       "acceptanceCriteria": [
-        "Running `c8volt get cluster license` against a valid environment returns the existing cluster license payload through the standard structured output path.",
-        "Optional license fields can be absent without the command inventing values or failing unnecessarily.",
-        "Malformed or empty successful responses are surfaced clearly instead of being silently accepted."
+        "Search, latest, and get behavior in `internal/services/processdefinition/v87/service.go` remains unchanged, including rejection of unsupported statistics requests.",
+        "Search, latest, and get behavior in `internal/services/processdefinition/v88/service.go` remains unchanged, including current statistics enrichment behavior.",
+        "The refactor reduces avoidable duplication without introducing new packages, new dependency layers, or behavioral regressions in existing processdefinition paths."
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Reuse the existing cluster service and domain payload. Keep the change bounded to CLI exposure of current license behavior rather than redesigning the service layer."
+      "passes": false,
+      "notes": "Use small shared helper extraction or localized cleanup only where it makes the code clearer. Preserve current mixed-version semantics rather than forcing convergence."
     },
     {
-      "id": "#63-003",
-      "title": "Lock down help discovery and failure semantics with tests",
-      "description": "Add focused command coverage for help discovery, successful execution, and representative failures so the new command matches the CLI's established error handling and exit behavior.",
+      "id": "#67-003",
+      "title": "Complete the generated-client coverage decision",
+      "description": "Review the supported generated processdefinition clients against the shared service surface and either add one bounded missing capability, with XML retrieval as the leading candidate, or record an explicit no-addition decision.",
       "acceptanceCriteria": [
-        "Command tests cover `c8volt get --help`, `c8volt get cluster --help`, and `c8volt get cluster license --help` discovery behavior.",
-        "Command tests cover a successful `c8volt get cluster license` execution path.",
-        "Command tests cover representative failing execution and verify the established exit-code or `os.Exit` behavior for the CLI."
+        "The generated-client coverage decision is explicit and traceable in the shared service surface and version-specific implementations.",
+        "Any added capability is supported in both v8.7 and v8.8, fits the current service boundaries, and does not require package or layout changes.",
+        "If no capability is added, the implementation and notes make the bounded no-addition decision explicit instead of leaving the review implicit."
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Follow existing `cmd` testing conventions, including explicit temp `--config` usage and subprocess assertions when failure handling exits the process."
+      "passes": false,
+      "notes": "Treat XML retrieval as the leading candidate because both supported generated clients expose it, but do not force that outcome if the bounded review shows it should remain deferred."
     },
     {
-      "id": "#63-004",
-      "title": "Align documentation and complete repository validation",
-      "description": "Update user-facing command references for the new nested license command, regenerate CLI docs from Cobra metadata, and finish with the targeted and repo-wide validation flow.",
+      "id": "#67-004",
+      "title": "Lock down regression coverage and final validation",
+      "description": "Update focused processdefinition tests to protect the refactored behavior, version-specific differences, and final capability decision, then complete targeted validation and repository-wide verification.",
       "acceptanceCriteria": [
-        "README and `docs/index.md` show `c8volt get cluster license` anywhere affected cluster read commands are documented.",
-        "CLI reference documentation is regenerated so the new command appears in the generated `docs/cli/` output.",
-        "Validation includes `go test ./cmd/... -race -count=1`, `go test ./internal/services/cluster/... -race -count=1`, `make docs`, and `make test`."
+        "Focused tests in `internal/services/processdefinition/factory_test.go`, `internal/services/processdefinition/v87/service_test.go`, and `internal/services/processdefinition/v88/service_test.go` cover the preserved behavior and final capability decision.",
+        "Validation includes `go test ./internal/services/processdefinition/... -race -count=1` and `make test`.",
+        "If the final capability decision introduces a user-visible workflow, the affected source documentation is updated and generated CLI docs are regenerated from repository tooling."
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Update source docs first and regenerate derived CLI docs instead of hand-editing generated output."
+      "passes": false,
+      "notes": "Prefer tests that verify preserved external behavior rather than internal structure. Only touch documentation if the final coverage decision changes user-visible behavior."
     }
   ]
 }
