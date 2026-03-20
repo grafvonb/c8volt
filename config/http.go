@@ -12,7 +12,7 @@ type HTTP struct {
 
 func (h *HTTP) Validate() error {
 	if strings.TrimSpace(h.Timeout) == "" {
-		return fmt.Errorf("timeout must not be empty")
+		return fmt.Errorf("http.timeout: timeout must not be empty")
 	}
 	return nil
 }

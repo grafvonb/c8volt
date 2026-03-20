@@ -81,7 +81,7 @@ Refer to the documentation at https://c8volt.boczek.info for more information.`,
 		}
 
 		if err = cfg.Validate(); err != nil {
-			return fmt.Errorf("validate config:\n%w", err)
+			return fmt.Errorf("%w\n", config.FormatValidationError("configuration is invalid", err))
 		}
 		if cfg.ActiveProfile != "" {
 			log.Debug("using configuration profile: " + cfg.ActiveProfile)
