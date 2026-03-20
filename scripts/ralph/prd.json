@@ -25,7 +25,7 @@
         "Existing non-XML `get process-definition` list and detail behavior still works when `--xml` is not used."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "The upstream issue mentions `--id`, but the current CLI surface uses `--key`; keep the implementation aligned with the existing command contract unless a separate rename is approved."
     },
     {

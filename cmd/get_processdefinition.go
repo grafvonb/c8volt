@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -15,6 +16,7 @@ var (
 	flagGetPDProcessVersionTag string
 	flagGetPDLatest            bool
 	flagGetPDWithStat          bool
+	flagGetPDAsXML             bool
 )
 
 var getProcessDefinitionCmd = &cobra.Command{
@@ -29,6 +31,22 @@ var getProcessDefinitionCmd = &cobra.Command{
 
 		log.Debug("fetching process definitions")
 		filter := populatePDSearchFilterOpts()
+		if flagGetPDAsXML {
+			if filter.Key == "" {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("xml output requires --key to select a single process definition"))
+			}
+
+			log.Debug(fmt.Sprintf("fetching process definition xml by key: %s", filter.Key))
+			xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectOptions()...)
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process definition xml by key %s: %w", filter.Key, err))
+			}
+			if _, err := io.WriteString(cmd.OutOrStdout(), xml); err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error writing process definition xml: %w", err))
+			}
+			return
+		}
+
 		if filter.Key != "" {
 			log.Debug(fmt.Sprintf("searching by key: %s", filter.Key))
 			pd, err := cli.GetProcessDefinition(cmd.Context(), filter.Key, collectOptions()...)
@@ -69,6 +87,7 @@ func init() {
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics")
+	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML")
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {

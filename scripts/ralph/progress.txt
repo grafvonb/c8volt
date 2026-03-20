@@ -3,7 +3,20 @@ Started: Fri Mar 20 19:17:13 CET 2026
 
 ## Codebase Patterns
 - Public `c8volt/process` facade methods should delegate to `internal/services/processdefinition` and map facade options with `options.MapFacadeOptionsToCallOptions` instead of adding command-specific service paths.
+- Generated XML responses can populate `XML200` with an empty string even when `Body` contains the BPMN XML; versioned XML service methods should validate via `common.RequirePayload` and then fall back to the raw response body when needed.
 
+---
+
+## 2026-03-20 19:24:59 CET - #69-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Added `--xml` handling to `c8volt get process-definition` so `--key <key> --xml` fetches one process definition and writes only the raw XML payload to stdout.
+- Kept the existing non-XML key/detail path intact and added a command failure path when XML output is requested without `--key`.
+- Hardened both versioned process-definition XML service methods to fall back to the raw response body when generated XML string parsing drops element markup, then added focused CLI and service tests for that behavior.
+- Files changed: `AGENTS.md`, `cmd/get_processdefinition.go`, `cmd/get_test.go`, `internal/services/processdefinition/v87/service.go`, `internal/services/processdefinition/v87/service_test.go`, `internal/services/processdefinition/v88/service.go`, `internal/services/processdefinition/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: command tests for real CLI output should hit the generated HTTP clients through `httptest` because XML/string response parsing can differ from mocked response structs.
+  - Gotchas encountered: the generated Camunda XML response parser can return an empty `XML200` string for non-text XML documents, so service code must preserve `resp.Body` for raw XML output.
+  - Useful context: the new `--xml` path intentionally bypasses the normal render modes and writes directly to `cmd.OutOrStdout()` so shell redirection sees only the BPMN XML.
 ---
 
 ## 2026-03-20 19:19:24 CET - #69-001

@@ -292,6 +292,64 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	require.Contains(t, string(output), "malformed response")
 }
 
+func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write([]byte("<definitions id=\"order-process\"/>"))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "process-definition", "--key", "2251799813685255", "--xml")
+
+	require.Equal(t, "<definitions id=\"order-process\"/>", output)
+}
+
+func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "processDefinitionId": "order-process",
+  "processDefinitionKey": "2251799813685255",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "process-definition", "--key", "2251799813685255")
+
+	require.Contains(t, output, "2251799813685255")
+	require.Contains(t, output, "<default> order-process v7/stable")
+	require.NotContains(t, output, "<definitions")
+}
+
+func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetProcessDefinitionXMLCommand_RequiresKeyHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "xml output requires --key")
+}
+
 func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -339,6 +397,19 @@ func TestGetClusterLicenseNestedCommand_FailureHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "license"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--xml"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
