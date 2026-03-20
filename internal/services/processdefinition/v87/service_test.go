@@ -309,7 +309,7 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 			name: "SuccessFallsBackToRawBody",
 			key:  "123",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				parsedXML := ""
+				parsedXML := "\n  \n  \n"
 				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
 					Body:         []byte("<definitions id=\"proc\"/>"),
@@ -318,6 +318,20 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
 			},
 			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "SuccessPrefersFormattedRawBody",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				parsedXML := "\n  \n    \n"
+				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
+					Body:         []byte("<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n"),
+					XML200:       &parsedXML,
+				}
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n",
 		},
 		{
 			name:              "StatsNotSupported",

@@ -394,7 +394,7 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 		{
 			name: "Success falls back to raw body",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				parsedXML := ""
+				parsedXML := "\n  \n  \n"
 				resp := &camundav88.GetProcessDefinitionXMLResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
 					Body:         []byte("<definitions id=\"proc\"/>"),
@@ -403,6 +403,19 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
 			},
 			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "Success prefers formatted raw body",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				parsedXML := "\n  \n    \n"
+				resp := &camundav88.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+					Body:         []byte("<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n"),
+					XML200:       &parsedXML,
+				}
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n",
 		},
 		{
 			name: "HTTP error",

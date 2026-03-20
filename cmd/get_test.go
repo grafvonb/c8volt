@@ -308,6 +308,22 @@ func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 	require.Equal(t, "<definitions id=\"order-process\"/>", output)
 }
 
+func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write([]byte("<definitions id=\"order-process\">\n  <process id=\"order\" />\n</definitions>\n"))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "process-definition", "--key", "2251799813685255", "--xml")
+
+	require.Equal(t, "<definitions id=\"order-process\">\n  <process id=\"order\" />\n</definitions>\n", output)
+}
+
 func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
