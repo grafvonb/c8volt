@@ -85,7 +85,7 @@ INFO configuration is valid`,
 			if flagShowConfigValidate {
 				err = cfg.Validate()
 				if err != nil {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("configuration is invalid:\n%w", err))
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, config.FormatValidationError("configuration is invalid", err))
 				}
 				ferrors.HandleAndExitOK(log, "configuration is valid")
 			}

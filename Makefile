@@ -4,6 +4,10 @@ PKG := ./...
 COVER_DIR := .coverage
 COVER_OUT := $(COVER_DIR)/coverage.out
 COVER_HTML := $(COVER_DIR)/coverage.html
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
+LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
 
 .PHONY: all tidy generate build test lint fmt vet clean install run cover cover.html release docs
 
@@ -20,10 +24,10 @@ docs:
 
 build:
 	mkdir -p $(BIN_DIR)
-	go build -trimpath -o $(BIN_DIR)/$(BINARY) .
+	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(BINARY) .
 
 install:
-	go install .
+	go install -ldflags "$(LDFLAGS)" .
 
 run: build
 	./$(BIN_DIR)/$(BINARY) --help
