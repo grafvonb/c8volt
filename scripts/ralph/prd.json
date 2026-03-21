@@ -1,0 +1,86 @@
+{
+  "branchName": "71-resource-api-refactor",
+  "overview": "Refactor the internal resource service to improve readability and maintainability while preserving current deploy, delete, and deployment-confirmation behavior across supported Camunda versions. Keep the work within the existing API, factory, and versioned-service structure, review generated-client coverage explicitly, and add a bounded missing capability only if it is cross-version, low risk, and fully verifiable.",
+  "userStories": [
+    {
+      "id": "#71-001",
+      "title": "Lock the shared resource service contract",
+      "description": "Define and stabilize the shared resource service surface, version routing expectations, and generated-client contract boundaries before refactoring the implementation.",
+      "acceptanceCriteria": [
+        "`internal/services/resource/api.go` defines the preserved shared service surface for the refactor.",
+        "`internal/services/resource/factory_test.go` verifies supported version routing and unsupported version failure behavior.",
+        "`internal/services/resource/v87/contract.go` and `internal/services/resource/v88/contract.go` match the generated-client operations required by the settled service surface."
+      ],
+      "priority": "P1",
+      "passes": false,
+      "notes": "Start here because later refactor and capability decisions depend on a stable shared API and contract boundary."
+    },
+    {
+      "id": "#71-002",
+      "title": "Refactor v8.7 resource behavior without regression",
+      "description": "Simplify the v8.7 resource service implementation so deploy and delete flows are easier to maintain while keeping observable behavior unchanged.",
+      "acceptanceCriteria": [
+        "`internal/services/resource/v87/service.go` preserves current deploy and delete behavior for existing callers.",
+        "Success-path payload validation uses repository-native patterns and still rejects malformed success responses.",
+        "`internal/services/resource/v87/service_test.go` covers preserved deploy, delete, and malformed-response behavior."
+      ],
+      "priority": "P1",
+      "passes": false,
+      "notes": "Keep this slice focused on v8.7 behavior preservation plus adjacent tests; do not bundle the capability-review work into this story."
+    },
+    {
+      "id": "#71-003",
+      "title": "Refactor v8.8 resource behavior without regression",
+      "description": "Simplify the v8.8 resource service implementation while preserving current deploy, delete, and wait-for-confirmation behavior.",
+      "acceptanceCriteria": [
+        "`internal/services/resource/v88/service.go` preserves deploy, delete, and `--no-wait` versus confirmation-poll behavior.",
+        "Shared payload validation and response handling are clearer without changing current success or failure semantics.",
+        "`internal/services/resource/v88/service_test.go` covers deploy, delete, malformed-success, and confirmation-path behavior."
+      ],
+      "priority": "P1",
+      "passes": false,
+      "notes": "Preserve the current confirmation poll semantics and avoid normalizing behavior differences just because both versions are being cleaned up."
+    },
+    {
+      "id": "#71-004",
+      "title": "Complete the generated-client coverage decision",
+      "description": "Review the supported generated resource clients and either expose one bounded missing capability or explicitly record a no-addition decision.",
+      "acceptanceCriteria": [
+        "The final generated-client coverage review is recorded in `specs/71-resource-api-refactor/research.md`.",
+        "Any added capability is available in both supported versions, fits the existing service surface, and does not require package or layout changes.",
+        "If no capability is added, the bounded rationale is recorded explicitly.",
+        "The shared service API and both versioned contracts and services reflect the final add-or-defer decision consistently."
+      ],
+      "priority": "P2",
+      "passes": false,
+      "notes": "Resource metadata lookup is the leading candidate; raw content retrieval is lower priority unless it can be kept equally small and verifiable."
+    },
+    {
+      "id": "#71-005",
+      "title": "Prove completion with durable regression coverage",
+      "description": "Expand and tighten regression coverage so future maintainers can safely modify the resource service without rediscovering hidden behavior.",
+      "acceptanceCriteria": [
+        "Resource service tests cover preserved success paths, malformed-success handling, edge-case delete behavior, and version-specific differences.",
+        "`specs/71-resource-api-refactor/quickstart.md` records the final validation sequence and documentation-impact decision.",
+        "`go test ./internal/services/resource/... -race -count=1` passes.",
+        "`make test` passes."
+      ],
+      "priority": "P3",
+      "passes": false,
+      "notes": "This story should consolidate the final regression matrix and repository-required proof of completion after the service shape has settled."
+    },
+    {
+      "id": "#71-006",
+      "title": "Handle documentation impact only if behavior becomes user-visible",
+      "description": "Keep the feature internal-only by default, but update user-facing documentation in the same change if the final capability decision affects operator-visible workflows.",
+      "acceptanceCriteria": [
+        "If no user-visible workflow changes, the feature artifacts explicitly record that documentation remains unchanged.",
+        "If a user-visible workflow changes, `README.md` and affected generated CLI docs under `docs/cli/` are updated in the same change.",
+        "The final validation path makes the documentation decision explicit."
+      ],
+      "priority": "P3",
+      "passes": false,
+      "notes": "Keep this as a small final slice because the documentation work is conditional on the outcome of the generated-client coverage decision."
+    }
+  ]
+}
