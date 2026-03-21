@@ -73,3 +73,6 @@ package.json
 # Ralph local run artifacts
 scripts/ralph/.last-branch
 scripts/ralph/.codex-last-message*.txt
+.agents/skills/
+.specify/
+scripts/ralph/*
