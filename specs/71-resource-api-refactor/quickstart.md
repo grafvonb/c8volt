@@ -26,7 +26,11 @@ go test ./internal/services/resource/... -race -count=1
 make test
 ```
 
-If a user-visible CLI workflow changes:
+Documentation decision for the completed refactor:
+
+- No user-visible CLI workflow changed, so `README.md` and generated docs under `docs/cli/` remain unchanged for this feature.
+
+If a future iteration introduces a user-visible CLI workflow change:
 
 ```bash
 make docs
@@ -38,5 +42,6 @@ make docs
 - Supported-version generated resource capability review is captured in code changes or implementation notes
 - No behavioral regressions in deploy, delete, or wait-for-confirmation paths
 - Added or updated tests cover preserved success, malformed-response, and error paths
+- Targeted regression proof runs `go test ./internal/services/resource/... -race -count=1` before the repository-wide `make test`
 - `make test` passes
-- Documentation changed only when user-visible behavior changed
+- Documentation remains unchanged here because the final `Get` addition stayed internal-only

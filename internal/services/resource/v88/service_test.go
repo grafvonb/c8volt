@@ -20,6 +20,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newTestService(t *testing.T, tenantID string, client *mockResourceClient, processClient *mockProcessDefinitionClient) *Service {
+	t.Helper()
+
+	svc, err := New(testConfigWithTenant(t, tenantID), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(client, processClient))
+	require.NoError(t, err)
+	return svc
+}
+
 type mockResourceClient struct {
 	createDeploymentWithBodyWithResponse func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error)
 	deleteResourceWithResponse           func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error)
@@ -227,7 +235,7 @@ func TestService_Delete(t *testing.T) {
 
 	t.Run("AllowInconsistentCallsDeletionEndpoint", func(t *testing.T) {
 		var called bool
-		svc, err := New(testConfigWithTenant(t, "tenant"), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
@@ -248,17 +256,45 @@ func TestService_Delete(t *testing.T) {
 				t.Fatalf("unexpected process definition lookup")
 				return nil, nil
 			},
-		}))
-		require.NoError(t, err)
+		})
 
-		err = svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
+		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
 
 		require.NoError(t, err)
 		assert.True(t, called)
 	})
 
+	t.Run("AllowInconsistentReturnsDeletionStatusErrors", func(t *testing.T) {
+		svc := newTestService(t, "tenant", &mockResourceClient{
+			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
+				t.Fatalf("unexpected deploy call")
+				return nil, nil
+			},
+			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
+				return &camundav88.DeleteResourceResponse{
+					Body:         []byte(`{"detail":"resource not found"}`),
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/resources/resource-1", http.StatusNotFound, "404 Not Found"),
+				}, nil
+			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+		}, &mockProcessDefinitionClient{
+			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
+				t.Fatalf("unexpected process definition lookup")
+				return nil, nil
+			},
+		})
+
+		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrNotFound)
+	})
+
 	t.Run("WithoutAllowInconsistentSkipsDeletionEndpoint", func(t *testing.T) {
-		svc, err := New(testConfigWithTenant(t, "tenant"), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
@@ -276,10 +312,9 @@ func TestService_Delete(t *testing.T) {
 				t.Fatalf("unexpected process definition lookup")
 				return nil, nil
 			},
-		}))
-		require.NoError(t, err)
+		})
 
-		err = svc.Delete(ctx, "resource-1")
+		err := svc.Delete(ctx, "resource-1")
 
 		require.NoError(t, err)
 	})
@@ -355,13 +390,12 @@ func TestService_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, err := New(testConfigWithTenant(t, "tenant"), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(tt.client, &mockProcessDefinitionClient{
+			svc := newTestService(t, "tenant", tt.client, &mockProcessDefinitionClient{
 				getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
 					t.Fatalf("unexpected process definition lookup")
 					return nil, nil
 				},
-			}))
-			require.NoError(t, err)
+			})
 
 			resource, err := svc.Get(ctx, "resource-1")
 
@@ -421,7 +455,7 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 	})
 
 	t.Run("VisibleProcessDefinitionsCompletePolling", func(t *testing.T) {
-		svc, err := New(testConfigWithTenant(t, "tenant"), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
@@ -447,8 +481,7 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 					JSON200:      &respBody,
 				}, nil
 			},
-		}))
-		require.NoError(t, err)
+		})
 
 		poll := svc.processDefinitionDeployPoller(camundav88.DeploymentResult{
 			Deployments: []camundav88.DeploymentMetadataResult{
@@ -465,6 +498,43 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 			Success: true,
 			Message: "process definitions visible: [proc-1]",
 		}, status)
+	})
+
+	t.Run("UnexpectedStatusFailsPolling", func(t *testing.T) {
+		svc := newTestService(t, "tenant", &mockResourceClient{
+			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
+				t.Fatalf("unexpected deploy call")
+				return nil, nil
+			},
+			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+		}, &mockProcessDefinitionClient{
+			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
+				return &camundav88.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/proc-1", http.StatusInternalServerError, "500 Internal Server Error"),
+				}, nil
+			},
+		})
+
+		poll := svc.processDefinitionDeployPoller(camundav88.DeploymentResult{
+			Deployments: []camundav88.DeploymentMetadataResult{
+				{
+					ProcessDefinition: &camundav88.DeploymentProcessResult{ProcessDefinitionKey: "proc-1"},
+				},
+			},
+		})
+
+		status, err := poll(ctx)
+
+		require.Error(t, err)
+		assert.Equal(t, poller.JobPollStatus{}, status)
+		assert.ErrorContains(t, err, `get process definition "proc-1": unexpected status 500`)
 	})
 }
 

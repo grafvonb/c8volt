@@ -18,6 +18,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newTestService(t *testing.T, client *mockResourceClient) *Service {
+	t.Helper()
+
+	svc, err := New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(client))
+	require.NoError(t, err)
+	return svc
+}
+
 type mockResourceClient struct {
 	postDeploymentsWithBodyWithResponse              func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error)
 	postResourcesResourceKeyDeletionWithResponseFunc func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error)
@@ -121,7 +129,7 @@ func TestService_Delete(t *testing.T) {
 
 	t.Run("AllowInconsistentCallsDeletionEndpoint", func(t *testing.T) {
 		var called bool
-		svc, err := New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		svc := newTestService(t, &mockResourceClient{
 			postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
@@ -137,17 +145,40 @@ func TestService_Delete(t *testing.T) {
 				t.Fatalf("unexpected get call")
 				return nil, nil
 			},
-		}))
-		require.NoError(t, err)
+		})
 
-		err = svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
+		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
 
 		require.NoError(t, err)
 		assert.True(t, called)
 	})
 
+	t.Run("AllowInconsistentReturnsDeletionStatusErrors", func(t *testing.T) {
+		svc := newTestService(t, &mockResourceClient{
+			postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
+				t.Fatalf("unexpected deploy call")
+				return nil, nil
+			},
+			postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
+				return &camundav87.PostResourcesResourceKeyDeletionResponse{
+					Body:         []byte(`{"detail":"missing permission"}`),
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusForbidden, "403 Forbidden"),
+				}, nil
+			},
+			getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+		})
+
+		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrForbidden)
+	})
+
 	t.Run("WithoutAllowInconsistentSkipsDeletionEndpoint", func(t *testing.T) {
-		svc, err := New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		svc := newTestService(t, &mockResourceClient{
 			postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
@@ -160,10 +191,9 @@ func TestService_Delete(t *testing.T) {
 				t.Fatalf("unexpected get call")
 				return nil, nil
 			},
-		}))
-		require.NoError(t, err)
+		})
 
-		err = svc.Delete(ctx, "resource-1")
+		err := svc.Delete(ctx, "resource-1")
 
 		require.NoError(t, err)
 	})
@@ -237,8 +267,7 @@ func TestService_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, err := New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(tt.client))
-			require.NoError(t, err)
+			svc := newTestService(t, tt.client)
 
 			resource, err := svc.Get(ctx, "resource-1")
 
