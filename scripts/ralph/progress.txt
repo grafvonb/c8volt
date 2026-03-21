@@ -70,3 +70,13 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - The fastest way to test v8.8 confirmation failures is to call `processDefinitionDeployPoller` directly and assert the returned error for unexpected status handling instead of running the full wait loop.
   - When the resource work remains internal-only, record the documentation no-op explicitly in the feature quickstart rather than changing `README.md` or generated CLI docs.
 ---
+
+## [2026-03-21 19:34:49 CET] - #71-006
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Strengthened `specs/71-resource-api-refactor/quickstart.md` with a dedicated documentation-impact section that makes the internal-only outcome explicit: the final `resource.Get` addition does not change commands, flags, CLI output, or operator workflows, so `README.md` and generated `docs/cli/` remain unchanged.
+- Re-ran the repository validation gate with `make test` to confirm the documentation-only closeout kept the tree green.
+- Files changed: `specs/71-resource-api-refactor/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - When a Ralph story is only about conditional documentation impact, prefer a dedicated section in the feature quickstart that states both the final internal capability and the explicit reason user-facing docs did not change.
+  - For internal-only feature work in this repo, the expected proof is an explicit no-doc decision in the feature artifacts plus the normal repository validation command, not churn in `README.md` or generated CLI docs.
+---

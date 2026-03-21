@@ -26,9 +26,13 @@ go test ./internal/services/resource/... -race -count=1
 make test
 ```
 
-Documentation decision for the completed refactor:
+## Documentation Impact
 
-- No user-visible CLI workflow changed, so `README.md` and generated docs under `docs/cli/` remain unchanged for this feature.
+The completed refactor remains internal-only:
+
+- The final capability addition was `resource.Get` in the internal service layer.
+- No command names, flags, CLI output, or operator workflow changed.
+- `README.md` and generated docs under `docs/cli/` therefore remain unchanged for this feature.
 
 If a future iteration introduces a user-visible CLI workflow change:
 
