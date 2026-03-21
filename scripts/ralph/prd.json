@@ -25,7 +25,7 @@
         "Running the command with an unknown resource id preserves clear non-success behavior instead of rendering a successful empty result."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "This is the core operator-visible slice and should stay narrowly focused on the happy path plus clear failure behavior."
     },
     {

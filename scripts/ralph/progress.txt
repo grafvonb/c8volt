@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - Public `c8volt/<module>` facade methods belong in `client.go`, convert domain models in `convert.go`, and translate internal service errors with `c8volt/ferrors.FromDomain`.
+- New `get` subcommands live in `cmd/get_<resource>.go`, register under `getCmd`, and should render single-item output through `cmd/cmd_views_get.go` so one-line, JSON, and `--keys-only` modes stay aligned.
 
 # Ralph Progress Log
 Started: Sat Mar 21 20:41:51 CET 2026
@@ -13,4 +14,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: the aggregate `c8volt.API` already embeds `resource.API`, so new public resource capabilities usually only need package-local facade wiring rather than aggregate contract changes.
   - Gotchas encountered: the Ralph workspace can already contain unrelated changes under `scripts/ralph/`; inspect `git status` before staging so iteration commits stay focused.
   - Useful context: single-resource lookup already exists in `internal/services/resource` for both supported versions, so CLI work should call the public facade instead of reaching into internal services.
+---
+## [2026-03-21 20:48:45 CET] - #73-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Implemented `c8volt get resource --id <id>` as a new `get` subcommand, wired it to the public `cli.GetResource(...)` facade path, and added single-resource rendering for the normal one-line and JSON/keys-only modes.
+- Added focused CLI regression coverage for the happy path and a not-found lookup that must exit non-success instead of rendering an empty success result.
+- Files changed: `cmd/get_resource.go`, `cmd/cmd_views_get.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: single-item `get` commands should lean on `itemView(...)` in `cmd/cmd_views_get.go` so render-mode behavior stays consistent with the rest of the command tree.
+  - Gotchas encountered: subprocess-based CLI failure assertions need `resetCommandTreeFlags(Root())` before execution because shared Cobra state persists across in-process tests.
+  - Useful context: the resource lookup endpoint is `GET /v2/resources/{resourceId}` for both supported Camunda versions, so command tests can exercise the facade end-to-end with a single-version temp config.
 ---

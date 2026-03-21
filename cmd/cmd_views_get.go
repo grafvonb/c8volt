@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -62,6 +63,20 @@ func oneLinePD(it process.ProcessDefinition) string {
 		)
 	}
 	return core
+}
+
+func resourceView(cmd *cobra.Command, item resource.Resource) error {
+	return itemView(cmd, item, pickMode(), oneLineResource, func(it resource.Resource) string { return it.ID })
+}
+
+func oneLineResource(it resource.Resource) string {
+	vTag := ""
+	if it.VersionTag != "" {
+		vTag = "/" + it.VersionTag
+	}
+	return fmt.Sprintf("%-24s k:%-16s %s %s v%d%s",
+		it.ID, it.Key, it.TenantId, it.Name, it.Version, vTag,
+	)
 }
 
 func zeroAsMinus(v int64) string {
