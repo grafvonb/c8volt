@@ -1,86 +1,85 @@
 {
-  "branchName": "71-resource-api-refactor",
-  "overview": "Refactor the internal resource service to improve readability and maintainability while preserving current deploy, delete, and deployment-confirmation behavior across supported Camunda versions. Keep the work within the existing API, factory, and versioned-service structure, review generated-client coverage explicitly, and add a bounded missing capability only if it is cross-version, low risk, and fully verifiable.",
+  "branchName": "73-get-resource-id",
+  "overview": "Add a repository-native `c8volt get resource --id <id>` command that exposes the existing internal resource lookup capability through the public `c8volt` facade, returns the normal single-resource details/object view, preserves current `get` command conventions, and ships with targeted regression coverage plus updated generated CLI documentation.",
   "userStories": [
     {
-      "id": "#71-001",
-      "title": "Lock the shared resource service contract",
-      "description": "Define and stabilize the shared resource service surface, version routing expectations, and generated-client contract boundaries before refactoring the implementation.",
+      "id": "#73-001",
+      "title": "Expose resource lookup through the public facade",
+      "description": "Add the missing public `c8volt/resource` capability so CLI code can retrieve one resource by id through the existing facade boundary.",
       "acceptanceCriteria": [
-        "`internal/services/resource/api.go` defines the preserved shared service surface for the refactor.",
-        "`internal/services/resource/factory_test.go` verifies supported version routing and unsupported version failure behavior.",
-        "`internal/services/resource/v87/contract.go` and `internal/services/resource/v88/contract.go` match the generated-client operations required by the settled service surface."
+        "`c8volt/resource/api.go` defines a single-resource retrieval method for one resource id.",
+        "`c8volt/resource/client.go` maps the internal domain `Resource` to a public `c8volt/resource` model without introducing raw-content fields.",
+        "`c8volt/contract.go` includes the new resource capability so `NewCli(cmd)` can expose it through the existing aggregate API."
       ],
       "priority": "P1",
-      "passes": true,
-      "notes": "Start here because later refactor and capability decisions depend on a stable shared API and contract boundary."
+      "passes": false,
+      "notes": "Start here because the command should depend on the existing public facade layer rather than calling internal services directly."
     },
     {
-      "id": "#71-002",
-      "title": "Refactor v8.7 resource behavior without regression",
-      "description": "Simplify the v8.7 resource service implementation so deploy and delete flows are easier to maintain while keeping observable behavior unchanged.",
+      "id": "#73-002",
+      "title": "Deliver the MVP get resource command",
+      "description": "Add a working `c8volt get resource --id <id>` command that retrieves one resource and renders the normal single-resource details/object view.",
       "acceptanceCriteria": [
-        "`internal/services/resource/v87/service.go` preserves current deploy and delete behavior for existing callers.",
-        "Success-path payload validation uses repository-native patterns and still rejects malformed success responses.",
-        "`internal/services/resource/v87/service_test.go` covers preserved deploy, delete, and malformed-response behavior."
+        "`cmd/get_resource.go` registers a `resource` subcommand under `get`.",
+        "Running `c8volt get resource --id <id>` with a valid resource id returns one resource in the expected details/object output form.",
+        "Running the command with an unknown resource id preserves clear non-success behavior instead of rendering a successful empty result."
       ],
       "priority": "P1",
-      "passes": true,
-      "notes": "Keep this slice focused on v8.7 behavior preservation plus adjacent tests; do not bundle the capability-review work into this story."
+      "passes": false,
+      "notes": "This is the core operator-visible slice and should stay narrowly focused on the happy path plus clear failure behavior."
     },
     {
-      "id": "#71-003",
-      "title": "Refactor v8.8 resource behavior without regression",
-      "description": "Simplify the v8.8 resource service implementation while preserving current deploy, delete, and wait-for-confirmation behavior.",
+      "id": "#73-003",
+      "title": "Enforce repository-native validation and malformed-response handling",
+      "description": "Make the new command match existing `get` command conventions for required-flag validation, malformed-success handling, and failure mapping.",
       "acceptanceCriteria": [
-        "`internal/services/resource/v88/service.go` preserves deploy, delete, and `--no-wait` versus confirmation-poll behavior.",
-        "Shared payload validation and response handling are clearer without changing current success or failure semantics.",
-        "`internal/services/resource/v88/service_test.go` covers deploy, delete, malformed-success, and confirmation-path behavior."
+        "The command fails validation before any backend lookup when `--id` is missing, empty, or whitespace-only.",
+        "A backend `200 OK` response without a resource payload is treated as a malformed-response error rather than empty success.",
+        "Existing error and exit handling continue to flow through the repository's standard command-path behavior."
       ],
       "priority": "P1",
-      "passes": true,
-      "notes": "Preserve the current confirmation poll semantics and avoid normalizing behavior differences just because both versions are being cleaned up."
+      "passes": false,
+      "notes": "Keep the existing `internal/services/common.RequirePayload` semantics and the normal CLI error path rather than inventing command-specific special cases."
     },
     {
-      "id": "#71-004",
-      "title": "Complete the generated-client coverage decision",
-      "description": "Review the supported generated resource clients and either expose one bounded missing capability or explicitly record a no-addition decision.",
+      "id": "#73-004",
+      "title": "Align rendering and command-tree integration",
+      "description": "Integrate the new resource lookup path into the existing CLI rendering and command-tree behavior without changing unrelated `get` workflows.",
       "acceptanceCriteria": [
-        "The final generated-client coverage review is recorded in `specs/71-resource-api-refactor/research.md`.",
-        "Any added capability is available in both supported versions, fits the existing service surface, and does not require package or layout changes.",
-        "If no capability is added, the bounded rationale is recorded explicitly.",
-        "The shared service API and both versioned contracts and services reflect the final add-or-defer decision consistently."
+        "Resource output uses a dedicated single-resource renderer aligned with existing one-item `get` views.",
+        "JSON and normal detail output behavior remain consistent with the current rendering patterns used by other `get` commands.",
+        "Adding the resource command does not alter existing `get` subcommand behavior outside the new resource lookup path."
       ],
       "priority": "P2",
-      "passes": true,
-      "notes": "Resource metadata lookup is the leading candidate; raw content retrieval is lower priority unless it can be kept equally small and verifiable."
+      "passes": false,
+      "notes": "This slice should refine integration after the command and facade path exist, while keeping unrelated `get` behavior stable."
     },
     {
-      "id": "#71-005",
-      "title": "Prove completion with durable regression coverage",
-      "description": "Expand and tighten regression coverage so future maintainers can safely modify the resource service without rediscovering hidden behavior.",
+      "id": "#73-005",
+      "title": "Make the workflow discoverable through help and docs",
+      "description": "Update help text and generated documentation so operators can find and use the new command without reading source code.",
       "acceptanceCriteria": [
-        "Resource service tests cover preserved success paths, malformed-success handling, edge-case delete behavior, and version-specific differences.",
-        "`specs/71-resource-api-refactor/quickstart.md` records the final validation sequence and documentation-impact decision.",
-        "`go test ./internal/services/resource/... -race -count=1` passes.",
+        "`c8volt get --help` exposes the new `resource` subcommand.",
+        "`c8volt get resource --help` describes the required `--id` flag and the command's single-resource purpose.",
+        "Generated CLI docs under `docs/cli/` include the new command and match the shipped help text."
+      ],
+      "priority": "P2",
+      "passes": false,
+      "notes": "Update command help first and regenerate docs via `make docs`; do not hand-edit generated CLI reference pages."
+    },
+    {
+      "id": "#73-006",
+      "title": "Prove completion with focused and repository-wide validation",
+      "description": "Add the regression coverage and validation steps needed to ship the feature confidently and preserve current service semantics.",
+      "acceptanceCriteria": [
+        "Command tests cover success, missing-id validation, and at least one failing lookup path.",
+        "Versioned resource service tests cover single-resource retrieval and malformed-success payload handling for supported versions.",
+        "`go test ./cmd -run 'TestGet.*Resource' -count=1` and `go test ./c8volt/resource ./internal/services/resource/... -count=1` pass.",
         "`make test` passes."
       ],
       "priority": "P3",
-      "passes": true,
-      "notes": "This story should consolidate the final regression matrix and repository-required proof of completion after the service shape has settled."
-    },
-    {
-      "id": "#71-006",
-      "title": "Handle documentation impact only if behavior becomes user-visible",
-      "description": "Keep the feature internal-only by default, but update user-facing documentation in the same change if the final capability decision affects operator-visible workflows.",
-      "acceptanceCriteria": [
-        "If no user-visible workflow changes, the feature artifacts explicitly record that documentation remains unchanged.",
-        "If a user-visible workflow changes, `README.md` and affected generated CLI docs under `docs/cli/` are updated in the same change.",
-        "The final validation path makes the documentation decision explicit."
-      ],
-      "priority": "P3",
-      "passes": true,
-      "notes": "Keep this as a small final slice because the documentation work is conditional on the outcome of the generated-client coverage decision."
+      "passes": false,
+      "notes": "This final slice should consolidate the required proof of completion after behavior, validation, and docs are in place."
     }
   ]
 }
