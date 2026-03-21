@@ -1,0 +1,33 @@
+# Ralph Progress Log
+## Codebase Patterns
+- Resource version packages should mirror the shared service surface with a local `API` interface and compile-time `var _ API = (*Service)(nil)` assertion, while `contract.go` keeps only the generated-client methods the service actually uses.
+- Service factory tests in this repo should assert the concrete versioned service type for each supported Camunda version and verify unsupported versions with `services.ErrUnknownAPIVersion`, including the normalized `"unknown"` text and supported-version list.
+- Resource deploy unit tests can stay fast and deterministic by mocking the generated client and parsing the multipart request body directly to verify tenant and `resources` form fields.
+
+Started: Sat Mar 21 18:00:11 CET 2026
+---
+
+## [2026-03-21 18:02:21 CET] - #71-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Locked the shared resource service contract by adding version-local `API` interfaces and compile-time service assertions in `internal/services/resource/v87/contract.go` and `internal/services/resource/v88/contract.go`.
+- Strengthened `internal/services/resource/factory_test.go` to assert concrete v8.7/v8.8 factory routing and unsupported-version failures through `services.ErrUnknownAPIVersion`.
+- Clarified `internal/services/resource/api.go` as the preserved shared service surface for the refactor.
+- Files changed: `internal/services/resource/api.go`, `internal/services/resource/factory_test.go`, `internal/services/resource/v87/contract.go`, `internal/services/resource/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+- Resource contracts follow the same shape as cluster/processdefinition packages: local `API` plus generated-client interface and compile assertions.
+- Factory tests should use a table-driven supported-version matrix and assert exact service types, not just non-nil construction.
+- `toolx.NormalizeCamundaVersion` can render invalid versions as `"unknown"`, so unknown-version assertions should not expect the raw invalid string.
+- The current resource shared surface is still only `Deploy` and `Delete`; any capability expansion belongs to later stories, not the contract-locking step.
+---
+
+## [2026-03-21 18:06:56 CET] - #71-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored `internal/services/resource/v87/service.go` by extracting multipart deploy-body assembly into a helper and reusing `internal/services/common.RequirePayload` for success-path validation.
+- Added `internal/services/resource/v87/service_test.go` with focused unit coverage for deploy success, malformed `200 OK` deploy responses, inconsistent delete execution, and the no-op delete path without `AllowInconsistent`.
+- Verified the story with `go test ./internal/services/resource/v87/...`, `go test ./internal/services/resource/... -race -count=1`, and `make test`.
+- Files changed: `internal/services/resource/v87/service.go`, `internal/services/resource/v87/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Resource deploy tests do not need the fake server when the behavior under test is request assembly; mocking the generated client and parsing the multipart payload is enough to preserve coverage.
+  - `internal/services/common.RequirePayload` fits the v8.7 resource deploy success path cleanly and preserves the existing malformed-success error semantics.
+  - The v8.7 delete flow is intentionally a no-op unless `services.WithAllowInconsistent()` is set; preserve that gate in later refactors.
+---
