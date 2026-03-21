@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -15,6 +16,10 @@ var getResourceCmd = &cobra.Command{
 	Use:     "resource",
 	Short:   "Get a resource by id",
 	Aliases: []string{"resources"},
+	Args: func(cmd *cobra.Command, args []string) error {
+		_, err := validatedResourceID()
+		return err
+	},
 	Run:     runGetResource,
 }
 
@@ -24,7 +29,12 @@ func runGetResource(cmd *cobra.Command, args []string) {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 	}
 
-	runGetResourceByID(cmd, cli, log, cfg.App.NoErrCodes, flagGetResourceID)
+	id, err := validatedResourceID()
+	if err != nil {
+		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+	}
+
+	runGetResourceByID(cmd, cli, log, cfg.App.NoErrCodes, id)
 }
 
 func runGetResourceByID(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, id string) {
@@ -44,4 +54,12 @@ func init() {
 	fs := getResourceCmd.Flags()
 	fs.StringVarP(&flagGetResourceID, "id", "i", "", "resource id to fetch")
 	_ = getResourceCmd.MarkFlagRequired("id")
+}
+
+func validatedResourceID() (string, error) {
+	id := strings.TrimSpace(flagGetResourceID)
+	if id == "" {
+		return "", fmt.Errorf("resource lookup requires a non-empty --id")
+	}
+	return id, nil
 }

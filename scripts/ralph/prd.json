@@ -38,7 +38,7 @@
         "Existing error and exit handling continue to flow through the repository's standard command-path behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Keep the existing `internal/services/common.RequirePayload` semantics and the normal CLI error path rather than inventing command-specific special cases."
     },
     {

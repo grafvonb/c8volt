@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Public `c8volt/<module>` facade methods belong in `client.go`, convert domain models in `convert.go`, and translate internal service errors with `c8volt/ferrors.FromDomain`.
 - New `get` subcommands live in `cmd/get_<resource>.go`, register under `getCmd`, and should render single-item output through `cmd/cmd_views_get.go` so one-line, JSON, and `--keys-only` modes stay aligned.
+- Generated single-object API responses can decode malformed `200 OK` JSON into non-nil zero-value structs, so versioned services should validate the converted domain object after `RequirePayload` when the endpoint guarantees one item.
 
 # Ralph Progress Log
 Started: Sat Mar 21 20:41:51 CET 2026
@@ -24,4 +25,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: single-item `get` commands should lean on `itemView(...)` in `cmd/cmd_views_get.go` so render-mode behavior stays consistent with the rest of the command tree.
   - Gotchas encountered: subprocess-based CLI failure assertions need `resetCommandTreeFlags(Root())` before execution because shared Cobra state persists across in-process tests.
   - Useful context: the resource lookup endpoint is `GET /v2/resources/{resourceId}` for both supported Camunda versions, so command tests can exercise the facade end-to-end with a single-version temp config.
+---
+## [2026-03-21 20:55:23 CET] - #73-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Tightened `c8volt get resource` validation so missing, empty, and whitespace-only `--id` values fail before lookup, and preserved the standard CLI error path for malformed single-resource fetches.
+- Added a shared resource payload guard for versioned services so decoded-but-empty `200 OK` responses are treated as malformed instead of rendering an empty success result.
+- Expanded CLI and service regression coverage for whitespace validation plus decoded-empty malformed payloads in both supported Camunda versions.
+- Files changed: `AGENTS.md`, `cmd/get_resource.go`, `cmd/get_test.go`, `internal/services/resource/payload/payload.go`, `internal/services/resource/v87/service.go`, `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/service.go`, `internal/services/resource/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: command-level `Args` validation is the right place for required trimmed string checks when the command should fail before any backend call or CLI construction.
+  - Gotchas encountered: generated Camunda clients can decode malformed object responses into non-nil empty structs, so `RequirePayload` alone is insufficient for guaranteed single-object endpoints.
+  - Useful context: runtime fetch failures still need subprocess-based CLI tests to capture `HandleAndExit` exit codes, while plain Cobra validation errors can be asserted directly through `ExecuteC()`.
 ---

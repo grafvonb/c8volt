@@ -39,6 +39,7 @@
 - Favor incremental refactors with verification over broad rewrites.
 - When changing generated or generated-adjacent artifacts, update the source and regenerate rather than editing derived output by hand when the repository already provides a generation path.
 - When a service method follows the standard generated-client success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation instead of re-implementing the malformed-response check inline.
+- For generated single-object endpoints, `RequirePayload` may still return a decoded zero-value struct on malformed `200 OK` bodies; if the endpoint guarantees one object, validate the converted domain model is non-zero before treating the call as success.
 - `internal/services/common.RequirePayload` is also the preferred malformed-response guard for generated XML/string success payloads such as `XML200`; reuse it instead of open-coding empty-200 checks in versioned services.
 - For generated XML endpoints that expose both `Body` and `XML200`, keep `RequirePayload` for status validation but fall back to the raw `Body` when `XML200` is present yet empty; the generated XML-to-string unmarshal can discard element markup.
 

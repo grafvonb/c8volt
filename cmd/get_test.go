@@ -400,6 +400,54 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	require.Contains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+func TestGetResourceCommand_RequiresID(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := executeRootExpectErrorForTest(t, "--config", cfgPath, "get", "resource")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
+	require.Contains(t, output, "resource lookup requires a non-empty --id")
+}
+
+func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := executeRootExpectErrorForTest(t, "--config", cfgPath, "get", "resource", "--id", "   ")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
+	require.Contains(t, output, "resource lookup requires a non-empty --id")
+}
+
+func TestGetResourceCommand_MalformedResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"detail":"missing payload"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_MalformedResponseHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching resource by id resource-id-123")
+	require.Contains(t, string(output), "malformed response")
+}
+
 func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -542,6 +590,19 @@ func TestGetResourceCommand_FailureHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+func TestGetResourceCommand_MalformedResponseHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "resource-id-123"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
 func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -582,6 +643,20 @@ func executeRootForTest(t *testing.T, args ...string) string {
 	require.NoError(t, err)
 
 	return buf.String()
+}
+
+func executeRootExpectErrorForTest(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs(args)
+
+	_, err := root.ExecuteC()
+	return buf.String(), err
 }
 
 func resetCommandTreeFlags(cmd *cobra.Command) {
