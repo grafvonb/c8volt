@@ -3,6 +3,7 @@
 - Resource version packages should mirror the shared service surface with a local `API` interface and compile-time `var _ API = (*Service)(nil)` assertion, while `contract.go` keeps only the generated-client methods the service actually uses.
 - Service factory tests in this repo should assert the concrete versioned service type for each supported Camunda version and verify unsupported versions with `services.ErrUnknownAPIVersion`, including the normalized `"unknown"` text and supported-version list.
 - Resource deploy unit tests can stay fast and deterministic by mocking the generated client and parsing the multipart request body directly to verify tenant and `resources` form fields.
+- For v8.8 resource confirmation coverage, mock the process-definition generated client and exercise `processDefinitionDeployPoller` directly for wait-state vs success semantics instead of relying on the real poller backoff loop.
 
 Started: Sat Mar 21 18:00:11 CET 2026
 ---
@@ -30,4 +31,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Resource deploy tests do not need the fake server when the behavior under test is request assembly; mocking the generated client and parsing the multipart payload is enough to preserve coverage.
   - `internal/services/common.RequirePayload` fits the v8.7 resource deploy success path cleanly and preserves the existing malformed-success error semantics.
   - The v8.7 delete flow is intentionally a no-op unless `services.WithAllowInconsistent()` is set; preserve that gate in later refactors.
+---
+
+## [2026-03-21 18:15:33 CET] - #71-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Refactored `internal/services/resource/v88/service.go` to reuse `internal/services/common.RequirePayload`, extract multipart deploy-body construction, and isolate the deployment-confirmation wait path without changing `--no-wait` or confirmation polling behavior.
+- Replaced the thin integration-style v8.8 deployment test with focused unit coverage in `internal/services/resource/v88/service_test.go` for deploy success, malformed-success handling, inconsistent delete behavior, and confirmation polling outcomes.
+- Verified the story with `go test ./internal/services/resource/v88/...`, `go test ./internal/services/resource/... -race -count=1`, and `make test`.
+- Files changed: `internal/services/resource/v88/service.go`, `internal/services/resource/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `internal/services/common.PrepareServiceDeps` and `common.EnsureLoggerAndClients` fit the v8.8 resource service constructor cleanly and keep option-based test injection safe.
+  - The v8.8 deploy flow should keep `common.RequirePayload` for the initial deployment response, while process-definition confirmation remains a separate polling concern.
+  - Confirmation-path tests stay fast when they mock the process-definition client and assert `processDefinitionDeployPoller` statuses directly rather than sleeping through `poller.WaitForCompletion`.
 ---

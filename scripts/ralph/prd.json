@@ -38,7 +38,7 @@
         "`internal/services/resource/v88/service_test.go` covers deploy, delete, malformed-success, and confirmation-path behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Preserve the current confirmation poll semantics and avoid normalizing behavior differences just because both versions are being cleaned up."
     },
     {
