@@ -73,6 +73,7 @@ if [ -d "$RESOLVED_AI_TOOLING_REPO/.git" ]; then
 fi
 
 git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE_SOURCE" "$TMP_DIR"
+"$REPO_ROOT/ai/cleanup-ai-tooling-sync.sh" "$TMP_DIR"
 "$TMP_DIR/install/sync.sh" "$REPO_ROOT"
 
 printf '%s\n' "$TAG" > "$VERSION_MARKER_FILE"
