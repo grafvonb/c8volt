@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+#
+# Installs the pinned private ai-tooling version into this repository.
+#
+# Usage examples:
+#   export AI_TOOLING_REPO=/path/to/local/ai-tooling
+#   ./scripts/setup-ai-tooling.sh
+#
+#   export AI_TOOLING_REPO=git@github.com:your-org/private-ai-tooling.git
+#   ./scripts/setup-ai-tooling.sh
 
 set -euo pipefail
 
