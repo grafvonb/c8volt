@@ -29,3 +29,14 @@ func fromDeploymentProcessResult(p camundav88.DeploymentProcessResult) d.Process
 		ResourceName:             p.ResourceName,
 	}
 }
+
+func fromResourceResult(r camundav88.ResourceResult) d.Resource {
+	return d.Resource{
+		ID:         toolx.Deref(r.ResourceId, ""),
+		Key:        toolx.Deref(r.ResourceKey, ""),
+		Name:       toolx.Deref(r.ResourceName, ""),
+		TenantId:   toolx.Deref(r.TenantId, ""),
+		Version:    toolx.Deref(r.Version, 0),
+		VersionTag: toolx.Deref(r.VersionTag, ""),
+	}
+}

@@ -12,6 +12,7 @@ import (
 type API interface {
 	Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
 	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error
+	Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
 }
 
 // Both supported versioned services must continue to satisfy the shared

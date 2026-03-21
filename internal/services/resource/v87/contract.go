@@ -12,11 +12,13 @@ import (
 type API interface {
 	Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
 	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error
+	Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
 }
 
 type GenResourceClientCamunda interface {
 	PostDeploymentsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error)
 	PostResourcesResourceKeyDeletionWithResponse(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error)
+	GetResourcesResourceKeyWithResponse(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error)
 }
 
 var _ API = (*Service)(nil)

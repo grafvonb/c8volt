@@ -16,14 +16,14 @@
   - Keep each version-specific nil-payload check inline: rejected because it preserves duplicated response-validation logic the repository already standardized elsewhere.
   - Introduce a new resource-specific response helper: rejected because the common helper already exists and fits the intended use.
 
-## Decision 3: Treat generated-client coverage review as mandatory, with resource lookup as the most likely bounded addition
+## Decision 3: Add resource metadata lookup and defer raw content retrieval
 
-- **Decision**: Review the supported generated resource clients for additional useful operations, with resource metadata lookup as the leading candidate for a low-risk missing capability because both v87 and v88 expose a read operation for a resource key.
-- **Rationale**: The issue requires a generated-client coverage review and allows a small missing capability where reasonable. The generated clients expose both metadata lookup and content retrieval operations in both supported versions, but metadata lookup is more naturally aligned with the current typed domain/service patterns than raw content retrieval.
+- **Decision**: Extend the shared resource service with a `Get` operation that returns typed resource metadata for a resource key in both supported versions, and explicitly defer raw content retrieval.
+- **Rationale**: The issue requires a generated-client coverage review and allows one bounded addition where reasonable. Both v87 and v88 generated clients expose metadata lookup and content retrieval, but metadata lookup fits the existing service pattern cleanly: it reuses standard success-payload validation, maps into a small typed domain object, and does not force binary/text handling decisions into the shared API yet.
 - **Alternatives considered**:
   - Force both lookup and content retrieval into the service surface: rejected because that broadens the API without first proving user value.
   - Skip the review and only refactor deploy/delete paths: rejected because it would miss an explicit acceptance criterion.
-  - Prefer raw content retrieval as the first addition: rejected for planning because it may need a new domain representation or binary/text handling discussion that is less obviously low risk.
+  - Prefer raw content retrieval as the first addition: rejected because it would add a second new service method with string/binary payload questions and no immediate caller, which is a wider surface than needed for this story.
 
 ## Decision 4: Preserve the current deploy/delete semantics exactly while simplifying the code paths
 

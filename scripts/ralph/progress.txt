@@ -4,6 +4,7 @@
 - Service factory tests in this repo should assert the concrete versioned service type for each supported Camunda version and verify unsupported versions with `services.ErrUnknownAPIVersion`, including the normalized `"unknown"` text and supported-version list.
 - Resource deploy unit tests can stay fast and deterministic by mocking the generated client and parsing the multipart request body directly to verify tenant and `resources` form fields.
 - For v8.8 resource confirmation coverage, mock the process-definition generated client and exercise `processDefinitionDeployPoller` directly for wait-state vs success semantics instead of relying on the real poller backoff loop.
+- Cross-version resource metadata lookup should map each generated `ResourceResult` into `internal/domain.Resource` and continue to use `common.RequirePayload` for malformed-success protection; defer raw content retrieval unless there is a caller that justifies widening the API.
 
 Started: Sat Mar 21 18:00:11 CET 2026
 ---
@@ -43,4 +44,16 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - `internal/services/common.PrepareServiceDeps` and `common.EnsureLoggerAndClients` fit the v8.8 resource service constructor cleanly and keep option-based test injection safe.
   - The v8.8 deploy flow should keep `common.RequirePayload` for the initial deployment response, while process-definition confirmation remains a separate polling concern.
   - Confirmation-path tests stay fast when they mock the process-definition client and assert `processDefinitionDeployPoller` statuses directly rather than sleeping through `poller.WaitForCompletion`.
+---
+
+## [2026-03-21 19:28:25 CET] - #71-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Added a bounded cross-version resource metadata lookup capability by extending the shared resource API with `Get`, introducing `internal/domain.Resource`, and wiring both v8.7 and v8.8 services/contracts to the generated lookup endpoints.
+- Recorded the generated-client coverage decision in `specs/71-resource-api-refactor/research.md`: keep metadata lookup, explicitly defer raw content retrieval.
+- Added focused v8.7 and v8.8 unit coverage for resource lookup success and malformed `200 OK` responses, then verified with `go test ./internal/services/resource/...`, `go test ./internal/services/resource/... -race -count=1`, and `make test`.
+- Files changed: `internal/domain/resource.go`, `internal/services/resource/api.go`, `internal/services/resource/v87/contract.go`, `internal/services/resource/v87/convert.go`, `internal/services/resource/v87/service.go`, `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/contract.go`, `internal/services/resource/v88/convert.go`, `internal/services/resource/v88/service.go`, `internal/services/resource/v88/service_test.go`, `specs/71-resource-api-refactor/research.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - The generated v8.7 lookup method is named `GetResourcesResourceKeyWithResponse`, while v8.8 uses `GetResourceWithResponse`; keep the shared API version-neutral and isolate those naming differences in the contracts.
+  - `ResourceResult` fields align closely enough across supported versions to share a single `internal/domain.Resource` mapper without version-specific branches.
+  - Raw resource content exists in both generated clients but is a broader follow-up than metadata lookup because it widens the service surface with string/binary payload handling and still has no current caller.
 ---

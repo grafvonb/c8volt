@@ -52,7 +52,7 @@
         "The shared service API and both versioned contracts and services reflect the final add-or-defer decision consistently."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "Resource metadata lookup is the leading candidate; raw content retrieval is lower priority unless it can be kept equally small and verifiable."
     },
     {

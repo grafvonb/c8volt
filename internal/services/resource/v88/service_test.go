@@ -23,6 +23,7 @@ import (
 type mockResourceClient struct {
 	createDeploymentWithBodyWithResponse func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error)
 	deleteResourceWithResponse           func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error)
+	getResourceWithResponse              func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error)
 }
 
 func (m *mockResourceClient) CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
@@ -31,6 +32,10 @@ func (m *mockResourceClient) CreateDeploymentWithBodyWithResponse(ctx context.Co
 
 func (m *mockResourceClient) DeleteResourceWithResponse(ctx context.Context, resourceKey camundav88.ResourceKey, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
 	return m.deleteResourceWithResponse(ctx, resourceKey, body, reqEditors...)
+}
+
+func (m *mockResourceClient) GetResourceWithResponse(ctx context.Context, resourceKey camundav88.ResourceKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+	return m.getResourceWithResponse(ctx, resourceKey, reqEditors...)
 }
 
 type mockProcessDefinitionClient struct {
@@ -96,6 +101,10 @@ func TestService_Deploy(t *testing.T) {
 					t.Fatalf("unexpected delete call")
 					return nil, nil
 				},
+				getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+					t.Fatalf("unexpected get call")
+					return nil, nil
+				},
 			},
 			processClient: &mockProcessDefinitionClient{
 				getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
@@ -122,6 +131,10 @@ func TestService_Deploy(t *testing.T) {
 				},
 				deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
 					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+					t.Fatalf("unexpected get call")
 					return nil, nil
 				},
 			},
@@ -159,6 +172,10 @@ func TestService_Deploy(t *testing.T) {
 				},
 				deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
 					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+					t.Fatalf("unexpected get call")
 					return nil, nil
 				},
 			},
@@ -222,6 +239,10 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/resources/resource-1", http.StatusNoContent, "204 No Content"),
 				}, nil
 			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
 		}, &mockProcessDefinitionClient{
 			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
 				t.Fatalf("unexpected process definition lookup")
@@ -246,6 +267,10 @@ func TestService_Delete(t *testing.T) {
 				t.Fatalf("deletion endpoint should not be called")
 				return nil, nil
 			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
 		}, &mockProcessDefinitionClient{
 			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
 				t.Fatalf("unexpected process definition lookup")
@@ -260,6 +285,98 @@ func TestService_Delete(t *testing.T) {
 	})
 }
 
+func TestService_Get(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name          string
+		client        *mockResourceClient
+		expected      d.Resource
+		expectedError error
+	}{
+		{
+			name: "Success",
+			client: &mockResourceClient{
+				createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
+					t.Fatalf("unexpected deploy call")
+					return nil, nil
+				},
+				deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+					assert.Equal(t, "resource-1", resourceKey)
+					key := camundav88.ResourceKey("resource-1")
+					tenantID := camundav88.TenantId("tenant-a")
+					return &camundav88.GetResourceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
+						JSON200: &camundav88.ResourceResult{
+							ResourceId:   testStringPtr("demo-process"),
+							ResourceKey:  &key,
+							ResourceName: testStringPtr("demo.bpmn"),
+							TenantId:     &tenantID,
+							Version:      testInt32Ptr(7),
+							VersionTag:   testStringPtr("v1"),
+						},
+					}, nil
+				},
+			},
+			expected: d.Resource{
+				ID:         "demo-process",
+				Key:        "resource-1",
+				Name:       "demo.bpmn",
+				TenantId:   "tenant-a",
+				Version:    7,
+				VersionTag: "v1",
+			},
+		},
+		{
+			name: "MalformedSuccessPayload",
+			client: &mockResourceClient{
+				createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
+					t.Fatalf("unexpected deploy call")
+					return nil, nil
+				},
+				deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+					return &camundav88.GetResourceResponse{
+						Body:         []byte(`{"detail":"missing payload"}`),
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
+					}, nil
+				},
+			},
+			expectedError: d.ErrMalformedResponse,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, err := New(testConfigWithTenant(t, "tenant"), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(tt.client, &mockProcessDefinitionClient{
+				getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
+					t.Fatalf("unexpected process definition lookup")
+					return nil, nil
+				},
+			}))
+			require.NoError(t, err)
+
+			resource, err := svc.Get(ctx, "resource-1")
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, resource)
+		})
+	}
+}
+
 func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 	ctx := context.Background()
 
@@ -271,6 +388,10 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 			},
 			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
 				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
 				return nil, nil
 			},
 		}, &mockProcessDefinitionClient{
@@ -307,6 +428,10 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 			},
 			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error) {
 				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
 				return nil, nil
 			},
 		}, &mockProcessDefinitionClient{
@@ -393,3 +518,7 @@ func testConfigWithTenant(t *testing.T, tenantID string) *config.Config {
 	cfg.App.Tenant = tenantID
 	return cfg
 }
+
+func testStringPtr(v string) *string { return &v }
+
+func testInt32Ptr(v int32) *int32 { return &v }

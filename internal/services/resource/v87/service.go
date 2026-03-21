@@ -59,6 +59,20 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	return nil
 }
 
+func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error) {
+	_ = services.ApplyCallOptions(opts)
+
+	resp, err := s.c.GetResourcesResourceKeyWithResponse(ctx, resourceKey)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	return fromResourceResult(*payload), nil
+}
+
 func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
 	_ = services.ApplyCallOptions(opts)
 	tenantId, vtenantId := s.cfg.App.Tenant, s.cfg.App.ViewTenant()

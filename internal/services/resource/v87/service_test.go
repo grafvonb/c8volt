@@ -21,6 +21,7 @@ import (
 type mockResourceClient struct {
 	postDeploymentsWithBodyWithResponse              func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error)
 	postResourcesResourceKeyDeletionWithResponseFunc func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error)
+	getResourcesResourceKeyWithResponseFunc          func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error)
 }
 
 func (m *mockResourceClient) PostDeploymentsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
@@ -29,6 +30,10 @@ func (m *mockResourceClient) PostDeploymentsWithBodyWithResponse(ctx context.Con
 
 func (m *mockResourceClient) PostResourcesResourceKeyDeletionWithResponse(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
 	return m.postResourcesResourceKeyDeletionWithResponseFunc(ctx, resourceKey, body, reqEditors...)
+}
+
+func (m *mockResourceClient) GetResourcesResourceKeyWithResponse(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+	return m.getResourcesResourceKeyWithResponseFunc(ctx, resourceKey, reqEditors...)
 }
 
 func TestService_Deploy(t *testing.T) {
@@ -59,6 +64,10 @@ func TestService_Deploy(t *testing.T) {
 					t.Fatalf("unexpected delete call")
 					return nil, nil
 				},
+				getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+					t.Fatalf("unexpected get call")
+					return nil, nil
+				},
 			},
 			assertResult: func(t *testing.T, deployment d.Deployment) {
 				assert.Equal(t, tenantID, deployment.TenantId)
@@ -77,6 +86,10 @@ func TestService_Deploy(t *testing.T) {
 				},
 				postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
 					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+					t.Fatalf("unexpected get call")
 					return nil, nil
 				},
 			},
@@ -120,6 +133,10 @@ func TestService_Delete(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusNoContent, "204 No Content"),
 				}, nil
 			},
+			getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
 		}))
 		require.NoError(t, err)
 
@@ -139,6 +156,10 @@ func TestService_Delete(t *testing.T) {
 				t.Fatalf("deletion endpoint should not be called")
 				return nil, nil
 			},
+			getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
 		}))
 		require.NoError(t, err)
 
@@ -146,6 +167,91 @@ func TestService_Delete(t *testing.T) {
 
 		require.NoError(t, err)
 	})
+}
+
+func TestService_Get(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name          string
+		client        *mockResourceClient
+		expected      d.Resource
+		expectedError error
+	}{
+		{
+			name: "Success",
+			client: &mockResourceClient{
+				postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
+					t.Fatalf("unexpected deploy call")
+					return nil, nil
+				},
+				postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+					assert.Equal(t, "resource-1", resourceKey)
+					return &camundav87.GetResourcesResourceKeyResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
+						JSON200: &camundav87.ResourceResult{
+							ResourceId:   testStringPtr("demo-process"),
+							ResourceKey:  testStringPtr("resource-1"),
+							ResourceName: testStringPtr("demo.bpmn"),
+							TenantId:     testStringPtr("tenant-a"),
+							Version:      testInt32Ptr(7),
+							VersionTag:   testStringPtr("v1"),
+						},
+					}, nil
+				},
+			},
+			expected: d.Resource{
+				ID:         "demo-process",
+				Key:        "resource-1",
+				Name:       "demo.bpmn",
+				TenantId:   "tenant-a",
+				Version:    7,
+				VersionTag: "v1",
+			},
+		},
+		{
+			name: "MalformedSuccessPayload",
+			client: &mockResourceClient{
+				postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
+					t.Fatalf("unexpected deploy call")
+					return nil, nil
+				},
+				postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+					return &camundav87.GetResourcesResourceKeyResponse{
+						Body:         []byte(`{"detail":"missing payload"}`),
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
+					}, nil
+				},
+			},
+			expectedError: d.ErrMalformedResponse,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, err := New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(tt.client))
+			require.NoError(t, err)
+
+			resource, err := svc.Get(ctx, "resource-1")
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, resource)
+		})
+	}
 }
 
 func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.Reader, tenantID string, resourceName string, resourceData []byte) {
@@ -190,3 +296,7 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 		},
 	}
 }
+
+func testStringPtr(v string) *string { return &v }
+
+func testInt32Ptr(v int32) *int32 { return &v }
