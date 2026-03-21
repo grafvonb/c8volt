@@ -15,6 +15,8 @@ var flagGetResourceID string
 var getResourceCmd = &cobra.Command{
 	Use:     "resource",
 	Short:   "Get a resource by id",
+	Long: "Get a single resource by id.\n" +
+		"It requires --id to select exactly one resource and renders the standard single-resource view.",
 	Aliases: []string{"resources"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := validatedResourceID()

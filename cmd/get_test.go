@@ -22,6 +22,16 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "Get resources")
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
+	require.Contains(t, output, "resource")
+}
+
+func TestGetResourceHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "resource", "--help")
+
+	require.Contains(t, output, "Get a single resource by id")
+	require.Contains(t, output, "c8volt get resource")
+	require.Contains(t, output, "--id")
+	require.Contains(t, output, "resource id to fetch")
 }
 
 func TestGetClusterHelp(t *testing.T) {

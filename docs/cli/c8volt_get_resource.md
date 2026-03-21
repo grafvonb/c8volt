@@ -1,27 +1,26 @@
 ---
-title: "c8volt get process-definition"
+title: "c8volt get resource"
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt get process-definition
+## c8volt get resource
 
-Get deployed process definitions
+Get a resource by id
+
+### Synopsis
+
+Get a single resource by id.
+It requires --id to select exactly one resource and renders the standard single-resource view.
 
 ```
-c8volt get process-definition [flags]
+c8volt get resource [flags]
 ```
 
 ### Options
 
 ```
-  -b, --bpmn-process-id string   BPMN process ID to filter process instances
-  -h, --help                     help for process-definition
-  -k, --key string               process definition key to fetch
-      --latest                   fetch the latest version(s) of the given BPMN process(s)
-      --pd-version int32         process definition version
-      --pd-version-tag string    process definition version tag
-      --stat                     include process definition statistics
-      --xml                      output the selected process definition as raw XML (requires --key and no other filters)
+  -h, --help        help for resource
+  -i, --id string   resource id to fetch
 ```
 
 ### Options inherited from parent commands

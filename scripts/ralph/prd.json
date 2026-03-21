@@ -64,7 +64,7 @@
         "Generated CLI docs under `docs/cli/` include the new command and match the shipped help text."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "Update command help first and regenerate docs via `make docs`; do not hand-edit generated CLI reference pages."
     },
     {
