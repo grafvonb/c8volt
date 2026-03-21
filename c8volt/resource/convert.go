@@ -26,6 +26,17 @@ func fromProcessDefinitionDeployment(dep d.Deployment) []ProcessDefinitionDeploy
 	return out
 }
 
+func fromResource(resource d.Resource) Resource {
+	return Resource{
+		ID:         resource.ID,
+		Key:        resource.Key,
+		Name:       resource.Name,
+		TenantId:   resource.TenantId,
+		Version:    resource.Version,
+		VersionTag: resource.VersionTag,
+	}
+}
+
 func toDeploymentUnitDatas(units []DeploymentUnitData) []d.DeploymentUnitData {
 	result := make([]d.DeploymentUnitData, len(units))
 	for i, u := range units {

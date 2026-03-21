@@ -12,7 +12,7 @@
         "`c8volt/contract.go` includes the new resource capability so `NewCli(cmd)` can expose it through the existing aggregate API."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Start here because the command should depend on the existing public facade layer rather than calling internal services directly."
     },
     {
