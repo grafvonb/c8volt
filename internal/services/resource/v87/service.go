@@ -13,6 +13,7 @@ import (
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 )
 
@@ -58,15 +59,47 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	return nil
 }
 
+func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error) {
+	_ = services.ApplyCallOptions(opts)
+
+	resp, err := s.c.GetResourcesResourceKeyWithResponse(ctx, resourceKey)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	return fromResourceResult(*payload), nil
+}
+
 func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
 	_ = services.ApplyCallOptions(opts)
 	tenantId, vtenantId := s.cfg.App.Tenant, s.cfg.App.ViewTenant()
 
+	contentType, body, err := buildDeploymentBody(tenantId, units)
+	if err != nil {
+		return d.Deployment{}, err
+	}
+
+	resp, err := s.c.PostDeploymentsWithBodyWithResponse(ctx, contentType, body)
+	if err != nil {
+		return d.Deployment{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Deployment{}, err
+	}
+	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), vtenantId))
+	return fromDeploymentResult(*payload), nil
+}
+
+func buildDeploymentBody(tenantId string, units []d.DeploymentUnitData) (string, *bytes.Reader, error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	if tenantId != "" {
 		if err := w.WriteField("tenantId", tenantId); err != nil {
-			return d.Deployment{}, err
+			return "", nil, err
 		}
 	}
 	for _, u := range units {
@@ -74,28 +107,14 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 		h.Set("Content-Disposition", `form-data; name="resources"; filename="`+u.Name+`"`)
 		part, err := w.CreatePart(h)
 		if err != nil {
-			return d.Deployment{}, err
+			return "", nil, err
 		}
 		if _, err = part.Write(u.Data); err != nil {
-			return d.Deployment{}, err
+			return "", nil, err
 		}
 	}
 	if err := w.Close(); err != nil {
-		return d.Deployment{}, err
+		return "", nil, err
 	}
-	ct := w.FormDataContentType()
-
-	resp, err := s.c.PostDeploymentsWithBodyWithResponse(ctx, ct, bytes.NewReader(buf.Bytes()))
-	if err != nil {
-		return d.Deployment{}, err
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.Deployment{}, err
-	}
-	if resp.JSON200 == nil {
-		return d.Deployment{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), vtenantId))
-	return fromDeploymentResult(*resp.JSON200), nil
+	return w.FormDataContentType(), bytes.NewReader(buf.Bytes()), nil
 }

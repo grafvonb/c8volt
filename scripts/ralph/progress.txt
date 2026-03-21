@@ -1,0 +1,82 @@
+# Ralph Progress Log
+## Codebase Patterns
+- Resource version packages should mirror the shared service surface with a local `API` interface and compile-time `var _ API = (*Service)(nil)` assertion, while `contract.go` keeps only the generated-client methods the service actually uses.
+- Service factory tests in this repo should assert the concrete versioned service type for each supported Camunda version and verify unsupported versions with `services.ErrUnknownAPIVersion`, including the normalized `"unknown"` text and supported-version list.
+- Resource deploy unit tests can stay fast and deterministic by mocking the generated client and parsing the multipart request body directly to verify tenant and `resources` form fields.
+- For v8.8 resource confirmation coverage, mock the process-definition generated client and exercise `processDefinitionDeployPoller` directly for wait-state vs success semantics instead of relying on the real poller backoff loop.
+- Cross-version resource metadata lookup should map each generated `ResourceResult` into `internal/domain.Resource` and continue to use `common.RequirePayload` for malformed-success protection; defer raw content retrieval unless there is a caller that justifies widening the API.
+- Resource delete regression tests should cover both the default consistent no-op path and the `WithAllowInconsistent()` path propagating mapped HTTP status errors from the generated deletion endpoint.
+
+Started: Sat Mar 21 18:00:11 CET 2026
+---
+
+## [2026-03-21 18:02:21 CET] - #71-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Locked the shared resource service contract by adding version-local `API` interfaces and compile-time service assertions in `internal/services/resource/v87/contract.go` and `internal/services/resource/v88/contract.go`.
+- Strengthened `internal/services/resource/factory_test.go` to assert concrete v8.7/v8.8 factory routing and unsupported-version failures through `services.ErrUnknownAPIVersion`.
+- Clarified `internal/services/resource/api.go` as the preserved shared service surface for the refactor.
+- Files changed: `internal/services/resource/api.go`, `internal/services/resource/factory_test.go`, `internal/services/resource/v87/contract.go`, `internal/services/resource/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+- Resource contracts follow the same shape as cluster/processdefinition packages: local `API` plus generated-client interface and compile assertions.
+- Factory tests should use a table-driven supported-version matrix and assert exact service types, not just non-nil construction.
+- `toolx.NormalizeCamundaVersion` can render invalid versions as `"unknown"`, so unknown-version assertions should not expect the raw invalid string.
+- The current resource shared surface is still only `Deploy` and `Delete`; any capability expansion belongs to later stories, not the contract-locking step.
+---
+
+## [2026-03-21 18:06:56 CET] - #71-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored `internal/services/resource/v87/service.go` by extracting multipart deploy-body assembly into a helper and reusing `internal/services/common.RequirePayload` for success-path validation.
+- Added `internal/services/resource/v87/service_test.go` with focused unit coverage for deploy success, malformed `200 OK` deploy responses, inconsistent delete execution, and the no-op delete path without `AllowInconsistent`.
+- Verified the story with `go test ./internal/services/resource/v87/...`, `go test ./internal/services/resource/... -race -count=1`, and `make test`.
+- Files changed: `internal/services/resource/v87/service.go`, `internal/services/resource/v87/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Resource deploy tests do not need the fake server when the behavior under test is request assembly; mocking the generated client and parsing the multipart payload is enough to preserve coverage.
+  - `internal/services/common.RequirePayload` fits the v8.7 resource deploy success path cleanly and preserves the existing malformed-success error semantics.
+  - The v8.7 delete flow is intentionally a no-op unless `services.WithAllowInconsistent()` is set; preserve that gate in later refactors.
+---
+
+## [2026-03-21 18:15:33 CET] - #71-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Refactored `internal/services/resource/v88/service.go` to reuse `internal/services/common.RequirePayload`, extract multipart deploy-body construction, and isolate the deployment-confirmation wait path without changing `--no-wait` or confirmation polling behavior.
+- Replaced the thin integration-style v8.8 deployment test with focused unit coverage in `internal/services/resource/v88/service_test.go` for deploy success, malformed-success handling, inconsistent delete behavior, and confirmation polling outcomes.
+- Verified the story with `go test ./internal/services/resource/v88/...`, `go test ./internal/services/resource/... -race -count=1`, and `make test`.
+- Files changed: `internal/services/resource/v88/service.go`, `internal/services/resource/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - `internal/services/common.PrepareServiceDeps` and `common.EnsureLoggerAndClients` fit the v8.8 resource service constructor cleanly and keep option-based test injection safe.
+  - The v8.8 deploy flow should keep `common.RequirePayload` for the initial deployment response, while process-definition confirmation remains a separate polling concern.
+  - Confirmation-path tests stay fast when they mock the process-definition client and assert `processDefinitionDeployPoller` statuses directly rather than sleeping through `poller.WaitForCompletion`.
+---
+
+## [2026-03-21 19:28:25 CET] - #71-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Added a bounded cross-version resource metadata lookup capability by extending the shared resource API with `Get`, introducing `internal/domain.Resource`, and wiring both v8.7 and v8.8 services/contracts to the generated lookup endpoints.
+- Recorded the generated-client coverage decision in `specs/71-resource-api-refactor/research.md`: keep metadata lookup, explicitly defer raw content retrieval.
+- Added focused v8.7 and v8.8 unit coverage for resource lookup success and malformed `200 OK` responses, then verified with `go test ./internal/services/resource/...`, `go test ./internal/services/resource/... -race -count=1`, and `make test`.
+- Files changed: `internal/domain/resource.go`, `internal/services/resource/api.go`, `internal/services/resource/v87/contract.go`, `internal/services/resource/v87/convert.go`, `internal/services/resource/v87/service.go`, `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/contract.go`, `internal/services/resource/v88/convert.go`, `internal/services/resource/v88/service.go`, `internal/services/resource/v88/service_test.go`, `specs/71-resource-api-refactor/research.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - The generated v8.7 lookup method is named `GetResourcesResourceKeyWithResponse`, while v8.8 uses `GetResourceWithResponse`; keep the shared API version-neutral and isolate those naming differences in the contracts.
+  - `ResourceResult` fields align closely enough across supported versions to share a single `internal/domain.Resource` mapper without version-specific branches.
+  - Raw resource content exists in both generated clients but is a broader follow-up than metadata lookup because it widens the service surface with string/binary payload handling and still has no current caller.
+---
+
+## [2026-03-21 19:33:06 CET] - #71-005
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
+- Expanded durable regression coverage in `internal/services/resource/v87/service_test.go` and `internal/services/resource/v88/service_test.go` to assert mapped HTTP-status propagation on inconsistent deletes and v8.8 confirmation-poll failure handling, while tightening repeated service construction behind local test helpers.
+- Updated `specs/71-resource-api-refactor/quickstart.md` to record the final validation order and the explicit no-documentation-change decision because the settled `Get` capability remained internal-only.
+- Verified the story with `go test ./internal/services/resource/... -race -count=1` and `make test`.
+- Files changed: `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/service_test.go`, `specs/71-resource-api-refactor/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Resource delete behavior needs both sides of the regression matrix: default calls stay a no-op, while `WithAllowInconsistent()` must still surface mapped HTTP domain errors from the versioned deletion endpoint.
+  - The fastest way to test v8.8 confirmation failures is to call `processDefinitionDeployPoller` directly and assert the returned error for unexpected status handling instead of running the full wait loop.
+  - When the resource work remains internal-only, record the documentation no-op explicitly in the feature quickstart rather than changing `README.md` or generated CLI docs.
+---
+
+## [2026-03-21 19:34:49 CET] - #71-006
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Strengthened `specs/71-resource-api-refactor/quickstart.md` with a dedicated documentation-impact section that makes the internal-only outcome explicit: the final `resource.Get` addition does not change commands, flags, CLI output, or operator workflows, so `README.md` and generated `docs/cli/` remain unchanged.
+- Re-ran the repository validation gate with `make test` to confirm the documentation-only closeout kept the tree green.
+- Files changed: `specs/71-resource-api-refactor/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - When a Ralph story is only about conditional documentation impact, prefer a dedicated section in the feature quickstart that states both the final internal capability and the explicit reason user-facing docs did not change.
+  - For internal-only feature work in this repo, the expected proof is an explicit no-doc decision in the feature artifacts plus the normal repository validation command, not churn in `README.md` or generated CLI docs.
+---

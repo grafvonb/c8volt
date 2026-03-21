@@ -14,6 +14,7 @@ import (
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	pds "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
 	"github.com/grafvonb/c8volt/toolx/poller"
@@ -30,21 +31,37 @@ type Option func(*Service)
 
 //nolint:unused
 func WithClient(c GenResourceClientCamunda, pdc pds.GenProcessDefinitionClientCamunda) Option {
-	return func(s *Service) { s.c, s.pdc = c, pdc }
+	return func(s *Service) {
+		if c != nil {
+			s.c = c
+		}
+		if pdc != nil {
+			s.pdc = pdc
+		}
+	}
 }
 
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
+	if err != nil {
+		return nil, err
+	}
 	c, err := camundav88.NewClientWithResponses(
-		cfg.APIs.Camunda.BaseURL,
-		camundav88.WithHTTPClient(httpClient),
+		deps.Config.APIs.Camunda.BaseURL,
+		camundav88.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{c: c, pdc: c, cfg: cfg, log: log}
+	s := &Service{c: c, pdc: c, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
+	logger, err := common.EnsureLoggerAndClients(s.log, s.c, s.pdc)
+	if err != nil {
+		return nil, err
+	}
+	s.log = logger
 	return s, nil
 }
 
@@ -64,56 +81,55 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	return nil
 }
 
+func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error) {
+	_ = services.ApplyCallOptions(opts)
+
+	resp, err := s.c.GetResourceWithResponse(ctx, resourceKey)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	return fromResourceResult(*payload), nil
+}
+
 func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	tenantId, vtenantId := s.cfg.App.Tenant, s.cfg.App.ViewTenant()
 
-	var buf bytes.Buffer
-	w := multipart.NewWriter(&buf)
-	if tenantId != "" {
-		if err := w.WriteField("tenantId", tenantId); err != nil {
-			return d.Deployment{}, err
-		}
-	}
-	for _, u := range units {
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition", `form-data; name="resources"; filename="`+u.Name+`"`)
-		part, err := w.CreatePart(h)
-		if err != nil {
-			return d.Deployment{}, err
-		}
-		if _, err = part.Write(u.Data); err != nil {
-			return d.Deployment{}, err
-		}
-	}
-	if err := w.Close(); err != nil {
-		return d.Deployment{}, err
-	}
-	ct := w.FormDataContentType()
-
-	resp, err := s.c.CreateDeploymentWithBodyWithResponse(ctx, ct, bytes.NewReader(buf.Bytes()))
+	contentType, body, err := buildDeploymentBody(tenantId, units)
 	if err != nil {
 		return d.Deployment{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+
+	resp, err := s.c.CreateDeploymentWithBodyWithResponse(ctx, contentType, body)
+	if err != nil {
 		return d.Deployment{}, err
 	}
-	if resp.JSON200 == nil {
-		return d.Deployment{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Deployment{}, err
 	}
 	if !cCfg.NoWait {
-		dr := *resp.JSON200
-		s.log.Info(fmt.Sprintf("waiting for %d deployment(s) confirmation...", len(dr.Deployments)))
-		poll := s.processDefinitionDeployPoller(dr)
-		if err = poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
-			return d.Deployment{}, fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)
+		if err = s.waitForDeploymentConfirmation(ctx, *payload, vtenantId); err != nil {
+			return d.Deployment{}, err
 		}
-		s.log.Info(fmt.Sprintf("%d deployment(s) to tenant %q confirmed by successful poll", len(dr.Deployments), vtenantId))
 	} else {
 		s.log.Info(fmt.Sprintf("%d deployment(s) to tenant %q finished, not confirmed as --no-wait is set", len(units), vtenantId))
 	}
-	return fromDeploymentResult(*resp.JSON200), nil
+	return fromDeploymentResult(*payload), nil
+}
+
+func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav88.DeploymentResult, vtenantId string) error {
+	s.log.Info(fmt.Sprintf("waiting for %d deployment(s) confirmation...", len(dr.Deployments)))
+	poll := s.processDefinitionDeployPoller(dr)
+	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
+		return fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)
+	}
+	s.log.Info(fmt.Sprintf("%d deployment(s) to tenant %q confirmed by successful poll", len(dr.Deployments), vtenantId))
+	return nil
 }
 
 func (s *Service) processDefinitionDeployPoller(dr camundav88.DeploymentResult) func(ctx context.Context) (poller.JobPollStatus, error) {
@@ -168,4 +184,29 @@ func (s *Service) processDefinitionDeployPoller(dr camundav88.DeploymentResult) 
 			Message: fmt.Sprintf("process definitions visible: %v", keys),
 		}, nil
 	}
+}
+
+func buildDeploymentBody(tenantId string, units []d.DeploymentUnitData) (string, *bytes.Reader, error) {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	if tenantId != "" {
+		if err := w.WriteField("tenantId", tenantId); err != nil {
+			return "", nil, err
+		}
+	}
+	for _, u := range units {
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="resources"; filename="`+u.Name+`"`)
+		part, err := w.CreatePart(h)
+		if err != nil {
+			return "", nil, err
+		}
+		if _, err = part.Write(u.Data); err != nil {
+			return "", nil, err
+		}
+	}
+	if err := w.Close(); err != nil {
+		return "", nil, err
+	}
+	return w.FormDataContentType(), bytes.NewReader(buf.Bytes()), nil
 }
