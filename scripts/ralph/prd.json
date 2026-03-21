@@ -12,7 +12,7 @@
         "`internal/services/resource/v87/contract.go` and `internal/services/resource/v88/contract.go` match the generated-client operations required by the settled service surface."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Start here because later refactor and capability decisions depend on a stable shared API and contract boundary."
     },
     {

@@ -14,5 +14,7 @@ type API interface {
 	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error
 }
 
+// Both supported versioned services must continue to satisfy the shared
+// resource service surface while the internals are refactored.
 var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
