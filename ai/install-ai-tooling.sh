@@ -7,6 +7,10 @@
 #   ./ai/install-ai-tooling.sh v0.2.0
 #   AI_TOOLING_REPO=/path/to/local/ai-tooling ./ai/install-ai-tooling.sh
 #   AI_TOOLING_REPO=git@github.com:your-org/private-ai-tooling.git ./ai/install-ai-tooling.sh
+#
+# This script only runs on a clean git worktree. After a successful install,
+# it records the installed ai-tooling tag in ai/installed-ai-tooling-version
+# and commits that metadata automatically.
 
 set -euo pipefail
 
@@ -17,8 +21,14 @@ fi
 
 SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
-VERSION_FILE="$REPO_ROOT/.ai-tooling-version"
 DEFAULT_LOCAL_AI_TOOLING_REPO="$(CDPATH="" cd "$REPO_ROOT/../.." && pwd)/ai-tooling"
+VERSION_MARKER_FILE="$REPO_ROOT/ai/installed-ai-tooling-version"
+
+if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
+    echo "Refusing to install ai-tooling into a dirty repository." >&2
+    echo "Commit or stash existing changes first, then rerun this script." >&2
+    exit 1
+fi
 
 if [ -n "${AI_TOOLING_REPO:-}" ]; then
     RESOLVED_AI_TOOLING_REPO="$AI_TOOLING_REPO"
@@ -29,11 +39,6 @@ else
     echo "Tried default local checkout: $DEFAULT_LOCAL_AI_TOOLING_REPO" >&2
     echo "Set AI_TOOLING_REPO to a local ai-tooling checkout or private git URL." >&2
     exit 1
-fi
-
-PINNED_TAG=""
-if [ -f "$VERSION_FILE" ]; then
-    PINNED_TAG="$(awk -F'"' '$1 ~ /^tag = / { print $2; exit }' "$VERSION_FILE")"
 fi
 
 latest_tag() {
@@ -70,7 +75,11 @@ fi
 git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE_SOURCE" "$TMP_DIR"
 "$TMP_DIR/install/sync.sh" "$REPO_ROOT"
 
-echo "Installed ai-tooling $TAG from $RESOLVED_AI_TOOLING_REPO"
-if [ -n "$PINNED_TAG" ] && [ "$TAG" != "$PINNED_TAG" ]; then
-    echo "Note: installed override tag $TAG while .ai-tooling-version remains pinned to $PINNED_TAG"
+printf '%s\n' "$TAG" > "$VERSION_MARKER_FILE"
+
+if [ -n "$(git -C "$REPO_ROOT" status --porcelain -- "$VERSION_MARKER_FILE")" ]; then
+    git -C "$REPO_ROOT" add "$VERSION_MARKER_FILE"
+    git -C "$REPO_ROOT" commit -m "chore(ai): install ai-tooling $TAG"
 fi
+
+echo "Installed ai-tooling $TAG from $RESOLVED_AI_TOOLING_REPO"
