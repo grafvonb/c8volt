@@ -51,7 +51,7 @@
         "Adding the resource command does not alter existing `get` subcommand behavior outside the new resource lookup path."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "This slice should refine integration after the command and facade path exist, while keeping unrelated `get` behavior stable."
     },
     {

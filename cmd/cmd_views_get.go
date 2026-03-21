@@ -66,7 +66,11 @@ func oneLinePD(it process.ProcessDefinition) string {
 }
 
 func resourceView(cmd *cobra.Command, item resource.Resource) error {
-	return itemView(cmd, item, pickMode(), oneLineResource, func(it resource.Resource) string { return it.ID })
+	return resourceItemView(cmd, item, pickMode())
+}
+
+func resourceItemView(cmd *cobra.Command, item resource.Resource, mode RenderMode) error {
+	return itemView(cmd, item, mode, oneLineResource, func(it resource.Resource) string { return it.ID })
 }
 
 func oneLineResource(it resource.Resource) string {

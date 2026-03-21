@@ -375,6 +375,57 @@ func TestGetResourceCommand_Success(t *testing.T) {
 	require.Contains(t, output, "v7/stable")
 }
 
+func TestGetResourceCommand_JSONOutput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "--json", "get", "resource", "--id", "resource-id-123")
+
+	require.Contains(t, output, `"id": "resource-id-123"`)
+	require.Contains(t, output, `"key": "resource-key-123"`)
+	require.Contains(t, output, `"name": "order-process.bpmn"`)
+	require.Contains(t, output, `"tenantId": "<default>"`)
+	require.Contains(t, output, `"version": 7`)
+	require.Contains(t, output, `"versionTag": "stable"`)
+}
+
+func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "--keys-only", "get", "resource", "--id", "resource-id-123")
+
+	require.Equal(t, "resource-id-123\n", output)
+}
+
 func TestGetResourceCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
