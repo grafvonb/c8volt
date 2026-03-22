@@ -24,6 +24,14 @@ func New(api rsvc.API, papi process.API, log *slog.Logger) API {
 	return &client{api: api, papi: papi, log: log}
 }
 
+func (c *client) GetResource(ctx context.Context, key string, opts ...options.FacadeOption) (Resource, error) {
+	resource, err := c.api.Get(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return Resource{}, ferr.FromDomain(err)
+	}
+	return fromResource(resource), nil
+}
+
 func (c *client) DeployProcessDefinition(ctx context.Context, units []DeploymentUnitData, opts ...options.FacadeOption) ([]ProcessDefinitionDeployment, error) {
 	pdd, err := c.api.Deploy(ctx, toDeploymentUnitDatas(units), options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {

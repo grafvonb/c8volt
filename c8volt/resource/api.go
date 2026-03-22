@@ -8,6 +8,7 @@ import (
 )
 
 type API interface {
+	GetResource(ctx context.Context, key string, opts ...options.FacadeOption) (Resource, error)
 	DeployProcessDefinition(ctx context.Context, units []DeploymentUnitData, opts ...options.FacadeOption) ([]ProcessDefinitionDeployment, error)
 
 	DeleteProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (DeleteReport, error)

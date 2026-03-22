@@ -49,4 +49,5 @@ c8volt get [flags]
 * [c8volt get cluster-topology](c8volt_get_cluster-topology.md)	 - Get the cluster topology of the connected Camunda 8 cluster
 * [c8volt get process-definition](c8volt_get_process-definition.md)	 - Get deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance.md)	 - Get process instances
+* [c8volt get resource](c8volt_get_resource.md)	 - Get a resource by id
 

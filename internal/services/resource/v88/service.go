@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	pds "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
 	"github.com/grafvonb/c8volt/toolx/poller"
 )
@@ -92,7 +93,11 @@ func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.
 	if err != nil {
 		return d.Resource{}, err
 	}
-	return fromResourceResult(*payload), nil
+	resource, err := resourcepayload.RequireSingleResource(fromResourceResult(*payload), resp.Body)
+	if err != nil {
+		return d.Resource{}, err
+	}
+	return resource, nil
 }
 
 func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {

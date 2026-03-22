@@ -22,6 +22,16 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "Get resources")
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
+	require.Contains(t, output, "resource")
+}
+
+func TestGetResourceHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "resource", "--help")
+
+	require.Contains(t, output, "Get a single resource by id")
+	require.Contains(t, output, "c8volt get resource")
+	require.Contains(t, output, "--id")
+	require.Contains(t, output, "resource id to fetch")
 }
 
 func TestGetClusterHelp(t *testing.T) {
@@ -348,6 +358,157 @@ func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	require.NotContains(t, output, "<definitions")
 }
 
+func TestGetResourceCommand_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "resource", "--id", "resource-id-123")
+
+	require.Contains(t, output, "resource-id-123")
+	require.Contains(t, output, "k:resource-key-123")
+	require.Contains(t, output, "<default>")
+	require.Contains(t, output, "order-process.bpmn")
+	require.Contains(t, output, "v7/stable")
+}
+
+func TestGetResourceCommand_JSONOutput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "--json", "get", "resource", "--id", "resource-id-123")
+
+	require.Contains(t, output, `"id": "resource-id-123"`)
+	require.Contains(t, output, `"key": "resource-key-123"`)
+	require.Contains(t, output, `"name": "order-process.bpmn"`)
+	require.Contains(t, output, `"tenantId": "<default>"`)
+	require.Contains(t, output, `"version": 7`)
+	require.Contains(t, output, `"versionTag": "stable"`)
+}
+
+func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "--keys-only", "get", "resource", "--id", "resource-id-123")
+
+	require.Equal(t, "resource-id-123\n", output)
+}
+
+func TestGetResourceCommand_Failure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
+		http.Error(w, "missing", http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_FailureHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching resource by id missing-resource")
+}
+
+func TestGetResourceCommand_RequiresID(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := executeRootExpectErrorForTest(t, "--config", cfgPath, "get", "resource")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
+	require.Contains(t, output, "resource lookup requires a non-empty --id")
+}
+
+func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := executeRootExpectErrorForTest(t, "--config", cfgPath, "get", "resource", "--id", "   ")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
+	require.Contains(t, output, "resource lookup requires a non-empty --id")
+}
+
+func TestGetResourceCommand_MalformedResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"detail":"missing payload"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_MalformedResponseHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "error fetching resource by id resource-id-123")
+	require.Contains(t, string(output), "malformed response")
+}
+
 func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -477,6 +638,32 @@ func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+func TestGetResourceCommand_FailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "missing-resource"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetResourceCommand_MalformedResponseHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "resource-id-123"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
 func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -517,6 +704,20 @@ func executeRootForTest(t *testing.T, args ...string) string {
 	require.NoError(t, err)
 
 	return buf.String()
+}
+
+func executeRootExpectErrorForTest(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs(args)
+
+	_, err := root.ExecuteC()
+	return buf.String(), err
 }
 
 func resetCommandTreeFlags(cmd *cobra.Command) {

@@ -263,6 +263,27 @@ func TestService_Get(t *testing.T) {
 			},
 			expectedError: d.ErrMalformedResponse,
 		},
+		{
+			name: "DecodedEmptySuccessPayload",
+			client: &mockResourceClient{
+				postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
+					t.Fatalf("unexpected deploy call")
+					return nil, nil
+				},
+				postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
+					t.Fatalf("unexpected delete call")
+					return nil, nil
+				},
+				getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
+					return &camundav87.GetResourcesResourceKeyResponse{
+						Body:         []byte(`{"detail":"missing payload"}`),
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
+						JSON200:      &camundav87.ResourceResult{},
+					}, nil
+				},
+			},
+			expectedError: d.ErrMalformedResponse,
+		},
 	}
 
 	for _, tt := range tests {

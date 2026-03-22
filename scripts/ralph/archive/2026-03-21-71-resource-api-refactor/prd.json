@@ -12,7 +12,7 @@
         "`c8volt/contract.go` includes the new resource capability so `NewCli(cmd)` can expose it through the existing aggregate API."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "Start here because the command should depend on the existing public facade layer rather than calling internal services directly."
     },
     {
@@ -25,7 +25,7 @@
         "Running the command with an unknown resource id preserves clear non-success behavior instead of rendering a successful empty result."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "This is the core operator-visible slice and should stay narrowly focused on the happy path plus clear failure behavior."
     },
     {
@@ -38,7 +38,7 @@
         "Existing error and exit handling continue to flow through the repository's standard command-path behavior."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "Keep the existing `internal/services/common.RequirePayload` semantics and the normal CLI error path rather than inventing command-specific special cases."
     },
     {
@@ -51,7 +51,7 @@
         "Adding the resource command does not alter existing `get` subcommand behavior outside the new resource lookup path."
       ],
       "priority": "P2",
-      "passes": true,
+      "passes": false,
       "notes": "This slice should refine integration after the command and facade path exist, while keeping unrelated `get` behavior stable."
     },
     {
@@ -64,7 +64,7 @@
         "Generated CLI docs under `docs/cli/` include the new command and match the shipped help text."
       ],
       "priority": "P2",
-      "passes": true,
+      "passes": false,
       "notes": "Update command help first and regenerate docs via `make docs`; do not hand-edit generated CLI reference pages."
     },
     {
@@ -78,7 +78,7 @@
         "`make test` passes."
       ],
       "priority": "P3",
-      "passes": true,
+      "passes": false,
       "notes": "This final slice should consolidate the required proof of completion after behavior, validation, and docs are in place."
     }
   ]

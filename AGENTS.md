@@ -39,6 +39,7 @@
 - Favor incremental refactors with verification over broad rewrites.
 - When changing generated or generated-adjacent artifacts, update the source and regenerate rather than editing derived output by hand when the repository already provides a generation path.
 - When a service method follows the standard generated-client success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation instead of re-implementing the malformed-response check inline.
+- For generated single-object endpoints, `RequirePayload` may still return a decoded zero-value struct on malformed `200 OK` bodies; if the endpoint guarantees one object, validate the converted domain model is non-zero before treating the call as success.
 - `internal/services/common.RequirePayload` is also the preferred malformed-response guard for generated XML/string success payloads such as `XML200`; reuse it instead of open-coding empty-200 checks in versioned services.
 - For generated XML endpoints that expose both `Body` and `XML200`, keep `RequirePayload` for status validation but fall back to the raw `Body` when `XML200` is present yet empty; the generated XML-to-string unmarshal can discard element markup.
 
@@ -46,6 +47,7 @@
 - Add or update tests alongside refactoring and bug fixes.
 - Prefer targeted tests near the changed package, then run the broader repository test suite.
 - For refactors, ensure tests verify preserved behavior, not just new internal structure.
+- CLI JSON output tests should assert the serialized model JSON keys (for example `tenantId`) rather than exported Go field names, because `toolx.ToJSONString` renders the public model tags directly.
 - Versioned service factory tests should assert the concrete v8.7/v8.8 service type returned for each supported version and verify unsupported versions through `services.ErrUnknownAPIVersion`, which may normalize invalid inputs to `"unknown"` in the rendered error.
 - Processdefinition v8.8 service tests should preserve the tolerant stats-enrichment behavior by asserting successful search/get results when the follow-up stats endpoint returns `200 OK` with a nil payload, leaving `Statistics` unset instead of treating the response as malformed.
 - Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
@@ -70,6 +72,7 @@
 ## Active Technologies
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...` (058-review-and-refactor-internal-service-cluster-api-implementation)
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common` (71-resource-api-refactor)
+- Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, existing facade packages under `c8volt/...` (73-get-resource-id)
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`
