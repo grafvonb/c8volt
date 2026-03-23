@@ -57,3 +57,40 @@
 - **Alternatives considered**:
   - Always update README and CLI docs: rejected because it would add churn without matching behavior changes.
   - Never update documentation even if a new processinstance workflow or output path appears: rejected because it violates the constitution.
+
+## Final generated-client coverage review
+
+- **Decision**: Do not add a new processinstance service capability in this refactor. The review is complete, and the bounded rationale is explicit rather than implied.
+- **Rationale**: Every remaining generated-client candidate would either cross an existing service boundary, introduce new processinstance-specific domain models late in the refactor, or require partial-version unsupported behavior without enough payoff to justify widening the service surface.
+
+### Reviewed candidates
+
+1. **Process instance call hierarchy**
+   - **Availability**: v8.8 only (`GetProcessInstanceCallHierarchyWithResponse`)
+   - **Why deferred**: The existing `walker` helper already provides the maintained ancestry and family semantics used by callers today. Adding a second hierarchy path would create overlapping behavior with a new unsupported-version contract for v8.7.
+
+2. **Process instance sequence flows**
+   - **Availability**: v8.8 only (`GetProcessInstanceSequenceFlowsWithResponse`)
+   - **Why deferred**: This would need new domain modeling and tests for a result shape that has no current caller in the processinstance package. The benefit is narrow, while the unsupported-version path for v8.7 would become part of the shared API immediately.
+
+3. **Process instance statistics**
+   - **Availability**: v8.8 only (`GetProcessInstanceStatisticsWithResponse`)
+   - **Why deferred**: The repository already models statistics in the `processdefinition` service, but not for process instances. Exposing this now would require new processinstance statistics types and conversion rules, which is beyond a bounded refactor slice.
+
+4. **Variable search or retrieval**
+   - **Availability**: v8.8 exposes variable search and get endpoints; v8.7 exposes element-variable mutation primitives instead of a matching processinstance read surface.
+   - **Why deferred**: Variables already live in their own service area (`internal/services/variable`). Pulling variable access into processinstance would blur existing package boundaries and still leave mismatched supported-version behavior.
+
+5. **Incident search scoped to a process instance**
+   - **Availability**: v8.8 has `SearchProcessInstanceIncidentsWithResponse`; v8.7 exposes incident search through broader incident endpoints instead of a matching processinstance-scoped operation.
+   - **Why deferred**: A shared processinstance API for incidents would need new cross-version adaptation logic or a one-version unsupported path, but incidents are not part of the current processinstance result model or caller workflows.
+
+6. **Migrate or modify process instance**
+   - **Availability**: Both supported versions expose generated endpoints
+   - **Why deferred**: These are behavioral capabilities, not refactor-adjacent read helpers. Exposing them would materially expand the service contract, command surface expectations, and regression matrix beyond the intended scope of this issue.
+
+### Conclusion
+
+- The generated-client coverage review is complete.
+- No additional processinstance capability is added in this issue.
+- This keeps the refactor bounded to the preserved service surface while documenting exactly why the remaining generated endpoints stay out of scope for now.

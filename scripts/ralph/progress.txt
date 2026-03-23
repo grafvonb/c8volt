@@ -3,6 +3,7 @@
 - For versioned internal services, build constructors with `internal/services/common.PrepareServiceDeps` and finish with `common.EnsureLoggerAndClients` so nil-safe defaults and test-time client injection stay aligned across packages.
 - Camunda v8.8 generated search request tests should assert serialized flat equality values like `"tenantId":"tenant"` instead of expecting `"$eq"` wrappers; the generated request unions flatten simple equality filters during JSON marshaling.
 - Processinstance walker `Descendants` results are root-inclusive and keep explicit `nil` edge entries for leaves; preserve that shape because higher-level delete and tree-rendering flows depend on it.
+- For internal service generated-client coverage stories, finish the review in `research.md` with an explicit candidate-by-candidate keep/defer decision; if no endpoint is added, document the boundary reasons instead of leaving the omission implicit.
 
 # Ralph Progress Log
 Started: Mon Mar 23 20:23:22 CET 2026
@@ -50,4 +51,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: processinstance walker descendants intentionally include the requested root key in traversal output and preserve `nil` edge entries for leaves instead of omitting them.
   - Gotchas encountered: waiter treats both `domain.ErrNotFound` and generic error strings containing `404` as the synthetic `ABSENT` state, so regression tests need to cover both paths.
   - Useful context: helper-level tests can stay fast and deterministic by using fixed 1ms backoff settings and pre-cancelled contexts instead of sleeping through long polling loops.
+---
+
+## [2026-03-23 20:52:08 CET] - #75-005
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
+- Completed the generated-client coverage review in `specs/75-processinstance-api-refactor/research.md` and recorded an explicit no-addition decision for this refactor slice.
+- Documented the reusable review pattern in `AGENTS.md` and marked story `#75-005` as passing in `scripts/ralph/prd.json`.
+- Files changed: `AGENTS.md`, `specs/75-processinstance-api-refactor/research.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: generated-client coverage stories are easier to close cleanly when `research.md` records each candidate endpoint and why it stays in or out of scope.
+  - Gotchas encountered: several extra processinstance-related generated endpoints are version-skewed or overlap adjacent service areas like `variable`, so adding them late would force new boundary decisions rather than just finishing the refactor.
+  - Useful context: for issue `#75`, the final review deliberately keeps call hierarchy, sequence flows, statistics, incidents, variables, and migrate/modify endpoints out of the shared processinstance service surface.
 ---

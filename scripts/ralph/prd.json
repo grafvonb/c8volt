@@ -65,7 +65,7 @@
         "If no capability is added, the bounded rationale is recorded explicitly instead of being implied."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "The exact capability choice remains intentionally open; Ralph can complete this story either by adding one bounded capability or by recording a justified defer decision."
     },
     {
