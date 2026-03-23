@@ -37,11 +37,16 @@
 - Prefer existing project patterns over introducing new structural styles.
 - For refactoring work, preserve externally observable behavior unless the issue explicitly asks for behavioral change.
 - Favor incremental refactors with verification over broad rewrites.
+- For versioned internal services, prefer `internal/services/common.PrepareServiceDeps` plus `common.EnsureLoggerAndClients` in constructors so default config/http client/logger handling and test-time client injection stay consistent.
+- For internal service refactors with versioned implementations, follow the established `resource`/`processdefinition` pattern: keep the shared package `api.go` assertions, define a version-local `API` interface in each `v87`/`v88` `contract.go`, and keep generated-client contract interfaces limited to the calls the versioned service actually uses.
+- When an internal service refactor includes generated-client coverage review, record the kept-versus-deferred candidate endpoints explicitly in the feature `research.md`; if nothing is added, prefer a bounded no-addition rationale over silent omission.
 - When changing generated or generated-adjacent artifacts, update the source and regenerate rather than editing derived output by hand when the repository already provides a generation path.
 - When a service method follows the standard generated-client success path, prefer `internal/services/common.RequirePayload` for the shared HTTP-status plus non-nil JSON payload validation instead of re-implementing the malformed-response check inline.
 - For generated single-object endpoints, `RequirePayload` may still return a decoded zero-value struct on malformed `200 OK` bodies; if the endpoint guarantees one object, validate the converted domain model is non-zero before treating the call as success.
 - `internal/services/common.RequirePayload` is also the preferred malformed-response guard for generated XML/string success payloads such as `XML200`; reuse it instead of open-coding empty-200 checks in versioned services.
 - For generated XML endpoints that expose both `Body` and `XML200`, keep `RequirePayload` for status validation but fall back to the raw `Body` when `XML200` is present yet empty; the generated XML-to-string unmarshal can discard element markup.
+- Processinstance walker helpers treat `Descendants` output as root-inclusive and keep explicit `nil` edge entries for leaf nodes; preserve that shape because delete and tree-rendering flows rely on it.
+- Camunda v8.7 processinstance create responses do not include a process-instance key, so service-level wait regression tests should cover wait-dependent delete or explicit state polling paths instead of assuming create-time confirmation can be keyed from the create payload.
 
 ## Testing conventions
 - Add or update tests alongside refactoring and bug fixes.
@@ -50,6 +55,7 @@
 - CLI JSON output tests should assert the serialized model JSON keys (for example `tenantId`) rather than exported Go field names, because `toolx.ToJSONString` renders the public model tags directly.
 - Versioned service factory tests should assert the concrete v8.7/v8.8 service type returned for each supported version and verify unsupported versions through `services.ErrUnknownAPIVersion`, which may normalize invalid inputs to `"unknown"` in the rendered error.
 - Processdefinition v8.8 service tests should preserve the tolerant stats-enrichment behavior by asserting successful search/get results when the follow-up stats endpoint returns `200 OK` with a nil payload, leaving `Statistics` unset instead of treating the response as malformed.
+- Camunda v8.8 generated search request tests should assert the serialized flat filter values (for example `"tenantId":"tenant"`) rather than `"$eq"` wrapper objects; those generated request unions marshal simple equality filters to scalar JSON.
 - Integration helpers should use the current facade signatures directly; for process-definition deployment, tenant selection comes from `cfg.App.Tenant` and `DeployProcessDefinition` only accepts `(ctx, units, opts...)`.
 - CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
 - CLI command tests that assert version-specific payloads should set `app.camunda_version` explicitly in that temp config; otherwise the default test version can route to a different generated client shape.
@@ -73,6 +79,7 @@
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...` (058-review-and-refactor-internal-service-cluster-api-implementation)
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common` (71-resource-api-refactor)
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, existing facade packages under `c8volt/...` (73-get-resource-id)
+- Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, worker utilities in `toolx/pool` (75-processinstance-api-refactor)
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`

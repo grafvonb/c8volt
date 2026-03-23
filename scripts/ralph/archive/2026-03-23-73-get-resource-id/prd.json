@@ -12,7 +12,7 @@
         "`internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v88/contract.go` reflect the generated-client operations required by the settled service surface."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "Start here because the versioned refactor and any capability review depend on a stable shared contract and branch-aligned routing behavior."
     },
     {
@@ -25,7 +25,7 @@
         "Automated tests in `internal/services/processinstance/v87/service_test.go` cover preserved success, malformed-response, and error behavior."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "Keep this slice focused on v8.7 behavior preservation and readability improvements rather than mixing in new capability work."
     },
     {
@@ -38,7 +38,7 @@
         "Automated tests in `internal/services/processinstance/v88/service_test.go` cover preserved success paths, malformed-success handling, and wait-related behavior."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "Keep this separate from the v8.7 refactor so each version remains a small, independently verifiable Ralph iteration."
     },
     {
@@ -51,7 +51,7 @@
         "Automated tests in `internal/services/processinstance/waiter/waiter_test.go` and `internal/services/processinstance/walker/walker_test.go` verify those invariants directly."
       ],
       "priority": "P1",
-      "passes": true,
+      "passes": false,
       "notes": "Treat helper behavior as compatibility-critical because create, expect, cancel, delete, and walk workflows all depend on these semantics."
     },
     {
@@ -65,7 +65,7 @@
         "If no capability is added, the bounded rationale is recorded explicitly instead of being implied."
       ],
       "priority": "P2",
-      "passes": true,
+      "passes": false,
       "notes": "The exact capability choice remains intentionally open; Ralph can complete this story either by adding one bounded capability or by recording a justified defer decision."
     },
     {
@@ -79,7 +79,7 @@
         "`make test` passes."
       ],
       "priority": "P3",
-      "passes": true,
+      "passes": false,
       "notes": "Keep this story focused on executable proof of completion after the service surface and capability decision have settled."
     },
     {
@@ -92,7 +92,7 @@
         "The final validation path makes the documentation decision explicit rather than leaving it implicit."
       ],
       "priority": "P3",
-      "passes": true,
+      "passes": false,
       "notes": "This final slice is conditional and should only produce documentation changes if the generated-client coverage decision becomes user-visible."
     }
   ]
