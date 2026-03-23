@@ -55,7 +55,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SuccessNoWait", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: func(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error) {
 				payload := marshalJSON(t, body)
 				assert.Contains(t, payload, `"processDefinitionId":"demo"`)
@@ -96,7 +96,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: func(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error) {
 				return &camundav88.CreateProcessInstanceResponse{
 					Body:         []byte(`{"detail":"missing payload"}`),
@@ -113,13 +113,49 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrMalformedResponse)
 	})
+
+	t.Run("SuccessWaitsForActiveState", func(t *testing.T) {
+		getCalls := 0
+		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: func(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error) {
+				return &camundav88.CreateProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.CreateProcessInstanceResult{
+						ProcessDefinitionId:      "demo",
+						ProcessDefinitionKey:     "proc-key",
+						ProcessDefinitionVersion: 7,
+						ProcessInstanceKey:       "123",
+						TenantId:                 "tenant-a",
+					},
+				}, nil
+			},
+			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
+				getCalls++
+				assert.Equal(t, "123", key)
+				return &camundav88.GetProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      makeProcessInstanceResult("123", "ACTIVE", ""),
+				}, nil
+			},
+			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
+
+		require.NoError(t, err)
+		assert.Equal(t, "123", creation.Key)
+		assert.Equal(t, "2026-03-23T18:00:00Z", creation.StartDate)
+		assert.NotEmpty(t, creation.StartConfirmedAt)
+		assert.Equal(t, 1, getCalls)
+	})
 }
 
 func TestService_GetProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				assert.Equal(t, "123", key)
@@ -141,7 +177,7 @@ func TestService_GetProcessInstance(t *testing.T) {
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				return &camundav88.GetProcessInstanceResponse{
@@ -164,7 +200,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
 			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
@@ -201,7 +237,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
 			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
@@ -224,7 +260,7 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				return &camundav88.GetProcessInstanceResponse{
@@ -244,7 +280,7 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				return &camundav88.GetProcessInstanceResponse{
@@ -268,7 +304,7 @@ func TestService_CancelProcessInstance(t *testing.T) {
 	ctx := context.Background()
 	var cancelled string
 
-	svc := newTestService(t, &mockCamundaClient{
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
@@ -294,7 +330,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 
 	t.Run("SuccessNoWait", func(t *testing.T) {
 		var deletedKeys []int64
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				return &camundav88.GetProcessInstanceResponse{
@@ -328,7 +364,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 	})
 
 	t.Run("WrongStateWithoutForceReturnsConflict", func(t *testing.T) {
-		svc := newTestService(t, &mockCamundaClient{
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				return &camundav88.GetProcessInstanceResponse{
@@ -361,6 +397,49 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 		assert.False(t, resp.Ok)
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
 	})
+
+	t.Run("SuccessWaitsForAbsentState", func(t *testing.T) {
+		getCalls := 0
+		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
+				getCalls++
+				switch getCalls {
+				case 1:
+					return &camundav88.GetProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+						JSON200:      makeProcessInstanceResult("123", "COMPLETED", ""),
+					}, nil
+				case 2:
+					return nil, d.ErrNotFound
+				default:
+					t.Fatalf("unexpected get call #%d", getCalls)
+					return nil, nil
+				}
+			},
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200:      &camundav88.ProcessInstanceSearchQueryResult{},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, &mockOperateClient{
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev88.RequestEditorFn) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				return &operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      &operatev88.ChangeStatus{},
+				}, nil
+			},
+		})
+
+		resp, err := svc.DeleteProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, 2, getCalls)
+	})
 }
 
 func TestService_WithClientAndLoggerOptions(t *testing.T) {
@@ -386,11 +465,11 @@ func TestService_WithClientAndLoggerOptions(t *testing.T) {
 	require.Equal(t, logger, svc.Logger())
 }
 
-func newTestService(t *testing.T, camundaClient *mockCamundaClient, operateClient *mockOperateClient) *v88.Service {
+func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamundaClient, operateClient *mockOperateClient) *v88.Service {
 	t.Helper()
 
 	svc, err := v88.New(
-		testConfig(),
+		cfg,
 		&http.Client{},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		v88.WithClientCamunda(camundaClient),
@@ -466,6 +545,17 @@ func testConfig() *config.Config {
 			},
 		},
 	}
+}
+
+func waitTestConfig() *config.Config {
+	cfg := testConfig()
+	cfg.App.Backoff = config.BackoffConfig{
+		Strategy:     config.BackoffFixed,
+		InitialDelay: time.Millisecond,
+		MaxRetries:   2,
+		Timeout:      25 * time.Millisecond,
+	}
+	return cfg
 }
 
 func makeProcessInstanceResult(key string, state string, parentKey string) *camundav88.ProcessInstanceResult {

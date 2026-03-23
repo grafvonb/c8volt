@@ -46,6 +46,7 @@
 - `internal/services/common.RequirePayload` is also the preferred malformed-response guard for generated XML/string success payloads such as `XML200`; reuse it instead of open-coding empty-200 checks in versioned services.
 - For generated XML endpoints that expose both `Body` and `XML200`, keep `RequirePayload` for status validation but fall back to the raw `Body` when `XML200` is present yet empty; the generated XML-to-string unmarshal can discard element markup.
 - Processinstance walker helpers treat `Descendants` output as root-inclusive and keep explicit `nil` edge entries for leaf nodes; preserve that shape because delete and tree-rendering flows rely on it.
+- Camunda v8.7 processinstance create responses do not include a process-instance key, so service-level wait regression tests should cover wait-dependent delete or explicit state polling paths instead of assuming create-time confirmation can be keyed from the create payload.
 
 ## Testing conventions
 - Add or update tests alongside refactoring and bug fixes.

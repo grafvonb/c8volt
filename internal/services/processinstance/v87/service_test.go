@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
@@ -114,7 +115,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newTestService(t, tt.camunda, newStrictOperateClient(t))
+			svc := newTestService(t, testConfig(), tt.camunda, newStrictOperateClient(t))
 
 			creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{
 				BpmnProcessId:            "demo",
@@ -203,7 +204,7 @@ func TestService_GetProcessInstance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newTestService(t, newStrictCamundaClient(t), tt.operate)
+			svc := newTestService(t, testConfig(), newStrictCamundaClient(t), tt.operate)
 
 			pi, err := svc.GetProcessInstance(ctx, tt.key)
 
@@ -228,7 +229,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success", func(t *testing.T) {
-		svc := newTestService(t, newStrictCamundaClient(t), &mockOperateClient{
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
 			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
 				t.Fatalf("unexpected get call")
 				return nil, nil
@@ -272,7 +273,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	})
 
 	t.Run("ParentKeyConversionError", func(t *testing.T) {
-		svc := newTestService(t, newStrictCamundaClient(t), newStrictOperateClient(t))
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
 
 		_, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{ParentKey: "abc"}, 25)
 
@@ -281,7 +282,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
-		svc := newTestService(t, newStrictCamundaClient(t), &mockOperateClient{
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
 			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
 				t.Fatalf("unexpected get call")
 				return nil, nil
@@ -371,7 +372,7 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newTestService(t, newStrictCamundaClient(t), tt.operate)
+			svc := newTestService(t, testConfig(), newStrictCamundaClient(t), tt.operate)
 
 			state, pi, err := svc.GetProcessInstanceStateByKey(ctx, tt.key)
 
@@ -397,7 +398,7 @@ func TestService_CancelProcessInstance(t *testing.T) {
 	ctx := context.Background()
 	var cancelled string
 
-	svc := newTestService(t, &mockCamundaClient{
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
 		postProcessInstancesWithResponse: func(ctx context.Context, body camundav87.PostProcessInstancesJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesResponse, error) {
 			t.Fatalf("unexpected create call")
 			return nil, nil
@@ -424,7 +425,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 
 	t.Run("SuccessNoWait", func(t *testing.T) {
 		var deletedKeys []int64
-		svc := newTestService(t, newStrictCamundaClient(t), &mockOperateClient{
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
 			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
 				assert.Equal(t, int64(123), key)
 				return &operatev87.GetProcessInstanceByKeyResponse{
@@ -459,7 +460,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 	})
 
 	t.Run("WrongStateWithoutForceReturnsConflict", func(t *testing.T) {
-		svc := newTestService(t, newStrictCamundaClient(t), &mockOperateClient{
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
 			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
 				assert.Equal(t, int64(123), key)
 				return &operatev87.GetProcessInstanceByKeyResponse{
@@ -493,6 +494,49 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 		assert.False(t, resp.Ok)
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
 	})
+
+	t.Run("SuccessWaitsForAbsentState", func(t *testing.T) {
+		getCalls := 0
+		svc := newTestService(t, waitTestConfig(), newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				getCalls++
+				switch getCalls {
+				case 1:
+					return &operatev87.GetProcessInstanceByKeyResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+						JSON200:      makeProcessInstanceResponse(123, "COMPLETED", ""),
+					}, nil
+				case 2:
+					return nil, d.ErrNotFound
+				default:
+					t.Fatalf("unexpected get call #%d", getCalls)
+					return nil, nil
+				}
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				items := []operatev87.ProcessInstance{}
+				return &operatev87.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &operatev87.ResultsProcessInstance{
+						Items: &items,
+					},
+				}, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      &operatev87.ChangeStatus{},
+				}, nil
+			},
+		})
+
+		resp, err := svc.DeleteProcessInstance(ctx, "123")
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, 2, getCalls)
+	})
 }
 
 func TestService_WithClientAndLoggerOptions(t *testing.T) {
@@ -518,11 +562,11 @@ func TestService_WithClientAndLoggerOptions(t *testing.T) {
 	require.Equal(t, logger, svc.Logger())
 }
 
-func newTestService(t *testing.T, camundaClient *mockCamundaClient, operateClient *mockOperateClient) *v87.Service {
+func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamundaClient, operateClient *mockOperateClient) *v87.Service {
 	t.Helper()
 
 	svc, err := v87.New(
-		testConfig(),
+		cfg,
 		&http.Client{},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		v87.WithClientCamunda(camundaClient),
@@ -578,6 +622,17 @@ func testConfig() *config.Config {
 			},
 		},
 	}
+}
+
+func waitTestConfig() *config.Config {
+	cfg := testConfig()
+	cfg.App.Backoff = config.BackoffConfig{
+		Strategy:     config.BackoffFixed,
+		InitialDelay: time.Millisecond,
+		MaxRetries:   2,
+		Timeout:      25 * time.Millisecond,
+	}
+	return cfg
 }
 
 func makeProcessInstanceResponse(key int64, state string, parentKey string) *operatev87.ProcessInstance {

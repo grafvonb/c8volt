@@ -20,19 +20,21 @@ Implement the processinstance service refactor in small, verifiable steps while 
 6. Update focused unit tests for both supported versions and factory behavior, and add helper-level waiter or walker tests when those paths are touched.
 7. Update `README.md` and regenerate CLI docs only if a user-visible processinstance workflow or output changes.
 
-## Validation Commands
+## Final Validation Sequence
 
 ```bash
 go test ./internal/services/processinstance/... -race -count=1
 make test
 ```
 
-## Documentation Impact
+Run the targeted processinstance regression suite first so versioned service, waiter, and walker failures stay isolated and actionable before the repository-wide suite.
 
-The planned refactor is expected to remain internal-only:
+## Documentation Impact Decision
+
+The completed refactor remains internal-only:
 
 - No command names, flags, or CLI output changes are required by default.
-- `README.md` and generated docs under `docs/cli/` should remain unchanged unless the final implementation exposes a new user-visible processinstance capability or changes a documented workflow.
+- `README.md` and generated docs under `docs/cli/` remain unchanged because the final implementation did not expose a new user-visible processinstance capability or alter a documented workflow.
 
 If a future iteration or final implementation introduces a user-visible CLI change:
 
@@ -46,7 +48,7 @@ make docs
 - Supported-version generated processinstance capability review is captured in code changes or implementation notes
 - Waiter and walker behavior remain compatible with current callers
 - No behavioral regressions in create, get, search, cancel, delete, wait, or traversal flows
-- Added or updated tests cover preserved success, malformed-response, unsupported-version, and error paths
+- Added or updated tests cover preserved success, malformed-response, wait-state edge cases, helper invariants, and error paths
 - Targeted regression proof runs `go test ./internal/services/processinstance/... -race -count=1` before the repository-wide `make test`
 - `make test` passes
 - Documentation remains unchanged unless implementation introduces a user-visible workflow change

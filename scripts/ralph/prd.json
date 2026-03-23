@@ -79,7 +79,7 @@
         "`make test` passes."
       ],
       "priority": "P3",
-      "passes": false,
+      "passes": true,
       "notes": "Keep this story focused on executable proof of completion after the service surface and capability decision have settled."
     },
     {
