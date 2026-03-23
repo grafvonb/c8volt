@@ -44,6 +44,7 @@
 - For generated single-object endpoints, `RequirePayload` may still return a decoded zero-value struct on malformed `200 OK` bodies; if the endpoint guarantees one object, validate the converted domain model is non-zero before treating the call as success.
 - `internal/services/common.RequirePayload` is also the preferred malformed-response guard for generated XML/string success payloads such as `XML200`; reuse it instead of open-coding empty-200 checks in versioned services.
 - For generated XML endpoints that expose both `Body` and `XML200`, keep `RequirePayload` for status validation but fall back to the raw `Body` when `XML200` is present yet empty; the generated XML-to-string unmarshal can discard element markup.
+- Processinstance walker helpers treat `Descendants` output as root-inclusive and keep explicit `nil` edge entries for leaf nodes; preserve that shape because delete and tree-rendering flows rely on it.
 
 ## Testing conventions
 - Add or update tests alongside refactoring and bug fixes.

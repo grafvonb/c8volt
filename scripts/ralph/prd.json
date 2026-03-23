@@ -51,7 +51,7 @@
         "Automated tests in `internal/services/processinstance/waiter/waiter_test.go` and `internal/services/processinstance/walker/walker_test.go` verify those invariants directly."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Treat helper behavior as compatibility-critical because create, expect, cancel, delete, and walk workflows all depend on these semantics."
     },
     {
