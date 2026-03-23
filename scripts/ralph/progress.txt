@@ -75,3 +75,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Gotchas encountered: Camunda v8.7 processinstance create responses do not expose the created instance key, so create-wait regression tests need a different anchor than v8.8.
   - Useful context: delete wait coverage can stay deterministic by stubbing one successful root lookup for descendant traversal and then returning `domain.ErrNotFound` on the follow-up state poll that proves the `ABSENT` transition.
 ---
+
+## [2026-03-23 20:54:18 CET] - #75-007
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Closed the conditional documentation story by confirming the feature artifacts already record the internal-only outcome and the explicit decision to leave `README.md` and generated CLI docs unchanged.
+- Re-ran the required validation sequence (`go test ./internal/services/processinstance/... -race -count=1` and `make test`) and marked story `#75-007` as passing in `scripts/ralph/prd.json`.
+- Files changed: `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: when a documentation story is conditional, the acceptance proof can live in feature artifacts as long as the no-change decision is explicit and validated.
+  - Gotchas encountered: `scripts/ralph/prd.json` may lag behind already-completed artifact work, so the final iteration still needs to verify the recorded decision before flipping the pass flag.
+  - Useful context: for issue `#75`, `specs/75-processinstance-api-refactor/quickstart.md` already captured the internal-only documentation outcome, so no user-facing docs regeneration was required.
+---

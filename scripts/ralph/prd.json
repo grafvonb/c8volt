@@ -92,7 +92,7 @@
         "The final validation path makes the documentation decision explicit rather than leaving it implicit."
       ],
       "priority": "P3",
-      "passes": false,
+      "passes": true,
       "notes": "This final slice is conditional and should only produce documentation changes if the generated-client coverage decision becomes user-visible."
     }
   ]
