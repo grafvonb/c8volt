@@ -1,71 +1,17 @@
 ## Codebase Patterns
-- Public `c8volt/<module>` facade methods belong in `client.go`, convert domain models in `convert.go`, and translate internal service errors with `c8volt/ferrors.FromDomain`.
-- New `get` subcommands live in `cmd/get_<resource>.go`, register under `getCmd`, and should render single-item output through `cmd/cmd_views_get.go` so one-line, JSON, and `--keys-only` modes stay aligned.
-- Generated single-object API responses can decode malformed `200 OK` JSON into non-nil zero-value structs, so versioned services should validate the converted domain object after `RequirePayload` when the endpoint guarantees one item.
-- CLI JSON render tests should assert the public model's tagged JSON keys rather than Go field names, because `toolx.ToJSONString` preserves the model's lowercase/camel-case API shape.
-- Regenerate CLI reference pages with `make docs` after updating Cobra help metadata; checked-in `docs/cli` files can drift and regeneration may update adjacent command pages, not just the newly added command.
+- For versioned internal service refactors, mirror the `resource` and `processdefinition` layout: package `api.go` owns the shared interface assertions, each versioned `contract.go` declares a matching local `API`, and generated-client interfaces should only list endpoints that the versioned service actually calls.
 
 # Ralph Progress Log
-Started: Sat Mar 21 20:41:51 CET 2026
+Started: Mon Mar 23 20:23:22 CET 2026
 ---
-## [2026-03-21 20:44:43 CET] - #73-001
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-7.txt
-- Implemented the public single-resource facade path by adding `GetResource` to `c8volt/resource`, introducing the public `Resource` model, and mapping internal domain resources into the public facade surface.
-- Added focused facade regression tests covering successful mapping plus domain-error translation for single-resource lookup.
-- Files changed: `c8volt/resource/api.go`, `c8volt/resource/client.go`, `c8volt/resource/convert.go`, `c8volt/resource/model.go`, `c8volt/resource/client_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
-- **Learnings for future iterations:**
-  - Patterns discovered: the aggregate `c8volt.API` already embeds `resource.API`, so new public resource capabilities usually only need package-local facade wiring rather than aggregate contract changes.
-  - Gotchas encountered: the Ralph workspace can already contain unrelated changes under `scripts/ralph/`; inspect `git status` before staging so iteration commits stay focused.
-  - Useful context: single-resource lookup already exists in `internal/services/resource` for both supported versions, so CLI work should call the public facade instead of reaching into internal services.
----
-## [2026-03-21 20:48:45 CET] - #73-002
+
+## [2026-03-23 20:25:58 CET] - #75-001
 Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
-- Implemented `c8volt get resource --id <id>` as a new `get` subcommand, wired it to the public `cli.GetResource(...)` facade path, and added single-resource rendering for the normal one-line and JSON/keys-only modes.
-- Added focused CLI regression coverage for the happy path and a not-found lookup that must exit non-success instead of rendering an empty success result.
-- Files changed: `cmd/get_resource.go`, `cmd/cmd_views_get.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- Locked the shared processinstance contract by documenting the package API invariants, asserting both version-local APIs against the shared package API, and trimming the unused v8.7 generated process-definition client methods.
+- Strengthened `internal/services/processinstance/factory_test.go` to verify concrete v8.7/v8.8 service routing and normalized unsupported-version failures through `services.ErrUnknownAPIVersion`.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/api.go`, `internal/services/processinstance/factory_test.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: single-item `get` commands should lean on `itemView(...)` in `cmd/cmd_views_get.go` so render-mode behavior stays consistent with the rest of the command tree.
-  - Gotchas encountered: subprocess-based CLI failure assertions need `resetCommandTreeFlags(Root())` before execution because shared Cobra state persists across in-process tests.
-  - Useful context: the resource lookup endpoint is `GET /v2/resources/{resourceId}` for both supported Camunda versions, so command tests can exercise the facade end-to-end with a single-version temp config.
----
-## [2026-03-21 20:55:23 CET] - #73-003
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
-- Tightened `c8volt get resource` validation so missing, empty, and whitespace-only `--id` values fail before lookup, and preserved the standard CLI error path for malformed single-resource fetches.
-- Added a shared resource payload guard for versioned services so decoded-but-empty `200 OK` responses are treated as malformed instead of rendering an empty success result.
-- Expanded CLI and service regression coverage for whitespace validation plus decoded-empty malformed payloads in both supported Camunda versions.
-- Files changed: `AGENTS.md`, `cmd/get_resource.go`, `cmd/get_test.go`, `internal/services/resource/payload/payload.go`, `internal/services/resource/v87/service.go`, `internal/services/resource/v87/service_test.go`, `internal/services/resource/v88/service.go`, `internal/services/resource/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
-- **Learnings for future iterations:**
-  - Patterns discovered: command-level `Args` validation is the right place for required trimmed string checks when the command should fail before any backend call or CLI construction.
-  - Gotchas encountered: generated Camunda clients can decode malformed object responses into non-nil empty structs, so `RequirePayload` alone is insufficient for guaranteed single-object endpoints.
-  - Useful context: runtime fetch failures still need subprocess-based CLI tests to capture `HandleAndExit` exit codes, while plain Cobra validation errors can be asserted directly through `ExecuteC()`.
----
-## [2026-03-21 20:58:57 CET] - #73-004
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
-- Refined resource rendering through an explicit single-item resource view helper and added CLI regression coverage for the existing one-line, JSON, and `--keys-only` render modes.
-- Verified the new resource lookup path stays aligned with the repository `get` render contract without changing unrelated command-tree behavior.
-- Files changed: `AGENTS.md`, `cmd/cmd_views_get.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
-- **Learnings for future iterations:**
-  - Patterns discovered: single-item `get` renderers can wrap `itemView(...)` in a typed helper so commands and tests share the same mode handling without duplicating render logic.
-  - Gotchas encountered: CLI JSON output follows the public model's JSON tags (`id`, `tenantId`, etc.), not exported Go field names, so assertions should match the serialized payload shape.
-  - Useful context: `--keys-only` for single-item `get` commands should emit the same identifier extractor passed into `itemView(...)`, which makes the mode cheap to regression-test alongside the default one-line output.
----
-## [2026-03-21 21:01:33 CET] - #73-005
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
-- Updated `get resource` Cobra help text to describe the single-resource lookup purpose and the required `--id` selector, and added focused help regression coverage for both `c8volt get --help` and `c8volt get resource --help`.
-- Regenerated CLI reference docs so `docs/cli/c8volt_get.md` lists the new subcommand and the new `docs/cli/c8volt_get_resource.md` page ships the same help text and flag details; regeneration also refreshed the stale `docs/cli/c8volt_get_process-definition.md` page to match current command metadata.
-- Files changed: `cmd/get_resource.go`, `cmd/get_test.go`, `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_process-definition.md`, `docs/cli/c8volt_get_resource.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
-- **Learnings for future iterations:**
-  - Patterns discovered: CLI discoverability work should assert both parent-command help output and the subcommand's own help text before regenerating `docs/cli` from Cobra metadata.
-  - Gotchas encountered: `make docs` can surface existing drift in adjacent generated pages, so review the full generated-doc diff instead of assuming only one new file will change.
-  - Useful context: the generated command docs capture required-flag discoverability through the command synopsis and options text, not a separate "required" marker in the markdown output.
----
-## [2026-03-21 21:03:14 CET] - #73-006
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
-- Verified the resource lookup feature completion evidence by running the story's targeted command and service suites plus the full repository `make test` gate, all of which passed without further code changes.
-- Marked the final Ralph story as passing so the PRD now reflects the validated end state of issue `#73`.
-- Files changed: `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
-- **Learnings for future iterations:**
-  - Patterns discovered: Ralph validation-closeout stories can be satisfied by preserving the existing focused regression commands in the PRD and proving them with a clean `make test` run before touching broader code.
-  - Gotchas encountered: a passing validation-only iteration may legitimately only change Ralph tracking artifacts, so review `git status` carefully and avoid staging unrelated workspace files such as `scripts/ralph/archive/`.
-  - Useful context: the required proof commands for this feature are `go test ./cmd -run 'TestGet.*Resource' -count=1`, `go test ./c8volt/resource ./internal/services/resource/... -count=1`, and `make test`.
+  - Patterns discovered: versioned service refactors in this repo already use the `resource` and `processdefinition` contract layout as the baseline for shared API locking.
+  - Gotchas encountered: processinstance v8.7 no longer uses generated process-definition endpoints, so keeping them in the contract would overstate the real dependency surface.
+  - Useful context: factory tests should assert both the concrete returned service type and `services.ErrUnknownAPIVersion`, while the rendered message still includes `"unknown"` plus `toolx.SupportedCamundaVersionsString()`.
 ---

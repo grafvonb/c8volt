@@ -12,7 +12,7 @@
         "`internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v88/contract.go` reflect the generated-client operations required by the settled service surface."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Start here because the versioned refactor and any capability review depend on a stable shared contract and branch-aligned routing behavior."
     },
     {
