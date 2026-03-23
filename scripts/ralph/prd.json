@@ -1,85 +1,99 @@
 {
-  "branchName": "73-get-resource-id",
-  "overview": "Add a repository-native `c8volt get resource --id <id>` command that exposes the existing internal resource lookup capability through the public `c8volt` facade, returns the normal single-resource details/object view, preserves current `get` command conventions, and ships with targeted regression coverage plus updated generated CLI documentation.",
+  "branchName": "75-processinstance-api-refactor",
+  "overview": "Refactor the internal processinstance service to improve readability and maintainability while preserving current create, get, search, wait, walk, cancel, and delete behavior across supported Camunda versions. Keep the work inside the existing API, factory, versioned-service, waiter, and walker structure, explicitly review generated-client coverage, and only add one bounded missing capability if it stays low risk and defines explicit unsupported-version behavior where support differs.",
   "userStories": [
     {
-      "id": "#73-001",
-      "title": "Expose resource lookup through the public facade",
-      "description": "Add the missing public `c8volt/resource` capability so CLI code can retrieve one resource by id through the existing facade boundary.",
+      "id": "#75-001",
+      "title": "Lock the shared processinstance service contract",
+      "description": "Define and stabilize the shared processinstance service surface, version routing expectations, helper boundaries, and generated-client contract requirements before refactoring implementation details.",
       "acceptanceCriteria": [
-        "`c8volt/resource/api.go` defines a single-resource retrieval method for one resource id.",
-        "`c8volt/resource/client.go` maps the internal domain `Resource` to a public `c8volt/resource` model without introducing raw-content fields.",
-        "`c8volt/contract.go` includes the new resource capability so `NewCli(cmd)` can expose it through the existing aggregate API."
+        "`internal/services/processinstance/api.go` explicitly defines the preserved shared service surface for the refactor.",
+        "`internal/services/processinstance/factory_test.go` verifies supported version routing and unsupported version failure behavior.",
+        "`internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v88/contract.go` reflect the generated-client operations required by the settled service surface."
       ],
       "priority": "P1",
-      "passes": true,
-      "notes": "Start here because the command should depend on the existing public facade layer rather than calling internal services directly."
+      "passes": false,
+      "notes": "Start here because the versioned refactor and any capability review depend on a stable shared contract and branch-aligned routing behavior."
     },
     {
-      "id": "#73-002",
-      "title": "Deliver the MVP get resource command",
-      "description": "Add a working `c8volt get resource --id <id>` command that retrieves one resource and renders the normal single-resource details/object view.",
+      "id": "#75-002",
+      "title": "Refactor v8.7 processinstance behavior without regression",
+      "description": "Simplify the v8.7 processinstance implementation so create, search, cancel, delete, and traversal flows are easier to maintain while keeping observable behavior unchanged.",
       "acceptanceCriteria": [
-        "`cmd/get_resource.go` registers a `resource` subcommand under `get`.",
-        "Running `c8volt get resource --id <id>` with a valid resource id returns one resource in the expected details/object output form.",
-        "Running the command with an unknown resource id preserves clear non-success behavior instead of rendering a successful empty result."
+        "`internal/services/processinstance/v87/service.go` preserves current create, get, search, cancel, delete, and family-traversal behavior for existing callers.",
+        "Success-path payload validation follows repository-native patterns where applicable and still rejects malformed success responses.",
+        "Automated tests in `internal/services/processinstance/v87/service_test.go` cover preserved success, malformed-response, and error behavior."
       ],
       "priority": "P1",
-      "passes": true,
-      "notes": "This is the core operator-visible slice and should stay narrowly focused on the happy path plus clear failure behavior."
+      "passes": false,
+      "notes": "Keep this slice focused on v8.7 behavior preservation and readability improvements rather than mixing in new capability work."
     },
     {
-      "id": "#73-003",
-      "title": "Enforce repository-native validation and malformed-response handling",
-      "description": "Make the new command match existing `get` command conventions for required-flag validation, malformed-success handling, and failure mapping.",
+      "id": "#75-003",
+      "title": "Refactor v8.8 processinstance behavior without regression",
+      "description": "Simplify the v8.8 processinstance implementation while preserving current create, get, search, wait-for-state, cancel, delete, and traversal semantics.",
       "acceptanceCriteria": [
-        "The command fails validation before any backend lookup when `--id` is missing, empty, or whitespace-only.",
-        "A backend `200 OK` response without a resource payload is treated as a malformed-response error rather than empty success.",
-        "Existing error and exit handling continue to flow through the repository's standard command-path behavior."
+        "`internal/services/processinstance/v88/service.go` preserves current create, get, search, cancel, delete, and polling-backed state confirmation behavior.",
+        "Shared payload validation and helper interaction paths are clearer without changing current success or failure semantics.",
+        "Automated tests in `internal/services/processinstance/v88/service_test.go` cover preserved success paths, malformed-success handling, and wait-related behavior."
       ],
       "priority": "P1",
-      "passes": true,
-      "notes": "Keep the existing `internal/services/common.RequirePayload` semantics and the normal CLI error path rather than inventing command-specific special cases."
+      "passes": false,
+      "notes": "Keep this separate from the v8.7 refactor so each version remains a small, independently verifiable Ralph iteration."
     },
     {
-      "id": "#73-004",
-      "title": "Align rendering and command-tree integration",
-      "description": "Integrate the new resource lookup path into the existing CLI rendering and command-tree behavior without changing unrelated `get` workflows.",
+      "id": "#75-004",
+      "title": "Preserve waiter and walker semantics with direct regression proof",
+      "description": "Keep waiter and walker behavior stable, but make their invariants explicit through focused cleanup and direct regression coverage.",
       "acceptanceCriteria": [
-        "Resource output uses a dedicated single-resource renderer aligned with existing one-item `get` views.",
-        "JSON and normal detail output behavior remain consistent with the current rendering patterns used by other `get` commands.",
-        "Adding the resource command does not alter existing `get` subcommand behavior outside the new resource lookup path."
+        "`internal/services/processinstance/waiter/waiter.go` preserves current timeout, absent-state, and retry-limit behavior.",
+        "`internal/services/processinstance/walker/walker.go` preserves current ancestry, descendants, family, cycle-detection, and orphan-handling behavior.",
+        "Automated tests in `internal/services/processinstance/waiter/waiter_test.go` and `internal/services/processinstance/walker/walker_test.go` verify those invariants directly."
+      ],
+      "priority": "P1",
+      "passes": false,
+      "notes": "Treat helper behavior as compatibility-critical because create, expect, cancel, delete, and walk workflows all depend on these semantics."
+    },
+    {
+      "id": "#75-005",
+      "title": "Complete the generated-client coverage decision",
+      "description": "Review the supported generated processinstance clients and either expose one bounded missing capability or explicitly record a no-addition decision, with defined unsupported-version behavior if only one version can support the capability.",
+      "acceptanceCriteria": [
+        "The final generated-client coverage review is recorded in `specs/75-processinstance-api-refactor/research.md`.",
+        "Any added capability fits the existing service surface and does not require package or layout changes.",
+        "If an added capability is only available in one supported version, the unsupported version returns a defined error and that behavior is covered by tests.",
+        "If no capability is added, the bounded rationale is recorded explicitly instead of being implied."
       ],
       "priority": "P2",
-      "passes": true,
-      "notes": "This slice should refine integration after the command and facade path exist, while keeping unrelated `get` behavior stable."
+      "passes": false,
+      "notes": "The exact capability choice remains intentionally open; Ralph can complete this story either by adding one bounded capability or by recording a justified defer decision."
     },
     {
-      "id": "#73-005",
-      "title": "Make the workflow discoverable through help and docs",
-      "description": "Update help text and generated documentation so operators can find and use the new command without reading source code.",
+      "id": "#75-006",
+      "title": "Prove completion with durable regression coverage",
+      "description": "Expand and tighten regression coverage so future maintainers can safely modify the processinstance service, and make the final validation sequence explicit.",
       "acceptanceCriteria": [
-        "`c8volt get --help` exposes the new `resource` subcommand.",
-        "`c8volt get resource --help` describes the required `--id` flag and the command's single-resource purpose.",
-        "Generated CLI docs under `docs/cli/` include the new command and match the shipped help text."
-      ],
-      "priority": "P2",
-      "passes": true,
-      "notes": "Update command help first and regenerate docs via `make docs`; do not hand-edit generated CLI reference pages."
-    },
-    {
-      "id": "#73-006",
-      "title": "Prove completion with focused and repository-wide validation",
-      "description": "Add the regression coverage and validation steps needed to ship the feature confidently and preserve current service semantics.",
-      "acceptanceCriteria": [
-        "Command tests cover success, missing-id validation, and at least one failing lookup path.",
-        "Versioned resource service tests cover single-resource retrieval and malformed-success payload handling for supported versions.",
-        "`go test ./cmd -run 'TestGet.*Resource' -count=1` and `go test ./c8volt/resource ./internal/services/resource/... -count=1` pass.",
+        "Processinstance service tests cover preserved success paths, malformed-success handling, edge-case state transitions, helper invariants, and any approved capability addition.",
+        "`specs/75-processinstance-api-refactor/quickstart.md` records the final validation sequence and documentation-impact decision.",
+        "`go test ./internal/services/processinstance/... -race -count=1` passes.",
         "`make test` passes."
       ],
       "priority": "P3",
-      "passes": true,
-      "notes": "This final slice should consolidate the required proof of completion after behavior, validation, and docs are in place."
+      "passes": false,
+      "notes": "Keep this story focused on executable proof of completion after the service surface and capability decision have settled."
+    },
+    {
+      "id": "#75-007",
+      "title": "Update user-facing documentation only if behavior becomes operator-visible",
+      "description": "Keep the feature internal-only by default, but update user-facing documentation in the same change if the final capability decision affects operator-visible workflows or outputs.",
+      "acceptanceCriteria": [
+        "If no user-visible workflow changes, the feature artifacts explicitly record that documentation remains unchanged.",
+        "If a user-visible workflow changes, `README.md` and affected generated CLI docs under `docs/cli/` are updated in the same change.",
+        "The final validation path makes the documentation decision explicit rather than leaving it implicit."
+      ],
+      "priority": "P3",
+      "passes": false,
+      "notes": "This final slice is conditional and should only produce documentation changes if the generated-client coverage decision becomes user-visible."
     }
   ]
 }
