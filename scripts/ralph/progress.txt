@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - For versioned internal service refactors, mirror the `resource` and `processdefinition` layout: package `api.go` owns the shared interface assertions, each versioned `contract.go` declares a matching local `API`, and generated-client interfaces should only list endpoints that the versioned service actually calls.
+- For versioned internal services, build constructors with `internal/services/common.PrepareServiceDeps` and finish with `common.EnsureLoggerAndClients` so nil-safe defaults and test-time client injection stay aligned across packages.
 
 # Ralph Progress Log
 Started: Mon Mar 23 20:23:22 CET 2026
@@ -14,4 +15,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: versioned service refactors in this repo already use the `resource` and `processdefinition` contract layout as the baseline for shared API locking.
   - Gotchas encountered: processinstance v8.7 no longer uses generated process-definition endpoints, so keeping them in the contract would overstate the real dependency surface.
   - Useful context: factory tests should assert both the concrete returned service type and `services.ErrUnknownAPIVersion`, while the rendered message still includes `"unknown"` plus `toolx.SupportedCamundaVersionsString()`.
+---
+
+## [2026-03-23 20:33:11 CET] - #75-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored the v8.7 processinstance service constructor and request paths to use the shared dependency setup pattern, centralized key/search request helpers, and `common.RequirePayload` for preserved malformed-success handling.
+- Added direct v8.7 regression tests covering create, get, search, state lookup, cancel, delete, and option injection behavior without changing observable semantics.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v87/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: versioned internal services are easier to test when constructors accept nil-safe logger/client overrides through `PrepareServiceDeps` plus `EnsureLoggerAndClients`.
+  - Gotchas encountered: `walker.Descendants` fetches the root process instance before listing children, so delete-path tests must stub both `GetProcessInstance` and the child search call.
+  - Useful context: the v8.7 processinstance create flow only needs `--no-wait` tests to cover the service refactor slice; the wait semantics are shared helper behavior and belong to the later waiter/walker-focused story.
 ---

@@ -25,7 +25,7 @@
         "Automated tests in `internal/services/processinstance/v87/service_test.go` cover preserved success, malformed-response, and error behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Keep this slice focused on v8.7 behavior preservation and readability improvements rather than mixing in new capability work."
     },
     {

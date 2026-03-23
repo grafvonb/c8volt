@@ -14,6 +14,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
@@ -29,27 +30,65 @@ type Service struct {
 	log *slog.Logger
 }
 
+func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
+func (s *Service) ClientOperate() GenProcessInstanceClientOperate { return s.co }
+func (s *Service) Config() *config.Config                         { return s.cfg }
+func (s *Service) Logger() *slog.Logger                           { return s.log }
+
 type Option func(*Service)
 
+func WithClientCamunda(c GenProcessInstanceClientCamunda) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.cc = c
+		}
+	}
+}
+
+func WithClientOperate(c GenProcessInstanceClientOperate) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.co = c
+		}
+	}
+}
+
+func WithLogger(logger *slog.Logger) Option {
+	return func(s *Service) {
+		if logger != nil {
+			s.log = logger
+		}
+	}
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
+	if err != nil {
+		return nil, err
+	}
 	cc, err := camundav87.NewClientWithResponses(
-		cfg.APIs.Camunda.BaseURL,
-		camundav87.WithHTTPClient(httpClient),
+		deps.Config.APIs.Camunda.BaseURL,
+		camundav87.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
 	co, err := operatev87.NewClientWithResponses(
-		cfg.APIs.Operate.BaseURL,
-		operatev87.WithHTTPClient(httpClient),
+		deps.Config.APIs.Operate.BaseURL,
+		operatev87.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{co: co, cc: cc, cfg: cfg, log: log}
+	s := &Service{co: co, cc: cc, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
+	logger, err := common.EnsureLoggerAndClients(s.log, s.cc, s.co)
+	if err != nil {
+		return nil, err
+	}
+	s.log = logger
 	return s, nil
 }
 
@@ -61,14 +100,11 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	if err != nil {
 		return d.ProcessInstanceCreation{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return d.ProcessInstanceCreation{}, err
 	}
-	if resp.JSON200 == nil {
-		return d.ProcessInstanceCreation{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	pi := fromPostProcessInstancesResponse(*resp.JSON200)
+	pi := fromPostProcessInstancesResponse(*payload)
 	s.log.Debug(fmt.Sprintf("created new process instance %s using process definition id %s, %s, v%d, tenant: %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
 	if !cCfg.NoWait {
 		s.log.Info(fmt.Sprintf("waiting for process instance of %s with key %s to be started by workflow engine...", pi.ProcessDefinitionKey, pi.Key))
@@ -89,23 +125,20 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	oldKey, err := toolx.StringToInt64(key)
+	oldKey, err := processInstanceKeyInt64(key)
 	if err != nil {
-		return d.ProcessInstance{}, fmt.Errorf("converting process instance key %q to int64: %w", key, err)
+		return d.ProcessInstance{}, err
 	}
 	s.log.Debug(fmt.Sprintf("fetching process instance with key %d", oldKey))
 	resp, err := s.co.GetProcessInstanceByKeyWithResponse(ctx, oldKey)
 	if err != nil {
 		return d.ProcessInstance{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return d.ProcessInstance{}, err
 	}
-	if resp.JSON200 == nil {
-		return d.ProcessInstance{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	return fromProcessInstanceResponse(*resp.JSON200), nil
+	return fromProcessInstanceResponse(*payload), nil
 }
 
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
@@ -143,35 +176,19 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
-	st := operatev87.ProcessInstanceState(filter.State)
-	pk, err := toolx.StringToInt64Ptr(filter.ParentKey)
+	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, size)
 	if err != nil {
-		return nil, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
-	}
-	f := operatev87.ProcessInstance{
-		TenantId:          &s.cfg.App.Tenant,
-		BpmnProcessId:     &filter.BpmnProcessId,
-		ProcessVersion:    toolx.PtrIfNonZero(filter.ProcessVersion),
-		ProcessVersionTag: &filter.ProcessVersionTag,
-		State:             &st,
-		ParentKey:         pk,
-	}
-	body := operatev87.SearchProcessInstancesJSONRequestBody{
-		Filter: &f,
-		Size:   &size,
+		return nil, err
 	}
 	resp, err := s.co.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	return toolx.DerefSlicePtr(resp.JSON200.Items, fromProcessInstanceResponse), nil
+	return toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse), nil
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
@@ -257,24 +274,21 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("checking state of process instance with key %s", key))
-	oldKey, err := toolx.StringToInt64(key)
+	oldKey, err := processInstanceKeyInt64(key)
 	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("converting process instance key %q to int64: %w", key, err)
+		return "", d.ProcessInstance{}, err
 	}
 	pi, err := s.co.GetProcessInstanceByKeyWithResponse(ctx, oldKey)
 	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	if err = httpc.HttpStatusErr(pi.HTTPResponse, pi.Body); err != nil {
+	payload, err := common.RequirePayload(pi.HTTPResponse, pi.Body, pi.JSON200)
+	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	if pi.JSON200 == nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(pi.Body))
-	}
-	st := d.State(*pi.JSON200.State)
+	st := d.State(*payload.State)
 	s.log.Debug(fmt.Sprintf("process instance with key %s is in state %s", key, st))
-	return st, fromProcessInstanceResponse(*pi.JSON200), nil
+	return st, fromProcessInstanceResponse(*payload), nil
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -365,4 +379,32 @@ func (s *Service) Descendants(ctx context.Context, rootKey string, opts ...servi
 
 func (s *Service) Family(ctx context.Context, startKey string, opts ...services.CallOption) (fam []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
 	return walker.Family(ctx, s, startKey, opts...)
+}
+
+func processInstanceKeyInt64(key string) (int64, error) {
+	oldKey, err := toolx.StringToInt64(key)
+	if err != nil {
+		return 0, fmt.Errorf("converting process instance key %q to int64: %w", key, err)
+	}
+	return oldKey, nil
+}
+
+func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter, size int32) (operatev87.SearchProcessInstancesJSONRequestBody, error) {
+	st := operatev87.ProcessInstanceState(filter.State)
+	parentKey, err := toolx.StringToInt64Ptr(filter.ParentKey)
+	if err != nil {
+		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
+	}
+	bodyFilter := operatev87.ProcessInstance{
+		TenantId:          &tenant,
+		BpmnProcessId:     &filter.BpmnProcessId,
+		ProcessVersion:    toolx.PtrIfNonZero(filter.ProcessVersion),
+		ProcessVersionTag: &filter.ProcessVersionTag,
+		State:             &st,
+		ParentKey:         parentKey,
+	}
+	return operatev87.SearchProcessInstancesJSONRequestBody{
+		Filter: &bodyFilter,
+		Size:   &size,
+	}, nil
 }
