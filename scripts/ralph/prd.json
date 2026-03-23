@@ -38,7 +38,7 @@
         "Automated tests in `internal/services/processinstance/v88/service_test.go` cover preserved success paths, malformed-success handling, and wait-related behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Keep this separate from the v8.7 refactor so each version remains a small, independently verifiable Ralph iteration."
     },
     {

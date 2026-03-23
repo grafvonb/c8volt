@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - For versioned internal service refactors, mirror the `resource` and `processdefinition` layout: package `api.go` owns the shared interface assertions, each versioned `contract.go` declares a matching local `API`, and generated-client interfaces should only list endpoints that the versioned service actually calls.
 - For versioned internal services, build constructors with `internal/services/common.PrepareServiceDeps` and finish with `common.EnsureLoggerAndClients` so nil-safe defaults and test-time client injection stay aligned across packages.
+- Camunda v8.8 generated search request tests should assert serialized flat equality values like `"tenantId":"tenant"` instead of expecting `"$eq"` wrappers; the generated request unions flatten simple equality filters during JSON marshaling.
 
 # Ralph Progress Log
 Started: Mon Mar 23 20:23:22 CET 2026
@@ -26,4 +27,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered: versioned internal services are easier to test when constructors accept nil-safe logger/client overrides through `PrepareServiceDeps` plus `EnsureLoggerAndClients`.
   - Gotchas encountered: `walker.Descendants` fetches the root process instance before listing children, so delete-path tests must stub both `GetProcessInstance` and the child search call.
   - Useful context: the v8.7 processinstance create flow only needs `--no-wait` tests to cover the service refactor slice; the wait semantics are shared helper behavior and belong to the later waiter/walker-focused story.
+---
+
+## [2026-03-23 20:39:01 CET] - #75-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Refactored the v8.8 processinstance service constructor to use `PrepareServiceDeps` plus `EnsureLoggerAndClients`, added nil-safe client/logger override options, and switched the standard create/get/search/state success paths to `common.RequirePayload`.
+- Added direct v8.8 regression tests covering create, get, search, state lookup, cancel, delete, and option injection behavior while keeping the story scoped to no-wait service behavior rather than shared waiter semantics.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: v8.8 processinstance follows the same constructor-and-option testing pattern as the other versioned internal services once logger and generated clients are exposed through small accessors.
+  - Gotchas encountered: v8.8 Camunda search filter unions marshal equality filters as flat scalar JSON fields, so test assertions should inspect serialized values instead of `"$eq"` wrapper objects.
+  - Useful context: delete-path regression tests still need both the root `GetProcessInstance` stub and the descendant search stub because walker-based traversal runs before the operate delete request.
 ---

@@ -29,27 +29,65 @@ type Service struct {
 	log *slog.Logger
 }
 
+func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
+func (s *Service) ClientOperate() GenProcessInstanceClientOperate { return s.co }
+func (s *Service) Config() *config.Config                         { return s.cfg }
+func (s *Service) Logger() *slog.Logger                           { return s.log }
+
 type Option func(*Service)
 
+func WithClientCamunda(c GenProcessInstanceClientCamunda) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.cc = c
+		}
+	}
+}
+
+func WithClientOperate(c GenProcessInstanceClientOperate) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.co = c
+		}
+	}
+}
+
+func WithLogger(logger *slog.Logger) Option {
+	return func(s *Service) {
+		if logger != nil {
+			s.log = logger
+		}
+	}
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
+	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
+	if err != nil {
+		return nil, err
+	}
 	cc, err := camundav88.NewClientWithResponses(
-		cfg.APIs.Camunda.BaseURL,
-		camundav88.WithHTTPClient(httpClient),
+		deps.Config.APIs.Camunda.BaseURL,
+		camundav88.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
 	co, err := operatev88.NewClientWithResponses(
-		cfg.APIs.Operate.BaseURL,
-		operatev88.WithHTTPClient(httpClient),
+		deps.Config.APIs.Operate.BaseURL,
+		operatev88.WithHTTPClient(deps.HTTPClient),
 	)
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{co: co, cc: cc, cfg: cfg, log: log}
+	s := &Service{co: co, cc: cc, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
+	logger, err := common.EnsureLoggerAndClients(s.log, s.cc, s.co)
+	if err != nil {
+		return nil, err
+	}
+	s.log = logger
 	return s, nil
 }
 
@@ -64,14 +102,11 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	if err != nil {
 		return d.ProcessInstanceCreation{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return d.ProcessInstanceCreation{}, err
 	}
-	if resp.JSON200 == nil {
-		return d.ProcessInstanceCreation{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	pi := fromPostProcessInstancesResponse(*resp.JSON200)
+	pi := fromPostProcessInstancesResponse(*payload)
 	s.log.Debug(fmt.Sprintf("created new process instance %s using process definition id %s, %s, v%d, tenant: %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
 	if !cCfg.NoWait {
 		s.log.Info(fmt.Sprintf("waiting for process instance of %s with key %s to be started by workflow engine...", pi.ProcessDefinitionKey, pi.Key))
@@ -162,14 +197,11 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	if err != nil {
 		return nil, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	return toolx.MapSlice(resp.JSON200.Items, fromProcessInstanceResult), nil
+	return toolx.MapSlice(payload.Items, fromProcessInstanceResult), nil
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
@@ -258,16 +290,13 @@ func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, 
 	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	if err = httpc.HttpStatusErr(pi.HTTPResponse, pi.Body); err != nil {
+	payload, err := common.RequirePayload(pi.HTTPResponse, pi.Body, pi.JSON200)
+	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	if pi.JSON200 == nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(pi.Body))
-	}
-	st := d.State(pi.JSON200.State)
+	st := d.State(payload.State)
 	s.log.Debug(fmt.Sprintf("process instance with key %s is in state %s", key, st))
-	return st, fromProcessInstanceResult(*pi.JSON200), nil
+	return st, fromProcessInstanceResult(*payload), nil
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -351,14 +380,11 @@ func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...se
 	if err != nil {
 		return d.ProcessInstance{}, err
 	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
 		return d.ProcessInstance{}, err
 	}
-	if resp.JSON200 == nil {
-		return d.ProcessInstance{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
-			d.ErrMalformedResponse, string(resp.Body))
-	}
-	return fromProcessInstanceResult(*resp.JSON200), nil
+	return fromProcessInstanceResult(*payload), nil
 }
 
 func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
