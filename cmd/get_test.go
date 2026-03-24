@@ -461,6 +461,28 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	require.Contains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
+		http.Error(w, "missing", http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExitHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Contains(t, string(output), "resource not found")
+	require.Contains(t, string(output), "error fetching resource by id missing-resource")
+}
+
 func TestGetResourceCommand_RequiresID(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -479,6 +501,25 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
 	require.Contains(t, output, "resource lookup requires a non-empty --id")
+}
+
+func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "resource lookup requires a non-empty --id")
 }
 
 func TestGetResourceCommand_MalformedResponse(t *testing.T) {
@@ -509,6 +550,32 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 	require.Contains(t, string(output), "malformed response")
 }
 
+func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/timeout-resource", r.URL.Path)
+		http.Error(w, "slow", http.StatusGatewayTimeout)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCodeHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Timeout, exitErr.ExitCode())
+	require.Contains(t, string(output), "operation timed out")
+	require.Contains(t, string(output), "error fetching resource by id timeout-resource")
+}
+
 func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -523,7 +590,7 @@ func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "xml output requires --key")
 }
 
@@ -541,7 +608,7 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "xml output only supports --key")
 	require.Contains(t, string(output), "--json")
 	require.Contains(t, string(output), "--latest")
@@ -630,12 +697,23 @@ func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
 		return
 	}
 
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--xml"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--xml"}
+
+	Execute()
+}
+
+func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "   "}
+
+	Execute()
 }
 
 func TestGetResourceCommand_FailureHelper(t *testing.T) {
@@ -646,6 +724,19 @@ func TestGetResourceCommand_FailureHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "missing-resource"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--no-err-codes", "get", "resource", "--id", "missing-resource"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
@@ -664,17 +755,29 @@ func TestGetResourceCommand_MalformedResponseHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
-func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testing.T) {
+func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCodeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
 
 	root := Root()
 	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "process-definition", "--key", "2251799813685255", "--xml", "--latest"})
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "timeout-resource"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "process-definition", "--key", "2251799813685255", "--xml", "--latest"}
+
+	Execute()
 }
 
 func TestGetProcessDefinitionXMLCommand_FailureHelper(t *testing.T) {

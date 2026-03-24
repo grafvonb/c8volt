@@ -24,10 +24,10 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
+			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
@@ -40,11 +40,11 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		case len(keys) > 0:
 		default:
 			if !hasPISearchFilterFlags() {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
 			if flagGetPIState != "" && flagGetPIState != "all" {
 				if _, ok := process.ParseState(flagGetPIState); !ok {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings()))
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings()))
 				}
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
@@ -58,7 +58,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to cancel"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to cancel")))
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 		if err != nil {

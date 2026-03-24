@@ -2,11 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/spf13/cobra"
 )
 
@@ -25,15 +23,14 @@ var expectProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleNewCliError(cmd, log, cfg, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
 		states, err := process.ParseStates(flagExpectPIStates)
 		if err != nil {
-			log.Error(fmt.Sprintf("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
-			os.Exit(exitcode.NotFound)
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
@@ -42,7 +39,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 		}
 		keys := mergeAndValidateKeys(flagExpectPIKeys, stdinKeys, log, cfg)
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to watch"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to watch")))
 		}
 		log.Info(fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states))
 		_, err = cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectOptions()...)

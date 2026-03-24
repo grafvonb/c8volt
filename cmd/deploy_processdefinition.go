@@ -21,7 +21,7 @@ var deployProcessDefinitionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleNewCliError(cmd, log, cfg, err)
 		}
 		if err := validateFiles(flagDeployPDFiles); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating files with process definition(s): %w", err))

@@ -26,13 +26,13 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleNewCliError(cmd, log, cfg, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--workers must be positive integer"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
 		if len(flagDeletePDKeys) == 0 && flagDeletePDBpmnProcessId == "" {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
@@ -64,7 +64,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process definitions found to delete"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
 		}
 
 		fmt.Println("WARNING: Camunda's API v8.8+ deletion process removes process definition resources (from Zeebe) only; historic/Operate data remain.")

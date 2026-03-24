@@ -1,88 +1,94 @@
 ## Codebase Patterns
-- For versioned internal service refactors, mirror the `resource` and `processdefinition` layout: package `api.go` owns the shared interface assertions, each versioned `contract.go` declares a matching local `API`, and generated-client interfaces should only list endpoints that the versioned service actually calls.
-- For versioned internal services, build constructors with `internal/services/common.PrepareServiceDeps` and finish with `common.EnsureLoggerAndClients` so nil-safe defaults and test-time client injection stay aligned across packages.
-- Camunda v8.8 generated search request tests should assert serialized flat equality values like `"tenantId":"tenant"` instead of expecting `"$eq"` wrappers; the generated request unions flatten simple equality filters during JSON marshaling.
-- Processinstance walker `Descendants` results are root-inclusive and keep explicit `nil` edge entries for leaves; preserve that shape because higher-level delete and tree-rendering flows depend on it.
-- For internal service generated-client coverage stories, finish the review in `research.md` with an explicit candidate-by-candidate keep/defer decision; if no endpoint is added, document the boundary reasons instead of leaving the omission implicit.
-- Camunda v8.7 processinstance create responses do not expose the created instance key, so wait-oriented regression coverage should use delete/state-polling paths rather than assuming create-time confirmation can start from the create payload.
+- Keep shared CLI failure classification in `c8volt/ferrors`; normalize raw errors with `Normalize` and assert `Classify` or `ResolveExitCode` directly in package tests before adding subprocess coverage in `cmd/`.
+- Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
+- For CLI command-validation helpers, attach the shared `ferrors` class when constructing the error if the same validation may surface through both Cobra `Execute()` and in-command `ferrors.HandleAndExit`; bootstrap normalization alone only covers the former.
+- Extend command and bootstrap sentinel-to-class mappings through the shared rule tables in `cmd/cmd_errors.go` and `cmd/bootstrap_errors.go`; that table-driven path is the extension point for future CLI failure classes.
+- In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
+- Command handlers that call `NewCli(cmd)` must treat the returned config as nilable on failure; use the shared command/bootstrap error helper to resolve `--no-err-codes` instead of dereferencing `cfg.App.NoErrCodes` in the error branch.
+- The scripting/error-code guidance in `README.md` and `docs/index.md` is duplicated on purpose; update both files together when the CLI failure contract changes.
+- For feature closeout on this branch, the authoritative validation sequence is the spec quickstart order: `go test ./cmd/... ./c8volt/ferrors/... -count=1` first, then `make test`.
 
 # Ralph Progress Log
-Started: Mon Mar 23 20:23:22 CET 2026
+Started: Tue Mar 24 10:20:36 CET 2026
 ---
-
-## [2026-03-23 20:25:58 CET] - #75-001
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
-- Locked the shared processinstance contract by documenting the package API invariants, asserting both version-local APIs against the shared package API, and trimming the unused v8.7 generated process-definition client methods.
-- Strengthened `internal/services/processinstance/factory_test.go` to verify concrete v8.7/v8.8 service routing and normalized unsupported-version failures through `services.ErrUnknownAPIVersion`.
-- Files changed: `AGENTS.md`, `internal/services/processinstance/api.go`, `internal/services/processinstance/factory_test.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+## [2026-03-24 10:24:15 CET] - #19-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-*.txt (no matching file present in workspace)
+- Implemented the shared CLI failure model boundary in `c8volt/ferrors` with bounded classes, normalization entry points, centralized exit-code mapping, and a `ResolveExitCode` helper that keeps `--no-err-codes` as a final override.
+- Added focused regression tests for domain and local normalization, fallback internal classification, and the `--no-err-codes` override path.
+- Files changed: `AGENTS.md`, `c8volt/ferrors/errors.go`, `c8volt/ferrors/errors_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: versioned service refactors in this repo already use the `resource` and `processdefinition` contract layout as the baseline for shared API locking.
-  - Gotchas encountered: processinstance v8.7 no longer uses generated process-definition endpoints, so keeping them in the contract would overstate the real dependency surface.
-  - Useful context: factory tests should assert both the concrete returned service type and `services.ErrUnknownAPIVersion`, while the rendered message still includes `"unknown"` plus `toolx.SupportedCamundaVersionsString()`.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `c8volt/ferrors` is the right single boundary for CLI classification; callers can keep routing through `HandleAndExit` while shared tests lock semantics via `Normalize`, `Classify`, and `ResolveExitCode`.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the previous `context.Canceled` handling in `FromDomain` was shadowed by an earlier branch, so shared normalization order matters when adding more mappings.
+  - Useful context (e.g., "the evaluation panel is in component X"): existing `internal/exitcode` values remain the compatibility baseline, so new failure classes can be introduced without immediately adding new numeric exit codes.
 ---
-
-## [2026-03-23 20:33:11 CET] - #75-002
-Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
-- Refactored the v8.7 processinstance service constructor and request paths to use the shared dependency setup pattern, centralized key/search request helpers, and `common.RequirePayload` for preserved malformed-success handling.
-- Added direct v8.7 regression tests covering create, get, search, state lookup, cancel, delete, and option injection behavior without changing observable semantics.
-- Files changed: `AGENTS.md`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v87/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+## [2026-03-24 10:32:23 CET] - #19-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-*.txt (no matching file present in workspace)
+- Routed root pre-run and `Execute()` bootstrap failures through a shared `cmd` bootstrap normalization helper so configuration and startup failures use the shared CLI classification and exit-code path instead of falling back to raw `os.Exit(1)`.
+- Updated `NewCli()` to normalize missing-context and client-construction failures through the same bootstrap path, preserving unsupported-version classification while treating missing bootstrap services as local preconditions.
+- Added focused command tests for bootstrap normalization, a subprocess regression covering invalid-config execution, and hardened `toolx/logging.FromContext` so missing loggers fall back to `slog.Default()` instead of panicking during bootstrap checks.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_cli.go`, `cmd/root.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`, `toolx/logging/logging.go`
 - **Learnings for future iterations:**
-  - Patterns discovered: versioned internal services are easier to test when constructors accept nil-safe logger/client overrides through `PrepareServiceDeps` plus `EnsureLoggerAndClients`.
-  - Gotchas encountered: `walker.Descendants` fetches the root process instance before listing children, so delete-path tests must stub both `GetProcessInstance` and the child search call.
-  - Useful context: the v8.7 processinstance create flow only needs `--no-wait` tests to cover the service refactor slice; the wait semantics are shared helper behavior and belong to the later waiter/walker-focused story.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): root-level Cobra failures are best tested with subprocess helpers that set `os.Args` and call `Execute()` directly, because that is the path that owns final exit-code handling.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `toolx/logging.FromContext` may be reached before config wiring is complete, so bootstrap-safe code must tolerate a missing logger context without panicking.
+  - Useful context (e.g., "the evaluation panel is in component X"): unknown Camunda versions fail during config normalization before command execution, which makes them a compact representative case for root/bootstrap failure tests.
 ---
-
-## [2026-03-23 20:39:01 CET] - #75-003
+## [2026-03-24 10:37:54 CET] - #19-003
 Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
-- Refactored the v8.8 processinstance service constructor to use `PrepareServiceDeps` plus `EnsureLoggerAndClients`, added nil-safe client/logger override options, and switched the standard create/get/search/state success paths to `common.RequirePayload`.
-- Added direct v8.8 regression tests covering create, get, search, state lookup, cancel, delete, and option injection behavior while keeping the story scoped to no-wait service behavior rather than shared waiter semantics.
-- Files changed: `AGENTS.md`, `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- Normalized shared `get` command validation failures by introducing command-level invalid-input helpers, mapping those sentinels through the bootstrap path, and updating read-only validators in `get resource`, `get process-definition`, and `get process-instance`.
+- Added regression coverage proving read-only invalid-input failures exit through the shared invalid-args path while malformed-response, remote-failure, and local-precondition behavior stays covered by the existing read-only subprocess tests.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_errors.go`, `cmd/get_processdefinition.go`, `cmd/get_processinstance.go`, `cmd/get_resource.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: v8.8 processinstance follows the same constructor-and-option testing pattern as the other versioned internal services once logger and generated clients are exposed through small accessors.
-  - Gotchas encountered: v8.8 Camunda search filter unions marshal equality filters as flat scalar JSON fields, so test assertions should inspect serialized values instead of `"$eq"` wrapper objects.
-  - Useful context: delete-path regression tests still need both the root `GetProcessInstance` stub and the descendant search stub because walker-based traversal runs before the operate delete request.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `cmd`-level validation helpers are the right place to attach shared invalid-input classification because the same error can surface either from Cobra `Execute()` or from a command's own `ferrors.HandleAndExit` path.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): subprocess helpers that call `root.Execute()` only cover direct in-command exits; validation that bubbles back to Cobra needs helper processes to invoke `Execute()` so the shared bootstrap handler can apply final exit-code normalization.
+  - Useful context (e.g., "the evaluation panel is in component X"): existing `get` subprocess tests already cover malformed-response and remote-failure cases for cluster, resource, and process-definition commands, so new read-only failure work can extend that suite instead of introducing a separate harness.
 ---
-
-## [2026-03-23 20:43:13 CET] - #75-004
+## [2026-03-24 10:46:50 CET] - #19-004
 Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
-- Added direct regression coverage for `waiter.WaitForProcessInstanceState`, including immediate success, absent-state success from `ErrNotFound` and `404`-style errors, retry exhaustion, and pre-cancelled context behavior.
-- Added direct regression coverage for `walker.Ancestry`, `walker.Descendants`, and `walker.Family`, including valid ancestry/family traversal, cycle detection, orphan handling, root-inclusive descendant ordering, leaf-edge preservation, and cancelled-context handling.
-- Files changed: `AGENTS.md`, `internal/services/processinstance/waiter/waiter_test.go`, `internal/services/processinstance/walker/walker_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- Routed representative mutation and utility command validation failures through the shared CLI model by classifying stdin/flag helpers and updating `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and config validation paths to emit shared invalid-input or local-precondition errors instead of raw `fmt.Errorf` or direct `os.Exit`.
+- Added focused subprocess regressions in `cmd/mutation_test.go` covering representative `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and config failure paths, and fixed config/embed utility commands to avoid dereferencing a missing config when they fail before bootstrap wiring completes.
+- Files changed: `AGENTS.md`, `cmd/cancel_processinstance.go`, `cmd/cmd_cli.go`, `cmd/cmd_errors.go`, `cmd/cmd_stdin.go`, `cmd/config_show.go`, `cmd/delete_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/deploy.go`, `cmd/embed_deploy.go`, `cmd/embed_export.go`, `cmd/embed_list.go`, `cmd/expect_processinstance.go`, `cmd/mutation_test.go`, `cmd/run_processinstance.go`, `cmd/walk_processinstance.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: processinstance walker descendants intentionally include the requested root key in traversal output and preserve `nil` edge entries for leaves instead of omitting them.
-  - Gotchas encountered: waiter treats both `domain.ErrNotFound` and generic error strings containing `404` as the synthetic `ABSENT` state, so regression tests need to cover both paths.
-  - Useful context: helper-level tests can stay fast and deterministic by using fixed 1ms backoff settings and pre-cancelled contexts instead of sleeping through long polling loops.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): command-level helpers like stdin readers, optional-arg validators, and confirmation prompts are the right place to attach shared CLI classes because many command families reuse them verbatim.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the shared `resetCommandTreeFlags` helper is only safe for in-process command reuse; fresh helper-process tests should skip it because Cobra `StringSlice` defaults can become a literal `"[]"` and alter command behavior.
+  - Useful context (e.g., "the evaluation panel is in component X"): utility commands that read config directly, such as `config show` and `embed list`, need `bootstrapFailureContext` on early failure paths so missing config does not trigger a nil dereference while rendering a classified error.
 ---
-
-## [2026-03-23 20:52:08 CET] - #75-005
+## [2026-03-24 10:54:25 CET] - #19-005
 Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
-- Completed the generated-client coverage review in `specs/75-processinstance-api-refactor/research.md` and recorded an explicit no-addition decision for this refactor slice.
-- Documented the reusable review pattern in `AGENTS.md` and marked story `#75-005` as passing in `scripts/ralph/prd.json`.
-- Files changed: `AGENTS.md`, `specs/75-processinstance-api-refactor/research.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- Added subprocess CLI regressions for representative unsupported-version, timeout, conflict, and `--no-err-codes` paths while reusing the existing invalid-input, unavailable, and not-found coverage to lock the shared exit-code contract across command families.
+- Introduced `handleNewCliError` in `cmd` and updated command handlers that call `NewCli(cmd)` so bootstrap-only failures keep shared classification and exit-code behavior instead of panicking on a nil config.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors_test.go`, `cmd/cancel_processinstance.go`, `cmd/cmd_cli.go`, `cmd/delete_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/embed_export.go`, `cmd/expect_processinstance.go`, `cmd/get_cluster_license.go`, `cmd/get_cluster_topology.go`, `cmd/get_processdefinition.go`, `cmd/get_processinstance.go`, `cmd/get_resource.go`, `cmd/get_test.go`, `cmd/get_variable.go`, `cmd/mutation_test.go`, `cmd/run_processinstance.go`, `cmd/walk_processinstance.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: generated-client coverage stories are easier to close cleanly when `research.md` records each candidate endpoint and why it stays in or out of scope.
-  - Gotchas encountered: several extra processinstance-related generated endpoints are version-skewed or overlap adjacent service areas like `variable`, so adding them late would force new boundary decisions rather than just finishing the refactor.
-  - Useful context: for issue `#75`, the final review deliberately keeps call hierarchy, sequence flows, statistics, incidents, variables, and migrate/modify endpoints out of the shared processinstance service surface.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): exit-code contract tests belong in helper-process `cmd` coverage, with one representative command per failure class rather than duplicating class assertions across every command family.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): unsupported-version failures can happen before `NewCli` returns a config, so command handlers must not read `cfg.App.NoErrCodes` on the `err != nil` branch.
+  - Useful context (e.g., "the evaluation panel is in component X"): `get resource` is a compact representative command for `not_found`, `timeout`, and `--no-err-codes` exit checks because its handler goes straight from `NewCli` to one generated-client call.
 ---
-
-## [2026-03-23 21:05:54 CET] - #75-006
+## [2026-03-24 11:04:40 CET] - #19-006
 Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
-- Expanded processinstance regression coverage with service-level wait proofs for v8.8 create confirmation and cross-version delete-to-absent behavior, while keeping the final validation slice focused on durable regression evidence rather than new service changes.
-- Updated `specs/75-processinstance-api-refactor/quickstart.md` to record the final validation order and the explicit internal-only documentation decision, then marked story `#75-006` as passing in `scripts/ralph/prd.json`.
-- Files changed: `AGENTS.md`, `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go`, `specs/75-processinstance-api-refactor/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- Consolidated shared CLI class wrapping behind `ferrors.WrapClass` and replaced duplicated bootstrap/command normalization switches with table-driven rule sets in `cmd`, leaving one clear extension point for future sentinel-to-class mappings.
+- Added focused regression coverage for the shared wrapping helper plus command-validation and bootstrap mapping tables so maintainability refactors are locked without relying on subprocess tests.
+- Files changed: `AGENTS.md`, `c8volt/ferrors/errors.go`, `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_errors.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: final completion stories in this repo should turn the validation sequence and documentation decision into explicit feature-artifact text instead of leaving them implied by passing tests alone.
-  - Gotchas encountered: Camunda v8.7 processinstance create responses do not expose the created instance key, so create-wait regression tests need a different anchor than v8.8.
-  - Useful context: delete wait coverage can stay deterministic by stubbing one successful root lookup for descendant traversal and then returning `domain.ErrNotFound` on the follow-up state poll that proves the `ABSENT` transition.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `ferrors.WrapClass` is the reusable helper for attaching shared CLI classes without reimplementing `%w: %v` wrappers in other packages.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): adding a new command or bootstrap sentinel now requires updating the shared rule tables, otherwise the fallback path will normalize it as internal.
+  - Useful context (e.g., "the evaluation panel is in component X"): focused `cmd` normalization tests are faster and more stable for extension-point coverage than spawning subprocesses when the code under test does not call `os.Exit`.
 ---
-
-## [2026-03-23 20:54:18 CET] - #75-007
+## [2026-03-24 11:10:23 CET] - #19-007
 Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
-- Closed the conditional documentation story by confirming the feature artifacts already record the internal-only outcome and the explicit decision to leave `README.md` and generated CLI docs unchanged.
-- Re-ran the required validation sequence (`go test ./internal/services/processinstance/... -race -count=1` and `make test`) and marked story `#75-007` as passing in `scripts/ralph/prd.json`.
-- Files changed: `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- Updated the scripting support documentation in `README.md` and `docs/index.md` to describe the shipped CLI failure classes, the current shared class-to-exit-code mapping, and the fact that `--no-err-codes` preserves failure output while forcing the final process exit code to `0`.
+- Confirmed no Cobra command metadata changed, so generated files under `docs/cli/` did not need regeneration for this story.
+- Files changed: `README.md`, `docs/index.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
 - **Learnings for future iterations:**
-  - Patterns discovered: when a documentation story is conditional, the acceptance proof can live in feature artifacts as long as the no-change decision is explicit and validated.
-  - Gotchas encountered: `scripts/ralph/prd.json` may lag behind already-completed artifact work, so the final iteration still needs to verify the recorded decision before flipping the pass flag.
-  - Useful context: for issue `#75`, `specs/75-processinstance-api-refactor/quickstart.md` already captured the internal-only documentation outcome, so no user-facing docs regeneration was required.
+  - Patterns discovered (e.g., "this codebase uses X for Y"): scripting-facing failure semantics are documented in both `README.md` and `docs/index.md`, and those sections should stay textually aligned.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `--no-err-codes` is only an exit-code override; documentation should not imply it bypasses classification or suppresses failure output.
+  - Useful context (e.g., "the evaluation panel is in component X"): the shipped numeric exit codes still come from `internal/exitcode`, while multiple CLI failure classes intentionally collapse to the generic `1` exit code.
+---
+## [2026-03-24 11:11:27 CET] - #19-008
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-7.txt
+- Confirmed the final validation quickstart still matches the shipped CLI error-model implementation and added explicit closeout notes to the spec artifact.
+- Ran the required validation sequence successfully: `go test ./cmd/... ./c8volt/ferrors/... -count=1` and `make test`.
+- Files changed: `specs/19-cli-error-model/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): feature closeout on this branch should follow the quickstart validation order so targeted CLI regressions are isolated before the repository-wide suite runs.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `make docs` is still unnecessary for this feature unless Cobra help metadata changes; validation-only closeout should avoid regenerating docs without a command help diff.
+  - Useful context (e.g., "the evaluation panel is in component X"): the final proof story can be satisfied with spec confirmation plus validation evidence, without further command-surface changes once the earlier slices have landed.
 ---

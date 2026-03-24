@@ -28,7 +28,7 @@ var getResourceCmd = &cobra.Command{
 func runGetResource(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		handleNewCliError(cmd, log, cfg, err)
 	}
 
 	id, err := validatedResourceID()
@@ -61,7 +61,7 @@ func init() {
 func validatedResourceID() (string, error) {
 	id := strings.TrimSpace(flagGetResourceID)
 	if id == "" {
-		return "", fmt.Errorf("resource lookup requires a non-empty --id")
+		return "", invalidFlagValuef("resource lookup requires a non-empty --id")
 	}
 	return id, nil
 }

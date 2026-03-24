@@ -39,14 +39,14 @@ var getProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error creating c8volt client: %w", err))
+			handleNewCliError(cmd, log, cfg, fmt.Errorf("error creating c8volt client: %w", err))
 		}
 		ctx := cmd.Context()
 		fail := func(err error) {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			fail(fmt.Errorf("--workers must be positive integer"))
+			fail(invalidFlagValuef("--workers must be positive integer"))
 		}
 		if err := validatePISearchFlags(); err != nil {
 			fail(err)
@@ -67,7 +67,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
-				fail(fmt.Errorf("%w: --key cannot be combined with other filters", ErrMutuallyExclusiveFlags))
+				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
 			}
 			if cmd.Flags().Changed("workers") {
 				lk = flagWorkers
@@ -176,24 +176,24 @@ func pickPISearchSize() int32 {
 func validatePISearchFlags() error {
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		if _, ok := process.ParseState(flagGetPIState); !ok {
-			return fmt.Errorf("%w: invalid value for --state: %q, valid values are: %s", ErrInvalidFlagValue, flagGetPIState, process.ValidStateStrings())
+			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
 		}
 	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||
 			flagGetPIProcessVersionTag != "") {
-		return fmt.Errorf("%w: --pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag", ErrMutuallyExclusiveFlags)
+		return mutuallyExclusiveFlagsf("--pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag")
 	}
 	if flagGetPIBpmnProcessID == "" &&
 		(flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
-		return fmt.Errorf("%w: --pd-version and --pd-version-tag require --bpmn-process-id to be set", ErrMissingDependentFlags)
+		return missingDependentFlagsf("--pd-version and --pd-version-tag require --bpmn-process-id to be set")
 	}
 	if flagGetPIChildrenOnly && flagGetPIRootsOnly {
-		return fmt.Errorf("%w: using both --children-only and --roots-only filters returns does not make sense", ErrForbiddenFlagCombination)
+		return forbiddenFlagCombinationf("using both --children-only and --roots-only filters returns does not make sense")
 	}
 	if flagGetPIIncidentsOnly && flagGetPINoIncidentsOnly {
-		return fmt.Errorf("%w: using both --incidents-only and --no-incidents-only filters does not make sense", ErrForbiddenFlagCombination)
+		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
 	}
 	return nil
 }

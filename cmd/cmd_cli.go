@@ -23,7 +23,7 @@ func NewCli(cmd *cobra.Command) (c8volt.API, *slog.Logger, *config.Config, error
 	log, _ := logging.FromContext(cmd.Context())
 	svcs, err := NewFromContext(cmd.Context())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error getting services from context: %w", err)
+		return nil, nil, nil, bootstrapLocalPrecondition(fmt.Errorf("error getting services from context: %w", err))
 	}
 	cli, err := c8volt.New(
 		c8volt.WithConfig(svcs.Config),
@@ -31,9 +31,28 @@ func NewCli(cmd *cobra.Command) (c8volt.API, *slog.Logger, *config.Config, error
 		c8volt.WithLogger(log),
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error creating c8volt client: %w", err)
+		return nil, nil, nil, normalizeBootstrapError(fmt.Errorf("error creating c8volt client: %w", err))
 	}
 	return cli, log, svcs.Config, nil
+}
+
+func handleNewCliError(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, err error) {
+	if err == nil {
+		return
+	}
+
+	noErrCodes := false
+	if cfg != nil {
+		noErrCodes = cfg.App.NoErrCodes
+	} else {
+		fallbackLog, fallbackNoErrCodes := bootstrapFailureContext(cmd)
+		if log == nil {
+			log = fallbackLog
+		}
+		noErrCodes = fallbackNoErrCodes
+	}
+
+	ferrors.HandleAndExit(log, noErrCodes, err)
 }
 
 func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
@@ -43,13 +62,13 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 	fmt.Printf("%s [y/N]: ", prompt)
 	in := bufio.NewScanner(os.Stdin)
 	if !in.Scan() {
-		return ErrCmdAborted
+		return localPreconditionError(ErrCmdAborted)
 	}
 	switch strings.ToLower(strings.TrimSpace(in.Text())) {
 	case "y", "yes":
 		return nil
 	default:
-		return ErrCmdAborted
+		return localPreconditionError(ErrCmdAborted)
 	}
 }
 
@@ -60,10 +79,10 @@ func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logge
 		if ok, firstBadKey, firstBadIndex := validateKeys(stdinKeys); !ok {
 			if strings.HasPrefix(firstBadKey, "filter: ") {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
-					fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
+					invalidFlagValuef("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
 			}
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
-				fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
+				invalidFlagValuef("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
 					firstBadKey, firstBadIndex))
 		}
 		keys = append(keys, stdinKeys...)
