@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - `cmd` completion regressions should execute Cobra's hidden `__complete` or `__completeNoDesc` root entry points after resetting shared flags; this exercises the real completion seam without needing shell wrappers.
+- Completion regressions should assert the same forbidden-output contract on flag-value completion paths as on command completion paths so helper names or usage/help text cannot leak through narrower suggestion cases.
 - Setting `rootCmd.CompletionOptions.DisableDescriptions = true` shifts generated shell scripts onto Cobra's `__completeNoDesc` path, which is the stable way to keep interactive completion output name-only without forking Cobra.
 - Use `rootCmd.CompletionOptions.HiddenDefaultCmd = true` when Cobra's generated `completion` command should stay executable for script generation but must not appear in normal help or interactive completion suggestions.
 - With root completion descriptions enabled, Cobra uses each command's concise `Short` text for interactive suggestions while custom flag-value completions that return plain strings still render without tab-separated descriptions.
@@ -49,4 +50,13 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Cobra's default description-bearing completion path uses each command's `Short` field, so completion regressions should forbid the command `Long` text or `Usage:` output when validating concise descriptions.
   - Custom completion providers that return plain strings, such as `RegisterFlagCompletionFunc` for `walk process-instance --mode`, still render cleanly without tab-separated descriptions even when root command descriptions are enabled.
   - Generated zsh completion scripts switch back to the `__complete` entry point as soon as root descriptions are re-enabled, so script-generation regressions should assert the active hidden completion command explicitly.
+---
+## [2026-03-24 16:51:29 CET] - #82-005
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
+- Tightened the focused completion regression suite so the representative top-level, nested, and flag-completion paths all share the same forbidden-output assertions for hidden helpers, usage dumps, and long help text.
+- Kept the proof inside the existing `cmd` test helpers rather than introducing a separate completion harness, then validated it with targeted `go test ./cmd` coverage and full `make test`.
+- Files changed: `cmd/mutation_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Completion regressions are easier to keep aligned when the shared "user-facing output only" contract is expressed as one helper and reused across top-level, nested, and flag-value completion paths.
+  - Flag-value completion tests should forbid the same internal helper names and usage/help spillover as command completion tests; plain candidate assertions alone leave regressions unguarded.
 ---

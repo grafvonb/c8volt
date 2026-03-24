@@ -64,7 +64,7 @@
         "The regression suite uses the repository's existing root-command or helper-process testing patterns in `cmd/`."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "Keep the regression harness as its own slice so future fixes can reuse it as proof of behavior."
     },
     {

@@ -36,18 +36,14 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 
 	require.Contains(t, output, "get\tGet resources\n")
 	require.Contains(t, output, "walk\tTraverse (walk) the parent/child graph of resource type\n")
-	require.NotContains(t, output, "\ncompletion\n")
-	require.NotContains(t, output, "__complete")
-	require.NotContains(t, output, "Usage:")
-	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
+	requireCompletionOutputStaysUserFacing(t, output)
 }
 
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "g")
 
 	require.Contains(t, output, "get\tGet resources\n")
-	require.NotContains(t, output, "Usage:")
-	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
+	requireCompletionOutputStaysUserFacing(t, output)
 }
 
 func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
@@ -55,10 +51,7 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 
 	require.Contains(t, output, "process-definition\tGet deployed process definitions\n")
 	require.Contains(t, output, "process-instance\tGet process instances\n")
-	require.NotContains(t, output, "\ncompletion\n")
-	require.NotContains(t, output, "__complete")
-	require.NotContains(t, output, "Usage:")
-	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
+	requireCompletionOutputStaysUserFacing(t, output)
 }
 
 func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
@@ -68,7 +61,16 @@ func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
 	require.Contains(t, output, "children\n")
 	require.Contains(t, output, "family\n")
 	require.NotContains(t, output, "\t")
+	requireCompletionOutputStaysUserFacing(t, output)
+}
+
+func requireCompletionOutputStaysUserFacing(t *testing.T, output string) {
+	t.Helper()
+
+	require.NotContains(t, output, "\ncompletion\n")
+	require.NotContains(t, output, "__complete")
 	require.NotContains(t, output, "Usage:")
+	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
 }
 
 func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequests(t *testing.T) {
