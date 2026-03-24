@@ -130,3 +130,12 @@ func TestResolveExitCodePreservesNoErrCodesOverride(t *testing.T) {
 	require.Equal(t, exitcode.NotFound, ExitCode(err))
 	require.Equal(t, exitcode.OK, ResolveExitCode(true, err))
 }
+
+func TestWrapClassPreservesExistingClassification(t *testing.T) {
+	t.Parallel()
+
+	err := WrapClass(ErrInvalidInput, WrapClass(ErrInvalidInput, errors.New("boom")))
+
+	require.ErrorIs(t, err, ErrInvalidInput)
+	require.Equal(t, ClassInvalidInput, Classify(err))
+}

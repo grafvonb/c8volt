@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -95,6 +96,67 @@ func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T
 
 	require.Error(t, err)
 	require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(err))
+}
+
+func TestNormalizeCommandErrorMapsSharedValidationSentinels(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+	}{
+		{name: "invalid flag value", err: invalidFlagValuef("boom")},
+		{name: "forbidden flag combination", err: forbiddenFlagCombinationf("boom")},
+		{name: "missing dependent flags", err: missingDependentFlagsf("boom")},
+		{name: "mutually exclusive flags", err: mutuallyExclusiveFlagsf("boom")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(normalizeCommandError(tt.err)))
+		})
+	}
+}
+
+func TestNormalizeBootstrapErrorMapsSharedBootstrapRules(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		err       error
+		wantClass ferrors.Class
+	}{
+		{
+			name:      "command validation keeps invalid input",
+			err:       ErrInvalidFlagValue,
+			wantClass: ferrors.ClassInvalidInput,
+		},
+		{
+			name:      "missing config becomes local precondition",
+			err:       config.ErrNoConfigInContext,
+			wantClass: ferrors.ClassLocalPrecondition,
+		},
+		{
+			name:      "http service bootstrap becomes local precondition",
+			err:       httpc.ErrNoHttpServiceInContext,
+			wantClass: ferrors.ClassLocalPrecondition,
+		},
+		{
+			name:      "unmapped errors fall back to internal",
+			err:       errors.New("boom"),
+			wantClass: ferrors.ClassInternal,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.wantClass, ferrors.Classify(normalizeBootstrapError(tt.err)))
+		})
+	}
 }
 
 func TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper(t *testing.T) {

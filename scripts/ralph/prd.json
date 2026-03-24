@@ -78,7 +78,7 @@
         "The final implementation leaves one obvious extension point for future CLI failure behavior changes."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "Treat this as a maintainability slice after the public failure contract is already visible in command behavior."
     },
     {

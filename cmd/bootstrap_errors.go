@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -12,35 +11,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var bootstrapErrorClassRules = append([]errorClassRule{
+	{match: config.ErrNoConfigInContext, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrInvalidServiceInContext, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrNoBaseURL, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrNoTokenURL, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrNoClientID, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrNoClientSecret, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrInvalidLogLevel, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrInvalidLogFormat, class: ferrors.ErrLocalPrecondition},
+	{match: httpc.ErrNoHttpServiceInContext, class: ferrors.ErrLocalPrecondition},
+	{match: httpc.ErrInvalidServiceInContext, class: ferrors.ErrLocalPrecondition},
+}, commandErrorClassRules...)
+
 func normalizeBootstrapError(err error) error {
 	if err == nil {
 		return nil
 	}
 
-	switch {
-	case errors.Is(err, ErrInvalidFlagValue),
-		errors.Is(err, ErrForbiddenFlagCombination),
-		errors.Is(err, ErrMissingDependentFlags),
-		errors.Is(err, ErrMutuallyExclusiveFlags):
-		return normalizeCommandError(err)
-	case errors.Is(err, config.ErrNoConfigInContext),
-		errors.Is(err, config.ErrInvalidServiceInContext),
-		errors.Is(err, config.ErrNoBaseURL),
-		errors.Is(err, config.ErrNoTokenURL),
-		errors.Is(err, config.ErrNoClientID),
-		errors.Is(err, config.ErrNoClientSecret),
-		errors.Is(err, config.ErrInvalidLogLevel),
-		errors.Is(err, config.ErrInvalidLogFormat),
-		errors.Is(err, httpc.ErrNoHttpServiceInContext),
-		errors.Is(err, httpc.ErrInvalidServiceInContext):
-		return wrapBootstrapClass(ferrors.ErrLocalPrecondition, err)
-	default:
-		return normalizeCommandError(err)
+	for _, rule := range bootstrapErrorClassRules {
+		if errors.Is(err, rule.match) {
+			return ferrors.WrapClass(rule.class, err)
+		}
 	}
+
+	return ferrors.Normalize(err)
 }
 
 func bootstrapLocalPrecondition(err error) error {
-	return wrapBootstrapClass(ferrors.ErrLocalPrecondition, err)
+	return ferrors.WrapClass(ferrors.ErrLocalPrecondition, err)
 }
 
 func handleBootstrapError(cmd *cobra.Command, err error) {
@@ -62,11 +61,4 @@ func bootstrapFailureContext(cmd *cobra.Command) (*slog.Logger, bool) {
 		noErrCodes = cfg.App.NoErrCodes
 	}
 	return log, noErrCodes
-}
-
-func wrapBootstrapClass(classErr error, err error) error {
-	if err == nil || errors.Is(err, classErr) {
-		return err
-	}
-	return fmt.Errorf("%w: %v", classErr, err)
 }

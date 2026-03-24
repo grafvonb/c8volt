@@ -121,6 +121,11 @@ func Normalize(err error) error {
 	return wrap(ErrInternal, err)
 }
 
+// WrapClass applies a shared CLI failure class without changing the wrapped error text.
+func WrapClass(classErr error, err error) error {
+	return wrap(classErr, err)
+}
+
 func FromDomain(err error) error {
 	return NormalizeDomain(err)
 }

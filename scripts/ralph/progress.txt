@@ -2,6 +2,7 @@
 - Keep shared CLI failure classification in `c8volt/ferrors`; normalize raw errors with `Normalize` and assert `Classify` or `ResolveExitCode` directly in package tests before adding subprocess coverage in `cmd/`.
 - Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
 - For CLI command-validation helpers, attach the shared `ferrors` class when constructing the error if the same validation may surface through both Cobra `Execute()` and in-command `ferrors.HandleAndExit`; bootstrap normalization alone only covers the former.
+- Extend command and bootstrap sentinel-to-class mappings through the shared rule tables in `cmd/cmd_errors.go` and `cmd/bootstrap_errors.go`; that table-driven path is the extension point for future CLI failure classes.
 - In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
 - Command handlers that call `NewCli(cmd)` must treat the returned config as nilable on failure; use the shared command/bootstrap error helper to resolve `--no-err-codes` instead of dereferencing `cfg.App.NoErrCodes` in the error branch.
 
@@ -58,4 +59,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): exit-code contract tests belong in helper-process `cmd` coverage, with one representative command per failure class rather than duplicating class assertions across every command family.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): unsupported-version failures can happen before `NewCli` returns a config, so command handlers must not read `cfg.App.NoErrCodes` on the `err != nil` branch.
   - Useful context (e.g., "the evaluation panel is in component X"): `get resource` is a compact representative command for `not_found`, `timeout`, and `--no-err-codes` exit checks because its handler goes straight from `NewCli` to one generated-client call.
+---
+## [2026-03-24 11:04:40 CET] - #19-006
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
+- Consolidated shared CLI class wrapping behind `ferrors.WrapClass` and replaced duplicated bootstrap/command normalization switches with table-driven rule sets in `cmd`, leaving one clear extension point for future sentinel-to-class mappings.
+- Added focused regression coverage for the shared wrapping helper plus command-validation and bootstrap mapping tables so maintainability refactors are locked without relying on subprocess tests.
+- Files changed: `AGENTS.md`, `c8volt/ferrors/errors.go`, `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_errors.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `ferrors.WrapClass` is the reusable helper for attaching shared CLI classes without reimplementing `%w: %v` wrappers in other packages.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): adding a new command or bootstrap sentinel now requires updating the shared rule tables, otherwise the fallback path will normalize it as internal.
+  - Useful context (e.g., "the evaluation panel is in component X"): focused `cmd` normalization tests are faster and more stable for extension-point coverage than spawning subprocesses when the code under test does not call `os.Exit`.
 ---
