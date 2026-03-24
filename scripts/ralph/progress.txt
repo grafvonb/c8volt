@@ -60,3 +60,12 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Completion regressions are easier to keep aligned when the shared "user-facing output only" contract is expressed as one helper and reused across top-level, nested, and flag-value completion paths.
   - Flag-value completion tests should forbid the same internal helper names and usage/help spillover as command completion tests; plain candidate assertions alone leave regressions unguarded.
 ---
+## [2026-03-24 16:53:37 CET] - #82-006
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
+- Confirmed the final root-command metadata already keeps help and generated CLI docs aligned with the shipped completion behavior: the hidden default `completion` command stays executable but does not appear in normal help or `docs/cli/c8volt.md`.
+- Regenerated CLI reference output with `make docs` and verified it produced no doc drift; reviewed `README.md` and found no completion guidance that needed correction.
+- Files changed: `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Regenerating `docs/cli/` with `make docs` is a useful no-op verification step for root-command metadata changes; if it produces no diff, the generated CLI reference is already aligned with the current Cobra help surface.
+  - Hiding Cobra's generated default `completion` command through `CompletionOptions.HiddenDefaultCmd` keeps both normal help output and generated CLI reference pages free of that command while preserving direct `c8volt completion <shell>` execution.
+---

@@ -77,7 +77,7 @@
         "`README.md` is updated only if current completion guidance would otherwise become inaccurate or incomplete."
       ],
       "priority": "P3",
-      "passes": false,
+      "passes": true,
       "notes": "Only do this after the behavior is settled so generated docs reflect the shipped completion contract."
     },
     {
