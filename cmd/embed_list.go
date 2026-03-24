@@ -21,7 +21,8 @@ var embedListCmd = &cobra.Command{
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			_, noErrCodes := bootstrapFailureContext(cmd)
+			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(err))
 		}
 
 		files, err := embedded.List()

@@ -51,7 +51,7 @@
         "Subprocess-based CLI tests cover representative state-changing, expectation, and utility command failures and verify consistent failure behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Keep this as a separate slice from read-only commands so Ralph can verify the broader command sweep independently."
     },
     {

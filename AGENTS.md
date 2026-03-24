@@ -63,6 +63,7 @@
 - CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
 - CLI command tests that assert version-specific payloads should set `app.camunda_version` explicitly in that temp config; otherwise the default test version can route to a different generated client shape.
 - `cmd` tests that reuse `Root()` across multiple in-process executions should reset Cobra flag state first, because help-oriented executions leave flags set on the shared command tree.
+- Fresh helper-process `cmd` tests should not call the shared flag reset helper before `SetArgs()`: `StringSlice` defaults round-trip through Cobra as a literal `"[]"`, which can inject phantom values into commands that rely on empty slices.
 - When command failures go through `ferrors.HandleAndExit`, assert exit codes with a subprocess helper because the handlers terminate via `os.Exit`.
 
 ## Documentation conventions

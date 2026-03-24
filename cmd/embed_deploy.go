@@ -42,14 +42,14 @@ var embedDeployCmd = &cobra.Command{
 				}
 			}
 			if len(toDeploy) == 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no deployable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String()))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no deployable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
 			}
 		case len(flagEmbedDeployFileNames) == 0:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --all or at least one --file is required"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either --all or at least one --file is required"))
 		default:
 			for _, f := range flagEmbedDeployFileNames {
 				if !slices.Contains(all, f) {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("embedded file %q not found, run command 'embed list' to see all available embedded files, no deployment done", f))
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("embedded file %q not found, run command 'embed list' to see all available embedded files, no deployment done", f))
 				}
 			}
 			toDeploy = append(toDeploy, flagEmbedDeployFileNames...)

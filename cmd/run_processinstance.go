@@ -30,12 +30,12 @@ var runProcessInstanceCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("--count and --workers must be positive integers"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--count and --workers must be positive integers"))
 		}
 		var vars map[string]interface{}
 		if flagRunPIVars != "" {
 			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("parsing --vars JSON: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --vars JSON: %v", err))
 			}
 		}
 		var datas []process.ProcessInstanceData
@@ -43,10 +43,10 @@ var runProcessInstanceCmd = &cobra.Command{
 		switch {
 		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flags --pd-key and --bpmn-process-id are mutually exclusive"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("flags --pd-key and --bpmn-process-id are mutually exclusive"))
 			}
 			if flagRunPIProcessDefinitionVersion != 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("flag --pd-version is only valid with --bpmn-process-id"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("flag --pd-version is only valid with --bpmn-process-id"))
 			}
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionKey))
@@ -61,7 +61,7 @@ var runProcessInstanceCmd = &cobra.Command{
 
 		case len(flagRunPIProcessDefinitionBpmnProcessIds) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 1 && flagRunPIProcessDefinitionVersion != 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cannot specify --pd-version when running multiple BPMN process IDs"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, forbiddenFlagCombinationf("cannot specify --pd-version when running multiple BPMN process IDs"))
 			}
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionBpmnProcessIds))
@@ -76,7 +76,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)
 
 		default:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("provide either --pd-key or --bpmn-process-id"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
 		}
 
 		fopts := collectOptions()
@@ -92,7 +92,7 @@ var runProcessInstanceCmd = &cobra.Command{
 		}
 		if len(datas) > 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
-				fmt.Errorf("--count requires exactly one process definition; got %d", len(datas)))
+				forbiddenFlagCombinationf("--count requires exactly one process definition; got %d", len(datas)))
 		}
 		_, err = cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
 		if err != nil {

@@ -74,7 +74,8 @@ INFO configuration is valid`,
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("loading configuration: %w", err))
+			_, noErrCodes := bootstrapFailureContext(cmd)
+			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(fmt.Errorf("loading configuration: %w", err)))
 		}
 		if !flagShowConfigTemplate {
 			yCfg, err := cfg.ToSanitizedYAML()
@@ -85,7 +86,7 @@ INFO configuration is valid`,
 			if flagShowConfigValidate {
 				err = cfg.Validate()
 				if err != nil {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, config.FormatValidationError("configuration is invalid", err))
+					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(config.FormatValidationError("configuration is invalid", err)))
 				}
 				ferrors.HandleAndExitOK(log, "configuration is valid")
 			}

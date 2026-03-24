@@ -43,13 +43,13 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 	fmt.Printf("%s [y/N]: ", prompt)
 	in := bufio.NewScanner(os.Stdin)
 	if !in.Scan() {
-		return ErrCmdAborted
+		return localPreconditionError(ErrCmdAborted)
 	}
 	switch strings.ToLower(strings.TrimSpace(in.Text())) {
 	case "y", "yes":
 		return nil
 	default:
-		return ErrCmdAborted
+		return localPreconditionError(ErrCmdAborted)
 	}
 }
 
@@ -60,10 +60,10 @@ func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logge
 		if ok, firstBadKey, firstBadIndex := validateKeys(stdinKeys); !ok {
 			if strings.HasPrefix(firstBadKey, "filter: ") {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
-					fmt.Errorf("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
+					invalidFlagValuef("validating keys from stdin failed: use --keys-only flag to get only keys as input"))
 			}
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
-				fmt.Errorf("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
+				invalidFlagValuef("validating keys from stdin failed: line %q at index %d is not a valid key; have you forgotten to use --keys-only flag in case of c8volt commands?",
 					firstBadKey, firstBadIndex))
 		}
 		keys = append(keys, stdinKeys...)

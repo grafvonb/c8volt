@@ -18,6 +18,14 @@ func invalidFlagValuef(format string, args ...any) error {
 	return commandInputError(ErrInvalidFlagValue, format, args...)
 }
 
+func invalidInputError(err error) error {
+	return wrapBootstrapClass(ferrors.ErrInvalidInput, err)
+}
+
+func localPreconditionError(err error) error {
+	return wrapBootstrapClass(ferrors.ErrLocalPrecondition, err)
+}
+
 func missingDependentFlagsf(format string, args ...any) error {
 	return commandInputError(ErrMissingDependentFlags, format, args...)
 }
@@ -47,5 +55,5 @@ func normalizeCommandError(err error) error {
 }
 
 func commandInputError(kind error, format string, args ...any) error {
-	return wrapBootstrapClass(ferrors.ErrInvalidInput, fmt.Errorf("%w: %s", kind, fmt.Sprintf(format, args...)))
+	return invalidInputError(fmt.Errorf("%w: %s", kind, fmt.Sprintf(format, args...)))
 }

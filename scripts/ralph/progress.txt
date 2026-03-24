@@ -2,6 +2,7 @@
 - Keep shared CLI failure classification in `c8volt/ferrors`; normalize raw errors with `Normalize` and assert `Classify` or `ResolveExitCode` directly in package tests before adding subprocess coverage in `cmd/`.
 - Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
 - For CLI command-validation helpers, attach the shared `ferrors` class when constructing the error if the same validation may surface through both Cobra `Execute()` and in-command `ferrors.HandleAndExit`; bootstrap normalization alone only covers the former.
+- In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
 
 # Ralph Progress Log
 Started: Tue Mar 24 10:20:36 CET 2026
@@ -36,4 +37,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): `cmd`-level validation helpers are the right place to attach shared invalid-input classification because the same error can surface either from Cobra `Execute()` or from a command's own `ferrors.HandleAndExit` path.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): subprocess helpers that call `root.Execute()` only cover direct in-command exits; validation that bubbles back to Cobra needs helper processes to invoke `Execute()` so the shared bootstrap handler can apply final exit-code normalization.
   - Useful context (e.g., "the evaluation panel is in component X"): existing `get` subprocess tests already cover malformed-response and remote-failure cases for cluster, resource, and process-definition commands, so new read-only failure work can extend that suite instead of introducing a separate harness.
+---
+## [2026-03-24 10:46:50 CET] - #19-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Routed representative mutation and utility command validation failures through the shared CLI model by classifying stdin/flag helpers and updating `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and config validation paths to emit shared invalid-input or local-precondition errors instead of raw `fmt.Errorf` or direct `os.Exit`.
+- Added focused subprocess regressions in `cmd/mutation_test.go` covering representative `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and config failure paths, and fixed config/embed utility commands to avoid dereferencing a missing config when they fail before bootstrap wiring completes.
+- Files changed: `AGENTS.md`, `cmd/cancel_processinstance.go`, `cmd/cmd_cli.go`, `cmd/cmd_errors.go`, `cmd/cmd_stdin.go`, `cmd/config_show.go`, `cmd/delete_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/deploy.go`, `cmd/embed_deploy.go`, `cmd/embed_export.go`, `cmd/embed_list.go`, `cmd/expect_processinstance.go`, `cmd/mutation_test.go`, `cmd/run_processinstance.go`, `cmd/walk_processinstance.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): command-level helpers like stdin readers, optional-arg validators, and confirmation prompts are the right place to attach shared CLI classes because many command families reuse them verbatim.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the shared `resetCommandTreeFlags` helper is only safe for in-process command reuse; fresh helper-process tests should skip it because Cobra `StringSlice` defaults can become a literal `"[]"` and alter command behavior.
+  - Useful context (e.g., "the evaluation panel is in component X"): utility commands that read config directly, such as `config show` and `embed list`, need `bootstrapFailureContext` on early failure paths so missing config does not trigger a nil dereference while rendering a classified error.
 ---

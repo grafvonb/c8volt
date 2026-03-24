@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -33,14 +32,14 @@ func init() {
 
 func validateFiles(files []string) error {
 	if len(files) == 0 {
-		return fmt.Errorf("at least one --file required")
+		return invalidFlagValuef("at least one --file required")
 	}
 	count := 0
 	for _, f := range files {
 		if f == "-" {
 			count++
 			if count > 1 {
-				return fmt.Errorf("only one '-' (stdin) allowed")
+				return invalidFlagValuef("only one '-' (stdin) allowed")
 			}
 		}
 	}

@@ -44,7 +44,7 @@ var embedExportCmd = &cobra.Command{
 		case flagEmbedExportAll:
 			toExport = append(toExport, all...)
 		case len(flagEmbedExportFileNames) == 0:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --all or at least one --file is required"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either --all or at least one --file is required"))
 		default:
 			seen := make(map[string]struct{})
 			matchFound := false
@@ -54,7 +54,7 @@ var embedExportCmd = &cobra.Command{
 					for _, cand := range all {
 						ok, err := path.Match(pat, strings.ToLower(cand))
 						if err != nil {
-							ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid pattern %q: %w", f, err))
+							ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid pattern %q: %v", f, err))
 						}
 						if ok {
 							if _, dup := seen[cand]; !dup {
@@ -72,12 +72,12 @@ var embedExportCmd = &cobra.Command{
 							toExport = append(toExport, canon)
 						}
 					} else {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("embedded file %q not found (case-insensitive); run 'embed list' to see all files", f))
+						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("embedded file %q not found (case-insensitive); run 'embed list' to see all files", f))
 					}
 				}
 			}
 			if embedExportAllAreGlobs(flagEmbedExportFileNames) && !matchFound {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("pattern(s) %v matched no embedded files; have you forgotten to quote them in the shell, or provide a pattern for folder like '*/*.bpmn'?", flagEmbedExportFileNames))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("pattern(s) %v matched no embedded files; have you forgotten to quote them in the shell, or provide a pattern for folder like '*/*.bpmn'?", flagEmbedExportFileNames))
 			}
 		}
 		sort.Strings(toExport)

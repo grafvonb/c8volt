@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
@@ -89,7 +87,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 		w, ok := walkers[flagWalkPIMode]
 		if !ok {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
 		}
 		path, chain, err := w.fetch()
 		if err != nil {
