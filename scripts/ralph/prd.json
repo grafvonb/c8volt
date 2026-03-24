@@ -12,7 +12,7 @@
         "The design preserves `--no-err-codes` as a final exit-code override rather than a bypass of failure classification."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Start here because all command-family cleanup and validation depends on one stable shared failure boundary."
     },
     {
