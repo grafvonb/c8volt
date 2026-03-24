@@ -1,0 +1,88 @@
+## Codebase Patterns
+- For versioned internal service refactors, mirror the `resource` and `processdefinition` layout: package `api.go` owns the shared interface assertions, each versioned `contract.go` declares a matching local `API`, and generated-client interfaces should only list endpoints that the versioned service actually calls.
+- For versioned internal services, build constructors with `internal/services/common.PrepareServiceDeps` and finish with `common.EnsureLoggerAndClients` so nil-safe defaults and test-time client injection stay aligned across packages.
+- Camunda v8.8 generated search request tests should assert serialized flat equality values like `"tenantId":"tenant"` instead of expecting `"$eq"` wrappers; the generated request unions flatten simple equality filters during JSON marshaling.
+- Processinstance walker `Descendants` results are root-inclusive and keep explicit `nil` edge entries for leaves; preserve that shape because higher-level delete and tree-rendering flows depend on it.
+- For internal service generated-client coverage stories, finish the review in `research.md` with an explicit candidate-by-candidate keep/defer decision; if no endpoint is added, document the boundary reasons instead of leaving the omission implicit.
+- Camunda v8.7 processinstance create responses do not expose the created instance key, so wait-oriented regression coverage should use delete/state-polling paths rather than assuming create-time confirmation can start from the create payload.
+
+# Ralph Progress Log
+Started: Mon Mar 23 20:23:22 CET 2026
+---
+
+## [2026-03-23 20:25:58 CET] - #75-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Locked the shared processinstance contract by documenting the package API invariants, asserting both version-local APIs against the shared package API, and trimming the unused v8.7 generated process-definition client methods.
+- Strengthened `internal/services/processinstance/factory_test.go` to verify concrete v8.7/v8.8 service routing and normalized unsupported-version failures through `services.ErrUnknownAPIVersion`.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/api.go`, `internal/services/processinstance/factory_test.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: versioned service refactors in this repo already use the `resource` and `processdefinition` contract layout as the baseline for shared API locking.
+  - Gotchas encountered: processinstance v8.7 no longer uses generated process-definition endpoints, so keeping them in the contract would overstate the real dependency surface.
+  - Useful context: factory tests should assert both the concrete returned service type and `services.ErrUnknownAPIVersion`, while the rendered message still includes `"unknown"` plus `toolx.SupportedCamundaVersionsString()`.
+---
+
+## [2026-03-23 20:33:11 CET] - #75-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Refactored the v8.7 processinstance service constructor and request paths to use the shared dependency setup pattern, centralized key/search request helpers, and `common.RequirePayload` for preserved malformed-success handling.
+- Added direct v8.7 regression tests covering create, get, search, state lookup, cancel, delete, and option injection behavior without changing observable semantics.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v87/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: versioned internal services are easier to test when constructors accept nil-safe logger/client overrides through `PrepareServiceDeps` plus `EnsureLoggerAndClients`.
+  - Gotchas encountered: `walker.Descendants` fetches the root process instance before listing children, so delete-path tests must stub both `GetProcessInstance` and the child search call.
+  - Useful context: the v8.7 processinstance create flow only needs `--no-wait` tests to cover the service refactor slice; the wait semantics are shared helper behavior and belong to the later waiter/walker-focused story.
+---
+
+## [2026-03-23 20:39:01 CET] - #75-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Refactored the v8.8 processinstance service constructor to use `PrepareServiceDeps` plus `EnsureLoggerAndClients`, added nil-safe client/logger override options, and switched the standard create/get/search/state success paths to `common.RequirePayload`.
+- Added direct v8.8 regression tests covering create, get, search, state lookup, cancel, delete, and option injection behavior while keeping the story scoped to no-wait service behavior rather than shared waiter semantics.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/v88/service.go`, `internal/services/processinstance/v88/service_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: v8.8 processinstance follows the same constructor-and-option testing pattern as the other versioned internal services once logger and generated clients are exposed through small accessors.
+  - Gotchas encountered: v8.8 Camunda search filter unions marshal equality filters as flat scalar JSON fields, so test assertions should inspect serialized values instead of `"$eq"` wrapper objects.
+  - Useful context: delete-path regression tests still need both the root `GetProcessInstance` stub and the descendant search stub because walker-based traversal runs before the operate delete request.
+---
+
+## [2026-03-23 20:43:13 CET] - #75-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Added direct regression coverage for `waiter.WaitForProcessInstanceState`, including immediate success, absent-state success from `ErrNotFound` and `404`-style errors, retry exhaustion, and pre-cancelled context behavior.
+- Added direct regression coverage for `walker.Ancestry`, `walker.Descendants`, and `walker.Family`, including valid ancestry/family traversal, cycle detection, orphan handling, root-inclusive descendant ordering, leaf-edge preservation, and cancelled-context handling.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/waiter/waiter_test.go`, `internal/services/processinstance/walker/walker_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: processinstance walker descendants intentionally include the requested root key in traversal output and preserve `nil` edge entries for leaves instead of omitting them.
+  - Gotchas encountered: waiter treats both `domain.ErrNotFound` and generic error strings containing `404` as the synthetic `ABSENT` state, so regression tests need to cover both paths.
+  - Useful context: helper-level tests can stay fast and deterministic by using fixed 1ms backoff settings and pre-cancelled contexts instead of sleeping through long polling loops.
+---
+
+## [2026-03-23 20:52:08 CET] - #75-005
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
+- Completed the generated-client coverage review in `specs/75-processinstance-api-refactor/research.md` and recorded an explicit no-addition decision for this refactor slice.
+- Documented the reusable review pattern in `AGENTS.md` and marked story `#75-005` as passing in `scripts/ralph/prd.json`.
+- Files changed: `AGENTS.md`, `specs/75-processinstance-api-refactor/research.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: generated-client coverage stories are easier to close cleanly when `research.md` records each candidate endpoint and why it stays in or out of scope.
+  - Gotchas encountered: several extra processinstance-related generated endpoints are version-skewed or overlap adjacent service areas like `variable`, so adding them late would force new boundary decisions rather than just finishing the refactor.
+  - Useful context: for issue `#75`, the final review deliberately keeps call hierarchy, sequence flows, statistics, incidents, variables, and migrate/modify endpoints out of the shared processinstance service surface.
+---
+
+## [2026-03-23 21:05:54 CET] - #75-006
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
+- Expanded processinstance regression coverage with service-level wait proofs for v8.8 create confirmation and cross-version delete-to-absent behavior, while keeping the final validation slice focused on durable regression evidence rather than new service changes.
+- Updated `specs/75-processinstance-api-refactor/quickstart.md` to record the final validation order and the explicit internal-only documentation decision, then marked story `#75-006` as passing in `scripts/ralph/prd.json`.
+- Files changed: `AGENTS.md`, `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go`, `specs/75-processinstance-api-refactor/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: final completion stories in this repo should turn the validation sequence and documentation decision into explicit feature-artifact text instead of leaving them implied by passing tests alone.
+  - Gotchas encountered: Camunda v8.7 processinstance create responses do not expose the created instance key, so create-wait regression tests need a different anchor than v8.8.
+  - Useful context: delete wait coverage can stay deterministic by stubbing one successful root lookup for descendant traversal and then returning `domain.ErrNotFound` on the follow-up state poll that proves the `ABSENT` transition.
+---
+
+## [2026-03-23 20:54:18 CET] - #75-007
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Closed the conditional documentation story by confirming the feature artifacts already record the internal-only outcome and the explicit decision to leave `README.md` and generated CLI docs unchanged.
+- Re-ran the required validation sequence (`go test ./internal/services/processinstance/... -race -count=1` and `make test`) and marked story `#75-007` as passing in `scripts/ralph/prd.json`.
+- Files changed: `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered: when a documentation story is conditional, the acceptance proof can live in feature artifacts as long as the no-change decision is explicit and validated.
+  - Gotchas encountered: `scripts/ralph/prd.json` may lag behind already-completed artifact work, so the final iteration still needs to verify the recorded decision before flipping the pass flag.
+  - Useful context: for issue `#75`, `specs/75-processinstance-api-refactor/quickstart.md` already captured the internal-only documentation outcome, so no user-facing docs regeneration was required.
+---
