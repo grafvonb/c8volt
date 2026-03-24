@@ -23,7 +23,7 @@ func NewCli(cmd *cobra.Command) (c8volt.API, *slog.Logger, *config.Config, error
 	log, _ := logging.FromContext(cmd.Context())
 	svcs, err := NewFromContext(cmd.Context())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error getting services from context: %w", err)
+		return nil, nil, nil, bootstrapLocalPrecondition(fmt.Errorf("error getting services from context: %w", err))
 	}
 	cli, err := c8volt.New(
 		c8volt.WithConfig(svcs.Config),
@@ -31,7 +31,7 @@ func NewCli(cmd *cobra.Command) (c8volt.API, *slog.Logger, *config.Config, error
 		c8volt.WithLogger(log),
 	)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error creating c8volt client: %w", err)
+		return nil, nil, nil, normalizeBootstrapError(fmt.Errorf("error creating c8volt client: %w", err))
 	}
 	return cli, log, svcs.Config, nil
 }

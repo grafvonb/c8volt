@@ -25,7 +25,7 @@
         "A subprocess-based CLI test proves a representative bootstrap or configuration failure uses the expected non-success behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Keep this slice narrow to the shared entry-point behavior before touching the broader command surface."
     },
     {

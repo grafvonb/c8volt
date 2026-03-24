@@ -60,7 +60,6 @@ func ToContext(ctx context.Context, log *slog.Logger) context.Context {
 func FromContext(ctx context.Context) (*slog.Logger, error) {
 	l, ok := ctx.Value(ctxKey{}).(*slog.Logger)
 	if !ok || l == nil {
-		l.Debug("no logger in context, using default logger")
 		return slog.Default(), nil
 	}
 	return l, nil

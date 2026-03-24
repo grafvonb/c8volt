@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - Keep shared CLI failure classification in `c8volt/ferrors`; normalize raw errors with `Normalize` and assert `Classify` or `ResolveExitCode` directly in package tests before adding subprocess coverage in `cmd/`.
+- Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
 
 # Ralph Progress Log
 Started: Tue Mar 24 10:20:36 CET 2026
@@ -13,4 +14,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): `c8volt/ferrors` is the right single boundary for CLI classification; callers can keep routing through `HandleAndExit` while shared tests lock semantics via `Normalize`, `Classify`, and `ResolveExitCode`.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the previous `context.Canceled` handling in `FromDomain` was shadowed by an earlier branch, so shared normalization order matters when adding more mappings.
   - Useful context (e.g., "the evaluation panel is in component X"): existing `internal/exitcode` values remain the compatibility baseline, so new failure classes can be introduced without immediately adding new numeric exit codes.
+---
+## [2026-03-24 10:32:23 CET] - #19-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-*.txt (no matching file present in workspace)
+- Routed root pre-run and `Execute()` bootstrap failures through a shared `cmd` bootstrap normalization helper so configuration and startup failures use the shared CLI classification and exit-code path instead of falling back to raw `os.Exit(1)`.
+- Updated `NewCli()` to normalize missing-context and client-construction failures through the same bootstrap path, preserving unsupported-version classification while treating missing bootstrap services as local preconditions.
+- Added focused command tests for bootstrap normalization, a subprocess regression covering invalid-config execution, and hardened `toolx/logging.FromContext` so missing loggers fall back to `slog.Default()` instead of panicking during bootstrap checks.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_cli.go`, `cmd/root.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`, `toolx/logging/logging.go`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): root-level Cobra failures are best tested with subprocess helpers that set `os.Args` and call `Execute()` directly, because that is the path that owns final exit-code handling.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `toolx/logging.FromContext` may be reached before config wiring is complete, so bootstrap-safe code must tolerate a missing logger context without panicking.
+  - Useful context (e.g., "the evaluation panel is in component X"): unknown Camunda versions fail during config normalization before command execution, which makes them a compact representative case for root/bootstrap failure tests.
 ---
