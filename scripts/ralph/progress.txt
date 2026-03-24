@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - `cmd` completion regressions should execute Cobra's hidden `__complete` or `__completeNoDesc` root entry points after resetting shared flags; this exercises the real completion seam without needing shell wrappers.
 - Setting `rootCmd.CompletionOptions.DisableDescriptions = true` shifts generated shell scripts onto Cobra's `__completeNoDesc` path, which is the stable way to keep interactive completion output name-only without forking Cobra.
+- Use `rootCmd.CompletionOptions.HiddenDefaultCmd = true` when Cobra's generated `completion` command should stay executable for script generation but must not appear in normal help or interactive completion suggestions.
 
 # Ralph Progress Log
 Started: Tue Mar 24 16:33:34 CET 2026
@@ -25,4 +26,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Root-level `cobra.CompletionOptions.DisableDescriptions` affects generated shell completion scripts even though raw `__complete` output still includes description text.
   - Completion script generation is safer to assert through a helper subprocess because `Root()` is a shared singleton and in-process Cobra command state can bleed between tests.
   - `__completeNoDesc` still emits Cobra's trailing directive marker, so rendering-focused regressions should assert the candidate lines stay tab-free rather than assuming the output is candidate-only.
+---
+## [2026-03-24 16:46:07 CET] - #82-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Hid Cobra's generated default `completion` command through root command metadata so script generation still works without surfacing the command as a normal interactive suggestion or help entry.
+- Extended the completion regressions to assert top-level suggestions exclude internal completion plumbing and that representative nested completion still returns user-facing subcommands.
+- Recorded the reusable `HiddenDefaultCmd` convention in `AGENTS.md` for future CLI completion work.
+- Files changed: `AGENTS.md`, `cmd/mutation_test.go`, `cmd/root.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Cobra's `CompletionOptions.HiddenDefaultCmd` hides the generated `completion` command from both help output and normal completion candidates without breaking direct `c8volt completion <shell>` execution.
+  - Filtering the generated `completion` command at the root metadata layer is simpler and safer than post-processing completion output because the hidden command behavior stays inside Cobra's existing help/completion integration.
+  - Top-level completion output is a better regression point for helper leakage than raw `completion` subcommand execution because the generated command remains executable even when it is hidden from discovery surfaces.
 ---

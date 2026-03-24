@@ -36,6 +36,8 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 
 	require.Contains(t, output, "\nget\n")
 	require.Contains(t, output, "\nwalk\n")
+	require.NotContains(t, output, "\ncompletion\n")
+	require.NotContains(t, output, "__complete")
 	require.NotContains(t, output, "\t")
 	require.NotContains(t, output, "Get resources")
 	require.NotContains(t, output, "Usage:")
@@ -47,6 +49,16 @@ func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	require.Contains(t, output, "get\n")
 	require.NotContains(t, output, "\t")
 	require.NotContains(t, output, "Get resources")
+	require.NotContains(t, output, "Usage:")
+}
+
+func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
+	output := executeCompletionNoDescForTest(t, "get", "")
+
+	require.Contains(t, output, "process-definition\n")
+	require.Contains(t, output, "process-instance\n")
+	require.NotContains(t, output, "\ncompletion\n")
+	require.NotContains(t, output, "__complete")
 	require.NotContains(t, output, "Usage:")
 }
 

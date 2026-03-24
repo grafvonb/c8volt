@@ -38,7 +38,7 @@
         "The implementation keeps the filtering behavior inside `c8volt` command/completion metadata or integration points."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Sequence this after the rendering cleanup so the visible candidate contract is easier to verify."
     },
     {

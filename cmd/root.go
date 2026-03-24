@@ -37,6 +37,7 @@ var rootCmd = &cobra.Command{
 Refer to the documentation at https://c8volt.boczek.info for more information.`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDescriptions: true,
+		HiddenDefaultCmd:    true,
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
