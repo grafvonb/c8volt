@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Keep shared CLI failure classification in `c8volt/ferrors`; normalize raw errors with `Normalize` and assert `Classify` or `ResolveExitCode` directly in package tests before adding subprocess coverage in `cmd/`.
 - Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
+- For CLI command-validation helpers, attach the shared `ferrors` class when constructing the error if the same validation may surface through both Cobra `Execute()` and in-command `ferrors.HandleAndExit`; bootstrap normalization alone only covers the former.
 
 # Ralph Progress Log
 Started: Tue Mar 24 10:20:36 CET 2026
@@ -25,4 +26,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): root-level Cobra failures are best tested with subprocess helpers that set `os.Args` and call `Execute()` directly, because that is the path that owns final exit-code handling.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `toolx/logging.FromContext` may be reached before config wiring is complete, so bootstrap-safe code must tolerate a missing logger context without panicking.
   - Useful context (e.g., "the evaluation panel is in component X"): unknown Camunda versions fail during config normalization before command execution, which makes them a compact representative case for root/bootstrap failure tests.
+---
+## [2026-03-24 10:37:54 CET] - #19-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Normalized shared `get` command validation failures by introducing command-level invalid-input helpers, mapping those sentinels through the bootstrap path, and updating read-only validators in `get resource`, `get process-definition`, and `get process-instance`.
+- Added regression coverage proving read-only invalid-input failures exit through the shared invalid-args path while malformed-response, remote-failure, and local-precondition behavior stays covered by the existing read-only subprocess tests.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_errors.go`, `cmd/get_processdefinition.go`, `cmd/get_processinstance.go`, `cmd/get_resource.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `cmd`-level validation helpers are the right place to attach shared invalid-input classification because the same error can surface either from Cobra `Execute()` or from a command's own `ferrors.HandleAndExit` path.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): subprocess helpers that call `root.Execute()` only cover direct in-command exits; validation that bubbles back to Cobra needs helper processes to invoke `Execute()` so the shared bootstrap handler can apply final exit-code normalization.
+  - Useful context (e.g., "the evaluation panel is in component X"): existing `get` subprocess tests already cover malformed-response and remote-failure cases for cluster, resource, and process-definition commands, so new read-only failure work can extend that suite instead of introducing a separate harness.
 ---

@@ -26,7 +26,7 @@ var getProcessDefinitionCmd = &cobra.Command{
 	Use:     "process-definition",
 	Short:   "Get deployed process definitions",
 	Aliases: []string{"pd", "pds"},
-	Run: runGetProcessDefinition,
+	Run:     runGetProcessDefinition,
 }
 
 func runGetProcessDefinition(cmd *cobra.Command, args []string) {
@@ -127,7 +127,7 @@ func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
 
 func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) error {
 	if filter.Key == "" {
-		return fmt.Errorf("xml output requires --key to select a single process definition")
+		return missingDependentFlagsf("xml output requires --key to select a single process definition")
 	}
 
 	var incompatible []string
@@ -148,7 +148,7 @@ func validateProcessDefinitionXMLFlags(filter process.ProcessDefinitionFilter) e
 		}
 	}
 	if len(incompatible) > 0 {
-		return fmt.Errorf("xml output only supports --key; incompatible with %s", strings.Join(incompatible, ", "))
+		return forbiddenFlagCombinationf("xml output only supports --key; incompatible with %s", strings.Join(incompatible, ", "))
 	}
 
 	return nil

@@ -71,6 +71,13 @@ auth:
 	require.Contains(t, string(output), "local precondition failed: normalize config:")
 }
 
+func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T) {
+	err := normalizeBootstrapError(invalidFlagValuef("resource lookup requires a non-empty --id"))
+
+	require.Error(t, err)
+	require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(err))
+}
+
 func TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

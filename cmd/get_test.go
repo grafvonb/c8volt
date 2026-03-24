@@ -481,6 +481,25 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 	require.Contains(t, output, "resource lookup requires a non-empty --id")
 }
 
+func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "resource lookup requires a non-empty --id")
+}
+
 func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -523,7 +542,7 @@ func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "xml output requires --key")
 }
 
@@ -541,7 +560,7 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "xml output only supports --key")
 	require.Contains(t, string(output), "--json")
 	require.Contains(t, string(output), "--latest")
@@ -630,12 +649,23 @@ func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
 		return
 	}
 
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--xml"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-definition", "--xml"}
+
+	Execute()
+}
+
+func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "   "}
+
+	Execute()
 }
 
 func TestGetResourceCommand_FailureHelper(t *testing.T) {
@@ -669,12 +699,11 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testin
 		return
 	}
 
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "process-definition", "--key", "2251799813685255", "--xml", "--latest"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "process-definition", "--key", "2251799813685255", "--xml", "--latest"}
+
+	Execute()
 }
 
 func TestGetProcessDefinitionXMLCommand_FailureHelper(t *testing.T) {

@@ -38,7 +38,7 @@
         "Subprocess-based CLI tests cover representative read-only command failures and verify consistent failure behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Use this story to establish the operator-facing pattern on a lower-risk command family before mutation flows."
     },
     {

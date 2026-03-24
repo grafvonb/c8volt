@@ -18,6 +18,11 @@ func normalizeBootstrapError(err error) error {
 	}
 
 	switch {
+	case errors.Is(err, ErrInvalidFlagValue),
+		errors.Is(err, ErrForbiddenFlagCombination),
+		errors.Is(err, ErrMissingDependentFlags),
+		errors.Is(err, ErrMutuallyExclusiveFlags):
+		return normalizeCommandError(err)
 	case errors.Is(err, config.ErrNoConfigInContext),
 		errors.Is(err, config.ErrInvalidServiceInContext),
 		errors.Is(err, config.ErrNoBaseURL),
@@ -30,7 +35,7 @@ func normalizeBootstrapError(err error) error {
 		errors.Is(err, httpc.ErrInvalidServiceInContext):
 		return wrapBootstrapClass(ferrors.ErrLocalPrecondition, err)
 	default:
-		return ferrors.Normalize(err)
+		return normalizeCommandError(err)
 	}
 }
 

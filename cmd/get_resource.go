@@ -61,7 +61,7 @@ func init() {
 func validatedResourceID() (string, error) {
 	id := strings.TrimSpace(flagGetResourceID)
 	if id == "" {
-		return "", fmt.Errorf("resource lookup requires a non-empty --id")
+		return "", invalidFlagValuef("resource lookup requires a non-empty --id")
 	}
 	return id, nil
 }
