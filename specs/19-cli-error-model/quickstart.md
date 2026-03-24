@@ -27,6 +27,11 @@ make test
 
 Run the targeted command and shared-error tests first so exit-code regressions are easier to isolate before the repository-wide suite.
 
+## Validation Notes
+
+- The closeout proof for this feature is the two-step sequence above: targeted CLI/failure-model coverage first, then the repository-wide `make test` run.
+- Re-run `make docs` only if Cobra help text changes; the current shared error-model work does not require regenerated CLI reference output.
+
 ## Documentation Impact
 
 - `README.md` and `docs/index.md` should be updated because this feature changes documented failure semantics.

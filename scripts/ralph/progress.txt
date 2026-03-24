@@ -6,6 +6,7 @@
 - In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
 - Command handlers that call `NewCli(cmd)` must treat the returned config as nilable on failure; use the shared command/bootstrap error helper to resolve `--no-err-codes` instead of dereferencing `cfg.App.NoErrCodes` in the error branch.
 - The scripting/error-code guidance in `README.md` and `docs/index.md` is duplicated on purpose; update both files together when the CLI failure contract changes.
+- For feature closeout on this branch, the authoritative validation sequence is the spec quickstart order: `go test ./cmd/... ./c8volt/ferrors/... -count=1` first, then `make test`.
 
 # Ralph Progress Log
 Started: Tue Mar 24 10:20:36 CET 2026
@@ -80,4 +81,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): scripting-facing failure semantics are documented in both `README.md` and `docs/index.md`, and those sections should stay textually aligned.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `--no-err-codes` is only an exit-code override; documentation should not imply it bypasses classification or suppresses failure output.
   - Useful context (e.g., "the evaluation panel is in component X"): the shipped numeric exit codes still come from `internal/exitcode`, while multiple CLI failure classes intentionally collapse to the generic `1` exit code.
+---
+## [2026-03-24 11:11:27 CET] - #19-008
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-7.txt
+- Confirmed the final validation quickstart still matches the shipped CLI error-model implementation and added explicit closeout notes to the spec artifact.
+- Ran the required validation sequence successfully: `go test ./cmd/... ./c8volt/ferrors/... -count=1` and `make test`.
+- Files changed: `specs/19-cli-error-model/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): feature closeout on this branch should follow the quickstart validation order so targeted CLI regressions are isolated before the repository-wide suite runs.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `make docs` is still unnecessary for this feature unless Cobra help metadata changes; validation-only closeout should avoid regenerating docs without a command help diff.
+  - Useful context (e.g., "the evaluation panel is in component X"): the final proof story can be satisfied with spec confirmation plus validation evidence, without further command-surface changes once the earlier slices have landed.
 ---
