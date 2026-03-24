@@ -10,8 +10,83 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *testing.T) {
+	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__complete"}))
+	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__completeNoDesc"}))
+	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "completion"}))
+	require.False(t, bypassRootBootstrap(&cobra.Command{Use: "get"}))
+}
+
+func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
+	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+
+	require.Contains(t, output, "parent")
+	require.Contains(t, output, "children")
+	require.Contains(t, output, "family")
+	require.NotContains(t, output, "configuration is invalid")
+	require.NotContains(t, output, "Usage:")
+}
+
+func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
+	output := executeCompletionForTest(t, "")
+
+	require.Contains(t, output, "get\tGet resources\n")
+	require.Contains(t, output, "walk\tTraverse (walk) the parent/child graph of resource type\n")
+	requireCompletionOutputStaysUserFacing(t, output)
+}
+
+func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
+	output := executeCompletionForTest(t, "g")
+
+	require.Contains(t, output, "get\tGet resources\n")
+	requireCompletionOutputStaysUserFacing(t, output)
+}
+
+func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
+	output := executeCompletionForTest(t, "get", "")
+
+	require.Contains(t, output, "process-definition\tGet deployed process definitions\n")
+	require.Contains(t, output, "process-instance\tGet process instances\n")
+	requireCompletionOutputStaysUserFacing(t, output)
+}
+
+func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
+	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+
+	require.Contains(t, output, "parent\n")
+	require.Contains(t, output, "children\n")
+	require.Contains(t, output, "family\n")
+	require.NotContains(t, output, "\t")
+	requireCompletionOutputStaysUserFacing(t, output)
+}
+
+func requireCompletionOutputStaysUserFacing(t *testing.T, output string) {
+	t.Helper()
+
+	require.NotContains(t, output, "\ncompletion\n")
+	require.NotContains(t, output, "__complete")
+	require.NotContains(t, output, "Usage:")
+	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
+}
+
+func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequests(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+	cmd := exec.Command(os.Args[0], "-test.run=TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+
+	require.Contains(t, string(output), "__complete")
+	require.NotContains(t, string(output), "__completeNoDesc")
+}
 
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -184,6 +259,18 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.Equal(t, exitcode.Conflict, exitErr.ExitCode())
 	require.Contains(t, string(output), "conflict")
 	require.Contains(t, string(output), "running process instance(s)")
+}
+
+func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "completion", "zsh"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
 }
 
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper(t *testing.T) {

@@ -38,6 +38,8 @@
 - For refactoring work, preserve externally observable behavior unless the issue explicitly asks for behavioral change.
 - Favor incremental refactors with verification over broad rewrites.
 - CLI root/bootstrap failures should return through the shared `cmd` bootstrap normalization path and `ferrors.HandleAndExit` rather than calling `os.Exit(1)` or open-coding entry-point error rendering.
+- When Cobra's generated `completion` command should remain executable but stay out of normal help and interactive suggestions, prefer `rootCmd.CompletionOptions.HiddenDefaultCmd` over custom completion filtering.
+- Keep root completion descriptions enabled when interactive shells should show each command's concise `Short` text; Cobra still leaves custom value completions such as flag completions as plain candidate lines when no description is provided.
 - CLI command-validation errors that may surface either from Cobra `Execute()` or from in-command `ferrors.HandleAndExit` should be wrapped with the shared `ferrors` class at construction time; bootstrap-only normalization is not enough for paths that fail inside `Run` handlers.
 - When a command calls `NewCli(cmd)`, treat the returned config as optional on the error path; bootstrap-only failures can leave `cfg == nil`, so route those failures through the shared command helper/bootstrap context instead of dereferencing `cfg.App.NoErrCodes`.
 - Extend shared CLI failure mappings through the rule tables in `cmd/cmd_errors.go` and `cmd/bootstrap_errors.go`; do not duplicate new sentinel-to-class switches in individual commands or ad hoc helpers.
@@ -65,6 +67,9 @@
 - CLI command tests that execute non-help paths should pass an explicit temp `--config` file; repository-local config or env can otherwise leak into test behavior.
 - CLI command tests that assert version-specific payloads should set `app.camunda_version` explicitly in that temp config; otherwise the default test version can route to a different generated client shape.
 - `cmd` tests that reuse `Root()` across multiple in-process executions should reset Cobra flag state first, because help-oriented executions leave flags set on the shared command tree.
+- `cmd` completion regression tests should drive Cobra through the hidden `__complete`/`__completeNoDesc` root entry points and reset shared flags first; this exercises the real completion seam without requiring shell-specific wrappers.
+- When invoking Cobra's hidden `__complete`/`__completeNoDesc` commands directly for smoke checks, pass arguments relative to the root command and omit the `c8volt` binary name; including it makes Cobra treat the request as an unknown command path.
+- `cmd` flag-value completion regressions should assert the same forbidden output (`__complete`, hidden `completion`, `Usage:`, or long help text) as command completion regressions; plain candidate checks are not enough to catch completion-format regressions.
 - Fresh helper-process `cmd` tests should not call the shared flag reset helper before `SetArgs()`: `StringSlice` defaults round-trip through Cobra as a literal `"[]"`, which can inject phantom values into commands that rely on empty slices.
 - When command failures go through `ferrors.HandleAndExit`, assert exit codes with a subprocess helper because the handlers terminate via `os.Exit`.
 
@@ -87,6 +92,7 @@
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, existing facade packages under `c8volt/...` (73-get-resource-id)
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, worker utilities in `toolx/pool` (75-processinstance-api-refactor)
 - Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing `c8volt/ferrors`, `internal/exitcode`, `internal/domain`, `internal/services`, and command packages under `cmd/` (19-cli-error-model)
+- Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing command helpers under `cmd/` (82-tab-completion-format)
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.25.3 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`

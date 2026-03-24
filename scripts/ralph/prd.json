@@ -1,111 +1,97 @@
 {
-  "branchName": "19-cli-error-model",
-  "overview": "Define and implement one shared CLI failure model for all existing c8volt commands so humans, shell automation, and AI agents can reliably understand failure type, retryability, and exit-code behavior while preserving command-tree compatibility and --no-err-codes.",
+  "branchName": "82-tab-completion-format",
+  "overview": "Fix the malformed c8volt terminal Tab-completion experience so interactive shell completion returns readable user-facing suggestions instead of noisy help-like output or internal completion entries, while keeping Cobra unchanged and proving the behavior with focused completion regressions plus repository validation.",
   "userStories": [
     {
-      "id": "#19-001",
-      "title": "Lock the shared CLI failure-classification boundary",
-      "description": "Define the shared CLI error classes, normalization boundary, and exit-code policy in the existing shared error layer before sweeping command families.",
+      "id": "#82-001",
+      "title": "Lock the completion fix to c8volt metadata and integration points",
+      "description": "Establish the shared completion seam in the existing root command and command checks so the feature is implemented entirely inside c8volt without changing Cobra behavior.",
       "acceptanceCriteria": [
-        "`c8volt/ferrors/errors.go` defines the settled shared CLI error classes and their normalization entry points.",
-        "The failure model defines one shared exit-code mapping for the in-scope failure classes.",
-        "The design preserves `--no-err-codes` as a final exit-code override rather than a bypass of failure classification."
+        "The implementation identifies `cmd/root.go` and `cmd/cmd_checks.go` as the primary shared completion boundary for this feature.",
+        "The design keeps Cobra framework behavior unchanged and does not introduce a parallel completion subsystem.",
+        "The resulting approach remains compatible with the existing `c8volt` command tree and utility-command handling."
       ],
       "priority": "P1",
       "passes": true,
-      "notes": "Start here because all command-family cleanup and validation depends on one stable shared failure boundary."
+      "notes": "Start here because every later completion fix depends on one stable repository-native seam."
     },
     {
-      "id": "#19-002",
-      "title": "Normalize root and bootstrap failures through the shared model",
-      "description": "Route root command startup, configuration, and service-bootstrap failures through the shared model so early command failures follow the same contract as command execution failures.",
+      "id": "#82-002",
+      "title": "Stop usage-style output from replacing normal completion suggestions",
+      "description": "Correct the root-command completion behavior so representative top-level completion flows render readable suggestions instead of malformed help-like output.",
       "acceptanceCriteria": [
-        "`cmd/root.go` routes root pre-run failures through the shared CLI failure model.",
-        "`cmd/cmd_cli.go` uses the same shared classification path for bootstrap and CLI-construction failures.",
-        "A subprocess-based CLI test proves a representative bootstrap or configuration failure uses the expected non-success behavior."
+        "A representative top-level completion path no longer emits usage-style output in place of normal suggestions.",
+        "The resulting suggestion output remains readable and does not break prompt layout.",
+        "Focused command-level regression tests prove the top-level completion rendering behavior."
       ],
       "priority": "P1",
       "passes": true,
-      "notes": "Keep this slice narrow to the shared entry-point behavior before touching the broader command surface."
+      "notes": "Keep this slice focused on observable rendering cleanup before filtering or documentation work."
     },
     {
-      "id": "#19-003",
-      "title": "Make operator-facing failures consistent across read-only commands",
-      "description": "Apply the shared failure model to read-oriented command paths so invalid input, local-precondition, malformed-response, and remote failures are presented consistently to operators.",
+      "id": "#82-003",
+      "title": "Filter internal completion helpers from normal interactive suggestions",
+      "description": "Ensure normal user-facing completion output excludes internal completion plumbing while keeping relevant visible candidates intact.",
       "acceptanceCriteria": [
-        "Representative `get` command failures route through the shared model.",
-        "Equivalent invalid-input, local-precondition, unsupported, malformed-response, and remote-failure cases do not rely on one-off wording in the covered read-only commands.",
-        "Subprocess-based CLI tests cover representative read-only command failures and verify consistent failure behavior."
+        "Internal helper entries such as `__complete` do not appear as normal user-facing suggestions in representative interactive completion flows.",
+        "Representative top-level and nested completion paths still surface relevant user-facing commands or subcommands.",
+        "The implementation keeps the filtering behavior inside `c8volt` command/completion metadata or integration points."
       ],
       "priority": "P1",
       "passes": true,
-      "notes": "Use this story to establish the operator-facing pattern on a lower-risk command family before mutation flows."
+      "notes": "Sequence this after the rendering cleanup so the visible candidate contract is easier to verify."
     },
     {
-      "id": "#19-004",
-      "title": "Make operator-facing failures consistent across mutation and utility commands",
-      "description": "Apply the shared failure model to state-changing, validation-heavy, and utility command families so operator-facing failure output remains consistent across the rest of the CLI surface.",
+      "id": "#82-004",
+      "title": "Preserve concise descriptions without falling back to full help text",
+      "description": "Keep useful concise candidate descriptions where c8volt already provides them, while preventing completion output from expanding into full help or usage text.",
       "acceptanceCriteria": [
-        "Representative `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and `config` failure paths route through the shared model.",
-        "Equivalent invalid-input, local-precondition, unsupported, malformed-response, and remote-failure cases do not rely on one-off per-command wording in the covered command families.",
-        "Subprocess-based CLI tests cover representative state-changing, expectation, and utility command failures and verify consistent failure behavior."
-      ],
-      "priority": "P1",
-      "passes": true,
-      "notes": "Keep this as a separate slice from read-only commands so Ralph can verify the broader command sweep independently."
-    },
-    {
-      "id": "#19-005",
-      "title": "Make exit semantics stable for scripts and AI agents",
-      "description": "Apply the shared exit-code mapping across the CLI so machine callers can react consistently to invalid input, unsupported behavior, retryable remote failures, and permanent faults.",
-      "acceptanceCriteria": [
-        "The same failure class yields the same exit-code class across representative command families.",
-        "Unsupported-version or unsupported-operation failures are distinguishable from unavailable, timeout, or conflict failures.",
-        "`--no-err-codes` returns exit code `0` while preserving failure output.",
-        "Subprocess-based CLI tests assert the exit-code behavior for representative invalid, unsupported, unavailable, timeout, conflict, and not-found paths."
+        "Representative completion candidates show concise descriptions when `c8volt` provides them.",
+        "Suggestions without descriptions still render cleanly.",
+        "No representative completion path falls back to full help or usage text to populate descriptions."
       ],
       "priority": "P2",
       "passes": true,
-      "notes": "Sequence this after the operator-facing sweeps so the underlying shared model is already wired across commands."
+      "notes": "Treat description handling as a separate slice so Ralph can verify readability without conflating it with helper filtering."
     },
     {
-      "id": "#19-006",
-      "title": "Keep the shared error model maintainable for future command work",
-      "description": "Refactor repeated wrapping and mapping logic into repository-native shared helpers so future command work extends one coherent model instead of reintroducing command-family drift.",
+      "id": "#82-005",
+      "title": "Prove the completion contract across representative command paths",
+      "description": "Add focused regression coverage for one top-level path, one nested path, and one flag-completion path so the fixed completion behavior remains durable.",
       "acceptanceCriteria": [
-        "Repeated error-wrapping logic is consolidated into repository-native shared helpers rather than duplicated across command families.",
-        "Shared command-validation sentinels and cross-family mappings are covered by focused regression tests.",
-        "The final implementation leaves one obvious extension point for future CLI failure behavior changes."
+        "Automated regression coverage exists for one top-level completion path, one nested subcommand path, and one flag-completion path.",
+        "The covered scenarios assert both expected visible candidates and forbidden output such as internal helper names or usage dumps.",
+        "The regression suite uses the repository's existing root-command or helper-process testing patterns in `cmd/`."
       ],
       "priority": "P2",
       "passes": true,
-      "notes": "Treat this as a maintainability slice after the public failure contract is already visible in command behavior."
+      "notes": "Keep the regression harness as its own slice so future fixes can reuse it as proof of behavior."
     },
     {
-      "id": "#19-007",
-      "title": "Align scripting documentation with shipped failure behavior",
-      "description": "Update the user-facing scripting and error-code documentation so published guidance matches the actual shared CLI failure contract.",
+      "id": "#82-006",
+      "title": "Keep help and generated CLI docs aligned with shipped completion behavior",
+      "description": "Update any affected help text and generated CLI docs so published CLI guidance matches the final completion contract.",
       "acceptanceCriteria": [
-        "`README.md` documents the shipped shared error-code and failure-semantics behavior.",
-        "`docs/index.md` reflects the same scripting and `--no-err-codes` contract.",
-        "If Cobra help text or flag descriptions change, generated docs under `docs/cli/` are regenerated in the same change."
+        "Any user-visible help text affected by the final metadata change is updated in `cmd/root.go`.",
+        "Generated CLI reference output is refreshed with `make docs` when public help text changes.",
+        "`README.md` is updated only if current completion guidance would otherwise become inaccurate or incomplete."
       ],
       "priority": "P3",
       "passes": true,
-      "notes": "Keep documentation aligned with the actual shipped failure model and only regenerate CLI docs when command metadata changes."
+      "notes": "Only do this after the behavior is settled so generated docs reflect the shipped completion contract."
     },
     {
-      "id": "#19-008",
-      "title": "Prove completion with targeted CLI regression checks and repository validation",
-      "description": "Finish the refactor with explicit proof that the shared failure model is wired correctly and does not regress existing command behavior.",
+      "id": "#82-007",
+      "title": "Prove completion with targeted validation and repository checks",
+      "description": "Finish the feature with explicit proof that the final completion behavior is correct, documented, and repository-compliant.",
       "acceptanceCriteria": [
-        "Targeted validation in `specs/19-cli-error-model/quickstart.md` is updated or confirmed against the final implementation.",
-        "`go test ./cmd/... ./c8volt/ferrors/... -count=1` passes.",
+        "The quickstart validation steps in `specs/82-tab-completion-format/quickstart.md` are runnable against the final implementation.",
+        "Focused completion regression tests in `./cmd` pass.",
         "`make test` passes."
       ],
       "priority": "P3",
       "passes": true,
-      "notes": "Keep the final proof-of-completion slice separate so Ralph can close the feature with repository-required validation."
+      "notes": "Keep the final proof-of-completion slice separate so Ralph can close the feature with the repository-required validation."
     }
   ]
 }

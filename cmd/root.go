@@ -35,6 +35,9 @@ var rootCmd = &cobra.Command{
 	Short: "c8volt: Camunda 8 Operations CLI",
 	Long: `c8volt: Camunda 8 Operations CLI. The tool for Camunda 8 admins and developers to verify outcomes.
 Refer to the documentation at https://c8volt.boczek.info for more information.`,
+	CompletionOptions: cobra.CompletionOptions{
+		HiddenDefaultCmd: true,
+	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
 		if err := initViper(v, cmd); err != nil {
@@ -74,7 +77,7 @@ Refer to the documentation at https://c8volt.boczek.info for more information.`,
 				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
-		if isUtilityCommand(cmd) {
+		if bypassRootBootstrap(cmd) {
 			cmd.SetContext(ctx)
 			return nil
 		}
