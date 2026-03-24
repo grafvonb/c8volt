@@ -91,7 +91,7 @@
         "If Cobra help text or flag descriptions change, generated docs under `docs/cli/` are regenerated in the same change."
       ],
       "priority": "P3",
-      "passes": false,
+      "passes": true,
       "notes": "Keep documentation aligned with the actual shipped failure model and only regenerate CLI docs when command metadata changes."
     },
     {

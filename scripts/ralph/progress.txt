@@ -5,6 +5,7 @@
 - Extend command and bootstrap sentinel-to-class mappings through the shared rule tables in `cmd/cmd_errors.go` and `cmd/bootstrap_errors.go`; that table-driven path is the extension point for future CLI failure classes.
 - In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
 - Command handlers that call `NewCli(cmd)` must treat the returned config as nilable on failure; use the shared command/bootstrap error helper to resolve `--no-err-codes` instead of dereferencing `cfg.App.NoErrCodes` in the error branch.
+- The scripting/error-code guidance in `README.md` and `docs/index.md` is duplicated on purpose; update both files together when the CLI failure contract changes.
 
 # Ralph Progress Log
 Started: Tue Mar 24 10:20:36 CET 2026
@@ -69,4 +70,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): `ferrors.WrapClass` is the reusable helper for attaching shared CLI classes without reimplementing `%w: %v` wrappers in other packages.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): adding a new command or bootstrap sentinel now requires updating the shared rule tables, otherwise the fallback path will normalize it as internal.
   - Useful context (e.g., "the evaluation panel is in component X"): focused `cmd` normalization tests are faster and more stable for extension-point coverage than spawning subprocesses when the code under test does not call `os.Exit`.
+---
+## [2026-03-24 11:10:23 CET] - #19-007
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Updated the scripting support documentation in `README.md` and `docs/index.md` to describe the shipped CLI failure classes, the current shared class-to-exit-code mapping, and the fact that `--no-err-codes` preserves failure output while forcing the final process exit code to `0`.
+- Confirmed no Cobra command metadata changed, so generated files under `docs/cli/` did not need regeneration for this story.
+- Files changed: `README.md`, `docs/index.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): scripting-facing failure semantics are documented in both `README.md` and `docs/index.md`, and those sections should stay textually aligned.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `--no-err-codes` is only an exit-code override; documentation should not imply it bypasses classification or suppresses failure output.
+  - Useful context (e.g., "the evaluation panel is in component X"): the shipped numeric exit codes still come from `internal/exitcode`, while multiple CLI failure classes intentionally collapse to the generic `1` exit code.
 ---

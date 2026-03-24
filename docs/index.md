@@ -561,8 +561,29 @@ INFO deleting 1 process definitions completed: 1 succeeded, 0 failed
 
 #### Error Codes
 
-In case of errors, c8volt returns specific exit codes that can be used in scripts to handle different error scenarios.
-If you do not want to deal with specific error codes, you can use the `--no-err-codes` flag to make c8volt always return exit code 0.
+On failure, c8volt first classifies the error so humans and automation see the same failure contract. The current CLI failure classes are:
+
+- `invalid_input`
+- `local_precondition`
+- `unsupported`
+- `not_found`
+- `conflict`
+- `timeout`
+- `unavailable`
+- `malformed_response`
+- `internal`
+
+The shared exit-code mapping for those classes is:
+
+- `0`: success
+- `2`: `invalid_input`
+- `3`: `not_found`
+- `4`: `timeout`
+- `5`: `unavailable`
+- `6`: `conflict`
+- `1`: `local_precondition`, `unsupported`, `malformed_response`, and `internal`
+
+If you do not want to branch on non-zero exit codes in scripts, use `--no-err-codes`. c8volt still classifies and prints the failure, but the final process exit code is forced to `0`.
 
 #### Command Pipelining
 
