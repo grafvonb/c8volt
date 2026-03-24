@@ -10,8 +10,26 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *testing.T) {
+	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__complete"}))
+	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__completeNoDesc"}))
+	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "completion"}))
+	require.False(t, bypassRootBootstrap(&cobra.Command{Use: "get"}))
+}
+
+func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
+	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+
+	require.Contains(t, output, "parent")
+	require.Contains(t, output, "children")
+	require.Contains(t, output, "family")
+	require.NotContains(t, output, "configuration is invalid")
+	require.NotContains(t, output, "Usage:")
+}
 
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")

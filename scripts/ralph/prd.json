@@ -12,7 +12,7 @@
         "The resulting approach remains compatible with the existing `c8volt` command tree and utility-command handling."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Start here because every later completion fix depends on one stable repository-native seam."
     },
     {

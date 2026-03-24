@@ -74,7 +74,7 @@ Refer to the documentation at https://c8volt.boczek.info for more information.`,
 				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
-		if isUtilityCommand(cmd) {
+		if bypassRootBootstrap(cmd) {
 			cmd.SetContext(ctx)
 			return nil
 		}

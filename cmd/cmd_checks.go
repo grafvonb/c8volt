@@ -2,6 +2,11 @@ package cmd
 
 import "github.com/spf13/cobra"
 
+var completionCommands = map[string]struct{}{
+	"__complete":       {},
+	"__completeNoDesc": {},
+}
+
 var utilityCommands = map[string]struct{}{
 	"help":       {},
 	"version":    {},
@@ -16,6 +21,18 @@ func isUtilityCommand(cmd *cobra.Command) bool {
 	}
 	_, ok := utilityCommands[cmd.Name()]
 	return ok
+}
+
+func isCompletionCommand(cmd *cobra.Command) bool {
+	if cmd == nil {
+		return false
+	}
+	_, ok := completionCommands[cmd.Name()]
+	return ok
+}
+
+func bypassRootBootstrap(cmd *cobra.Command) bool {
+	return isUtilityCommand(cmd) || isCompletionCommand(cmd)
 }
 
 func hasHelpFlag(cmd *cobra.Command) bool {
