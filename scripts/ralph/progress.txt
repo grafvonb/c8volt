@@ -4,6 +4,7 @@
 - Setting `rootCmd.CompletionOptions.DisableDescriptions = true` shifts generated shell scripts onto Cobra's `__completeNoDesc` path, which is the stable way to keep interactive completion output name-only without forking Cobra.
 - Use `rootCmd.CompletionOptions.HiddenDefaultCmd = true` when Cobra's generated `completion` command should stay executable for script generation but must not appear in normal help or interactive completion suggestions.
 - With root completion descriptions enabled, Cobra uses each command's concise `Short` text for interactive suggestions while custom flag-value completions that return plain strings still render without tab-separated descriptions.
+- When invoking Cobra's hidden `__complete` or `__completeNoDesc` commands directly, pass arguments relative to the root command and omit the `c8volt` binary name or Cobra will treat the request as an invalid command path.
 
 # Ralph Progress Log
 Started: Tue Mar 24 16:33:34 CET 2026
@@ -68,4 +69,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
 - **Learnings for future iterations:**
   - Regenerating `docs/cli/` with `make docs` is a useful no-op verification step for root-command metadata changes; if it produces no diff, the generated CLI reference is already aligned with the current Cobra help surface.
   - Hiding Cobra's generated default `completion` command through `CompletionOptions.HiddenDefaultCmd` keeps both normal help output and generated CLI reference pages free of that command while preserving direct `c8volt completion <shell>` execution.
+---
+## [2026-03-24 16:56:33 CET] - #82-007
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Updated `specs/82-tab-completion-format/quickstart.md` so the validation flow is runnable from a fresh checkout with `go run .` instead of assuming a preinstalled `c8volt` binary.
+- Ran the final proof steps: `go test ./cmd -run 'Test.*Completion' -count=1`, `go test ./cmd -run 'TestRoot.*Completion|Test.*Nested.*Completion|Test.*Flag.*Completion' -count=1`, `make docs`, and `make test`, then smoke-checked `go run . completion zsh` plus representative `__complete` command paths.
+- Added the direct-`__complete` invocation gotcha to the shared root `AGENTS.md` and consolidated it into the Codebase Patterns section.
+- Files changed: `AGENTS.md`, `specs/82-tab-completion-format/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Quickstart smoke checks are more reliable when they use `go run .` from the repository checkout instead of assuming a prebuilt `c8volt` binary is already on `PATH`.
+  - Direct CLI completion smoke checks can verify the representative top-level, nested, and flag-value flows by invoking `go run . __complete ...` with arguments relative to the root command.
+  - `go run . completion zsh` is a cheap validation step for completion metadata changes because it proves the generated completion command still executes even when the default `completion` command is hidden from discovery surfaces.
 ---

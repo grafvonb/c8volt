@@ -18,7 +18,7 @@ Verify that `c8volt` interactive completion produces readable user-facing sugges
 go test ./cmd -run 'Test.*Completion' -count=1
 ```
 
-2. If the implementation adds or renames specific completion regression tests, run the targeted set covering:
+2. Run the targeted set covering the representative top-level, nested, and flag-completion paths:
 
 ```bash
 go test ./cmd -run 'TestRoot.*Completion|Test.*Nested.*Completion|Test.*Flag.*Completion' -count=1
@@ -38,18 +38,20 @@ make test
 
 ## Manual Smoke Check
 
-1. Generate and install the shell completion for a local terminal session, for example with zsh:
+1. Generate the shell completion from the repository checkout, for example with zsh:
 
 ```bash
-c8volt completion zsh > "${fpath[1]}/_c8volt"
+go run . completion zsh > /tmp/_c8volt
 ```
 
-2. Open a fresh shell session and trigger completion for representative paths:
+2. In a fresh shell session, make the generated completion file available to the shell and trigger representative completion paths:
 
 ```bash
-c8volt <TAB>
-c8volt get <TAB>
-c8volt walk process-instance --mode <TAB>
+fpath=(/tmp $fpath)
+autoload -Uz compinit && compinit
+go run . <TAB>
+go run . get <TAB>
+go run . walk process-instance --mode <TAB>
 ```
 
 Expected result:

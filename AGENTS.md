@@ -68,6 +68,7 @@
 - CLI command tests that assert version-specific payloads should set `app.camunda_version` explicitly in that temp config; otherwise the default test version can route to a different generated client shape.
 - `cmd` tests that reuse `Root()` across multiple in-process executions should reset Cobra flag state first, because help-oriented executions leave flags set on the shared command tree.
 - `cmd` completion regression tests should drive Cobra through the hidden `__complete`/`__completeNoDesc` root entry points and reset shared flags first; this exercises the real completion seam without requiring shell-specific wrappers.
+- When invoking Cobra's hidden `__complete`/`__completeNoDesc` commands directly for smoke checks, pass arguments relative to the root command and omit the `c8volt` binary name; including it makes Cobra treat the request as an unknown command path.
 - `cmd` flag-value completion regressions should assert the same forbidden output (`__complete`, hidden `completion`, `Usage:`, or long help text) as command completion regressions; plain candidate checks are not enough to catch completion-format regressions.
 - Fresh helper-process `cmd` tests should not call the shared flag reset helper before `SetArgs()`: `StringSlice` defaults round-trip through Cobra as a literal `"[]"`, which can inject phantom values into commands that rely on empty slices.
 - When command failures go through `ferrors.HandleAndExit`, assert exit codes with a subprocess helper because the handlers terminate via `os.Exit`.

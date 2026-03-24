@@ -90,7 +90,7 @@
         "`make test` passes."
       ],
       "priority": "P3",
-      "passes": false,
+      "passes": true,
       "notes": "Keep the final proof-of-completion slice separate so Ralph can close the feature with the repository-required validation."
     }
   ]
