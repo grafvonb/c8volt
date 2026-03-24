@@ -830,6 +830,13 @@ func executeCompletionForTest(t *testing.T, args ...string) string {
 	return executeRootForTest(t, completionArgs...)
 }
 
+func executeCompletionNoDescForTest(t *testing.T, args ...string) string {
+	t.Helper()
+
+	completionArgs := append([]string{"__completeNoDesc"}, args...)
+	return executeRootForTest(t, completionArgs...)
+}
+
 func resetCommandTreeFlags(cmd *cobra.Command) {
 	resetFlagSet := func(fs *pflag.FlagSet) {
 		fs.VisitAll(func(flag *pflag.Flag) {

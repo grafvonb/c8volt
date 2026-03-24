@@ -25,7 +25,7 @@
         "Focused command-level regression tests prove the top-level completion rendering behavior."
       ],
       "priority": "P1",
-      "passes": false,
+      "passes": true,
       "notes": "Keep this slice focused on observable rendering cleanup before filtering or documentation work."
     },
     {

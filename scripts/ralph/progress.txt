@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - `cmd` completion regressions should execute Cobra's hidden `__complete` or `__completeNoDesc` root entry points after resetting shared flags; this exercises the real completion seam without needing shell wrappers.
+- Setting `rootCmd.CompletionOptions.DisableDescriptions = true` shifts generated shell scripts onto Cobra's `__completeNoDesc` path, which is the stable way to keep interactive completion output name-only without forking Cobra.
 
 # Ralph Progress Log
 Started: Tue Mar 24 16:33:34 CET 2026
@@ -13,5 +14,15 @@ Codex output: no `scripts/ralph/.codex-last-message-iter-*.txt` file was present
 - **Learnings for future iterations:**
   - The stable repository-native completion seam is the root bootstrap decision in `cmd/root.go` plus command classification in `cmd/cmd_checks.go`.
   - Completion regressions can run in-process by executing `Root()` with `__complete` arguments and the shared flag-reset helper; shell-specific installation is not needed for foundational coverage.
-  - Hidden Cobra completion commands should bypass config/bootstrap validation the same way user-facing utility commands do, or completion tests may pick up config/help noise.
+- Hidden Cobra completion commands should bypass config/bootstrap validation the same way user-facing utility commands do, or completion tests may pick up config/help noise.
+---
+## [2026-03-24 16:42:18 CET] - #82-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-1.txt
+- Implemented the top-level completion rendering cleanup by disabling completion descriptions at the root command so generated shell scripts use Cobra's `__completeNoDesc` path instead of description-bearing completion requests.
+- Added focused completion regressions that verify readable top-level suggestion output and confirm generated zsh completion requests use `__completeNoDesc`.
+- Files changed: `cmd/get_test.go`, `cmd/mutation_test.go`, `cmd/root.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Root-level `cobra.CompletionOptions.DisableDescriptions` affects generated shell completion scripts even though raw `__complete` output still includes description text.
+  - Completion script generation is safer to assert through a helper subprocess because `Root()` is a shared singleton and in-process Cobra command state can bleed between tests.
+  - `__completeNoDesc` still emits Cobra's trailing directive marker, so rendering-focused regressions should assert the candidate lines stay tab-free rather than assuming the output is candidate-only.
 ---

@@ -31,6 +31,40 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 	require.NotContains(t, output, "Usage:")
 }
 
+func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
+	output := executeCompletionNoDescForTest(t, "")
+
+	require.Contains(t, output, "\nget\n")
+	require.Contains(t, output, "\nwalk\n")
+	require.NotContains(t, output, "\t")
+	require.NotContains(t, output, "Get resources")
+	require.NotContains(t, output, "Usage:")
+}
+
+func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
+	output := executeCompletionNoDescForTest(t, "g")
+
+	require.Contains(t, output, "get\n")
+	require.NotContains(t, output, "\t")
+	require.NotContains(t, output, "Get resources")
+	require.NotContains(t, output, "Usage:")
+}
+
+func TestCompletionCommand_ZshUsesNoDescCompletionRequests(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+	cmd := exec.Command(os.Args[0], "-test.run=TestCompletionCommand_ZshUsesNoDescCompletionRequestsHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+
+	require.Contains(t, string(output), "__completeNoDesc")
+	require.NotContains(t, string(output), "__complete ${words[2,-1]}")
+}
+
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -202,6 +236,18 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.Equal(t, exitcode.Conflict, exitErr.ExitCode())
 	require.Contains(t, string(output), "conflict")
 	require.Contains(t, string(output), "running process instance(s)")
+}
+
+func TestCompletionCommand_ZshUsesNoDescCompletionRequestsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "completion", "zsh"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
 }
 
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper(t *testing.T) {
