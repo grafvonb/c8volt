@@ -32,7 +32,7 @@ var getProcessDefinitionCmd = &cobra.Command{
 func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		handleNewCliError(cmd, log, cfg, err)
 	}
 
 	log.Debug("fetching process definitions")

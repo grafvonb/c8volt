@@ -3,6 +3,7 @@
 - Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
 - For CLI command-validation helpers, attach the shared `ferrors` class when constructing the error if the same validation may surface through both Cobra `Execute()` and in-command `ferrors.HandleAndExit`; bootstrap normalization alone only covers the former.
 - In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
+- Command handlers that call `NewCli(cmd)` must treat the returned config as nilable on failure; use the shared command/bootstrap error helper to resolve `--no-err-codes` instead of dereferencing `cfg.App.NoErrCodes` in the error branch.
 
 # Ralph Progress Log
 Started: Tue Mar 24 10:20:36 CET 2026
@@ -47,4 +48,14 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Patterns discovered (e.g., "this codebase uses X for Y"): command-level helpers like stdin readers, optional-arg validators, and confirmation prompts are the right place to attach shared CLI classes because many command families reuse them verbatim.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the shared `resetCommandTreeFlags` helper is only safe for in-process command reuse; fresh helper-process tests should skip it because Cobra `StringSlice` defaults can become a literal `"[]"` and alter command behavior.
   - Useful context (e.g., "the evaluation panel is in component X"): utility commands that read config directly, such as `config show` and `embed list`, need `bootstrapFailureContext` on early failure paths so missing config does not trigger a nil dereference while rendering a classified error.
+---
+## [2026-03-24 10:54:25 CET] - #19-005
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
+- Added subprocess CLI regressions for representative unsupported-version, timeout, conflict, and `--no-err-codes` paths while reusing the existing invalid-input, unavailable, and not-found coverage to lock the shared exit-code contract across command families.
+- Introduced `handleNewCliError` in `cmd` and updated command handlers that call `NewCli(cmd)` so bootstrap-only failures keep shared classification and exit-code behavior instead of panicking on a nil config.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors_test.go`, `cmd/cancel_processinstance.go`, `cmd/cmd_cli.go`, `cmd/delete_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/embed_export.go`, `cmd/expect_processinstance.go`, `cmd/get_cluster_license.go`, `cmd/get_cluster_topology.go`, `cmd/get_processdefinition.go`, `cmd/get_processinstance.go`, `cmd/get_resource.go`, `cmd/get_test.go`, `cmd/get_variable.go`, `cmd/mutation_test.go`, `cmd/run_processinstance.go`, `cmd/walk_processinstance.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): exit-code contract tests belong in helper-process `cmd` coverage, with one representative command per failure class rather than duplicating class assertions across every command family.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): unsupported-version failures can happen before `NewCli` returns a config, so command handlers must not read `cfg.App.NoErrCodes` on the `err != nil` branch.
+  - Useful context (e.g., "the evaluation panel is in component X"): `get resource` is a compact representative command for `not_found`, `timeout`, and `--no-err-codes` exit checks because its handler goes straight from `NewCli` to one generated-client call.
 ---

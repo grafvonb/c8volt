@@ -30,7 +30,7 @@ func init() {
 func runGetClusterTopology(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		handleNewCliError(cmd, log, cfg, err)
 	}
 	log.Debug("fetching cluster topology")
 	topology, err := cli.GetClusterTopology(cmd.Context())

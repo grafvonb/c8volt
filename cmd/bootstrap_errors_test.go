@@ -71,6 +71,25 @@ auth:
 	require.Contains(t, string(output), "local precondition failed: normalize config:")
 }
 
+func TestExecute_UnsupportedVersionUsesSharedFailureModel(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_UnsupportedVersionUsesSharedFailureModelHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "unknown API version")
+}
+
 func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T) {
 	err := normalizeBootstrapError(invalidFlagValuef("resource lookup requires a non-empty --id"))
 
@@ -79,6 +98,18 @@ func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T
 }
 
 func TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "topology"}
+
+	Execute()
+}
+
+func TestExecute_UnsupportedVersionUsesSharedFailureModelHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}

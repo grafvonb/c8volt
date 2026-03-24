@@ -65,7 +65,7 @@
         "Subprocess-based CLI tests assert the exit-code behavior for representative invalid, unsupported, unavailable, timeout, conflict, and not-found paths."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "Sequence this after the operator-facing sweeps so the underlying shared model is already wired across commands."
     },
     {

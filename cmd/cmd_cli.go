@@ -36,6 +36,25 @@ func NewCli(cmd *cobra.Command) (c8volt.API, *slog.Logger, *config.Config, error
 	return cli, log, svcs.Config, nil
 }
 
+func handleNewCliError(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, err error) {
+	if err == nil {
+		return
+	}
+
+	noErrCodes := false
+	if cfg != nil {
+		noErrCodes = cfg.App.NoErrCodes
+	} else {
+		fallbackLog, fallbackNoErrCodes := bootstrapFailureContext(cmd)
+		if log == nil {
+			log = fallbackLog
+		}
+		noErrCodes = fallbackNoErrCodes
+	}
+
+	ferrors.HandleAndExit(log, noErrCodes, err)
+}
+
 func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil

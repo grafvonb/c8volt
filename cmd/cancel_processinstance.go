@@ -24,7 +24,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
+			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
