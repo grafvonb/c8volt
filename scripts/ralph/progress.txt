@@ -2,6 +2,7 @@
 - `cmd` completion regressions should execute Cobra's hidden `__complete` or `__completeNoDesc` root entry points after resetting shared flags; this exercises the real completion seam without needing shell wrappers.
 - Setting `rootCmd.CompletionOptions.DisableDescriptions = true` shifts generated shell scripts onto Cobra's `__completeNoDesc` path, which is the stable way to keep interactive completion output name-only without forking Cobra.
 - Use `rootCmd.CompletionOptions.HiddenDefaultCmd = true` when Cobra's generated `completion` command should stay executable for script generation but must not appear in normal help or interactive completion suggestions.
+- With root completion descriptions enabled, Cobra uses each command's concise `Short` text for interactive suggestions while custom flag-value completions that return plain strings still render without tab-separated descriptions.
 
 # Ralph Progress Log
 Started: Tue Mar 24 16:33:34 CET 2026
@@ -37,4 +38,15 @@ Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8
   - Cobra's `CompletionOptions.HiddenDefaultCmd` hides the generated `completion` command from both help output and normal completion candidates without breaking direct `c8volt completion <shell>` execution.
   - Filtering the generated `completion` command at the root metadata layer is simpler and safer than post-processing completion output because the hidden command behavior stays inside Cobra's existing help/completion integration.
   - Top-level completion output is a better regression point for helper leakage than raw `completion` subcommand execution because the generated command remains executable even when it is hidden from discovery surfaces.
+---
+## [2026-03-24 16:48:49 CET] - #82-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Re-enabled root completion descriptions so interactive completion can surface each command's concise `Short` text instead of forcing name-only suggestions.
+- Updated the completion regressions to assert top-level and nested command suggestions show concise descriptions, raw flag-value completions still stay plain when no description exists, and generated zsh completions now issue description-bearing `__complete` requests.
+- Recorded the reusable root-description convention in `AGENTS.md` for future completion work.
+- Files changed: `AGENTS.md`, `cmd/mutation_test.go`, `cmd/root.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Cobra's default description-bearing completion path uses each command's `Short` field, so completion regressions should forbid the command `Long` text or `Usage:` output when validating concise descriptions.
+  - Custom completion providers that return plain strings, such as `RegisterFlagCompletionFunc` for `walk process-instance --mode`, still render cleanly without tab-separated descriptions even when root command descriptions are enabled.
+  - Generated zsh completion scripts switch back to the `__complete` entry point as soon as root descriptions are re-enabled, so script-generation regressions should assert the active hidden completion command explicitly.
 ---

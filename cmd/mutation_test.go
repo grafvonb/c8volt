@@ -32,39 +32,48 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 }
 
 func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
-	output := executeCompletionNoDescForTest(t, "")
+	output := executeCompletionForTest(t, "")
 
-	require.Contains(t, output, "\nget\n")
-	require.Contains(t, output, "\nwalk\n")
+	require.Contains(t, output, "get\tGet resources\n")
+	require.Contains(t, output, "walk\tTraverse (walk) the parent/child graph of resource type\n")
 	require.NotContains(t, output, "\ncompletion\n")
 	require.NotContains(t, output, "__complete")
-	require.NotContains(t, output, "\t")
-	require.NotContains(t, output, "Get resources")
 	require.NotContains(t, output, "Usage:")
+	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
 }
 
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
-	output := executeCompletionNoDescForTest(t, "g")
+	output := executeCompletionForTest(t, "g")
 
-	require.Contains(t, output, "get\n")
-	require.NotContains(t, output, "\t")
-	require.NotContains(t, output, "Get resources")
+	require.Contains(t, output, "get\tGet resources\n")
 	require.NotContains(t, output, "Usage:")
+	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
 }
 
 func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
-	output := executeCompletionNoDescForTest(t, "get", "")
+	output := executeCompletionForTest(t, "get", "")
 
-	require.Contains(t, output, "process-definition\n")
-	require.Contains(t, output, "process-instance\n")
+	require.Contains(t, output, "process-definition\tGet deployed process definitions\n")
+	require.Contains(t, output, "process-instance\tGet process instances\n")
 	require.NotContains(t, output, "\ncompletion\n")
 	require.NotContains(t, output, "__complete")
 	require.NotContains(t, output, "Usage:")
+	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
 }
 
-func TestCompletionCommand_ZshUsesNoDescCompletionRequests(t *testing.T) {
+func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
+	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+
+	require.Contains(t, output, "parent\n")
+	require.Contains(t, output, "children\n")
+	require.Contains(t, output, "family\n")
+	require.NotContains(t, output, "\t")
+	require.NotContains(t, output, "Usage:")
+}
+
+func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequests(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
-	cmd := exec.Command(os.Args[0], "-test.run=TestCompletionCommand_ZshUsesNoDescCompletionRequestsHelper")
+	cmd := exec.Command(os.Args[0], "-test.run=TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper")
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
@@ -73,8 +82,8 @@ func TestCompletionCommand_ZshUsesNoDescCompletionRequests(t *testing.T) {
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err)
 
-	require.Contains(t, string(output), "__completeNoDesc")
-	require.NotContains(t, string(output), "__complete ${words[2,-1]}")
+	require.Contains(t, string(output), "__complete")
+	require.NotContains(t, string(output), "__completeNoDesc")
 }
 
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
@@ -250,7 +259,7 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.Contains(t, string(output), "running process instance(s)")
 }
 
-func TestCompletionCommand_ZshUsesNoDescCompletionRequestsHelper(t *testing.T) {
+func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}

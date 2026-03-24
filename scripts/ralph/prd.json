@@ -51,7 +51,7 @@
         "No representative completion path falls back to full help or usage text to populate descriptions."
       ],
       "priority": "P2",
-      "passes": false,
+      "passes": true,
       "notes": "Treat description handling as a separate slice so Ralph can verify readability without conflating it with helper filtering."
     },
     {

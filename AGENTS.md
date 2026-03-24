@@ -39,6 +39,7 @@
 - Favor incremental refactors with verification over broad rewrites.
 - CLI root/bootstrap failures should return through the shared `cmd` bootstrap normalization path and `ferrors.HandleAndExit` rather than calling `os.Exit(1)` or open-coding entry-point error rendering.
 - When Cobra's generated `completion` command should remain executable but stay out of normal help and interactive suggestions, prefer `rootCmd.CompletionOptions.HiddenDefaultCmd` over custom completion filtering.
+- Keep root completion descriptions enabled when interactive shells should show each command's concise `Short` text; Cobra still leaves custom value completions such as flag completions as plain candidate lines when no description is provided.
 - CLI command-validation errors that may surface either from Cobra `Execute()` or from in-command `ferrors.HandleAndExit` should be wrapped with the shared `ferrors` class at construction time; bootstrap-only normalization is not enough for paths that fail inside `Run` handlers.
 - When a command calls `NewCli(cmd)`, treat the returned config as optional on the error path; bootstrap-only failures can leave `cfg == nil`, so route those failures through the shared command helper/bootstrap context instead of dereferencing `cfg.App.NoErrCodes`.
 - Extend shared CLI failure mappings through the rule tables in `cmd/cmd_errors.go` and `cmd/bootstrap_errors.go`; do not duplicate new sentinel-to-class switches in individual commands or ad hoc helpers.

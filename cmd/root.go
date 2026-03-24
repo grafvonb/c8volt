@@ -36,8 +36,7 @@ var rootCmd = &cobra.Command{
 	Long: `c8volt: Camunda 8 Operations CLI. The tool for Camunda 8 admins and developers to verify outcomes.
 Refer to the documentation at https://c8volt.boczek.info for more information.`,
 	CompletionOptions: cobra.CompletionOptions{
-		DisableDescriptions: true,
-		HiddenDefaultCmd:    true,
+		HiddenDefaultCmd: true,
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
