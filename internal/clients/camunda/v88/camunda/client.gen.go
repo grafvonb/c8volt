@@ -383,26 +383,25 @@ const (
 
 // Defines values for JobSearchQuerySortRequestField.
 const (
-	JobSearchQuerySortRequestFieldDeadline                 JobSearchQuerySortRequestField = "deadline"
-	JobSearchQuerySortRequestFieldDeniedReason             JobSearchQuerySortRequestField = "deniedReason"
-	JobSearchQuerySortRequestFieldElementId                JobSearchQuerySortRequestField = "elementId"
-	JobSearchQuerySortRequestFieldElementInstanceKey       JobSearchQuerySortRequestField = "elementInstanceKey"
-	JobSearchQuerySortRequestFieldEndTime                  JobSearchQuerySortRequestField = "endTime"
-	JobSearchQuerySortRequestFieldErrorCode                JobSearchQuerySortRequestField = "errorCode"
-	JobSearchQuerySortRequestFieldErrorMessage             JobSearchQuerySortRequestField = "errorMessage"
-	JobSearchQuerySortRequestFieldHasFailedWithRetriesLeft JobSearchQuerySortRequestField = "hasFailedWithRetriesLeft"
-	JobSearchQuerySortRequestFieldIsDenied                 JobSearchQuerySortRequestField = "isDenied"
-	JobSearchQuerySortRequestFieldJobKey                   JobSearchQuerySortRequestField = "jobKey"
-	JobSearchQuerySortRequestFieldKind                     JobSearchQuerySortRequestField = "kind"
-	JobSearchQuerySortRequestFieldListenerEventType        JobSearchQuerySortRequestField = "listenerEventType"
-	JobSearchQuerySortRequestFieldProcessDefinitionId      JobSearchQuerySortRequestField = "processDefinitionId"
-	JobSearchQuerySortRequestFieldProcessDefinitionKey     JobSearchQuerySortRequestField = "processDefinitionKey"
-	JobSearchQuerySortRequestFieldProcessInstanceKey       JobSearchQuerySortRequestField = "processInstanceKey"
-	JobSearchQuerySortRequestFieldRetries                  JobSearchQuerySortRequestField = "retries"
-	JobSearchQuerySortRequestFieldState                    JobSearchQuerySortRequestField = "state"
-	JobSearchQuerySortRequestFieldTenantId                 JobSearchQuerySortRequestField = "tenantId"
-	JobSearchQuerySortRequestFieldType                     JobSearchQuerySortRequestField = "type"
-	JobSearchQuerySortRequestFieldWorker                   JobSearchQuerySortRequestField = "worker"
+	JobSearchQuerySortRequestFieldDeadline             JobSearchQuerySortRequestField = "deadline"
+	JobSearchQuerySortRequestFieldDeniedReason         JobSearchQuerySortRequestField = "deniedReason"
+	JobSearchQuerySortRequestFieldElementId            JobSearchQuerySortRequestField = "elementId"
+	JobSearchQuerySortRequestFieldElementInstanceKey   JobSearchQuerySortRequestField = "elementInstanceKey"
+	JobSearchQuerySortRequestFieldEndTime              JobSearchQuerySortRequestField = "endTime"
+	JobSearchQuerySortRequestFieldErrorCode            JobSearchQuerySortRequestField = "errorCode"
+	JobSearchQuerySortRequestFieldErrorMessage         JobSearchQuerySortRequestField = "errorMessage"
+	JobSearchQuerySortRequestFieldIsDenied             JobSearchQuerySortRequestField = "isDenied"
+	JobSearchQuerySortRequestFieldJobKey               JobSearchQuerySortRequestField = "jobKey"
+	JobSearchQuerySortRequestFieldKind                 JobSearchQuerySortRequestField = "kind"
+	JobSearchQuerySortRequestFieldListenerEventType    JobSearchQuerySortRequestField = "listenerEventType"
+	JobSearchQuerySortRequestFieldProcessDefinitionId  JobSearchQuerySortRequestField = "processDefinitionId"
+	JobSearchQuerySortRequestFieldProcessDefinitionKey JobSearchQuerySortRequestField = "processDefinitionKey"
+	JobSearchQuerySortRequestFieldProcessInstanceKey   JobSearchQuerySortRequestField = "processInstanceKey"
+	JobSearchQuerySortRequestFieldRetries              JobSearchQuerySortRequestField = "retries"
+	JobSearchQuerySortRequestFieldState                JobSearchQuerySortRequestField = "state"
+	JobSearchQuerySortRequestFieldTenantId             JobSearchQuerySortRequestField = "tenantId"
+	JobSearchQuerySortRequestFieldType                 JobSearchQuerySortRequestField = "type"
+	JobSearchQuerySortRequestFieldWorker               JobSearchQuerySortRequestField = "worker"
 )
 
 // Defines values for JobStateEnum.
@@ -2756,8 +2755,8 @@ type FormResult struct {
 	// FormKey The assigned key, which acts as a unique identifier for this form.
 	FormKey *FormKey `json:"formKey,omitempty"`
 
-	// Schema The form content.
-	Schema *map[string]interface{} `json:"schema,omitempty"`
+	// Schema The form schema as a JSON document serialized as a string.
+	Schema *string `json:"schema,omitempty"`
 
 	// TenantId The tenant ID of the form.
 	TenantId *TenantId `json:"tenantId,omitempty"`
@@ -2940,7 +2939,7 @@ type GroupUserSearchResult struct {
 // IncidentFilter Incident search filter.
 type IncidentFilter struct {
 	// CreationTime Date of incident creation.
-	CreationTime *time.Time `json:"creationTime,omitempty"`
+	CreationTime *DateTimeFilterProperty `json:"creationTime,omitempty"`
 
 	// ElementId The element ID associated to this incident.
 	ElementId *ElementId `json:"elementId,omitempty"`
@@ -3363,7 +3362,7 @@ type JobSearchQuery struct {
 // JobSearchQueryResult defines model for JobSearchQueryResult.
 type JobSearchQueryResult struct {
 	// Items The matching jobs.
-	Items *[]JobSearchResult `json:"items,omitempty"`
+	Items []JobSearchResult `json:"items"`
 
 	// Page Pagination information about the search results.
 	Page SearchQueryPageResponse `json:"page"`
@@ -3620,9 +3619,6 @@ type MatchedDecisionRuleItem struct {
 	RuleIndex *int32 `json:"ruleIndex,omitempty"`
 }
 
-// MessageCorrelationKey Zeebe Engine resource key (Java long serialized as string)
-type MessageCorrelationKey = LongKey
-
 // MessageCorrelationRequest defines model for MessageCorrelationRequest.
 type MessageCorrelationRequest struct {
 	// CorrelationKey The correlation key of the message.
@@ -3642,7 +3638,7 @@ type MessageCorrelationRequest struct {
 // correlated with.
 type MessageCorrelationResult struct {
 	// MessageKey The key of the correlated message
-	MessageKey *MessageCorrelationKey `json:"messageKey,omitempty"`
+	MessageKey *MessageKey `json:"messageKey,omitempty"`
 
 	// ProcessInstanceKey The key of the first process instance the message correlated with
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
@@ -3732,7 +3728,7 @@ type MessageSubscriptionKeyFilterProperty0 = MessageSubscriptionKey
 // MessageSubscriptionResult defines model for MessageSubscriptionResult.
 type MessageSubscriptionResult struct {
 	// CorrelationKey The correlation key of the message subscription.
-	CorrelationKey *MessageCorrelationKey `json:"correlationKey,omitempty"`
+	CorrelationKey *string `json:"correlationKey,omitempty"`
 
 	// ElementId The element ID associated with this message subscription.
 	ElementId *ElementId `json:"elementId,omitempty"`
@@ -3904,6 +3900,7 @@ type ProcessDefinitionFilter struct {
 	// IsLatestVersion Whether to only return the latest version of each process definition.
 	// When using this filter, pagination functionality is limited, you can only paginate forward using `after` and `limit`.
 	// The response contains no `startCursor` in the `page`, and requests ignore the `from` and `before` in the `page`.
+	// When using this filter, sorting is limited to `processDefinitionId` and `tenantId` fields only.
 	IsLatestVersion *bool `json:"isLatestVersion,omitempty"`
 
 	// Name Name of this process definition.
@@ -5350,7 +5347,7 @@ type UserTaskAssignmentRequest struct {
 	AllowOverride *bool `json:"allowOverride"`
 
 	// Assignee The assignee for the user task. The assignee must not be empty or `null`.
-	Assignee *string `json:"assignee,omitempty"`
+	Assignee string `json:"assignee"`
 }
 
 // UserTaskCompletionRequest defines model for UserTaskCompletionRequest.
@@ -5524,7 +5521,7 @@ type UserTaskResult struct {
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// UserTaskKey The key of the user task.
-	UserTaskKey *UserTaskKey `json:"userTaskKey,omitempty"`
+	UserTaskKey UserTaskKey `json:"userTaskKey"`
 }
 
 // UserTaskSearchQuery defines model for UserTaskSearchQuery.
@@ -5542,7 +5539,7 @@ type UserTaskSearchQuery struct {
 // UserTaskSearchQueryResult defines model for UserTaskSearchQueryResult.
 type UserTaskSearchQueryResult struct {
 	// Items The matching user tasks.
-	Items *[]UserTaskResult `json:"items,omitempty"`
+	Items []UserTaskResult `json:"items"`
 
 	// Page Pagination information about the search results.
 	Page SearchQueryPageResponse `json:"page"`
@@ -5693,19 +5690,19 @@ type VariableResult = VariableResultBase
 // VariableResultBase Variable response item.
 type VariableResultBase struct {
 	// Name Name of this variable.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// ProcessInstanceKey The key of the process instance of this variable.
-	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey ProcessInstanceKey `json:"processInstanceKey"`
 
 	// ScopeKey The key of the scope of this variable.
-	ScopeKey *ScopeKey `json:"scopeKey,omitempty"`
+	ScopeKey ScopeKey `json:"scopeKey"`
 
 	// TenantId Tenant ID of this variable.
-	TenantId *TenantId `json:"tenantId,omitempty"`
+	TenantId TenantId `json:"tenantId"`
 
 	// VariableKey The key for this variable.
-	VariableKey *VariableKey `json:"variableKey,omitempty"`
+	VariableKey VariableKey `json:"variableKey"`
 }
 
 // VariableSearchQuery defines model for VariableSearchQuery.
@@ -5723,7 +5720,7 @@ type VariableSearchQuery struct {
 // VariableSearchQueryResult defines model for VariableSearchQueryResult.
 type VariableSearchQueryResult struct {
 	// Items The matching variables.
-	Items *[]VariableSearchResult `json:"items,omitempty"`
+	Items []VariableSearchResult `json:"items"`
 
 	// Page Pagination information about the search results.
 	Page SearchQueryPageResponse `json:"page"`
@@ -5858,6 +5855,18 @@ type GetUsageMetricsParams struct {
 
 	// WithTenants Whether to return tenant metrics in addition to the total metrics or not. Default false.
 	WithTenants *bool `form:"withTenants,omitempty" json:"withTenants,omitempty"`
+}
+
+// SearchUserTaskVariablesParams defines parameters for SearchUserTaskVariables.
+type SearchUserTaskVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
+}
+
+// SearchVariablesParams defines parameters for SearchVariables.
+type SearchVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
 }
 
 // CreateAuthorizationJSONRequestBody defines body for CreateAuthorization for application/json ContentType.
@@ -8723,9 +8732,9 @@ type ClientInterface interface {
 	GetUserTaskForm(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchUserTaskVariablesWithBody request with any body
-	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchUserTaskVariables(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariables(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUserWithBody request with any body
 	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8749,9 +8758,9 @@ type ClientInterface interface {
 	UpdateUser(ctx context.Context, username Username, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchVariablesWithBody request with any body
-	SearchVariablesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchVariablesWithBody(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchVariables(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVariable request
 	GetVariable(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -11289,8 +11298,8 @@ func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, contentType, body)
+func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11301,8 +11310,8 @@ func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKe
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, body)
+func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11409,8 +11418,8 @@ func (c *Client) UpdateUser(ctx context.Context, username Username, body UpdateU
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchVariablesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchVariablesRequestWithBody(c.Server, contentType, body)
+func (c *Client) SearchVariablesWithBody(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVariablesRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11421,8 +11430,8 @@ func (c *Client) SearchVariablesWithBody(ctx context.Context, contentType string
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchVariables(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchVariablesRequest(c.Server, body)
+func (c *Client) SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVariablesRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17165,18 +17174,18 @@ func NewGetUserTaskFormRequest(server string, userTaskKey string) (*http.Request
 }
 
 // NewSearchUserTaskVariablesRequest calls the generic SearchUserTaskVariables builder with application/json body
-func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchUserTaskVariablesRequestWithBody(server, userTaskKey, "application/json", bodyReader)
+	return NewSearchUserTaskVariablesRequestWithBody(server, userTaskKey, params, "application/json", bodyReader)
 }
 
 // NewSearchUserTaskVariablesRequestWithBody generates requests for SearchUserTaskVariables with any type of body
-func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17199,6 +17208,28 @@ func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -17407,18 +17438,18 @@ func NewUpdateUserRequestWithBody(server string, username Username, contentType 
 }
 
 // NewSearchVariablesRequest calls the generic SearchVariables builder with application/json body
-func NewSearchVariablesRequest(server string, body SearchVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchVariablesRequest(server string, params *SearchVariablesParams, body SearchVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchVariablesRequestWithBody(server, "application/json", bodyReader)
+	return NewSearchVariablesRequestWithBody(server, params, "application/json", bodyReader)
 }
 
 // NewSearchVariablesRequestWithBody generates requests for SearchVariables with any type of body
-func NewSearchVariablesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchVariablesRequestWithBody(server string, params *SearchVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -17434,6 +17465,28 @@ func NewSearchVariablesRequestWithBody(server string, contentType string, body i
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -18084,9 +18137,9 @@ type ClientWithResponsesInterface interface {
 	GetUserTaskFormWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error)
 
 	// SearchUserTaskVariablesWithBodyWithResponse request with any body
-	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
-	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
 	// CreateUserWithBodyWithResponse request with any body
 	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
@@ -18110,9 +18163,9 @@ type ClientWithResponsesInterface interface {
 	UpdateUserWithResponse(ctx context.Context, username Username, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	// SearchVariablesWithBodyWithResponse request with any body
-	SearchVariablesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
+	SearchVariablesWithBodyWithResponse(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
-	SearchVariablesWithResponse(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
+	SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
 	// GetVariableWithResponse request
 	GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
@@ -23712,16 +23765,16 @@ func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, u
 }
 
 // SearchUserTaskVariablesWithBodyWithResponse request with arbitrary body returning *SearchUserTaskVariablesResponse
-func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
-	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchUserTaskVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
-	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, body, reqEditors...)
+func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23798,16 +23851,16 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userna
 }
 
 // SearchVariablesWithBodyWithResponse request with arbitrary body returning *SearchVariablesResponse
-func (c *ClientWithResponses) SearchVariablesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
-	rsp, err := c.SearchVariablesWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchVariablesWithBodyWithResponse(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
+	rsp, err := c.SearchVariablesWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
-	rsp, err := c.SearchVariables(ctx, body, reqEditors...)
+func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
+	rsp, err := c.SearchVariables(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
