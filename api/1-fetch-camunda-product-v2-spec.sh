@@ -19,6 +19,7 @@ TARGET_DIR="${SCRIPT_DIR}/camunda"
 REPO="git@github.com:camunda/camunda.git"
 SPEC_PATH='/zeebe/gateway-protocol/src/main/proto/rest-api.yaml'
 TAG="${1:-}"
+COMMIT_SHA=""
 
 cd "$SCRIPT_DIR"
 
@@ -35,19 +36,38 @@ fi
 
 if [ -z "$TAG" ]; then
   TAG="$(
-    git ls-remote --tags --refs "$REPO" \
-      | awk -F/ '{print $3}' \
-      | grep -E '^[0-9]+(\.[0-9]+){1,2}$' \
-      | sort -V \
+    git ls-remote --tags "$REPO" \
+      | awk '
+          $2 ~ /^refs\/tags\/[0-9]+(\.[0-9]+){1,2}(\^\{\})?$/ {
+            ref = $2
+            sub(/^refs\/tags\//, "", ref)
+            sub(/\^\{\}$/, "", ref)
+            print ref
+          }
+        ' \
+      | sort -uV \
       | tail -n1
   )"
 fi
 
-git -c advice.detachedHead=false clone --depth 1 --filter=blob:none --branch "$TAG" "$REPO" "$TARGET_DIR"
+COMMIT_SHA="$(
+  git ls-remote --tags "$REPO" "refs/tags/${TAG}^{}" "refs/tags/${TAG}" \
+    | awk 'NR==1 { print $1 }'
+)"
+
+if [ -z "$COMMIT_SHA" ]; then
+  echo "Could not resolve commit for tag: $TAG" >&2
+  exit 1
+fi
+
+git init "$TARGET_DIR" >/dev/null
+git -C "$TARGET_DIR" remote add origin "$REPO"
+git -C "$TARGET_DIR" sparse-checkout init --no-cone
+git -C "$TARGET_DIR" sparse-checkout set "$SPEC_PATH"
+git -C "$TARGET_DIR" fetch --depth 1 --filter=blob:none origin "$COMMIT_SHA"
+git -C "$TARGET_DIR" checkout --detach FETCH_HEAD >/dev/null
 
 cd "$TARGET_DIR"
-git sparse-checkout init --no-cone
-git sparse-checkout set "$SPEC_PATH"
 rm -rf "$TARGET_DIR/.git"
 
 echo "Fetched Camunda v2 product spec from $REPO at tag $TAG into $TARGET_DIR"
