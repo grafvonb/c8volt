@@ -31,7 +31,7 @@ aux_links:
 
 nav_external_links:
   - title: CLI Reference
-    url: /c8volt/cli/
+    url: /cli/
   - title: README
     url: https://github.com/grafvonb/c8volt/blob/main/README.md
 
