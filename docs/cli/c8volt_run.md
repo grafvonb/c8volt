@@ -1,5 +1,6 @@
 ---
 title: "c8volt run"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -45,5 +46,5 @@ c8volt run [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt run process-instance](c8volt_run_process-instance.md)	 - Run process instance(s) by process definition
+* [c8volt run process-instance](c8volt_run_process-instance.md)	 - Start process instance(s) and confirm they are active
 

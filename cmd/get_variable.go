@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +12,7 @@ var getVariableCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		_, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleNewCliError(cmd, log, cfg, err)
 		}
 
 		log.Info("Not implemented yet: get variable by name from process instance")

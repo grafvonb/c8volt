@@ -1,5 +1,6 @@
 ---
 title: "c8volt deploy"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -45,5 +46,5 @@ c8volt deploy [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt deploy process-definition](c8volt_deploy_process-definition.md)	 - Deploy a process definition
+* [c8volt deploy process-definition](c8volt_deploy_process-definition.md)	 - Deploy BPMN process definition files
 

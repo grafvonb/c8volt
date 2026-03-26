@@ -14,14 +14,17 @@ var (
 )
 
 var embedListCmd = &cobra.Command{
-	Use:     "list",
-	Short:   "List embedded (virtual) files containing process definitions",
+	Use:   "list",
+	Short: "List embedded (virtual) files containing process definitions",
+	Example: `  ./c8volt embed list
+  ./c8volt --json embed list`,
 	Aliases: []string{"ls"},
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())
 		cfg, err := config.FromContext(cmd.Context())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			_, noErrCodes := bootstrapFailureContext(cmd)
+			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(err))
 		}
 
 		files, err := embedded.List()

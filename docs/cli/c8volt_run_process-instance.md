@@ -1,11 +1,12 @@
 ---
 title: "c8volt run process-instance"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt run process-instance
 
-Run process instance(s) by process definition
+Start process instance(s) and confirm they are active
 
 ```
 c8volt run process-instance [flags]
@@ -14,7 +15,9 @@ c8volt run process-instance [flags]
 ### Examples
 
 ```
-./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --no-worker-limit
+  ./c8volt run pi -b C88_SimpleUserTask_Process
+  ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
 ```
 
 ### Options

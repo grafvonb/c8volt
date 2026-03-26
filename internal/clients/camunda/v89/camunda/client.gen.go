@@ -24,94 +24,12 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
-// Defines values for AuditLogActorTypeEnum.
-const (
-	AuditLogActorTypeEnumCLIENT AuditLogActorTypeEnum = "CLIENT"
-	AuditLogActorTypeEnumUSER   AuditLogActorTypeEnum = "USER"
-)
-
-// Defines values for AuditLogCategoryEnum.
-const (
-	AuditLogCategoryEnumADMIN    AuditLogCategoryEnum = "ADMIN"
-	AuditLogCategoryEnumOPERATOR AuditLogCategoryEnum = "OPERATOR"
-	AuditLogCategoryEnumUSERTASK AuditLogCategoryEnum = "USER_TASK"
-)
-
-// Defines values for AuditLogEntityTypeEnum.
-const (
-	AuditLogEntityTypeEnumAUTHORIZATION   AuditLogEntityTypeEnum = "AUTHORIZATION"
-	AuditLogEntityTypeEnumBATCH           AuditLogEntityTypeEnum = "BATCH"
-	AuditLogEntityTypeEnumDECISION        AuditLogEntityTypeEnum = "DECISION"
-	AuditLogEntityTypeEnumGROUP           AuditLogEntityTypeEnum = "GROUP"
-	AuditLogEntityTypeEnumINCIDENT        AuditLogEntityTypeEnum = "INCIDENT"
-	AuditLogEntityTypeEnumMAPPINGRULE     AuditLogEntityTypeEnum = "MAPPING_RULE"
-	AuditLogEntityTypeEnumPROCESSINSTANCE AuditLogEntityTypeEnum = "PROCESS_INSTANCE"
-	AuditLogEntityTypeEnumRESOURCE        AuditLogEntityTypeEnum = "RESOURCE"
-	AuditLogEntityTypeEnumROLE            AuditLogEntityTypeEnum = "ROLE"
-	AuditLogEntityTypeEnumTENANT          AuditLogEntityTypeEnum = "TENANT"
-	AuditLogEntityTypeEnumUSER            AuditLogEntityTypeEnum = "USER"
-	AuditLogEntityTypeEnumUSERTASK        AuditLogEntityTypeEnum = "USER_TASK"
-	AuditLogEntityTypeEnumVARIABLE        AuditLogEntityTypeEnum = "VARIABLE"
-)
-
-// Defines values for AuditLogOperationTypeEnum.
-const (
-	AuditLogOperationTypeEnumASSIGN   AuditLogOperationTypeEnum = "ASSIGN"
-	AuditLogOperationTypeEnumCANCEL   AuditLogOperationTypeEnum = "CANCEL"
-	AuditLogOperationTypeEnumCOMPLETE AuditLogOperationTypeEnum = "COMPLETE"
-	AuditLogOperationTypeEnumCREATE   AuditLogOperationTypeEnum = "CREATE"
-	AuditLogOperationTypeEnumDELETE   AuditLogOperationTypeEnum = "DELETE"
-	AuditLogOperationTypeEnumEVALUATE AuditLogOperationTypeEnum = "EVALUATE"
-	AuditLogOperationTypeEnumMIGRATE  AuditLogOperationTypeEnum = "MIGRATE"
-	AuditLogOperationTypeEnumMODIFY   AuditLogOperationTypeEnum = "MODIFY"
-	AuditLogOperationTypeEnumRESOLVE  AuditLogOperationTypeEnum = "RESOLVE"
-	AuditLogOperationTypeEnumRESUME   AuditLogOperationTypeEnum = "RESUME"
-	AuditLogOperationTypeEnumSUSPEND  AuditLogOperationTypeEnum = "SUSPEND"
-	AuditLogOperationTypeEnumUNASSIGN AuditLogOperationTypeEnum = "UNASSIGN"
-	AuditLogOperationTypeEnumUPDATE   AuditLogOperationTypeEnum = "UPDATE"
-)
-
-// Defines values for AuditLogResultEnum.
-const (
-	FAIL    AuditLogResultEnum = "FAIL"
-	SUCCESS AuditLogResultEnum = "SUCCESS"
-)
-
-// Defines values for AuditLogSearchQuerySortRequestField.
-const (
-	AuditLogSearchQuerySortRequestFieldActorId                 AuditLogSearchQuerySortRequestField = "actorId"
-	AuditLogSearchQuerySortRequestFieldActorType               AuditLogSearchQuerySortRequestField = "actorType"
-	AuditLogSearchQuerySortRequestFieldAnnotation              AuditLogSearchQuerySortRequestField = "annotation"
-	AuditLogSearchQuerySortRequestFieldAuditLogKey             AuditLogSearchQuerySortRequestField = "auditLogKey"
-	AuditLogSearchQuerySortRequestFieldBatchOperationKey       AuditLogSearchQuerySortRequestField = "batchOperationKey"
-	AuditLogSearchQuerySortRequestFieldBatchOperationType      AuditLogSearchQuerySortRequestField = "batchOperationType"
-	AuditLogSearchQuerySortRequestFieldCategory                AuditLogSearchQuerySortRequestField = "category"
-	AuditLogSearchQuerySortRequestFieldDecisionDefinitionId    AuditLogSearchQuerySortRequestField = "decisionDefinitionId"
-	AuditLogSearchQuerySortRequestFieldDecisionDefinitionKey   AuditLogSearchQuerySortRequestField = "decisionDefinitionKey"
-	AuditLogSearchQuerySortRequestFieldDecisionEvaluationKey   AuditLogSearchQuerySortRequestField = "decisionEvaluationKey"
-	AuditLogSearchQuerySortRequestFieldDecisionRequirementsId  AuditLogSearchQuerySortRequestField = "decisionRequirementsId"
-	AuditLogSearchQuerySortRequestFieldDecisionRequirementsKey AuditLogSearchQuerySortRequestField = "decisionRequirementsKey"
-	AuditLogSearchQuerySortRequestFieldElementInstanceKey      AuditLogSearchQuerySortRequestField = "elementInstanceKey"
-	AuditLogSearchQuerySortRequestFieldEntityKey               AuditLogSearchQuerySortRequestField = "entityKey"
-	AuditLogSearchQuerySortRequestFieldEntityType              AuditLogSearchQuerySortRequestField = "entityType"
-	AuditLogSearchQuerySortRequestFieldJobKey                  AuditLogSearchQuerySortRequestField = "jobKey"
-	AuditLogSearchQuerySortRequestFieldOperationType           AuditLogSearchQuerySortRequestField = "operationType"
-	AuditLogSearchQuerySortRequestFieldProcessDefinitionId     AuditLogSearchQuerySortRequestField = "processDefinitionId"
-	AuditLogSearchQuerySortRequestFieldProcessDefinitionKey    AuditLogSearchQuerySortRequestField = "processDefinitionKey"
-	AuditLogSearchQuerySortRequestFieldProcessInstanceKey      AuditLogSearchQuerySortRequestField = "processInstanceKey"
-	AuditLogSearchQuerySortRequestFieldResult                  AuditLogSearchQuerySortRequestField = "result"
-	AuditLogSearchQuerySortRequestFieldTenantId                AuditLogSearchQuerySortRequestField = "tenantId"
-	AuditLogSearchQuerySortRequestFieldTimestamp               AuditLogSearchQuerySortRequestField = "timestamp"
-	AuditLogSearchQuerySortRequestFieldUserTaskKey             AuditLogSearchQuerySortRequestField = "userTaskKey"
-)
-
 // Defines values for AuthorizationSearchQuerySortRequestField.
 const (
-	OwnerId              AuthorizationSearchQuerySortRequestField = "ownerId"
-	OwnerType            AuthorizationSearchQuerySortRequestField = "ownerType"
-	ResourceId           AuthorizationSearchQuerySortRequestField = "resourceId"
-	ResourcePropertyName AuthorizationSearchQuerySortRequestField = "resourcePropertyName"
-	ResourceType         AuthorizationSearchQuerySortRequestField = "resourceType"
+	OwnerId      AuthorizationSearchQuerySortRequestField = "ownerId"
+	OwnerType    AuthorizationSearchQuerySortRequestField = "ownerType"
+	ResourceId   AuthorizationSearchQuerySortRequestField = "resourceId"
+	ResourceType AuthorizationSearchQuerySortRequestField = "resourceType"
 )
 
 // Defines values for BatchOperationErrorType.
@@ -145,6 +63,17 @@ const (
 	BatchOperationItemStateEnumFAILED    BatchOperationItemStateEnum = "FAILED"
 )
 
+// Defines values for BatchOperationResponseState.
+const (
+	BatchOperationResponseStateACTIVE             BatchOperationResponseState = "ACTIVE"
+	BatchOperationResponseStateCANCELED           BatchOperationResponseState = "CANCELED"
+	BatchOperationResponseStateCOMPLETED          BatchOperationResponseState = "COMPLETED"
+	BatchOperationResponseStateCREATED            BatchOperationResponseState = "CREATED"
+	BatchOperationResponseStateFAILED             BatchOperationResponseState = "FAILED"
+	BatchOperationResponseStatePARTIALLYCOMPLETED BatchOperationResponseState = "PARTIALLY_COMPLETED"
+	BatchOperationResponseStateSUSPENDED          BatchOperationResponseState = "SUSPENDED"
+)
+
 // Defines values for BatchOperationSearchQuerySortRequestField.
 const (
 	BatchOperationSearchQuerySortRequestFieldBatchOperationKey BatchOperationSearchQuerySortRequestField = "batchOperationKey"
@@ -167,29 +96,15 @@ const (
 
 // Defines values for BatchOperationTypeEnum.
 const (
-	ADDVARIABLE              BatchOperationTypeEnum = "ADD_VARIABLE"
-	CANCELPROCESSINSTANCE    BatchOperationTypeEnum = "CANCEL_PROCESS_INSTANCE"
-	DELETEDECISIONDEFINITION BatchOperationTypeEnum = "DELETE_DECISION_DEFINITION"
-	DELETEPROCESSDEFINITION  BatchOperationTypeEnum = "DELETE_PROCESS_DEFINITION"
-	DELETEPROCESSINSTANCE    BatchOperationTypeEnum = "DELETE_PROCESS_INSTANCE"
-	MIGRATEPROCESSINSTANCE   BatchOperationTypeEnum = "MIGRATE_PROCESS_INSTANCE"
-	MODIFYPROCESSINSTANCE    BatchOperationTypeEnum = "MODIFY_PROCESS_INSTANCE"
-	RESOLVEINCIDENT          BatchOperationTypeEnum = "RESOLVE_INCIDENT"
-	UPDATEVARIABLE           BatchOperationTypeEnum = "UPDATE_VARIABLE"
-)
-
-// Defines values for ClusterVariableScopeEnum.
-const (
-	ClusterVariableScopeEnumGLOBAL ClusterVariableScopeEnum = "GLOBAL"
-	ClusterVariableScopeEnumTENANT ClusterVariableScopeEnum = "TENANT"
-)
-
-// Defines values for ClusterVariableSearchQuerySortRequestField.
-const (
-	ClusterVariableSearchQuerySortRequestFieldName     ClusterVariableSearchQuerySortRequestField = "name"
-	ClusterVariableSearchQuerySortRequestFieldScope    ClusterVariableSearchQuerySortRequestField = "scope"
-	ClusterVariableSearchQuerySortRequestFieldTenantId ClusterVariableSearchQuerySortRequestField = "tenantId"
-	ClusterVariableSearchQuerySortRequestFieldValue    ClusterVariableSearchQuerySortRequestField = "value"
+	BatchOperationTypeEnumADDVARIABLE              BatchOperationTypeEnum = "ADD_VARIABLE"
+	BatchOperationTypeEnumCANCELPROCESSINSTANCE    BatchOperationTypeEnum = "CANCEL_PROCESS_INSTANCE"
+	BatchOperationTypeEnumDELETEDECISIONDEFINITION BatchOperationTypeEnum = "DELETE_DECISION_DEFINITION"
+	BatchOperationTypeEnumDELETEPROCESSDEFINITION  BatchOperationTypeEnum = "DELETE_PROCESS_DEFINITION"
+	BatchOperationTypeEnumDELETEPROCESSINSTANCE    BatchOperationTypeEnum = "DELETE_PROCESS_INSTANCE"
+	BatchOperationTypeEnumMIGRATEPROCESSINSTANCE   BatchOperationTypeEnum = "MIGRATE_PROCESS_INSTANCE"
+	BatchOperationTypeEnumMODIFYPROCESSINSTANCE    BatchOperationTypeEnum = "MODIFY_PROCESS_INSTANCE"
+	BatchOperationTypeEnumRESOLVEINCIDENT          BatchOperationTypeEnum = "RESOLVE_INCIDENT"
+	BatchOperationTypeEnumUPDATEVARIABLE           BatchOperationTypeEnum = "UPDATE_VARIABLE"
 )
 
 // Defines values for CorrelatedMessageSubscriptionSearchQuerySortRequestField.
@@ -224,6 +139,7 @@ const (
 	DecisionDefinitionTypeEnumDECISIONTABLE     DecisionDefinitionTypeEnum = "DECISION_TABLE"
 	DecisionDefinitionTypeEnumLITERALEXPRESSION DecisionDefinitionTypeEnum = "LITERAL_EXPRESSION"
 	DecisionDefinitionTypeEnumUNKNOWN           DecisionDefinitionTypeEnum = "UNKNOWN"
+	DecisionDefinitionTypeEnumUNSPECIFIED       DecisionDefinitionTypeEnum = "UNSPECIFIED"
 )
 
 // Defines values for DecisionInstanceSearchQuerySortRequestField.
@@ -240,7 +156,6 @@ const (
 	DecisionInstanceSearchQuerySortRequestFieldEvaluationFailure             DecisionInstanceSearchQuerySortRequestField = "evaluationFailure"
 	DecisionInstanceSearchQuerySortRequestFieldProcessDefinitionKey          DecisionInstanceSearchQuerySortRequestField = "processDefinitionKey"
 	DecisionInstanceSearchQuerySortRequestFieldProcessInstanceKey            DecisionInstanceSearchQuerySortRequestField = "processInstanceKey"
-	DecisionInstanceSearchQuerySortRequestFieldRootDecisionDefinitionKey     DecisionInstanceSearchQuerySortRequestField = "rootDecisionDefinitionKey"
 	DecisionInstanceSearchQuerySortRequestFieldState                         DecisionInstanceSearchQuerySortRequestField = "state"
 	DecisionInstanceSearchQuerySortRequestFieldTenantId                      DecisionInstanceSearchQuerySortRequestField = "tenantId"
 )
@@ -249,6 +164,7 @@ const (
 const (
 	DecisionInstanceStateEnumEVALUATED   DecisionInstanceStateEnum = "EVALUATED"
 	DecisionInstanceStateEnumFAILED      DecisionInstanceStateEnum = "FAILED"
+	DecisionInstanceStateEnumUNKNOWN     DecisionInstanceStateEnum = "UNKNOWN"
 	DecisionInstanceStateEnumUNSPECIFIED DecisionInstanceStateEnum = "UNSPECIFIED"
 )
 
@@ -367,6 +283,62 @@ const (
 	GroupUserSearchQuerySortRequestFieldUsername GroupUserSearchQuerySortRequestField = "username"
 )
 
+// Defines values for IncidentFilterErrorType.
+const (
+	IncidentFilterErrorTypeADHOCSUBPROCESSNORETRIES   IncidentFilterErrorType = "AD_HOC_SUB_PROCESS_NO_RETRIES"
+	IncidentFilterErrorTypeCALLEDDECISIONERROR        IncidentFilterErrorType = "CALLED_DECISION_ERROR"
+	IncidentFilterErrorTypeCALLEDELEMENTERROR         IncidentFilterErrorType = "CALLED_ELEMENT_ERROR"
+	IncidentFilterErrorTypeCONDITIONERROR             IncidentFilterErrorType = "CONDITION_ERROR"
+	IncidentFilterErrorTypeDECISIONEVALUATIONERROR    IncidentFilterErrorType = "DECISION_EVALUATION_ERROR"
+	IncidentFilterErrorTypeEXECUTIONLISTENERNORETRIES IncidentFilterErrorType = "EXECUTION_LISTENER_NO_RETRIES"
+	IncidentFilterErrorTypeEXTRACTVALUEERROR          IncidentFilterErrorType = "EXTRACT_VALUE_ERROR"
+	IncidentFilterErrorTypeFORMNOTFOUND               IncidentFilterErrorType = "FORM_NOT_FOUND"
+	IncidentFilterErrorTypeIOMAPPINGERROR             IncidentFilterErrorType = "IO_MAPPING_ERROR"
+	IncidentFilterErrorTypeJOBNORETRIES               IncidentFilterErrorType = "JOB_NO_RETRIES"
+	IncidentFilterErrorTypeMESSAGESIZEEXCEEDED        IncidentFilterErrorType = "MESSAGE_SIZE_EXCEEDED"
+	IncidentFilterErrorTypeRESOURCENOTFOUND           IncidentFilterErrorType = "RESOURCE_NOT_FOUND"
+	IncidentFilterErrorTypeTASKLISTENERNORETRIES      IncidentFilterErrorType = "TASK_LISTENER_NO_RETRIES"
+	IncidentFilterErrorTypeUNHANDLEDERROREVENT        IncidentFilterErrorType = "UNHANDLED_ERROR_EVENT"
+	IncidentFilterErrorTypeUNKNOWN                    IncidentFilterErrorType = "UNKNOWN"
+	IncidentFilterErrorTypeUNSPECIFIED                IncidentFilterErrorType = "UNSPECIFIED"
+)
+
+// Defines values for IncidentFilterState.
+const (
+	IncidentFilterStateACTIVE   IncidentFilterState = "ACTIVE"
+	IncidentFilterStateMIGRATED IncidentFilterState = "MIGRATED"
+	IncidentFilterStatePENDING  IncidentFilterState = "PENDING"
+	IncidentFilterStateRESOLVED IncidentFilterState = "RESOLVED"
+)
+
+// Defines values for IncidentResultErrorType.
+const (
+	IncidentResultErrorTypeADHOCSUBPROCESSNORETRIES   IncidentResultErrorType = "AD_HOC_SUB_PROCESS_NO_RETRIES"
+	IncidentResultErrorTypeCALLEDDECISIONERROR        IncidentResultErrorType = "CALLED_DECISION_ERROR"
+	IncidentResultErrorTypeCALLEDELEMENTERROR         IncidentResultErrorType = "CALLED_ELEMENT_ERROR"
+	IncidentResultErrorTypeCONDITIONERROR             IncidentResultErrorType = "CONDITION_ERROR"
+	IncidentResultErrorTypeDECISIONEVALUATIONERROR    IncidentResultErrorType = "DECISION_EVALUATION_ERROR"
+	IncidentResultErrorTypeEXECUTIONLISTENERNORETRIES IncidentResultErrorType = "EXECUTION_LISTENER_NO_RETRIES"
+	IncidentResultErrorTypeEXTRACTVALUEERROR          IncidentResultErrorType = "EXTRACT_VALUE_ERROR"
+	IncidentResultErrorTypeFORMNOTFOUND               IncidentResultErrorType = "FORM_NOT_FOUND"
+	IncidentResultErrorTypeIOMAPPINGERROR             IncidentResultErrorType = "IO_MAPPING_ERROR"
+	IncidentResultErrorTypeJOBNORETRIES               IncidentResultErrorType = "JOB_NO_RETRIES"
+	IncidentResultErrorTypeMESSAGESIZEEXCEEDED        IncidentResultErrorType = "MESSAGE_SIZE_EXCEEDED"
+	IncidentResultErrorTypeRESOURCENOTFOUND           IncidentResultErrorType = "RESOURCE_NOT_FOUND"
+	IncidentResultErrorTypeTASKLISTENERNORETRIES      IncidentResultErrorType = "TASK_LISTENER_NO_RETRIES"
+	IncidentResultErrorTypeUNHANDLEDERROREVENT        IncidentResultErrorType = "UNHANDLED_ERROR_EVENT"
+	IncidentResultErrorTypeUNKNOWN                    IncidentResultErrorType = "UNKNOWN"
+	IncidentResultErrorTypeUNSPECIFIED                IncidentResultErrorType = "UNSPECIFIED"
+)
+
+// Defines values for IncidentResultState.
+const (
+	IncidentResultStateACTIVE   IncidentResultState = "ACTIVE"
+	IncidentResultStateMIGRATED IncidentResultState = "MIGRATED"
+	IncidentResultStatePENDING  IncidentResultState = "PENDING"
+	IncidentResultStateRESOLVED IncidentResultState = "RESOLVED"
+)
+
 // Defines values for IncidentSearchQuerySortRequestField.
 const (
 	IncidentSearchQuerySortRequestFieldCreationTime         IncidentSearchQuerySortRequestField = "creationTime"
@@ -403,9 +375,15 @@ const (
 	JobListenerEventTypeEnumUPDATING    JobListenerEventTypeEnum = "UPDATING"
 )
 
+// Defines values for JobResultType.
+const (
+	JobResultTypeAdHocSubProcess JobResultType = "adHocSubProcess"
+	JobResultTypeUserTask        JobResultType = "userTask"
+)
+
 // Defines values for JobResultAdHocSubProcessType.
 const (
-	AdHocSubProcess JobResultAdHocSubProcessType = "adHocSubProcess"
+	JobResultAdHocSubProcessTypeAdHocSubProcess JobResultAdHocSubProcessType = "adHocSubProcess"
 )
 
 // Defines values for JobResultUserTaskType.
@@ -415,26 +393,25 @@ const (
 
 // Defines values for JobSearchQuerySortRequestField.
 const (
-	JobSearchQuerySortRequestFieldDeadline                 JobSearchQuerySortRequestField = "deadline"
-	JobSearchQuerySortRequestFieldDeniedReason             JobSearchQuerySortRequestField = "deniedReason"
-	JobSearchQuerySortRequestFieldElementId                JobSearchQuerySortRequestField = "elementId"
-	JobSearchQuerySortRequestFieldElementInstanceKey       JobSearchQuerySortRequestField = "elementInstanceKey"
-	JobSearchQuerySortRequestFieldEndTime                  JobSearchQuerySortRequestField = "endTime"
-	JobSearchQuerySortRequestFieldErrorCode                JobSearchQuerySortRequestField = "errorCode"
-	JobSearchQuerySortRequestFieldErrorMessage             JobSearchQuerySortRequestField = "errorMessage"
-	JobSearchQuerySortRequestFieldHasFailedWithRetriesLeft JobSearchQuerySortRequestField = "hasFailedWithRetriesLeft"
-	JobSearchQuerySortRequestFieldIsDenied                 JobSearchQuerySortRequestField = "isDenied"
-	JobSearchQuerySortRequestFieldJobKey                   JobSearchQuerySortRequestField = "jobKey"
-	JobSearchQuerySortRequestFieldKind                     JobSearchQuerySortRequestField = "kind"
-	JobSearchQuerySortRequestFieldListenerEventType        JobSearchQuerySortRequestField = "listenerEventType"
-	JobSearchQuerySortRequestFieldProcessDefinitionId      JobSearchQuerySortRequestField = "processDefinitionId"
-	JobSearchQuerySortRequestFieldProcessDefinitionKey     JobSearchQuerySortRequestField = "processDefinitionKey"
-	JobSearchQuerySortRequestFieldProcessInstanceKey       JobSearchQuerySortRequestField = "processInstanceKey"
-	JobSearchQuerySortRequestFieldRetries                  JobSearchQuerySortRequestField = "retries"
-	JobSearchQuerySortRequestFieldState                    JobSearchQuerySortRequestField = "state"
-	JobSearchQuerySortRequestFieldTenantId                 JobSearchQuerySortRequestField = "tenantId"
-	JobSearchQuerySortRequestFieldType                     JobSearchQuerySortRequestField = "type"
-	JobSearchQuerySortRequestFieldWorker                   JobSearchQuerySortRequestField = "worker"
+	JobSearchQuerySortRequestFieldDeadline             JobSearchQuerySortRequestField = "deadline"
+	JobSearchQuerySortRequestFieldDeniedReason         JobSearchQuerySortRequestField = "deniedReason"
+	JobSearchQuerySortRequestFieldElementId            JobSearchQuerySortRequestField = "elementId"
+	JobSearchQuerySortRequestFieldElementInstanceKey   JobSearchQuerySortRequestField = "elementInstanceKey"
+	JobSearchQuerySortRequestFieldEndTime              JobSearchQuerySortRequestField = "endTime"
+	JobSearchQuerySortRequestFieldErrorCode            JobSearchQuerySortRequestField = "errorCode"
+	JobSearchQuerySortRequestFieldErrorMessage         JobSearchQuerySortRequestField = "errorMessage"
+	JobSearchQuerySortRequestFieldIsDenied             JobSearchQuerySortRequestField = "isDenied"
+	JobSearchQuerySortRequestFieldJobKey               JobSearchQuerySortRequestField = "jobKey"
+	JobSearchQuerySortRequestFieldKind                 JobSearchQuerySortRequestField = "kind"
+	JobSearchQuerySortRequestFieldListenerEventType    JobSearchQuerySortRequestField = "listenerEventType"
+	JobSearchQuerySortRequestFieldProcessDefinitionId  JobSearchQuerySortRequestField = "processDefinitionId"
+	JobSearchQuerySortRequestFieldProcessDefinitionKey JobSearchQuerySortRequestField = "processDefinitionKey"
+	JobSearchQuerySortRequestFieldProcessInstanceKey   JobSearchQuerySortRequestField = "processInstanceKey"
+	JobSearchQuerySortRequestFieldRetries              JobSearchQuerySortRequestField = "retries"
+	JobSearchQuerySortRequestFieldState                JobSearchQuerySortRequestField = "state"
+	JobSearchQuerySortRequestFieldTenantId             JobSearchQuerySortRequestField = "tenantId"
+	JobSearchQuerySortRequestFieldType                 JobSearchQuerySortRequestField = "type"
+	JobSearchQuerySortRequestFieldWorker               JobSearchQuerySortRequestField = "worker"
 )
 
 // Defines values for JobStateEnum.
@@ -507,8 +484,6 @@ const (
 const (
 	PermissionTypeEnumACCESS                                       PermissionTypeEnum = "ACCESS"
 	PermissionTypeEnumCANCELPROCESSINSTANCE                        PermissionTypeEnum = "CANCEL_PROCESS_INSTANCE"
-	PermissionTypeEnumCLAIM                                        PermissionTypeEnum = "CLAIM"
-	PermissionTypeEnumCOMPLETE                                     PermissionTypeEnum = "COMPLETE"
 	PermissionTypeEnumCREATE                                       PermissionTypeEnum = "CREATE"
 	PermissionTypeEnumCREATEBATCHOPERATIONCANCELPROCESSINSTANCE    PermissionTypeEnum = "CREATE_BATCH_OPERATION_CANCEL_PROCESS_INSTANCE"
 	PermissionTypeEnumCREATEBATCHOPERATIONDELETEDECISIONDEFINITION PermissionTypeEnum = "CREATE_BATCH_OPERATION_DELETE_DECISION_DEFINITION"
@@ -540,23 +515,6 @@ const (
 	PermissionTypeEnumUPDATEUSERTASK                               PermissionTypeEnum = "UPDATE_USER_TASK"
 )
 
-// Defines values for ProcessDefinitionInstanceStatisticsQuerySortRequestField.
-const (
-	ProcessDefinitionInstanceStatisticsQuerySortRequestFieldActiveInstancesWithIncidentCount    ProcessDefinitionInstanceStatisticsQuerySortRequestField = "activeInstancesWithIncidentCount"
-	ProcessDefinitionInstanceStatisticsQuerySortRequestFieldActiveInstancesWithoutIncidentCount ProcessDefinitionInstanceStatisticsQuerySortRequestField = "activeInstancesWithoutIncidentCount"
-	ProcessDefinitionInstanceStatisticsQuerySortRequestFieldProcessDefinitionId                 ProcessDefinitionInstanceStatisticsQuerySortRequestField = "processDefinitionId"
-)
-
-// Defines values for ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField.
-const (
-	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldActiveInstancesWithIncidentCount    ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "activeInstancesWithIncidentCount"
-	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldActiveInstancesWithoutIncidentCount ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "activeInstancesWithoutIncidentCount"
-	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionId                 ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionId"
-	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionKey                ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionKey"
-	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionName               ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionName"
-	ProcessDefinitionInstanceVersionStatisticsQuerySortRequestFieldProcessDefinitionVersion            ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField = "processDefinitionVersion"
-)
-
 // Defines values for ProcessDefinitionSearchQuerySortRequestField.
 const (
 	ProcessDefinitionSearchQuerySortRequestFieldName                 ProcessDefinitionSearchQuerySortRequestField = "name"
@@ -566,6 +524,11 @@ const (
 	ProcessDefinitionSearchQuerySortRequestFieldTenantId             ProcessDefinitionSearchQuerySortRequestField = "tenantId"
 	ProcessDefinitionSearchQuerySortRequestFieldVersion              ProcessDefinitionSearchQuerySortRequestField = "version"
 	ProcessDefinitionSearchQuerySortRequestFieldVersionTag           ProcessDefinitionSearchQuerySortRequestField = "versionTag"
+)
+
+// Defines values for ProcessInstanceCreationRuntimeInstructionType.
+const (
+	TERMINATEPROCESSINSTANCE ProcessInstanceCreationRuntimeInstructionType = "TERMINATE_PROCESS_INSTANCE"
 )
 
 // Defines values for ProcessInstanceCreationTerminateInstructionType.
@@ -599,22 +562,21 @@ const (
 
 // Defines values for ResourceTypeEnum.
 const (
-	ResourceTypeEnumAUTHORIZATION                  ResourceTypeEnum = "AUTHORIZATION"
-	ResourceTypeEnumBATCH                          ResourceTypeEnum = "BATCH"
-	ResourceTypeEnumCOMPONENT                      ResourceTypeEnum = "COMPONENT"
-	ResourceTypeEnumDECISIONDEFINITION             ResourceTypeEnum = "DECISION_DEFINITION"
-	ResourceTypeEnumDECISIONREQUIREMENTSDEFINITION ResourceTypeEnum = "DECISION_REQUIREMENTS_DEFINITION"
-	ResourceTypeEnumDOCUMENT                       ResourceTypeEnum = "DOCUMENT"
-	ResourceTypeEnumGROUP                          ResourceTypeEnum = "GROUP"
-	ResourceTypeEnumMAPPINGRULE                    ResourceTypeEnum = "MAPPING_RULE"
-	ResourceTypeEnumMESSAGE                        ResourceTypeEnum = "MESSAGE"
-	ResourceTypeEnumPROCESSDEFINITION              ResourceTypeEnum = "PROCESS_DEFINITION"
-	ResourceTypeEnumRESOURCE                       ResourceTypeEnum = "RESOURCE"
-	ResourceTypeEnumROLE                           ResourceTypeEnum = "ROLE"
-	ResourceTypeEnumSYSTEM                         ResourceTypeEnum = "SYSTEM"
-	ResourceTypeEnumTENANT                         ResourceTypeEnum = "TENANT"
-	ResourceTypeEnumUSER                           ResourceTypeEnum = "USER"
-	ResourceTypeEnumUSERTASK                       ResourceTypeEnum = "USER_TASK"
+	AUTHORIZATION                  ResourceTypeEnum = "AUTHORIZATION"
+	BATCH                          ResourceTypeEnum = "BATCH"
+	COMPONENT                      ResourceTypeEnum = "COMPONENT"
+	DECISIONDEFINITION             ResourceTypeEnum = "DECISION_DEFINITION"
+	DECISIONREQUIREMENTSDEFINITION ResourceTypeEnum = "DECISION_REQUIREMENTS_DEFINITION"
+	DOCUMENT                       ResourceTypeEnum = "DOCUMENT"
+	GROUP                          ResourceTypeEnum = "GROUP"
+	MAPPINGRULE                    ResourceTypeEnum = "MAPPING_RULE"
+	MESSAGE                        ResourceTypeEnum = "MESSAGE"
+	PROCESSDEFINITION              ResourceTypeEnum = "PROCESS_DEFINITION"
+	RESOURCE                       ResourceTypeEnum = "RESOURCE"
+	ROLE                           ResourceTypeEnum = "ROLE"
+	SYSTEM                         ResourceTypeEnum = "SYSTEM"
+	TENANT                         ResourceTypeEnum = "TENANT"
+	USER                           ResourceTypeEnum = "USER"
 )
 
 // Defines values for RoleClientSearchQuerySortRequestField.
@@ -725,7 +687,9 @@ type ActivatedJobResult struct {
 	Deadline int64 `json:"deadline"`
 
 	// ElementId The associated task element ID.
-	ElementId          ElementId          `json:"elementId"`
+	ElementId ElementId `json:"elementId"`
+
+	// ElementInstanceKey The unique key identifying the associated task, unique within the scope of the process instance.
 	ElementInstanceKey ElementInstanceKey `json:"elementInstanceKey"`
 
 	// JobKey The key, a unique identifier for the job.
@@ -787,24 +751,6 @@ type AdHocSubProcessActivateActivityReference struct {
 
 	// Variables Variables to be set when activating the element.
 	Variables *map[string]interface{} `json:"variables,omitempty"`
-}
-
-// AdvancedAuditLogKeyFilter Advanced AuditLogKey filter.
-type AdvancedAuditLogKeyFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *AuditLogKey `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]AuditLogKey `json:"$in,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *AuditLogKey `json:"$neq,omitempty"`
-
-	// NotIn Checks if the property matches none of the provided values.
-	NotIn *[]AuditLogKey `json:"$notIn,omitempty"`
 }
 
 // AdvancedBatchOperationItemStateFilter Advanced BatchOperationItemStateEnum filter.
@@ -882,56 +828,6 @@ type AdvancedBatchOperationTypeFilter struct {
 	Neq *BatchOperationTypeEnum `json:"$neq,omitempty"`
 }
 
-// AdvancedCategoryFilter Advanced AuditLogCategoryEnum filter.
-type AdvancedCategoryFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *AuditLogCategoryEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]AuditLogCategoryEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *AuditLogCategoryEnum `json:"$neq,omitempty"`
-}
-
-// AdvancedClusterVariableScopeFilter Advanced ClusterVariableScopeEnum filter.
-type AdvancedClusterVariableScopeFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *ClusterVariableScopeEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]ClusterVariableScopeEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *ClusterVariableScopeEnum `json:"$neq,omitempty"`
-}
-
 // AdvancedDateTimeFilter Advanced date-time filter.
 type AdvancedDateTimeFilter struct {
 	// Eq Checks for equality with the provided value.
@@ -977,52 +873,6 @@ type AdvancedDecisionDefinitionKeyFilter struct {
 	NotIn *[]DecisionDefinitionKey `json:"$notIn,omitempty"`
 }
 
-// AdvancedDecisionEvaluationInstanceKeyFilter Advanced DecisionEvaluationInstanceKey filter.
-type AdvancedDecisionEvaluationInstanceKeyFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *DecisionEvaluationInstanceKey `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]DecisionEvaluationInstanceKey `json:"$in,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *DecisionEvaluationInstanceKey `json:"$neq,omitempty"`
-
-	// NotIn Checks if the property matches none of the provided values.
-	NotIn *[]DecisionEvaluationInstanceKey `json:"$notIn,omitempty"`
-}
-
-// AdvancedDecisionInstanceStateFilter Advanced DecisionInstanceStateEnum filter.
-type AdvancedDecisionInstanceStateFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *DecisionInstanceStateEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]DecisionInstanceStateEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *DecisionInstanceStateEnum `json:"$neq,omitempty"`
-
-	// NotIn Checks if the property matches none of the provided values.
-	NotIn *[]DecisionInstanceStateEnum `json:"$notIn,omitempty"`
-}
-
 // AdvancedElementInstanceKeyFilter Advanced ElementInstanceKey filter.
 type AdvancedElementInstanceKeyFilter struct {
 	// Eq Checks for equality with the provided value.
@@ -1034,7 +884,7 @@ type AdvancedElementInstanceKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]ElementInstanceKey `json:"$in,omitempty"`
 
-	// Neq Checks for inequality with the provided value.
+	// Neq Checks for equality with the provided value.
 	Neq *ElementInstanceKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
@@ -1064,87 +914,6 @@ type AdvancedElementInstanceStateFilter struct {
 
 	// Neq Checks for inequality with the provided value.
 	Neq *ElementInstanceStateEnum `json:"$neq,omitempty"`
-}
-
-// AdvancedEntityTypeFilter Advanced AuditLogEntityTypeEnum filter.
-type AdvancedEntityTypeFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *AuditLogEntityTypeEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]AuditLogEntityTypeEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *AuditLogEntityTypeEnum `json:"$neq,omitempty"`
-}
-
-// AdvancedIncidentErrorTypeFilter Advanced IncidentErrorTypeEnum filter
-type AdvancedIncidentErrorTypeFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *IncidentErrorTypeEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]IncidentErrorTypeEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *IncidentErrorTypeEnum `json:"$neq,omitempty"`
-
-	// NotIn Checks if the property does not match any of the provided values.
-	NotIn *[]IncidentErrorTypeEnum `json:"$notIn,omitempty"`
-}
-
-// AdvancedIncidentStateFilter Advanced IncidentStateEnum filter
-type AdvancedIncidentStateFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *IncidentStateEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]IncidentStateEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *IncidentStateEnum `json:"$neq,omitempty"`
-
-	// NotIn Checks if the property does not match any of the provided values.
-	NotIn *[]IncidentStateEnum `json:"$notIn,omitempty"`
 }
 
 // AdvancedIntegerFilter Advanced integer (int32) filter.
@@ -1185,7 +954,7 @@ type AdvancedJobKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]JobKey `json:"$in,omitempty"`
 
-	// Neq Checks for inequality with the provided value.
+	// Neq Checks for equality with the provided value.
 	Neq *JobKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
@@ -1310,31 +1079,6 @@ type AdvancedMessageSubscriptionStateFilter struct {
 	Neq *MessageSubscriptionStateEnum `json:"$neq,omitempty"`
 }
 
-// AdvancedOperationTypeFilter Advanced AuditLogOperationTypeEnum filter.
-type AdvancedOperationTypeFilter struct {
-	// Eq Checks for equality with the provided value.
-	Eq *AuditLogOperationTypeEnum `json:"$eq,omitempty"`
-
-	// Exists Checks if the current property exists.
-	Exists *bool `json:"$exists,omitempty"`
-
-	// In Checks if the property matches any of the provided values.
-	In *[]AuditLogOperationTypeEnum `json:"$in,omitempty"`
-
-	// Like Checks if the property matches the provided like value.
-	//
-	// Supported wildcard characters are:
-	//
-	// * `*`: matches zero, one, or multiple characters.
-	// * `?`: matches one, single character.
-	//
-	// Wildcard characters can be escaped with backslash, for instance: `\*`.
-	Like *LikeFilter `json:"$like,omitempty"`
-
-	// Neq Checks for inequality with the provided value.
-	Neq *AuditLogOperationTypeEnum `json:"$neq,omitempty"`
-}
-
 // AdvancedProcessDefinitionKeyFilter Advanced ProcessDefinitionKey filter.
 type AdvancedProcessDefinitionKeyFilter struct {
 	// Eq Checks for equality with the provided value.
@@ -1407,7 +1151,7 @@ type AdvancedScopeKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]ScopeKey `json:"$in,omitempty"`
 
-	// Neq Checks for inequality with the provided value.
+	// Neq Checks for equality with the provided value.
 	Neq *ScopeKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
@@ -1478,170 +1222,12 @@ type AdvancedVariableKeyFilter struct {
 	// In Checks if the property matches any of the provided values.
 	In *[]VariableKey `json:"$in,omitempty"`
 
-	// Neq Checks for inequality with the provided value.
+	// Neq Checks for equality with the provided value.
 	Neq *VariableKey `json:"$neq,omitempty"`
 
 	// NotIn Checks if the property matches none of the provided values.
 	NotIn *[]VariableKey `json:"$notIn,omitempty"`
 }
-
-// AuditLogActorTypeEnum defines model for AuditLogActorTypeEnum.
-type AuditLogActorTypeEnum string
-
-// AuditLogCategoryEnum defines model for AuditLogCategoryEnum.
-type AuditLogCategoryEnum string
-
-// AuditLogEntityTypeEnum defines model for AuditLogEntityTypeEnum.
-type AuditLogEntityTypeEnum string
-
-// AuditLogFilter Audit log filter request
-type AuditLogFilter struct {
-	// ActorId The actor ID search filter.
-	ActorId *StringFilterProperty `json:"actorId,omitempty"`
-
-	// ActorType The actor type search filter.
-	ActorType *AuditLogActorTypeEnum `json:"actorType,omitempty"`
-
-	// AuditLogKey The audit log key search filter.
-	AuditLogKey *AuditLogKeyFilterProperty `json:"auditLogKey,omitempty"`
-
-	// Category The category search filter.
-	Category *CategoryFilterProperty `json:"category,omitempty"`
-
-	// ElementInstanceKey The element instance key search filter.
-	ElementInstanceKey *ElementInstanceKeyFilterProperty `json:"elementInstanceKey,omitempty"`
-
-	// EntityType The entity type search filter.
-	EntityType *EntityTypeFilterProperty `json:"entityType,omitempty"`
-
-	// OperationType The operation type search filter.
-	OperationType *OperationTypeFilterProperty `json:"operationType,omitempty"`
-
-	// ProcessDefinitionKey The process definition key search filter.
-	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
-
-	// ProcessInstanceKey The process instance key search filter.
-	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
-
-	// Result The result search filter.
-	Result *AuditLogResultEnum `json:"result,omitempty"`
-
-	// TenantId The tenant ID search filter.
-	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
-
-	// Timestamp The timestamp search filter.
-	Timestamp *DateTimeFilterProperty `json:"timestamp,omitempty"`
-}
-
-// AuditLogKey Zeebe Engine resource key (Java long serialized as string)
-type AuditLogKey = LongKey
-
-// AuditLogKeyFilterProperty AuditLogKey property with full advanced search capabilities.
-type AuditLogKeyFilterProperty struct {
-	union json.RawMessage
-}
-
-// AuditLogKeyFilterProperty0 System-generated key for an audit log entry.
-type AuditLogKeyFilterProperty0 = AuditLogKey
-
-// AuditLogOperationTypeEnum defines model for AuditLogOperationTypeEnum.
-type AuditLogOperationTypeEnum string
-
-// AuditLogResult Audit log item.
-type AuditLogResult struct {
-	// ActorId The ID of the actor who performed the operation.
-	ActorId *string `json:"actorId,omitempty"`
-
-	// ActorType The type of the actor.
-	ActorType *AuditLogActorTypeEnum `json:"actorType,omitempty"`
-
-	// Annotation Additional notes about the operation.
-	Annotation *string `json:"annotation,omitempty"`
-
-	// AuditLogKey The unique key of the audit log entry.
-	AuditLogKey *AuditLogKey `json:"auditLogKey,omitempty"`
-
-	// BatchOperationKey Key of the batch operation.
-	BatchOperationKey *BatchOperationKey `json:"batchOperationKey,omitempty"`
-
-	// BatchOperationType The type of batch operation performed, if this is part of a batch.
-	BatchOperationType *BatchOperationTypeEnum `json:"batchOperationType,omitempty"`
-
-	// Category The category of the audit log.
-	Category *AuditLogCategoryEnum `json:"category,omitempty"`
-
-	// DecisionDefinitionId The decision definition ID.
-	DecisionDefinitionId *DecisionDefinitionId `json:"decisionDefinitionId,omitempty"`
-
-	// DecisionDefinitionKey The key of the decision definition.
-	DecisionDefinitionKey *DecisionDefinitionKey `json:"decisionDefinitionKey,omitempty"`
-
-	// DecisionEvaluationKey The key of the decision evaluation.
-	DecisionEvaluationKey *DecisionEvaluationKey `json:"decisionEvaluationKey,omitempty"`
-
-	// DecisionRequirementsId The decision requirements ID.
-	DecisionRequirementsId *string `json:"decisionRequirementsId,omitempty"`
-
-	// DecisionRequirementsKey The assigned key of the decision requirements.
-	DecisionRequirementsKey *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
-
-	// ElementInstanceKey The key of the element instance.
-	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
-
-	// EntityKey The key of the entity this audit log refers to.
-	EntityKey *string `json:"entityKey,omitempty"`
-
-	// EntityType The type of the entity.
-	EntityType *AuditLogEntityTypeEnum `json:"entityType,omitempty"`
-
-	// JobKey The key of the job.
-	JobKey *JobKey `json:"jobKey,omitempty"`
-
-	// OperationType The type of operation performed.
-	OperationType *AuditLogOperationTypeEnum `json:"operationType,omitempty"`
-
-	// ProcessDefinitionId The process definition ID.
-	ProcessDefinitionId *ProcessDefinitionId `json:"processDefinitionId,omitempty"`
-
-	// ProcessDefinitionKey The key of the process definition.
-	ProcessDefinitionKey *ProcessDefinitionKey `json:"processDefinitionKey,omitempty"`
-
-	// ProcessInstanceKey The key of the process instance.
-	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
-
-	// Result The result of the audit log.
-	Result *AuditLogResultEnum `json:"result,omitempty"`
-
-	// TenantId The tenant ID of the audit log.
-	TenantId *TenantId `json:"tenantId,omitempty"`
-
-	// Timestamp The timestamp when the operation occurred.
-	Timestamp *time.Time `json:"timestamp,omitempty"`
-
-	// UserTaskKey The key of the user task.
-	UserTaskKey *UserTaskKey `json:"userTaskKey,omitempty"`
-}
-
-// AuditLogResultEnum defines model for AuditLogResultEnum.
-type AuditLogResultEnum string
-
-// AuditLogSearchQueryRequest defines model for AuditLogSearchQueryRequest.
-type AuditLogSearchQueryRequest = SearchQueryRequest
-
-// AuditLogSearchQueryResult defines model for AuditLogSearchQueryResult.
-type AuditLogSearchQueryResult = SearchQueryResponse
-
-// AuditLogSearchQuerySortRequest defines model for AuditLogSearchQuerySortRequest.
-type AuditLogSearchQuerySortRequest struct {
-	// Field The field to sort by.
-	Field AuditLogSearchQuerySortRequestField `json:"field"`
-
-	// Order The order in which to sort the related field.
-	Order *SortOrderEnum `json:"order,omitempty"`
-}
-
-// AuditLogSearchQuerySortRequestField The field to sort by.
-type AuditLogSearchQuerySortRequestField string
 
 // AuthorizationCreateResult defines model for AuthorizationCreateResult.
 type AuthorizationCreateResult struct {
@@ -1660,15 +1246,15 @@ type AuthorizationFilter struct {
 	// ResourceIds The IDs of the resource to search permissions for.
 	ResourceIds *[]string `json:"resourceIds,omitempty"`
 
-	// ResourcePropertyNames The names of the resource properties to search permissions for.
-	ResourcePropertyNames *[]string `json:"resourcePropertyNames,omitempty"`
-
 	// ResourceType The type of resource to search permissions for.
 	ResourceType *ResourceTypeEnum `json:"resourceType,omitempty"`
 }
 
-// AuthorizationIdBasedRequest defines model for AuthorizationIdBasedRequest.
-type AuthorizationIdBasedRequest struct {
+// AuthorizationKey Zeebe Engine resource key (Java long serialized as string)
+type AuthorizationKey = LongKey
+
+// AuthorizationRequest defines model for AuthorizationRequest.
+type AuthorizationRequest struct {
 	// OwnerId The ID of the owner of the permissions.
 	OwnerId string `json:"ownerId"`
 
@@ -1685,33 +1271,6 @@ type AuthorizationIdBasedRequest struct {
 	ResourceType ResourceTypeEnum `json:"resourceType"`
 }
 
-// AuthorizationKey Zeebe Engine resource key (Java long serialized as string)
-type AuthorizationKey = LongKey
-
-// AuthorizationPropertyBasedRequest defines model for AuthorizationPropertyBasedRequest.
-type AuthorizationPropertyBasedRequest struct {
-	// OwnerId The ID of the owner of the permissions.
-	OwnerId string `json:"ownerId"`
-
-	// OwnerType The type of the owner of permissions.
-	OwnerType OwnerTypeEnum `json:"ownerType"`
-
-	// PermissionTypes The permission types to add.
-	PermissionTypes []PermissionTypeEnum `json:"permissionTypes"`
-
-	// ResourcePropertyName The name of the resource property on which this authorization is based.
-	ResourcePropertyName string `json:"resourcePropertyName"`
-
-	// ResourceType The type of resource to add permissions to.
-	ResourceType ResourceTypeEnum `json:"resourceType"`
-}
-
-// AuthorizationRequest Defines an authorization request.
-// Either an id-based or a property-based authorization can be provided.
-type AuthorizationRequest struct {
-	union json.RawMessage
-}
-
 // AuthorizationResult defines model for AuthorizationResult.
 type AuthorizationResult struct {
 	// AuthorizationKey The key of the authorization.
@@ -1726,11 +1285,8 @@ type AuthorizationResult struct {
 	// PermissionTypes Specifies the types of the permissions.
 	PermissionTypes *[]PermissionTypeEnum `json:"permissionTypes,omitempty"`
 
-	// ResourceId ID of the resource the permission relates to (mutually exclusive with `resourcePropertyName`).
+	// ResourceId ID of the resource the permission relates to.
 	ResourceId *string `json:"resourceId,omitempty"`
-
-	// ResourcePropertyName The name of the resource property the permission relates to (mutually exclusive with `resourceId`).
-	ResourcePropertyName *string `json:"resourcePropertyName,omitempty"`
 
 	// ResourceType The type of resource that the permissions relate to.
 	ResourceType *ResourceTypeEnum `json:"resourceType,omitempty"`
@@ -1756,8 +1312,13 @@ type AuthorizationSearchResult = SearchQueryResponse
 
 // BaseProcessInstanceFilterFields Base process instance search filter.
 type BaseProcessInstanceFilterFields struct {
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -1930,7 +1491,7 @@ type BatchOperationItemSearchQuerySortRequest struct {
 // BatchOperationItemSearchQuerySortRequestField The field to sort by.
 type BatchOperationItemSearchQuerySortRequestField string
 
-// BatchOperationItemStateEnum The batch operation item state.
+// BatchOperationItemStateEnum The state, one of ACTIVE, COMPLETED, TERMINATED.
 type BatchOperationItemStateEnum string
 
 // BatchOperationItemStateFilterProperty BatchOperationItemStateEnum property with full advanced search capabilities.
@@ -1938,7 +1499,7 @@ type BatchOperationItemStateFilterProperty struct {
 	union json.RawMessage
 }
 
-// BatchOperationItemStateFilterProperty0 The batch operation item state.
+// BatchOperationItemStateFilterProperty0 The state, one of ACTIVE, COMPLETED, TERMINATED.
 type BatchOperationItemStateFilterProperty0 = BatchOperationItemStateEnum
 
 // BatchOperationKey System-generated key for an batch operation.
@@ -1970,9 +1531,12 @@ type BatchOperationResponse struct {
 	// StartDate The start date of the batch operation.
 	StartDate *time.Time `json:"startDate,omitempty"`
 
-	// State The batch operation state.
-	State *BatchOperationStateEnum `json:"state,omitempty"`
+	// State The state of the batch operation.
+	State *BatchOperationResponseState `json:"state,omitempty"`
 }
+
+// BatchOperationResponseState The state of the batch operation.
+type BatchOperationResponseState string
 
 // BatchOperationSearchQuery defines model for BatchOperationSearchQuery.
 type BatchOperationSearchQuery = SearchQueryRequest
@@ -2072,14 +1636,6 @@ type CancelProcessInstanceRequest struct {
 	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
-// CategoryFilterProperty AuditLogCategoryEnum property with full advanced search capabilities.
-type CategoryFilterProperty struct {
-	union json.RawMessage
-}
-
-// CategoryFilterProperty0 defines model for .
-type CategoryFilterProperty0 = AuditLogCategoryEnum
-
 // Changeset JSON object with changed task attribute values.
 //
 // The following attributes can be adjusted with this endpoint, additional attributes
@@ -2120,71 +1676,6 @@ type ClockPinRequest struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
-// ClusterVariableResult Cluster variable response item.
-type ClusterVariableResult = ClusterVariableResultBase
-
-// ClusterVariableResultBase Cluster variable response item.
-type ClusterVariableResultBase struct {
-	// Name The name of the cluster variable. Unique within its scope (global or tenant-specific).
-	Name string `json:"name"`
-
-	// Scope The scope of a cluster variable.
-	Scope ClusterVariableScopeEnum `json:"scope"`
-
-	// TenantId Only provided if the cluster variable scope is TENANT.
-	TenantId *string `json:"tenantId,omitempty"`
-}
-
-// ClusterVariableScopeEnum The scope of a cluster variable.
-type ClusterVariableScopeEnum string
-
-// ClusterVariableScopeFilterProperty ClusterVariableScopeEnum property with full advanced search capabilities.
-type ClusterVariableScopeFilterProperty struct {
-	union json.RawMessage
-}
-
-// ClusterVariableScopeFilterProperty0 The scope of a cluster variable.
-type ClusterVariableScopeFilterProperty0 = ClusterVariableScopeEnum
-
-// ClusterVariableSearchQueryFilterRequest Cluster variable filter request.
-type ClusterVariableSearchQueryFilterRequest struct {
-	// IsTruncated Filter cluster variables by truncation status of their stored values. When true, returns only variables whose stored values are truncated (i.e., the value exceeds the storage size limit and is truncated in storage). When false, returns only variables with non-truncated stored values. This filter is based on the underlying storage characteristic, not the response format.
-	IsTruncated *bool `json:"isTruncated,omitempty"`
-
-	// Name Name of the cluster variable.
-	Name *StringFilterProperty `json:"name,omitempty"`
-
-	// Scope The scope filter for cluster variables.
-	Scope *ClusterVariableScopeFilterProperty `json:"scope,omitempty"`
-
-	// TenantId Tenant ID of this variable.
-	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
-
-	// Value The value of the cluster variable.
-	Value *StringFilterProperty `json:"value,omitempty"`
-}
-
-// ClusterVariableSearchQueryRequest defines model for ClusterVariableSearchQueryRequest.
-type ClusterVariableSearchQueryRequest = SearchQueryRequest
-
-// ClusterVariableSearchQueryResult defines model for ClusterVariableSearchQueryResult.
-type ClusterVariableSearchQueryResult = SearchQueryResponse
-
-// ClusterVariableSearchQuerySortRequest defines model for ClusterVariableSearchQuerySortRequest.
-type ClusterVariableSearchQuerySortRequest struct {
-	// Field The field to sort by.
-	Field ClusterVariableSearchQuerySortRequestField `json:"field"`
-
-	// Order The order in which to sort the related field.
-	Order *SortOrderEnum `json:"order,omitempty"`
-}
-
-// ClusterVariableSearchQuerySortRequestField The field to sort by.
-type ClusterVariableSearchQuerySortRequestField string
-
-// ClusterVariableSearchResult Cluster variable response item.
-type ClusterVariableSearchResult = ClusterVariableResultBase
-
 // CorrelatedMessageSubscriptionFilter Correlated message subscriptions search filter.
 type CorrelatedMessageSubscriptionFilter struct {
 	// CorrelationKey The correlation key of the message.
@@ -2211,14 +1702,14 @@ type CorrelatedMessageSubscriptionFilter struct {
 	// ProcessDefinitionId The process definition ID associated with this correlated message subscription.
 	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
 
-	// ProcessDefinitionKey The process definition key associated with this correlated message subscription. For intermediate message events, this only works for data created with 8.9 and later.
-	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
+	// ProcessDefinitionKey The process definition key associated with this correlated message subscription.
+	ProcessDefinitionKey *BasicStringFilterProperty `json:"processDefinitionKey,omitempty"`
 
 	// ProcessInstanceKey The process instance key associated with this correlated message subscription.
-	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey *BasicStringFilterProperty `json:"processInstanceKey,omitempty"`
 
 	// SubscriptionKey The subscription key that received the message.
-	SubscriptionKey *MessageSubscriptionKeyFilterProperty `json:"subscriptionKey,omitempty"`
+	SubscriptionKey *BasicStringFilterProperty `json:"subscriptionKey,omitempty"`
 
 	// TenantId The tenant ID associated with this correlated message subscription.
 	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
@@ -2280,15 +1771,6 @@ type CorrelatedMessageSubscriptionSearchQuerySortRequest struct {
 
 // CorrelatedMessageSubscriptionSearchQuerySortRequestField The field to sort by.
 type CorrelatedMessageSubscriptionSearchQuerySortRequestField string
-
-// CreateClusterVariableRequest defines model for CreateClusterVariableRequest.
-type CreateClusterVariableRequest struct {
-	// Name The name of the cluster variable. Must be unique within its scope (global or tenant-specific).
-	Name string `json:"name"`
-
-	// Value The value of the cluster variable. Can be any JSON object or primitive value. Will be serialized as a JSON string in responses.
-	Value map[string]interface{} `json:"value"`
-}
 
 // CreateProcessInstanceResult defines model for CreateProcessInstanceResult.
 type CreateProcessInstanceResult struct {
@@ -2363,7 +1845,7 @@ type DecisionDefinitionFilter struct {
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// Version The assigned version of the decision definition.
-	Version *int `json:"version,omitempty"`
+	Version *int32 `json:"version,omitempty"`
 }
 
 // DecisionDefinitionId Id of a decision definition, from the model. Only ids of decision definitions that are deployed are useful.
@@ -2401,7 +1883,7 @@ type DecisionDefinitionResult struct {
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// Version The assigned version of the decision definition.
-	Version *int `json:"version,omitempty"`
+	Version *int32 `json:"version,omitempty"`
 }
 
 // DecisionDefinitionSearchQuery defines model for DecisionDefinitionSearchQuery.
@@ -2454,14 +1936,6 @@ type DecisionEvaluationByKey struct {
 // DecisionEvaluationInstanceKey Zeebe Engine resource key (Java long serialized as string)
 type DecisionEvaluationInstanceKey = LongKey
 
-// DecisionEvaluationInstanceKeyFilterProperty DecisionEvaluationInstanceKey property with full advanced search capabilities.
-type DecisionEvaluationInstanceKeyFilterProperty struct {
-	union json.RawMessage
-}
-
-// DecisionEvaluationInstanceKeyFilterProperty0 System-generated key for a decision evaluation instance.
-type DecisionEvaluationInstanceKeyFilterProperty0 = DecisionEvaluationInstanceKey
-
 // DecisionEvaluationInstruction defines model for DecisionEvaluationInstruction.
 type DecisionEvaluationInstruction struct {
 	union json.RawMessage
@@ -2487,8 +1961,8 @@ type DecisionInstanceFilter struct {
 	// DecisionDefinitionVersion The version of the decision.
 	DecisionDefinitionVersion *int32 `json:"decisionDefinitionVersion,omitempty"`
 
-	// DecisionEvaluationInstanceKey The key of the decision evaluation instance.
-	DecisionEvaluationInstanceKey *DecisionEvaluationInstanceKeyFilterProperty `json:"decisionEvaluationInstanceKey,omitempty"`
+	// DecisionEvaluationInstanceKey System-generated key for a decision evaluation instance.
+	DecisionEvaluationInstanceKey *DecisionEvaluationInstanceKey `json:"decisionEvaluationInstanceKey,omitempty"`
 
 	// DecisionEvaluationKey The key of the parent decision evaluation. Note that this is not the identifier of an individual decision instance; the `decisionEvaluationInstanceKey` is the identifier for a decision instance.
 	DecisionEvaluationKey *DecisionEvaluationKey `json:"decisionEvaluationKey,omitempty"`
@@ -2508,11 +1982,8 @@ type DecisionInstanceFilter struct {
 	// ProcessInstanceKey The key of the process instance.
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
 
-	// RootDecisionDefinitionKey The key of the root decision definition.
-	RootDecisionDefinitionKey *DecisionDefinitionKeyFilterProperty `json:"rootDecisionDefinitionKey,omitempty"`
-
 	// State The state of the decision instance.
-	State *DecisionInstanceStateFilterProperty `json:"state,omitempty"`
+	State *DecisionInstanceStateEnum `json:"state,omitempty"`
 
 	// TenantId The tenant ID of the decision instance.
 	TenantId *TenantId `json:"tenantId,omitempty"`
@@ -2565,9 +2036,6 @@ type DecisionInstanceGetQueryResult struct {
 	// Result The result of the decision instance.
 	Result *string `json:"result,omitempty"`
 
-	// RootDecisionDefinitionKey The key of the root decision definition.
-	RootDecisionDefinitionKey *DecisionDefinitionKey `json:"rootDecisionDefinitionKey,omitempty"`
-
 	// State The state of the decision instance.
 	State *DecisionInstanceStateEnum `json:"state,omitempty"`
 
@@ -2619,9 +2087,6 @@ type DecisionInstanceResult struct {
 	// Result The result of the decision instance.
 	Result *string `json:"result,omitempty"`
 
-	// RootDecisionDefinitionKey The key of the root decision definition.
-	RootDecisionDefinitionKey *DecisionDefinitionKey `json:"rootDecisionDefinitionKey,omitempty"`
-
 	// State The state of the decision instance.
 	State *DecisionInstanceStateEnum `json:"state,omitempty"`
 
@@ -2650,26 +2115,18 @@ type DecisionInstanceSearchQuerySortRequestField string
 // DecisionInstanceStateEnum The state of the decision instance.
 type DecisionInstanceStateEnum string
 
-// DecisionInstanceStateFilterProperty DecisionInstanceStateEnum property with full advanced search capabilities.
-type DecisionInstanceStateFilterProperty struct {
-	union json.RawMessage
-}
-
-// DecisionInstanceStateFilterProperty0 The state of the decision instance.
-type DecisionInstanceStateFilterProperty0 = DecisionInstanceStateEnum
-
 // DecisionRequirementsFilter Decision requirements search filter.
 type DecisionRequirementsFilter struct {
 	// DecisionRequirementsId the DMN ID of the decision requirements.
 	DecisionRequirementsId *string `json:"decisionRequirementsId,omitempty"`
 
-	// DecisionRequirementsKey System-generated key for a deployed decision requirements definition.
+	// DecisionRequirementsKey The assigned key, which acts as a unique identifier for this decision requirements.
 	DecisionRequirementsKey *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
 
 	// DecisionRequirementsName The DMN name of the decision requirements.
 	DecisionRequirementsName *string `json:"decisionRequirementsName,omitempty"`
 
-	// ResourceName The name of the resource from which the decision requirements were parsed
+	// ResourceName The name of the resource from which the decision requirements were parsed.
 	ResourceName *string `json:"resourceName,omitempty"`
 
 	// TenantId The tenant ID of the decision requirements.
@@ -2730,16 +2187,23 @@ type DeleteResourceRequest struct {
 
 // DeploymentDecisionRequirementsResult Deployed decision requirements.
 type DeploymentDecisionRequirementsResult struct {
+	// DecisionRequirementsId The dmn decision requirements ID, as parsed during deployment; together with the versions forms a unique identifier for a specific decision.
 	DecisionRequirementsId *string `json:"decisionRequirementsId,omitempty"`
 
 	// DecisionRequirementsKey The assigned decision requirements key, which acts as a unique identifier for this decision requirements.
-	DecisionRequirementsKey  *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
-	DecisionRequirementsName *string                  `json:"decisionRequirementsName,omitempty"`
-	ResourceName             *string                  `json:"resourceName,omitempty"`
+	DecisionRequirementsKey *DecisionRequirementsKey `json:"decisionRequirementsKey,omitempty"`
+
+	// DecisionRequirementsName The DMN name of the decision requirements, as parsed during deployment.
+	DecisionRequirementsName *string `json:"decisionRequirementsName,omitempty"`
+
+	// ResourceName The resource name from which this decision requirements was parsed.
+	ResourceName *string `json:"resourceName,omitempty"`
 
 	// TenantId The tenant ID of the deployed decision requirements.
 	TenantId *TenantId `json:"tenantId,omitempty"`
-	Version  *int32    `json:"version,omitempty"`
+
+	// Version The assigned decision requirements version.
+	Version *int32 `json:"version,omitempty"`
 }
 
 // DeploymentDecisionResult A deployed decision.
@@ -2774,12 +2238,16 @@ type DeploymentFormResult struct {
 	FormId *FormId `json:"formId,omitempty"`
 
 	// FormKey The assigned key, which acts as a unique identifier for this form.
-	FormKey      *FormKey `json:"formKey,omitempty"`
-	ResourceName *string  `json:"resourceName,omitempty"`
+	FormKey *FormKey `json:"formKey,omitempty"`
+
+	// ResourceName The resource name from which this form was parsed.
+	ResourceName *string `json:"resourceName,omitempty"`
 
 	// TenantId The unique identifier of the tenant.
 	TenantId *TenantId `json:"tenantId,omitempty"`
-	Version  *int32    `json:"version,omitempty"`
+
+	// Version The assigned form version.
+	Version *int32 `json:"version,omitempty"`
 }
 
 // DeploymentKey Zeebe Engine resource key (Java long serialized as string)
@@ -2824,15 +2292,21 @@ type DeploymentProcessResult struct {
 
 // DeploymentResourceResult A deployed Resource.
 type DeploymentResourceResult struct {
+	// ResourceId The resource ID, as parsed during deployment, together with the version forms a
+	// unique identifier for a specific form.
 	ResourceId *string `json:"resourceId,omitempty"`
 
 	// ResourceKey The assigned key, which acts as a unique identifier for this Resource.
-	ResourceKey  *ResourceKey `json:"resourceKey,omitempty"`
-	ResourceName *string      `json:"resourceName,omitempty"`
+	ResourceKey *ResourceKey `json:"resourceKey,omitempty"`
+
+	// ResourceName The resource name from which this resource was parsed.
+	ResourceName *string `json:"resourceName,omitempty"`
 
 	// TenantId The unique identifier of the tenant.
 	TenantId *TenantId `json:"tenantId,omitempty"`
-	Version  *int32    `json:"version,omitempty"`
+
+	// Version The assigned resource version.
+	Version *int32 `json:"version,omitempty"`
 }
 
 // DeploymentResult defines model for DeploymentResult.
@@ -2849,26 +2323,20 @@ type DeploymentResult struct {
 
 // DocumentCreationBatchResponse defines model for DocumentCreationBatchResponse.
 type DocumentCreationBatchResponse struct {
-	// CreatedDocuments Documents that failed creation.
+	// CreatedDocuments Documents that were successfully created.
 	CreatedDocuments *[]DocumentReference `json:"createdDocuments,omitempty"`
 
-	// FailedDocuments Documents that were successfully created.
+	// FailedDocuments Documents that failed creation.
 	FailedDocuments *[]DocumentCreationFailureDetail `json:"failedDocuments,omitempty"`
 }
 
 // DocumentCreationFailureDetail defines model for DocumentCreationFailureDetail.
 type DocumentCreationFailureDetail struct {
-	// Detail A human-readable explanation specific to this occurrence of the problem.
+	// Detail The detail of the failure.
 	Detail *string `json:"detail,omitempty"`
 
-	// FileName The name of the file that failed to upload.
+	// FileName The name of the file.
 	FileName *string `json:"fileName,omitempty"`
-
-	// Status The HTTP status code of the failure.
-	Status *int32 `json:"status,omitempty"`
-
-	// Title A short, human-readable summary of the problem type.
-	Title *string `json:"title,omitempty"`
 }
 
 // DocumentId Document Id that uniquely identifies a document.
@@ -3073,14 +2541,6 @@ type ElementInstanceStateFilterProperty0 = ElementInstanceStateEnum
 // EndCursor The end cursor in a search query result set.
 type EndCursor = string
 
-// EntityTypeFilterProperty AuditLogEntityTypeEnum property with full advanced search capabilities.
-type EntityTypeFilterProperty struct {
-	union json.RawMessage
-}
-
-// EntityTypeFilterProperty0 defines model for .
-type EntityTypeFilterProperty0 = AuditLogEntityTypeEnum
-
 // EvaluateDecisionResult defines model for EvaluateDecisionResult.
 type EvaluateDecisionResult struct {
 	// DecisionDefinitionId The ID of the decision which was evaluated.
@@ -3126,18 +2586,26 @@ type EvaluateDecisionResult struct {
 
 // EvaluatedDecisionInputItem A decision input that was evaluated within this decision evaluation.
 type EvaluatedDecisionInputItem struct {
-	InputId    *string `json:"inputId,omitempty"`
-	InputName  *string `json:"inputName,omitempty"`
+	// InputId The ID of the evaluated decision input.
+	InputId *string `json:"inputId,omitempty"`
+
+	// InputName The name of the evaluated decision input.
+	InputName *string `json:"inputName,omitempty"`
+
+	// InputValue The value of the evaluated decision input.
 	InputValue *string `json:"inputValue,omitempty"`
 }
 
 // EvaluatedDecisionOutputItem The evaluated decision outputs.
 type EvaluatedDecisionOutputItem struct {
-	OutputId    *string `json:"outputId,omitempty"`
-	OutputName  *string `json:"outputName,omitempty"`
+	// OutputId The ID of the evaluated decision output.
+	OutputId *string `json:"outputId,omitempty"`
+
+	// OutputName The name of the evaluated decision output.
+	OutputName *string `json:"outputName,omitempty"`
+
+	// OutputValue The value of the evaluated decision output.
 	OutputValue *string `json:"outputValue,omitempty"`
-	RuleId      *string `json:"ruleId,omitempty"`
-	RuleIndex   *int32  `json:"ruleIndex,omitempty"`
 }
 
 // EvaluatedDecisionResult A decision that was evaluated.
@@ -3187,8 +2655,8 @@ type FormResult struct {
 	// FormKey The assigned key, which acts as a unique identifier for this form.
 	FormKey *FormKey `json:"formKey,omitempty"`
 
-	// Schema The form content.
-	Schema *map[string]interface{} `json:"schema,omitempty"`
+	// Schema The form schema as a JSON document serialized as a string.
+	Schema *string `json:"schema,omitempty"`
 
 	// TenantId The tenant ID of the form.
 	TenantId *TenantId `json:"tenantId,omitempty"`
@@ -3329,67 +2797,10 @@ type GroupUserSearchQuerySortRequestField string
 // GroupUserSearchResult defines model for GroupUserSearchResult.
 type GroupUserSearchResult = SearchQueryResponse
 
-// IncidentErrorTypeEnum Incident error type with a defined set of values.
-type IncidentErrorTypeEnum = interface{}
-
-// IncidentErrorTypeFilterProperty IncidentErrorTypeEnum with full advanced search capabilities.
-type IncidentErrorTypeFilterProperty struct {
-	union json.RawMessage
-}
-
-// IncidentErrorTypeFilterProperty0 Incident error type with a defined set of values.
-type IncidentErrorTypeFilterProperty0 = IncidentErrorTypeEnum
-
 // IncidentFilter Incident search filter.
 type IncidentFilter struct {
 	// CreationTime Date of incident creation.
 	CreationTime *DateTimeFilterProperty `json:"creationTime,omitempty"`
-
-	// ElementId The element ID associated to this incident.
-	ElementId *StringFilterProperty `json:"elementId,omitempty"`
-
-	// ElementInstanceKey The element instance key associated to this incident.
-	ElementInstanceKey *ElementInstanceKeyFilterProperty `json:"elementInstanceKey,omitempty"`
-	ErrorMessage       *StringFilterProperty             `json:"errorMessage,omitempty"`
-
-	// ErrorType Incident error type with a defined set of values.
-	ErrorType *IncidentErrorTypeFilterProperty `json:"errorType,omitempty"`
-
-	// IncidentKey The assigned key, which acts as a unique identifier for this incident.
-	IncidentKey *BasicStringFilterProperty `json:"incidentKey,omitempty"`
-
-	// JobKey The job key, if exists, associated with this incident.
-	JobKey *JobKeyFilterProperty `json:"jobKey,omitempty"`
-
-	// ProcessDefinitionId The process definition ID associated to this incident.
-	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
-
-	// ProcessDefinitionKey The process definition key associated to this incident.
-	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
-
-	// ProcessInstanceKey The process instance key associated to this incident.
-	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
-
-	// State State of this incident with a defined set of values.
-	State *IncidentStateFilterProperty `json:"state,omitempty"`
-
-	// TenantId The tenant ID of the incident.
-	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
-}
-
-// IncidentKey Zeebe Engine resource key (Java long serialized as string)
-type IncidentKey = LongKey
-
-// IncidentResolutionRequest defines model for IncidentResolutionRequest.
-type IncidentResolutionRequest struct {
-	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
-	// Must be > 0 if provided.
-	OperationReference *OperationReference `json:"operationReference,omitempty"`
-}
-
-// IncidentResult defines model for IncidentResult.
-type IncidentResult struct {
-	CreationTime *time.Time `json:"creationTime,omitempty"`
 
 	// ElementId The element ID associated to this incident.
 	ElementId *ElementId `json:"elementId,omitempty"`
@@ -3398,8 +2809,10 @@ type IncidentResult struct {
 	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
 
 	// ErrorMessage Error message which describes the error in more detail.
-	ErrorMessage *string                `json:"errorMessage,omitempty"`
-	ErrorType    *IncidentErrorTypeEnum `json:"errorType,omitempty"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
+
+	// ErrorType Incident error type with a defined set of values.
+	ErrorType *IncidentFilterErrorType `json:"errorType,omitempty"`
 
 	// IncidentKey The assigned key, which acts as a unique identifier for this incident.
 	IncidentKey *IncidentKey `json:"incidentKey,omitempty"`
@@ -3415,11 +2828,74 @@ type IncidentResult struct {
 
 	// ProcessInstanceKey The process instance key associated to this incident.
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
-	State              *IncidentStateEnum  `json:"state,omitempty"`
+
+	// State State of this incident with a defined set of values.
+	State *IncidentFilterState `json:"state,omitempty"`
 
 	// TenantId The tenant ID of the incident.
 	TenantId *TenantId `json:"tenantId,omitempty"`
 }
+
+// IncidentFilterErrorType Incident error type with a defined set of values.
+type IncidentFilterErrorType string
+
+// IncidentFilterState State of this incident with a defined set of values.
+type IncidentFilterState string
+
+// IncidentKey Zeebe Engine resource key (Java long serialized as string)
+type IncidentKey = LongKey
+
+// IncidentResolutionRequest defines model for IncidentResolutionRequest.
+type IncidentResolutionRequest struct {
+	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
+	// Must be > 0 if provided.
+	OperationReference *OperationReference `json:"operationReference,omitempty"`
+}
+
+// IncidentResult defines model for IncidentResult.
+type IncidentResult struct {
+	// CreationTime Date of incident creation.
+	CreationTime *time.Time `json:"creationTime,omitempty"`
+
+	// ElementId The element ID associated to this incident.
+	ElementId *ElementId `json:"elementId,omitempty"`
+
+	// ElementInstanceKey The element instance key associated to this incident.
+	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
+
+	// ErrorMessage Error message which describes the error in more detail.
+	ErrorMessage *string `json:"errorMessage,omitempty"`
+
+	// ErrorType Incident error type with a defined set of values.
+	ErrorType *IncidentResultErrorType `json:"errorType,omitempty"`
+
+	// IncidentKey The assigned key, which acts as a unique identifier for this incident.
+	IncidentKey *IncidentKey `json:"incidentKey,omitempty"`
+
+	// JobKey The job key, if exists, associated with this incident.
+	JobKey *JobKey `json:"jobKey,omitempty"`
+
+	// ProcessDefinitionId The process definition ID associated to this incident.
+	ProcessDefinitionId *ProcessDefinitionId `json:"processDefinitionId,omitempty"`
+
+	// ProcessDefinitionKey The process definition key associated to this incident.
+	ProcessDefinitionKey *ProcessDefinitionKey `json:"processDefinitionKey,omitempty"`
+
+	// ProcessInstanceKey The process instance key associated to this incident.
+	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+
+	// State State of this incident with a defined set of values.
+	State *IncidentResultState `json:"state,omitempty"`
+
+	// TenantId The tenant ID of the incident.
+	TenantId *TenantId `json:"tenantId,omitempty"`
+}
+
+// IncidentResultErrorType Incident error type with a defined set of values.
+type IncidentResultErrorType string
+
+// IncidentResultState State of this incident with a defined set of values.
+type IncidentResultState string
 
 // IncidentSearchQuery defines model for IncidentSearchQuery.
 type IncidentSearchQuery = SearchQueryRequest
@@ -3438,17 +2914,6 @@ type IncidentSearchQuerySortRequest struct {
 
 // IncidentSearchQuerySortRequestField The field to sort by.
 type IncidentSearchQuerySortRequestField string
-
-// IncidentStateEnum Incident states with a defined set of values.
-type IncidentStateEnum = interface{}
-
-// IncidentStateFilterProperty IncidentStateEnum with full advanced search capabilities.
-type IncidentStateFilterProperty struct {
-	union json.RawMessage
-}
-
-// IncidentStateFilterProperty0 Incident states with a defined set of values.
-type IncidentStateFilterProperty0 = IncidentStateEnum
 
 // IntegerFilterProperty Integer property with advanced search capabilities.
 type IntegerFilterProperty struct {
@@ -3475,7 +2940,7 @@ type JobActivationRequest struct {
 	// Timeout A job returned after this call will not be activated by another call until the timeout (in ms) has been reached.
 	Timeout int64 `json:"timeout"`
 
-	// Type The job type, as defined in the BPMN process (e.g. <zeebe:taskDefinition type="payment-service" />)
+	// Type The job type, as defined in the BPMN process (e.g. <zeebe:taskDefinition type="payment-service" />).
 	Type string `json:"type"`
 
 	// Worker The name of the worker activating the jobs, mostly used for logging purposes.
@@ -3488,12 +2953,22 @@ type JobActivationResult struct {
 	Jobs []ActivatedJobResult `json:"jobs"`
 }
 
-// JobChangeset JSON object with changed job attribute values. The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
+// JobChangeset JSON object with changed job attribute values.
+//
+// The following attributes can be adjusted with this endpoint, additional attributes
+// will be ignored:
+//
+// * `retries` - The new amount of retries for the job; must be a positive number.
+// * `timeout` - The duration of the new timeout in ms, starting from the current moment.
+//
+// Providing any of those attributes with a null value or omitting it preserves the persisted attribute’s value.
+//
+// The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
 type JobChangeset struct {
-	// Retries The new number of retries for the job.
+	// Retries The new amount of retries for the job; must be a positive number.
 	Retries *int32 `json:"retries"`
 
-	// Timeout The new timeout for the job in milliseconds.
+	// Timeout The duration of the new timeout in ms, starting from the current moment.
 	Timeout *int64 `json:"timeout"`
 }
 
@@ -3520,13 +2995,13 @@ type JobErrorRequest struct {
 
 // JobFailRequest defines model for JobFailRequest.
 type JobFailRequest struct {
-	// ErrorMessage An optional error message describing why the job failed; if not provided, an empty string is used.
+	// ErrorMessage An optional message describing why the job failed. This is particularly useful if a job runs out of retries and an incident is raised, as this message can help explain why an incident was raised.
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 
 	// Retries The amount of retries the job should have left
 	Retries *int32 `json:"retries,omitempty"`
 
-	// RetryBackOff An optional retry back off for the failed job. The job will not be retryable before the current time plus the back off time. The default is 0 which means the job is retryable immediately.
+	// RetryBackOff The backoff timeout (in ms) for the next retry.
 	RetryBackOff *int64 `json:"retryBackOff,omitempty"`
 
 	// Variables JSON object that will instantiate the variables at the local scope of the job's associated task.
@@ -3535,9 +3010,6 @@ type JobFailRequest struct {
 
 // JobFilter Job search filter.
 type JobFilter struct {
-	// CreationTime When the job was created. Field is present for jobs created after 8.9.
-	CreationTime *DateTimeFilterProperty `json:"creationTime,omitempty"`
-
 	// Deadline When the job can next be activated.
 	Deadline *DateTimeFilterProperty `json:"deadline"`
 
@@ -3570,9 +3042,6 @@ type JobFilter struct {
 
 	// Kind The kind of the job.
 	Kind *JobKindFilterProperty `json:"kind,omitempty"`
-
-	// LastUpdateTime When the job was last updated. Field is present for jobs created after 8.9.
-	LastUpdateTime *DateTimeFilterProperty `json:"lastUpdateTime,omitempty"`
 
 	// ListenerEventType The listener event type of the job.
 	ListenerEventType *JobListenerEventTypeFilterProperty `json:"listenerEventType,omitempty"`
@@ -3637,19 +3106,25 @@ type JobListenerEventTypeFilterProperty0 = JobListenerEventTypeEnum
 
 // JobResult The result of the completed job as determined by the worker.
 type JobResult struct {
+	// Type Used to distinguish between different types of job results.
+	Type  JobResultType `json:"type"`
 	union json.RawMessage
 }
 
-// JobResultActivateElement Instruction to activate a single BPMN element within an ad‑hoc sub‑process, optionally providing variables scoped to that element.
+// JobResultType Used to distinguish between different types of job results.
+type JobResultType string
+
+// JobResultActivateElement defines model for JobResultActivateElement.
 type JobResultActivateElement struct {
-	// ElementId The element ID to activate.
+	// ElementId The ID of the element to activate.
 	ElementId *ElementId `json:"elementId,omitempty"`
 
-	// Variables Variables for the element.
-	Variables *map[string]interface{} `json:"variables,omitempty"`
+	// Variables JSON document that will create the variables on the scope of the activated element.
+	// It must be a JSON object, as variables will be mapped in a key-value fashion.
+	Variables *map[string]interface{} `json:"variables"`
 }
 
-// JobResultAdHocSubProcess Job result details for an ad‑hoc sub‑process, including elements to activate and flags indicating completion or cancellation behavior.
+// JobResultAdHocSubProcess defines model for JobResultAdHocSubProcess.
 type JobResultAdHocSubProcess struct {
 	// ActivateElements Indicates which elements need to be activated in the ad-hoc subprocess.
 	ActivateElements *[]JobResultActivateElement `json:"activateElements,omitempty"`
@@ -3658,13 +3133,11 @@ type JobResultAdHocSubProcess struct {
 	IsCancelRemainingInstances *bool `json:"isCancelRemainingInstances,omitempty"`
 
 	// IsCompletionConditionFulfilled Indicates whether the completion condition of the ad-hoc subprocess is fulfilled.
-	IsCompletionConditionFulfilled *bool `json:"isCompletionConditionFulfilled,omitempty"`
-
-	// Type Used to distinguish between different types of job results.
-	Type JobResultAdHocSubProcessType `json:"type"`
+	IsCompletionConditionFulfilled *bool                        `json:"isCompletionConditionFulfilled,omitempty"`
+	Type                           JobResultAdHocSubProcessType `json:"type"`
 }
 
-// JobResultAdHocSubProcessType Used to distinguish between different types of job results.
+// JobResultAdHocSubProcessType defines model for JobResultAdHocSubProcess.Type.
 type JobResultAdHocSubProcessType string
 
 // JobResultCorrections JSON object with attributes that were corrected by the worker.
@@ -3700,7 +3173,7 @@ type JobResultCorrections struct {
 	Priority *int32 `json:"priority"`
 }
 
-// JobResultUserTask Job result details for a user task completion, optionally including a denial reason and corrected task properties.
+// JobResultUserTask defines model for JobResultUserTask.
 type JobResultUserTask struct {
 	// Corrections JSON object with attributes that were corrected by the worker.
 	//
@@ -3721,13 +3194,11 @@ type JobResultUserTask struct {
 	Denied *bool `json:"denied"`
 
 	// DeniedReason The reason provided by the user task listener for denying the work.
-	DeniedReason *string `json:"deniedReason"`
-
-	// Type Used to distinguish between different types of job results.
-	Type JobResultUserTaskType `json:"type"`
+	DeniedReason *string               `json:"deniedReason"`
+	Type         JobResultUserTaskType `json:"type"`
 }
 
-// JobResultUserTaskType Used to distinguish between different types of job results.
+// JobResultUserTaskType defines model for JobResultUserTask.Type.
 type JobResultUserTaskType string
 
 // JobSearchQuery defines model for JobSearchQuery.
@@ -3750,9 +3221,6 @@ type JobSearchQuerySortRequestField string
 
 // JobSearchResult defines model for JobSearchResult.
 type JobSearchResult struct {
-	// CreationTime When the job was created. Field is present for jobs created after 8.9.
-	CreationTime *time.Time `json:"creationTime,omitempty"`
-
 	// CustomHeaders A set of custom headers defined during modelling.
 	CustomHeaders map[string]string `json:"customHeaders"`
 
@@ -3788,9 +3256,6 @@ type JobSearchResult struct {
 
 	// Kind The job kind.
 	Kind JobKindEnum `json:"kind"`
-
-	// LastUpdateTime When the job was last updated. Field is present for jobs created after 8.9.
-	LastUpdateTime *time.Time `json:"lastUpdateTime,omitempty"`
 
 	// ListenerEventType The listener event type of the job.
 	ListenerEventType JobListenerEventTypeEnum `json:"listenerEventType"`
@@ -3833,7 +3298,17 @@ type JobStateFilterProperty0 = JobStateEnum
 
 // JobUpdateRequest defines model for JobUpdateRequest.
 type JobUpdateRequest struct {
-	// Changeset JSON object with changed job attribute values. The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
+	// Changeset JSON object with changed job attribute values.
+	//
+	// The following attributes can be adjusted with this endpoint, additional attributes
+	// will be ignored:
+	//
+	// * `retries` - The new amount of retries for the job; must be a positive number.
+	// * `timeout` - The duration of the new timeout in ms, starting from the current moment.
+	//
+	// Providing any of those attributes with a null value or omitting it preserves the persisted attribute’s value.
+	//
+	// The job cannot be completed or failed with this endpoint, use the complete job or fail job endpoints instead.
 	Changeset JobChangeset `json:"changeset"`
 
 	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
@@ -3865,12 +3340,6 @@ type LicenseResponse struct {
 //
 // Wildcard characters can be escaped with backslash, for instance: `\*`.
 type LikeFilter = string
-
-// LimitPagination defines model for LimitPagination.
-type LimitPagination struct {
-	// Limit The maximum number of items to return in one request.
-	Limit *int32 `json:"limit,omitempty"`
-}
 
 // LongKey Zeebe Engine resource key (Java long serialized as string)
 type LongKey = string
@@ -3974,9 +3443,6 @@ type MatchedDecisionRuleItem struct {
 	RuleIndex *int32 `json:"ruleIndex,omitempty"`
 }
 
-// MessageCorrelationKey Zeebe Engine resource key (Java long serialized as string)
-type MessageCorrelationKey = LongKey
-
 // MessageCorrelationRequest defines model for MessageCorrelationRequest.
 type MessageCorrelationRequest struct {
 	// CorrelationKey The correlation key of the message.
@@ -3995,7 +3461,7 @@ type MessageCorrelationRequest struct {
 // MessageCorrelationResult The message key of the correlated message, as well as the first process instance key it
 // correlated with.
 type MessageCorrelationResult struct {
-	// MessageKey The key of the correlated message.
+	// MessageKey The key of the correlated message
 	MessageKey *MessageKey `json:"messageKey,omitempty"`
 
 	// ProcessInstanceKey The key of the first process instance the message correlated with
@@ -4032,7 +3498,7 @@ type MessagePublicationRequest struct {
 
 // MessagePublicationResult The message key of the published message.
 type MessagePublicationResult struct {
-	// MessageKey The key of the published message.
+	// MessageKey The key of the message
 	MessageKey *MessageKey `json:"messageKey,omitempty"`
 
 	// TenantId The tenant ID of the message.
@@ -4065,9 +3531,6 @@ type MessageSubscriptionFilter struct {
 	// ProcessDefinitionId The process definition ID associated with this message subscription.
 	ProcessDefinitionId *StringFilterProperty `json:"processDefinitionId,omitempty"`
 
-	// ProcessDefinitionKey The process definition key associated with this correlated message subscription. This only works for data created with 8.9 and later.
-	ProcessDefinitionKey *ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
-
 	// ProcessInstanceKey The process instance key associated with this message subscription.
 	ProcessInstanceKey *ProcessInstanceKeyFilterProperty `json:"processInstanceKey,omitempty"`
 
@@ -4089,7 +3552,7 @@ type MessageSubscriptionKeyFilterProperty0 = MessageSubscriptionKey
 // MessageSubscriptionResult defines model for MessageSubscriptionResult.
 type MessageSubscriptionResult struct {
 	// CorrelationKey The correlation key of the message subscription.
-	CorrelationKey *MessageCorrelationKey `json:"correlationKey,omitempty"`
+	CorrelationKey *string `json:"correlationKey,omitempty"`
 
 	// ElementId The element ID associated with this message subscription.
 	ElementId *ElementId `json:"elementId,omitempty"`
@@ -4184,14 +3647,6 @@ type OffsetPagination struct {
 // Must be > 0 if provided.
 type OperationReference = int64
 
-// OperationTypeFilterProperty AuditLogOperationTypeEnum property with full advanced search capabilities.
-type OperationTypeFilterProperty struct {
-	union json.RawMessage
-}
-
-// OperationTypeFilterProperty0 defines model for .
-type OperationTypeFilterProperty0 = AuditLogOperationTypeEnum
-
 // OwnerTypeEnum The type of the owner of permissions.
 type OwnerTypeEnum string
 
@@ -4254,6 +3709,7 @@ type ProcessDefinitionFilter struct {
 	// IsLatestVersion Whether to only return the latest version of each process definition.
 	// When using this filter, pagination functionality is limited, you can only paginate forward using `after` and `limit`.
 	// The response contains no `startCursor` in the `page`, and requests ignore the `from` and `before` in the `page`.
+	// When using this filter, sorting is limited to `processDefinitionId` and `tenantId` fields only.
 	IsLatestVersion *bool `json:"isLatestVersion,omitempty"`
 
 	// Name Name of this process definition.
@@ -4280,126 +3736,6 @@ type ProcessDefinitionFilter struct {
 
 // ProcessDefinitionId Id of a process definition, from the model. Only ids of process definitions that are deployed are useful.
 type ProcessDefinitionId = string
-
-// ProcessDefinitionInstanceStatisticsPageRequest defines model for ProcessDefinitionInstanceStatisticsPageRequest.
-type ProcessDefinitionInstanceStatisticsPageRequest struct {
-	// From The index of items to start searching from.
-	From *int32 `json:"from,omitempty"`
-
-	// Limit The maximum number of items to return in one request.
-	Limit *int `json:"limit,omitempty"`
-}
-
-// ProcessDefinitionInstanceStatisticsPageResponse Pagination information about the search results.
-type ProcessDefinitionInstanceStatisticsPageResponse struct {
-	// HasMoreTotalItems Indicates whether there are more items matching the criteria.
-	HasMoreTotalItems *bool `json:"hasMoreTotalItems,omitempty"`
-
-	// TotalItems Total items matching the criteria.
-	TotalItems *int64 `json:"totalItems,omitempty"`
-}
-
-// ProcessDefinitionInstanceStatisticsQuery defines model for ProcessDefinitionInstanceStatisticsQuery.
-type ProcessDefinitionInstanceStatisticsQuery struct {
-	// Filter The process definition instance statistics filters.
-	Filter *ProcessInstanceFilter `json:"filter,omitempty"`
-
-	// Page Pagination criteria.
-	Page *ProcessDefinitionInstanceStatisticsPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]ProcessDefinitionInstanceStatisticsQuerySortRequest `json:"sort,omitempty"`
-}
-
-// ProcessDefinitionInstanceStatisticsQueryResult Process definition instance statistics query response.
-type ProcessDefinitionInstanceStatisticsQueryResult struct {
-	// Items The process definition instance statistics result.
-	Items *[]ProcessDefinitionInstanceStatisticsResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page *ProcessDefinitionInstanceStatisticsPageResponse `json:"page,omitempty"`
-}
-
-// ProcessDefinitionInstanceStatisticsQuerySortRequest defines model for ProcessDefinitionInstanceStatisticsQuerySortRequest.
-type ProcessDefinitionInstanceStatisticsQuerySortRequest struct {
-	// Field The field to sort by.
-	Field ProcessDefinitionInstanceStatisticsQuerySortRequestField `json:"field"`
-
-	// Order The order in which to sort the related field.
-	Order *SortOrderEnum `json:"order,omitempty"`
-}
-
-// ProcessDefinitionInstanceStatisticsQuerySortRequestField The field to sort by.
-type ProcessDefinitionInstanceStatisticsQuerySortRequestField string
-
-// ProcessDefinitionInstanceStatisticsResult Process definition instance statistics response.
-type ProcessDefinitionInstanceStatisticsResult struct {
-	// ActiveInstancesWithIncidentCount Total number of currently active process instances of this definition that have at least one incident.
-	ActiveInstancesWithIncidentCount *int64 `json:"activeInstancesWithIncidentCount,omitempty"`
-
-	// ActiveInstancesWithoutIncidentCount Total number of currently active process instances of this definition that do not have incidents.
-	ActiveInstancesWithoutIncidentCount *int64 `json:"activeInstancesWithoutIncidentCount,omitempty"`
-
-	// HasMultipleVersions Indicates whether multiple versions of this process definition instance are deployed.
-	HasMultipleVersions *bool `json:"hasMultipleVersions,omitempty"`
-
-	// LatestProcessDefinitionName Name of the latest deployed process definition instance version.
-	LatestProcessDefinitionName *string `json:"latestProcessDefinitionName,omitempty"`
-
-	// ProcessDefinitionId Id of a process definition, from the model. Only ids of process definitions that are deployed are useful.
-	ProcessDefinitionId *ProcessDefinitionId `json:"processDefinitionId,omitempty"`
-}
-
-// ProcessDefinitionInstanceVersionStatisticsQuery defines model for ProcessDefinitionInstanceVersionStatisticsQuery.
-type ProcessDefinitionInstanceVersionStatisticsQuery struct {
-	// Page Pagination criteria.
-	Page *ProcessDefinitionInstanceStatisticsPageRequest `json:"page,omitempty"`
-
-	// Sort Sort field criteria.
-	Sort *[]ProcessDefinitionInstanceVersionStatisticsQuerySortRequest `json:"sort,omitempty"`
-}
-
-// ProcessDefinitionInstanceVersionStatisticsQueryResult Process definition instance version statistics query response.
-type ProcessDefinitionInstanceVersionStatisticsQueryResult struct {
-	// Items The process definition instance version statistics result.
-	Items *[]ProcessDefinitionInstanceVersionStatisticsResult `json:"items,omitempty"`
-
-	// Page Pagination information about the search results.
-	Page *ProcessDefinitionInstanceStatisticsPageResponse `json:"page,omitempty"`
-}
-
-// ProcessDefinitionInstanceVersionStatisticsQuerySortRequest defines model for ProcessDefinitionInstanceVersionStatisticsQuerySortRequest.
-type ProcessDefinitionInstanceVersionStatisticsQuerySortRequest struct {
-	// Field The field to sort by.
-	Field ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField `json:"field"`
-
-	// Order The order in which to sort the related field.
-	Order *SortOrderEnum `json:"order,omitempty"`
-}
-
-// ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField The field to sort by.
-type ProcessDefinitionInstanceVersionStatisticsQuerySortRequestField string
-
-// ProcessDefinitionInstanceVersionStatisticsResult Process definition instance version statistics response.
-type ProcessDefinitionInstanceVersionStatisticsResult struct {
-	// ActiveInstancesWithIncidentCount The number of active process instances for this version that currently have incidents.
-	ActiveInstancesWithIncidentCount int64 `json:"activeInstancesWithIncidentCount"`
-
-	// ActiveInstancesWithoutIncidentCount The number of active process instances for this version that do not have any incidents.
-	ActiveInstancesWithoutIncidentCount int64 `json:"activeInstancesWithoutIncidentCount"`
-
-	// ProcessDefinitionId The ID associated with the process definition.
-	ProcessDefinitionId ProcessDefinitionId `json:"processDefinitionId"`
-
-	// ProcessDefinitionKey The unique key of the process definition.
-	ProcessDefinitionKey ProcessDefinitionKey `json:"processDefinitionKey"`
-
-	// ProcessDefinitionName The name of the process definition.
-	ProcessDefinitionName string `json:"processDefinitionName"`
-
-	// ProcessDefinitionVersion The version number of the process definition.
-	ProcessDefinitionVersion int32 `json:"processDefinitionVersion"`
-}
 
 // ProcessDefinitionKey Zeebe Engine resource key (Java long serialized as string)
 type ProcessDefinitionKey = LongKey
@@ -4491,8 +3827,13 @@ type ProcessDefinitionStatisticsFilter struct {
 	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
 	Or *[]BaseProcessInstanceFilterFields `json:"$or,omitempty"`
 
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -4575,12 +3916,8 @@ type ProcessInstanceCallHierarchyEntry struct {
 
 // ProcessInstanceCancellationBatchOperationRequest The process instance filter that defines which process instances should be canceled.
 type ProcessInstanceCancellationBatchOperationRequest struct {
-	// Filter The process instance filter.
+	// Filter Process instance search filter.
 	Filter ProcessInstanceFilter `json:"filter"`
-
-	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
-	// Must be > 0 if provided.
-	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
 // ProcessInstanceCreationInstruction Instructions for creating a process instance. The process definition can be specified
@@ -4683,10 +4020,15 @@ type ProcessInstanceCreationInstructionByKey struct {
 	Variables *map[string]interface{} `json:"variables,omitempty"`
 }
 
-// ProcessInstanceCreationRuntimeInstruction defines model for ProcessInstanceCreationRuntimeInstruction.
+// ProcessInstanceCreationRuntimeInstruction Runtime instructions
 type ProcessInstanceCreationRuntimeInstruction struct {
+	// Type The type of the runtime instruction
+	Type  ProcessInstanceCreationRuntimeInstructionType `json:"type"`
 	union json.RawMessage
 }
+
+// ProcessInstanceCreationRuntimeInstructionType The type of the runtime instruction
+type ProcessInstanceCreationRuntimeInstructionType string
 
 // ProcessInstanceCreationStartInstruction defines model for ProcessInstanceCreationStartInstruction.
 type ProcessInstanceCreationStartInstruction struct {
@@ -4701,13 +4043,11 @@ type ProcessInstanceCreationStartInstruction struct {
 // ProcessInstanceCreationTerminateInstruction Terminates the process instance after a specific BPMN element is completed or terminated.
 type ProcessInstanceCreationTerminateInstruction struct {
 	// AfterElementId The ID of the element that, once completed or terminated, will cause the process to be terminated.
-	AfterElementId ElementId `json:"afterElementId"`
-
-	// Type The type of the runtime instruction
-	Type ProcessInstanceCreationTerminateInstructionType `json:"type"`
+	AfterElementId ElementId                                       `json:"afterElementId"`
+	Type           ProcessInstanceCreationTerminateInstructionType `json:"type"`
 }
 
-// ProcessInstanceCreationTerminateInstructionType The type of the runtime instruction
+// ProcessInstanceCreationTerminateInstructionType defines model for ProcessInstanceCreationTerminateInstruction.Type.
 type ProcessInstanceCreationTerminateInstructionType string
 
 // ProcessInstanceElementStatisticsQueryResult Process instance element statistics query response.
@@ -4750,8 +4090,13 @@ type ProcessInstanceFilter struct {
 	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
 	Or *[]ProcessInstanceFilterFields `json:"$or,omitempty"`
 
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -4807,13 +4152,12 @@ type ProcessInstanceFilterFields = BaseProcessInstanceFilterFields
 
 // ProcessInstanceIncidentResolutionBatchOperationRequest The process instance filter that defines which process instances should have their incidents resolved.
 type ProcessInstanceIncidentResolutionBatchOperationRequest struct {
-	// Filter The process instance filter.
+	// Filter Process instance search filter.
 	Filter ProcessInstanceFilter `json:"filter"`
-
-	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
-	// Must be > 0 if provided.
-	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
+
+// ProcessInstanceIncidentSearchQuery defines model for ProcessInstanceIncidentSearchQuery.
+type ProcessInstanceIncidentSearchQuery = SearchQueryRequest
 
 // ProcessInstanceKey Zeebe Engine resource key (Java long serialized as string)
 type ProcessInstanceKey = LongKey
@@ -4828,24 +4172,20 @@ type ProcessInstanceKeyFilterProperty0 = ProcessInstanceKey
 
 // ProcessInstanceMigrationBatchOperationPlan The migration instructions describe how to migrate a process instance from one process definition to another.
 type ProcessInstanceMigrationBatchOperationPlan struct {
-	// MappingInstructions The mapping instructions.
+	// MappingInstructions Element mappings from the source process instance to the target process instance.
 	MappingInstructions []MigrateProcessInstanceMappingInstruction `json:"mappingInstructions"`
 
-	// TargetProcessDefinitionKey The target process definition key.
+	// TargetProcessDefinitionKey The key of process definition to migrate the process instance to.
 	TargetProcessDefinitionKey ProcessDefinitionKey `json:"targetProcessDefinitionKey"`
 }
 
 // ProcessInstanceMigrationBatchOperationRequest defines model for ProcessInstanceMigrationBatchOperationRequest.
 type ProcessInstanceMigrationBatchOperationRequest struct {
-	// Filter The process instance filter.
+	// Filter Process instance search filter.
 	Filter ProcessInstanceFilter `json:"filter"`
 
-	// MigrationPlan The migration plan.
+	// MigrationPlan The migration instructions describe how to migrate a process instance from one process definition to another.
 	MigrationPlan ProcessInstanceMigrationBatchOperationPlan `json:"migrationPlan"`
-
-	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
-	// Must be > 0 if provided.
-	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
 // ProcessInstanceMigrationInstruction The migration instructions describe how to migrate a process instance from one process definition to another.
@@ -4886,17 +4226,14 @@ type ProcessInstanceModificationActivateInstruction_AncestorElementInstanceKey s
 }
 
 // ProcessInstanceModificationBatchOperationRequest The process instance filter to define on which process instances tokens should be moved,
-// and new element instances should be activated or terminated.
+// as well as mapping instructions which active element instances should be terminated and which
+// new element instances should be activated
 type ProcessInstanceModificationBatchOperationRequest struct {
-	// Filter The process instance filter.
+	// Filter Process instance search filter.
 	Filter ProcessInstanceFilter `json:"filter"`
 
-	// MoveInstructions Instructions for moving tokens between elements.
+	// MoveInstructions Instructions describing which elements should be activated in which scopes and which variables should be created.
 	MoveInstructions []ProcessInstanceModificationMoveBatchOperationInstruction `json:"moveInstructions"`
-
-	// OperationReference A reference key chosen by the user that will be part of all records resulting from this operation.
-	// Must be > 0 if provided.
-	OperationReference *OperationReference `json:"operationReference,omitempty"`
 }
 
 // ProcessInstanceModificationInstruction defines model for ProcessInstanceModificationInstruction.
@@ -4915,10 +4252,10 @@ type ProcessInstanceModificationInstruction struct {
 // ProcessInstanceModificationMoveBatchOperationInstruction Instructions describing a move operation. This instruction will terminate all active elementInstance
 // at sourceElementId and activate a new element instance for each terminated one at targetElementId.
 type ProcessInstanceModificationMoveBatchOperationInstruction struct {
-	// SourceElementId The source element ID.
+	// SourceElementId The ID of the element that should be terminated.
 	SourceElementId ElementId `json:"sourceElementId"`
 
-	// TargetElementId The target element ID.
+	// TargetElementId The ID of the element that should be activated.
 	TargetElementId ElementId `json:"targetElementId"`
 }
 
@@ -4930,6 +4267,7 @@ type ProcessInstanceModificationTerminateInstruction struct {
 
 // ProcessInstanceResult Process instance search response item.
 type ProcessInstanceResult struct {
+	// EndDate The end date.
 	EndDate *time.Time `json:"endDate,omitempty"`
 
 	// HasIncident Whether this process instance has a related incident or not.
@@ -4948,15 +4286,19 @@ type ProcessInstanceResult struct {
 	ProcessDefinitionKey ProcessDefinitionKey `json:"processDefinitionKey"`
 
 	// ProcessDefinitionName The process definition name.
-	ProcessDefinitionName    string `json:"processDefinitionName"`
-	ProcessDefinitionVersion int32  `json:"processDefinitionVersion"`
+	ProcessDefinitionName string `json:"processDefinitionName"`
+
+	// ProcessDefinitionVersion The process definition version.
+	ProcessDefinitionVersion int32 `json:"processDefinitionVersion"`
 
 	// ProcessDefinitionVersionTag The process definition version tag.
 	ProcessDefinitionVersionTag *string `json:"processDefinitionVersionTag,omitempty"`
 
 	// ProcessInstanceKey The key of this process instance.
 	ProcessInstanceKey ProcessInstanceKey `json:"processInstanceKey"`
-	StartDate          time.Time          `json:"startDate"`
+
+	// StartDate The start date.
+	StartDate time.Time `json:"startDate"`
 
 	// State Process instance states
 	State ProcessInstanceStateEnum `json:"state"`
@@ -5228,8 +4570,7 @@ type SearchQueryPageResponse struct {
 	// EndCursor The cursor value for getting the next page of results. Use this in the `after` field of an ensuing request.
 	EndCursor *EndCursor `json:"endCursor,omitempty"`
 
-	// HasMoreTotalItems Indicates whether there are more items matching the criteria beyond the returned items.
-	// This is useful for determining if additional requests are needed to retrieve all results.
+	// HasMoreTotalItems Indicates if more results exist beyond the reported totalItems value. Due to system limitations, the totalItems value can be capped.
 	HasMoreTotalItems *bool `json:"hasMoreTotalItems,omitempty"`
 
 	// StartCursor The cursor value for getting the previous page of results. Use this in the `before` field of an ensuing request.
@@ -5255,13 +4596,17 @@ type SearchQueryResponse struct {
 type SetVariableRequest struct {
 	// Local If set to true, the variables are merged strictly into the local scope (as specified by the `elementInstanceKey`).
 	// Otherwise, the variables are propagated to upper scopes and set at the outermost one.
+	//
 	// Let’s consider the following example:
+	//
 	// There are two scopes '1' and '2'.
 	// Scope '1' is the parent scope of '2'. The effective variables of the scopes are:
 	// 1 => { "foo" : 2 }
 	// 2 => { "bar" : 1 }
+	//
 	// An update request with elementInstanceKey as '2', variables { "foo" : 5 }, and local set
 	// to true leaves scope '1' unchanged and adjusts scope '2' to { "bar" : 1, "foo" 5 }.
+	//
 	// By default, with local set to false, scope '1' will be { "foo": 5 }
 	// and scope '2' will be { "bar" : 1 }.
 	Local *bool `json:"local,omitempty"`
@@ -5288,7 +4633,7 @@ type SignalBroadcastRequest struct {
 
 // SignalBroadcastResult defines model for SignalBroadcastResult.
 type SignalBroadcastResult struct {
-	// SignalKey The key of the broadcasted signal.
+	// SignalKey The unique ID of the signal that was broadcast.
 	SignalKey SignalKey `json:"signalKey"`
 
 	// TenantId The tenant ID of the signal that was broadcast.
@@ -5482,9 +4827,6 @@ type TopologyResponse struct {
 	// Brokers A list of brokers that are part of this cluster.
 	Brokers []BrokerInfo `json:"brokers"`
 
-	// ClusterId The cluster Id.
-	ClusterId *string `json:"clusterId"`
-
 	// ClusterSize The number of brokers in the cluster.
 	ClusterSize int32 `json:"clusterSize"`
 
@@ -5594,7 +4936,7 @@ type UserTaskAssignmentRequest struct {
 	AllowOverride *bool `json:"allowOverride"`
 
 	// Assignee The assignee for the user task. The assignee must not be empty or `null`.
-	Assignee *string `json:"assignee,omitempty"`
+	Assignee string `json:"assignee"`
 }
 
 // UserTaskCompletionRequest defines model for UserTaskCompletionRequest.
@@ -5633,7 +4975,9 @@ type UserTaskFilter struct {
 	ElementInstanceKey *ElementInstanceKey `json:"elementInstanceKey,omitempty"`
 
 	// FollowUpDate The user task follow-up date.
-	FollowUpDate   *DateTimeFilterProperty        `json:"followUpDate,omitempty"`
+	FollowUpDate *DateTimeFilterProperty `json:"followUpDate,omitempty"`
+
+	// LocalVariables Local variables associated with the user task.
 	LocalVariables *[]VariableValueFilterProperty `json:"localVariables,omitempty"`
 
 	// Name The task name. This only works for data created with 8.8 and onwards. Instances from prior versions don't contain this data and cannot be found.
@@ -5649,14 +4993,13 @@ type UserTaskFilter struct {
 	ProcessDefinitionKey *ProcessDefinitionKey `json:"processDefinitionKey,omitempty"`
 
 	// ProcessInstanceKey The key of the process instance.
-	ProcessInstanceKey       *ProcessInstanceKey            `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+
+	// ProcessInstanceVariables Process instance variables associated with the user task.
 	ProcessInstanceVariables *[]VariableValueFilterProperty `json:"processInstanceVariables,omitempty"`
 
 	// State The user task state.
 	State *UserTaskStateFilterProperty `json:"state,omitempty"`
-
-	// Tags List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
-	Tags *TagSet `json:"tags,omitempty"`
 
 	// TenantId Tenant ID of this user task.
 	TenantId *StringFilterProperty `json:"tenantId,omitempty"`
@@ -5686,10 +5029,10 @@ type UserTaskProperties struct {
 	ChangedAttributes *[]string `json:"changedAttributes,omitempty"`
 
 	// DueDate The due date of the user task in ISO 8601 format.
-	DueDate *string `json:"dueDate"`
+	DueDate *time.Time `json:"dueDate"`
 
 	// FollowUpDate The follow-up date of the user task in ISO 8601 format.
-	FollowUpDate *string `json:"followUpDate"`
+	FollowUpDate *time.Time `json:"followUpDate"`
 
 	// FormKey The key of the form associated with the user task.
 	FormKey *FormKey `json:"formKey,omitempty"`
@@ -5763,14 +5106,11 @@ type UserTaskResult struct {
 	// State The state of the user task.
 	State *UserTaskStateEnum `json:"state,omitempty"`
 
-	// Tags List of tags. Tags need to start with a letter; then alphanumerics, `_`, `-`, `:`, or `.`; length ≤ 100.
-	Tags *TagSet `json:"tags,omitempty"`
-
 	// TenantId The unique identifier of the tenant.
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// UserTaskKey The key of the user task.
-	UserTaskKey *UserTaskKey `json:"userTaskKey,omitempty"`
+	UserTaskKey UserTaskKey `json:"userTaskKey"`
 }
 
 // UserTaskSearchQuery defines model for UserTaskSearchQuery.
@@ -5915,19 +5255,19 @@ type VariableResult = VariableResultBase
 // VariableResultBase Variable response item.
 type VariableResultBase struct {
 	// Name Name of this variable.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// ProcessInstanceKey The key of the process instance of this variable.
-	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey ProcessInstanceKey `json:"processInstanceKey"`
 
 	// ScopeKey The key of the scope of this variable.
-	ScopeKey *ScopeKey `json:"scopeKey,omitempty"`
+	ScopeKey ScopeKey `json:"scopeKey"`
 
 	// TenantId Tenant ID of this variable.
-	TenantId *TenantId `json:"tenantId,omitempty"`
+	TenantId TenantId `json:"tenantId"`
 
 	// VariableKey The key for this variable.
-	VariableKey *VariableKey `json:"variableKey,omitempty"`
+	VariableKey VariableKey `json:"variableKey"`
 }
 
 // VariableSearchQuery defines model for VariableSearchQuery.
@@ -5963,6 +5303,9 @@ type VariableValueFilterProperty struct {
 // Forbidden A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type Forbidden = ProblemDetail
 
+// GatewayTimeoutTaskListenerBlocking A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
+type GatewayTimeoutTaskListenerBlocking = ProblemDetail
+
 // InternalServerError A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type InternalServerError = ProblemDetail
 
@@ -5987,19 +5330,13 @@ type ResumeBatchOperationJSONBody interface{}
 // SuspendBatchOperationJSONBody defines parameters for SuspendBatchOperation.
 type SuspendBatchOperationJSONBody interface{}
 
-// SearchClusterVariablesParams defines parameters for SearchClusterVariables.
-type SearchClusterVariablesParams struct {
-	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
-	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
-}
-
 // CreateDeploymentMultipartBody defines parameters for CreateDeployment.
 type CreateDeploymentMultipartBody struct {
 	// Resources The binary data to create the deployment resources. It is possible to have more than one form part with different form part names for the binary data to create a deployment.
 	Resources []openapi_types.File `json:"resources"`
 
-	// TenantId The unique identifier of the tenant.
-	TenantId *TenantId `json:"tenantId,omitempty"`
+	// TenantId The tenant to deploy the resources to.
+	TenantId *string `json:"tenantId,omitempty"`
 }
 
 // CreateDocumentMultipartBody defines parameters for CreateDocument.
@@ -6016,7 +5353,7 @@ type CreateDocumentParams struct {
 	StoreId *string `form:"storeId,omitempty" json:"storeId,omitempty"`
 
 	// DocumentId The ID of the document to upload. If not provided, a new ID will be generated. Specifying an existing ID will result in an error if the document already exists.
-	DocumentId *DocumentId `form:"documentId,omitempty" json:"documentId,omitempty"`
+	DocumentId *string `form:"documentId,omitempty" json:"documentId,omitempty"`
 }
 
 // CreateDocumentsMultipartBody defines parameters for CreateDocuments.
@@ -6046,16 +5383,16 @@ type GetDocumentParams struct {
 	StoreId *string `form:"storeId,omitempty" json:"storeId,omitempty"`
 
 	// ContentHash The hash of the document content that was computed by the document store during upload. The hash is part of the document reference that is returned when uploading a document. If the client fails to provide the correct hash, the request will be rejected.
-	ContentHash *string `form:"contentHash,omitempty" json:"contentHash,omitempty"`
+	ContentHash string `form:"contentHash" json:"contentHash"`
 }
 
 // CreateDocumentLinkParams defines parameters for CreateDocumentLink.
 type CreateDocumentLinkParams struct {
-	// StoreId The ID of the document store where the document is located.
+	// StoreId The ID of the document store to link the document from.
 	StoreId *string `form:"storeId,omitempty" json:"storeId,omitempty"`
 
 	// ContentHash The hash of the document content that was computed by the document store during upload. The hash is part of the document reference that is returned when uploading a document. If the client fails to provide the correct hash, the request will be rejected.
-	ContentHash *string `form:"contentHash,omitempty" json:"contentHash,omitempty"`
+	ContentHash string `form:"contentHash" json:"contentHash"`
 }
 
 // GetUsageMetricsParams defines parameters for GetUsageMetrics.
@@ -6085,9 +5422,6 @@ type SearchVariablesParams struct {
 	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
 }
 
-// SearchAuditLogsJSONRequestBody defines body for SearchAuditLogs for application/json ContentType.
-type SearchAuditLogsJSONRequestBody = AuditLogSearchQueryRequest
-
 // CreateAuthorizationJSONRequestBody defines body for CreateAuthorization for application/json ContentType.
 type CreateAuthorizationJSONRequestBody = AuthorizationRequest
 
@@ -6114,15 +5448,6 @@ type SuspendBatchOperationJSONRequestBody SuspendBatchOperationJSONBody
 
 // PinClockJSONRequestBody defines body for PinClock for application/json ContentType.
 type PinClockJSONRequestBody = ClockPinRequest
-
-// CreateGlobalClusterVariableJSONRequestBody defines body for CreateGlobalClusterVariable for application/json ContentType.
-type CreateGlobalClusterVariableJSONRequestBody = CreateClusterVariableRequest
-
-// SearchClusterVariablesJSONRequestBody defines body for SearchClusterVariables for application/json ContentType.
-type SearchClusterVariablesJSONRequestBody = ClusterVariableSearchQueryRequest
-
-// CreateTenantClusterVariableJSONRequestBody defines body for CreateTenantClusterVariable for application/json ContentType.
-type CreateTenantClusterVariableJSONRequestBody = CreateClusterVariableRequest
 
 // SearchCorrelatedMessageSubscriptionsJSONRequestBody defines body for SearchCorrelatedMessageSubscriptions for application/json ContentType.
 type SearchCorrelatedMessageSubscriptionsJSONRequestBody = CorrelatedMessageSubscriptionSearchQuery
@@ -6156,9 +5481,6 @@ type ActivateAdHocSubProcessActivitiesJSONRequestBody = AdHocSubProcessActivateA
 
 // SearchElementInstancesJSONRequestBody defines body for SearchElementInstances for application/json ContentType.
 type SearchElementInstancesJSONRequestBody = ElementInstanceSearchQuery
-
-// SearchElementInstanceIncidentsJSONRequestBody defines body for SearchElementInstanceIncidents for application/json ContentType.
-type SearchElementInstanceIncidentsJSONRequestBody = IncidentSearchQuery
 
 // CreateElementInstanceVariablesJSONRequestBody defines body for CreateElementInstanceVariables for application/json ContentType.
 type CreateElementInstanceVariablesJSONRequestBody = SetVariableRequest
@@ -6229,12 +5551,6 @@ type PublishMessageJSONRequestBody = MessagePublicationRequest
 // SearchProcessDefinitionsJSONRequestBody defines body for SearchProcessDefinitions for application/json ContentType.
 type SearchProcessDefinitionsJSONRequestBody = ProcessDefinitionSearchQuery
 
-// GetProcessDefinitionInstanceStatisticsJSONRequestBody defines body for GetProcessDefinitionInstanceStatistics for application/json ContentType.
-type GetProcessDefinitionInstanceStatisticsJSONRequestBody = ProcessDefinitionInstanceStatisticsQuery
-
-// GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody defines body for GetProcessDefinitionInstanceVersionStatistics for application/json ContentType.
-type GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody = ProcessDefinitionInstanceVersionStatisticsQuery
-
 // GetProcessDefinitionStatisticsJSONRequestBody defines body for GetProcessDefinitionStatistics for application/json ContentType.
 type GetProcessDefinitionStatisticsJSONRequestBody = ProcessDefinitionElementStatisticsQuery
 
@@ -6260,7 +5576,7 @@ type SearchProcessInstancesJSONRequestBody = ProcessInstanceSearchQuery
 type CancelProcessInstanceJSONRequestBody = CancelProcessInstanceRequest
 
 // SearchProcessInstanceIncidentsJSONRequestBody defines body for SearchProcessInstanceIncidents for application/json ContentType.
-type SearchProcessInstanceIncidentsJSONRequestBody = IncidentSearchQuery
+type SearchProcessInstanceIncidentsJSONRequestBody = ProcessInstanceIncidentSearchQuery
 
 // MigrateProcessInstanceJSONRequestBody defines body for MigrateProcessInstance for application/json ContentType.
 type MigrateProcessInstanceJSONRequestBody = ProcessInstanceMigrationInstruction
@@ -6475,130 +5791,6 @@ func (a Changeset) MarshalJSON() ([]byte, error) {
 		}
 	}
 	return json.Marshal(object)
-}
-
-// AsAuditLogKeyFilterProperty0 returns the union data inside the AuditLogKeyFilterProperty as a AuditLogKeyFilterProperty0
-func (t AuditLogKeyFilterProperty) AsAuditLogKeyFilterProperty0() (AuditLogKeyFilterProperty0, error) {
-	var body AuditLogKeyFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAuditLogKeyFilterProperty0 overwrites any union data inside the AuditLogKeyFilterProperty as the provided AuditLogKeyFilterProperty0
-func (t *AuditLogKeyFilterProperty) FromAuditLogKeyFilterProperty0(v AuditLogKeyFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAuditLogKeyFilterProperty0 performs a merge with any union data inside the AuditLogKeyFilterProperty, using the provided AuditLogKeyFilterProperty0
-func (t *AuditLogKeyFilterProperty) MergeAuditLogKeyFilterProperty0(v AuditLogKeyFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedAuditLogKeyFilter returns the union data inside the AuditLogKeyFilterProperty as a AdvancedAuditLogKeyFilter
-func (t AuditLogKeyFilterProperty) AsAdvancedAuditLogKeyFilter() (AdvancedAuditLogKeyFilter, error) {
-	var body AdvancedAuditLogKeyFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedAuditLogKeyFilter overwrites any union data inside the AuditLogKeyFilterProperty as the provided AdvancedAuditLogKeyFilter
-func (t *AuditLogKeyFilterProperty) FromAdvancedAuditLogKeyFilter(v AdvancedAuditLogKeyFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedAuditLogKeyFilter performs a merge with any union data inside the AuditLogKeyFilterProperty, using the provided AdvancedAuditLogKeyFilter
-func (t *AuditLogKeyFilterProperty) MergeAdvancedAuditLogKeyFilter(v AdvancedAuditLogKeyFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t AuditLogKeyFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *AuditLogKeyFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsAuthorizationIdBasedRequest returns the union data inside the AuthorizationRequest as a AuthorizationIdBasedRequest
-func (t AuthorizationRequest) AsAuthorizationIdBasedRequest() (AuthorizationIdBasedRequest, error) {
-	var body AuthorizationIdBasedRequest
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAuthorizationIdBasedRequest overwrites any union data inside the AuthorizationRequest as the provided AuthorizationIdBasedRequest
-func (t *AuthorizationRequest) FromAuthorizationIdBasedRequest(v AuthorizationIdBasedRequest) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAuthorizationIdBasedRequest performs a merge with any union data inside the AuthorizationRequest, using the provided AuthorizationIdBasedRequest
-func (t *AuthorizationRequest) MergeAuthorizationIdBasedRequest(v AuthorizationIdBasedRequest) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAuthorizationPropertyBasedRequest returns the union data inside the AuthorizationRequest as a AuthorizationPropertyBasedRequest
-func (t AuthorizationRequest) AsAuthorizationPropertyBasedRequest() (AuthorizationPropertyBasedRequest, error) {
-	var body AuthorizationPropertyBasedRequest
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAuthorizationPropertyBasedRequest overwrites any union data inside the AuthorizationRequest as the provided AuthorizationPropertyBasedRequest
-func (t *AuthorizationRequest) FromAuthorizationPropertyBasedRequest(v AuthorizationPropertyBasedRequest) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAuthorizationPropertyBasedRequest performs a merge with any union data inside the AuthorizationRequest, using the provided AuthorizationPropertyBasedRequest
-func (t *AuthorizationRequest) MergeAuthorizationPropertyBasedRequest(v AuthorizationPropertyBasedRequest) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t AuthorizationRequest) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *AuthorizationRequest) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
 }
 
 // AsBasicStringFilterProperty0 returns the union data inside the BasicStringFilterProperty as a BasicStringFilterProperty0
@@ -6849,130 +6041,6 @@ func (t *BatchOperationTypeFilterProperty) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsCategoryFilterProperty0 returns the union data inside the CategoryFilterProperty as a CategoryFilterProperty0
-func (t CategoryFilterProperty) AsCategoryFilterProperty0() (CategoryFilterProperty0, error) {
-	var body CategoryFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromCategoryFilterProperty0 overwrites any union data inside the CategoryFilterProperty as the provided CategoryFilterProperty0
-func (t *CategoryFilterProperty) FromCategoryFilterProperty0(v CategoryFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeCategoryFilterProperty0 performs a merge with any union data inside the CategoryFilterProperty, using the provided CategoryFilterProperty0
-func (t *CategoryFilterProperty) MergeCategoryFilterProperty0(v CategoryFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedCategoryFilter returns the union data inside the CategoryFilterProperty as a AdvancedCategoryFilter
-func (t CategoryFilterProperty) AsAdvancedCategoryFilter() (AdvancedCategoryFilter, error) {
-	var body AdvancedCategoryFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedCategoryFilter overwrites any union data inside the CategoryFilterProperty as the provided AdvancedCategoryFilter
-func (t *CategoryFilterProperty) FromAdvancedCategoryFilter(v AdvancedCategoryFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedCategoryFilter performs a merge with any union data inside the CategoryFilterProperty, using the provided AdvancedCategoryFilter
-func (t *CategoryFilterProperty) MergeAdvancedCategoryFilter(v AdvancedCategoryFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t CategoryFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *CategoryFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsClusterVariableScopeFilterProperty0 returns the union data inside the ClusterVariableScopeFilterProperty as a ClusterVariableScopeFilterProperty0
-func (t ClusterVariableScopeFilterProperty) AsClusterVariableScopeFilterProperty0() (ClusterVariableScopeFilterProperty0, error) {
-	var body ClusterVariableScopeFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromClusterVariableScopeFilterProperty0 overwrites any union data inside the ClusterVariableScopeFilterProperty as the provided ClusterVariableScopeFilterProperty0
-func (t *ClusterVariableScopeFilterProperty) FromClusterVariableScopeFilterProperty0(v ClusterVariableScopeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeClusterVariableScopeFilterProperty0 performs a merge with any union data inside the ClusterVariableScopeFilterProperty, using the provided ClusterVariableScopeFilterProperty0
-func (t *ClusterVariableScopeFilterProperty) MergeClusterVariableScopeFilterProperty0(v ClusterVariableScopeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedClusterVariableScopeFilter returns the union data inside the ClusterVariableScopeFilterProperty as a AdvancedClusterVariableScopeFilter
-func (t ClusterVariableScopeFilterProperty) AsAdvancedClusterVariableScopeFilter() (AdvancedClusterVariableScopeFilter, error) {
-	var body AdvancedClusterVariableScopeFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedClusterVariableScopeFilter overwrites any union data inside the ClusterVariableScopeFilterProperty as the provided AdvancedClusterVariableScopeFilter
-func (t *ClusterVariableScopeFilterProperty) FromAdvancedClusterVariableScopeFilter(v AdvancedClusterVariableScopeFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedClusterVariableScopeFilter performs a merge with any union data inside the ClusterVariableScopeFilterProperty, using the provided AdvancedClusterVariableScopeFilter
-func (t *ClusterVariableScopeFilterProperty) MergeAdvancedClusterVariableScopeFilter(v AdvancedClusterVariableScopeFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t ClusterVariableScopeFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *ClusterVariableScopeFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // AsDateTimeFilterProperty0 returns the union data inside the DateTimeFilterProperty as a DateTimeFilterProperty0
 func (t DateTimeFilterProperty) AsDateTimeFilterProperty0() (DateTimeFilterProperty0, error) {
 	var body DateTimeFilterProperty0
@@ -7097,68 +6165,6 @@ func (t *DecisionDefinitionKeyFilterProperty) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsDecisionEvaluationInstanceKeyFilterProperty0 returns the union data inside the DecisionEvaluationInstanceKeyFilterProperty as a DecisionEvaluationInstanceKeyFilterProperty0
-func (t DecisionEvaluationInstanceKeyFilterProperty) AsDecisionEvaluationInstanceKeyFilterProperty0() (DecisionEvaluationInstanceKeyFilterProperty0, error) {
-	var body DecisionEvaluationInstanceKeyFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromDecisionEvaluationInstanceKeyFilterProperty0 overwrites any union data inside the DecisionEvaluationInstanceKeyFilterProperty as the provided DecisionEvaluationInstanceKeyFilterProperty0
-func (t *DecisionEvaluationInstanceKeyFilterProperty) FromDecisionEvaluationInstanceKeyFilterProperty0(v DecisionEvaluationInstanceKeyFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeDecisionEvaluationInstanceKeyFilterProperty0 performs a merge with any union data inside the DecisionEvaluationInstanceKeyFilterProperty, using the provided DecisionEvaluationInstanceKeyFilterProperty0
-func (t *DecisionEvaluationInstanceKeyFilterProperty) MergeDecisionEvaluationInstanceKeyFilterProperty0(v DecisionEvaluationInstanceKeyFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedDecisionEvaluationInstanceKeyFilter returns the union data inside the DecisionEvaluationInstanceKeyFilterProperty as a AdvancedDecisionEvaluationInstanceKeyFilter
-func (t DecisionEvaluationInstanceKeyFilterProperty) AsAdvancedDecisionEvaluationInstanceKeyFilter() (AdvancedDecisionEvaluationInstanceKeyFilter, error) {
-	var body AdvancedDecisionEvaluationInstanceKeyFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedDecisionEvaluationInstanceKeyFilter overwrites any union data inside the DecisionEvaluationInstanceKeyFilterProperty as the provided AdvancedDecisionEvaluationInstanceKeyFilter
-func (t *DecisionEvaluationInstanceKeyFilterProperty) FromAdvancedDecisionEvaluationInstanceKeyFilter(v AdvancedDecisionEvaluationInstanceKeyFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedDecisionEvaluationInstanceKeyFilter performs a merge with any union data inside the DecisionEvaluationInstanceKeyFilterProperty, using the provided AdvancedDecisionEvaluationInstanceKeyFilter
-func (t *DecisionEvaluationInstanceKeyFilterProperty) MergeAdvancedDecisionEvaluationInstanceKeyFilter(v AdvancedDecisionEvaluationInstanceKeyFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t DecisionEvaluationInstanceKeyFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *DecisionEvaluationInstanceKeyFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // AsDecisionEvaluationById returns the union data inside the DecisionEvaluationInstruction as a DecisionEvaluationById
 func (t DecisionEvaluationInstruction) AsDecisionEvaluationById() (DecisionEvaluationById, error) {
 	var body DecisionEvaluationById
@@ -7217,68 +6223,6 @@ func (t DecisionEvaluationInstruction) MarshalJSON() ([]byte, error) {
 }
 
 func (t *DecisionEvaluationInstruction) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsDecisionInstanceStateFilterProperty0 returns the union data inside the DecisionInstanceStateFilterProperty as a DecisionInstanceStateFilterProperty0
-func (t DecisionInstanceStateFilterProperty) AsDecisionInstanceStateFilterProperty0() (DecisionInstanceStateFilterProperty0, error) {
-	var body DecisionInstanceStateFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromDecisionInstanceStateFilterProperty0 overwrites any union data inside the DecisionInstanceStateFilterProperty as the provided DecisionInstanceStateFilterProperty0
-func (t *DecisionInstanceStateFilterProperty) FromDecisionInstanceStateFilterProperty0(v DecisionInstanceStateFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeDecisionInstanceStateFilterProperty0 performs a merge with any union data inside the DecisionInstanceStateFilterProperty, using the provided DecisionInstanceStateFilterProperty0
-func (t *DecisionInstanceStateFilterProperty) MergeDecisionInstanceStateFilterProperty0(v DecisionInstanceStateFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedDecisionInstanceStateFilter returns the union data inside the DecisionInstanceStateFilterProperty as a AdvancedDecisionInstanceStateFilter
-func (t DecisionInstanceStateFilterProperty) AsAdvancedDecisionInstanceStateFilter() (AdvancedDecisionInstanceStateFilter, error) {
-	var body AdvancedDecisionInstanceStateFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedDecisionInstanceStateFilter overwrites any union data inside the DecisionInstanceStateFilterProperty as the provided AdvancedDecisionInstanceStateFilter
-func (t *DecisionInstanceStateFilterProperty) FromAdvancedDecisionInstanceStateFilter(v AdvancedDecisionInstanceStateFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedDecisionInstanceStateFilter performs a merge with any union data inside the DecisionInstanceStateFilterProperty, using the provided AdvancedDecisionInstanceStateFilter
-func (t *DecisionInstanceStateFilterProperty) MergeAdvancedDecisionInstanceStateFilter(v AdvancedDecisionInstanceStateFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t DecisionInstanceStateFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *DecisionInstanceStateFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -7403,192 +6347,6 @@ func (t ElementInstanceStateFilterProperty) MarshalJSON() ([]byte, error) {
 }
 
 func (t *ElementInstanceStateFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsEntityTypeFilterProperty0 returns the union data inside the EntityTypeFilterProperty as a EntityTypeFilterProperty0
-func (t EntityTypeFilterProperty) AsEntityTypeFilterProperty0() (EntityTypeFilterProperty0, error) {
-	var body EntityTypeFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromEntityTypeFilterProperty0 overwrites any union data inside the EntityTypeFilterProperty as the provided EntityTypeFilterProperty0
-func (t *EntityTypeFilterProperty) FromEntityTypeFilterProperty0(v EntityTypeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeEntityTypeFilterProperty0 performs a merge with any union data inside the EntityTypeFilterProperty, using the provided EntityTypeFilterProperty0
-func (t *EntityTypeFilterProperty) MergeEntityTypeFilterProperty0(v EntityTypeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedEntityTypeFilter returns the union data inside the EntityTypeFilterProperty as a AdvancedEntityTypeFilter
-func (t EntityTypeFilterProperty) AsAdvancedEntityTypeFilter() (AdvancedEntityTypeFilter, error) {
-	var body AdvancedEntityTypeFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedEntityTypeFilter overwrites any union data inside the EntityTypeFilterProperty as the provided AdvancedEntityTypeFilter
-func (t *EntityTypeFilterProperty) FromAdvancedEntityTypeFilter(v AdvancedEntityTypeFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedEntityTypeFilter performs a merge with any union data inside the EntityTypeFilterProperty, using the provided AdvancedEntityTypeFilter
-func (t *EntityTypeFilterProperty) MergeAdvancedEntityTypeFilter(v AdvancedEntityTypeFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t EntityTypeFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *EntityTypeFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsIncidentErrorTypeFilterProperty0 returns the union data inside the IncidentErrorTypeFilterProperty as a IncidentErrorTypeFilterProperty0
-func (t IncidentErrorTypeFilterProperty) AsIncidentErrorTypeFilterProperty0() (IncidentErrorTypeFilterProperty0, error) {
-	var body IncidentErrorTypeFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromIncidentErrorTypeFilterProperty0 overwrites any union data inside the IncidentErrorTypeFilterProperty as the provided IncidentErrorTypeFilterProperty0
-func (t *IncidentErrorTypeFilterProperty) FromIncidentErrorTypeFilterProperty0(v IncidentErrorTypeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeIncidentErrorTypeFilterProperty0 performs a merge with any union data inside the IncidentErrorTypeFilterProperty, using the provided IncidentErrorTypeFilterProperty0
-func (t *IncidentErrorTypeFilterProperty) MergeIncidentErrorTypeFilterProperty0(v IncidentErrorTypeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedIncidentErrorTypeFilter returns the union data inside the IncidentErrorTypeFilterProperty as a AdvancedIncidentErrorTypeFilter
-func (t IncidentErrorTypeFilterProperty) AsAdvancedIncidentErrorTypeFilter() (AdvancedIncidentErrorTypeFilter, error) {
-	var body AdvancedIncidentErrorTypeFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedIncidentErrorTypeFilter overwrites any union data inside the IncidentErrorTypeFilterProperty as the provided AdvancedIncidentErrorTypeFilter
-func (t *IncidentErrorTypeFilterProperty) FromAdvancedIncidentErrorTypeFilter(v AdvancedIncidentErrorTypeFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedIncidentErrorTypeFilter performs a merge with any union data inside the IncidentErrorTypeFilterProperty, using the provided AdvancedIncidentErrorTypeFilter
-func (t *IncidentErrorTypeFilterProperty) MergeAdvancedIncidentErrorTypeFilter(v AdvancedIncidentErrorTypeFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t IncidentErrorTypeFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *IncidentErrorTypeFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsIncidentStateFilterProperty0 returns the union data inside the IncidentStateFilterProperty as a IncidentStateFilterProperty0
-func (t IncidentStateFilterProperty) AsIncidentStateFilterProperty0() (IncidentStateFilterProperty0, error) {
-	var body IncidentStateFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromIncidentStateFilterProperty0 overwrites any union data inside the IncidentStateFilterProperty as the provided IncidentStateFilterProperty0
-func (t *IncidentStateFilterProperty) FromIncidentStateFilterProperty0(v IncidentStateFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeIncidentStateFilterProperty0 performs a merge with any union data inside the IncidentStateFilterProperty, using the provided IncidentStateFilterProperty0
-func (t *IncidentStateFilterProperty) MergeIncidentStateFilterProperty0(v IncidentStateFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedIncidentStateFilter returns the union data inside the IncidentStateFilterProperty as a AdvancedIncidentStateFilter
-func (t IncidentStateFilterProperty) AsAdvancedIncidentStateFilter() (AdvancedIncidentStateFilter, error) {
-	var body AdvancedIncidentStateFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedIncidentStateFilter overwrites any union data inside the IncidentStateFilterProperty as the provided AdvancedIncidentStateFilter
-func (t *IncidentStateFilterProperty) FromAdvancedIncidentStateFilter(v AdvancedIncidentStateFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedIncidentStateFilter performs a merge with any union data inside the IncidentStateFilterProperty, using the provided AdvancedIncidentStateFilter
-func (t *IncidentStateFilterProperty) MergeAdvancedIncidentStateFilter(v AdvancedIncidentStateFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t IncidentStateFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *IncidentStateFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -7850,7 +6608,8 @@ func (t JobResult) AsJobResultUserTask() (JobResultUserTask, error) {
 
 // FromJobResultUserTask overwrites any union data inside the JobResult as the provided JobResultUserTask
 func (t *JobResult) FromJobResultUserTask(v JobResultUserTask) error {
-	v.Type = "userTask"
+	t.Type = "userTask"
+
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -7858,7 +6617,8 @@ func (t *JobResult) FromJobResultUserTask(v JobResultUserTask) error {
 
 // MergeJobResultUserTask performs a merge with any union data inside the JobResult, using the provided JobResultUserTask
 func (t *JobResult) MergeJobResultUserTask(v JobResultUserTask) error {
-	v.Type = "userTask"
+	t.Type = "userTask"
+
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -7878,7 +6638,8 @@ func (t JobResult) AsJobResultAdHocSubProcess() (JobResultAdHocSubProcess, error
 
 // FromJobResultAdHocSubProcess overwrites any union data inside the JobResult as the provided JobResultAdHocSubProcess
 func (t *JobResult) FromJobResultAdHocSubProcess(v JobResultAdHocSubProcess) error {
-	v.Type = "adHocSubProcess"
+	t.Type = "adHocSubProcess"
+
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -7886,7 +6647,8 @@ func (t *JobResult) FromJobResultAdHocSubProcess(v JobResultAdHocSubProcess) err
 
 // MergeJobResultAdHocSubProcess performs a merge with any union data inside the JobResult, using the provided JobResultAdHocSubProcess
 func (t *JobResult) MergeJobResultAdHocSubProcess(v JobResultAdHocSubProcess) error {
-	v.Type = "adHocSubProcess"
+	t.Type = "adHocSubProcess"
+
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -7922,11 +6684,44 @@ func (t JobResult) ValueByDiscriminator() (interface{}, error) {
 
 func (t JobResult) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	object["type"], err = json.Marshal(t.Type)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'type': %w", err)
+	}
+
+	b, err = json.Marshal(object)
 	return b, err
 }
 
 func (t *JobResult) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["type"]; found {
+		err = json.Unmarshal(raw, &t.Type)
+		if err != nil {
+			return fmt.Errorf("error reading 'type': %w", err)
+		}
+	}
+
 	return err
 }
 
@@ -8116,68 +6911,6 @@ func (t *MessageSubscriptionStateFilterProperty) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsOperationTypeFilterProperty0 returns the union data inside the OperationTypeFilterProperty as a OperationTypeFilterProperty0
-func (t OperationTypeFilterProperty) AsOperationTypeFilterProperty0() (OperationTypeFilterProperty0, error) {
-	var body OperationTypeFilterProperty0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromOperationTypeFilterProperty0 overwrites any union data inside the OperationTypeFilterProperty as the provided OperationTypeFilterProperty0
-func (t *OperationTypeFilterProperty) FromOperationTypeFilterProperty0(v OperationTypeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeOperationTypeFilterProperty0 performs a merge with any union data inside the OperationTypeFilterProperty, using the provided OperationTypeFilterProperty0
-func (t *OperationTypeFilterProperty) MergeOperationTypeFilterProperty0(v OperationTypeFilterProperty0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsAdvancedOperationTypeFilter returns the union data inside the OperationTypeFilterProperty as a AdvancedOperationTypeFilter
-func (t OperationTypeFilterProperty) AsAdvancedOperationTypeFilter() (AdvancedOperationTypeFilter, error) {
-	var body AdvancedOperationTypeFilter
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromAdvancedOperationTypeFilter overwrites any union data inside the OperationTypeFilterProperty as the provided AdvancedOperationTypeFilter
-func (t *OperationTypeFilterProperty) FromAdvancedOperationTypeFilter(v AdvancedOperationTypeFilter) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeAdvancedOperationTypeFilter performs a merge with any union data inside the OperationTypeFilterProperty, using the provided AdvancedOperationTypeFilter
-func (t *OperationTypeFilterProperty) MergeAdvancedOperationTypeFilter(v AdvancedOperationTypeFilter) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t OperationTypeFilterProperty) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *OperationTypeFilterProperty) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // AsProcessDefinitionKeyFilterProperty0 returns the union data inside the ProcessDefinitionKeyFilterProperty as a ProcessDefinitionKeyFilterProperty0
 func (t ProcessDefinitionKeyFilterProperty) AsProcessDefinitionKeyFilterProperty0() (ProcessDefinitionKeyFilterProperty0, error) {
 	var body ProcessDefinitionKeyFilterProperty0
@@ -8311,7 +7044,8 @@ func (t ProcessInstanceCreationRuntimeInstruction) AsProcessInstanceCreationTerm
 
 // FromProcessInstanceCreationTerminateInstruction overwrites any union data inside the ProcessInstanceCreationRuntimeInstruction as the provided ProcessInstanceCreationTerminateInstruction
 func (t *ProcessInstanceCreationRuntimeInstruction) FromProcessInstanceCreationTerminateInstruction(v ProcessInstanceCreationTerminateInstruction) error {
-	v.Type = "ProcessInstanceCreationTerminateInstruction"
+	t.Type = "TERMINATE_PROCESS_INSTANCE"
+
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
@@ -8319,7 +7053,8 @@ func (t *ProcessInstanceCreationRuntimeInstruction) FromProcessInstanceCreationT
 
 // MergeProcessInstanceCreationTerminateInstruction performs a merge with any union data inside the ProcessInstanceCreationRuntimeInstruction, using the provided ProcessInstanceCreationTerminateInstruction
 func (t *ProcessInstanceCreationRuntimeInstruction) MergeProcessInstanceCreationTerminateInstruction(v ProcessInstanceCreationTerminateInstruction) error {
-	v.Type = "ProcessInstanceCreationTerminateInstruction"
+	t.Type = "TERMINATE_PROCESS_INSTANCE"
+
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -8344,7 +7079,7 @@ func (t ProcessInstanceCreationRuntimeInstruction) ValueByDiscriminator() (inter
 		return nil, err
 	}
 	switch discriminator {
-	case "ProcessInstanceCreationTerminateInstruction":
+	case "TERMINATE_PROCESS_INSTANCE":
 		return t.AsProcessInstanceCreationTerminateInstruction()
 	default:
 		return nil, errors.New("unknown discriminator value: " + discriminator)
@@ -8353,11 +7088,44 @@ func (t ProcessInstanceCreationRuntimeInstruction) ValueByDiscriminator() (inter
 
 func (t ProcessInstanceCreationRuntimeInstruction) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	object["type"], err = json.Marshal(t.Type)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'type': %w", err)
+	}
+
+	b, err = json.Marshal(object)
 	return b, err
 }
 
 func (t *ProcessInstanceCreationRuntimeInstruction) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["type"]; found {
+		err = json.Unmarshal(raw, &t.Type)
+		if err != nil {
+			return fmt.Errorf("error reading 'type': %w", err)
+		}
+	}
+
 	return err
 }
 
@@ -8606,32 +7374,6 @@ func (t ScopeKeyFilterProperty) MarshalJSON() ([]byte, error) {
 
 func (t *ScopeKeyFilterProperty) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
-// AsLimitPagination returns the union data inside the SearchQueryPageRequest as a LimitPagination
-func (t SearchQueryPageRequest) AsLimitPagination() (LimitPagination, error) {
-	var body LimitPagination
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromLimitPagination overwrites any union data inside the SearchQueryPageRequest as the provided LimitPagination
-func (t *SearchQueryPageRequest) FromLimitPagination(v LimitPagination) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeLimitPagination performs a merge with any union data inside the SearchQueryPageRequest, using the provided LimitPagination
-func (t *SearchQueryPageRequest) MergeLimitPagination(v LimitPagination) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
 	return err
 }
 
@@ -8982,14 +7724,6 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// SearchAuditLogsWithBody request with any body
-	SearchAuditLogsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	SearchAuditLogs(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetAuditLog request
-	GetAuditLog(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetAuthentication request
 	GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -9050,33 +7784,6 @@ type ClientInterface interface {
 	// ResetClock request
 	ResetClock(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateGlobalClusterVariableWithBody request with any body
-	CreateGlobalClusterVariableWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateGlobalClusterVariable(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteGlobalClusterVariable request
-	DeleteGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetGlobalClusterVariable request
-	GetGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SearchClusterVariablesWithBody request with any body
-	SearchClusterVariablesWithBody(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	SearchClusterVariables(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateTenantClusterVariableWithBody request with any body
-	CreateTenantClusterVariableWithBody(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateTenantClusterVariable(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteTenantClusterVariable request
-	DeleteTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetTenantClusterVariable request
-	GetTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// SearchCorrelatedMessageSubscriptionsWithBody request with any body
 	SearchCorrelatedMessageSubscriptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -9093,10 +7800,10 @@ type ClientInterface interface {
 	SearchDecisionDefinitions(ctx context.Context, body SearchDecisionDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionDefinition request
-	GetDecisionDefinition(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionDefinition(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionDefinitionXML request
-	GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchDecisionInstancesWithBody request with any body
 	SearchDecisionInstancesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9104,7 +7811,7 @@ type ClientInterface interface {
 	SearchDecisionInstances(ctx context.Context, body SearchDecisionInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionInstance request
-	GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchDecisionRequirementsWithBody request with any body
 	SearchDecisionRequirementsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9112,10 +7819,10 @@ type ClientInterface interface {
 	SearchDecisionRequirements(ctx context.Context, body SearchDecisionRequirementsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionRequirements request
-	GetDecisionRequirements(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionRequirements(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionRequirementsXML request
-	GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateDeploymentWithBody request with any body
 	CreateDeploymentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9138,9 +7845,9 @@ type ClientInterface interface {
 	CreateDocumentLink(ctx context.Context, documentId DocumentId, params *CreateDocumentLinkParams, body CreateDocumentLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ActivateAdHocSubProcessActivitiesWithBody request with any body
-	ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchElementInstancesWithBody request with any body
 	SearchElementInstancesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9148,17 +7855,12 @@ type ClientInterface interface {
 	SearchElementInstances(ctx context.Context, body SearchElementInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetElementInstance request
-	GetElementInstance(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SearchElementInstanceIncidentsWithBody request with any body
-	SearchElementInstanceIncidentsWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	SearchElementInstanceIncidents(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetElementInstance(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateElementInstanceVariablesWithBody request with any body
-	CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateElementInstanceVariables(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateElementInstanceVariables(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateGroupWithBody request with any body
 	CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9225,12 +7927,12 @@ type ClientInterface interface {
 	SearchIncidents(ctx context.Context, body SearchIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetIncident request
-	GetIncident(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetIncident(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResolveIncidentWithBody request with any body
-	ResolveIncidentWithBody(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ResolveIncidentWithBody(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ResolveIncident(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ResolveIncident(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ActivateJobsWithBody request with any body
 	ActivateJobsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9243,24 +7945,24 @@ type ClientInterface interface {
 	SearchJobs(ctx context.Context, body SearchJobsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateJobWithBody request with any body
-	UpdateJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateJob(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateJob(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteJobWithBody request with any body
-	CompleteJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CompleteJob(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteJob(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ThrowJobErrorWithBody request with any body
-	ThrowJobErrorWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ThrowJobErrorWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ThrowJobError(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ThrowJobError(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// FailJobWithBody request with any body
-	FailJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	FailJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	FailJob(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	FailJob(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetLicense request
 	GetLicense(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9306,29 +8008,19 @@ type ClientInterface interface {
 
 	SearchProcessDefinitions(ctx context.Context, body SearchProcessDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetProcessDefinitionInstanceStatisticsWithBody request with any body
-	GetProcessDefinitionInstanceStatisticsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	GetProcessDefinitionInstanceStatistics(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetProcessDefinitionInstanceVersionStatisticsWithBody request with any body
-	GetProcessDefinitionInstanceVersionStatisticsWithBody(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	GetProcessDefinitionInstanceVersionStatistics(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetProcessDefinition request
-	GetProcessDefinition(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinition(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetStartProcessForm request
-	GetStartProcessForm(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetStartProcessForm(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessDefinitionStatisticsWithBody request with any body
-	GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessDefinitionXML request
-	GetProcessDefinitionXML(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinitionXML(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProcessInstanceWithBody request with any body
 	CreateProcessInstanceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9361,39 +8053,36 @@ type ClientInterface interface {
 	SearchProcessInstances(ctx context.Context, body SearchProcessInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstance request
-	GetProcessInstance(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstanceCallHierarchy request
-	GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CancelProcessInstanceWithBody request with any body
-	CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CancelProcessInstance(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ResolveProcessInstanceIncidents request
-	ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CancelProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProcessInstanceIncidentsWithBody request with any body
-	SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MigrateProcessInstanceWithBody request with any body
-	MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	MigrateProcessInstance(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MigrateProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModifyProcessInstanceWithBody request with any body
-	ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ModifyProcessInstance(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ModifyProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstanceSequenceFlows request
-	GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstanceStatistics request
-	GetProcessInstanceStatistics(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstanceStatistics(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetResource request
 	GetResource(ctx context.Context, resourceKey ResourceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9572,33 +8261,33 @@ type ClientInterface interface {
 	SearchUserTasks(ctx context.Context, body SearchUserTasksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUserTask request
-	GetUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserTaskWithBody request with any body
-	UpdateUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateUserTask(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserTask(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnassignUserTask request
-	UnassignUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UnassignUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AssignUserTaskWithBody request with any body
-	AssignUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AssignUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	AssignUserTask(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AssignUserTask(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteUserTaskWithBody request with any body
-	CompleteUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CompleteUserTask(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteUserTask(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUserTaskForm request
-	GetUserTaskForm(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUserTaskForm(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchUserTaskVariablesWithBody request with any body
-	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchUserTaskVariables(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariables(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUserWithBody request with any body
 	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9627,43 +8316,7 @@ type ClientInterface interface {
 	SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVariable request
-	GetVariable(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
-}
-
-func (c *Client) SearchAuditLogsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchAuditLogsRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SearchAuditLogs(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchAuditLogsRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetAuditLog(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetAuditLogRequest(c.Server, auditLogKey)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	GetVariable(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -9942,126 +8595,6 @@ func (c *Client) ResetClock(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateGlobalClusterVariableWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateGlobalClusterVariableRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateGlobalClusterVariable(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateGlobalClusterVariableRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteGlobalClusterVariableRequest(c.Server, name)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetGlobalClusterVariable(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetGlobalClusterVariableRequest(c.Server, name)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SearchClusterVariablesWithBody(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchClusterVariablesRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SearchClusterVariables(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchClusterVariablesRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateTenantClusterVariableWithBody(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTenantClusterVariableRequestWithBody(c.Server, tenantId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateTenantClusterVariable(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTenantClusterVariableRequest(c.Server, tenantId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteTenantClusterVariableRequest(c.Server, tenantId, name)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetTenantClusterVariable(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTenantClusterVariableRequest(c.Server, tenantId, name)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) SearchCorrelatedMessageSubscriptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchCorrelatedMessageSubscriptionsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -10134,7 +8667,7 @@ func (c *Client) SearchDecisionDefinitions(ctx context.Context, body SearchDecis
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionDefinition(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionDefinition(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionDefinitionRequest(c.Server, decisionDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -10146,7 +8679,7 @@ func (c *Client) GetDecisionDefinition(ctx context.Context, decisionDefinitionKe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionDefinitionXMLRequest(c.Server, decisionDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -10182,7 +8715,7 @@ func (c *Client) SearchDecisionInstances(ctx context.Context, body SearchDecisio
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionInstanceRequest(c.Server, decisionEvaluationInstanceKey)
 	if err != nil {
 		return nil, err
@@ -10218,7 +8751,7 @@ func (c *Client) SearchDecisionRequirements(ctx context.Context, body SearchDeci
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionRequirements(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionRequirements(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionRequirementsRequest(c.Server, decisionRequirementsKey)
 	if err != nil {
 		return nil, err
@@ -10230,7 +8763,7 @@ func (c *Client) GetDecisionRequirements(ctx context.Context, decisionRequiremen
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionRequirementsXMLRequest(c.Server, decisionRequirementsKey)
 	if err != nil {
 		return nil, err
@@ -10326,7 +8859,7 @@ func (c *Client) CreateDocumentLink(ctx context.Context, documentId DocumentId, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewActivateAdHocSubProcessActivitiesRequestWithBody(c.Server, adHocSubProcessInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10338,7 +8871,7 @@ func (c *Client) ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewActivateAdHocSubProcessActivitiesRequest(c.Server, adHocSubProcessInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -10374,7 +8907,7 @@ func (c *Client) SearchElementInstances(ctx context.Context, body SearchElementI
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetElementInstanceRequest(c.Server, elementInstanceKey)
 	if err != nil {
 		return nil, err
@@ -10386,31 +8919,7 @@ func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchElementInstanceIncidentsWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchElementInstanceIncidentsRequestWithBody(c.Server, elementInstanceKey, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SearchElementInstanceIncidents(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchElementInstanceIncidentsRequest(c.Server, elementInstanceKey, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateElementInstanceVariablesRequestWithBody(c.Server, elementInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10422,7 +8931,7 @@ func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, ele
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateElementInstanceVariables(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateElementInstanceVariables(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateElementInstanceVariablesRequest(c.Server, elementInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -10722,7 +9231,7 @@ func (c *Client) SearchIncidents(ctx context.Context, body SearchIncidentsJSONRe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetIncident(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetIncident(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetIncidentRequest(c.Server, incidentKey)
 	if err != nil {
 		return nil, err
@@ -10734,7 +9243,7 @@ func (c *Client) GetIncident(ctx context.Context, incidentKey string, reqEditors
 	return c.Client.Do(req)
 }
 
-func (c *Client) ResolveIncidentWithBody(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ResolveIncidentWithBody(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResolveIncidentRequestWithBody(c.Server, incidentKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10746,7 +9255,7 @@ func (c *Client) ResolveIncidentWithBody(ctx context.Context, incidentKey string
 	return c.Client.Do(req)
 }
 
-func (c *Client) ResolveIncident(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ResolveIncident(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResolveIncidentRequest(c.Server, incidentKey, body)
 	if err != nil {
 		return nil, err
@@ -10806,7 +9315,7 @@ func (c *Client) SearchJobs(ctx context.Context, body SearchJobsJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateJobRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10818,7 +9327,7 @@ func (c *Client) UpdateJobWithBody(ctx context.Context, jobKey string, contentTy
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateJob(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateJob(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateJobRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -10830,7 +9339,7 @@ func (c *Client) UpdateJob(ctx context.Context, jobKey string, body UpdateJobJSO
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteJobRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10842,7 +9351,7 @@ func (c *Client) CompleteJobWithBody(ctx context.Context, jobKey string, content
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteJob(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteJob(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteJobRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -10854,7 +9363,7 @@ func (c *Client) CompleteJob(ctx context.Context, jobKey string, body CompleteJo
 	return c.Client.Do(req)
 }
 
-func (c *Client) ThrowJobErrorWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ThrowJobErrorWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewThrowJobErrorRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10866,7 +9375,7 @@ func (c *Client) ThrowJobErrorWithBody(ctx context.Context, jobKey string, conte
 	return c.Client.Do(req)
 }
 
-func (c *Client) ThrowJobError(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ThrowJobError(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewThrowJobErrorRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -10878,7 +9387,7 @@ func (c *Client) ThrowJobError(ctx context.Context, jobKey string, body ThrowJob
 	return c.Client.Do(req)
 }
 
-func (c *Client) FailJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) FailJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewFailJobRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10890,7 +9399,7 @@ func (c *Client) FailJobWithBody(ctx context.Context, jobKey string, contentType
 	return c.Client.Do(req)
 }
 
-func (c *Client) FailJob(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) FailJob(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewFailJobRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -11106,55 +9615,7 @@ func (c *Client) SearchProcessDefinitions(ctx context.Context, body SearchProces
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionInstanceStatisticsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProcessDefinitionInstanceStatisticsRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetProcessDefinitionInstanceStatistics(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProcessDefinitionInstanceStatisticsRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetProcessDefinitionInstanceVersionStatisticsWithBody(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody(c.Server, processDefinitionId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetProcessDefinitionInstanceVersionStatistics(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProcessDefinitionInstanceVersionStatisticsRequest(c.Server, processDefinitionId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionRequest(c.Server, processDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -11166,7 +9627,7 @@ func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetStartProcessForm(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetStartProcessForm(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetStartProcessFormRequest(c.Server, processDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -11178,7 +9639,7 @@ func (c *Client) GetStartProcessForm(ctx context.Context, processDefinitionKey s
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionStatisticsRequestWithBody(c.Server, processDefinitionKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11190,7 +9651,7 @@ func (c *Client) GetProcessDefinitionStatisticsWithBody(ctx context.Context, pro
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionStatisticsRequest(c.Server, processDefinitionKey, body)
 	if err != nil {
 		return nil, err
@@ -11202,7 +9663,7 @@ func (c *Client) GetProcessDefinitionStatistics(ctx context.Context, processDefi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionXML(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinitionXML(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionXMLRequest(c.Server, processDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -11358,7 +9819,7 @@ func (c *Client) SearchProcessInstances(ctx context.Context, body SearchProcessI
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstance(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -11370,7 +9831,7 @@ func (c *Client) GetProcessInstance(ctx context.Context, processInstanceKey stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceCallHierarchyRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -11382,7 +9843,7 @@ func (c *Client) GetProcessInstanceCallHierarchy(ctx context.Context, processIns
 	return c.Client.Do(req)
 }
 
-func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCancelProcessInstanceRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11394,7 +9855,7 @@ func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInsta
 	return c.Client.Do(req)
 }
 
-func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCancelProcessInstanceRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -11406,19 +9867,7 @@ func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey s
 	return c.Client.Do(req)
 }
 
-func (c *Client) ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewResolveProcessInstanceIncidentsRequest(c.Server, processInstanceKey)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchProcessInstanceIncidentsRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11430,7 +9879,7 @@ func (c *Client) SearchProcessInstanceIncidentsWithBody(ctx context.Context, pro
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchProcessInstanceIncidentsRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -11442,7 +9891,7 @@ func (c *Client) SearchProcessInstanceIncidents(ctx context.Context, processInst
 	return c.Client.Do(req)
 }
 
-func (c *Client) MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMigrateProcessInstanceRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11454,7 +9903,7 @@ func (c *Client) MigrateProcessInstanceWithBody(ctx context.Context, processInst
 	return c.Client.Do(req)
 }
 
-func (c *Client) MigrateProcessInstance(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MigrateProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMigrateProcessInstanceRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -11466,7 +9915,7 @@ func (c *Client) MigrateProcessInstance(ctx context.Context, processInstanceKey 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModifyProcessInstanceRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11478,7 +9927,7 @@ func (c *Client) ModifyProcessInstanceWithBody(ctx context.Context, processInsta
 	return c.Client.Do(req)
 }
 
-func (c *Client) ModifyProcessInstance(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ModifyProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModifyProcessInstanceRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -11490,7 +9939,7 @@ func (c *Client) ModifyProcessInstance(ctx context.Context, processInstanceKey s
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceSequenceFlowsRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -11502,7 +9951,7 @@ func (c *Client) GetProcessInstanceSequenceFlows(ctx context.Context, processIns
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstanceStatistics(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstanceStatistics(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceStatisticsRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -12294,7 +10743,7 @@ func (c *Client) SearchUserTasks(ctx context.Context, body SearchUserTasksJSONRe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetUserTaskRequest(c.Server, userTaskKey)
 	if err != nil {
 		return nil, err
@@ -12306,7 +10755,7 @@ func (c *Client) GetUserTask(ctx context.Context, userTaskKey string, reqEditors
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserTaskRequestWithBody(c.Server, userTaskKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -12318,7 +10767,7 @@ func (c *Client) UpdateUserTaskWithBody(ctx context.Context, userTaskKey string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserTask(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserTask(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserTaskRequest(c.Server, userTaskKey, body)
 	if err != nil {
 		return nil, err
@@ -12330,7 +10779,7 @@ func (c *Client) UpdateUserTask(ctx context.Context, userTaskKey string, body Up
 	return c.Client.Do(req)
 }
 
-func (c *Client) UnassignUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UnassignUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUnassignUserTaskRequest(c.Server, userTaskKey)
 	if err != nil {
 		return nil, err
@@ -12342,7 +10791,7 @@ func (c *Client) UnassignUserTask(ctx context.Context, userTaskKey string, reqEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) AssignUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AssignUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAssignUserTaskRequestWithBody(c.Server, userTaskKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -12354,7 +10803,7 @@ func (c *Client) AssignUserTaskWithBody(ctx context.Context, userTaskKey string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) AssignUserTask(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AssignUserTask(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAssignUserTaskRequest(c.Server, userTaskKey, body)
 	if err != nil {
 		return nil, err
@@ -12366,7 +10815,7 @@ func (c *Client) AssignUserTask(ctx context.Context, userTaskKey string, body As
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteUserTaskRequestWithBody(c.Server, userTaskKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -12378,7 +10827,7 @@ func (c *Client) CompleteUserTaskWithBody(ctx context.Context, userTaskKey strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteUserTask(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteUserTask(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteUserTaskRequest(c.Server, userTaskKey, body)
 	if err != nil {
 		return nil, err
@@ -12390,7 +10839,7 @@ func (c *Client) CompleteUserTask(ctx context.Context, userTaskKey string, body 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetUserTaskFormRequest(c.Server, userTaskKey)
 	if err != nil {
 		return nil, err
@@ -12402,7 +10851,7 @@ func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, params, contentType, body)
 	if err != nil {
 		return nil, err
@@ -12414,7 +10863,7 @@ func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKe
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, params, body)
 	if err != nil {
 		return nil, err
@@ -12546,7 +10995,7 @@ func (c *Client) SearchVariables(ctx context.Context, params *SearchVariablesPar
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetVariable(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetVariable(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetVariableRequest(c.Server, variableKey)
 	if err != nil {
 		return nil, err
@@ -12556,80 +11005,6 @@ func (c *Client) GetVariable(ctx context.Context, variableKey string, reqEditors
 		return nil, err
 	}
 	return c.Client.Do(req)
-}
-
-// NewSearchAuditLogsRequest calls the generic SearchAuditLogs builder with application/json body
-func NewSearchAuditLogsRequest(server string, body SearchAuditLogsJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewSearchAuditLogsRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewSearchAuditLogsRequestWithBody generates requests for SearchAuditLogs with any type of body
-func NewSearchAuditLogsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/audit-logs/search")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetAuditLogRequest generates requests for GetAuditLog
-func NewGetAuditLogRequest(server string, auditLogKey string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "auditLogKey", runtime.ParamLocationPath, auditLogKey)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/audit-logs/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
 }
 
 // NewGetAuthenticationRequest generates requests for GetAuthentication
@@ -13176,305 +11551,6 @@ func NewResetClockRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewCreateGlobalClusterVariableRequest calls the generic CreateGlobalClusterVariable builder with application/json body
-func NewCreateGlobalClusterVariableRequest(server string, body CreateGlobalClusterVariableJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateGlobalClusterVariableRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCreateGlobalClusterVariableRequestWithBody generates requests for CreateGlobalClusterVariable with any type of body
-func NewCreateGlobalClusterVariableRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/global")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteGlobalClusterVariableRequest generates requests for DeleteGlobalClusterVariable
-func NewDeleteGlobalClusterVariableRequest(server string, name string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/global/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetGlobalClusterVariableRequest generates requests for GetGlobalClusterVariable
-func NewGetGlobalClusterVariableRequest(server string, name string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/global/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewSearchClusterVariablesRequest calls the generic SearchClusterVariables builder with application/json body
-func NewSearchClusterVariablesRequest(server string, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewSearchClusterVariablesRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewSearchClusterVariablesRequestWithBody generates requests for SearchClusterVariables with any type of body
-func NewSearchClusterVariablesRequestWithBody(server string, params *SearchClusterVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/search")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.TruncateValues != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCreateTenantClusterVariableRequest calls the generic CreateTenantClusterVariable builder with application/json body
-func NewCreateTenantClusterVariableRequest(server string, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateTenantClusterVariableRequestWithBody(server, tenantId, "application/json", bodyReader)
-}
-
-// NewCreateTenantClusterVariableRequestWithBody generates requests for CreateTenantClusterVariable with any type of body
-func NewCreateTenantClusterVariableRequestWithBody(server string, tenantId TenantId, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/tenants/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteTenantClusterVariableRequest generates requests for DeleteTenantClusterVariable
-func NewDeleteTenantClusterVariableRequest(server string, tenantId TenantId, name string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/tenants/%s/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetTenantClusterVariableRequest generates requests for GetTenantClusterVariable
-func NewGetTenantClusterVariableRequest(server string, tenantId TenantId, name string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "tenantId", runtime.ParamLocationPath, tenantId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/cluster-variables/tenants/%s/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewSearchCorrelatedMessageSubscriptionsRequest calls the generic SearchCorrelatedMessageSubscriptions builder with application/json body
 func NewSearchCorrelatedMessageSubscriptionsRequest(server string, body SearchCorrelatedMessageSubscriptionsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -13596,7 +11672,7 @@ func NewSearchDecisionDefinitionsRequestWithBody(server string, contentType stri
 }
 
 // NewGetDecisionDefinitionRequest generates requests for GetDecisionDefinition
-func NewGetDecisionDefinitionRequest(server string, decisionDefinitionKey string) (*http.Request, error) {
+func NewGetDecisionDefinitionRequest(server string, decisionDefinitionKey DecisionDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13630,7 +11706,7 @@ func NewGetDecisionDefinitionRequest(server string, decisionDefinitionKey string
 }
 
 // NewGetDecisionDefinitionXMLRequest generates requests for GetDecisionDefinitionXML
-func NewGetDecisionDefinitionXMLRequest(server string, decisionDefinitionKey string) (*http.Request, error) {
+func NewGetDecisionDefinitionXMLRequest(server string, decisionDefinitionKey DecisionDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13704,7 +11780,7 @@ func NewSearchDecisionInstancesRequestWithBody(server string, contentType string
 }
 
 // NewGetDecisionInstanceRequest generates requests for GetDecisionInstance
-func NewGetDecisionInstanceRequest(server string, decisionEvaluationInstanceKey string) (*http.Request, error) {
+func NewGetDecisionInstanceRequest(server string, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13778,7 +11854,7 @@ func NewSearchDecisionRequirementsRequestWithBody(server string, contentType str
 }
 
 // NewGetDecisionRequirementsRequest generates requests for GetDecisionRequirements
-func NewGetDecisionRequirementsRequest(server string, decisionRequirementsKey string) (*http.Request, error) {
+func NewGetDecisionRequirementsRequest(server string, decisionRequirementsKey DecisionRequirementsKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13812,7 +11888,7 @@ func NewGetDecisionRequirementsRequest(server string, decisionRequirementsKey st
 }
 
 // NewGetDecisionRequirementsXMLRequest generates requests for GetDecisionRequirementsXML
-func NewGetDecisionRequirementsXMLRequest(server string, decisionRequirementsKey string) (*http.Request, error) {
+func NewGetDecisionRequirementsXMLRequest(server string, decisionRequirementsKey DecisionRequirementsKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14093,20 +12169,16 @@ func NewGetDocumentRequest(server string, documentId DocumentId, params *GetDocu
 
 		}
 
-		if params.ContentHash != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, *params.ContentHash); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, params.ContentHash); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -14176,20 +12248,16 @@ func NewCreateDocumentLinkRequestWithBody(server string, documentId DocumentId, 
 
 		}
 
-		if params.ContentHash != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, *params.ContentHash); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "contentHash", runtime.ParamLocationQuery, params.ContentHash); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -14206,7 +12274,7 @@ func NewCreateDocumentLinkRequestWithBody(server string, documentId DocumentId, 
 }
 
 // NewActivateAdHocSubProcessActivitiesRequest calls the generic ActivateAdHocSubProcessActivities builder with application/json body
-func NewActivateAdHocSubProcessActivitiesRequest(server string, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody) (*http.Request, error) {
+func NewActivateAdHocSubProcessActivitiesRequest(server string, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14217,7 +12285,7 @@ func NewActivateAdHocSubProcessActivitiesRequest(server string, adHocSubProcessI
 }
 
 // NewActivateAdHocSubProcessActivitiesRequestWithBody generates requests for ActivateAdHocSubProcessActivities with any type of body
-func NewActivateAdHocSubProcessActivitiesRequestWithBody(server string, adHocSubProcessInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewActivateAdHocSubProcessActivitiesRequestWithBody(server string, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14293,7 +12361,7 @@ func NewSearchElementInstancesRequestWithBody(server string, contentType string,
 }
 
 // NewGetElementInstanceRequest generates requests for GetElementInstance
-func NewGetElementInstanceRequest(server string, elementInstanceKey string) (*http.Request, error) {
+func NewGetElementInstanceRequest(server string, elementInstanceKey ElementInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14326,55 +12394,8 @@ func NewGetElementInstanceRequest(server string, elementInstanceKey string) (*ht
 	return req, nil
 }
 
-// NewSearchElementInstanceIncidentsRequest calls the generic SearchElementInstanceIncidents builder with application/json body
-func NewSearchElementInstanceIncidentsRequest(server string, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewSearchElementInstanceIncidentsRequestWithBody(server, elementInstanceKey, "application/json", bodyReader)
-}
-
-// NewSearchElementInstanceIncidentsRequestWithBody generates requests for SearchElementInstanceIncidents with any type of body
-func NewSearchElementInstanceIncidentsRequestWithBody(server string, elementInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "elementInstanceKey", runtime.ParamLocationPath, elementInstanceKey)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/element-instances/%s/incidents/search", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewCreateElementInstanceVariablesRequest calls the generic CreateElementInstanceVariables builder with application/json body
-func NewCreateElementInstanceVariablesRequest(server string, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody) (*http.Request, error) {
+func NewCreateElementInstanceVariablesRequest(server string, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14385,7 +12406,7 @@ func NewCreateElementInstanceVariablesRequest(server string, elementInstanceKey 
 }
 
 // NewCreateElementInstanceVariablesRequestWithBody generates requests for CreateElementInstanceVariables with any type of body
-func NewCreateElementInstanceVariablesRequestWithBody(server string, elementInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateElementInstanceVariablesRequestWithBody(server string, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15090,7 +13111,7 @@ func NewSearchIncidentsRequestWithBody(server string, contentType string, body i
 }
 
 // NewGetIncidentRequest generates requests for GetIncident
-func NewGetIncidentRequest(server string, incidentKey string) (*http.Request, error) {
+func NewGetIncidentRequest(server string, incidentKey IncidentKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15124,7 +13145,7 @@ func NewGetIncidentRequest(server string, incidentKey string) (*http.Request, er
 }
 
 // NewResolveIncidentRequest calls the generic ResolveIncident builder with application/json body
-func NewResolveIncidentRequest(server string, incidentKey string, body ResolveIncidentJSONRequestBody) (*http.Request, error) {
+func NewResolveIncidentRequest(server string, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -15135,7 +13156,7 @@ func NewResolveIncidentRequest(server string, incidentKey string, body ResolveIn
 }
 
 // NewResolveIncidentRequestWithBody generates requests for ResolveIncident with any type of body
-func NewResolveIncidentRequestWithBody(server string, incidentKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewResolveIncidentRequestWithBody(server string, incidentKey IncidentKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15251,7 +13272,7 @@ func NewSearchJobsRequestWithBody(server string, contentType string, body io.Rea
 }
 
 // NewUpdateJobRequest calls the generic UpdateJob builder with application/json body
-func NewUpdateJobRequest(server string, jobKey string, body UpdateJobJSONRequestBody) (*http.Request, error) {
+func NewUpdateJobRequest(server string, jobKey JobKey, body UpdateJobJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -15262,7 +13283,7 @@ func NewUpdateJobRequest(server string, jobKey string, body UpdateJobJSONRequest
 }
 
 // NewUpdateJobRequestWithBody generates requests for UpdateJob with any type of body
-func NewUpdateJobRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateJobRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15298,7 +13319,7 @@ func NewUpdateJobRequestWithBody(server string, jobKey string, contentType strin
 }
 
 // NewCompleteJobRequest calls the generic CompleteJob builder with application/json body
-func NewCompleteJobRequest(server string, jobKey string, body CompleteJobJSONRequestBody) (*http.Request, error) {
+func NewCompleteJobRequest(server string, jobKey JobKey, body CompleteJobJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -15309,7 +13330,7 @@ func NewCompleteJobRequest(server string, jobKey string, body CompleteJobJSONReq
 }
 
 // NewCompleteJobRequestWithBody generates requests for CompleteJob with any type of body
-func NewCompleteJobRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCompleteJobRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15345,7 +13366,7 @@ func NewCompleteJobRequestWithBody(server string, jobKey string, contentType str
 }
 
 // NewThrowJobErrorRequest calls the generic ThrowJobError builder with application/json body
-func NewThrowJobErrorRequest(server string, jobKey string, body ThrowJobErrorJSONRequestBody) (*http.Request, error) {
+func NewThrowJobErrorRequest(server string, jobKey JobKey, body ThrowJobErrorJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -15356,7 +13377,7 @@ func NewThrowJobErrorRequest(server string, jobKey string, body ThrowJobErrorJSO
 }
 
 // NewThrowJobErrorRequestWithBody generates requests for ThrowJobError with any type of body
-func NewThrowJobErrorRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewThrowJobErrorRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15392,7 +13413,7 @@ func NewThrowJobErrorRequestWithBody(server string, jobKey string, contentType s
 }
 
 // NewFailJobRequest calls the generic FailJob builder with application/json body
-func NewFailJobRequest(server string, jobKey string, body FailJobJSONRequestBody) (*http.Request, error) {
+func NewFailJobRequest(server string, jobKey JobKey, body FailJobJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -15403,7 +13424,7 @@ func NewFailJobRequest(server string, jobKey string, body FailJobJSONRequestBody
 }
 
 // NewFailJobRequestWithBody generates requests for FailJob with any type of body
-func NewFailJobRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewFailJobRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15820,95 +13841,8 @@ func NewSearchProcessDefinitionsRequestWithBody(server string, contentType strin
 	return req, nil
 }
 
-// NewGetProcessDefinitionInstanceStatisticsRequest calls the generic GetProcessDefinitionInstanceStatistics builder with application/json body
-func NewGetProcessDefinitionInstanceStatisticsRequest(server string, body GetProcessDefinitionInstanceStatisticsJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewGetProcessDefinitionInstanceStatisticsRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewGetProcessDefinitionInstanceStatisticsRequestWithBody generates requests for GetProcessDefinitionInstanceStatistics with any type of body
-func NewGetProcessDefinitionInstanceStatisticsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/process-definitions/statistics/process-instances")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetProcessDefinitionInstanceVersionStatisticsRequest calls the generic GetProcessDefinitionInstanceVersionStatistics builder with application/json body
-func NewGetProcessDefinitionInstanceVersionStatisticsRequest(server string, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody(server, processDefinitionId, "application/json", bodyReader)
-}
-
-// NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody generates requests for GetProcessDefinitionInstanceVersionStatistics with any type of body
-func NewGetProcessDefinitionInstanceVersionStatisticsRequestWithBody(server string, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "processDefinitionId", runtime.ParamLocationPath, processDefinitionId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/process-definitions/%s/statistics/process-instances", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewGetProcessDefinitionRequest generates requests for GetProcessDefinition
-func NewGetProcessDefinitionRequest(server string, processDefinitionKey string) (*http.Request, error) {
+func NewGetProcessDefinitionRequest(server string, processDefinitionKey ProcessDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15942,7 +13876,7 @@ func NewGetProcessDefinitionRequest(server string, processDefinitionKey string) 
 }
 
 // NewGetStartProcessFormRequest generates requests for GetStartProcessForm
-func NewGetStartProcessFormRequest(server string, processDefinitionKey string) (*http.Request, error) {
+func NewGetStartProcessFormRequest(server string, processDefinitionKey ProcessDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15976,7 +13910,7 @@ func NewGetStartProcessFormRequest(server string, processDefinitionKey string) (
 }
 
 // NewGetProcessDefinitionStatisticsRequest calls the generic GetProcessDefinitionStatistics builder with application/json body
-func NewGetProcessDefinitionStatisticsRequest(server string, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody) (*http.Request, error) {
+func NewGetProcessDefinitionStatisticsRequest(server string, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -15987,7 +13921,7 @@ func NewGetProcessDefinitionStatisticsRequest(server string, processDefinitionKe
 }
 
 // NewGetProcessDefinitionStatisticsRequestWithBody generates requests for GetProcessDefinitionStatistics with any type of body
-func NewGetProcessDefinitionStatisticsRequestWithBody(server string, processDefinitionKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewGetProcessDefinitionStatisticsRequestWithBody(server string, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16023,7 +13957,7 @@ func NewGetProcessDefinitionStatisticsRequestWithBody(server string, processDefi
 }
 
 // NewGetProcessDefinitionXMLRequest generates requests for GetProcessDefinitionXML
-func NewGetProcessDefinitionXMLRequest(server string, processDefinitionKey string) (*http.Request, error) {
+func NewGetProcessDefinitionXMLRequest(server string, processDefinitionKey ProcessDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16297,7 +14231,7 @@ func NewSearchProcessInstancesRequestWithBody(server string, contentType string,
 }
 
 // NewGetProcessInstanceRequest generates requests for GetProcessInstance
-func NewGetProcessInstanceRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16331,7 +14265,7 @@ func NewGetProcessInstanceRequest(server string, processInstanceKey string) (*ht
 }
 
 // NewGetProcessInstanceCallHierarchyRequest generates requests for GetProcessInstanceCallHierarchy
-func NewGetProcessInstanceCallHierarchyRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceCallHierarchyRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16365,7 +14299,7 @@ func NewGetProcessInstanceCallHierarchyRequest(server string, processInstanceKey
 }
 
 // NewCancelProcessInstanceRequest calls the generic CancelProcessInstance builder with application/json body
-func NewCancelProcessInstanceRequest(server string, processInstanceKey string, body CancelProcessInstanceJSONRequestBody) (*http.Request, error) {
+func NewCancelProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -16376,7 +14310,7 @@ func NewCancelProcessInstanceRequest(server string, processInstanceKey string, b
 }
 
 // NewCancelProcessInstanceRequestWithBody generates requests for CancelProcessInstance with any type of body
-func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16411,42 +14345,8 @@ func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey s
 	return req, nil
 }
 
-// NewResolveProcessInstanceIncidentsRequest generates requests for ResolveProcessInstanceIncidents
-func NewResolveProcessInstanceIncidentsRequest(server string, processInstanceKey string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "processInstanceKey", runtime.ParamLocationPath, processInstanceKey)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/process-instances/%s/incident-resolution", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewSearchProcessInstanceIncidentsRequest calls the generic SearchProcessInstanceIncidents builder with application/json body
-func NewSearchProcessInstanceIncidentsRequest(server string, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody) (*http.Request, error) {
+func NewSearchProcessInstanceIncidentsRequest(server string, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -16457,7 +14357,7 @@ func NewSearchProcessInstanceIncidentsRequest(server string, processInstanceKey 
 }
 
 // NewSearchProcessInstanceIncidentsRequestWithBody generates requests for SearchProcessInstanceIncidents with any type of body
-func NewSearchProcessInstanceIncidentsRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchProcessInstanceIncidentsRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16493,7 +14393,7 @@ func NewSearchProcessInstanceIncidentsRequestWithBody(server string, processInst
 }
 
 // NewMigrateProcessInstanceRequest calls the generic MigrateProcessInstance builder with application/json body
-func NewMigrateProcessInstanceRequest(server string, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody) (*http.Request, error) {
+func NewMigrateProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -16504,7 +14404,7 @@ func NewMigrateProcessInstanceRequest(server string, processInstanceKey string, 
 }
 
 // NewMigrateProcessInstanceRequestWithBody generates requests for MigrateProcessInstance with any type of body
-func NewMigrateProcessInstanceRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewMigrateProcessInstanceRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16540,7 +14440,7 @@ func NewMigrateProcessInstanceRequestWithBody(server string, processInstanceKey 
 }
 
 // NewModifyProcessInstanceRequest calls the generic ModifyProcessInstance builder with application/json body
-func NewModifyProcessInstanceRequest(server string, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody) (*http.Request, error) {
+func NewModifyProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -16551,7 +14451,7 @@ func NewModifyProcessInstanceRequest(server string, processInstanceKey string, b
 }
 
 // NewModifyProcessInstanceRequestWithBody generates requests for ModifyProcessInstance with any type of body
-func NewModifyProcessInstanceRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewModifyProcessInstanceRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16587,7 +14487,7 @@ func NewModifyProcessInstanceRequestWithBody(server string, processInstanceKey s
 }
 
 // NewGetProcessInstanceSequenceFlowsRequest generates requests for GetProcessInstanceSequenceFlows
-func NewGetProcessInstanceSequenceFlowsRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceSequenceFlowsRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16621,7 +14521,7 @@ func NewGetProcessInstanceSequenceFlowsRequest(server string, processInstanceKey
 }
 
 // NewGetProcessInstanceStatisticsRequest generates requests for GetProcessInstanceStatistics
-func NewGetProcessInstanceStatisticsRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceStatisticsRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18584,7 +16484,7 @@ func NewSearchUserTasksRequestWithBody(server string, contentType string, body i
 }
 
 // NewGetUserTaskRequest generates requests for GetUserTask
-func NewGetUserTaskRequest(server string, userTaskKey string) (*http.Request, error) {
+func NewGetUserTaskRequest(server string, userTaskKey UserTaskKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18618,7 +16518,7 @@ func NewGetUserTaskRequest(server string, userTaskKey string) (*http.Request, er
 }
 
 // NewUpdateUserTaskRequest calls the generic UpdateUserTask builder with application/json body
-func NewUpdateUserTaskRequest(server string, userTaskKey string, body UpdateUserTaskJSONRequestBody) (*http.Request, error) {
+func NewUpdateUserTaskRequest(server string, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -18629,7 +16529,7 @@ func NewUpdateUserTaskRequest(server string, userTaskKey string, body UpdateUser
 }
 
 // NewUpdateUserTaskRequestWithBody generates requests for UpdateUserTask with any type of body
-func NewUpdateUserTaskRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUserTaskRequestWithBody(server string, userTaskKey UserTaskKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18665,7 +16565,7 @@ func NewUpdateUserTaskRequestWithBody(server string, userTaskKey string, content
 }
 
 // NewUnassignUserTaskRequest generates requests for UnassignUserTask
-func NewUnassignUserTaskRequest(server string, userTaskKey string) (*http.Request, error) {
+func NewUnassignUserTaskRequest(server string, userTaskKey UserTaskKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18699,7 +16599,7 @@ func NewUnassignUserTaskRequest(server string, userTaskKey string) (*http.Reques
 }
 
 // NewAssignUserTaskRequest calls the generic AssignUserTask builder with application/json body
-func NewAssignUserTaskRequest(server string, userTaskKey string, body AssignUserTaskJSONRequestBody) (*http.Request, error) {
+func NewAssignUserTaskRequest(server string, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -18710,7 +16610,7 @@ func NewAssignUserTaskRequest(server string, userTaskKey string, body AssignUser
 }
 
 // NewAssignUserTaskRequestWithBody generates requests for AssignUserTask with any type of body
-func NewAssignUserTaskRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewAssignUserTaskRequestWithBody(server string, userTaskKey UserTaskKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18746,7 +16646,7 @@ func NewAssignUserTaskRequestWithBody(server string, userTaskKey string, content
 }
 
 // NewCompleteUserTaskRequest calls the generic CompleteUserTask builder with application/json body
-func NewCompleteUserTaskRequest(server string, userTaskKey string, body CompleteUserTaskJSONRequestBody) (*http.Request, error) {
+func NewCompleteUserTaskRequest(server string, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -18757,7 +16657,7 @@ func NewCompleteUserTaskRequest(server string, userTaskKey string, body Complete
 }
 
 // NewCompleteUserTaskRequestWithBody generates requests for CompleteUserTask with any type of body
-func NewCompleteUserTaskRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCompleteUserTaskRequestWithBody(server string, userTaskKey UserTaskKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18793,7 +16693,7 @@ func NewCompleteUserTaskRequestWithBody(server string, userTaskKey string, conte
 }
 
 // NewGetUserTaskFormRequest generates requests for GetUserTaskForm
-func NewGetUserTaskFormRequest(server string, userTaskKey string) (*http.Request, error) {
+func NewGetUserTaskFormRequest(server string, userTaskKey UserTaskKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18827,7 +16727,7 @@ func NewGetUserTaskFormRequest(server string, userTaskKey string) (*http.Request
 }
 
 // NewSearchUserTaskVariablesRequest calls the generic SearchUserTaskVariables builder with application/json body
-func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequest(server string, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -18838,7 +16738,7 @@ func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, params
 }
 
 // NewSearchUserTaskVariablesRequestWithBody generates requests for SearchUserTaskVariables with any type of body
-func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -19153,7 +17053,7 @@ func NewSearchVariablesRequestWithBody(server string, params *SearchVariablesPar
 }
 
 // NewGetVariableRequest generates requests for GetVariable
-func NewGetVariableRequest(server string, variableKey string) (*http.Request, error) {
+func NewGetVariableRequest(server string, variableKey VariableKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -19229,14 +17129,6 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// SearchAuditLogsWithBodyWithResponse request with any body
-	SearchAuditLogsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error)
-
-	SearchAuditLogsWithResponse(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error)
-
-	// GetAuditLogWithResponse request
-	GetAuditLogWithResponse(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*GetAuditLogResponse, error)
-
 	// GetAuthenticationWithResponse request
 	GetAuthenticationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthenticationResponse, error)
 
@@ -19297,33 +17189,6 @@ type ClientWithResponsesInterface interface {
 	// ResetClockWithResponse request
 	ResetClockWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ResetClockResponse, error)
 
-	// CreateGlobalClusterVariableWithBodyWithResponse request with any body
-	CreateGlobalClusterVariableWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error)
-
-	CreateGlobalClusterVariableWithResponse(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error)
-
-	// DeleteGlobalClusterVariableWithResponse request
-	DeleteGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteGlobalClusterVariableResponse, error)
-
-	// GetGlobalClusterVariableWithResponse request
-	GetGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetGlobalClusterVariableResponse, error)
-
-	// SearchClusterVariablesWithBodyWithResponse request with any body
-	SearchClusterVariablesWithBodyWithResponse(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error)
-
-	SearchClusterVariablesWithResponse(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error)
-
-	// CreateTenantClusterVariableWithBodyWithResponse request with any body
-	CreateTenantClusterVariableWithBodyWithResponse(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error)
-
-	CreateTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error)
-
-	// DeleteTenantClusterVariableWithResponse request
-	DeleteTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*DeleteTenantClusterVariableResponse, error)
-
-	// GetTenantClusterVariableWithResponse request
-	GetTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*GetTenantClusterVariableResponse, error)
-
 	// SearchCorrelatedMessageSubscriptionsWithBodyWithResponse request with any body
 	SearchCorrelatedMessageSubscriptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchCorrelatedMessageSubscriptionsResponse, error)
 
@@ -19340,10 +17205,10 @@ type ClientWithResponsesInterface interface {
 	SearchDecisionDefinitionsWithResponse(ctx context.Context, body SearchDecisionDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchDecisionDefinitionsResponse, error)
 
 	// GetDecisionDefinitionWithResponse request
-	GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error)
+	GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error)
 
 	// GetDecisionDefinitionXMLWithResponse request
-	GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error)
+	GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error)
 
 	// SearchDecisionInstancesWithBodyWithResponse request with any body
 	SearchDecisionInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchDecisionInstancesResponse, error)
@@ -19351,7 +17216,7 @@ type ClientWithResponsesInterface interface {
 	SearchDecisionInstancesWithResponse(ctx context.Context, body SearchDecisionInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchDecisionInstancesResponse, error)
 
 	// GetDecisionInstanceWithResponse request
-	GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error)
+	GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error)
 
 	// SearchDecisionRequirementsWithBodyWithResponse request with any body
 	SearchDecisionRequirementsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchDecisionRequirementsResponse, error)
@@ -19359,10 +17224,10 @@ type ClientWithResponsesInterface interface {
 	SearchDecisionRequirementsWithResponse(ctx context.Context, body SearchDecisionRequirementsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchDecisionRequirementsResponse, error)
 
 	// GetDecisionRequirementsWithResponse request
-	GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error)
+	GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error)
 
 	// GetDecisionRequirementsXMLWithResponse request
-	GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error)
+	GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error)
 
 	// CreateDeploymentWithBodyWithResponse request with any body
 	CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error)
@@ -19385,9 +17250,9 @@ type ClientWithResponsesInterface interface {
 	CreateDocumentLinkWithResponse(ctx context.Context, documentId DocumentId, params *CreateDocumentLinkParams, body CreateDocumentLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentLinkResponse, error)
 
 	// ActivateAdHocSubProcessActivitiesWithBodyWithResponse request with any body
-	ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
+	ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
 
-	ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
+	ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
 
 	// SearchElementInstancesWithBodyWithResponse request with any body
 	SearchElementInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchElementInstancesResponse, error)
@@ -19395,17 +17260,12 @@ type ClientWithResponsesInterface interface {
 	SearchElementInstancesWithResponse(ctx context.Context, body SearchElementInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchElementInstancesResponse, error)
 
 	// GetElementInstanceWithResponse request
-	GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error)
-
-	// SearchElementInstanceIncidentsWithBodyWithResponse request with any body
-	SearchElementInstanceIncidentsWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error)
-
-	SearchElementInstanceIncidentsWithResponse(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error)
+	GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error)
 
 	// CreateElementInstanceVariablesWithBodyWithResponse request with any body
-	CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
+	CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
 
-	CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
+	CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
 
 	// CreateGroupWithBodyWithResponse request with any body
 	CreateGroupWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
@@ -19472,12 +17332,12 @@ type ClientWithResponsesInterface interface {
 	SearchIncidentsWithResponse(ctx context.Context, body SearchIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchIncidentsResponse, error)
 
 	// GetIncidentWithResponse request
-	GetIncidentWithResponse(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error)
+	GetIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error)
 
 	// ResolveIncidentWithBodyWithResponse request with any body
-	ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
+	ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
 
-	ResolveIncidentWithResponse(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
+	ResolveIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
 
 	// ActivateJobsWithBodyWithResponse request with any body
 	ActivateJobsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateJobsResponse, error)
@@ -19490,24 +17350,24 @@ type ClientWithResponsesInterface interface {
 	SearchJobsWithResponse(ctx context.Context, body SearchJobsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchJobsResponse, error)
 
 	// UpdateJobWithBodyWithResponse request with any body
-	UpdateJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
+	UpdateJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
 
-	UpdateJobWithResponse(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
+	UpdateJobWithResponse(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
 
 	// CompleteJobWithBodyWithResponse request with any body
-	CompleteJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
+	CompleteJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
 
-	CompleteJobWithResponse(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
+	CompleteJobWithResponse(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
 
 	// ThrowJobErrorWithBodyWithResponse request with any body
-	ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
+	ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
 
-	ThrowJobErrorWithResponse(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
+	ThrowJobErrorWithResponse(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
 
 	// FailJobWithBodyWithResponse request with any body
-	FailJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
+	FailJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
 
-	FailJobWithResponse(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
+	FailJobWithResponse(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
 
 	// GetLicenseWithResponse request
 	GetLicenseWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetLicenseResponse, error)
@@ -19553,29 +17413,19 @@ type ClientWithResponsesInterface interface {
 
 	SearchProcessDefinitionsWithResponse(ctx context.Context, body SearchProcessDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessDefinitionsResponse, error)
 
-	// GetProcessDefinitionInstanceStatisticsWithBodyWithResponse request with any body
-	GetProcessDefinitionInstanceStatisticsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error)
-
-	GetProcessDefinitionInstanceStatisticsWithResponse(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error)
-
-	// GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse request with any body
-	GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error)
-
-	GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error)
-
 	// GetProcessDefinitionWithResponse request
-	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error)
+	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error)
 
 	// GetStartProcessFormWithResponse request
-	GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error)
+	GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error)
 
 	// GetProcessDefinitionStatisticsWithBodyWithResponse request with any body
-	GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
+	GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
 
-	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
+	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
 
 	// GetProcessDefinitionXMLWithResponse request
-	GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error)
+	GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error)
 
 	// CreateProcessInstanceWithBodyWithResponse request with any body
 	CreateProcessInstanceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProcessInstanceResponse, error)
@@ -19608,39 +17458,36 @@ type ClientWithResponsesInterface interface {
 	SearchProcessInstancesWithResponse(ctx context.Context, body SearchProcessInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstancesResponse, error)
 
 	// GetProcessInstanceWithResponse request
-	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error)
+	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error)
 
 	// GetProcessInstanceCallHierarchyWithResponse request
-	GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error)
+	GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error)
 
 	// CancelProcessInstanceWithBodyWithResponse request with any body
-	CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
+	CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
 
-	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
-
-	// ResolveProcessInstanceIncidentsWithResponse request
-	ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*ResolveProcessInstanceIncidentsResponse, error)
+	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
 
 	// SearchProcessInstanceIncidentsWithBodyWithResponse request with any body
-	SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
+	SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
 
-	SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
+	SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
 
 	// MigrateProcessInstanceWithBodyWithResponse request with any body
-	MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
+	MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
 
-	MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
+	MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
 
 	// ModifyProcessInstanceWithBodyWithResponse request with any body
-	ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
+	ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
 
-	ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
+	ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
 
 	// GetProcessInstanceSequenceFlowsWithResponse request
-	GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error)
+	GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error)
 
 	// GetProcessInstanceStatisticsWithResponse request
-	GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error)
+	GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error)
 
 	// GetResourceWithResponse request
 	GetResourceWithResponse(ctx context.Context, resourceKey ResourceKey, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
@@ -19819,33 +17666,33 @@ type ClientWithResponsesInterface interface {
 	SearchUserTasksWithResponse(ctx context.Context, body SearchUserTasksJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTasksResponse, error)
 
 	// GetUserTaskWithResponse request
-	GetUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error)
+	GetUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error)
 
 	// UpdateUserTaskWithBodyWithResponse request with any body
-	UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
+	UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
 
-	UpdateUserTaskWithResponse(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
+	UpdateUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
 
 	// UnassignUserTaskWithResponse request
-	UnassignUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error)
+	UnassignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error)
 
 	// AssignUserTaskWithBodyWithResponse request with any body
-	AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
+	AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
 
-	AssignUserTaskWithResponse(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
+	AssignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
 
 	// CompleteUserTaskWithBodyWithResponse request with any body
-	CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
+	CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
 
-	CompleteUserTaskWithResponse(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
+	CompleteUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
 
 	// GetUserTaskFormWithResponse request
-	GetUserTaskFormWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error)
+	GetUserTaskFormWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error)
 
 	// SearchUserTaskVariablesWithBodyWithResponse request with any body
-	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
-	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
 	// CreateUserWithBodyWithResponse request with any body
 	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
@@ -19874,58 +17721,7 @@ type ClientWithResponsesInterface interface {
 	SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
 	// GetVariableWithResponse request
-	GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
-}
-
-type SearchAuditLogsResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *AuditLogSearchQueryResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-}
-
-// Status returns HTTPResponse.Status
-func (r SearchAuditLogsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SearchAuditLogsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetAuditLogResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *AuditLogResult
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetAuditLogResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetAuditLogResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
+	GetVariableWithResponse(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
 }
 
 type GetAuthenticationResponse struct {
@@ -20280,190 +18076,6 @@ func (r ResetClockResponse) StatusCode() int {
 	return 0
 }
 
-type CreateGlobalClusterVariableResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ClusterVariableResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateGlobalClusterVariableResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateGlobalClusterVariableResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DeleteGlobalClusterVariableResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteGlobalClusterVariableResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteGlobalClusterVariableResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetGlobalClusterVariableResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ClusterVariableResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetGlobalClusterVariableResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetGlobalClusterVariableResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type SearchClusterVariablesResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ClusterVariableSearchQueryResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r SearchClusterVariablesResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SearchClusterVariablesResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CreateTenantClusterVariableResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ClusterVariableResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateTenantClusterVariableResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateTenantClusterVariableResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DeleteTenantClusterVariableResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteTenantClusterVariableResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteTenantClusterVariableResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetTenantClusterVariableResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ClusterVariableResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTenantClusterVariableResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTenantClusterVariableResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type SearchCorrelatedMessageSubscriptionsResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -20495,6 +18107,7 @@ type EvaluateDecisionResponse struct {
 	HTTPResponse              *http.Response
 	JSON200                   *EvaluateDecisionResult
 	ApplicationproblemJSON400 *InvalidData
+	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
 }
@@ -20950,39 +18563,13 @@ func (r GetElementInstanceResponse) StatusCode() int {
 	return 0
 }
 
-type SearchElementInstanceIncidentsResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *IncidentSearchQueryResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r SearchElementInstanceIncidentsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SearchElementInstanceIncidentsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type CreateElementInstanceVariablesResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -21035,6 +18622,7 @@ type SearchGroupsResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *ProblemDetail
 }
 
 // Status returns HTTPResponse.Status
@@ -21214,7 +18802,7 @@ func (r AssignClientToGroupResponse) StatusCode() int {
 type SearchMappingRulesForGroupResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *SearchQueryResponse
+	JSON200                   *MappingRuleSearchQueryResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -21294,7 +18882,7 @@ func (r AssignMappingRuleToGroupResponse) StatusCode() int {
 type SearchRolesForGroupResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *SearchQueryResponse
+	JSON200                   *RoleSearchQueryResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -21482,7 +19070,7 @@ type ActivateJobsResponse struct {
 	JSON200                   *JobActivationResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON500 *InternalServerError
+	ApplicationproblemJSON500 *ProblemDetail
 	ApplicationproblemJSON503 *ServiceUnavailable
 }
 
@@ -21888,58 +19476,6 @@ func (r SearchProcessDefinitionsResponse) StatusCode() int {
 	return 0
 }
 
-type GetProcessDefinitionInstanceStatisticsResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ProcessDefinitionInstanceStatisticsQueryResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetProcessDefinitionInstanceStatisticsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetProcessDefinitionInstanceStatisticsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetProcessDefinitionInstanceVersionStatisticsResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *ProcessDefinitionInstanceVersionStatisticsQueryResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON403 *Forbidden
-	ApplicationproblemJSON500 *InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetProcessDefinitionInstanceVersionStatisticsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetProcessDefinitionInstanceVersionStatisticsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetProcessDefinitionResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
@@ -22264,6 +19800,7 @@ type CancelProcessInstanceResponse struct {
 	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -22276,33 +19813,6 @@ func (r CancelProcessInstanceResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CancelProcessInstanceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type ResolveProcessInstanceIncidentsResponse struct {
-	Body                      []byte
-	HTTPResponse              *http.Response
-	JSON200                   *BatchOperationCreatedResult
-	ApplicationproblemJSON400 *InvalidData
-	ApplicationproblemJSON401 *Unauthorized
-	ApplicationproblemJSON404 *ProblemDetail
-	ApplicationproblemJSON500 *InternalServerError
-	ApplicationproblemJSON503 *ServiceUnavailable
-}
-
-// Status returns HTTPResponse.Status
-func (r ResolveProcessInstanceIncidentsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ResolveProcessInstanceIncidentsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -22466,6 +19976,7 @@ func (r GetResourceResponse) StatusCode() int {
 type GetResourceContentResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
+	JSON200                   *string
 	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
@@ -22545,6 +20056,7 @@ type SearchRolesResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON500 *ProblemDetail
 }
 
 // Status returns HTTPResponse.Status
@@ -22804,7 +20316,7 @@ func (r AssignRoleToGroupResponse) StatusCode() int {
 type SearchMappingRulesForRoleResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
-	JSON200                   *SearchQueryResponse
+	JSON200                   *MappingRuleSearchQueryResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
@@ -22964,6 +20476,7 @@ func (r AssignRoleToUserResponse) StatusCode() int {
 type CreateAdminUserResponse struct {
 	Body                      []byte
 	HTTPResponse              *http.Response
+	JSON201                   *UserCreateResult
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON403 *Forbidden
 	ApplicationproblemJSON500 *InternalServerError
@@ -23093,6 +20606,7 @@ type SearchTenantsResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -23343,7 +20857,7 @@ func (r AssignGroupToTenantResponse) StatusCode() int {
 type SearchMappingRulesForTenantResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *SearchQueryResponse
+	JSON200      *MappingRuleSearchQueryResult
 }
 
 // Status returns HTTPResponse.Status
@@ -23417,7 +20931,7 @@ func (r AssignMappingRuleToTenantResponse) StatusCode() int {
 type SearchRolesForTenantResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *SearchQueryResponse
+	JSON200      *RoleSearchQueryResult
 }
 
 // Status returns HTTPResponse.Status
@@ -23647,6 +21161,7 @@ type UpdateUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -23673,6 +21188,7 @@ type UnassignUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -23699,6 +21215,7 @@ type AssignUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -23725,6 +21242,7 @@ type CompleteUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -23979,32 +21497,6 @@ func (r GetVariableResponse) StatusCode() int {
 	return 0
 }
 
-// SearchAuditLogsWithBodyWithResponse request with arbitrary body returning *SearchAuditLogsResponse
-func (c *ClientWithResponses) SearchAuditLogsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error) {
-	rsp, err := c.SearchAuditLogsWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchAuditLogsResponse(rsp)
-}
-
-func (c *ClientWithResponses) SearchAuditLogsWithResponse(ctx context.Context, body SearchAuditLogsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuditLogsResponse, error) {
-	rsp, err := c.SearchAuditLogs(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchAuditLogsResponse(rsp)
-}
-
-// GetAuditLogWithResponse request returning *GetAuditLogResponse
-func (c *ClientWithResponses) GetAuditLogWithResponse(ctx context.Context, auditLogKey string, reqEditors ...RequestEditorFn) (*GetAuditLogResponse, error) {
-	rsp, err := c.GetAuditLog(ctx, auditLogKey, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetAuditLogResponse(rsp)
-}
-
 // GetAuthenticationWithResponse request returning *GetAuthenticationResponse
 func (c *ClientWithResponses) GetAuthenticationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthenticationResponse, error) {
 	rsp, err := c.GetAuthentication(ctx, reqEditors...)
@@ -24203,93 +21695,6 @@ func (c *ClientWithResponses) ResetClockWithResponse(ctx context.Context, reqEdi
 	return ParseResetClockResponse(rsp)
 }
 
-// CreateGlobalClusterVariableWithBodyWithResponse request with arbitrary body returning *CreateGlobalClusterVariableResponse
-func (c *ClientWithResponses) CreateGlobalClusterVariableWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error) {
-	rsp, err := c.CreateGlobalClusterVariableWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateGlobalClusterVariableResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateGlobalClusterVariableWithResponse(ctx context.Context, body CreateGlobalClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGlobalClusterVariableResponse, error) {
-	rsp, err := c.CreateGlobalClusterVariable(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateGlobalClusterVariableResponse(rsp)
-}
-
-// DeleteGlobalClusterVariableWithResponse request returning *DeleteGlobalClusterVariableResponse
-func (c *ClientWithResponses) DeleteGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteGlobalClusterVariableResponse, error) {
-	rsp, err := c.DeleteGlobalClusterVariable(ctx, name, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteGlobalClusterVariableResponse(rsp)
-}
-
-// GetGlobalClusterVariableWithResponse request returning *GetGlobalClusterVariableResponse
-func (c *ClientWithResponses) GetGlobalClusterVariableWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetGlobalClusterVariableResponse, error) {
-	rsp, err := c.GetGlobalClusterVariable(ctx, name, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetGlobalClusterVariableResponse(rsp)
-}
-
-// SearchClusterVariablesWithBodyWithResponse request with arbitrary body returning *SearchClusterVariablesResponse
-func (c *ClientWithResponses) SearchClusterVariablesWithBodyWithResponse(ctx context.Context, params *SearchClusterVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error) {
-	rsp, err := c.SearchClusterVariablesWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchClusterVariablesResponse(rsp)
-}
-
-func (c *ClientWithResponses) SearchClusterVariablesWithResponse(ctx context.Context, params *SearchClusterVariablesParams, body SearchClusterVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchClusterVariablesResponse, error) {
-	rsp, err := c.SearchClusterVariables(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchClusterVariablesResponse(rsp)
-}
-
-// CreateTenantClusterVariableWithBodyWithResponse request with arbitrary body returning *CreateTenantClusterVariableResponse
-func (c *ClientWithResponses) CreateTenantClusterVariableWithBodyWithResponse(ctx context.Context, tenantId TenantId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error) {
-	rsp, err := c.CreateTenantClusterVariableWithBody(ctx, tenantId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateTenantClusterVariableResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, body CreateTenantClusterVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTenantClusterVariableResponse, error) {
-	rsp, err := c.CreateTenantClusterVariable(ctx, tenantId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateTenantClusterVariableResponse(rsp)
-}
-
-// DeleteTenantClusterVariableWithResponse request returning *DeleteTenantClusterVariableResponse
-func (c *ClientWithResponses) DeleteTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*DeleteTenantClusterVariableResponse, error) {
-	rsp, err := c.DeleteTenantClusterVariable(ctx, tenantId, name, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteTenantClusterVariableResponse(rsp)
-}
-
-// GetTenantClusterVariableWithResponse request returning *GetTenantClusterVariableResponse
-func (c *ClientWithResponses) GetTenantClusterVariableWithResponse(ctx context.Context, tenantId TenantId, name string, reqEditors ...RequestEditorFn) (*GetTenantClusterVariableResponse, error) {
-	rsp, err := c.GetTenantClusterVariable(ctx, tenantId, name, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTenantClusterVariableResponse(rsp)
-}
-
 // SearchCorrelatedMessageSubscriptionsWithBodyWithResponse request with arbitrary body returning *SearchCorrelatedMessageSubscriptionsResponse
 func (c *ClientWithResponses) SearchCorrelatedMessageSubscriptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchCorrelatedMessageSubscriptionsResponse, error) {
 	rsp, err := c.SearchCorrelatedMessageSubscriptionsWithBody(ctx, contentType, body, reqEditors...)
@@ -24342,7 +21747,7 @@ func (c *ClientWithResponses) SearchDecisionDefinitionsWithResponse(ctx context.
 }
 
 // GetDecisionDefinitionWithResponse request returning *GetDecisionDefinitionResponse
-func (c *ClientWithResponses) GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error) {
+func (c *ClientWithResponses) GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error) {
 	rsp, err := c.GetDecisionDefinition(ctx, decisionDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24351,7 +21756,7 @@ func (c *ClientWithResponses) GetDecisionDefinitionWithResponse(ctx context.Cont
 }
 
 // GetDecisionDefinitionXMLWithResponse request returning *GetDecisionDefinitionXMLResponse
-func (c *ClientWithResponses) GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error) {
+func (c *ClientWithResponses) GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error) {
 	rsp, err := c.GetDecisionDefinitionXML(ctx, decisionDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24377,7 +21782,7 @@ func (c *ClientWithResponses) SearchDecisionInstancesWithResponse(ctx context.Co
 }
 
 // GetDecisionInstanceWithResponse request returning *GetDecisionInstanceResponse
-func (c *ClientWithResponses) GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error) {
+func (c *ClientWithResponses) GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error) {
 	rsp, err := c.GetDecisionInstance(ctx, decisionEvaluationInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24403,7 +21808,7 @@ func (c *ClientWithResponses) SearchDecisionRequirementsWithResponse(ctx context
 }
 
 // GetDecisionRequirementsWithResponse request returning *GetDecisionRequirementsResponse
-func (c *ClientWithResponses) GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error) {
+func (c *ClientWithResponses) GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error) {
 	rsp, err := c.GetDecisionRequirements(ctx, decisionRequirementsKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24412,7 +21817,7 @@ func (c *ClientWithResponses) GetDecisionRequirementsWithResponse(ctx context.Co
 }
 
 // GetDecisionRequirementsXMLWithResponse request returning *GetDecisionRequirementsXMLResponse
-func (c *ClientWithResponses) GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error) {
+func (c *ClientWithResponses) GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error) {
 	rsp, err := c.GetDecisionRequirementsXML(ctx, decisionRequirementsKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24483,7 +21888,7 @@ func (c *ClientWithResponses) CreateDocumentLinkWithResponse(ctx context.Context
 }
 
 // ActivateAdHocSubProcessActivitiesWithBodyWithResponse request with arbitrary body returning *ActivateAdHocSubProcessActivitiesResponse
-func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
+func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
 	rsp, err := c.ActivateAdHocSubProcessActivitiesWithBody(ctx, adHocSubProcessInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24491,7 +21896,7 @@ func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithBodyWithRespo
 	return ParseActivateAdHocSubProcessActivitiesResponse(rsp)
 }
 
-func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
+func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
 	rsp, err := c.ActivateAdHocSubProcessActivities(ctx, adHocSubProcessInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24517,7 +21922,7 @@ func (c *ClientWithResponses) SearchElementInstancesWithResponse(ctx context.Con
 }
 
 // GetElementInstanceWithResponse request returning *GetElementInstanceResponse
-func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error) {
+func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error) {
 	rsp, err := c.GetElementInstance(ctx, elementInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24525,25 +21930,8 @@ func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context
 	return ParseGetElementInstanceResponse(rsp)
 }
 
-// SearchElementInstanceIncidentsWithBodyWithResponse request with arbitrary body returning *SearchElementInstanceIncidentsResponse
-func (c *ClientWithResponses) SearchElementInstanceIncidentsWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error) {
-	rsp, err := c.SearchElementInstanceIncidentsWithBody(ctx, elementInstanceKey, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchElementInstanceIncidentsResponse(rsp)
-}
-
-func (c *ClientWithResponses) SearchElementInstanceIncidentsWithResponse(ctx context.Context, elementInstanceKey string, body SearchElementInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchElementInstanceIncidentsResponse, error) {
-	rsp, err := c.SearchElementInstanceIncidents(ctx, elementInstanceKey, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchElementInstanceIncidentsResponse(rsp)
-}
-
 // CreateElementInstanceVariablesWithBodyWithResponse request with arbitrary body returning *CreateElementInstanceVariablesResponse
-func (c *ClientWithResponses) CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
+func (c *ClientWithResponses) CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
 	rsp, err := c.CreateElementInstanceVariablesWithBody(ctx, elementInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24551,7 +21939,7 @@ func (c *ClientWithResponses) CreateElementInstanceVariablesWithBodyWithResponse
 	return ParseCreateElementInstanceVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
+func (c *ClientWithResponses) CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
 	rsp, err := c.CreateElementInstanceVariables(ctx, elementInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24768,7 +22156,7 @@ func (c *ClientWithResponses) SearchIncidentsWithResponse(ctx context.Context, b
 }
 
 // GetIncidentWithResponse request returning *GetIncidentResponse
-func (c *ClientWithResponses) GetIncidentWithResponse(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error) {
+func (c *ClientWithResponses) GetIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error) {
 	rsp, err := c.GetIncident(ctx, incidentKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24777,7 +22165,7 @@ func (c *ClientWithResponses) GetIncidentWithResponse(ctx context.Context, incid
 }
 
 // ResolveIncidentWithBodyWithResponse request with arbitrary body returning *ResolveIncidentResponse
-func (c *ClientWithResponses) ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
+func (c *ClientWithResponses) ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
 	rsp, err := c.ResolveIncidentWithBody(ctx, incidentKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24785,7 +22173,7 @@ func (c *ClientWithResponses) ResolveIncidentWithBodyWithResponse(ctx context.Co
 	return ParseResolveIncidentResponse(rsp)
 }
 
-func (c *ClientWithResponses) ResolveIncidentWithResponse(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
+func (c *ClientWithResponses) ResolveIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
 	rsp, err := c.ResolveIncident(ctx, incidentKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24828,7 +22216,7 @@ func (c *ClientWithResponses) SearchJobsWithResponse(ctx context.Context, body S
 }
 
 // UpdateJobWithBodyWithResponse request with arbitrary body returning *UpdateJobResponse
-func (c *ClientWithResponses) UpdateJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
+func (c *ClientWithResponses) UpdateJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
 	rsp, err := c.UpdateJobWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24836,7 +22224,7 @@ func (c *ClientWithResponses) UpdateJobWithBodyWithResponse(ctx context.Context,
 	return ParseUpdateJobResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateJobWithResponse(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
+func (c *ClientWithResponses) UpdateJobWithResponse(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
 	rsp, err := c.UpdateJob(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24845,7 +22233,7 @@ func (c *ClientWithResponses) UpdateJobWithResponse(ctx context.Context, jobKey 
 }
 
 // CompleteJobWithBodyWithResponse request with arbitrary body returning *CompleteJobResponse
-func (c *ClientWithResponses) CompleteJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
+func (c *ClientWithResponses) CompleteJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
 	rsp, err := c.CompleteJobWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24853,7 +22241,7 @@ func (c *ClientWithResponses) CompleteJobWithBodyWithResponse(ctx context.Contex
 	return ParseCompleteJobResponse(rsp)
 }
 
-func (c *ClientWithResponses) CompleteJobWithResponse(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
+func (c *ClientWithResponses) CompleteJobWithResponse(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
 	rsp, err := c.CompleteJob(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24862,7 +22250,7 @@ func (c *ClientWithResponses) CompleteJobWithResponse(ctx context.Context, jobKe
 }
 
 // ThrowJobErrorWithBodyWithResponse request with arbitrary body returning *ThrowJobErrorResponse
-func (c *ClientWithResponses) ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
+func (c *ClientWithResponses) ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
 	rsp, err := c.ThrowJobErrorWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24870,7 +22258,7 @@ func (c *ClientWithResponses) ThrowJobErrorWithBodyWithResponse(ctx context.Cont
 	return ParseThrowJobErrorResponse(rsp)
 }
 
-func (c *ClientWithResponses) ThrowJobErrorWithResponse(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
+func (c *ClientWithResponses) ThrowJobErrorWithResponse(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
 	rsp, err := c.ThrowJobError(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24879,7 +22267,7 @@ func (c *ClientWithResponses) ThrowJobErrorWithResponse(ctx context.Context, job
 }
 
 // FailJobWithBodyWithResponse request with arbitrary body returning *FailJobResponse
-func (c *ClientWithResponses) FailJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
+func (c *ClientWithResponses) FailJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
 	rsp, err := c.FailJobWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -24887,7 +22275,7 @@ func (c *ClientWithResponses) FailJobWithBodyWithResponse(ctx context.Context, j
 	return ParseFailJobResponse(rsp)
 }
 
-func (c *ClientWithResponses) FailJobWithResponse(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
+func (c *ClientWithResponses) FailJobWithResponse(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
 	rsp, err := c.FailJob(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25041,42 +22429,8 @@ func (c *ClientWithResponses) SearchProcessDefinitionsWithResponse(ctx context.C
 	return ParseSearchProcessDefinitionsResponse(rsp)
 }
 
-// GetProcessDefinitionInstanceStatisticsWithBodyWithResponse request with arbitrary body returning *GetProcessDefinitionInstanceStatisticsResponse
-func (c *ClientWithResponses) GetProcessDefinitionInstanceStatisticsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error) {
-	rsp, err := c.GetProcessDefinitionInstanceStatisticsWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProcessDefinitionInstanceStatisticsResponse(rsp)
-}
-
-func (c *ClientWithResponses) GetProcessDefinitionInstanceStatisticsWithResponse(ctx context.Context, body GetProcessDefinitionInstanceStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceStatisticsResponse, error) {
-	rsp, err := c.GetProcessDefinitionInstanceStatistics(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProcessDefinitionInstanceStatisticsResponse(rsp)
-}
-
-// GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse request with arbitrary body returning *GetProcessDefinitionInstanceVersionStatisticsResponse
-func (c *ClientWithResponses) GetProcessDefinitionInstanceVersionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
-	rsp, err := c.GetProcessDefinitionInstanceVersionStatisticsWithBody(ctx, processDefinitionId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProcessDefinitionInstanceVersionStatisticsResponse(rsp)
-}
-
-func (c *ClientWithResponses) GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, processDefinitionId ProcessDefinitionId, body GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
-	rsp, err := c.GetProcessDefinitionInstanceVersionStatistics(ctx, processDefinitionId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetProcessDefinitionInstanceVersionStatisticsResponse(rsp)
-}
-
 // GetProcessDefinitionWithResponse request returning *GetProcessDefinitionResponse
-func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error) {
 	rsp, err := c.GetProcessDefinition(ctx, processDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25085,7 +22439,7 @@ func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Conte
 }
 
 // GetStartProcessFormWithResponse request returning *GetStartProcessFormResponse
-func (c *ClientWithResponses) GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error) {
+func (c *ClientWithResponses) GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error) {
 	rsp, err := c.GetStartProcessForm(ctx, processDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25094,7 +22448,7 @@ func (c *ClientWithResponses) GetStartProcessFormWithResponse(ctx context.Contex
 }
 
 // GetProcessDefinitionStatisticsWithBodyWithResponse request with arbitrary body returning *GetProcessDefinitionStatisticsResponse
-func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
 	rsp, err := c.GetProcessDefinitionStatisticsWithBody(ctx, processDefinitionKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25102,7 +22456,7 @@ func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithBodyWithResponse
 	return ParseGetProcessDefinitionStatisticsResponse(rsp)
 }
 
-func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
 	rsp, err := c.GetProcessDefinitionStatistics(ctx, processDefinitionKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25111,7 +22465,7 @@ func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithResponse(ctx con
 }
 
 // GetProcessDefinitionXMLWithResponse request returning *GetProcessDefinitionXMLResponse
-func (c *ClientWithResponses) GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error) {
 	rsp, err := c.GetProcessDefinitionXML(ctx, processDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25222,7 +22576,7 @@ func (c *ClientWithResponses) SearchProcessInstancesWithResponse(ctx context.Con
 }
 
 // GetProcessInstanceWithResponse request returning *GetProcessInstanceResponse
-func (c *ClientWithResponses) GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error) {
 	rsp, err := c.GetProcessInstance(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25231,7 +22585,7 @@ func (c *ClientWithResponses) GetProcessInstanceWithResponse(ctx context.Context
 }
 
 // GetProcessInstanceCallHierarchyWithResponse request returning *GetProcessInstanceCallHierarchyResponse
-func (c *ClientWithResponses) GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error) {
 	rsp, err := c.GetProcessInstanceCallHierarchy(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25240,7 +22594,7 @@ func (c *ClientWithResponses) GetProcessInstanceCallHierarchyWithResponse(ctx co
 }
 
 // CancelProcessInstanceWithBodyWithResponse request with arbitrary body returning *CancelProcessInstanceResponse
-func (c *ClientWithResponses) CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
+func (c *ClientWithResponses) CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
 	rsp, err := c.CancelProcessInstanceWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25248,7 +22602,7 @@ func (c *ClientWithResponses) CancelProcessInstanceWithBodyWithResponse(ctx cont
 	return ParseCancelProcessInstanceResponse(rsp)
 }
 
-func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
+func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
 	rsp, err := c.CancelProcessInstance(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25256,17 +22610,8 @@ func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Cont
 	return ParseCancelProcessInstanceResponse(rsp)
 }
 
-// ResolveProcessInstanceIncidentsWithResponse request returning *ResolveProcessInstanceIncidentsResponse
-func (c *ClientWithResponses) ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*ResolveProcessInstanceIncidentsResponse, error) {
-	rsp, err := c.ResolveProcessInstanceIncidents(ctx, processInstanceKey, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseResolveProcessInstanceIncidentsResponse(rsp)
-}
-
 // SearchProcessInstanceIncidentsWithBodyWithResponse request with arbitrary body returning *SearchProcessInstanceIncidentsResponse
-func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
+func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
 	rsp, err := c.SearchProcessInstanceIncidentsWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25274,7 +22619,7 @@ func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithBodyWithResponse
 	return ParseSearchProcessInstanceIncidentsResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
+func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
 	rsp, err := c.SearchProcessInstanceIncidents(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25283,7 +22628,7 @@ func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithResponse(ctx con
 }
 
 // MigrateProcessInstanceWithBodyWithResponse request with arbitrary body returning *MigrateProcessInstanceResponse
-func (c *ClientWithResponses) MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
+func (c *ClientWithResponses) MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
 	rsp, err := c.MigrateProcessInstanceWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25291,7 +22636,7 @@ func (c *ClientWithResponses) MigrateProcessInstanceWithBodyWithResponse(ctx con
 	return ParseMigrateProcessInstanceResponse(rsp)
 }
 
-func (c *ClientWithResponses) MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
+func (c *ClientWithResponses) MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
 	rsp, err := c.MigrateProcessInstance(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25300,7 +22645,7 @@ func (c *ClientWithResponses) MigrateProcessInstanceWithResponse(ctx context.Con
 }
 
 // ModifyProcessInstanceWithBodyWithResponse request with arbitrary body returning *ModifyProcessInstanceResponse
-func (c *ClientWithResponses) ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
+func (c *ClientWithResponses) ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
 	rsp, err := c.ModifyProcessInstanceWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25308,7 +22653,7 @@ func (c *ClientWithResponses) ModifyProcessInstanceWithBodyWithResponse(ctx cont
 	return ParseModifyProcessInstanceResponse(rsp)
 }
 
-func (c *ClientWithResponses) ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
+func (c *ClientWithResponses) ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
 	rsp, err := c.ModifyProcessInstance(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25317,7 +22662,7 @@ func (c *ClientWithResponses) ModifyProcessInstanceWithResponse(ctx context.Cont
 }
 
 // GetProcessInstanceSequenceFlowsWithResponse request returning *GetProcessInstanceSequenceFlowsResponse
-func (c *ClientWithResponses) GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error) {
 	rsp, err := c.GetProcessInstanceSequenceFlows(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25326,7 +22671,7 @@ func (c *ClientWithResponses) GetProcessInstanceSequenceFlowsWithResponse(ctx co
 }
 
 // GetProcessInstanceStatisticsWithResponse request returning *GetProcessInstanceStatisticsResponse
-func (c *ClientWithResponses) GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error) {
 	rsp, err := c.GetProcessInstanceStatistics(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25901,7 +23246,7 @@ func (c *ClientWithResponses) SearchUserTasksWithResponse(ctx context.Context, b
 }
 
 // GetUserTaskWithResponse request returning *GetUserTaskResponse
-func (c *ClientWithResponses) GetUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error) {
+func (c *ClientWithResponses) GetUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error) {
 	rsp, err := c.GetUserTask(ctx, userTaskKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25910,7 +23255,7 @@ func (c *ClientWithResponses) GetUserTaskWithResponse(ctx context.Context, userT
 }
 
 // UpdateUserTaskWithBodyWithResponse request with arbitrary body returning *UpdateUserTaskResponse
-func (c *ClientWithResponses) UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
+func (c *ClientWithResponses) UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
 	rsp, err := c.UpdateUserTaskWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25918,7 +23263,7 @@ func (c *ClientWithResponses) UpdateUserTaskWithBodyWithResponse(ctx context.Con
 	return ParseUpdateUserTaskResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateUserTaskWithResponse(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
+func (c *ClientWithResponses) UpdateUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
 	rsp, err := c.UpdateUserTask(ctx, userTaskKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25927,7 +23272,7 @@ func (c *ClientWithResponses) UpdateUserTaskWithResponse(ctx context.Context, us
 }
 
 // UnassignUserTaskWithResponse request returning *UnassignUserTaskResponse
-func (c *ClientWithResponses) UnassignUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error) {
+func (c *ClientWithResponses) UnassignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error) {
 	rsp, err := c.UnassignUserTask(ctx, userTaskKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25936,7 +23281,7 @@ func (c *ClientWithResponses) UnassignUserTaskWithResponse(ctx context.Context, 
 }
 
 // AssignUserTaskWithBodyWithResponse request with arbitrary body returning *AssignUserTaskResponse
-func (c *ClientWithResponses) AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
+func (c *ClientWithResponses) AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
 	rsp, err := c.AssignUserTaskWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25944,7 +23289,7 @@ func (c *ClientWithResponses) AssignUserTaskWithBodyWithResponse(ctx context.Con
 	return ParseAssignUserTaskResponse(rsp)
 }
 
-func (c *ClientWithResponses) AssignUserTaskWithResponse(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
+func (c *ClientWithResponses) AssignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
 	rsp, err := c.AssignUserTask(ctx, userTaskKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25953,7 +23298,7 @@ func (c *ClientWithResponses) AssignUserTaskWithResponse(ctx context.Context, us
 }
 
 // CompleteUserTaskWithBodyWithResponse request with arbitrary body returning *CompleteUserTaskResponse
-func (c *ClientWithResponses) CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
+func (c *ClientWithResponses) CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
 	rsp, err := c.CompleteUserTaskWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25961,7 +23306,7 @@ func (c *ClientWithResponses) CompleteUserTaskWithBodyWithResponse(ctx context.C
 	return ParseCompleteUserTaskResponse(rsp)
 }
 
-func (c *ClientWithResponses) CompleteUserTaskWithResponse(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
+func (c *ClientWithResponses) CompleteUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
 	rsp, err := c.CompleteUserTask(ctx, userTaskKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25970,7 +23315,7 @@ func (c *ClientWithResponses) CompleteUserTaskWithResponse(ctx context.Context, 
 }
 
 // GetUserTaskFormWithResponse request returning *GetUserTaskFormResponse
-func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error) {
+func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error) {
 	rsp, err := c.GetUserTaskForm(ctx, userTaskKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25979,7 +23324,7 @@ func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, u
 }
 
 // SearchUserTaskVariablesWithBodyWithResponse request with arbitrary body returning *SearchUserTaskVariablesResponse
-func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
 	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25987,7 +23332,7 @@ func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx co
 	return ParseSearchUserTaskVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
 	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -26082,113 +23427,12 @@ func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, p
 }
 
 // GetVariableWithResponse request returning *GetVariableResponse
-func (c *ClientWithResponses) GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*GetVariableResponse, error) {
+func (c *ClientWithResponses) GetVariableWithResponse(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*GetVariableResponse, error) {
 	rsp, err := c.GetVariable(ctx, variableKey, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetVariableResponse(rsp)
-}
-
-// ParseSearchAuditLogsResponse parses an HTTP response from a SearchAuditLogsWithResponse call
-func ParseSearchAuditLogsResponse(rsp *http.Response) (*SearchAuditLogsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SearchAuditLogsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest AuditLogSearchQueryResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetAuditLogResponse parses an HTTP response from a GetAuditLogWithResponse call
-func ParseGetAuditLogResponse(rsp *http.Response) (*GetAuditLogResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetAuditLogResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest AuditLogResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
 }
 
 // ParseGetAuthenticationResponse parses an HTTP response from a GetAuthenticationWithResponse call
@@ -26863,398 +24107,6 @@ func ParseResetClockResponse(rsp *http.Response) (*ResetClockResponse, error) {
 	return response, nil
 }
 
-// ParseCreateGlobalClusterVariableResponse parses an HTTP response from a CreateGlobalClusterVariableWithResponse call
-func ParseCreateGlobalClusterVariableResponse(rsp *http.Response) (*CreateGlobalClusterVariableResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateGlobalClusterVariableResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ClusterVariableResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteGlobalClusterVariableResponse parses an HTTP response from a DeleteGlobalClusterVariableWithResponse call
-func ParseDeleteGlobalClusterVariableResponse(rsp *http.Response) (*DeleteGlobalClusterVariableResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteGlobalClusterVariableResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetGlobalClusterVariableResponse parses an HTTP response from a GetGlobalClusterVariableWithResponse call
-func ParseGetGlobalClusterVariableResponse(rsp *http.Response) (*GetGlobalClusterVariableResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetGlobalClusterVariableResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ClusterVariableResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseSearchClusterVariablesResponse parses an HTTP response from a SearchClusterVariablesWithResponse call
-func ParseSearchClusterVariablesResponse(rsp *http.Response) (*SearchClusterVariablesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SearchClusterVariablesResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ClusterVariableSearchQueryResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateTenantClusterVariableResponse parses an HTTP response from a CreateTenantClusterVariableWithResponse call
-func ParseCreateTenantClusterVariableResponse(rsp *http.Response) (*CreateTenantClusterVariableResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateTenantClusterVariableResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ClusterVariableResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteTenantClusterVariableResponse parses an HTTP response from a DeleteTenantClusterVariableWithResponse call
-func ParseDeleteTenantClusterVariableResponse(rsp *http.Response) (*DeleteTenantClusterVariableResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteTenantClusterVariableResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetTenantClusterVariableResponse parses an HTTP response from a GetTenantClusterVariableWithResponse call
-func ParseGetTenantClusterVariableResponse(rsp *http.Response) (*GetTenantClusterVariableResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTenantClusterVariableResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ClusterVariableResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseSearchCorrelatedMessageSubscriptionsResponse parses an HTTP response from a SearchCorrelatedMessageSubscriptionsWithResponse call
 func ParseSearchCorrelatedMessageSubscriptionsResponse(rsp *http.Response) (*SearchCorrelatedMessageSubscriptionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27336,6 +24188,13 @@ func ParseEvaluateDecisionResponse(rsp *http.Response) (*EvaluateDecisionRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
@@ -28225,67 +25084,6 @@ func ParseGetElementInstanceResponse(rsp *http.Response) (*GetElementInstanceRes
 	return response, nil
 }
 
-// ParseSearchElementInstanceIncidentsResponse parses an HTTP response from a SearchElementInstanceIncidentsWithResponse call
-func ParseSearchElementInstanceIncidentsResponse(rsp *http.Response) (*SearchElementInstanceIncidentsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SearchElementInstanceIncidentsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest IncidentSearchQueryResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseCreateElementInstanceVariablesResponse parses an HTTP response from a CreateElementInstanceVariablesWithResponse call
 func ParseCreateElementInstanceVariablesResponse(rsp *http.Response) (*CreateElementInstanceVariablesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -28320,6 +25118,13 @@ func ParseCreateElementInstanceVariablesResponse(rsp *http.Response) (*CreateEle
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 
@@ -28428,6 +25233,13 @@ func ParseSearchGroupsResponse(rsp *http.Response) (*SearchGroupsResponse, error
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
 
 	}
 
@@ -28787,7 +25599,7 @@ func ParseSearchMappingRulesForGroupResponse(rsp *http.Response) (*SearchMapping
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SearchQueryResponse
+		var dest MappingRuleSearchQueryResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -28963,7 +25775,7 @@ func ParseSearchRolesForGroupResponse(rsp *http.Response) (*SearchRolesForGroupR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SearchQueryResponse
+		var dest RoleSearchQueryResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -29383,7 +26195,7 @@ func ParseActivateJobsResponse(rsp *http.Response) (*ActivateJobsResponse, error
 		response.ApplicationproblemJSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
+		var dest ProblemDetail
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -30183,114 +26995,6 @@ func ParseSearchProcessDefinitionsResponse(rsp *http.Response) (*SearchProcessDe
 	return response, nil
 }
 
-// ParseGetProcessDefinitionInstanceStatisticsResponse parses an HTTP response from a GetProcessDefinitionInstanceStatisticsWithResponse call
-func ParseGetProcessDefinitionInstanceStatisticsResponse(rsp *http.Response) (*GetProcessDefinitionInstanceStatisticsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetProcessDefinitionInstanceStatisticsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProcessDefinitionInstanceStatisticsQueryResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetProcessDefinitionInstanceVersionStatisticsResponse parses an HTTP response from a GetProcessDefinitionInstanceVersionStatisticsWithResponse call
-func ParseGetProcessDefinitionInstanceVersionStatisticsResponse(rsp *http.Response) (*GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetProcessDefinitionInstanceVersionStatisticsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProcessDefinitionInstanceVersionStatisticsQueryResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetProcessDefinitionResponse parses an HTTP response from a GetProcessDefinitionWithResponse call
 func ParseGetProcessDefinitionResponse(rsp *http.Response) (*GetProcessDefinitionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -31016,66 +27720,12 @@ func ParseCancelProcessInstanceResponse(rsp *http.Response) (*CancelProcessInsta
 		}
 		response.ApplicationproblemJSON503 = &dest
 
-	}
-
-	return response, nil
-}
-
-// ParseResolveProcessInstanceIncidentsResponse parses an HTTP response from a ResolveProcessInstanceIncidentsWithResponse call
-func ParseResolveProcessInstanceIncidentsResponse(rsp *http.Response) (*ResolveProcessInstanceIncidentsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ResolveProcessInstanceIncidentsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest BatchOperationCreatedResult
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidData
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ProblemDetail
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON500 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ServiceUnavailable
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON503 = &dest
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 
@@ -31406,6 +28056,13 @@ func ParseGetResourceContentResponse(rsp *http.Response) (*GetResourceContentRes
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest ProblemDetail
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -31574,6 +28231,13 @@ func ParseSearchRolesResponse(rsp *http.Response) (*SearchRolesResponse, error) 
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
 
 	}
 
@@ -32109,7 +28773,7 @@ func ParseSearchMappingRulesForRoleResponse(rsp *http.Response) (*SearchMappingR
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SearchQueryResponse
+		var dest MappingRuleSearchQueryResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -32460,6 +29124,13 @@ func ParseCreateAdminUserResponse(rsp *http.Response) (*CreateAdminUserResponse,
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest UserCreateResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest InvalidData
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32719,6 +29390,13 @@ func ParseSearchTenantsResponse(rsp *http.Response) (*SearchTenantsResponse, err
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
@@ -33191,7 +29869,7 @@ func ParseSearchMappingRulesForTenantResponse(rsp *http.Response) (*SearchMappin
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SearchQueryResponse
+		var dest MappingRuleSearchQueryResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -33325,7 +30003,7 @@ func ParseSearchRolesForTenantResponse(rsp *http.Response) (*SearchRolesForTenan
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SearchQueryResponse
+		var dest RoleSearchQueryResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -33782,6 +30460,13 @@ func ParseUpdateUserTaskResponse(rsp *http.Response) (*UpdateUserTaskResponse, e
 		}
 		response.ApplicationproblemJSON503 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
 	}
 
 	return response, nil
@@ -33835,6 +30520,13 @@ func ParseUnassignUserTaskResponse(rsp *http.Response) (*UnassignUserTaskRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 
@@ -33890,6 +30582,13 @@ func ParseAssignUserTaskResponse(rsp *http.Response) (*AssignUserTaskResponse, e
 		}
 		response.ApplicationproblemJSON503 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
 	}
 
 	return response, nil
@@ -33943,6 +30642,13 @@ func ParseCompleteUserTaskResponse(rsp *http.Response) (*CompleteUserTaskRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 

@@ -1,12 +1,20 @@
 version: 2
 
+project_name: c8volt
+
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - env:
+  - id: c8volt
+    main: .
+    binary: c8volt
+    env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    mod_timestamp: "{{ .CommitTimestamp }}"
     goos:
       - linux
       - windows
@@ -16,15 +24,17 @@ builds:
       - arm64
     ldflags:
       - >-
+        -s -w
         -X github.com/grafvonb/c8volt/cmd.version={{.Version}}
         -X github.com/grafvonb/c8volt/cmd.commit={{.Commit}}
         -X github.com/grafvonb/c8volt/cmd.date={{.Date}}
         -X github.com/grafvonb/c8volt/cmd.builtBy=GoReleaser
 
 archives:
-  - formats: [tar.gz]
+  - id: artifacts
+    formats: [tar.gz]
     name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_
+      {{ .ProjectName }}_{{ .Tag }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
@@ -35,18 +45,15 @@ archives:
         formats: [zip]
 
 checksum:
-  name_template: 'checksums_{{ .ProjectName }}_{{ .Version }}.txt'
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
-  sort: asc
+  sort: desc
   filters:
     exclude:
-      - "^docs:"
-      - "^test:"
-
-release:
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+      - "^docs(\\(.+\\))?:"
+      - "^test(\\(.+\\))?:"
+      - "^chore(\\(.+\\))?:"

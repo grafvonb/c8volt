@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -30,7 +29,7 @@ func validateOptionalDashArg(args []string) error {
 	if len(args) == 1 && args[0] == "-" {
 		return nil
 	}
-	return fmt.Errorf("unexpected args: %v (use '-' to read keys from stdin)", args)
+	return invalidFlagValuef("unexpected args: %v (use '-' to read keys from stdin)", args)
 }
 
 func readKeysIfDash(args []string) ([]string, error) {
@@ -38,7 +37,7 @@ func readKeysIfDash(args []string) ([]string, error) {
 		return nil, nil
 	}
 	if term.IsTerminal(int(os.Stdin.Fd())) {
-		return nil, fmt.Errorf("'-' requires piped/redirected stdin (example: printf 'k1\\nk2\\n' | c8volt <cmd> -)")
+		return nil, invalidFlagValuef("'-' requires piped/redirected stdin (example: printf 'k1\\nk2\\n' | c8volt <cmd> -)")
 	}
 
 	sc := bufio.NewScanner(os.Stdin)
@@ -55,7 +54,7 @@ func readKeysIfDash(args []string) ([]string, error) {
 		return nil, err
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("stdin contained no keys")
+		return nil, invalidFlagValuef("stdin contained no keys")
 	}
 	return out, nil
 }

@@ -1,0 +1,94 @@
+## Codebase Patterns
+- Keep shared CLI failure classification in `c8volt/ferrors`; normalize raw errors with `Normalize` and assert `Classify` or `ResolveExitCode` directly in package tests before adding subprocess coverage in `cmd/`.
+- Return CLI root/bootstrap failures through the shared `cmd` bootstrap helpers and `ferrors.HandleAndExit`; do not leave entry points on raw `os.Exit(1)` paths if the failure should participate in shared classification and `--no-err-codes`.
+- For CLI command-validation helpers, attach the shared `ferrors` class when constructing the error if the same validation may surface through both Cobra `Execute()` and in-command `ferrors.HandleAndExit`; bootstrap normalization alone only covers the former.
+- Extend command and bootstrap sentinel-to-class mappings through the shared rule tables in `cmd/cmd_errors.go` and `cmd/bootstrap_errors.go`; that table-driven path is the extension point for future CLI failure classes.
+- In fresh helper-process `cmd` tests, skip the shared Cobra flag reset helper before `SetArgs()`; resetting `StringSlice` defaults can materialize a literal `"[]"` entry and send commands down the wrong path.
+- Command handlers that call `NewCli(cmd)` must treat the returned config as nilable on failure; use the shared command/bootstrap error helper to resolve `--no-err-codes` instead of dereferencing `cfg.App.NoErrCodes` in the error branch.
+- The scripting/error-code guidance in `README.md` and `docs/index.md` is duplicated on purpose; update both files together when the CLI failure contract changes.
+- For feature closeout on this branch, the authoritative validation sequence is the spec quickstart order: `go test ./cmd/... ./c8volt/ferrors/... -count=1` first, then `make test`.
+
+# Ralph Progress Log
+Started: Tue Mar 24 10:20:36 CET 2026
+---
+## [2026-03-24 10:24:15 CET] - #19-001
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-*.txt (no matching file present in workspace)
+- Implemented the shared CLI failure model boundary in `c8volt/ferrors` with bounded classes, normalization entry points, centralized exit-code mapping, and a `ResolveExitCode` helper that keeps `--no-err-codes` as a final override.
+- Added focused regression tests for domain and local normalization, fallback internal classification, and the `--no-err-codes` override path.
+- Files changed: `AGENTS.md`, `c8volt/ferrors/errors.go`, `c8volt/ferrors/errors_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `c8volt/ferrors` is the right single boundary for CLI classification; callers can keep routing through `HandleAndExit` while shared tests lock semantics via `Normalize`, `Classify`, and `ResolveExitCode`.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the previous `context.Canceled` handling in `FromDomain` was shadowed by an earlier branch, so shared normalization order matters when adding more mappings.
+  - Useful context (e.g., "the evaluation panel is in component X"): existing `internal/exitcode` values remain the compatibility baseline, so new failure classes can be introduced without immediately adding new numeric exit codes.
+---
+## [2026-03-24 10:32:23 CET] - #19-002
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-*.txt (no matching file present in workspace)
+- Routed root pre-run and `Execute()` bootstrap failures through a shared `cmd` bootstrap normalization helper so configuration and startup failures use the shared CLI classification and exit-code path instead of falling back to raw `os.Exit(1)`.
+- Updated `NewCli()` to normalize missing-context and client-construction failures through the same bootstrap path, preserving unsupported-version classification while treating missing bootstrap services as local preconditions.
+- Added focused command tests for bootstrap normalization, a subprocess regression covering invalid-config execution, and hardened `toolx/logging.FromContext` so missing loggers fall back to `slog.Default()` instead of panicking during bootstrap checks.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_cli.go`, `cmd/root.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`, `toolx/logging/logging.go`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): root-level Cobra failures are best tested with subprocess helpers that set `os.Args` and call `Execute()` directly, because that is the path that owns final exit-code handling.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `toolx/logging.FromContext` may be reached before config wiring is complete, so bootstrap-safe code must tolerate a missing logger context without panicking.
+  - Useful context (e.g., "the evaluation panel is in component X"): unknown Camunda versions fail during config normalization before command execution, which makes them a compact representative case for root/bootstrap failure tests.
+---
+## [2026-03-24 10:37:54 CET] - #19-003
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-2.txt
+- Normalized shared `get` command validation failures by introducing command-level invalid-input helpers, mapping those sentinels through the bootstrap path, and updating read-only validators in `get resource`, `get process-definition`, and `get process-instance`.
+- Added regression coverage proving read-only invalid-input failures exit through the shared invalid-args path while malformed-response, remote-failure, and local-precondition behavior stays covered by the existing read-only subprocess tests.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_errors.go`, `cmd/get_processdefinition.go`, `cmd/get_processinstance.go`, `cmd/get_resource.go`, `cmd/get_test.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `cmd`-level validation helpers are the right place to attach shared invalid-input classification because the same error can surface either from Cobra `Execute()` or from a command's own `ferrors.HandleAndExit` path.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): subprocess helpers that call `root.Execute()` only cover direct in-command exits; validation that bubbles back to Cobra needs helper processes to invoke `Execute()` so the shared bootstrap handler can apply final exit-code normalization.
+  - Useful context (e.g., "the evaluation panel is in component X"): existing `get` subprocess tests already cover malformed-response and remote-failure cases for cluster, resource, and process-definition commands, so new read-only failure work can extend that suite instead of introducing a separate harness.
+---
+## [2026-03-24 10:46:50 CET] - #19-004
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-3.txt
+- Routed representative mutation and utility command validation failures through the shared CLI model by classifying stdin/flag helpers and updating `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and config validation paths to emit shared invalid-input or local-precondition errors instead of raw `fmt.Errorf` or direct `os.Exit`.
+- Added focused subprocess regressions in `cmd/mutation_test.go` covering representative `run`, `deploy`, `cancel`, `delete`, `expect`, `walk`, `embed`, and config failure paths, and fixed config/embed utility commands to avoid dereferencing a missing config when they fail before bootstrap wiring completes.
+- Files changed: `AGENTS.md`, `cmd/cancel_processinstance.go`, `cmd/cmd_cli.go`, `cmd/cmd_errors.go`, `cmd/cmd_stdin.go`, `cmd/config_show.go`, `cmd/delete_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/deploy.go`, `cmd/embed_deploy.go`, `cmd/embed_export.go`, `cmd/embed_list.go`, `cmd/expect_processinstance.go`, `cmd/mutation_test.go`, `cmd/run_processinstance.go`, `cmd/walk_processinstance.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): command-level helpers like stdin readers, optional-arg validators, and confirmation prompts are the right place to attach shared CLI classes because many command families reuse them verbatim.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): the shared `resetCommandTreeFlags` helper is only safe for in-process command reuse; fresh helper-process tests should skip it because Cobra `StringSlice` defaults can become a literal `"[]"` and alter command behavior.
+  - Useful context (e.g., "the evaluation panel is in component X"): utility commands that read config directly, such as `config show` and `embed list`, need `bootstrapFailureContext` on early failure paths so missing config does not trigger a nil dereference while rendering a classified error.
+---
+## [2026-03-24 10:54:25 CET] - #19-005
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-4.txt
+- Added subprocess CLI regressions for representative unsupported-version, timeout, conflict, and `--no-err-codes` paths while reusing the existing invalid-input, unavailable, and not-found coverage to lock the shared exit-code contract across command families.
+- Introduced `handleNewCliError` in `cmd` and updated command handlers that call `NewCli(cmd)` so bootstrap-only failures keep shared classification and exit-code behavior instead of panicking on a nil config.
+- Files changed: `AGENTS.md`, `cmd/bootstrap_errors_test.go`, `cmd/cancel_processinstance.go`, `cmd/cmd_cli.go`, `cmd/delete_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/deploy_processdefinition.go`, `cmd/embed_deploy.go`, `cmd/embed_export.go`, `cmd/expect_processinstance.go`, `cmd/get_cluster_license.go`, `cmd/get_cluster_topology.go`, `cmd/get_processdefinition.go`, `cmd/get_processinstance.go`, `cmd/get_resource.go`, `cmd/get_test.go`, `cmd/get_variable.go`, `cmd/mutation_test.go`, `cmd/run_processinstance.go`, `cmd/walk_processinstance.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): exit-code contract tests belong in helper-process `cmd` coverage, with one representative command per failure class rather than duplicating class assertions across every command family.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): unsupported-version failures can happen before `NewCli` returns a config, so command handlers must not read `cfg.App.NoErrCodes` on the `err != nil` branch.
+  - Useful context (e.g., "the evaluation panel is in component X"): `get resource` is a compact representative command for `not_found`, `timeout`, and `--no-err-codes` exit checks because its handler goes straight from `NewCli` to one generated-client call.
+---
+## [2026-03-24 11:04:40 CET] - #19-006
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-5.txt
+- Consolidated shared CLI class wrapping behind `ferrors.WrapClass` and replaced duplicated bootstrap/command normalization switches with table-driven rule sets in `cmd`, leaving one clear extension point for future sentinel-to-class mappings.
+- Added focused regression coverage for the shared wrapping helper plus command-validation and bootstrap mapping tables so maintainability refactors are locked without relying on subprocess tests.
+- Files changed: `AGENTS.md`, `c8volt/ferrors/errors.go`, `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors.go`, `cmd/bootstrap_errors_test.go`, `cmd/cmd_errors.go`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): `ferrors.WrapClass` is the reusable helper for attaching shared CLI classes without reimplementing `%w: %v` wrappers in other packages.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): adding a new command or bootstrap sentinel now requires updating the shared rule tables, otherwise the fallback path will normalize it as internal.
+  - Useful context (e.g., "the evaluation panel is in component X"): focused `cmd` normalization tests are faster and more stable for extension-point coverage than spawning subprocesses when the code under test does not call `os.Exit`.
+---
+## [2026-03-24 11:10:23 CET] - #19-007
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-6.txt
+- Updated the scripting support documentation in `README.md` and `docs/index.md` to describe the shipped CLI failure classes, the current shared class-to-exit-code mapping, and the fact that `--no-err-codes` preserves failure output while forcing the final process exit code to `0`.
+- Confirmed no Cobra command metadata changed, so generated files under `docs/cli/` did not need regeneration for this story.
+- Files changed: `README.md`, `docs/index.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): scripting-facing failure semantics are documented in both `README.md` and `docs/index.md`, and those sections should stay textually aligned.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `--no-err-codes` is only an exit-code override; documentation should not imply it bypasses classification or suppresses failure output.
+  - Useful context (e.g., "the evaluation panel is in component X"): the shipped numeric exit codes still come from `internal/exitcode`, while multiple CLI failure classes intentionally collapse to the generic `1` exit code.
+---
+## [2026-03-24 11:11:27 CET] - #19-008
+Codex output: /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/scripts/ralph/.codex-last-message-iter-7.txt
+- Confirmed the final validation quickstart still matches the shipped CLI error-model implementation and added explicit closeout notes to the spec artifact.
+- Ran the required validation sequence successfully: `go test ./cmd/... ./c8volt/ferrors/... -count=1` and `make test`.
+- Files changed: `specs/19-cli-error-model/quickstart.md`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y"): feature closeout on this branch should follow the quickstart validation order so targeted CLI regressions are isolated before the repository-wide suite runs.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W"): `make docs` is still unnecessary for this feature unless Cobra help metadata changes; validation-only closeout should avoid regenerating docs without a command help diff.
+  - Useful context (e.g., "the evaluation panel is in component X"): the final proof story can be satisfied with spec confirmation plus validation evidence, without further command-surface changes once the earlier slices have landed.
+---

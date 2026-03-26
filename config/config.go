@@ -16,9 +16,9 @@ import (
 
 var (
 	ErrNoBaseURL      = errors.New("no base_url provided in api configuration")
-	ErrNoTokenURL     = errors.New("no token_url provided in auth configuration")
-	ErrNoClientID     = errors.New("no client_id provided in auth configuration")
-	ErrNoClientSecret = errors.New("no client_secret provided in auth configuration")
+	ErrNoTokenURL     = errors.New("token_url is required")
+	ErrNoClientID     = errors.New("client_id is required")
+	ErrNoClientSecret = errors.New("client_secret is required")
 
 	ErrNoConfigInContext       = errors.New("no config in context")
 	ErrInvalidServiceInContext = errors.New("invalid config in context")
@@ -160,16 +160,16 @@ func (c *Config) Normalize() error {
 func (c *Config) Validate() error {
 	var errs []error
 	if err := c.Auth.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("auth: %w", err))
+		errs = append(errs, err)
 	}
 	if err := c.APIs.Validate(c.Auth.OAuth2.Scopes); err != nil {
-		errs = append(errs, fmt.Errorf("apis: %w", err))
+		errs = append(errs, err)
 	}
 	if err := c.HTTP.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("http: %w", err))
+		errs = append(errs, err)
 	}
 	if err := c.Log.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("log: %w", err))
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }

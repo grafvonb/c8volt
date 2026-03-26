@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services/auth"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
@@ -34,12 +33,20 @@ func Root() *cobra.Command { return rootCmd }
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
 	Short: "c8volt: Camunda 8 Operations CLI",
-	Long: `c8volt: Camunda 8 Operations CLI. The tool for Camunda 8 admins and developers to verify outcomes.
+	Long: `c8volt: Camunda 8 Operations CLI.
+
+Built for Camunda 8 operators and developers who need confirmation, not guesses.
+c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
+waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
+
 Refer to the documentation at https://c8volt.boczek.info for more information.`,
+	CompletionOptions: cobra.CompletionOptions{
+		HiddenDefaultCmd: true,
+	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
 		if err := initViper(v, cmd); err != nil {
-			return err
+			return bootstrapLocalPrecondition(err)
 		}
 		if hasHelpFlag(cmd) {
 			return nil
@@ -53,12 +60,12 @@ Refer to the documentation at https://c8volt.boczek.info for more information.`,
 		}
 		cfg, err := retrieveAndNormalizeConfig(v)
 		if err != nil {
-			return err
+			return bootstrapLocalPrecondition(err)
 		}
 		ctx := cfg.ToContext(cmd.Context())
 		log, err := logging.FromContext(ctx)
 		if err != nil {
-			return fmt.Errorf("retrieve logger from context: %w", err)
+			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
 		}
 
 		if pathcfg := v.ConfigFileUsed(); pathcfg != "" {
@@ -75,13 +82,13 @@ Refer to the documentation at https://c8volt.boczek.info for more information.`,
 				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
-		if isUtilityCommand(cmd) {
+		if bypassRootBootstrap(cmd) {
 			cmd.SetContext(ctx)
 			return nil
 		}
 
 		if err = cfg.Validate(); err != nil {
-			return fmt.Errorf("validate config:\n%w", err)
+			return bootstrapLocalPrecondition(config.FormatValidationError("configuration is invalid", err))
 		}
 		if cfg.ActiveProfile != "" {
 			log.Debug("using configuration profile: " + cfg.ActiveProfile)
@@ -93,14 +100,14 @@ Refer to the documentation at https://c8volt.boczek.info for more information.`,
 
 		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar())
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("create http service: %w", err))
+			return bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
 		}
 		ator, err := auth.BuildAuthenticator(cfg, httpSvc.Client(), log)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("create authenticator: %w", err))
+			return bootstrapLocalPrecondition(fmt.Errorf("create authenticator: %w", err))
 		}
 		if err := ator.Init(ctx); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initialize authenticator: %w", err))
+			return normalizeBootstrapError(fmt.Errorf("initialize authenticator: %w", err))
 		}
 		httpSvc.InstallAuthEditor(ator.Editor())
 		ctx = httpSvc.ToContext(ctx)
@@ -123,7 +130,7 @@ func Execute() {
 		rootCmd.SetArgs([]string{"--help"})
 	}
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		handleBootstrapError(rootCmd, err)
 	}
 }
 

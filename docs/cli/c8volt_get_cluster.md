@@ -1,0 +1,51 @@
+---
+title: "c8volt get cluster"
+nav_exclude: true
+---
+
+[CLI Reference]({{ "/cli/" | relative_url }})
+## c8volt get cluster
+
+Get cluster resources
+
+### Synopsis
+
+Get cluster resources such as the topology or license of the connected Camunda 8 cluster.
+It is a parent command and requires a subcommand to specify the cluster resource to get.
+
+```
+c8volt get cluster [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for cluster
+```
+
+### Options inherited from parent commands
+
+```
+  -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --backoff-max-retries int    max retry attempts (0 = unlimited)
+      --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
+      --config string              path to config file
+      --debug                      enable debug logging, overwrites and is shorthand for --log-level=debug
+  -j, --json                       output as JSON (where applicable)
+      --keys-only                  output as keys only (where applicable), can be used for piping to other commands
+      --log-format string          log format (json, plain, text) (default "plain")
+      --log-level string           log level (debug, info, warn, error) (default "info")
+      --log-with-source            include source file and line number in logs
+      --no-err-codes               suppress error codes in error outputs
+      --profile string             config active profile name to use (e.g. dev, prod)
+  -q, --quiet                      suppress all output, except errors, overrides --log-level
+      --tenant string              default tenant ID
+  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
+```
+
+### SEE ALSO
+
+* [c8volt get](c8volt_get.md)	 - Get resources
+* [c8volt get cluster license](c8volt_get_cluster_license.md)	 - Get the cluster license of the connected Camunda 8 cluster
+* [c8volt get cluster topology](c8volt_get_cluster_topology.md)	 - Get the cluster topology of the connected Camunda 8 cluster
+

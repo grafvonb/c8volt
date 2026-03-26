@@ -1,5 +1,6 @@
 ---
 title: "c8volt get"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -45,7 +46,9 @@ c8volt get [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt get cluster](c8volt_get_cluster.md)	 - Get cluster resources
 * [c8volt get cluster-topology](c8volt_get_cluster-topology.md)	 - Get the cluster topology of the connected Camunda 8 cluster
-* [c8volt get process-definition](c8volt_get_process-definition.md)	 - Get deployed process definitions
-* [c8volt get process-instance](c8volt_get_process-instance.md)	 - Get process instances
+* [c8volt get process-definition](c8volt_get_process-definition.md)	 - List or fetch deployed process definitions
+* [c8volt get process-instance](c8volt_get_process-instance.md)	 - List or fetch process instances
+* [c8volt get resource](c8volt_get_resource.md)	 - Get a resource by id
 

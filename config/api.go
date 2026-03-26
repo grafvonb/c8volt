@@ -67,7 +67,7 @@ func (a *APIs) Normalize() error {
 func (a *APIs) Validate(scopes Scopes) error {
 	var errs []error
 	if a.Camunda.BaseURL == "" {
-		errs = append(errs, fmt.Errorf("apis.camunda_api.base_url: %w", ErrNoBaseURL))
+		errs = append(errs, fmt.Errorf("apis.camunda_api.base_url: base_url is required"))
 	}
 	apis := []API{a.Camunda, a.Operate, a.Tasklist}
 	for _, api := range apis {

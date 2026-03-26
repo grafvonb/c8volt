@@ -15,7 +15,10 @@ type API interface {
 	SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
+	GetProcessDefinitionXML(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
 
 var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
+var _ API = (v87.API)(nil)
+var _ API = (v88.API)(nil)

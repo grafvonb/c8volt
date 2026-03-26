@@ -48,9 +48,6 @@ bin/
 .DS_Store
 Thumbs.db
 
-# camunda-docs
-api/camunda-docs*/
-
 # c8volt's exported resources
 # c8volt
 config*.yaml
@@ -67,8 +64,42 @@ node_modules/
 package-lock.json
 package.json
 
+# Python temporary/cache artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.venv/
+venv/
+env/
+ENV/
+
+# Generated API checkout backups
+api/*.bak/
+api/*.bak*/
+api/camunda-docs/
+api/camunda/.git/
+api/camunda-docs/.git/
+
 # Jekyll
 /docs/_site/
 /docs/.jekyll-cache/
 /docs/.jekyll-metadata
 /docs/.sass-cache/
+
+# Ralph local run artifacts
+scripts/ralph/.last-branch
+scripts/ralph/.codex-last-message*.txt
+scripts/ralph/.codex-output-iter-*.txt
+.agents/skills/
+.specify/
+scripts/ralph/*
+!scripts/ralph/archive/
+!scripts/ralph/archive/**
+!scripts/ralph/prd.json

@@ -14,8 +14,10 @@ var (
 )
 
 var deleteProcessInstanceCmd = &cobra.Command{
-	Use:     "process-instance",
-	Short:   "Delete a process instance by its key",
+	Use:   "process-instance",
+	Short: "Delete process instance(s), optionally cancelling first",
+	Example: `  ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -23,7 +25,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("initializing client: %w", err))
+			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
@@ -36,7 +38,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		case len(keys) > 0:
 		default:
 			if !hasPISearchFilterFlags() {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize, collectOptions()...)
@@ -49,7 +51,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("no process instance keys provided or found to delete"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to delete")))
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 		if err != nil {

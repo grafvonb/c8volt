@@ -1,5 +1,6 @@
 ---
 title: "c8volt cancel process-instance"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -9,6 +10,14 @@ Cancel process instance(s) by key(s) and wait for the cancellation to complete
 
 ```
 c8volt cancel process-instance [flags]
+```
+
+### Examples
+
+```
+  ./c8volt cancel pi --key 2251799813711967
+  ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -
 ```
 
 ### Options

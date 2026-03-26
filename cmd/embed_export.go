@@ -21,14 +21,17 @@ var (
 )
 
 var embedExportCmd = &cobra.Command{
-	Use:        "export",
-	Short:      "Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.",
+	Use:   "export",
+	Short: "Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.",
+	Example: `  ./c8volt embed export --all --out ./fixtures
+  ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
+  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures`,
 	Aliases:    []string{"exp", "extract"},
 	SuggestFor: []string{"exprot", "exrpot", "exract", "extrat"},
 	Run: func(cmd *cobra.Command, args []string) {
 		_, log, cfg, err := NewCli(cmd)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleNewCliError(cmd, log, cfg, err)
 		}
 		all, err := embedded.List()
 		if err != nil {
@@ -44,7 +47,7 @@ var embedExportCmd = &cobra.Command{
 		case flagEmbedExportAll:
 			toExport = append(toExport, all...)
 		case len(flagEmbedExportFileNames) == 0:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("either --all or at least one --file is required"))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either --all or at least one --file is required"))
 		default:
 			seen := make(map[string]struct{})
 			matchFound := false
@@ -54,7 +57,7 @@ var embedExportCmd = &cobra.Command{
 					for _, cand := range all {
 						ok, err := path.Match(pat, strings.ToLower(cand))
 						if err != nil {
-							ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("invalid pattern %q: %w", f, err))
+							ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid pattern %q: %v", f, err))
 						}
 						if ok {
 							if _, dup := seen[cand]; !dup {
@@ -72,12 +75,12 @@ var embedExportCmd = &cobra.Command{
 							toExport = append(toExport, canon)
 						}
 					} else {
-						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("embedded file %q not found (case-insensitive); run 'embed list' to see all files", f))
+						ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("embedded file %q not found (case-insensitive); run 'embed list' to see all files", f))
 					}
 				}
 			}
 			if embedExportAllAreGlobs(flagEmbedExportFileNames) && !matchFound {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("pattern(s) %v matched no embedded files; have you forgotten to quote them in the shell, or provide a pattern for folder like '*/*.bpmn'?", flagEmbedExportFileNames))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("pattern(s) %v matched no embedded files; have you forgotten to quote them in the shell, or provide a pattern for folder like '*/*.bpmn'?", flagEmbedExportFileNames))
 			}
 		}
 		sort.Strings(toExport)

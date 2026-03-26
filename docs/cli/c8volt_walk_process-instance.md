@@ -1,14 +1,23 @@
 ---
 title: "c8volt walk process-instance"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt walk process-instance
 
-Traverse (walk) the parent/child graph of process instances
+Inspect the parent/child tree of process instances
 
 ```
 c8volt walk process-instance [flags]
+```
+
+### Examples
+
+```
+  ./c8volt walk pi --key 2251799813711967 --family
+  ./c8volt walk pi --key 2251799813711967 --family --tree
+  ./c8volt walk pi --key 2251799813711977 --parent
 ```
 
 ### Options

@@ -377,32 +377,41 @@ const (
 
 // Defines values for JobResultType.
 const (
-	AdHocSubProcess JobResultType = "adHocSubProcess"
-	UserTask        JobResultType = "userTask"
+	JobResultTypeAdHocSubProcess JobResultType = "adHocSubProcess"
+	JobResultTypeUserTask        JobResultType = "userTask"
+)
+
+// Defines values for JobResultAdHocSubProcessType.
+const (
+	JobResultAdHocSubProcessTypeAdHocSubProcess JobResultAdHocSubProcessType = "adHocSubProcess"
+)
+
+// Defines values for JobResultUserTaskType.
+const (
+	UserTask JobResultUserTaskType = "userTask"
 )
 
 // Defines values for JobSearchQuerySortRequestField.
 const (
-	JobSearchQuerySortRequestFieldDeadline                 JobSearchQuerySortRequestField = "deadline"
-	JobSearchQuerySortRequestFieldDeniedReason             JobSearchQuerySortRequestField = "deniedReason"
-	JobSearchQuerySortRequestFieldElementId                JobSearchQuerySortRequestField = "elementId"
-	JobSearchQuerySortRequestFieldElementInstanceKey       JobSearchQuerySortRequestField = "elementInstanceKey"
-	JobSearchQuerySortRequestFieldEndTime                  JobSearchQuerySortRequestField = "endTime"
-	JobSearchQuerySortRequestFieldErrorCode                JobSearchQuerySortRequestField = "errorCode"
-	JobSearchQuerySortRequestFieldErrorMessage             JobSearchQuerySortRequestField = "errorMessage"
-	JobSearchQuerySortRequestFieldHasFailedWithRetriesLeft JobSearchQuerySortRequestField = "hasFailedWithRetriesLeft"
-	JobSearchQuerySortRequestFieldIsDenied                 JobSearchQuerySortRequestField = "isDenied"
-	JobSearchQuerySortRequestFieldJobKey                   JobSearchQuerySortRequestField = "jobKey"
-	JobSearchQuerySortRequestFieldKind                     JobSearchQuerySortRequestField = "kind"
-	JobSearchQuerySortRequestFieldListenerEventType        JobSearchQuerySortRequestField = "listenerEventType"
-	JobSearchQuerySortRequestFieldProcessDefinitionId      JobSearchQuerySortRequestField = "processDefinitionId"
-	JobSearchQuerySortRequestFieldProcessDefinitionKey     JobSearchQuerySortRequestField = "processDefinitionKey"
-	JobSearchQuerySortRequestFieldProcessInstanceKey       JobSearchQuerySortRequestField = "processInstanceKey"
-	JobSearchQuerySortRequestFieldRetries                  JobSearchQuerySortRequestField = "retries"
-	JobSearchQuerySortRequestFieldState                    JobSearchQuerySortRequestField = "state"
-	JobSearchQuerySortRequestFieldTenantId                 JobSearchQuerySortRequestField = "tenantId"
-	JobSearchQuerySortRequestFieldType                     JobSearchQuerySortRequestField = "type"
-	JobSearchQuerySortRequestFieldWorker                   JobSearchQuerySortRequestField = "worker"
+	JobSearchQuerySortRequestFieldDeadline             JobSearchQuerySortRequestField = "deadline"
+	JobSearchQuerySortRequestFieldDeniedReason         JobSearchQuerySortRequestField = "deniedReason"
+	JobSearchQuerySortRequestFieldElementId            JobSearchQuerySortRequestField = "elementId"
+	JobSearchQuerySortRequestFieldElementInstanceKey   JobSearchQuerySortRequestField = "elementInstanceKey"
+	JobSearchQuerySortRequestFieldEndTime              JobSearchQuerySortRequestField = "endTime"
+	JobSearchQuerySortRequestFieldErrorCode            JobSearchQuerySortRequestField = "errorCode"
+	JobSearchQuerySortRequestFieldErrorMessage         JobSearchQuerySortRequestField = "errorMessage"
+	JobSearchQuerySortRequestFieldIsDenied             JobSearchQuerySortRequestField = "isDenied"
+	JobSearchQuerySortRequestFieldJobKey               JobSearchQuerySortRequestField = "jobKey"
+	JobSearchQuerySortRequestFieldKind                 JobSearchQuerySortRequestField = "kind"
+	JobSearchQuerySortRequestFieldListenerEventType    JobSearchQuerySortRequestField = "listenerEventType"
+	JobSearchQuerySortRequestFieldProcessDefinitionId  JobSearchQuerySortRequestField = "processDefinitionId"
+	JobSearchQuerySortRequestFieldProcessDefinitionKey JobSearchQuerySortRequestField = "processDefinitionKey"
+	JobSearchQuerySortRequestFieldProcessInstanceKey   JobSearchQuerySortRequestField = "processInstanceKey"
+	JobSearchQuerySortRequestFieldRetries              JobSearchQuerySortRequestField = "retries"
+	JobSearchQuerySortRequestFieldState                JobSearchQuerySortRequestField = "state"
+	JobSearchQuerySortRequestFieldTenantId             JobSearchQuerySortRequestField = "tenantId"
+	JobSearchQuerySortRequestFieldType                 JobSearchQuerySortRequestField = "type"
+	JobSearchQuerySortRequestFieldWorker               JobSearchQuerySortRequestField = "worker"
 )
 
 // Defines values for JobStateEnum.
@@ -520,6 +529,11 @@ const (
 // Defines values for ProcessInstanceCreationRuntimeInstructionType.
 const (
 	TERMINATEPROCESSINSTANCE ProcessInstanceCreationRuntimeInstructionType = "TERMINATE_PROCESS_INSTANCE"
+)
+
+// Defines values for ProcessInstanceCreationTerminateInstructionType.
+const (
+	ProcessInstanceCreationTerminateInstructionTypeProcessInstanceCreationTerminateInstruction ProcessInstanceCreationTerminateInstructionType = "ProcessInstanceCreationTerminateInstruction"
 )
 
 // Defines values for ProcessInstanceSearchQuerySortRequestField.
@@ -1313,8 +1327,13 @@ type AuthorizationSearchResult struct {
 
 // BaseProcessInstanceFilterFields Base process instance search filter.
 type BaseProcessInstanceFilterFields struct {
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -2756,8 +2775,8 @@ type FormResult struct {
 	// FormKey The assigned key, which acts as a unique identifier for this form.
 	FormKey *FormKey `json:"formKey,omitempty"`
 
-	// Schema The form content.
-	Schema *map[string]interface{} `json:"schema,omitempty"`
+	// Schema The form schema as a JSON document serialized as a string.
+	Schema *string `json:"schema,omitempty"`
 
 	// TenantId The tenant ID of the form.
 	TenantId *TenantId `json:"tenantId,omitempty"`
@@ -2940,7 +2959,7 @@ type GroupUserSearchResult struct {
 // IncidentFilter Incident search filter.
 type IncidentFilter struct {
 	// CreationTime Date of incident creation.
-	CreationTime *time.Time `json:"creationTime,omitempty"`
+	CreationTime *DateTimeFilterProperty `json:"creationTime,omitempty"`
 
 	// ElementId The element ID associated to this incident.
 	ElementId *ElementId `json:"elementId,omitempty"`
@@ -3288,8 +3307,12 @@ type JobResultAdHocSubProcess struct {
 	IsCancelRemainingInstances *bool `json:"isCancelRemainingInstances,omitempty"`
 
 	// IsCompletionConditionFulfilled Indicates whether the completion condition of the ad-hoc subprocess is fulfilled.
-	IsCompletionConditionFulfilled *bool `json:"isCompletionConditionFulfilled,omitempty"`
+	IsCompletionConditionFulfilled *bool                        `json:"isCompletionConditionFulfilled,omitempty"`
+	Type                           JobResultAdHocSubProcessType `json:"type"`
 }
+
+// JobResultAdHocSubProcessType defines model for JobResultAdHocSubProcess.Type.
+type JobResultAdHocSubProcessType string
 
 // JobResultCorrections JSON object with attributes that were corrected by the worker.
 //
@@ -3345,8 +3368,12 @@ type JobResultUserTask struct {
 	Denied *bool `json:"denied"`
 
 	// DeniedReason The reason provided by the user task listener for denying the work.
-	DeniedReason *string `json:"deniedReason"`
+	DeniedReason *string               `json:"deniedReason"`
+	Type         JobResultUserTaskType `json:"type"`
 }
+
+// JobResultUserTaskType defines model for JobResultUserTask.Type.
+type JobResultUserTaskType string
 
 // JobSearchQuery defines model for JobSearchQuery.
 type JobSearchQuery struct {
@@ -3363,7 +3390,7 @@ type JobSearchQuery struct {
 // JobSearchQueryResult defines model for JobSearchQueryResult.
 type JobSearchQueryResult struct {
 	// Items The matching jobs.
-	Items *[]JobSearchResult `json:"items,omitempty"`
+	Items []JobSearchResult `json:"items"`
 
 	// Page Pagination information about the search results.
 	Page SearchQueryPageResponse `json:"page"`
@@ -3620,9 +3647,6 @@ type MatchedDecisionRuleItem struct {
 	RuleIndex *int32 `json:"ruleIndex,omitempty"`
 }
 
-// MessageCorrelationKey Zeebe Engine resource key (Java long serialized as string)
-type MessageCorrelationKey = LongKey
-
 // MessageCorrelationRequest defines model for MessageCorrelationRequest.
 type MessageCorrelationRequest struct {
 	// CorrelationKey The correlation key of the message.
@@ -3642,7 +3666,7 @@ type MessageCorrelationRequest struct {
 // correlated with.
 type MessageCorrelationResult struct {
 	// MessageKey The key of the correlated message
-	MessageKey *MessageCorrelationKey `json:"messageKey,omitempty"`
+	MessageKey *MessageKey `json:"messageKey,omitempty"`
 
 	// ProcessInstanceKey The key of the first process instance the message correlated with
 	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
@@ -3732,7 +3756,7 @@ type MessageSubscriptionKeyFilterProperty0 = MessageSubscriptionKey
 // MessageSubscriptionResult defines model for MessageSubscriptionResult.
 type MessageSubscriptionResult struct {
 	// CorrelationKey The correlation key of the message subscription.
-	CorrelationKey *MessageCorrelationKey `json:"correlationKey,omitempty"`
+	CorrelationKey *string `json:"correlationKey,omitempty"`
 
 	// ElementId The element ID associated with this message subscription.
 	ElementId *ElementId `json:"elementId,omitempty"`
@@ -3904,6 +3928,7 @@ type ProcessDefinitionFilter struct {
 	// IsLatestVersion Whether to only return the latest version of each process definition.
 	// When using this filter, pagination functionality is limited, you can only paginate forward using `after` and `limit`.
 	// The response contains no `startCursor` in the `page`, and requests ignore the `from` and `before` in the `page`.
+	// When using this filter, sorting is limited to `processDefinitionId` and `tenantId` fields only.
 	IsLatestVersion *bool `json:"isLatestVersion,omitempty"`
 
 	// Name Name of this process definition.
@@ -4036,8 +4061,13 @@ type ProcessDefinitionStatisticsFilter struct {
 	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
 	Or *[]BaseProcessInstanceFilterFields `json:"$or,omitempty"`
 
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -4247,8 +4277,12 @@ type ProcessInstanceCreationStartInstruction struct {
 // ProcessInstanceCreationTerminateInstruction Terminates the process instance after a specific BPMN element is completed or terminated.
 type ProcessInstanceCreationTerminateInstruction struct {
 	// AfterElementId The ID of the element that, once completed or terminated, will cause the process to be terminated.
-	AfterElementId ElementId `json:"afterElementId"`
+	AfterElementId ElementId                                       `json:"afterElementId"`
+	Type           ProcessInstanceCreationTerminateInstructionType `json:"type"`
 }
+
+// ProcessInstanceCreationTerminateInstructionType defines model for ProcessInstanceCreationTerminateInstruction.Type.
+type ProcessInstanceCreationTerminateInstructionType string
 
 // ProcessInstanceElementStatisticsQueryResult Process instance element statistics query response.
 type ProcessInstanceElementStatisticsQueryResult struct {
@@ -4290,8 +4324,13 @@ type ProcessInstanceFilter struct {
 	// <p>Note: Using complex <code>$or</code> conditions may impact performance, use with caution in high-volume environments.
 	Or *[]ProcessInstanceFilterFields `json:"$or,omitempty"`
 
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -4359,8 +4398,13 @@ type ProcessInstanceFilter struct {
 
 // ProcessInstanceFilterFields defines model for ProcessInstanceFilterFields.
 type ProcessInstanceFilterFields struct {
-	// BatchOperationId The batch operation ID.
+	// BatchOperationId The batch operation id.
+	// **Deprecated**: Use `batchOperationKey` instead. This field will be removed in a future release. If both `batchOperationId` and `batchOperationKey` are provided, the request will be rejected with a 400 error.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	BatchOperationId *StringFilterProperty `json:"batchOperationId,omitempty"`
+
+	// BatchOperationKey The batch operation key.
+	BatchOperationKey *StringFilterProperty `json:"batchOperationKey,omitempty"`
 
 	// ElementId The element ID associated with the process instance.
 	ElementId *StringFilterProperty `json:"elementId,omitempty"`
@@ -5350,7 +5394,7 @@ type UserTaskAssignmentRequest struct {
 	AllowOverride *bool `json:"allowOverride"`
 
 	// Assignee The assignee for the user task. The assignee must not be empty or `null`.
-	Assignee *string `json:"assignee,omitempty"`
+	Assignee string `json:"assignee"`
 }
 
 // UserTaskCompletionRequest defines model for UserTaskCompletionRequest.
@@ -5524,7 +5568,7 @@ type UserTaskResult struct {
 	TenantId *TenantId `json:"tenantId,omitempty"`
 
 	// UserTaskKey The key of the user task.
-	UserTaskKey *UserTaskKey `json:"userTaskKey,omitempty"`
+	UserTaskKey UserTaskKey `json:"userTaskKey"`
 }
 
 // UserTaskSearchQuery defines model for UserTaskSearchQuery.
@@ -5542,7 +5586,7 @@ type UserTaskSearchQuery struct {
 // UserTaskSearchQueryResult defines model for UserTaskSearchQueryResult.
 type UserTaskSearchQueryResult struct {
 	// Items The matching user tasks.
-	Items *[]UserTaskResult `json:"items,omitempty"`
+	Items []UserTaskResult `json:"items"`
 
 	// Page Pagination information about the search results.
 	Page SearchQueryPageResponse `json:"page"`
@@ -5693,19 +5737,19 @@ type VariableResult = VariableResultBase
 // VariableResultBase Variable response item.
 type VariableResultBase struct {
 	// Name Name of this variable.
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// ProcessInstanceKey The key of the process instance of this variable.
-	ProcessInstanceKey *ProcessInstanceKey `json:"processInstanceKey,omitempty"`
+	ProcessInstanceKey ProcessInstanceKey `json:"processInstanceKey"`
 
 	// ScopeKey The key of the scope of this variable.
-	ScopeKey *ScopeKey `json:"scopeKey,omitempty"`
+	ScopeKey ScopeKey `json:"scopeKey"`
 
 	// TenantId Tenant ID of this variable.
-	TenantId *TenantId `json:"tenantId,omitempty"`
+	TenantId TenantId `json:"tenantId"`
 
 	// VariableKey The key for this variable.
-	VariableKey *VariableKey `json:"variableKey,omitempty"`
+	VariableKey VariableKey `json:"variableKey"`
 }
 
 // VariableSearchQuery defines model for VariableSearchQuery.
@@ -5723,7 +5767,7 @@ type VariableSearchQuery struct {
 // VariableSearchQueryResult defines model for VariableSearchQueryResult.
 type VariableSearchQueryResult struct {
 	// Items The matching variables.
-	Items *[]VariableSearchResult `json:"items,omitempty"`
+	Items []VariableSearchResult `json:"items"`
 
 	// Page Pagination information about the search results.
 	Page SearchQueryPageResponse `json:"page"`
@@ -5755,6 +5799,9 @@ type VariableValueFilterProperty struct {
 
 // Forbidden A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type Forbidden = ProblemDetail
+
+// GatewayTimeoutTaskListenerBlocking A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
+type GatewayTimeoutTaskListenerBlocking = ProblemDetail
 
 // InternalServerError A Problem detail object as described in [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457). There may be additional properties specific to the problem type.
 type InternalServerError = ProblemDetail
@@ -5858,6 +5905,18 @@ type GetUsageMetricsParams struct {
 
 	// WithTenants Whether to return tenant metrics in addition to the total metrics or not. Default false.
 	WithTenants *bool `form:"withTenants,omitempty" json:"withTenants,omitempty"`
+}
+
+// SearchUserTaskVariablesParams defines parameters for SearchUserTaskVariables.
+type SearchUserTaskVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
+}
+
+// SearchVariablesParams defines parameters for SearchVariables.
+type SearchVariablesParams struct {
+	// TruncateValues When true (default), long variable values in the response are truncated. When false, full variable values are returned.
+	TruncateValues *bool `form:"truncateValues,omitempty" json:"truncateValues,omitempty"`
 }
 
 // CreateAuthorizationJSONRequestBody defines body for CreateAuthorization for application/json ContentType.
@@ -8176,15 +8235,15 @@ type ClientInterface interface {
 	SearchAuthorizations(ctx context.Context, body SearchAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteAuthorization request
-	DeleteAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAuthorization request
-	GetAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateAuthorizationWithBody request with any body
-	UpdateAuthorizationWithBody(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAuthorizationWithBody(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateAuthorization(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateAuthorization(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchBatchOperationItemsWithBody request with any body
 	SearchBatchOperationItemsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8238,10 +8297,10 @@ type ClientInterface interface {
 	SearchDecisionDefinitions(ctx context.Context, body SearchDecisionDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionDefinition request
-	GetDecisionDefinition(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionDefinition(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionDefinitionXML request
-	GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchDecisionInstancesWithBody request with any body
 	SearchDecisionInstancesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8249,7 +8308,7 @@ type ClientInterface interface {
 	SearchDecisionInstances(ctx context.Context, body SearchDecisionInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionInstance request
-	GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchDecisionRequirementsWithBody request with any body
 	SearchDecisionRequirementsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8257,10 +8316,10 @@ type ClientInterface interface {
 	SearchDecisionRequirements(ctx context.Context, body SearchDecisionRequirementsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionRequirements request
-	GetDecisionRequirements(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionRequirements(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDecisionRequirementsXML request
-	GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateDeploymentWithBody request with any body
 	CreateDeploymentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8283,9 +8342,9 @@ type ClientInterface interface {
 	CreateDocumentLink(ctx context.Context, documentId DocumentId, params *CreateDocumentLinkParams, body CreateDocumentLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ActivateAdHocSubProcessActivitiesWithBody request with any body
-	ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchElementInstancesWithBody request with any body
 	SearchElementInstancesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8293,12 +8352,12 @@ type ClientInterface interface {
 	SearchElementInstances(ctx context.Context, body SearchElementInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetElementInstance request
-	GetElementInstance(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetElementInstance(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateElementInstanceVariablesWithBody request with any body
-	CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateElementInstanceVariables(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateElementInstanceVariables(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateGroupWithBody request with any body
 	CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8365,12 +8424,12 @@ type ClientInterface interface {
 	SearchIncidents(ctx context.Context, body SearchIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetIncident request
-	GetIncident(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetIncident(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResolveIncidentWithBody request with any body
-	ResolveIncidentWithBody(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ResolveIncidentWithBody(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ResolveIncident(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ResolveIncident(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ActivateJobsWithBody request with any body
 	ActivateJobsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8383,24 +8442,24 @@ type ClientInterface interface {
 	SearchJobs(ctx context.Context, body SearchJobsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateJobWithBody request with any body
-	UpdateJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateJob(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateJob(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteJobWithBody request with any body
-	CompleteJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CompleteJob(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteJob(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ThrowJobErrorWithBody request with any body
-	ThrowJobErrorWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ThrowJobErrorWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ThrowJobError(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ThrowJobError(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// FailJobWithBody request with any body
-	FailJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	FailJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	FailJob(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	FailJob(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetLicense request
 	GetLicense(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8447,18 +8506,18 @@ type ClientInterface interface {
 	SearchProcessDefinitions(ctx context.Context, body SearchProcessDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessDefinition request
-	GetProcessDefinition(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinition(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetStartProcessForm request
-	GetStartProcessForm(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetStartProcessForm(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessDefinitionStatisticsWithBody request with any body
-	GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessDefinitionXML request
-	GetProcessDefinitionXML(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessDefinitionXML(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProcessInstanceWithBody request with any body
 	CreateProcessInstanceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8491,36 +8550,36 @@ type ClientInterface interface {
 	SearchProcessInstances(ctx context.Context, body SearchProcessInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstance request
-	GetProcessInstance(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstanceCallHierarchy request
-	GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CancelProcessInstanceWithBody request with any body
-	CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CancelProcessInstance(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CancelProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProcessInstanceIncidentsWithBody request with any body
-	SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MigrateProcessInstanceWithBody request with any body
-	MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	MigrateProcessInstance(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MigrateProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ModifyProcessInstanceWithBody request with any body
-	ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ModifyProcessInstance(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ModifyProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstanceSequenceFlows request
-	GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProcessInstanceStatistics request
-	GetProcessInstanceStatistics(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProcessInstanceStatistics(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetResource request
 	GetResource(ctx context.Context, resourceKey ResourceKey, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8699,33 +8758,33 @@ type ClientInterface interface {
 	SearchUserTasks(ctx context.Context, body SearchUserTasksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUserTask request
-	GetUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserTaskWithBody request with any body
-	UpdateUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateUserTask(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserTask(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnassignUserTask request
-	UnassignUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UnassignUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AssignUserTaskWithBody request with any body
-	AssignUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AssignUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	AssignUserTask(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AssignUserTask(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CompleteUserTaskWithBody request with any body
-	CompleteUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CompleteUserTask(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CompleteUserTask(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUserTaskForm request
-	GetUserTaskForm(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUserTaskForm(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchUserTaskVariablesWithBody request with any body
-	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchUserTaskVariables(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchUserTaskVariables(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUserWithBody request with any body
 	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8749,12 +8808,12 @@ type ClientInterface interface {
 	UpdateUser(ctx context.Context, username Username, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchVariablesWithBody request with any body
-	SearchVariablesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchVariablesWithBody(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	SearchVariables(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVariable request
-	GetVariable(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetVariable(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetAuthentication(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -8817,7 +8876,7 @@ func (c *Client) SearchAuthorizations(ctx context.Context, body SearchAuthorizat
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteAuthorizationRequest(c.Server, authorizationKey)
 	if err != nil {
 		return nil, err
@@ -8829,7 +8888,7 @@ func (c *Client) DeleteAuthorization(ctx context.Context, authorizationKey strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetAuthorization(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetAuthorization(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthorizationRequest(c.Server, authorizationKey)
 	if err != nil {
 		return nil, err
@@ -8841,7 +8900,7 @@ func (c *Client) GetAuthorization(ctx context.Context, authorizationKey string, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAuthorizationRequestWithBody(c.Server, authorizationKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -8853,7 +8912,7 @@ func (c *Client) UpdateAuthorizationWithBody(ctx context.Context, authorizationK
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateAuthorization(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateAuthorization(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAuthorizationRequest(c.Server, authorizationKey, body)
 	if err != nil {
 		return nil, err
@@ -9105,7 +9164,7 @@ func (c *Client) SearchDecisionDefinitions(ctx context.Context, body SearchDecis
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionDefinition(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionDefinition(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionDefinitionRequest(c.Server, decisionDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -9117,7 +9176,7 @@ func (c *Client) GetDecisionDefinition(ctx context.Context, decisionDefinitionKe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionDefinitionXML(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionDefinitionXMLRequest(c.Server, decisionDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -9153,7 +9212,7 @@ func (c *Client) SearchDecisionInstances(ctx context.Context, body SearchDecisio
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionInstance(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionInstanceRequest(c.Server, decisionEvaluationInstanceKey)
 	if err != nil {
 		return nil, err
@@ -9189,7 +9248,7 @@ func (c *Client) SearchDecisionRequirements(ctx context.Context, body SearchDeci
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionRequirements(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionRequirements(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionRequirementsRequest(c.Server, decisionRequirementsKey)
 	if err != nil {
 		return nil, err
@@ -9201,7 +9260,7 @@ func (c *Client) GetDecisionRequirements(ctx context.Context, decisionRequiremen
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDecisionRequirementsXML(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDecisionRequirementsXMLRequest(c.Server, decisionRequirementsKey)
 	if err != nil {
 		return nil, err
@@ -9297,7 +9356,7 @@ func (c *Client) CreateDocumentLink(ctx context.Context, documentId DocumentId, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewActivateAdHocSubProcessActivitiesRequestWithBody(c.Server, adHocSubProcessInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9309,7 +9368,7 @@ func (c *Client) ActivateAdHocSubProcessActivitiesWithBody(ctx context.Context, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ActivateAdHocSubProcessActivities(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewActivateAdHocSubProcessActivitiesRequest(c.Server, adHocSubProcessInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -9345,7 +9404,7 @@ func (c *Client) SearchElementInstances(ctx context.Context, body SearchElementI
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetElementInstanceRequest(c.Server, elementInstanceKey)
 	if err != nil {
 		return nil, err
@@ -9357,7 +9416,7 @@ func (c *Client) GetElementInstance(ctx context.Context, elementInstanceKey stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateElementInstanceVariablesRequestWithBody(c.Server, elementInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9369,7 +9428,7 @@ func (c *Client) CreateElementInstanceVariablesWithBody(ctx context.Context, ele
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateElementInstanceVariables(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateElementInstanceVariables(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateElementInstanceVariablesRequest(c.Server, elementInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -9669,7 +9728,7 @@ func (c *Client) SearchIncidents(ctx context.Context, body SearchIncidentsJSONRe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetIncident(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetIncident(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetIncidentRequest(c.Server, incidentKey)
 	if err != nil {
 		return nil, err
@@ -9681,7 +9740,7 @@ func (c *Client) GetIncident(ctx context.Context, incidentKey string, reqEditors
 	return c.Client.Do(req)
 }
 
-func (c *Client) ResolveIncidentWithBody(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ResolveIncidentWithBody(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResolveIncidentRequestWithBody(c.Server, incidentKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9693,7 +9752,7 @@ func (c *Client) ResolveIncidentWithBody(ctx context.Context, incidentKey string
 	return c.Client.Do(req)
 }
 
-func (c *Client) ResolveIncident(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ResolveIncident(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResolveIncidentRequest(c.Server, incidentKey, body)
 	if err != nil {
 		return nil, err
@@ -9753,7 +9812,7 @@ func (c *Client) SearchJobs(ctx context.Context, body SearchJobsJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateJobRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9765,7 +9824,7 @@ func (c *Client) UpdateJobWithBody(ctx context.Context, jobKey string, contentTy
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateJob(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateJob(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateJobRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -9777,7 +9836,7 @@ func (c *Client) UpdateJob(ctx context.Context, jobKey string, body UpdateJobJSO
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteJobRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9789,7 +9848,7 @@ func (c *Client) CompleteJobWithBody(ctx context.Context, jobKey string, content
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteJob(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteJob(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteJobRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -9801,7 +9860,7 @@ func (c *Client) CompleteJob(ctx context.Context, jobKey string, body CompleteJo
 	return c.Client.Do(req)
 }
 
-func (c *Client) ThrowJobErrorWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ThrowJobErrorWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewThrowJobErrorRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9813,7 +9872,7 @@ func (c *Client) ThrowJobErrorWithBody(ctx context.Context, jobKey string, conte
 	return c.Client.Do(req)
 }
 
-func (c *Client) ThrowJobError(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ThrowJobError(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewThrowJobErrorRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -9825,7 +9884,7 @@ func (c *Client) ThrowJobError(ctx context.Context, jobKey string, body ThrowJob
 	return c.Client.Do(req)
 }
 
-func (c *Client) FailJobWithBody(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) FailJobWithBody(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewFailJobRequestWithBody(c.Server, jobKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -9837,7 +9896,7 @@ func (c *Client) FailJobWithBody(ctx context.Context, jobKey string, contentType
 	return c.Client.Do(req)
 }
 
-func (c *Client) FailJob(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) FailJob(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewFailJobRequest(c.Server, jobKey, body)
 	if err != nil {
 		return nil, err
@@ -10053,7 +10112,7 @@ func (c *Client) SearchProcessDefinitions(ctx context.Context, body SearchProces
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionRequest(c.Server, processDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -10065,7 +10124,7 @@ func (c *Client) GetProcessDefinition(ctx context.Context, processDefinitionKey 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetStartProcessForm(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetStartProcessForm(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetStartProcessFormRequest(c.Server, processDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -10077,7 +10136,7 @@ func (c *Client) GetStartProcessForm(ctx context.Context, processDefinitionKey s
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinitionStatisticsWithBody(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionStatisticsRequestWithBody(c.Server, processDefinitionKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10089,7 +10148,7 @@ func (c *Client) GetProcessDefinitionStatisticsWithBody(ctx context.Context, pro
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinitionStatistics(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionStatisticsRequest(c.Server, processDefinitionKey, body)
 	if err != nil {
 		return nil, err
@@ -10101,7 +10160,7 @@ func (c *Client) GetProcessDefinitionStatistics(ctx context.Context, processDefi
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessDefinitionXML(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessDefinitionXML(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessDefinitionXMLRequest(c.Server, processDefinitionKey)
 	if err != nil {
 		return nil, err
@@ -10257,7 +10316,7 @@ func (c *Client) SearchProcessInstances(ctx context.Context, body SearchProcessI
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstance(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -10269,7 +10328,7 @@ func (c *Client) GetProcessInstance(ctx context.Context, processInstanceKey stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstanceCallHierarchy(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceCallHierarchyRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -10281,7 +10340,7 @@ func (c *Client) GetProcessInstanceCallHierarchy(ctx context.Context, processIns
 	return c.Client.Do(req)
 }
 
-func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCancelProcessInstanceRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10293,7 +10352,7 @@ func (c *Client) CancelProcessInstanceWithBody(ctx context.Context, processInsta
 	return c.Client.Do(req)
 }
 
-func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCancelProcessInstanceRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -10305,7 +10364,7 @@ func (c *Client) CancelProcessInstance(ctx context.Context, processInstanceKey s
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SearchProcessInstanceIncidentsWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchProcessInstanceIncidentsRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10317,7 +10376,7 @@ func (c *Client) SearchProcessInstanceIncidentsWithBody(ctx context.Context, pro
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) SearchProcessInstanceIncidents(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchProcessInstanceIncidentsRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -10329,7 +10388,7 @@ func (c *Client) SearchProcessInstanceIncidents(ctx context.Context, processInst
 	return c.Client.Do(req)
 }
 
-func (c *Client) MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MigrateProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMigrateProcessInstanceRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10341,7 +10400,7 @@ func (c *Client) MigrateProcessInstanceWithBody(ctx context.Context, processInst
 	return c.Client.Do(req)
 }
 
-func (c *Client) MigrateProcessInstance(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) MigrateProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMigrateProcessInstanceRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -10353,7 +10412,7 @@ func (c *Client) MigrateProcessInstance(ctx context.Context, processInstanceKey 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ModifyProcessInstanceWithBody(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModifyProcessInstanceRequestWithBody(c.Server, processInstanceKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -10365,7 +10424,7 @@ func (c *Client) ModifyProcessInstanceWithBody(ctx context.Context, processInsta
 	return c.Client.Do(req)
 }
 
-func (c *Client) ModifyProcessInstance(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ModifyProcessInstance(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewModifyProcessInstanceRequest(c.Server, processInstanceKey, body)
 	if err != nil {
 		return nil, err
@@ -10377,7 +10436,7 @@ func (c *Client) ModifyProcessInstance(ctx context.Context, processInstanceKey s
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstanceSequenceFlows(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceSequenceFlowsRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -10389,7 +10448,7 @@ func (c *Client) GetProcessInstanceSequenceFlows(ctx context.Context, processIns
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProcessInstanceStatistics(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProcessInstanceStatistics(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetProcessInstanceStatisticsRequest(c.Server, processInstanceKey)
 	if err != nil {
 		return nil, err
@@ -11181,7 +11240,7 @@ func (c *Client) SearchUserTasks(ctx context.Context, body SearchUserTasksJSONRe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetUserTaskRequest(c.Server, userTaskKey)
 	if err != nil {
 		return nil, err
@@ -11193,7 +11252,7 @@ func (c *Client) GetUserTask(ctx context.Context, userTaskKey string, reqEditors
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserTaskRequestWithBody(c.Server, userTaskKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11205,7 +11264,7 @@ func (c *Client) UpdateUserTaskWithBody(ctx context.Context, userTaskKey string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserTask(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserTask(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserTaskRequest(c.Server, userTaskKey, body)
 	if err != nil {
 		return nil, err
@@ -11217,7 +11276,7 @@ func (c *Client) UpdateUserTask(ctx context.Context, userTaskKey string, body Up
 	return c.Client.Do(req)
 }
 
-func (c *Client) UnassignUserTask(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UnassignUserTask(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUnassignUserTaskRequest(c.Server, userTaskKey)
 	if err != nil {
 		return nil, err
@@ -11229,7 +11288,7 @@ func (c *Client) UnassignUserTask(ctx context.Context, userTaskKey string, reqEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) AssignUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AssignUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAssignUserTaskRequestWithBody(c.Server, userTaskKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11241,7 +11300,7 @@ func (c *Client) AssignUserTaskWithBody(ctx context.Context, userTaskKey string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) AssignUserTask(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AssignUserTask(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAssignUserTaskRequest(c.Server, userTaskKey, body)
 	if err != nil {
 		return nil, err
@@ -11253,7 +11312,7 @@ func (c *Client) AssignUserTask(ctx context.Context, userTaskKey string, body As
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteUserTaskWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteUserTaskWithBody(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteUserTaskRequestWithBody(c.Server, userTaskKey, contentType, body)
 	if err != nil {
 		return nil, err
@@ -11265,7 +11324,7 @@ func (c *Client) CompleteUserTaskWithBody(ctx context.Context, userTaskKey strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) CompleteUserTask(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CompleteUserTask(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCompleteUserTaskRequest(c.Server, userTaskKey, body)
 	if err != nil {
 		return nil, err
@@ -11277,7 +11336,7 @@ func (c *Client) CompleteUserTask(ctx context.Context, userTaskKey string, body 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetUserTaskFormRequest(c.Server, userTaskKey)
 	if err != nil {
 		return nil, err
@@ -11289,8 +11348,8 @@ func (c *Client) GetUserTaskForm(ctx context.Context, userTaskKey string, reqEdi
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, contentType, body)
+func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserTaskVariablesRequestWithBody(c.Server, userTaskKey, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11301,8 +11360,8 @@ func (c *Client) SearchUserTaskVariablesWithBody(ctx context.Context, userTaskKe
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, body)
+func (c *Client) SearchUserTaskVariables(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchUserTaskVariablesRequest(c.Server, userTaskKey, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11409,8 +11468,8 @@ func (c *Client) UpdateUser(ctx context.Context, username Username, body UpdateU
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchVariablesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchVariablesRequestWithBody(c.Server, contentType, body)
+func (c *Client) SearchVariablesWithBody(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVariablesRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11421,8 +11480,8 @@ func (c *Client) SearchVariablesWithBody(ctx context.Context, contentType string
 	return c.Client.Do(req)
 }
 
-func (c *Client) SearchVariables(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchVariablesRequest(c.Server, body)
+func (c *Client) SearchVariables(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVariablesRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11433,7 +11492,7 @@ func (c *Client) SearchVariables(ctx context.Context, body SearchVariablesJSONRe
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetVariable(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetVariable(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetVariableRequest(c.Server, variableKey)
 	if err != nil {
 		return nil, err
@@ -11553,7 +11612,7 @@ func NewSearchAuthorizationsRequestWithBody(server string, contentType string, b
 }
 
 // NewDeleteAuthorizationRequest generates requests for DeleteAuthorization
-func NewDeleteAuthorizationRequest(server string, authorizationKey string) (*http.Request, error) {
+func NewDeleteAuthorizationRequest(server string, authorizationKey AuthorizationKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11587,7 +11646,7 @@ func NewDeleteAuthorizationRequest(server string, authorizationKey string) (*htt
 }
 
 // NewGetAuthorizationRequest generates requests for GetAuthorization
-func NewGetAuthorizationRequest(server string, authorizationKey string) (*http.Request, error) {
+func NewGetAuthorizationRequest(server string, authorizationKey AuthorizationKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11621,7 +11680,7 @@ func NewGetAuthorizationRequest(server string, authorizationKey string) (*http.R
 }
 
 // NewUpdateAuthorizationRequest calls the generic UpdateAuthorization builder with application/json body
-func NewUpdateAuthorizationRequest(server string, authorizationKey string, body UpdateAuthorizationJSONRequestBody) (*http.Request, error) {
+func NewUpdateAuthorizationRequest(server string, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -11632,7 +11691,7 @@ func NewUpdateAuthorizationRequest(server string, authorizationKey string, body 
 }
 
 // NewUpdateAuthorizationRequestWithBody generates requests for UpdateAuthorization with any type of body
-func NewUpdateAuthorizationRequestWithBody(server string, authorizationKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateAuthorizationRequestWithBody(server string, authorizationKey AuthorizationKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12110,7 +12169,7 @@ func NewSearchDecisionDefinitionsRequestWithBody(server string, contentType stri
 }
 
 // NewGetDecisionDefinitionRequest generates requests for GetDecisionDefinition
-func NewGetDecisionDefinitionRequest(server string, decisionDefinitionKey string) (*http.Request, error) {
+func NewGetDecisionDefinitionRequest(server string, decisionDefinitionKey DecisionDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12144,7 +12203,7 @@ func NewGetDecisionDefinitionRequest(server string, decisionDefinitionKey string
 }
 
 // NewGetDecisionDefinitionXMLRequest generates requests for GetDecisionDefinitionXML
-func NewGetDecisionDefinitionXMLRequest(server string, decisionDefinitionKey string) (*http.Request, error) {
+func NewGetDecisionDefinitionXMLRequest(server string, decisionDefinitionKey DecisionDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12218,7 +12277,7 @@ func NewSearchDecisionInstancesRequestWithBody(server string, contentType string
 }
 
 // NewGetDecisionInstanceRequest generates requests for GetDecisionInstance
-func NewGetDecisionInstanceRequest(server string, decisionEvaluationInstanceKey string) (*http.Request, error) {
+func NewGetDecisionInstanceRequest(server string, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12292,7 +12351,7 @@ func NewSearchDecisionRequirementsRequestWithBody(server string, contentType str
 }
 
 // NewGetDecisionRequirementsRequest generates requests for GetDecisionRequirements
-func NewGetDecisionRequirementsRequest(server string, decisionRequirementsKey string) (*http.Request, error) {
+func NewGetDecisionRequirementsRequest(server string, decisionRequirementsKey DecisionRequirementsKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12326,7 +12385,7 @@ func NewGetDecisionRequirementsRequest(server string, decisionRequirementsKey st
 }
 
 // NewGetDecisionRequirementsXMLRequest generates requests for GetDecisionRequirementsXML
-func NewGetDecisionRequirementsXMLRequest(server string, decisionRequirementsKey string) (*http.Request, error) {
+func NewGetDecisionRequirementsXMLRequest(server string, decisionRequirementsKey DecisionRequirementsKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12712,7 +12771,7 @@ func NewCreateDocumentLinkRequestWithBody(server string, documentId DocumentId, 
 }
 
 // NewActivateAdHocSubProcessActivitiesRequest calls the generic ActivateAdHocSubProcessActivities builder with application/json body
-func NewActivateAdHocSubProcessActivitiesRequest(server string, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody) (*http.Request, error) {
+func NewActivateAdHocSubProcessActivitiesRequest(server string, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -12723,7 +12782,7 @@ func NewActivateAdHocSubProcessActivitiesRequest(server string, adHocSubProcessI
 }
 
 // NewActivateAdHocSubProcessActivitiesRequestWithBody generates requests for ActivateAdHocSubProcessActivities with any type of body
-func NewActivateAdHocSubProcessActivitiesRequestWithBody(server string, adHocSubProcessInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewActivateAdHocSubProcessActivitiesRequestWithBody(server string, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12799,7 +12858,7 @@ func NewSearchElementInstancesRequestWithBody(server string, contentType string,
 }
 
 // NewGetElementInstanceRequest generates requests for GetElementInstance
-func NewGetElementInstanceRequest(server string, elementInstanceKey string) (*http.Request, error) {
+func NewGetElementInstanceRequest(server string, elementInstanceKey ElementInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12833,7 +12892,7 @@ func NewGetElementInstanceRequest(server string, elementInstanceKey string) (*ht
 }
 
 // NewCreateElementInstanceVariablesRequest calls the generic CreateElementInstanceVariables builder with application/json body
-func NewCreateElementInstanceVariablesRequest(server string, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody) (*http.Request, error) {
+func NewCreateElementInstanceVariablesRequest(server string, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -12844,7 +12903,7 @@ func NewCreateElementInstanceVariablesRequest(server string, elementInstanceKey 
 }
 
 // NewCreateElementInstanceVariablesRequestWithBody generates requests for CreateElementInstanceVariables with any type of body
-func NewCreateElementInstanceVariablesRequestWithBody(server string, elementInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateElementInstanceVariablesRequestWithBody(server string, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13549,7 +13608,7 @@ func NewSearchIncidentsRequestWithBody(server string, contentType string, body i
 }
 
 // NewGetIncidentRequest generates requests for GetIncident
-func NewGetIncidentRequest(server string, incidentKey string) (*http.Request, error) {
+func NewGetIncidentRequest(server string, incidentKey IncidentKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13583,7 +13642,7 @@ func NewGetIncidentRequest(server string, incidentKey string) (*http.Request, er
 }
 
 // NewResolveIncidentRequest calls the generic ResolveIncident builder with application/json body
-func NewResolveIncidentRequest(server string, incidentKey string, body ResolveIncidentJSONRequestBody) (*http.Request, error) {
+func NewResolveIncidentRequest(server string, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -13594,7 +13653,7 @@ func NewResolveIncidentRequest(server string, incidentKey string, body ResolveIn
 }
 
 // NewResolveIncidentRequestWithBody generates requests for ResolveIncident with any type of body
-func NewResolveIncidentRequestWithBody(server string, incidentKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewResolveIncidentRequestWithBody(server string, incidentKey IncidentKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13710,7 +13769,7 @@ func NewSearchJobsRequestWithBody(server string, contentType string, body io.Rea
 }
 
 // NewUpdateJobRequest calls the generic UpdateJob builder with application/json body
-func NewUpdateJobRequest(server string, jobKey string, body UpdateJobJSONRequestBody) (*http.Request, error) {
+func NewUpdateJobRequest(server string, jobKey JobKey, body UpdateJobJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -13721,7 +13780,7 @@ func NewUpdateJobRequest(server string, jobKey string, body UpdateJobJSONRequest
 }
 
 // NewUpdateJobRequestWithBody generates requests for UpdateJob with any type of body
-func NewUpdateJobRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateJobRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13757,7 +13816,7 @@ func NewUpdateJobRequestWithBody(server string, jobKey string, contentType strin
 }
 
 // NewCompleteJobRequest calls the generic CompleteJob builder with application/json body
-func NewCompleteJobRequest(server string, jobKey string, body CompleteJobJSONRequestBody) (*http.Request, error) {
+func NewCompleteJobRequest(server string, jobKey JobKey, body CompleteJobJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -13768,7 +13827,7 @@ func NewCompleteJobRequest(server string, jobKey string, body CompleteJobJSONReq
 }
 
 // NewCompleteJobRequestWithBody generates requests for CompleteJob with any type of body
-func NewCompleteJobRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCompleteJobRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13804,7 +13863,7 @@ func NewCompleteJobRequestWithBody(server string, jobKey string, contentType str
 }
 
 // NewThrowJobErrorRequest calls the generic ThrowJobError builder with application/json body
-func NewThrowJobErrorRequest(server string, jobKey string, body ThrowJobErrorJSONRequestBody) (*http.Request, error) {
+func NewThrowJobErrorRequest(server string, jobKey JobKey, body ThrowJobErrorJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -13815,7 +13874,7 @@ func NewThrowJobErrorRequest(server string, jobKey string, body ThrowJobErrorJSO
 }
 
 // NewThrowJobErrorRequestWithBody generates requests for ThrowJobError with any type of body
-func NewThrowJobErrorRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewThrowJobErrorRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13851,7 +13910,7 @@ func NewThrowJobErrorRequestWithBody(server string, jobKey string, contentType s
 }
 
 // NewFailJobRequest calls the generic FailJob builder with application/json body
-func NewFailJobRequest(server string, jobKey string, body FailJobJSONRequestBody) (*http.Request, error) {
+func NewFailJobRequest(server string, jobKey JobKey, body FailJobJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -13862,7 +13921,7 @@ func NewFailJobRequest(server string, jobKey string, body FailJobJSONRequestBody
 }
 
 // NewFailJobRequestWithBody generates requests for FailJob with any type of body
-func NewFailJobRequestWithBody(server string, jobKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewFailJobRequestWithBody(server string, jobKey JobKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14280,7 +14339,7 @@ func NewSearchProcessDefinitionsRequestWithBody(server string, contentType strin
 }
 
 // NewGetProcessDefinitionRequest generates requests for GetProcessDefinition
-func NewGetProcessDefinitionRequest(server string, processDefinitionKey string) (*http.Request, error) {
+func NewGetProcessDefinitionRequest(server string, processDefinitionKey ProcessDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14314,7 +14373,7 @@ func NewGetProcessDefinitionRequest(server string, processDefinitionKey string) 
 }
 
 // NewGetStartProcessFormRequest generates requests for GetStartProcessForm
-func NewGetStartProcessFormRequest(server string, processDefinitionKey string) (*http.Request, error) {
+func NewGetStartProcessFormRequest(server string, processDefinitionKey ProcessDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14348,7 +14407,7 @@ func NewGetStartProcessFormRequest(server string, processDefinitionKey string) (
 }
 
 // NewGetProcessDefinitionStatisticsRequest calls the generic GetProcessDefinitionStatistics builder with application/json body
-func NewGetProcessDefinitionStatisticsRequest(server string, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody) (*http.Request, error) {
+func NewGetProcessDefinitionStatisticsRequest(server string, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14359,7 +14418,7 @@ func NewGetProcessDefinitionStatisticsRequest(server string, processDefinitionKe
 }
 
 // NewGetProcessDefinitionStatisticsRequestWithBody generates requests for GetProcessDefinitionStatistics with any type of body
-func NewGetProcessDefinitionStatisticsRequestWithBody(server string, processDefinitionKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewGetProcessDefinitionStatisticsRequestWithBody(server string, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14395,7 +14454,7 @@ func NewGetProcessDefinitionStatisticsRequestWithBody(server string, processDefi
 }
 
 // NewGetProcessDefinitionXMLRequest generates requests for GetProcessDefinitionXML
-func NewGetProcessDefinitionXMLRequest(server string, processDefinitionKey string) (*http.Request, error) {
+func NewGetProcessDefinitionXMLRequest(server string, processDefinitionKey ProcessDefinitionKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14669,7 +14728,7 @@ func NewSearchProcessInstancesRequestWithBody(server string, contentType string,
 }
 
 // NewGetProcessInstanceRequest generates requests for GetProcessInstance
-func NewGetProcessInstanceRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14703,7 +14762,7 @@ func NewGetProcessInstanceRequest(server string, processInstanceKey string) (*ht
 }
 
 // NewGetProcessInstanceCallHierarchyRequest generates requests for GetProcessInstanceCallHierarchy
-func NewGetProcessInstanceCallHierarchyRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceCallHierarchyRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14737,7 +14796,7 @@ func NewGetProcessInstanceCallHierarchyRequest(server string, processInstanceKey
 }
 
 // NewCancelProcessInstanceRequest calls the generic CancelProcessInstance builder with application/json body
-func NewCancelProcessInstanceRequest(server string, processInstanceKey string, body CancelProcessInstanceJSONRequestBody) (*http.Request, error) {
+func NewCancelProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14748,7 +14807,7 @@ func NewCancelProcessInstanceRequest(server string, processInstanceKey string, b
 }
 
 // NewCancelProcessInstanceRequestWithBody generates requests for CancelProcessInstance with any type of body
-func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14784,7 +14843,7 @@ func NewCancelProcessInstanceRequestWithBody(server string, processInstanceKey s
 }
 
 // NewSearchProcessInstanceIncidentsRequest calls the generic SearchProcessInstanceIncidents builder with application/json body
-func NewSearchProcessInstanceIncidentsRequest(server string, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody) (*http.Request, error) {
+func NewSearchProcessInstanceIncidentsRequest(server string, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14795,7 +14854,7 @@ func NewSearchProcessInstanceIncidentsRequest(server string, processInstanceKey 
 }
 
 // NewSearchProcessInstanceIncidentsRequestWithBody generates requests for SearchProcessInstanceIncidents with any type of body
-func NewSearchProcessInstanceIncidentsRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchProcessInstanceIncidentsRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14831,7 +14890,7 @@ func NewSearchProcessInstanceIncidentsRequestWithBody(server string, processInst
 }
 
 // NewMigrateProcessInstanceRequest calls the generic MigrateProcessInstance builder with application/json body
-func NewMigrateProcessInstanceRequest(server string, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody) (*http.Request, error) {
+func NewMigrateProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14842,7 +14901,7 @@ func NewMigrateProcessInstanceRequest(server string, processInstanceKey string, 
 }
 
 // NewMigrateProcessInstanceRequestWithBody generates requests for MigrateProcessInstance with any type of body
-func NewMigrateProcessInstanceRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewMigrateProcessInstanceRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14878,7 +14937,7 @@ func NewMigrateProcessInstanceRequestWithBody(server string, processInstanceKey 
 }
 
 // NewModifyProcessInstanceRequest calls the generic ModifyProcessInstance builder with application/json body
-func NewModifyProcessInstanceRequest(server string, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody) (*http.Request, error) {
+func NewModifyProcessInstanceRequest(server string, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -14889,7 +14948,7 @@ func NewModifyProcessInstanceRequest(server string, processInstanceKey string, b
 }
 
 // NewModifyProcessInstanceRequestWithBody generates requests for ModifyProcessInstance with any type of body
-func NewModifyProcessInstanceRequestWithBody(server string, processInstanceKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewModifyProcessInstanceRequestWithBody(server string, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14925,7 +14984,7 @@ func NewModifyProcessInstanceRequestWithBody(server string, processInstanceKey s
 }
 
 // NewGetProcessInstanceSequenceFlowsRequest generates requests for GetProcessInstanceSequenceFlows
-func NewGetProcessInstanceSequenceFlowsRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceSequenceFlowsRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14959,7 +15018,7 @@ func NewGetProcessInstanceSequenceFlowsRequest(server string, processInstanceKey
 }
 
 // NewGetProcessInstanceStatisticsRequest generates requests for GetProcessInstanceStatistics
-func NewGetProcessInstanceStatisticsRequest(server string, processInstanceKey string) (*http.Request, error) {
+func NewGetProcessInstanceStatisticsRequest(server string, processInstanceKey ProcessInstanceKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16922,7 +16981,7 @@ func NewSearchUserTasksRequestWithBody(server string, contentType string, body i
 }
 
 // NewGetUserTaskRequest generates requests for GetUserTask
-func NewGetUserTaskRequest(server string, userTaskKey string) (*http.Request, error) {
+func NewGetUserTaskRequest(server string, userTaskKey UserTaskKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16956,7 +17015,7 @@ func NewGetUserTaskRequest(server string, userTaskKey string) (*http.Request, er
 }
 
 // NewUpdateUserTaskRequest calls the generic UpdateUserTask builder with application/json body
-func NewUpdateUserTaskRequest(server string, userTaskKey string, body UpdateUserTaskJSONRequestBody) (*http.Request, error) {
+func NewUpdateUserTaskRequest(server string, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -16967,7 +17026,7 @@ func NewUpdateUserTaskRequest(server string, userTaskKey string, body UpdateUser
 }
 
 // NewUpdateUserTaskRequestWithBody generates requests for UpdateUserTask with any type of body
-func NewUpdateUserTaskRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUserTaskRequestWithBody(server string, userTaskKey UserTaskKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17003,7 +17062,7 @@ func NewUpdateUserTaskRequestWithBody(server string, userTaskKey string, content
 }
 
 // NewUnassignUserTaskRequest generates requests for UnassignUserTask
-func NewUnassignUserTaskRequest(server string, userTaskKey string) (*http.Request, error) {
+func NewUnassignUserTaskRequest(server string, userTaskKey UserTaskKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17037,7 +17096,7 @@ func NewUnassignUserTaskRequest(server string, userTaskKey string) (*http.Reques
 }
 
 // NewAssignUserTaskRequest calls the generic AssignUserTask builder with application/json body
-func NewAssignUserTaskRequest(server string, userTaskKey string, body AssignUserTaskJSONRequestBody) (*http.Request, error) {
+func NewAssignUserTaskRequest(server string, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -17048,7 +17107,7 @@ func NewAssignUserTaskRequest(server string, userTaskKey string, body AssignUser
 }
 
 // NewAssignUserTaskRequestWithBody generates requests for AssignUserTask with any type of body
-func NewAssignUserTaskRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewAssignUserTaskRequestWithBody(server string, userTaskKey UserTaskKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17084,7 +17143,7 @@ func NewAssignUserTaskRequestWithBody(server string, userTaskKey string, content
 }
 
 // NewCompleteUserTaskRequest calls the generic CompleteUserTask builder with application/json body
-func NewCompleteUserTaskRequest(server string, userTaskKey string, body CompleteUserTaskJSONRequestBody) (*http.Request, error) {
+func NewCompleteUserTaskRequest(server string, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -17095,7 +17154,7 @@ func NewCompleteUserTaskRequest(server string, userTaskKey string, body Complete
 }
 
 // NewCompleteUserTaskRequestWithBody generates requests for CompleteUserTask with any type of body
-func NewCompleteUserTaskRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCompleteUserTaskRequestWithBody(server string, userTaskKey UserTaskKey, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17131,7 +17190,7 @@ func NewCompleteUserTaskRequestWithBody(server string, userTaskKey string, conte
 }
 
 // NewGetUserTaskFormRequest generates requests for GetUserTaskForm
-func NewGetUserTaskFormRequest(server string, userTaskKey string) (*http.Request, error) {
+func NewGetUserTaskFormRequest(server string, userTaskKey UserTaskKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17165,18 +17224,18 @@ func NewGetUserTaskFormRequest(server string, userTaskKey string) (*http.Request
 }
 
 // NewSearchUserTaskVariablesRequest calls the generic SearchUserTaskVariables builder with application/json body
-func NewSearchUserTaskVariablesRequest(server string, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequest(server string, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchUserTaskVariablesRequestWithBody(server, userTaskKey, "application/json", bodyReader)
+	return NewSearchUserTaskVariablesRequestWithBody(server, userTaskKey, params, "application/json", bodyReader)
 }
 
 // NewSearchUserTaskVariablesRequestWithBody generates requests for SearchUserTaskVariables with any type of body
-func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17199,6 +17258,28 @@ func NewSearchUserTaskVariablesRequestWithBody(server string, userTaskKey string
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -17407,18 +17488,18 @@ func NewUpdateUserRequestWithBody(server string, username Username, contentType 
 }
 
 // NewSearchVariablesRequest calls the generic SearchVariables builder with application/json body
-func NewSearchVariablesRequest(server string, body SearchVariablesJSONRequestBody) (*http.Request, error) {
+func NewSearchVariablesRequest(server string, params *SearchVariablesParams, body SearchVariablesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewSearchVariablesRequestWithBody(server, "application/json", bodyReader)
+	return NewSearchVariablesRequestWithBody(server, params, "application/json", bodyReader)
 }
 
 // NewSearchVariablesRequestWithBody generates requests for SearchVariables with any type of body
-func NewSearchVariablesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewSearchVariablesRequestWithBody(server string, params *SearchVariablesParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -17436,6 +17517,28 @@ func NewSearchVariablesRequestWithBody(server string, contentType string, body i
 		return nil, err
 	}
 
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.TruncateValues != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "truncateValues", runtime.ParamLocationQuery, *params.TruncateValues); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
 	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
@@ -17447,7 +17550,7 @@ func NewSearchVariablesRequestWithBody(server string, contentType string, body i
 }
 
 // NewGetVariableRequest generates requests for GetVariable
-func NewGetVariableRequest(server string, variableKey string) (*http.Request, error) {
+func NewGetVariableRequest(server string, variableKey VariableKey) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17537,15 +17640,15 @@ type ClientWithResponsesInterface interface {
 	SearchAuthorizationsWithResponse(ctx context.Context, body SearchAuthorizationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchAuthorizationsResponse, error)
 
 	// DeleteAuthorizationWithResponse request
-	DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error)
+	DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error)
 
 	// GetAuthorizationWithResponse request
-	GetAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error)
+	GetAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error)
 
 	// UpdateAuthorizationWithBodyWithResponse request with any body
-	UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
+	UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
 
-	UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
+	UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error)
 
 	// SearchBatchOperationItemsWithBodyWithResponse request with any body
 	SearchBatchOperationItemsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchBatchOperationItemsResponse, error)
@@ -17599,10 +17702,10 @@ type ClientWithResponsesInterface interface {
 	SearchDecisionDefinitionsWithResponse(ctx context.Context, body SearchDecisionDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchDecisionDefinitionsResponse, error)
 
 	// GetDecisionDefinitionWithResponse request
-	GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error)
+	GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error)
 
 	// GetDecisionDefinitionXMLWithResponse request
-	GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error)
+	GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error)
 
 	// SearchDecisionInstancesWithBodyWithResponse request with any body
 	SearchDecisionInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchDecisionInstancesResponse, error)
@@ -17610,7 +17713,7 @@ type ClientWithResponsesInterface interface {
 	SearchDecisionInstancesWithResponse(ctx context.Context, body SearchDecisionInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchDecisionInstancesResponse, error)
 
 	// GetDecisionInstanceWithResponse request
-	GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error)
+	GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error)
 
 	// SearchDecisionRequirementsWithBodyWithResponse request with any body
 	SearchDecisionRequirementsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchDecisionRequirementsResponse, error)
@@ -17618,10 +17721,10 @@ type ClientWithResponsesInterface interface {
 	SearchDecisionRequirementsWithResponse(ctx context.Context, body SearchDecisionRequirementsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchDecisionRequirementsResponse, error)
 
 	// GetDecisionRequirementsWithResponse request
-	GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error)
+	GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error)
 
 	// GetDecisionRequirementsXMLWithResponse request
-	GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error)
+	GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error)
 
 	// CreateDeploymentWithBodyWithResponse request with any body
 	CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDeploymentResponse, error)
@@ -17644,9 +17747,9 @@ type ClientWithResponsesInterface interface {
 	CreateDocumentLinkWithResponse(ctx context.Context, documentId DocumentId, params *CreateDocumentLinkParams, body CreateDocumentLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentLinkResponse, error)
 
 	// ActivateAdHocSubProcessActivitiesWithBodyWithResponse request with any body
-	ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
+	ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
 
-	ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
+	ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error)
 
 	// SearchElementInstancesWithBodyWithResponse request with any body
 	SearchElementInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchElementInstancesResponse, error)
@@ -17654,12 +17757,12 @@ type ClientWithResponsesInterface interface {
 	SearchElementInstancesWithResponse(ctx context.Context, body SearchElementInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchElementInstancesResponse, error)
 
 	// GetElementInstanceWithResponse request
-	GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error)
+	GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error)
 
 	// CreateElementInstanceVariablesWithBodyWithResponse request with any body
-	CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
+	CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
 
-	CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
+	CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error)
 
 	// CreateGroupWithBodyWithResponse request with any body
 	CreateGroupWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
@@ -17726,12 +17829,12 @@ type ClientWithResponsesInterface interface {
 	SearchIncidentsWithResponse(ctx context.Context, body SearchIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchIncidentsResponse, error)
 
 	// GetIncidentWithResponse request
-	GetIncidentWithResponse(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error)
+	GetIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error)
 
 	// ResolveIncidentWithBodyWithResponse request with any body
-	ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
+	ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
 
-	ResolveIncidentWithResponse(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
+	ResolveIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error)
 
 	// ActivateJobsWithBodyWithResponse request with any body
 	ActivateJobsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateJobsResponse, error)
@@ -17744,24 +17847,24 @@ type ClientWithResponsesInterface interface {
 	SearchJobsWithResponse(ctx context.Context, body SearchJobsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchJobsResponse, error)
 
 	// UpdateJobWithBodyWithResponse request with any body
-	UpdateJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
+	UpdateJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
 
-	UpdateJobWithResponse(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
+	UpdateJobWithResponse(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error)
 
 	// CompleteJobWithBodyWithResponse request with any body
-	CompleteJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
+	CompleteJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
 
-	CompleteJobWithResponse(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
+	CompleteJobWithResponse(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error)
 
 	// ThrowJobErrorWithBodyWithResponse request with any body
-	ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
+	ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
 
-	ThrowJobErrorWithResponse(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
+	ThrowJobErrorWithResponse(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error)
 
 	// FailJobWithBodyWithResponse request with any body
-	FailJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
+	FailJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
 
-	FailJobWithResponse(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
+	FailJobWithResponse(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error)
 
 	// GetLicenseWithResponse request
 	GetLicenseWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetLicenseResponse, error)
@@ -17808,18 +17911,18 @@ type ClientWithResponsesInterface interface {
 	SearchProcessDefinitionsWithResponse(ctx context.Context, body SearchProcessDefinitionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessDefinitionsResponse, error)
 
 	// GetProcessDefinitionWithResponse request
-	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error)
+	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error)
 
 	// GetStartProcessFormWithResponse request
-	GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error)
+	GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error)
 
 	// GetProcessDefinitionStatisticsWithBodyWithResponse request with any body
-	GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
+	GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
 
-	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
+	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error)
 
 	// GetProcessDefinitionXMLWithResponse request
-	GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error)
+	GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error)
 
 	// CreateProcessInstanceWithBodyWithResponse request with any body
 	CreateProcessInstanceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProcessInstanceResponse, error)
@@ -17852,36 +17955,36 @@ type ClientWithResponsesInterface interface {
 	SearchProcessInstancesWithResponse(ctx context.Context, body SearchProcessInstancesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstancesResponse, error)
 
 	// GetProcessInstanceWithResponse request
-	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error)
+	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error)
 
 	// GetProcessInstanceCallHierarchyWithResponse request
-	GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error)
+	GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error)
 
 	// CancelProcessInstanceWithBodyWithResponse request with any body
-	CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
+	CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
 
-	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
+	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error)
 
 	// SearchProcessInstanceIncidentsWithBodyWithResponse request with any body
-	SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
+	SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
 
-	SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
+	SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error)
 
 	// MigrateProcessInstanceWithBodyWithResponse request with any body
-	MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
+	MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
 
-	MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
+	MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error)
 
 	// ModifyProcessInstanceWithBodyWithResponse request with any body
-	ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
+	ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
 
-	ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
+	ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error)
 
 	// GetProcessInstanceSequenceFlowsWithResponse request
-	GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error)
+	GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error)
 
 	// GetProcessInstanceStatisticsWithResponse request
-	GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error)
+	GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error)
 
 	// GetResourceWithResponse request
 	GetResourceWithResponse(ctx context.Context, resourceKey ResourceKey, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
@@ -18060,33 +18163,33 @@ type ClientWithResponsesInterface interface {
 	SearchUserTasksWithResponse(ctx context.Context, body SearchUserTasksJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTasksResponse, error)
 
 	// GetUserTaskWithResponse request
-	GetUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error)
+	GetUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error)
 
 	// UpdateUserTaskWithBodyWithResponse request with any body
-	UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
+	UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
 
-	UpdateUserTaskWithResponse(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
+	UpdateUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error)
 
 	// UnassignUserTaskWithResponse request
-	UnassignUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error)
+	UnassignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error)
 
 	// AssignUserTaskWithBodyWithResponse request with any body
-	AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
+	AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
 
-	AssignUserTaskWithResponse(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
+	AssignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error)
 
 	// CompleteUserTaskWithBodyWithResponse request with any body
-	CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
+	CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
 
-	CompleteUserTaskWithResponse(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
+	CompleteUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error)
 
 	// GetUserTaskFormWithResponse request
-	GetUserTaskFormWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error)
+	GetUserTaskFormWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error)
 
 	// SearchUserTaskVariablesWithBodyWithResponse request with any body
-	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
-	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error)
 
 	// CreateUserWithBodyWithResponse request with any body
 	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
@@ -18110,12 +18213,12 @@ type ClientWithResponsesInterface interface {
 	UpdateUserWithResponse(ctx context.Context, username Username, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	// SearchVariablesWithBodyWithResponse request with any body
-	SearchVariablesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
+	SearchVariablesWithBodyWithResponse(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
-	SearchVariablesWithResponse(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
+	SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error)
 
 	// GetVariableWithResponse request
-	GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
+	GetVariableWithResponse(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*GetVariableResponse, error)
 }
 
 type GetAuthenticationResponse struct {
@@ -18963,6 +19066,7 @@ type CreateElementInstanceVariablesResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -20193,6 +20297,7 @@ type CancelProcessInstanceResponse struct {
 	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -21553,6 +21658,7 @@ type UpdateUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -21579,6 +21685,7 @@ type UnassignUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -21605,6 +21712,7 @@ type AssignUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -21631,6 +21739,7 @@ type CompleteUserTaskResponse struct {
 	ApplicationproblemJSON409 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 	ApplicationproblemJSON503 *ServiceUnavailable
+	ApplicationproblemJSON504 *GatewayTimeoutTaskListenerBlocking
 }
 
 // Status returns HTTPResponse.Status
@@ -21929,7 +22038,7 @@ func (c *ClientWithResponses) SearchAuthorizationsWithResponse(ctx context.Conte
 }
 
 // DeleteAuthorizationWithResponse request returning *DeleteAuthorizationResponse
-func (c *ClientWithResponses) DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error) {
+func (c *ClientWithResponses) DeleteAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*DeleteAuthorizationResponse, error) {
 	rsp, err := c.DeleteAuthorization(ctx, authorizationKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21938,7 +22047,7 @@ func (c *ClientWithResponses) DeleteAuthorizationWithResponse(ctx context.Contex
 }
 
 // GetAuthorizationWithResponse request returning *GetAuthorizationResponse
-func (c *ClientWithResponses) GetAuthorizationWithResponse(ctx context.Context, authorizationKey string, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error) {
+func (c *ClientWithResponses) GetAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, reqEditors ...RequestEditorFn) (*GetAuthorizationResponse, error) {
 	rsp, err := c.GetAuthorization(ctx, authorizationKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21947,7 +22056,7 @@ func (c *ClientWithResponses) GetAuthorizationWithResponse(ctx context.Context, 
 }
 
 // UpdateAuthorizationWithBodyWithResponse request with arbitrary body returning *UpdateAuthorizationResponse
-func (c *ClientWithResponses) UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
+func (c *ClientWithResponses) UpdateAuthorizationWithBodyWithResponse(ctx context.Context, authorizationKey AuthorizationKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
 	rsp, err := c.UpdateAuthorizationWithBody(ctx, authorizationKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -21955,7 +22064,7 @@ func (c *ClientWithResponses) UpdateAuthorizationWithBodyWithResponse(ctx contex
 	return ParseUpdateAuthorizationResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey string, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
+func (c *ClientWithResponses) UpdateAuthorizationWithResponse(ctx context.Context, authorizationKey AuthorizationKey, body UpdateAuthorizationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthorizationResponse, error) {
 	rsp, err := c.UpdateAuthorization(ctx, authorizationKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22135,7 +22244,7 @@ func (c *ClientWithResponses) SearchDecisionDefinitionsWithResponse(ctx context.
 }
 
 // GetDecisionDefinitionWithResponse request returning *GetDecisionDefinitionResponse
-func (c *ClientWithResponses) GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error) {
+func (c *ClientWithResponses) GetDecisionDefinitionWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionResponse, error) {
 	rsp, err := c.GetDecisionDefinition(ctx, decisionDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22144,7 +22253,7 @@ func (c *ClientWithResponses) GetDecisionDefinitionWithResponse(ctx context.Cont
 }
 
 // GetDecisionDefinitionXMLWithResponse request returning *GetDecisionDefinitionXMLResponse
-func (c *ClientWithResponses) GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey string, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error) {
+func (c *ClientWithResponses) GetDecisionDefinitionXMLWithResponse(ctx context.Context, decisionDefinitionKey DecisionDefinitionKey, reqEditors ...RequestEditorFn) (*GetDecisionDefinitionXMLResponse, error) {
 	rsp, err := c.GetDecisionDefinitionXML(ctx, decisionDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22170,7 +22279,7 @@ func (c *ClientWithResponses) SearchDecisionInstancesWithResponse(ctx context.Co
 }
 
 // GetDecisionInstanceWithResponse request returning *GetDecisionInstanceResponse
-func (c *ClientWithResponses) GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey string, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error) {
+func (c *ClientWithResponses) GetDecisionInstanceWithResponse(ctx context.Context, decisionEvaluationInstanceKey DecisionEvaluationInstanceKey, reqEditors ...RequestEditorFn) (*GetDecisionInstanceResponse, error) {
 	rsp, err := c.GetDecisionInstance(ctx, decisionEvaluationInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22196,7 +22305,7 @@ func (c *ClientWithResponses) SearchDecisionRequirementsWithResponse(ctx context
 }
 
 // GetDecisionRequirementsWithResponse request returning *GetDecisionRequirementsResponse
-func (c *ClientWithResponses) GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error) {
+func (c *ClientWithResponses) GetDecisionRequirementsWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsResponse, error) {
 	rsp, err := c.GetDecisionRequirements(ctx, decisionRequirementsKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22205,7 +22314,7 @@ func (c *ClientWithResponses) GetDecisionRequirementsWithResponse(ctx context.Co
 }
 
 // GetDecisionRequirementsXMLWithResponse request returning *GetDecisionRequirementsXMLResponse
-func (c *ClientWithResponses) GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey string, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error) {
+func (c *ClientWithResponses) GetDecisionRequirementsXMLWithResponse(ctx context.Context, decisionRequirementsKey DecisionRequirementsKey, reqEditors ...RequestEditorFn) (*GetDecisionRequirementsXMLResponse, error) {
 	rsp, err := c.GetDecisionRequirementsXML(ctx, decisionRequirementsKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22276,7 +22385,7 @@ func (c *ClientWithResponses) CreateDocumentLinkWithResponse(ctx context.Context
 }
 
 // ActivateAdHocSubProcessActivitiesWithBodyWithResponse request with arbitrary body returning *ActivateAdHocSubProcessActivitiesResponse
-func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
+func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithBodyWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
 	rsp, err := c.ActivateAdHocSubProcessActivitiesWithBody(ctx, adHocSubProcessInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22284,7 +22393,7 @@ func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithBodyWithRespo
 	return ParseActivateAdHocSubProcessActivitiesResponse(rsp)
 }
 
-func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey string, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
+func (c *ClientWithResponses) ActivateAdHocSubProcessActivitiesWithResponse(ctx context.Context, adHocSubProcessInstanceKey ElementInstanceKey, body ActivateAdHocSubProcessActivitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivateAdHocSubProcessActivitiesResponse, error) {
 	rsp, err := c.ActivateAdHocSubProcessActivities(ctx, adHocSubProcessInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22310,7 +22419,7 @@ func (c *ClientWithResponses) SearchElementInstancesWithResponse(ctx context.Con
 }
 
 // GetElementInstanceWithResponse request returning *GetElementInstanceResponse
-func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey string, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error) {
+func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, reqEditors ...RequestEditorFn) (*GetElementInstanceResponse, error) {
 	rsp, err := c.GetElementInstance(ctx, elementInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22319,7 +22428,7 @@ func (c *ClientWithResponses) GetElementInstanceWithResponse(ctx context.Context
 }
 
 // CreateElementInstanceVariablesWithBodyWithResponse request with arbitrary body returning *CreateElementInstanceVariablesResponse
-func (c *ClientWithResponses) CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
+func (c *ClientWithResponses) CreateElementInstanceVariablesWithBodyWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
 	rsp, err := c.CreateElementInstanceVariablesWithBody(ctx, elementInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22327,7 +22436,7 @@ func (c *ClientWithResponses) CreateElementInstanceVariablesWithBodyWithResponse
 	return ParseCreateElementInstanceVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey string, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
+func (c *ClientWithResponses) CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey ElementInstanceKey, body CreateElementInstanceVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateElementInstanceVariablesResponse, error) {
 	rsp, err := c.CreateElementInstanceVariables(ctx, elementInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22544,7 +22653,7 @@ func (c *ClientWithResponses) SearchIncidentsWithResponse(ctx context.Context, b
 }
 
 // GetIncidentWithResponse request returning *GetIncidentResponse
-func (c *ClientWithResponses) GetIncidentWithResponse(ctx context.Context, incidentKey string, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error) {
+func (c *ClientWithResponses) GetIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, reqEditors ...RequestEditorFn) (*GetIncidentResponse, error) {
 	rsp, err := c.GetIncident(ctx, incidentKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22553,7 +22662,7 @@ func (c *ClientWithResponses) GetIncidentWithResponse(ctx context.Context, incid
 }
 
 // ResolveIncidentWithBodyWithResponse request with arbitrary body returning *ResolveIncidentResponse
-func (c *ClientWithResponses) ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
+func (c *ClientWithResponses) ResolveIncidentWithBodyWithResponse(ctx context.Context, incidentKey IncidentKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
 	rsp, err := c.ResolveIncidentWithBody(ctx, incidentKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22561,7 +22670,7 @@ func (c *ClientWithResponses) ResolveIncidentWithBodyWithResponse(ctx context.Co
 	return ParseResolveIncidentResponse(rsp)
 }
 
-func (c *ClientWithResponses) ResolveIncidentWithResponse(ctx context.Context, incidentKey string, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
+func (c *ClientWithResponses) ResolveIncidentWithResponse(ctx context.Context, incidentKey IncidentKey, body ResolveIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveIncidentResponse, error) {
 	rsp, err := c.ResolveIncident(ctx, incidentKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22604,7 +22713,7 @@ func (c *ClientWithResponses) SearchJobsWithResponse(ctx context.Context, body S
 }
 
 // UpdateJobWithBodyWithResponse request with arbitrary body returning *UpdateJobResponse
-func (c *ClientWithResponses) UpdateJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
+func (c *ClientWithResponses) UpdateJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
 	rsp, err := c.UpdateJobWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22612,7 +22721,7 @@ func (c *ClientWithResponses) UpdateJobWithBodyWithResponse(ctx context.Context,
 	return ParseUpdateJobResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateJobWithResponse(ctx context.Context, jobKey string, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
+func (c *ClientWithResponses) UpdateJobWithResponse(ctx context.Context, jobKey JobKey, body UpdateJobJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateJobResponse, error) {
 	rsp, err := c.UpdateJob(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22621,7 +22730,7 @@ func (c *ClientWithResponses) UpdateJobWithResponse(ctx context.Context, jobKey 
 }
 
 // CompleteJobWithBodyWithResponse request with arbitrary body returning *CompleteJobResponse
-func (c *ClientWithResponses) CompleteJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
+func (c *ClientWithResponses) CompleteJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
 	rsp, err := c.CompleteJobWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22629,7 +22738,7 @@ func (c *ClientWithResponses) CompleteJobWithBodyWithResponse(ctx context.Contex
 	return ParseCompleteJobResponse(rsp)
 }
 
-func (c *ClientWithResponses) CompleteJobWithResponse(ctx context.Context, jobKey string, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
+func (c *ClientWithResponses) CompleteJobWithResponse(ctx context.Context, jobKey JobKey, body CompleteJobJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteJobResponse, error) {
 	rsp, err := c.CompleteJob(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22638,7 +22747,7 @@ func (c *ClientWithResponses) CompleteJobWithResponse(ctx context.Context, jobKe
 }
 
 // ThrowJobErrorWithBodyWithResponse request with arbitrary body returning *ThrowJobErrorResponse
-func (c *ClientWithResponses) ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
+func (c *ClientWithResponses) ThrowJobErrorWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
 	rsp, err := c.ThrowJobErrorWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22646,7 +22755,7 @@ func (c *ClientWithResponses) ThrowJobErrorWithBodyWithResponse(ctx context.Cont
 	return ParseThrowJobErrorResponse(rsp)
 }
 
-func (c *ClientWithResponses) ThrowJobErrorWithResponse(ctx context.Context, jobKey string, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
+func (c *ClientWithResponses) ThrowJobErrorWithResponse(ctx context.Context, jobKey JobKey, body ThrowJobErrorJSONRequestBody, reqEditors ...RequestEditorFn) (*ThrowJobErrorResponse, error) {
 	rsp, err := c.ThrowJobError(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22655,7 +22764,7 @@ func (c *ClientWithResponses) ThrowJobErrorWithResponse(ctx context.Context, job
 }
 
 // FailJobWithBodyWithResponse request with arbitrary body returning *FailJobResponse
-func (c *ClientWithResponses) FailJobWithBodyWithResponse(ctx context.Context, jobKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
+func (c *ClientWithResponses) FailJobWithBodyWithResponse(ctx context.Context, jobKey JobKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
 	rsp, err := c.FailJobWithBody(ctx, jobKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22663,7 +22772,7 @@ func (c *ClientWithResponses) FailJobWithBodyWithResponse(ctx context.Context, j
 	return ParseFailJobResponse(rsp)
 }
 
-func (c *ClientWithResponses) FailJobWithResponse(ctx context.Context, jobKey string, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
+func (c *ClientWithResponses) FailJobWithResponse(ctx context.Context, jobKey JobKey, body FailJobJSONRequestBody, reqEditors ...RequestEditorFn) (*FailJobResponse, error) {
 	rsp, err := c.FailJob(ctx, jobKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22818,7 +22927,7 @@ func (c *ClientWithResponses) SearchProcessDefinitionsWithResponse(ctx context.C
 }
 
 // GetProcessDefinitionWithResponse request returning *GetProcessDefinitionResponse
-func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionResponse, error) {
 	rsp, err := c.GetProcessDefinition(ctx, processDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22827,7 +22936,7 @@ func (c *ClientWithResponses) GetProcessDefinitionWithResponse(ctx context.Conte
 }
 
 // GetStartProcessFormWithResponse request returning *GetStartProcessFormResponse
-func (c *ClientWithResponses) GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error) {
+func (c *ClientWithResponses) GetStartProcessFormWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetStartProcessFormResponse, error) {
 	rsp, err := c.GetStartProcessForm(ctx, processDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22836,7 +22945,7 @@ func (c *ClientWithResponses) GetStartProcessFormWithResponse(ctx context.Contex
 }
 
 // GetProcessDefinitionStatisticsWithBodyWithResponse request with arbitrary body returning *GetProcessDefinitionStatisticsResponse
-func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithBodyWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
 	rsp, err := c.GetProcessDefinitionStatisticsWithBody(ctx, processDefinitionKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22844,7 +22953,7 @@ func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithBodyWithResponse
 	return ParseGetProcessDefinitionStatisticsResponse(rsp)
 }
 
-func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, body GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...RequestEditorFn) (*GetProcessDefinitionStatisticsResponse, error) {
 	rsp, err := c.GetProcessDefinitionStatistics(ctx, processDefinitionKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22853,7 +22962,7 @@ func (c *ClientWithResponses) GetProcessDefinitionStatisticsWithResponse(ctx con
 }
 
 // GetProcessDefinitionXMLWithResponse request returning *GetProcessDefinitionXMLResponse
-func (c *ClientWithResponses) GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error) {
+func (c *ClientWithResponses) GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey ProcessDefinitionKey, reqEditors ...RequestEditorFn) (*GetProcessDefinitionXMLResponse, error) {
 	rsp, err := c.GetProcessDefinitionXML(ctx, processDefinitionKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22964,7 +23073,7 @@ func (c *ClientWithResponses) SearchProcessInstancesWithResponse(ctx context.Con
 }
 
 // GetProcessInstanceWithResponse request returning *GetProcessInstanceResponse
-func (c *ClientWithResponses) GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceResponse, error) {
 	rsp, err := c.GetProcessInstance(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22973,7 +23082,7 @@ func (c *ClientWithResponses) GetProcessInstanceWithResponse(ctx context.Context
 }
 
 // GetProcessInstanceCallHierarchyWithResponse request returning *GetProcessInstanceCallHierarchyResponse
-func (c *ClientWithResponses) GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceCallHierarchyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceCallHierarchyResponse, error) {
 	rsp, err := c.GetProcessInstanceCallHierarchy(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22982,7 +23091,7 @@ func (c *ClientWithResponses) GetProcessInstanceCallHierarchyWithResponse(ctx co
 }
 
 // CancelProcessInstanceWithBodyWithResponse request with arbitrary body returning *CancelProcessInstanceResponse
-func (c *ClientWithResponses) CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
+func (c *ClientWithResponses) CancelProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
 	rsp, err := c.CancelProcessInstanceWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22990,7 +23099,7 @@ func (c *ClientWithResponses) CancelProcessInstanceWithBodyWithResponse(ctx cont
 	return ParseCancelProcessInstanceResponse(rsp)
 }
 
-func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
+func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body CancelProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelProcessInstanceResponse, error) {
 	rsp, err := c.CancelProcessInstance(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -22999,7 +23108,7 @@ func (c *ClientWithResponses) CancelProcessInstanceWithResponse(ctx context.Cont
 }
 
 // SearchProcessInstanceIncidentsWithBodyWithResponse request with arbitrary body returning *SearchProcessInstanceIncidentsResponse
-func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
+func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
 	rsp, err := c.SearchProcessInstanceIncidentsWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23007,7 +23116,7 @@ func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithBodyWithResponse
 	return ParseSearchProcessInstanceIncidentsResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
+func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProcessInstanceIncidentsResponse, error) {
 	rsp, err := c.SearchProcessInstanceIncidents(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23016,7 +23125,7 @@ func (c *ClientWithResponses) SearchProcessInstanceIncidentsWithResponse(ctx con
 }
 
 // MigrateProcessInstanceWithBodyWithResponse request with arbitrary body returning *MigrateProcessInstanceResponse
-func (c *ClientWithResponses) MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
+func (c *ClientWithResponses) MigrateProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
 	rsp, err := c.MigrateProcessInstanceWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23024,7 +23133,7 @@ func (c *ClientWithResponses) MigrateProcessInstanceWithBodyWithResponse(ctx con
 	return ParseMigrateProcessInstanceResponse(rsp)
 }
 
-func (c *ClientWithResponses) MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
+func (c *ClientWithResponses) MigrateProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body MigrateProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*MigrateProcessInstanceResponse, error) {
 	rsp, err := c.MigrateProcessInstance(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23033,7 +23142,7 @@ func (c *ClientWithResponses) MigrateProcessInstanceWithResponse(ctx context.Con
 }
 
 // ModifyProcessInstanceWithBodyWithResponse request with arbitrary body returning *ModifyProcessInstanceResponse
-func (c *ClientWithResponses) ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
+func (c *ClientWithResponses) ModifyProcessInstanceWithBodyWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
 	rsp, err := c.ModifyProcessInstanceWithBody(ctx, processInstanceKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23041,7 +23150,7 @@ func (c *ClientWithResponses) ModifyProcessInstanceWithBodyWithResponse(ctx cont
 	return ParseModifyProcessInstanceResponse(rsp)
 }
 
-func (c *ClientWithResponses) ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
+func (c *ClientWithResponses) ModifyProcessInstanceWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, body ModifyProcessInstanceJSONRequestBody, reqEditors ...RequestEditorFn) (*ModifyProcessInstanceResponse, error) {
 	rsp, err := c.ModifyProcessInstance(ctx, processInstanceKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23050,7 +23159,7 @@ func (c *ClientWithResponses) ModifyProcessInstanceWithResponse(ctx context.Cont
 }
 
 // GetProcessInstanceSequenceFlowsWithResponse request returning *GetProcessInstanceSequenceFlowsResponse
-func (c *ClientWithResponses) GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceSequenceFlowsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceSequenceFlowsResponse, error) {
 	rsp, err := c.GetProcessInstanceSequenceFlows(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23059,7 +23168,7 @@ func (c *ClientWithResponses) GetProcessInstanceSequenceFlowsWithResponse(ctx co
 }
 
 // GetProcessInstanceStatisticsWithResponse request returning *GetProcessInstanceStatisticsResponse
-func (c *ClientWithResponses) GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error) {
+func (c *ClientWithResponses) GetProcessInstanceStatisticsWithResponse(ctx context.Context, processInstanceKey ProcessInstanceKey, reqEditors ...RequestEditorFn) (*GetProcessInstanceStatisticsResponse, error) {
 	rsp, err := c.GetProcessInstanceStatistics(ctx, processInstanceKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23634,7 +23743,7 @@ func (c *ClientWithResponses) SearchUserTasksWithResponse(ctx context.Context, b
 }
 
 // GetUserTaskWithResponse request returning *GetUserTaskResponse
-func (c *ClientWithResponses) GetUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error) {
+func (c *ClientWithResponses) GetUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskResponse, error) {
 	rsp, err := c.GetUserTask(ctx, userTaskKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23643,7 +23752,7 @@ func (c *ClientWithResponses) GetUserTaskWithResponse(ctx context.Context, userT
 }
 
 // UpdateUserTaskWithBodyWithResponse request with arbitrary body returning *UpdateUserTaskResponse
-func (c *ClientWithResponses) UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
+func (c *ClientWithResponses) UpdateUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
 	rsp, err := c.UpdateUserTaskWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23651,7 +23760,7 @@ func (c *ClientWithResponses) UpdateUserTaskWithBodyWithResponse(ctx context.Con
 	return ParseUpdateUserTaskResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateUserTaskWithResponse(ctx context.Context, userTaskKey string, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
+func (c *ClientWithResponses) UpdateUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body UpdateUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserTaskResponse, error) {
 	rsp, err := c.UpdateUserTask(ctx, userTaskKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23660,7 +23769,7 @@ func (c *ClientWithResponses) UpdateUserTaskWithResponse(ctx context.Context, us
 }
 
 // UnassignUserTaskWithResponse request returning *UnassignUserTaskResponse
-func (c *ClientWithResponses) UnassignUserTaskWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error) {
+func (c *ClientWithResponses) UnassignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*UnassignUserTaskResponse, error) {
 	rsp, err := c.UnassignUserTask(ctx, userTaskKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23669,7 +23778,7 @@ func (c *ClientWithResponses) UnassignUserTaskWithResponse(ctx context.Context, 
 }
 
 // AssignUserTaskWithBodyWithResponse request with arbitrary body returning *AssignUserTaskResponse
-func (c *ClientWithResponses) AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
+func (c *ClientWithResponses) AssignUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
 	rsp, err := c.AssignUserTaskWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23677,7 +23786,7 @@ func (c *ClientWithResponses) AssignUserTaskWithBodyWithResponse(ctx context.Con
 	return ParseAssignUserTaskResponse(rsp)
 }
 
-func (c *ClientWithResponses) AssignUserTaskWithResponse(ctx context.Context, userTaskKey string, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
+func (c *ClientWithResponses) AssignUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body AssignUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignUserTaskResponse, error) {
 	rsp, err := c.AssignUserTask(ctx, userTaskKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23686,7 +23795,7 @@ func (c *ClientWithResponses) AssignUserTaskWithResponse(ctx context.Context, us
 }
 
 // CompleteUserTaskWithBodyWithResponse request with arbitrary body returning *CompleteUserTaskResponse
-func (c *ClientWithResponses) CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
+func (c *ClientWithResponses) CompleteUserTaskWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
 	rsp, err := c.CompleteUserTaskWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23694,7 +23803,7 @@ func (c *ClientWithResponses) CompleteUserTaskWithBodyWithResponse(ctx context.C
 	return ParseCompleteUserTaskResponse(rsp)
 }
 
-func (c *ClientWithResponses) CompleteUserTaskWithResponse(ctx context.Context, userTaskKey string, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
+func (c *ClientWithResponses) CompleteUserTaskWithResponse(ctx context.Context, userTaskKey UserTaskKey, body CompleteUserTaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteUserTaskResponse, error) {
 	rsp, err := c.CompleteUserTask(ctx, userTaskKey, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23703,7 +23812,7 @@ func (c *ClientWithResponses) CompleteUserTaskWithResponse(ctx context.Context, 
 }
 
 // GetUserTaskFormWithResponse request returning *GetUserTaskFormResponse
-func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, userTaskKey string, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error) {
+func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, userTaskKey UserTaskKey, reqEditors ...RequestEditorFn) (*GetUserTaskFormResponse, error) {
 	rsp, err := c.GetUserTaskForm(ctx, userTaskKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -23712,16 +23821,16 @@ func (c *ClientWithResponses) GetUserTaskFormWithResponse(ctx context.Context, u
 }
 
 // SearchUserTaskVariablesWithBodyWithResponse request with arbitrary body returning *SearchUserTaskVariablesResponse
-func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
-	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchUserTaskVariablesWithBodyWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+	rsp, err := c.SearchUserTaskVariablesWithBody(ctx, userTaskKey, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchUserTaskVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
-	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, body, reqEditors...)
+func (c *ClientWithResponses) SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey UserTaskKey, params *SearchUserTaskVariablesParams, body SearchUserTaskVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchUserTaskVariablesResponse, error) {
+	rsp, err := c.SearchUserTaskVariables(ctx, userTaskKey, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23798,16 +23907,16 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userna
 }
 
 // SearchVariablesWithBodyWithResponse request with arbitrary body returning *SearchVariablesResponse
-func (c *ClientWithResponses) SearchVariablesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
-	rsp, err := c.SearchVariablesWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) SearchVariablesWithBodyWithResponse(ctx context.Context, params *SearchVariablesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
+	rsp, err := c.SearchVariablesWithBody(ctx, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseSearchVariablesResponse(rsp)
 }
 
-func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
-	rsp, err := c.SearchVariables(ctx, body, reqEditors...)
+func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, params *SearchVariablesParams, body SearchVariablesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVariablesResponse, error) {
+	rsp, err := c.SearchVariables(ctx, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23815,7 +23924,7 @@ func (c *ClientWithResponses) SearchVariablesWithResponse(ctx context.Context, b
 }
 
 // GetVariableWithResponse request returning *GetVariableResponse
-func (c *ClientWithResponses) GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...RequestEditorFn) (*GetVariableResponse, error) {
+func (c *ClientWithResponses) GetVariableWithResponse(ctx context.Context, variableKey VariableKey, reqEditors ...RequestEditorFn) (*GetVariableResponse, error) {
 	rsp, err := c.GetVariable(ctx, variableKey, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -25506,6 +25615,13 @@ func ParseCreateElementInstanceVariablesResponse(rsp *http.Response) (*CreateEle
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 
@@ -28100,6 +28216,13 @@ func ParseCancelProcessInstanceResponse(rsp *http.Response) (*CancelProcessInsta
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 
@@ -30834,6 +30957,13 @@ func ParseUpdateUserTaskResponse(rsp *http.Response) (*UpdateUserTaskResponse, e
 		}
 		response.ApplicationproblemJSON503 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
 	}
 
 	return response, nil
@@ -30887,6 +31017,13 @@ func ParseUnassignUserTaskResponse(rsp *http.Response) (*UnassignUserTaskRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 
@@ -30942,6 +31079,13 @@ func ParseAssignUserTaskResponse(rsp *http.Response) (*AssignUserTaskResponse, e
 		}
 		response.ApplicationproblemJSON503 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
+
 	}
 
 	return response, nil
@@ -30995,6 +31139,13 @@ func ParseCompleteUserTaskResponse(rsp *http.Response) (*CompleteUserTaskRespons
 			return nil, err
 		}
 		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
+		var dest GatewayTimeoutTaskListenerBlocking
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON504 = &dest
 
 	}
 

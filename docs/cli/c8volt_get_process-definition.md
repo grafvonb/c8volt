@@ -1,14 +1,23 @@
 ---
 title: "c8volt get process-definition"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get process-definition
 
-Get deployed process definitions
+List or fetch deployed process definitions
 
 ```
 c8volt get process-definition [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get pd --latest
+  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
+  ./c8volt get pd --key 2251799813686017 --xml
 ```
 
 ### Options
@@ -21,6 +30,7 @@ c8volt get process-definition [flags]
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
       --stat                     include process definition statistics
+      --xml                      output the selected process definition as raw XML (requires --key and no other filters)
 ```
 
 ### Options inherited from parent commands

@@ -16,6 +16,15 @@ func fromDomainTopology(t domain.Topology) Topology {
 	}
 }
 
+func fromDomainLicense(l domain.License) License {
+	return License{
+		ExpiresAt:    l.ExpiresAt,
+		IsCommercial: l.IsCommercial,
+		LicenseType:  l.LicenseType,
+		ValidLicense: l.ValidLicense,
+	}
+}
+
 func fromDomainBroker(b domain.Broker) Broker {
 	return Broker{
 		Host:       b.Host,

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
@@ -10,6 +12,13 @@ var (
 	commit  = "none"
 	date    = "unknown"
 )
+
+func buildYear() int {
+	if t, err := time.Parse(time.RFC3339, date); err == nil {
+		return t.Year()
+	}
+	return time.Now().Year()
+}
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
@@ -25,7 +34,7 @@ var versionCmd = &cobra.Command{
 			cmd.Println(toolx.ToJSONString(out))
 			return
 		}
-		cmd.Printf("c8volt version %s, commit %s, built at %s. Supported Camunda versions: %s\n", version, commit, date, toolx.SupportedCamundaVersionsString())
+		cmd.Printf("c8volt %s (%s, %s) | camunda: %s | (c) %d Adam Bogdan Boczek | https://boczek.info\n", version, commit, date, toolx.SupportedCamundaVersionsString(), buildYear())
 	},
 }
 

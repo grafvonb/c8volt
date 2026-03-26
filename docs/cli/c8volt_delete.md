@@ -1,5 +1,6 @@
 ---
 title: "c8volt delete"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -46,5 +47,5 @@ c8volt delete [flags]
 
 * [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
 * [c8volt delete process-definition](c8volt_delete_process-definition.md)	 - Delete a process definition(s)
-* [c8volt delete process-instance](c8volt_delete_process-instance.md)	 - Delete a process instance by its key
+* [c8volt delete process-instance](c8volt_delete_process-instance.md)	 - Delete process instance(s), optionally cancelling first
 

@@ -8,7 +8,7 @@ import (
 
 type GenUserTaskClientCamunda interface {
 	GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetVariableResponse, error)
-	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, body camundav88.SearchUserTaskVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTaskVariablesResponse, error)
+	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *camundav88.SearchUserTaskVariablesParams, body camundav88.SearchUserTaskVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTaskVariablesResponse, error)
 }
 
 var _ GenUserTaskClientCamunda = (*camundav88.ClientWithResponses)(nil)

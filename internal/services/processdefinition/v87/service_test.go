@@ -40,6 +40,14 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionByKeyWithResponse(ctx 
 	return args.Get(0).(*operatev87.GetProcessDefinitionByKeyResponse), args.Error(1)
 }
 
+func (m *mockProcessDefinitionClient) GetProcessDefinitionAsXmlByKeyWithResponse(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessDefinitionAsXmlByKeyResponse, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*operatev87.GetProcessDefinitionAsXmlByKeyResponse), args.Error(1)
+}
+
 func TestService_SearchProcessDefinitions(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("search failed")
@@ -265,6 +273,132 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				if tt.assertResult != nil {
 					tt.assertResult(t, pd)
 				}
+			}
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+func TestService_GetProcessDefinitionXML(t *testing.T) {
+	ctx := context.Background()
+	mockErr := errors.New("xml failed")
+
+	tests := []struct {
+		name              string
+		key               string
+		opts              []services.CallOption
+		setupMock         func(*mockProcessDefinitionClient)
+		expectedError     error
+		expectedErrSubstr string
+		expectedXML       string
+	}{
+		{
+			name: "Success",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				xml := "<definitions id=\"proc\"/>"
+				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
+					XML200:       &xml,
+				}
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "SuccessFallsBackToRawBody",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				parsedXML := "\n  \n  \n"
+				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
+					Body:         []byte("<definitions id=\"proc\"/>"),
+					XML200:       &parsedXML,
+				}
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "SuccessPrefersFormattedRawBody",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				parsedXML := "\n  \n    \n"
+				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
+					Body:         []byte("<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n"),
+					XML200:       &parsedXML,
+				}
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n",
+		},
+		{
+			name:              "StatsNotSupported",
+			key:               "123",
+			opts:              []services.CallOption{services.WithStat()},
+			expectedErrSubstr: "not supported",
+		},
+		{
+			name:              "KeyConversionError",
+			key:               "abc",
+			expectedErrSubstr: "converting process definition key",
+		},
+		{
+			name: "ClientError",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).
+					Return((*operatev87.GetProcessDefinitionAsXmlByKeyResponse)(nil), mockErr)
+			},
+			expectedError: mockErr,
+		},
+		{
+			name: "HTTPError",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusInternalServerError, "500"),
+					Body:         []byte("fail"),
+				}
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
+			},
+			expectedError: domain.ErrInternal,
+		},
+		{
+			name: "NilPayload",
+			key:  "123",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
+				}
+				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
+			},
+			expectedError: domain.ErrMalformedResponse,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			if tt.setupMock != nil {
+				tt.setupMock(m)
+			}
+
+			svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+			require.NoError(t, err)
+
+			xml, err := svc.GetProcessDefinitionXML(ctx, tt.key, tt.opts...)
+
+			if tt.expectedErrSubstr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErrSubstr)
+			} else if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedXML, xml)
 			}
 			m.AssertExpectations(t)
 		})

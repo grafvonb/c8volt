@@ -37,11 +37,11 @@ func (c *Auth) Validate() error {
 		switch c.Mode {
 		case ModeOAuth2:
 			if err := c.OAuth2.Validate(); err != nil {
-				errs = append(errs, fmt.Errorf("oauth2: %w", err))
+				errs = append(errs, err)
 			}
 		case ModeCookie:
 			if err := c.Cookie.Validate(); err != nil {
-				errs = append(errs, fmt.Errorf("cookie: %w", err))
+				errs = append(errs, err)
 			}
 		}
 	}
@@ -61,13 +61,13 @@ func (a *AuthOAuth2ClientCredentials) Validate() error {
 	var errs []error
 
 	if strings.TrimSpace(a.TokenURL) == "" {
-		errs = append(errs, ErrNoTokenURL)
+		errs = append(errs, fmt.Errorf("auth.oauth2.token_url: %w", ErrNoTokenURL))
 	}
 	if strings.TrimSpace(a.ClientID) == "" {
-		errs = append(errs, ErrNoClientID)
+		errs = append(errs, fmt.Errorf("auth.oauth2.client_id: %w", ErrNoClientID))
 	}
 	if strings.TrimSpace(a.ClientSecret) == "" {
-		errs = append(errs, ErrNoClientSecret)
+		errs = append(errs, fmt.Errorf("auth.oauth2.client_secret: %w", ErrNoClientSecret))
 	}
 	return errors.Join(errs...)
 }
@@ -88,7 +88,7 @@ type AuthCookieSession struct {
 func (c *AuthCookieSession) Validate() error {
 	var errs []error
 	if strings.TrimSpace(c.BaseURL) == "" {
-		errs = append(errs, fmt.Errorf("auth.cookie.base_url: %w", ErrNoBaseURL))
+		errs = append(errs, fmt.Errorf("auth.cookie.base_url: base_url is required"))
 	}
 	return errors.Join(errs...)
 }

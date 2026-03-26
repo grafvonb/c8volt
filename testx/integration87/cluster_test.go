@@ -25,3 +25,15 @@ func TestIT_GetClusterTopology(t *testing.T) {
 
 	deployTestProcessDefinitions(t, ctx, api, cfg, log)
 }
+
+func TestIT_GetClusterLicense(t *testing.T) {
+	ctx, api, _, _ := newITClient(t)
+
+	license, err := api.GetClusterLicense(ctx)
+	require.NoError(t, err)
+
+	require.Equal(t, "SaaS", license.LicenseType)
+	require.True(t, license.ValidLicense)
+	require.Nil(t, license.ExpiresAt)
+	require.Nil(t, license.IsCommercial)
+}

@@ -1,0 +1,141 @@
+package ferrors
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNormalizeDomain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		err       error
+		wantIs    error
+		wantClass Class
+		wantCode  int
+	}{
+		{
+			name:      "bad request becomes invalid input",
+			err:       domain.ErrBadRequest,
+			wantIs:    ErrInvalidInput,
+			wantClass: ClassInvalidInput,
+			wantCode:  exitcode.InvalidArgs,
+		},
+		{
+			name:      "malformed response stays internal-class exit",
+			err:       domain.ErrMalformedResponse,
+			wantIs:    ErrMalformedResponse,
+			wantClass: ClassMalformedResponse,
+			wantCode:  exitcode.Error,
+		},
+		{
+			name:      "gateway timeout becomes timeout",
+			err:       domain.ErrGatewayTimeout,
+			wantIs:    ErrTimeout,
+			wantClass: ClassTimeout,
+			wantCode:  exitcode.Timeout,
+		},
+		{
+			name:      "upstream conflict preserves dedicated exit code",
+			err:       domain.ErrConflict,
+			wantIs:    ErrConflict,
+			wantClass: ClassConflict,
+			wantCode:  exitcode.Conflict,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := NormalizeDomain(tt.err)
+
+			require.ErrorIs(t, got, tt.wantIs)
+			require.Equal(t, tt.wantClass, Classify(got))
+			require.Equal(t, tt.wantCode, ExitCode(got))
+		})
+	}
+}
+
+func TestNormalizeLocal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		err       error
+		wantIs    error
+		wantClass Class
+		wantCode  int
+	}{
+		{
+			name:      "unknown version becomes unsupported",
+			err:       services.ErrUnknownAPIVersion,
+			wantIs:    ErrUnsupported,
+			wantClass: ClassUnsupported,
+			wantCode:  exitcode.Error,
+		},
+		{
+			name:      "missing logger becomes local precondition",
+			err:       services.ErrNoLogger,
+			wantIs:    ErrLocalPrecondition,
+			wantClass: ClassLocalPrecondition,
+			wantCode:  exitcode.Error,
+		},
+		{
+			name:      "context cancellation becomes local precondition",
+			err:       context.Canceled,
+			wantIs:    ErrLocalPrecondition,
+			wantClass: ClassLocalPrecondition,
+			wantCode:  exitcode.Error,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := NormalizeLocal(tt.err)
+
+			require.ErrorIs(t, got, tt.wantIs)
+			require.Equal(t, tt.wantClass, Classify(got))
+			require.Equal(t, tt.wantCode, ExitCode(got))
+		})
+	}
+}
+
+func TestNormalizeFallsBackToInternal(t *testing.T) {
+	t.Parallel()
+
+	err := errors.New("boom")
+	got := Normalize(err)
+
+	require.ErrorIs(t, got, ErrInternal)
+	require.Equal(t, ClassInternal, Classify(got))
+	require.Equal(t, exitcode.Error, ExitCode(got))
+}
+
+func TestResolveExitCodePreservesNoErrCodesOverride(t *testing.T) {
+	t.Parallel()
+
+	err := NormalizeDomain(domain.ErrNotFound)
+
+	require.Equal(t, ClassNotFound, Classify(err))
+	require.Equal(t, exitcode.NotFound, ExitCode(err))
+	require.Equal(t, exitcode.OK, ResolveExitCode(true, err))
+}
+
+func TestWrapClassPreservesExistingClassification(t *testing.T) {
+	t.Parallel()
+
+	err := WrapClass(ErrInvalidInput, WrapClass(ErrInvalidInput, errors.New("boom")))
+
+	require.ErrorIs(t, err, ErrInvalidInput)
+	require.Equal(t, ClassInvalidInput, Classify(err))
+}

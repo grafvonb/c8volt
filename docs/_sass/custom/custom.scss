@@ -1,0 +1,26 @@
+.site-logo {
+  background-image: url("../logo/c8volt_orange_black_bkg_white_400x152.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.main-content h1:first-of-type {
+  margin-top: 0.25rem;
+}
+
+.main-content blockquote {
+  border-left: 4px solid #d97706;
+  background: #fff8ef;
+}
+
+.main-content code {
+  border-radius: 4px;
+}
+
+.main-content pre code {
+  font-size: 0.9rem;
+}
+
+.search-input {
+  border-radius: 8px;
+}

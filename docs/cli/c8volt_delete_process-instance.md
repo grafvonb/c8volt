@@ -1,14 +1,22 @@
 ---
 title: "c8volt delete process-instance"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt delete process-instance
 
-Delete a process instance by its key
+Delete process instance(s), optionally cancelling first
 
 ```
 c8volt delete process-instance [flags]
+```
+
+### Examples
+
+```
+  ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
 ```
 
 ### Options

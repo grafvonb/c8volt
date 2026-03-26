@@ -50,6 +50,14 @@ func (c *client) GetProcessDefinition(ctx context.Context, key string, opts ...o
 	return fromDomainProcessDefinition(pd), nil
 }
 
+func (c *client) GetProcessDefinitionXML(ctx context.Context, key string, opts ...options.FacadeOption) (string, error) {
+	xml, err := c.pdApi.GetProcessDefinitionXML(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return "", ferr.FromDomain(err)
+	}
+	return xml, nil
+}
+
 func (c *client) GetProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
 	pi, err := c.piApi.GetProcessInstance(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
