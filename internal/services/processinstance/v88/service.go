@@ -189,9 +189,17 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		},
 	}
 	body := camundav88.SearchProcessInstancesJSONRequestBody{
-		Filter: &bodyFilter,
-		Page:   &page,
-		Sort:   &sort,
+		Page: &page,
+		Sort: &sort,
+	}
+	if bodyFilter.TenantId != nil ||
+		bodyFilter.ProcessInstanceKey != nil ||
+		bodyFilter.ProcessDefinitionId != nil ||
+		bodyFilter.ProcessDefinitionVersion != nil ||
+		bodyFilter.ProcessDefinitionVersionTag != nil ||
+		bodyFilter.State != nil ||
+		bodyFilter.ParentProcessInstanceKey != nil {
+		body.Filter = &bodyFilter
 	}
 	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {

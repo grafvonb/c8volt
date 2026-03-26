@@ -396,7 +396,7 @@ func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter
 		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
 	}
 	bodyFilter := operatev87.ProcessInstance{
-		TenantId:          &tenant,
+		TenantId:          toolx.PtrIf(tenant, ""),
 		BpmnProcessId:     &filter.BpmnProcessId,
 		ProcessVersion:    toolx.PtrIfNonZero(filter.ProcessVersion),
 		ProcessVersionTag: &filter.ProcessVersionTag,

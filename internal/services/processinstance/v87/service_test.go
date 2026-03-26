@@ -272,6 +272,38 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Equal(t, "456", items[0].ParentKey)
 	})
 
+	t.Run("OmitsTenantFilterWhenConfigTenantIsEmpty", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.App.Tenant = ""
+		svc := newTestService(t, cfg, newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Filter)
+				assert.Nil(t, body.Filter.TenantId)
+				items := []operatev87.ProcessInstance{*makeProcessInstanceResponse(123, "ACTIVE", "")}
+				return &operatev87.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &operatev87.ResultsProcessInstance{
+						Items: &items,
+					},
+				}, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+		})
+
+		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{}, 25)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, "123", items[0].Key)
+	})
+
 	t.Run("ParentKeyConversionError", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
 
