@@ -5,12 +5,6 @@ nav_order: 1
 has_toc: true
 ---
 
-## Quick Links
-
-- [CLI Reference](./cli/index.md)
-- [GitHub Releases](https://github.com/grafvonb/c8volt/releases)
-- [Repository](https://github.com/grafvonb/c8volt)
-
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
 # c8volt
@@ -470,3 +464,7 @@ Regenerate the CLI reference with:
 ```bash
 make docs
 ```
+
+## Copyright
+
+(c) 2026 Adam Bogdan Boczek | <a href="https://boczek.info" target="_blank" rel="noopener noreferrer">boczek.info</a>
