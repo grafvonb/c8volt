@@ -64,6 +64,26 @@ node_modules/
 package-lock.json
 package.json
 
+# Python temporary/cache artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.venv/
+venv/
+env/
+ENV/
+
+# Generated API checkout backups
+api/camunda-docs.bak/
+api/camunda-docs.bak*/
+
 # Jekyll
 /docs/_site/
 /docs/.jekyll-cache/
