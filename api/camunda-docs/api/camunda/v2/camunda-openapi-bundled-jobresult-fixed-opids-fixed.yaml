@@ -5627,7 +5627,7 @@ paths:
     post:
       tags:
       - Resource
-      operationId: deleteResource
+      operationId: deleteResourceOp
       summary: Delete resource
       description: '
 

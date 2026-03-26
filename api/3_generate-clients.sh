@@ -1,4 +1,8 @@
 #!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # auth
 ./generate-client.sh ./auth/oauth2-openapi.json ../internal/clients/auth/oauth2/client.gen.go oauth2
@@ -6,7 +10,8 @@
 # v89
 ./generate-client.sh ./camunda-docs/api/administration-sm/administration-sm-openapi.yaml ../internal/clients/camunda/v89/administrationsm/client.gen.go administrationsm
 ./mutate-fix-jobresult-discriminator.py ./camunda-docs/api/camunda/v2/camunda-openapi-bundled.yaml
-./generate-client.sh ./camunda-docs/api/camunda/v2/camunda-openapi-bundled-jobresult-fixed.yaml ../internal/clients/camunda/v89/camunda/client.gen.go camunda
+./mutate-fix-camunda-v2-operation-id-collisions.py ./camunda-docs/api/camunda/v2/camunda-openapi-bundled-jobresult-fixed.yaml
+./generate-client.sh ./camunda-docs/api/camunda/v2/camunda-openapi-bundled-jobresult-fixed-opids-fixed.yaml ../internal/clients/camunda/v89/camunda/client.gen.go camunda
 
 ./mutate-operation-ids.py ./camunda-docs/api/operate/operate-openapi.yaml
 ./mutate-remove-sort-values.py ./camunda-docs/api/operate/operate-openapi-oids-updated.yaml

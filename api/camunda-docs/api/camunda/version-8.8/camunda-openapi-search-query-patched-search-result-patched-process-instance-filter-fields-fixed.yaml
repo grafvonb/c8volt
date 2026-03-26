@@ -2455,7 +2455,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Cancels multiple running process instances.
@@ -2506,7 +2506,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Resolves multiple instances of process instances.
@@ -2557,7 +2557,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Migrate multiple instances of process instances.
@@ -2607,7 +2607,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Modify multiple process instances.
@@ -5734,7 +5734,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Create a new user.'
@@ -5855,7 +5855,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Deletes a user.
@@ -5891,7 +5891,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Updates a user.
@@ -5940,7 +5940,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Creates a new user and assigns the admin role to it. This endpoint is only
@@ -6204,10 +6204,7 @@ paths:
         [[CONSISTENCY:STRONG]]
 
 
-        Deletes a deployed resource.
-
-
-        This can be a process definition, decision requirements
+        Deletes a deployed resource. This can be a process definition, decision requirements
 
         definition, or form definition deployed using the deploy resources endpoint.
         Specify the
@@ -6580,7 +6577,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Cancels a running batch operation.
@@ -6627,7 +6624,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Suspends a running batch operation.
@@ -6676,7 +6673,7 @@ paths:
       description: '
 
 
-        [[CONSISTENCY:EVENTUAL]]
+        [[CONSISTENCY:STRONG]]
 
 
         Resumes a suspended batch operation.
@@ -7553,6 +7550,9 @@ components:
 
             The response contains no `startCursor` in the `page`, and requests ignore
             the `from` and `before` in the `page`.
+
+            When using this filter, sorting is limited to `processDefinitionId` and
+            `tenantId` fields only.
 
             '
           type: boolean
@@ -13217,8 +13217,8 @@ components:
           allOf:
           - $ref: '#/components/schemas/FormId'
         schema:
-          description: The form content.
-          type: object
+          description: The form schema as a JSON document serialized as a string.
+          type: string
         version:
           description: The version of the the deployed form.
           type: integer
