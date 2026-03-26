@@ -457,3 +457,7 @@ Regenerate the CLI reference with:
 ```bash
 make docs
 ```
+
+## Copyright
+
+(c) 2026 Adam Bogdan Boczek | <a href="https://boczek.info" target="_blank" rel="noopener noreferrer">boczek.info</a>
