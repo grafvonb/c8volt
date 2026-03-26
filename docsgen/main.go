@@ -78,7 +78,6 @@ func syncDocsIndexFromReadme(src, dst string) error {
 	body := string(b)
 	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
 	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/index.md)")
-	body = "## Quick Links\n\n- [CLI Reference](./cli/index.md)\n- [GitHub Releases](https://github.com/grafvonb/c8volt/releases)\n- [Repository](https://github.com/grafvonb/c8volt)\n\n" + body
 
 	const frontMatter = `---
 title: "c8volt"
