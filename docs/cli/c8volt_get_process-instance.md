@@ -1,14 +1,23 @@
 ---
 title: "c8volt get process-instance"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get process-instance
 
-Get process instances
+List or fetch process instances
 
 ```
 c8volt get process-instance [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get pi --state active
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --key 2251799813711967 --key 2251799813711977
 ```
 
 ### Options

@@ -17,6 +17,9 @@ var getResourceCmd = &cobra.Command{
 	Short: "Get a resource by id",
 	Long: "Get a single resource by id.\n" +
 		"It requires --id to select exactly one resource and renders the standard single-resource view.",
+	Example: `  ./c8volt get resource --id resource-id-123
+  ./c8volt --json get resource --id resource-id-123
+  ./c8volt --keys-only get resource --id resource-id-123`,
 	Aliases: []string{"r"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		_, err := validatedResourceID()

@@ -14,8 +14,10 @@ var (
 )
 
 var embedListCmd = &cobra.Command{
-	Use:     "list",
-	Short:   "List embedded (virtual) files containing process definitions",
+	Use:   "list",
+	Short: "List embedded (virtual) files containing process definitions",
+	Example: `  ./c8volt embed list
+  ./c8volt --json embed list`,
 	Aliases: []string{"ls"},
 	Run: func(cmd *cobra.Command, args []string) {
 		log, _ := logging.FromContext(cmd.Context())

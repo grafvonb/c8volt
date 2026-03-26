@@ -30,8 +30,11 @@ var (
 )
 
 var getProcessInstanceCmd = &cobra.Command{
-	Use:     "process-instance",
-	Short:   "Get process instances",
+	Use:   "process-instance",
+	Short: "List or fetch process instances",
+	Example: `  ./c8volt get pi --state active
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

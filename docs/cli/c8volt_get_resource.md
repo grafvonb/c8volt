@@ -1,5 +1,6 @@
 ---
 title: "c8volt get resource"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -14,6 +15,14 @@ It requires --id to select exactly one resource and renders the standard single-
 
 ```
 c8volt get resource [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get resource --id resource-id-123
+  ./c8volt --json get resource --id resource-id-123
+  ./c8volt --keys-only get resource --id resource-id-123
 ```
 
 ### Options

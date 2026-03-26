@@ -20,9 +20,11 @@ var (
 )
 
 var runProcessInstanceCmd = &cobra.Command{
-	Use:     "process-instance",
-	Short:   "Run process instance(s) by process definition",
-	Example: `./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --no-worker-limit`,
+	Use:   "process-instance",
+	Short: "Start process instance(s) and confirm they are active",
+	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
+  ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

@@ -1,5 +1,6 @@
 ---
 title: "c8volt get cluster license"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})

@@ -1,5 +1,6 @@
 ---
 title: "c8volt embed export"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -9,6 +10,14 @@ Export embedded (virtual) resources to local files. Can be used to deploy update
 
 ```
 c8volt embed export [flags]
+```
+
+### Examples
+
+```
+  ./c8volt embed export --all --out ./fixtures
+  ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
+  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
 ```
 
 ### Options

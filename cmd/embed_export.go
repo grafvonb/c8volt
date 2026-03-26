@@ -21,8 +21,11 @@ var (
 )
 
 var embedExportCmd = &cobra.Command{
-	Use:        "export",
-	Short:      "Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.",
+	Use:   "export",
+	Short: "Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.",
+	Example: `  ./c8volt embed export --all --out ./fixtures
+  ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
+  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures`,
 	Aliases:    []string{"exp", "extract"},
 	SuggestFor: []string{"exprot", "exrpot", "exract", "extrat"},
 	Run: func(cmd *cobra.Command, args []string) {

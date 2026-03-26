@@ -1,14 +1,23 @@
 ---
 title: "c8volt deploy process-definition"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt deploy process-definition
 
-Deploy a process definition
+Deploy BPMN process definition files
 
 ```
 c8volt deploy process-definition [flags]
+```
+
+### Examples
+
+```
+  ./c8volt deploy pd --file ./order-process.bpmn
+  ./c8volt deploy pd --file ./order-process.bpmn --run
+  ./c8volt deploy pd --file - < ./order-process.bpmn
 ```
 
 ### Options

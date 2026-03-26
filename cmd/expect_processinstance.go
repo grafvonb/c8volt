@@ -14,8 +14,11 @@ var (
 )
 
 var expectProcessInstanceCmd = &cobra.Command{
-	Use:     "process-instance",
-	Short:   "Expect a process instance(s) to reach a certain state from list of states",
+	Use:   "process-instance",
+	Short: "Expect a process instance(s) to reach a certain state from list of states",
+	Example: `  ./c8volt expect pi --key 2251799813685255 --state active
+  ./c8volt expect pi --key 2251799813685255 --state completed --state absent
+  ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

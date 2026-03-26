@@ -14,8 +14,10 @@ var (
 )
 
 var deleteProcessInstanceCmd = &cobra.Command{
-	Use:     "process-instance",
-	Short:   "Delete a process instance by its key",
+	Use:   "process-instance",
+	Short: "Delete process instance(s), optionally cancelling first",
+	Example: `  ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

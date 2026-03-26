@@ -20,8 +20,11 @@ var (
 )
 
 var embedDeployCmd = &cobra.Command{
-	Use:     "deploy",
-	Short:   "Deploy embedded (virtual) resources",
+	Use:   "deploy",
+	Short: "Deploy bundled BPMN fixtures for quick testing",
+	Example: `  ./c8volt embed list
+  ./c8volt embed deploy --all
+  ./c8volt embed deploy --all --run`,
 	Aliases: []string{"dep"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

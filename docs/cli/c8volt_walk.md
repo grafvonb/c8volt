@@ -1,5 +1,6 @@
 ---
 title: "c8volt walk"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -43,5 +44,5 @@ c8volt walk [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt walk process-instance](c8volt_walk_process-instance.md)	 - Traverse (walk) the parent/child graph of process instances
+* [c8volt walk process-instance](c8volt_walk_process-instance.md)	 - Inspect the parent/child tree of process instances
 

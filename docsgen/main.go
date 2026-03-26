@@ -45,10 +45,13 @@ func main() {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, filepath.Ext(base))
 				title := strings.ReplaceAll(name, "_", " ")
-				return fmt.Sprintf("---\ntitle: %q\n---\n\n[CLI Reference]({{ \"/cli/\" | relative_url }})\n", title)
+				return fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n[CLI Reference]({{ \"/cli/\" | relative_url }})\n", title)
 			}
 			link := func(name string) string { return strings.ToLower(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
+				log.Fatal(err)
+			}
+			if err := syncDocsIndexFromReadme("README.md", "./docs/index.md"); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -64,4 +67,30 @@ func main() {
 	default:
 		log.Fatalf("unknown format: %s", *format)
 	}
+}
+
+func syncDocsIndexFromReadme(src, dst string) error {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", src, err)
+	}
+
+	body := string(b)
+	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
+	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/index.md)")
+	body = "## Quick Links\n\n- [CLI Reference](./cli/index.md)\n- [GitHub Releases](https://github.com/grafvonb/c8volt/releases)\n- [Repository](https://github.com/grafvonb/c8volt)\n\n" + body
+
+	const frontMatter = `---
+title: "c8volt"
+permalink: /
+nav_order: 1
+has_toc: true
+---
+
+`
+
+	if err := os.WriteFile(dst, []byte(frontMatter+body), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", dst, err)
+	}
+	return nil
 }

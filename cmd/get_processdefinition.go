@@ -23,8 +23,11 @@ var (
 )
 
 var getProcessDefinitionCmd = &cobra.Command{
-	Use:     "process-definition",
-	Short:   "Get deployed process definitions",
+	Use:   "process-definition",
+	Short: "List or fetch deployed process definitions",
+	Example: `  ./c8volt get pd --latest
+  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
+  ./c8volt get pd --key 2251799813686017 --xml`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
 }

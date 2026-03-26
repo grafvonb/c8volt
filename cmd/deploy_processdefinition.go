@@ -15,8 +15,11 @@ var (
 )
 
 var deployProcessDefinitionCmd = &cobra.Command{
-	Use:     "process-definition",
-	Short:   "Deploy a process definition",
+	Use:   "process-definition",
+	Short: "Deploy BPMN process definition files",
+	Example: `  ./c8volt deploy pd --file ./order-process.bpmn
+  ./c8volt deploy pd --file ./order-process.bpmn --run
+  ./c8volt deploy pd --file - < ./order-process.bpmn`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

@@ -1,5 +1,6 @@
 ---
 title: "c8volt embed list"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -9,6 +10,13 @@ List embedded (virtual) files containing process definitions
 
 ```
 c8volt embed list [flags]
+```
+
+### Examples
+
+```
+  ./c8volt embed list
+  ./c8volt --json embed list
 ```
 
 ### Options

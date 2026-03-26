@@ -1,5 +1,6 @@
 ---
 title: "c8volt cancel"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})

@@ -15,8 +15,11 @@ var (
 )
 
 var cancelProcessInstanceCmd = &cobra.Command{
-	Use:     "process-instance",
-	Short:   "Cancel process instance(s) by key(s) and wait for the cancellation to complete",
+	Use:   "process-instance",
+	Short: "Cancel process instance(s) by key(s) and wait for the cancellation to complete",
+	Example: `  ./c8volt cancel pi --key 2251799813711967
+  ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

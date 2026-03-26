@@ -1,14 +1,23 @@
 ---
 title: "c8volt embed deploy"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt embed deploy
 
-Deploy embedded (virtual) resources
+Deploy bundled BPMN fixtures for quick testing
 
 ```
 c8volt embed deploy [flags]
+```
+
+### Examples
+
+```
+  ./c8volt embed list
+  ./c8volt embed deploy --all
+  ./c8volt embed deploy --all --run
 ```
 
 ### Options

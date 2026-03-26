@@ -1,5 +1,6 @@
 ---
 title: "c8volt get cluster-topology"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})

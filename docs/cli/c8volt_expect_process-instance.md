@@ -1,5 +1,6 @@
 ---
 title: "c8volt expect process-instance"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -9,6 +10,14 @@ Expect a process instance(s) to reach a certain state from list of states
 
 ```
 c8volt expect process-instance [flags]
+```
+
+### Examples
+
+```
+  ./c8volt expect pi --key 2251799813685255 --state active
+  ./c8volt expect pi --key 2251799813685255 --state completed --state absent
+  ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
 ```
 
 ### Options

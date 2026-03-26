@@ -44,8 +44,8 @@ func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 	output := executeCompletionForTest(t, "get", "")
 
-	require.Contains(t, output, "process-definition\tGet deployed process definitions\n")
-	require.Contains(t, output, "process-instance\tGet process instances\n")
+	require.Contains(t, output, "process-definition\tList or fetch deployed process definitions\n")
+	require.Contains(t, output, "process-instance\tList or fetch process instances\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 

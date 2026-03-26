@@ -1,5 +1,6 @@
 ---
 title: "c8volt delete process-definition"
+nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
@@ -9,6 +10,14 @@ Delete a process definition(s)
 
 ```
 c8volt delete process-definition [flags]
+```
+
+### Examples
+
+```
+  ./c8volt delete pd --key 2251799813686017 --auto-confirm
+  ./c8volt delete pd --bpmn-process-id order-process --latest --force
+  ./c8volt get pd --bpmn-process-id order-process --latest --keys-only | ./c8volt delete pd - --auto-confirm
 ```
 
 ### Options
