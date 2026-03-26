@@ -2,7 +2,7 @@
 import sys, os, yaml
 
 if len(sys.argv) < 2:
-    print("Usage: python mutate-fix-jobresult-discriminator.py <inputfile.yaml>")
+    print("Usage: python mutations/mutate-fix-jobresult-discriminator.py <inputfile.yaml>")
     sys.exit(1)
 
 path = sys.argv[1]

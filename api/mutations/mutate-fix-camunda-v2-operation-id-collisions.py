@@ -3,7 +3,7 @@
 # oapi-codegen response wrapper names would collide with schema model names.
 #
 # Usage:
-#   python3 api/mutate-fix-camunda-v2-operation-id-collisions.py <inputfile.yaml>
+#   python3 api/mutations/mutate-fix-camunda-v2-operation-id-collisions.py <inputfile.yaml>
 #
 # Output:
 #   Writes <inputfile>-opids-fixed.yaml in the same directory.
@@ -85,6 +85,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
 
 

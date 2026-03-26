@@ -33,7 +33,7 @@ def update_operation_ids(input_file: str):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python mutate-operation-ids.py <inputfile.yaml>")
+        print("Usage: python mutations/mutate-operation-ids.py <inputfile.yaml>")
         sys.exit(1)
 
     input_file = sys.argv[1]

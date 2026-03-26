@@ -15,7 +15,7 @@ def remove_sortvalues(node):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python mutate-remove-sort-values.py <inputfile.yaml>")
+        print("Usage: python mutations/mutate-remove-sort-values.py <inputfile.yaml>")
         sys.exit(1)
 
     path = sys.argv[1]

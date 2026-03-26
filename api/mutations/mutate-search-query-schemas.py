@@ -151,7 +151,7 @@ def patch_search_query_schemas(input_file: str):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python mutate-search-schemas.py <inputfile.yaml>")
+        print("Usage: python mutations/mutate-search-schemas.py <inputfile.yaml>")
         sys.exit(1)
 
     patch_search_query_schemas(sys.argv[1])

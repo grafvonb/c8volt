@@ -1,14 +1,15 @@
 #!/usr/bin/env zsh
-# Bundle the Camunda v2 OpenAPI spec into a single YAML file.
-#
-# Defaults:
-# - input:  camunda-openapi.yaml
-# - output: camunda-openapi-bundled.yaml
-# - dir:    camunda-docs/api/camunda/v2
+# Purpose:
+#   Bundle the legacy docs-repo /v2 Camunda OpenAPI spec into a single YAML
+#   file.
 #
 # Usage:
-#   zsh api/2_bundle-camunda-v2-api.sh
-#   zsh api/2_bundle-camunda-v2-api.sh path/to/camunda-docs/api/camunda/v2
+#   zsh api/2-bundle-camunda-docs-v2-spec.sh
+#   zsh api/2-bundle-camunda-docs-v2-spec.sh path/to/camunda-docs/api/camunda/v2
+#
+# Notes:
+#   This script operates on the docs-repo split YAML files and writes
+#   camunda-openapi-bundled.yaml in the target directory.
 set -euo pipefail
 
 # Optional first arg overrides the default v2 API directory.

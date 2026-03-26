@@ -4,7 +4,7 @@ import os
 import yaml
 
 if len(sys.argv) < 2:
-    print("Usage: python mutate-fix-process-instance-filter-fields.py <inputfile.yaml>")
+    print("Usage: python mutations/mutate-fix-process-instance-filter-fields.py <inputfile.yaml>")
     sys.exit(1)
 
 path = sys.argv[1]

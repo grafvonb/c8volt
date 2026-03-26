@@ -81,8 +81,10 @@ env/
 ENV/
 
 # Generated API checkout backups
-api/camunda-docs.bak/
-api/camunda-docs.bak*/
+api/*.bak/
+api/*.bak*/
+api/camunda/
+api/camunda-docs/
 
 # Jekyll
 /docs/_site/

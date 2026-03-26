@@ -9,7 +9,7 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
 
-.PHONY: all tidy generate build test lint fmt vet clean install run cover cover.html release docs
+.PHONY: all tidy generate generate-clients build test lint fmt vet clean install run cover cover.html release docs
 
 all: tidy fmt vet lint test build docs
 
@@ -18,6 +18,9 @@ tidy:
 
 generate:
 	go generate $(PKG)
+
+generate-clients:
+	bash api/refresh-clients.sh
 
 docs:
 	go run ./docsgen -out ./docs/cli -format markdown

@@ -15,7 +15,7 @@ def fix(node, parent=None):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python mutate-sort-values.py <inputfile.yaml>")
+        print("Usage: python mutations/mutate-sort-values.py <inputfile.yaml>")
         sys.exit(1)
 
     path = sys.argv[1]
