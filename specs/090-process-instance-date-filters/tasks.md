@@ -17,8 +17,8 @@
 
 **Purpose**: Prepare the feature-specific test harness and verification notes before shared implementation work begins.
 
-- [ ] T001 [P] Create command test coverage scaffold for date-filter scenarios in cmd/get_processinstance_test.go
-- [ ] T002 [P] Align feature verification commands and temp-config prerequisites in specs/090-process-instance-date-filters/quickstart.md
+- [x] T001 [P] Create command test coverage scaffold for date-filter scenarios in cmd/get_processinstance_test.go
+- [x] T002 [P] Align feature verification commands and temp-config prerequisites in specs/090-process-instance-date-filters/quickstart.md
 
 ---
 

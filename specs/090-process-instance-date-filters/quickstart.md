@@ -3,8 +3,10 @@
 ## Prerequisites
 
 - Work on branch `090-process-instance-date-filters`
-- Use an explicit temp config in command tests when executing non-help paths
-- Set `app.camunda_version` in test configs to cover both `v8.8` and `v8.7`
+- Use an explicit temp config in command tests when executing non-help paths; for this feature, use `writeTestConfigForVersion(...)` in `cmd/get_processinstance_test.go` and always pass `--config`
+- Set `app.camunda_version` explicitly in temp configs to cover both `v8.8` and `v8.7`; do not rely on repository-local defaults
+- Prefer `--json` in command assertions so process-instance output checks stay stable while the feature adds new search flags
+- For fresh `get process-instance` command tests, use a fresh `Root()` execution path instead of the shared pre-`SetArgs()` flag reset helper; Cobra can round-trip `StringSlice` defaults into a literal `[]` and falsely trip `--key` exclusivity
 
 ## Implementation Walkthrough
 
@@ -13,13 +15,14 @@
 3. Update facade/domain mapping in [`c8volt/process/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go) and related helpers so date bounds flow into versioned services.
 4. Implement v8.8 request mapping in [`internal/services/processinstance/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go) using native inclusive datetime filter operators.
 5. Implement v8.7 rejection in [`internal/services/processinstance/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go) through the existing error path.
-6. Add or update targeted tests in command and service packages to cover valid ranges, invalid dates, invalid ranges, v8.7 rejection, and unchanged behavior when date filters are absent.
+6. Add or update targeted tests in `cmd/get_processinstance_test.go` and the versioned service packages to cover valid ranges, invalid dates, invalid ranges, v8.7 rejection, and unchanged behavior when date filters are absent.
 7. Update `README.md`, regenerate CLI docs with `make docs-content` and `make docs`, then run `make test`.
 
 ## Suggested Verification Commands
 
 ```bash
-go test ./cmd ./c8volt/process ./internal/services/processinstance/...
+go test ./cmd -run 'TestGetProcessInstance(SearchScaffold_UsesTempConfigAndCapturesSearchRequest|DateFilterScaffold)$'
+go test ./c8volt/process ./internal/services/processinstance/...
 make docs-content
 make docs
 make test
