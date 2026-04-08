@@ -36,6 +36,43 @@ func TestClient_GetProcessDefinitionXML(t *testing.T) {
 	assert.Equal(t, "<definitions id=\"order-process\"/>", xml)
 }
 
+func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, int32(25), size)
+			assert.Equal(t, d.ProcessInstanceFilter{
+				BpmnProcessId:        "order-process",
+				ProcessDefinitionKey: "2251799813685255",
+				StartDateAfter:       "2026-01-01",
+				StartDateBefore:      "2026-01-31",
+				EndDateAfter:         "2026-02-01",
+				EndDateBefore:        "2026-02-28",
+				State:                d.StateCompleted,
+				ParentKey:            "12345",
+			}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstance{}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	_, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
+		BpmnProcessId:        "order-process",
+		ProcessDefinitionKey: "2251799813685255",
+		StartDateAfter:       "2026-01-01",
+		StartDateBefore:      "2026-01-31",
+		EndDateAfter:         "2026-02-01",
+		EndDateBefore:        "2026-02-28",
+		State:                StateCompleted,
+		ParentKey:            "12345",
+	}, 25, options.WithVerbose())
+
+	require.NoError(t, err)
+}
+
 type stubProcessDefinitionAPI struct {
 	getProcessDefinitionXML func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
@@ -61,7 +98,9 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
-type stubProcessInstanceAPI struct{}
+type stubProcessInstanceAPI struct {
+	searchForProcessInstances func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
+}
 
 func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
 	panic("unexpected call")
@@ -79,8 +118,11 @@ func (stubProcessInstanceAPI) FilterProcessInstanceWithOrphanParent(context.Cont
 	panic("unexpected call")
 }
 
-func (stubProcessInstanceAPI) SearchForProcessInstances(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	if s.searchForProcessInstances == nil {
+		panic("unexpected call")
+	}
+	return s.searchForProcessInstances(ctx, filter, size, opts...)
 }
 
 func (stubProcessInstanceAPI) CancelProcessInstance(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {

@@ -65,6 +65,10 @@ type ProcessInstanceFilter struct {
 	ProcessVersion       int32  `json:"version,omitempty"`
 	ProcessVersionTag    string `json:"versionTag,omitempty"`
 	ProcessDefinitionKey string `json:"processDefinitionKey,omitempty"`
+	StartDateAfter       string `json:"startDateAfter,omitempty"`
+	StartDateBefore      string `json:"startDateBefore,omitempty"`
+	EndDateAfter         string `json:"endDateAfter,omitempty"`
+	EndDateBefore        string `json:"endDateBefore,omitempty"`
 	State                State  `json:"state,omitempty"`
 	ParentKey            string `json:"parentKey,omitempty"`
 }

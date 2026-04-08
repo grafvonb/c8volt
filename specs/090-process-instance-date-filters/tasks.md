@@ -28,10 +28,10 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T003 [P] Extend the public process-instance filter with start/end date bound fields in c8volt/process/model.go
-- [ ] T004 [P] Extend the domain process-instance filter with start/end date bound fields in internal/domain/processinstance.go
-- [ ] T005 Update facade-to-domain process-instance filter conversion for date bounds in c8volt/process/client.go
-- [ ] T006 Add shared filter-mapping coverage for the new date bound fields in c8volt/process/client_test.go
+- [x] T003 [P] Extend the public process-instance filter with start/end date bound fields in c8volt/process/model.go
+- [x] T004 [P] Extend the domain process-instance filter with start/end date bound fields in internal/domain/processinstance.go
+- [x] T005 Update facade-to-domain process-instance filter conversion for date bounds in c8volt/process/client.go
+- [x] T006 Add shared filter-mapping coverage for the new date bound fields in c8volt/process/client_test.go
 
 **Checkpoint**: Shared process-instance filter models and facade mappings are ready for story-specific command and service work.
 
