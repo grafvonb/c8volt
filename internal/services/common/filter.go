@@ -38,13 +38,14 @@ func NewProcessInstanceStateEqFilterPtr(v string) *camundav88.ProcessInstanceSta
 	})
 }
 
-func NewDateTimeRangeFilterPtr(after, before *time.Time) *camundav88.DateTimeFilterProperty {
-	if after == nil && before == nil {
+func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav88.DateTimeFilterProperty {
+	if after == nil && before == nil && exists == nil {
 		return nil
 	}
 	return newFilterPtr(camundav88.AdvancedDateTimeFilter{
-		Gte: after,
-		Lte: before,
+		Gte:    after,
+		Lte:    before,
+		Exists: exists,
 	}, (*camundav88.DateTimeFilterProperty).FromAdvancedDateTimeFilter)
 }
 

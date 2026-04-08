@@ -169,6 +169,15 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	if err != nil {
 		return nil, fmt.Errorf("building start-date filter: %w", err)
 	}
+	endDateAfter, err := parseInclusiveDateLowerBound(filter.EndDateAfter)
+	if err != nil {
+		return nil, fmt.Errorf("building end-date filter: %w", err)
+	}
+	endDateBefore, err := parseInclusiveDateUpperBound(filter.EndDateBefore)
+	if err != nil {
+		return nil, fmt.Errorf("building end-date filter: %w", err)
+	}
+	endDateExists := endDateExistsFilter(filter)
 
 	bodyFilter := camundav88.ProcessInstanceFilter{
 		TenantId:                    common.NewStringEqFilterPtr(s.cfg.App.Tenant),
@@ -176,7 +185,8 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		ProcessDefinitionId:         common.NewStringEqFilterPtr(filter.BpmnProcessId),
 		ProcessDefinitionVersion:    common.NewIntegerEqFilterPtr(filter.ProcessVersion),
 		ProcessDefinitionVersionTag: common.NewStringEqFilterPtr(filter.ProcessVersionTag),
-		StartDate:                   common.NewDateTimeRangeFilterPtr(startDateAfter, startDateBefore),
+		StartDate:                   common.NewDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil),
+		EndDate:                     common.NewDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExists),
 		State:                       common.NewProcessInstanceStateEqFilterPtr(string(filter.State)),
 		ParentProcessInstanceKey:    common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey),
 	}
@@ -208,6 +218,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		bodyFilter.ProcessDefinitionVersion != nil ||
 		bodyFilter.ProcessDefinitionVersionTag != nil ||
 		bodyFilter.StartDate != nil ||
+		bodyFilter.EndDate != nil ||
 		bodyFilter.State != nil ||
 		bodyFilter.ParentProcessInstanceKey != nil {
 		body.Filter = &bodyFilter
@@ -244,6 +255,14 @@ func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
 	}
 	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
 	return &t, nil
+}
+
+func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
+	if filter.EndDateAfter == "" && filter.EndDateBefore == "" {
+		return nil
+	}
+	exists := true
+	return &exists
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {

@@ -72,3 +72,25 @@ Started: 2026-04-08 13:08:20
 - The command can validate date-only `--start-date-*` flags with `time.Parse(time.DateOnly, ...)` while still passing the original strings through the shared filter model for versioned service translation.
 - Reusing a shared `NewDateTimeRangeFilterPtr` helper keeps v8.8 advanced datetime filter construction aligned with the existing common filter helpers instead of open-coding generated union handling in the service.
 ---
+
+## Iteration 4 - 2026-04-08 13:33:27 CEST
+**User Story**: User Story 2 - Filter by End Date and Combine with Existing Filters
+**Tasks Completed**:
+- [x] T011: Add command coverage for valid end-date filters combined with existing search flags in `cmd/get_processinstance_test.go`
+- [x] T012: Add v8.8 service coverage for end-date mapping and missing `endDate` exclusion in `internal/services/processinstance/v88/service_test.go`
+- [x] T013: Implement end-date flags and composed search-filter population in `cmd/get_processinstance.go`
+- [x] T014: Implement native v8.8 end-date filter translation and missing `endDate` handling in `internal/services/processinstance/v88/service.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/common/filter.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- specs/090-process-instance-date-filters/progress.md
+- specs/090-process-instance-date-filters/tasks.md
+**Learnings**:
+- End-date filtering can stay fully server-side on v8.8 by extending the shared datetime filter helper with the generated `$exists` operator instead of adding a separate client-side exclusion pass.
+- The process-instance command test harness should reset all date-flag globals, not just search-state globals, so successive in-process executions do not leak start or end date filters across subtests.
+---

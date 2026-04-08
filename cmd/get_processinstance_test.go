@@ -126,7 +126,82 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	})
 
 	t.Run("end date command coverage", func(t *testing.T) {
-		t.Skip("scaffold for T011: add valid --end-date-* command coverage in this file")
+		t.Run("lower bound only", func(t *testing.T) {
+			var requests []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				requests = append(requests, string(body))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"items":[]}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--json",
+				"get", "process-instance",
+				"--end-date-after", "2026-02-01",
+			)
+
+			body := decodeSingleRequestJSON(t, requests)
+			filter := body["filter"].(map[string]any)
+			endDate := filter["endDate"].(map[string]any)
+
+			require.Equal(t, "2026-02-01T00:00:00Z", endDate["$gte"])
+			require.Equal(t, true, endDate["$exists"])
+			require.NotContains(t, endDate, "$lte")
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal([]byte(output), &got))
+			require.NotContains(t, got, "error")
+		})
+
+		t.Run("inclusive range composed with state filter", func(t *testing.T) {
+			var requests []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				requests = append(requests, string(body))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"items":[]}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--json",
+				"get", "process-instance",
+				"--state", "completed",
+				"--end-date-after", "2026-02-01",
+				"--end-date-before", "2026-03-31",
+			)
+
+			body := decodeSingleRequestJSON(t, requests)
+			filter := body["filter"].(map[string]any)
+			endDate := filter["endDate"].(map[string]any)
+
+			require.Equal(t, "COMPLETED", filter["state"])
+			require.Equal(t, "2026-02-01T00:00:00Z", endDate["$gte"])
+			require.Equal(t, "2026-03-31T23:59:59.999999999Z", endDate["$lte"])
+			require.Equal(t, true, endDate["$exists"])
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal([]byte(output), &got))
+			require.NotContains(t, got, "error")
+		})
 	})
 
 	t.Run("invalid date command coverage", func(t *testing.T) {
@@ -168,6 +243,10 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIProcessVersion = 0
 	flagGetPIProcessVersionTag = ""
 	flagGetPIProcessDefinitionKey = ""
+	flagGetPIStartDateAfter = ""
+	flagGetPIStartDateBefore = ""
+	flagGetPIEndDateAfter = ""
+	flagGetPIEndDateBefore = ""
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize

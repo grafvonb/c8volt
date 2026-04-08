@@ -65,13 +65,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T011 [US2] Add command coverage for valid end-date filters combined with existing search flags in cmd/get_processinstance_test.go
-- [ ] T012 [US2] Add v8.8 service coverage for end-date mapping and missing `endDate` exclusion in internal/services/processinstance/v88/service_test.go
+- [x] T011 [US2] Add command coverage for valid end-date filters combined with existing search flags in cmd/get_processinstance_test.go
+- [x] T012 [US2] Add v8.8 service coverage for end-date mapping and missing `endDate` exclusion in internal/services/processinstance/v88/service_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Implement end-date flags and composed search-filter population in cmd/get_processinstance.go
-- [ ] T014 [US2] Implement native v8.8 end-date filter translation and missing `endDate` handling in internal/services/processinstance/v88/service.go
+- [x] T013 [US2] Implement end-date flags and composed search-filter population in cmd/get_processinstance.go
+- [x] T014 [US2] Implement native v8.8 end-date filter translation and missing `endDate` handling in internal/services/processinstance/v88/service.go
 
 **Checkpoint**: User Story 2 works independently and preserves composition with existing process-instance filters.
 

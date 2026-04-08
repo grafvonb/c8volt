@@ -18,6 +18,8 @@ var (
 	flagGetPIProcessDefinitionKey string
 	flagGetPIStartDateAfter       string
 	flagGetPIStartDateBefore      string
+	flagGetPIEndDateAfter         string
+	flagGetPIEndDateBefore        string
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -129,6 +131,8 @@ func init() {
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
 	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
@@ -157,6 +161,8 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 		ProcessDefinitionKey: flagGetPIProcessDefinitionKey,
 		StartDateAfter:       flagGetPIStartDateAfter,
 		StartDateBefore:      flagGetPIStartDateBefore,
+		EndDateAfter:         flagGetPIEndDateAfter,
+		EndDateBefore:        flagGetPIEndDateBefore,
 	}
 
 	if s := flagGetPIState; s != "" && s != "all" {
@@ -175,6 +181,8 @@ func hasPISearchFilterFlags() bool {
 		flagGetPIProcessDefinitionKey != "" ||
 		flagGetPIStartDateAfter != "" ||
 		flagGetPIStartDateBefore != "" ||
+		flagGetPIEndDateAfter != "" ||
+		flagGetPIEndDateBefore != "" ||
 		(flagGetPIState != "" && flagGetPIState != "all")
 }
 
@@ -201,6 +209,12 @@ func validatePISearchFlags() error {
 		return err
 	}
 	if err := validatePIDateFlag("--start-date-before", flagGetPIStartDateBefore); err != nil {
+		return err
+	}
+	if err := validatePIDateFlag("--end-date-after", flagGetPIEndDateAfter); err != nil {
+		return err
+	}
+	if err := validatePIDateFlag("--end-date-before", flagGetPIEndDateBefore); err != nil {
 		return err
 	}
 	if flagGetPIBpmnProcessID == "" &&
