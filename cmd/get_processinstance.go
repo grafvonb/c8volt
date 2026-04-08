@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -15,6 +16,8 @@ var (
 	flagGetPIProcessVersion       int32
 	flagGetPIProcessVersionTag    string
 	flagGetPIProcessDefinitionKey string
+	flagGetPIStartDateAfter       string
+	flagGetPIStartDateBefore      string
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -124,6 +127,8 @@ func init() {
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
+	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
@@ -150,6 +155,8 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 		ProcessVersion:       flagGetPIProcessVersion,
 		ProcessVersionTag:    flagGetPIProcessVersionTag,
 		ProcessDefinitionKey: flagGetPIProcessDefinitionKey,
+		StartDateAfter:       flagGetPIStartDateAfter,
+		StartDateBefore:      flagGetPIStartDateBefore,
 	}
 
 	if s := flagGetPIState; s != "" && s != "all" {
@@ -166,6 +173,8 @@ func hasPISearchFilterFlags() bool {
 		flagGetPIProcessVersion != 0 ||
 		flagGetPIProcessVersionTag != "" ||
 		flagGetPIProcessDefinitionKey != "" ||
+		flagGetPIStartDateAfter != "" ||
+		flagGetPIStartDateBefore != "" ||
 		(flagGetPIState != "" && flagGetPIState != "all")
 }
 
@@ -188,6 +197,12 @@ func validatePISearchFlags() error {
 			flagGetPIProcessVersionTag != "") {
 		return mutuallyExclusiveFlagsf("--pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag")
 	}
+	if err := validatePIDateFlag("--start-date-after", flagGetPIStartDateAfter); err != nil {
+		return err
+	}
+	if err := validatePIDateFlag("--start-date-before", flagGetPIStartDateBefore); err != nil {
+		return err
+	}
 	if flagGetPIBpmnProcessID == "" &&
 		(flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
 		return missingDependentFlagsf("--pd-version and --pd-version-tag require --bpmn-process-id to be set")
@@ -197,6 +212,16 @@ func validatePISearchFlags() error {
 	}
 	if flagGetPIIncidentsOnly && flagGetPINoIncidentsOnly {
 		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
+	}
+	return nil
+}
+
+func validatePIDateFlag(flagName, value string) error {
+	if value == "" {
+		return nil
+	}
+	if _, err := time.Parse(time.DateOnly, value); err != nil {
+		return invalidFlagValuef("invalid value for %s: %q, expected YYYY-MM-DD", flagName, value)
 	}
 	return nil
 }

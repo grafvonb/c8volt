@@ -1,6 +1,8 @@
 package common
 
 import (
+	"time"
+
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 )
 
@@ -34,6 +36,16 @@ func NewProcessInstanceStateEqFilterPtr(v string) *camundav88.ProcessInstanceSta
 			camundav88.ProcessInstanceStateEnum(s),
 		)
 	})
+}
+
+func NewDateTimeRangeFilterPtr(after, before *time.Time) *camundav88.DateTimeFilterProperty {
+	if after == nil && before == nil {
+		return nil
+	}
+	return newFilterPtr(camundav88.AdvancedDateTimeFilter{
+		Gte: after,
+		Lte: before,
+	}, (*camundav88.DateTimeFilterProperty).FromAdvancedDateTimeFilter)
 }
 
 func newFilterPtr[T any, D any](v D, init func(*T, D) error) *T {

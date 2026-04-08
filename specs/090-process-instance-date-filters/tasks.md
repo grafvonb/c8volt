@@ -45,13 +45,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [US1] Add command coverage for valid start-date flags and inclusive range behavior in cmd/get_processinstance_test.go
-- [ ] T008 [US1] Add v8.8 service coverage for inclusive start-date request mapping in internal/services/processinstance/v88/service_test.go
+- [x] T007 [US1] Add command coverage for valid start-date flags and inclusive range behavior in cmd/get_processinstance_test.go
+- [x] T008 [US1] Add v8.8 service coverage for inclusive start-date request mapping in internal/services/processinstance/v88/service_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement start-date flags, parsing, and search-filter population in cmd/get_processinstance.go
-- [ ] T010 [US1] Implement native v8.8 start-date filter translation in internal/services/processinstance/v88/service.go
+- [x] T009 [US1] Implement start-date flags, parsing, and search-filter population in cmd/get_processinstance.go
+- [x] T010 [US1] Implement native v8.8 start-date filter translation in internal/services/processinstance/v88/service.go
 
 **Checkpoint**: User Story 1 is fully functional and testable on its own as the MVP slice.
 

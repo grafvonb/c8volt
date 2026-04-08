@@ -161,12 +161,22 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
 
+	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
+	if err != nil {
+		return nil, fmt.Errorf("building start-date filter: %w", err)
+	}
+	startDateBefore, err := parseInclusiveDateUpperBound(filter.StartDateBefore)
+	if err != nil {
+		return nil, fmt.Errorf("building start-date filter: %w", err)
+	}
+
 	bodyFilter := camundav88.ProcessInstanceFilter{
 		TenantId:                    common.NewStringEqFilterPtr(s.cfg.App.Tenant),
 		ProcessInstanceKey:          common.NewProcessInstanceKeyEqFilterPtr(filter.Key),
 		ProcessDefinitionId:         common.NewStringEqFilterPtr(filter.BpmnProcessId),
 		ProcessDefinitionVersion:    common.NewIntegerEqFilterPtr(filter.ProcessVersion),
 		ProcessDefinitionVersionTag: common.NewStringEqFilterPtr(filter.ProcessVersionTag),
+		StartDate:                   common.NewDateTimeRangeFilterPtr(startDateAfter, startDateBefore),
 		State:                       common.NewProcessInstanceStateEqFilterPtr(string(filter.State)),
 		ParentProcessInstanceKey:    common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey),
 	}
@@ -197,6 +207,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		bodyFilter.ProcessDefinitionId != nil ||
 		bodyFilter.ProcessDefinitionVersion != nil ||
 		bodyFilter.ProcessDefinitionVersionTag != nil ||
+		bodyFilter.StartDate != nil ||
 		bodyFilter.State != nil ||
 		bodyFilter.ParentProcessInstanceKey != nil {
 		body.Filter = &bodyFilter
@@ -210,6 +221,29 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		return nil, err
 	}
 	return toolx.MapSlice(payload.Items, fromProcessInstanceResult), nil
+}
+
+func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.DateOnly, raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
+	}
+	return &t, nil
+}
+
+func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.DateOnly, raw)
+	if err != nil {
+		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
+	}
+	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
+	return &t, nil
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {

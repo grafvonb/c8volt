@@ -51,7 +51,78 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 
 func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("start date command coverage", func(t *testing.T) {
-		t.Skip("scaffold for T007: add valid --start-date-* command coverage in this file")
+		t.Run("lower bound only", func(t *testing.T) {
+			var requests []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				requests = append(requests, string(body))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"items":[]}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--json",
+				"get", "process-instance",
+				"--start-date-after", "2026-01-01",
+			)
+
+			body := decodeSingleRequestJSON(t, requests)
+			filter := body["filter"].(map[string]any)
+			startDate := filter["startDate"].(map[string]any)
+
+			require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
+			require.NotContains(t, startDate, "$lte")
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal([]byte(output), &got))
+			require.NotContains(t, got, "error")
+		})
+
+		t.Run("inclusive range", func(t *testing.T) {
+			var requests []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				requests = append(requests, string(body))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"items":[]}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--json",
+				"get", "process-instance",
+				"--start-date-after", "2026-01-01",
+				"--start-date-before", "2026-01-31",
+			)
+
+			body := decodeSingleRequestJSON(t, requests)
+			filter := body["filter"].(map[string]any)
+			startDate := filter["startDate"].(map[string]any)
+
+			require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
+			require.Equal(t, "2026-01-31T23:59:59.999999999Z", startDate["$lte"])
+
+			var got map[string]any
+			require.NoError(t, json.Unmarshal([]byte(output), &got))
+			require.NotContains(t, got, "error")
+		})
 	})
 
 	t.Run("end date command coverage", func(t *testing.T) {

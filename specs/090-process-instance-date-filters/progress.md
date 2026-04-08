@@ -8,6 +8,8 @@ Started: 2026-04-08 13:08:20
 - `get process-instance` currently has no dedicated command test file; new coverage should live in `cmd/get_processinstance_test.go` instead of extending unrelated `cmd/get_test.go` cases.
 - Fresh `get process-instance` command tests should use an explicit temp config plus `--config`, and they should avoid the shared pre-`SetArgs()` flag reset helper because Cobra can round-trip `StringSlice` defaults into a literal `[]` and falsely trip `--key` exclusivity.
 - Shared facade-to-domain process-instance filter mapping lives in `c8volt/process/convert.go`; foundational filter plumbing should extend that helper and verify propagation through `client.SearchProcessInstances` rather than adding a separate conversion path.
+- v8.8 generated datetime search filters should be built through `camundav88.AdvancedDateTimeFilter` and the union setter in `internal/services/common/filter.go`; direct struct assignment to `DateTimeFilterProperty` is not the repository-native pattern.
+- Inclusive day-upper-bound filtering is represented as next-day midnight minus one nanosecond, and the command-level search tests can assert that exact serialized `$lte` timestamp via the real `/v2/process-instances/search` request body.
 
 ---
 
@@ -47,4 +49,26 @@ Started: 2026-04-08 13:08:20
 **Learnings**:
 - The actual shared process-instance filter conversion is implemented in `c8volt/process/convert.go`, so future foundational or facade filter work should extend that helper even when the task description references `client.go`.
 - A single `client.SearchProcessInstances` facade test is enough to prove both filter-field propagation and facade-option pass-through without coupling foundational coverage to versioned service behavior.
+---
+
+## Iteration 3 - 2026-04-08 13:24:52 CEST
+**User Story**: User Story 1 - Filter by Start Date
+**Tasks Completed**:
+- [x] T007: Add command coverage for valid start-date flags and inclusive range behavior in `cmd/get_processinstance_test.go`
+- [x] T008: Add v8.8 service coverage for inclusive start-date request mapping in `internal/services/processinstance/v88/service_test.go`
+- [x] T009: Implement start-date flags, parsing, and search-filter population in `cmd/get_processinstance.go`
+- [x] T010: Implement native v8.8 start-date filter translation in `internal/services/processinstance/v88/service.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/common/filter.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- specs/090-process-instance-date-filters/progress.md
+- specs/090-process-instance-date-filters/tasks.md
+**Learnings**:
+- The command can validate date-only `--start-date-*` flags with `time.Parse(time.DateOnly, ...)` while still passing the original strings through the shared filter model for versioned service translation.
+- Reusing a shared `NewDateTimeRangeFilterPtr` helper keeps v8.8 advanced datetime filter construction aligned with the existing common filter helpers instead of open-coding generated union handling in the service.
 ---
