@@ -39,6 +39,8 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+  ./c8volt get pi --end-date-before 2026-03-31 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {

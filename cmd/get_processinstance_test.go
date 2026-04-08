@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,7 +18,7 @@ import (
 
 func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 
@@ -56,7 +57,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("start date command coverage", func(t *testing.T) {
 		t.Run("lower bound only", func(t *testing.T) {
 			var requests []string
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 
@@ -92,7 +93,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 
 		t.Run("inclusive range", func(t *testing.T) {
 			var requests []string
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 
@@ -131,7 +132,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("end date command coverage", func(t *testing.T) {
 		t.Run("lower bound only", func(t *testing.T) {
 			var requests []string
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 
@@ -168,7 +169,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 
 		t.Run("inclusive range composed with state filter", func(t *testing.T) {
 			var requests []string
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 
@@ -248,6 +249,22 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(requests[0]), &got))
 	return got
+}
+
+func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
+	t.Helper()
+
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("local listener unavailable in this environment: %v", err)
+	}
+
+	srv := httptest.NewUnstartedServer(handler)
+	srv.Listener = listener
+	srv.Start()
+	t.Cleanup(srv.Close)
+
+	return srv
 }
 
 func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {

@@ -101,11 +101,11 @@
 
 **Purpose**: Finish user-facing documentation, generated docs, and full validation across all stories.
 
-- [ ] T019 Update command help text and examples for the new date flags in cmd/get_processinstance.go
-- [ ] T020 Update user-facing command documentation and examples in README.md
-- [ ] T021 Regenerate CLI reference output for the command in docs/cli/c8volt_get_process-instance.md via `make docs-content` and `make docs`
-- [ ] T022 Refresh feature smoke-check steps after implementation in specs/090-process-instance-date-filters/quickstart.md
-- [ ] T023 Run repository validation from Makefile and stabilize affected tests in Makefile, cmd/get_processinstance_test.go, internal/services/processinstance/v87/service_test.go, and internal/services/processinstance/v88/service_test.go
+- [x] T019 Update command help text and examples for the new date flags in cmd/get_processinstance.go
+- [x] T020 Update user-facing command documentation and examples in README.md
+- [x] T021 Regenerate CLI reference output for the command in docs/cli/c8volt_get_process-instance.md via `make docs-content` and `make docs`
+- [x] T022 Refresh feature smoke-check steps after implementation in specs/090-process-instance-date-filters/quickstart.md
+- [x] T023 Run repository validation from Makefile and stabilize affected tests in Makefile, cmd/get_processinstance_test.go, internal/services/processinstance/v87/service_test.go, and internal/services/processinstance/v88/service_test.go
 
 ---
 

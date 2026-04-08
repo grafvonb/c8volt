@@ -21,7 +21,7 @@
 ## Suggested Verification Commands
 
 ```bash
-go test ./cmd -run 'TestGetProcessInstance(SearchScaffold_UsesTempConfigAndCapturesSearchRequest|DateFilterScaffold)$'
+go test ./cmd -run 'TestGetProcessInstance(SearchScaffold_UsesTempConfigAndCapturesSearchRequest|DateFilterScaffold|InvalidDateFormatHelper|InvalidStartDateRangeHelper|DateFiltersWithKeyHelper)$' -count=1
 go test ./c8volt/process ./internal/services/processinstance/...
 make docs-content
 make docs
@@ -34,5 +34,6 @@ make test
 ./c8volt get process-instance --start-date-after 2026-01-01 --config /tmp/c8volt-v88.yaml
 ./c8volt get process-instance --end-date-before 2026-03-31 --state completed --config /tmp/c8volt-v88.yaml
 ./c8volt get process-instance --start-date-after 2026-01-31 --start-date-before 2026-01-01 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --key 2251799813685255 --start-date-after 2026-01-01 --config /tmp/c8volt-v88.yaml
 ./c8volt get process-instance --end-date-after 2026-02-01 --config /tmp/c8volt-v87.yaml
 ```
