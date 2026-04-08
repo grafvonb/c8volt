@@ -74,6 +74,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		switch {
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
+			if hasPIDateFilterFlags() {
+				fail(mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key"))
+			}
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
 			}
@@ -179,11 +182,15 @@ func hasPISearchFilterFlags() bool {
 		flagGetPIProcessVersion != 0 ||
 		flagGetPIProcessVersionTag != "" ||
 		flagGetPIProcessDefinitionKey != "" ||
-		flagGetPIStartDateAfter != "" ||
+		hasPIDateFilterFlags() ||
+		(flagGetPIState != "" && flagGetPIState != "all")
+}
+
+func hasPIDateFilterFlags() bool {
+	return flagGetPIStartDateAfter != "" ||
 		flagGetPIStartDateBefore != "" ||
 		flagGetPIEndDateAfter != "" ||
-		flagGetPIEndDateBefore != "" ||
-		(flagGetPIState != "" && flagGetPIState != "all")
+		flagGetPIEndDateBefore != ""
 }
 
 func pickPISearchSize() int32 {
@@ -217,6 +224,12 @@ func validatePISearchFlags() error {
 	if err := validatePIDateFlag("--end-date-before", flagGetPIEndDateBefore); err != nil {
 		return err
 	}
+	if err := validatePIDateRange("--start-date-after", flagGetPIStartDateAfter, "--start-date-before", flagGetPIStartDateBefore); err != nil {
+		return err
+	}
+	if err := validatePIDateRange("--end-date-after", flagGetPIEndDateAfter, "--end-date-before", flagGetPIEndDateBefore); err != nil {
+		return err
+	}
 	if flagGetPIBpmnProcessID == "" &&
 		(flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
 		return missingDependentFlagsf("--pd-version and --pd-version-tag require --bpmn-process-id to be set")
@@ -236,6 +249,25 @@ func validatePIDateFlag(flagName, value string) error {
 	}
 	if _, err := time.Parse(time.DateOnly, value); err != nil {
 		return invalidFlagValuef("invalid value for %s: %q, expected YYYY-MM-DD", flagName, value)
+	}
+	return nil
+}
+
+func validatePIDateRange(afterFlag, afterValue, beforeFlag, beforeValue string) error {
+	if afterValue == "" || beforeValue == "" {
+		return nil
+	}
+
+	after, err := time.Parse(time.DateOnly, afterValue)
+	if err != nil {
+		return err
+	}
+	before, err := time.Parse(time.DateOnly, beforeValue)
+	if err != nil {
+		return err
+	}
+	if after.After(before) {
+		return invalidFlagValuef("invalid range for %s and %s: %q is later than %q", afterFlag, beforeFlag, afterValue, beforeValue)
 	}
 	return nil
 }

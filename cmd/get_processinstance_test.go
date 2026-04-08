@@ -6,8 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"testing"
 
+	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/stretchr/testify/require"
 )
@@ -205,7 +208,35 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	})
 
 	t.Run("invalid date command coverage", func(t *testing.T) {
-		t.Skip("scaffold for T015: add invalid date and invalid range coverage in this file")
+		t.Run("invalid start-date format exits through shared invalid-input path", func(t *testing.T) {
+			cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+			output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceInvalidDateFormatHelper", cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
+		})
+
+		t.Run("invalid start-date range exits through shared invalid-input path", func(t *testing.T) {
+			cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+			output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceInvalidStartDateRangeHelper", cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, `invalid range for --start-date-after and --start-date-before: "2026-02-01" is later than "2026-01-31"`)
+		})
+
+		t.Run("date filters are rejected for direct key lookup", func(t *testing.T) {
+			cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+			output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceDateFiltersWithKeyHelper", cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
+		})
 	})
 }
 
@@ -255,4 +286,57 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIOrphanChildrenOnly = false
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
+}
+
+func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
+	t.Helper()
+
+	cmd := exec.Command(os.Args[0], "-test.run="+helperName)
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	return string(output), exitErr.ExitCode()
+}
+
+func TestGetProcessInstanceInvalidDateFormatHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after", "2026-02-30"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceInvalidStartDateRangeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after", "2026-02-01", "--start-date-before", "2026-01-31"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceDateFiltersWithKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "2251799813711967", "--start-date-after", "2026-01-01"}
+
+	Execute()
 }

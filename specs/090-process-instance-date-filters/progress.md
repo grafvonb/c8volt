@@ -10,6 +10,8 @@ Started: 2026-04-08 13:08:20
 - Shared facade-to-domain process-instance filter mapping lives in `c8volt/process/convert.go`; foundational filter plumbing should extend that helper and verify propagation through `client.SearchProcessInstances` rather than adding a separate conversion path.
 - v8.8 generated datetime search filters should be built through `camundav88.AdvancedDateTimeFilter` and the union setter in `internal/services/common/filter.go`; direct struct assignment to `DateTimeFilterProperty` is not the repository-native pattern.
 - Inclusive day-upper-bound filtering is represented as next-day midnight minus one nanosecond, and the command-level search tests can assert that exact serialized `$lte` timestamp via the real `/v2/process-instances/search` request body.
+- `get process-instance` validation failures that terminate inside the command should be covered with helper-process tests using `Execute()` plus a temp `--config`, because the Run handler exits through `ferrors.HandleAndExit` instead of returning an error to `ExecuteC`.
+- v8.7 process-instance date-filter rejection belongs at the top of `SearchForProcessInstances`, before request construction or Operate calls, so unsupported-version behavior stays explicit and testable.
 
 ---
 
@@ -93,4 +95,25 @@ Started: 2026-04-08 13:08:20
 **Learnings**:
 - End-date filtering can stay fully server-side on v8.8 by extending the shared datetime filter helper with the generated `$exists` operator instead of adding a separate client-side exclusion pass.
 - The process-instance command test harness should reset all date-flag globals, not just search-state globals, so successive in-process executions do not leak start or end date filters across subtests.
+---
+
+## Iteration 5 - 2026-04-08 13:32:38 CEST
+**User Story**: User Story 3 - Get Clear Errors for Unsupported or Invalid Input
+**Tasks Completed**:
+- [x] T015: Add command coverage for invalid date formats, invalid ranges, and `--key` incompatibility in `cmd/get_processinstance_test.go`
+- [x] T016: Add v8.7 service coverage for date-filter not-implemented behavior in `internal/services/processinstance/v87/service_test.go`
+- [x] T017: Implement date-range validation and direct-lookup rejection for date filters in `cmd/get_processinstance.go`
+- [x] T018: Implement v8.7 date-filter rejection through the existing service error path in `internal/services/processinstance/v87/service.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- specs/090-process-instance-date-filters/progress.md
+- specs/090-process-instance-date-filters/tasks.md
+**Learnings**:
+- Inverted start/end date bounds can stay in the existing command validation seam by parsing both values with `time.DateOnly` after per-flag format checks and returning the shared invalid-input sentinel on `after > before`.
+- Direct lookup rejection for date flags is clearest when the key path emits a dedicated `--key` incompatibility message before the generic mixed-filter guard, while v8.7 unsupported handling belongs in the versioned service so the facade and CLI both keep the same capability boundary.
 ---

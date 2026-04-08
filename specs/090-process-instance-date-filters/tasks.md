@@ -85,13 +85,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T015 [US3] Add command coverage for invalid date formats, invalid ranges, and `--key` incompatibility in cmd/get_processinstance_test.go
-- [ ] T016 [US3] Add v8.7 service coverage for date-filter not-implemented behavior in internal/services/processinstance/v87/service_test.go
+- [x] T015 [US3] Add command coverage for invalid date formats, invalid ranges, and `--key` incompatibility in cmd/get_processinstance_test.go
+- [x] T016 [US3] Add v8.7 service coverage for date-filter not-implemented behavior in internal/services/processinstance/v87/service_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Implement date-range validation and direct-lookup rejection for date filters in cmd/get_processinstance.go
-- [ ] T018 [US3] Implement v8.7 date-filter rejection through the existing service error path in internal/services/processinstance/v87/service.go
+- [x] T017 [US3] Implement date-range validation and direct-lookup rejection for date filters in cmd/get_processinstance.go
+- [x] T018 [US3] Implement v8.7 date-filter rejection through the existing service error path in internal/services/processinstance/v87/service.go
 
 **Checkpoint**: User Story 3 delivers clear failures for invalid or unsupported inputs without changing non-date behavior.
 

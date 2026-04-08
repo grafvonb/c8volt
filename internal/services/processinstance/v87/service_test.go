@@ -336,6 +336,31 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrMalformedResponse)
 	})
+
+	t.Run("RejectsDateFiltersAsUnsupported", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				t.Fatalf("unexpected search call")
+				return nil, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+		})
+
+		_, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			StartDateAfter: "2026-01-01",
+		}, 25)
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
+		assert.Contains(t, err.Error(), "date filters require Camunda 8.8")
+	})
 }
 
 func TestService_GetProcessInstanceStateByKey(t *testing.T) {
