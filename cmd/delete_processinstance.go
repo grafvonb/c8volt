@@ -27,6 +27,9 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
+		if err := validatePISearchFlags(); err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
@@ -89,5 +92,9 @@ func init() {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
+	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }

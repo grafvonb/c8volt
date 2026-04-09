@@ -7,6 +7,7 @@ Started: 2026-04-09 11:55:52
 
 - Management-command helper-process tests in `cmd/*_test.go` should set `os.Args` and call `Execute()` so failures still flow through the shared bootstrap and `ferrors.HandleAndExit` path.
 - Process-instance command scaffolding should use temp config helpers plus a local IPv4 server to capture `/v2/process-instances/search` requests without relying on repository-local config or external services.
+- Search-capable management commands should call `validatePISearchFlags()` before deciding between direct-key and search flows so state/date validation stays aligned with `get process-instance`.
 
 ---
 
@@ -26,4 +27,23 @@ Started: 2026-04-09 11:55:52
 **Learnings**:
 - The existing `cmd/get_processinstance_test.go` scaffolding is the canonical pattern for asserting serialized process-instance search filters at the command seam.
 - Keeping quickstart verification commands tied to concrete scaffold tests makes later iterations easier to validate incrementally.
+---
+
+## Iteration 3 - 2026-04-09 12:05:49 CEST
+**User Story**: Phase 2: Foundational
+**Tasks Completed**:
+- [x] T003: Wire the shared process-instance date-search flags into `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T004: Reuse shared process-instance search validation for management commands in `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, and `cmd/get_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/093-extend-pi-date-filters/progress.md
+- specs/093-extend-pi-date-filters/tasks.md
+**Learnings**:
+- Extending the existing search scaffold tests is enough to verify management commands serialize date bounds through the shared `populatePISearchFilterOpts()` path.
+- Shared invalid-input coverage for management commands belongs at the helper-process seam because `ferrors.HandleAndExit` terminates through `os.Exit`.
 ---

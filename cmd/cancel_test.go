@@ -32,10 +32,15 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 
 	body := decodeSingleRequestJSON(t, requests)
 	filter := body["filter"].(map[string]any)
+	startDate := filter["startDate"].(map[string]any)
+	endDate := filter["endDate"].(map[string]any)
 
 	require.Equal(t, exitcode.Error, code)
 	require.Equal(t, "ACTIVE", filter["state"])
 	require.Equal(t, "order-process", filter["processDefinitionId"])
+	require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
+	require.Equal(t, "2026-01-31T23:59:59.999999999Z", endDate["$lte"])
+	require.Equal(t, true, endDate["$exists"])
 	require.Contains(t, output, "no process instance keys provided or found to cancel")
 }
 
@@ -47,6 +52,16 @@ func TestCancelProcessInstanceCommand_RejectsInvalidSearchState(t *testing.T) {
 	require.Equal(t, exitcode.InvalidArgs, code)
 	require.Contains(t, string(output), "invalid input")
 	require.Contains(t, string(output), "invalid value for --state")
+}
+
+func TestCancelProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper", cfgPath)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
 }
 
 func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
@@ -73,7 +88,7 @@ func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--end-date-before", "2026-01-31"}
 
 	Execute()
 }
@@ -86,6 +101,18 @@ func TestCancelProcessInstanceCommand_RejectsInvalidSearchStateHelper(t *testing
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "broken", "--bpmn-process-id", "order-process"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--start-date-after", "2026-02-30"}
 
 	Execute()
 }

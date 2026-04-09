@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +31,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
+		if err := validatePISearchFlags(); err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
@@ -44,11 +46,6 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		default:
 			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
-			}
-			if flagGetPIState != "" && flagGetPIState != "all" {
-				if _, ok := process.ParseState(flagGetPIState); !ok {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings()))
-				}
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize)
@@ -101,5 +98,9 @@ func init() {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
+	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }
