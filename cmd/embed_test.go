@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies embed export requires an explicit selection via --all or at least one --file.
 func TestEmbedExportCommand_RequiresSelection(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -28,6 +29,7 @@ func TestEmbedExportCommand_RequiresSelection(t *testing.T) {
 	require.Contains(t, string(output), "either --all or at least one --file is required")
 }
 
+// Helper-process entrypoint for embed export selection validation.
 func TestEmbedExportCommand_RequiresSelectionHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
