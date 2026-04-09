@@ -110,6 +110,10 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 		ProcessVersion:       x.ProcessVersion,
 		ProcessVersionTag:    x.ProcessVersionTag,
 		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		StartDateAfter:       x.StartDateAfter,
+		StartDateBefore:      x.StartDateBefore,
+		EndDateAfter:         x.EndDateAfter,
+		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
 		ParentKey:            x.ParentKey,
 	}

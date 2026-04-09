@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -15,6 +16,10 @@ var (
 	flagGetPIProcessVersion       int32
 	flagGetPIProcessVersionTag    string
 	flagGetPIProcessDefinitionKey string
+	flagGetPIStartDateAfter       string
+	flagGetPIStartDateBefore      string
+	flagGetPIEndDateAfter         string
+	flagGetPIEndDateBefore        string
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -34,6 +39,8 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+  ./c8volt get pi --end-date-before 2026-03-31 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -69,6 +76,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		switch {
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
+			if hasPIDateFilterFlags() {
+				fail(mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key"))
+			}
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
 			}
@@ -124,6 +134,10 @@ func init() {
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
+	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
@@ -150,6 +164,10 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 		ProcessVersion:       flagGetPIProcessVersion,
 		ProcessVersionTag:    flagGetPIProcessVersionTag,
 		ProcessDefinitionKey: flagGetPIProcessDefinitionKey,
+		StartDateAfter:       flagGetPIStartDateAfter,
+		StartDateBefore:      flagGetPIStartDateBefore,
+		EndDateAfter:         flagGetPIEndDateAfter,
+		EndDateBefore:        flagGetPIEndDateBefore,
 	}
 
 	if s := flagGetPIState; s != "" && s != "all" {
@@ -166,7 +184,15 @@ func hasPISearchFilterFlags() bool {
 		flagGetPIProcessVersion != 0 ||
 		flagGetPIProcessVersionTag != "" ||
 		flagGetPIProcessDefinitionKey != "" ||
+		hasPIDateFilterFlags() ||
 		(flagGetPIState != "" && flagGetPIState != "all")
+}
+
+func hasPIDateFilterFlags() bool {
+	return flagGetPIStartDateAfter != "" ||
+		flagGetPIStartDateBefore != "" ||
+		flagGetPIEndDateAfter != "" ||
+		flagGetPIEndDateBefore != ""
 }
 
 func pickPISearchSize() int32 {
@@ -188,6 +214,24 @@ func validatePISearchFlags() error {
 			flagGetPIProcessVersionTag != "") {
 		return mutuallyExclusiveFlagsf("--pd-key is mutually exclusive with --bpmn-process-id, --pd-version, and --pd-version-tag")
 	}
+	if err := validatePIDateFlag("--start-date-after", flagGetPIStartDateAfter); err != nil {
+		return err
+	}
+	if err := validatePIDateFlag("--start-date-before", flagGetPIStartDateBefore); err != nil {
+		return err
+	}
+	if err := validatePIDateFlag("--end-date-after", flagGetPIEndDateAfter); err != nil {
+		return err
+	}
+	if err := validatePIDateFlag("--end-date-before", flagGetPIEndDateBefore); err != nil {
+		return err
+	}
+	if err := validatePIDateRange("--start-date-after", flagGetPIStartDateAfter, "--start-date-before", flagGetPIStartDateBefore); err != nil {
+		return err
+	}
+	if err := validatePIDateRange("--end-date-after", flagGetPIEndDateAfter, "--end-date-before", flagGetPIEndDateBefore); err != nil {
+		return err
+	}
 	if flagGetPIBpmnProcessID == "" &&
 		(flagGetPIProcessVersion != 0 || flagGetPIProcessVersionTag != "") {
 		return missingDependentFlagsf("--pd-version and --pd-version-tag require --bpmn-process-id to be set")
@@ -197,6 +241,35 @@ func validatePISearchFlags() error {
 	}
 	if flagGetPIIncidentsOnly && flagGetPINoIncidentsOnly {
 		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
+	}
+	return nil
+}
+
+func validatePIDateFlag(flagName, value string) error {
+	if value == "" {
+		return nil
+	}
+	if _, err := time.Parse(time.DateOnly, value); err != nil {
+		return invalidFlagValuef("invalid value for %s: %q, expected YYYY-MM-DD", flagName, value)
+	}
+	return nil
+}
+
+func validatePIDateRange(afterFlag, afterValue, beforeFlag, beforeValue string) error {
+	if afterValue == "" || beforeValue == "" {
+		return nil
+	}
+
+	after, err := time.Parse(time.DateOnly, afterValue)
+	if err != nil {
+		return err
+	}
+	before, err := time.Parse(time.DateOnly, beforeValue)
+	if err != nil {
+		return err
+	}
+	if after.After(before) {
+		return invalidFlagValuef("invalid range for %s and %s: %q is later than %q", afterFlag, beforeFlag, afterValue, beforeValue)
 	}
 	return nil
 }

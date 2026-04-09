@@ -22,6 +22,10 @@ type ProcessInstanceFilter struct {
 	ProcessVersion       int32
 	ProcessVersionTag    string
 	ProcessDefinitionKey string
+	StartDateAfter       string
+	StartDateBefore      string
+	EndDateAfter         string
+	EndDateBefore        string
 	State                State
 	ParentKey            string
 }

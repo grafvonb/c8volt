@@ -150,6 +150,16 @@ This makes `c8volt` useful not only for action commands, but also for environmen
 ./c8volt get resource --id resource-id-123
 ```
 
+### Narrow process instances by start or end day
+
+```bash
+./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+./c8volt get pi --end-date-after 2026-02-01
+./c8volt get pi --end-date-before 2026-03-31 --state completed
+```
+
+The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. They narrow normal process-instance searches, they exclude missing `endDate` values when end-date filters are used, and they are intentionally not supported with `--key` direct lookup.
+
 ### Export bundled fixtures for editing or custom deployment
 
 ```bash
@@ -433,7 +443,7 @@ The supporting read and deployment commands are still part of the core toolbox:
 ./c8volt get pd --bpmn-process-id order-process --latest
 ./c8volt get pi --state active
 ./c8volt get cluster topology
-./c8volt get resource
+./c8volt get resource --id resource-id-123
 ./c8volt config show
 ```
 

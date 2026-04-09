@@ -176,6 +176,9 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
+	if hasDateFilterBounds(filter) {
+		return nil, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
+	}
 	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, size)
 	if err != nil {
 		return nil, err
@@ -189,6 +192,13 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		return nil, err
 	}
 	return toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse), nil
+}
+
+func hasDateFilterBounds(filter d.ProcessInstanceFilter) bool {
+	return filter.StartDateAfter != "" ||
+		filter.StartDateBefore != "" ||
+		filter.EndDateAfter != "" ||
+		filter.EndDateBefore != ""
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
