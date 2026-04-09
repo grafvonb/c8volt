@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies config show surfaces invalid effective configuration through the shared failure model.
 func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfig(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper")
 	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
@@ -25,6 +26,7 @@ func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfig(t *te
 	require.Contains(t, string(output), "configuration is invalid")
 }
 
+// Helper-process entrypoint for invalid effective-config failure-path validation.
 func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
