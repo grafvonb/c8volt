@@ -83,13 +83,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T013 [P] [US3] Add cancel command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
-- [ ] T014 [P] [US3] Add delete command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T013 [P] [US3] Add cancel command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T014 [P] [US3] Add delete command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Enforce invalid `--key` plus date-filter combinations and date validation failures before management actions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T016 [US3] Verify v8.7 date-filtered management flows continue through the existing shared not-implemented service path using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
+- [x] T015 [US3] Enforce invalid `--key` plus date-filter combinations and date validation failures before management actions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T016 [US3] Verify v8.7 date-filtered management flows continue through the existing shared not-implemented service path using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
 
 **Checkpoint**: User Story 3 delivers clear failures for invalid and unsupported management-command date-filter usage.
 

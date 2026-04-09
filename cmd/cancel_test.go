@@ -151,6 +151,36 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	require.Contains(t, string(output), `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
 }
 
+func TestCancelProcessInstanceCommand_RejectsInvalidDateRange(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper", cfgPath)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
+}
+
+func TestCancelProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsKeyAndDateFiltersHelper", cfgPath)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "date filters are only supported for list/search usage and cannot be combined with --key")
+}
+
+func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper", cfgPath)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "process-instance date filters require Camunda 8.8")
+}
+
 func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
@@ -243,6 +273,42 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--start-date-after", "2026-02-30"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--end-date-after", "2026-02-01", "--end-date-before", "2026-01-31"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--key", "2251799813711967", "--start-date-after", "2026-01-01"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01"}
 
 	Execute()
 }

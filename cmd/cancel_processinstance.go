@@ -42,6 +42,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagCancelPIKeys, stdinKeys, log, cfg).Unique()
+		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
 
 		switch {
 		case len(keys) > 0:

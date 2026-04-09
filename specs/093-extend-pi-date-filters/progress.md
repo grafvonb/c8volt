@@ -85,3 +85,26 @@ Started: 2026-04-09 11:55:52
 - The delete-command helper-process seam can cover the full search-to-delete path with one local IPv4 server, but deletion still targets the legacy `DELETE /v1/process-instances/{key}` endpoint even when search uses `/v2/process-instances/search`.
 - Delete’s dry-run validation issues repeated descendant lookups for the same root key, so regression tests should assert the first search payload and the presence of a descendant search instead of assuming an exact two-request sequence.
 ---
+
+## Iteration 6 - 2026-04-09 12:22:26 CEST
+**User Story**: User Story 3 - Preserve Validation and Version Limits
+**Tasks Completed**:
+- [x] T013: Add cancel command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in `cmd/cancel_test.go`
+- [x] T014: Add delete command coverage for invalid dates, invalid ranges, `--key` plus date-filter rejection, and v8.7 unsupported behavior in `cmd/delete_test.go`
+- [x] T015: Enforce invalid `--key` plus date-filter combinations and date validation failures before management actions in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T016: Verify v8.7 date-filtered management flows continue through the existing shared not-implemented service path using `cmd/cancel_processinstance.go`, `cmd/delete_processinstance.go`, `internal/services/processinstance/v87/service.go`, and `internal/services/processinstance/v87/service_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_processinstance.go
+- internal/services/processinstance/v87/service_test.go
+- specs/093-extend-pi-date-filters/progress.md
+- specs/093-extend-pi-date-filters/tasks.md
+**Learnings**:
+- The keyed-management guard belongs in the shared process-instance command helper path so `get`, `cancel`, and `delete` reject date-filtered direct-key mode with the same normalized invalid-input error.
+- On Camunda v8.7, management-command helper-process tests can verify the unsupported date-filter path without any HTTP fixture because the versioned service rejects date bounds before issuing a search request.
+---

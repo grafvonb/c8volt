@@ -76,8 +76,8 @@ var getProcessInstanceCmd = &cobra.Command{
 		switch {
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
-			if hasPIDateFilterFlags() {
-				fail(mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key"))
+			if err := validatePIKeyedModeDateFilters(lk); err != nil {
+				fail(err)
 			}
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
@@ -193,6 +193,13 @@ func hasPIDateFilterFlags() bool {
 		flagGetPIStartDateBefore != "" ||
 		flagGetPIEndDateAfter != "" ||
 		flagGetPIEndDateBefore != ""
+}
+
+func validatePIKeyedModeDateFilters(keyCount int) error {
+	if keyCount > 0 && hasPIDateFilterFlags() {
+		return mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key")
+	}
+	return nil
 }
 
 func pickPISearchSize() int32 {

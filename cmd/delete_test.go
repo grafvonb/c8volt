@@ -56,6 +56,36 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	require.Contains(t, string(output), `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
 }
 
+func TestDeleteProcessInstanceCommand_RejectsInvalidDateValue(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsInvalidDateValueHelper", cfgPath)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
+}
+
+func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsKeyAndDateFiltersHelper", cfgPath)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "date filters are only supported for list/search usage and cannot be combined with --key")
+}
+
+func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper", cfgPath)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "process-instance date filters require Camunda 8.8")
+}
+
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
 	var deleted []string
@@ -216,6 +246,42 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--end-date-after", "2026-02-01", "--end-date-before", "2026-01-31"}
+
+	Execute()
+}
+
+func TestDeleteProcessInstanceCommand_RejectsInvalidDateValueHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--start-date-after", "2026-02-30"}
+
+	Execute()
+}
+
+func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--key", "2251799813711967", "--start-date-after", "2026-01-01"}
+
+	Execute()
+}
+
+func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--auto-confirm"}
 
 	Execute()
 }

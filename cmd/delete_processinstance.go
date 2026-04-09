@@ -38,6 +38,9 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg)
+		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
 
 		switch {
 		case len(keys) > 0:
