@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -11,25 +10,15 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/stretchr/testify/require"
 )
 
 // Verifies search-mode get process-instance sends the expected filter and pagination request shape.
 func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		requests = append(requests, string(body))
-
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[]}`))
-	}))
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -59,17 +48,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("start date command coverage", func(t *testing.T) {
 		t.Run("lower bound only", func(t *testing.T) {
 			var requests []string
-			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-				body, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				requests = append(requests, string(body))
-
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"items":[]}`))
-			}))
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
 			t.Cleanup(srv.Close)
 
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -95,17 +74,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 
 		t.Run("inclusive range", func(t *testing.T) {
 			var requests []string
-			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-				body, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				requests = append(requests, string(body))
-
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"items":[]}`))
-			}))
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
 			t.Cleanup(srv.Close)
 
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -134,17 +103,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("end date command coverage", func(t *testing.T) {
 		t.Run("lower bound only", func(t *testing.T) {
 			var requests []string
-			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-				body, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				requests = append(requests, string(body))
-
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"items":[]}`))
-			}))
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
 			t.Cleanup(srv.Close)
 
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -171,17 +130,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 
 		t.Run("inclusive range composed with state filter", func(t *testing.T) {
 			var requests []string
-			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, http.MethodPost, r.Method)
-				require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-				body, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				requests = append(requests, string(body))
-
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"items":[]}`))
-			}))
+			srv := newProcessInstanceSearchCaptureServer(t, &requests)
 			t.Cleanup(srv.Close)
 
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
