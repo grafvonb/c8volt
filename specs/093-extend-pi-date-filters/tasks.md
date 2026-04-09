@@ -63,13 +63,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T009 [US2] Add delete command coverage for v8.8 date-filtered search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
-- [ ] T010 [US2] Add delete command coverage for empty selected sets with date filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T009 [US2] Add delete command coverage for v8.8 date-filtered search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T010 [US2] Add delete command coverage for empty selected sets with date filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Implement date-filter-aware search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T012 [US2] Confirm delete search selection composes date filters with existing management filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T011 [US2] Implement date-filter-aware search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T012 [US2] Confirm delete search selection composes date filters with existing management filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 
 **Checkpoint**: User Story 2 works independently and preserves delete search behavior while adding date-based narrowing.
 

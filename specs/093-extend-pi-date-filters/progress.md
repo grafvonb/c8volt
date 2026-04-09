@@ -66,3 +66,22 @@ Started: 2026-04-09 11:55:52
 - The cancel-command helper-process seam can exercise real search, ancestry, descendant, and cancellation calls with a single local IPv4 test server when `--no-state-check` and `--no-wait` keep the workflow bounded.
 - Verifying the follow-up descendant search carries `parentProcessInstanceKey` is a practical regression check that cancel still relies on the shared process-instance filter composition instead of a management-only search path.
 ---
+
+## Iteration 5 - 2026-04-09 12:16:43 CEST
+**User Story**: User Story 2 - Delete by Date-Filtered Search
+**Tasks Completed**:
+- [x] T009: Add delete command coverage for v8.8 date-filtered search selection in `cmd/delete_test.go`
+- [x] T010: Add delete command coverage for empty selected sets with date filters in `cmd/delete_test.go`
+- [x] T011: Implement date-filter-aware search selection and examples in `cmd/delete_processinstance.go`
+- [x] T012: Confirm delete search selection composes date filters with existing management filters in `cmd/delete_processinstance.go` and `cmd/get_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- specs/093-extend-pi-date-filters/progress.md
+- specs/093-extend-pi-date-filters/tasks.md
+**Learnings**:
+- The delete-command helper-process seam can cover the full search-to-delete path with one local IPv4 server, but deletion still targets the legacy `DELETE /v1/process-instances/{key}` endpoint even when search uses `/v2/process-instances/search`.
+- Delete’s dry-run validation issues repeated descendant lookups for the same root key, so regression tests should assert the first search payload and the presence of a descendant search instead of assuming an exact two-request sequence.
+---
