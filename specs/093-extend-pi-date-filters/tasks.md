@@ -17,8 +17,8 @@
 
 **Purpose**: Prepare the feature-specific validation surface and implementation notes before command changes begin.
 
-- [ ] T001 [P] Review and align feature verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/093-extend-pi-date-filters/quickstart.md
-- [ ] T002 [P] Add task-oriented command test scaffolding for management date-filter scenarios in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T001 [P] Review and align feature verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/093-extend-pi-date-filters/quickstart.md
+- [x] T002 [P] Add task-oriented command test scaffolding for management date-filter scenarios in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ---
 
