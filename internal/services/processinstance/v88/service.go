@@ -234,6 +234,8 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	return toolx.MapSlice(payload.Items, fromProcessInstanceResult), nil
 }
 
+// parseInclusiveDateLowerBound parses a YYYY-MM-DD date into the start of that day in UTC.
+// Example: "2026-01-31" -> 2026-01-31T00:00:00Z.
 func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, nil
@@ -245,6 +247,8 @@ func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
 	return &t, nil
 }
 
+// parseInclusiveDateUpperBound parses a YYYY-MM-DD date into the end of that day in UTC.
+// Example: "2026-01-31" -> 2026-01-31T23:59:59.999999999Z.
 func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, nil

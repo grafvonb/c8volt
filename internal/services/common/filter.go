@@ -38,6 +38,8 @@ func NewProcessInstanceStateEqFilterPtr(v string) *camundav88.ProcessInstanceSta
 	})
 }
 
+// NewDateTimeRangeFilterPtr builds a datetime range filter from optional lower/upper bounds and exists flag.
+// Example: after=2026-01-01T00:00:00Z and before=2026-01-31T23:59:59.999999999Z sets Gte/Lte on the returned filter.
 func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav88.DateTimeFilterProperty {
 	if after == nil && before == nil && exists == nil {
 		return nil
