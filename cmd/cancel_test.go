@@ -121,8 +121,8 @@ func TestCancelProcessInstanceCommand_RejectsInvalidSearchState(t *testing.T) {
 	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsInvalidSearchStateHelper", cfgPath)
 
 	require.Equal(t, exitcode.InvalidArgs, code)
-	require.Contains(t, string(output), "invalid input")
-	require.Contains(t, string(output), "invalid value for --state")
+	require.Contains(t, output, "invalid input")
+	require.Contains(t, output, "invalid value for --state")
 }
 
 // Verifies invalid date literals for date flags are rejected with a clear YYYY-MM-DD validation error.
@@ -132,8 +132,8 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper", cfgPath)
 
 	require.Equal(t, exitcode.InvalidArgs, code)
-	require.Contains(t, string(output), "invalid input")
-	require.Contains(t, string(output), `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
+	require.Contains(t, output, "invalid input")
+	require.Contains(t, output, `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
 }
 
 // Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
@@ -143,8 +143,8 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateRange(t *testing.T) {
 	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper", cfgPath)
 
 	require.Equal(t, exitcode.InvalidArgs, code)
-	require.Contains(t, string(output), "invalid input")
-	require.Contains(t, string(output), `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
+	require.Contains(t, output, "invalid input")
+	require.Contains(t, output, `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
 }
 
 // Verifies date filters cannot be combined with direct key lookup mode.
@@ -154,8 +154,8 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsKeyAndDateFiltersHelper", cfgPath)
 
 	require.Equal(t, exitcode.InvalidArgs, code)
-	require.Contains(t, string(output), "invalid input")
-	require.Contains(t, string(output), "date filters are only supported for list/search usage and cannot be combined with --key")
+	require.Contains(t, output, "invalid input")
+	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
 // Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
@@ -165,8 +165,8 @@ func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper", cfgPath)
 
 	require.Equal(t, exitcode.Error, code)
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "process-instance date filters require Camunda 8.8")
+	require.Contains(t, output, "unsupported capability")
+	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
 }
 
 func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
@@ -196,13 +196,14 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	)
 
 	output, err := cmd.CombinedOutput()
+	out := string(output)
 	if err != nil {
-		return string(output), err
+		return out, err
 	}
-	if strings.Contains(string(output), "PASS") {
+	if strings.Contains(out, "PASS") {
 		return "", nil
 	}
-	return string(output), nil
+	return out, nil
 }
 
 // Helper-process entrypoint for the search scaffold failure test.
