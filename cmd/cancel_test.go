@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies search-mode cancellation builds the expected date-filtered search request before failing on empty matches.
 func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +47,7 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.Contains(t, output, "no process instance keys provided or found to cancel")
 }
 
+// Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
 	var cancelled []string
@@ -106,6 +108,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
+// Verifies cancel exits with an error when a date-filtered search returns no process instances.
 func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(t *testing.T) {
 	var requests []string
 
@@ -131,6 +134,7 @@ func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(
 	require.Contains(t, output, "no process instance keys provided or found to cancel")
 }
 
+// Verifies invalid --state values are rejected through the shared invalid-args error path.
 func TestCancelProcessInstanceCommand_RejectsInvalidSearchState(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -141,6 +145,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidSearchState(t *testing.T) {
 	require.Contains(t, string(output), "invalid value for --state")
 }
 
+// Verifies invalid date literals for date flags are rejected with a clear YYYY-MM-DD validation error.
 func TestCancelProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -151,6 +156,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	require.Contains(t, string(output), `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
 }
 
+// Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
 func TestCancelProcessInstanceCommand_RejectsInvalidDateRange(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -161,6 +167,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateRange(t *testing.T) {
 	require.Contains(t, string(output), `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
 }
 
+// Verifies date filters cannot be combined with direct key lookup mode.
 func TestCancelProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -171,6 +178,7 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	require.Contains(t, string(output), "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+// Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
 func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -217,6 +225,7 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return string(output), nil
 }
 
+// Helper-process entrypoint for the search scaffold failure test.
 func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -229,6 +238,7 @@ func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for the successful search-select-and-cancel flow test.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatchesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -241,6 +251,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	Execute()
 }
 
+// Helper-process entrypoint for the no-matches failure test.
 func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -253,6 +264,7 @@ func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesH
 	Execute()
 }
 
+// Helper-process entrypoint for invalid --state validation.
 func TestCancelProcessInstanceCommand_RejectsInvalidSearchStateHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -265,6 +277,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidSearchStateHelper(t *testing
 	Execute()
 }
 
+// Helper-process entrypoint for invalid date format validation.
 func TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -277,6 +290,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.
 	Execute()
 }
 
+// Helper-process entrypoint for invalid date range validation.
 func TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -289,6 +303,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper(t *testing.T
 	Execute()
 }
 
+// Helper-process entrypoint for key-and-date-filter exclusivity validation.
 func TestCancelProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -301,6 +316,7 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.
 	Execute()
 }
 
+// Helper-process entrypoint for version capability validation on Camunda 8.7.
 func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

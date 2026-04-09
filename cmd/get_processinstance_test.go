@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies search-mode get process-instance sends the expected filter and pagination request shape.
 func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +54,7 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.NotContains(t, got, "error")
 }
 
+// Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.
 func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("start date command coverage", func(t *testing.T) {
 		t.Run("lower bound only", func(t *testing.T) {
@@ -322,6 +324,7 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	return string(output), exitErr.ExitCode()
 }
 
+// Helper-process entrypoint for invalid date format validation.
 func TestGetProcessInstanceInvalidDateFormatHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -334,6 +337,7 @@ func TestGetProcessInstanceInvalidDateFormatHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for invalid start-date range validation.
 func TestGetProcessInstanceInvalidStartDateRangeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -346,6 +350,7 @@ func TestGetProcessInstanceInvalidStartDateRangeHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for key-and-date-filter exclusivity validation.
 func TestGetProcessInstanceDateFiltersWithKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies NewCli maps missing bootstrap context to the shared local-precondition error class.
 func TestNewCliNormalizesMissingBootstrapContext(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
@@ -26,6 +27,7 @@ func TestNewCliNormalizesMissingBootstrapContext(t *testing.T) {
 	require.Equal(t, ferrors.ClassLocalPrecondition, ferrors.Classify(err))
 }
 
+// Verifies NewCli maps unsupported client construction to the shared unsupported error class.
 func TestNewCliNormalizesUnsupportedClientConstruction(t *testing.T) {
 	cfg := &config.Config{
 		App: config.App{
@@ -48,6 +50,7 @@ func TestNewCliNormalizesUnsupportedClientConstruction(t *testing.T) {
 	require.Equal(t, ferrors.ClassUnsupported, ferrors.Classify(err))
 }
 
+// Verifies execute-time config validation failures use the shared failure model and exit behavior.
 func TestExecute_ConfigValidationFailureUsesSharedFailureModel(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
 	content := `app:
@@ -72,6 +75,7 @@ auth:
 	require.Contains(t, string(output), "local precondition failed: normalize config:")
 }
 
+// Verifies unsupported API versions are surfaced through the shared unsupported-capability failure model.
 func TestExecute_UnsupportedVersionUsesSharedFailureModel(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
 
@@ -91,6 +95,7 @@ func TestExecute_UnsupportedVersionUsesSharedFailureModel(t *testing.T) {
 	require.Contains(t, string(output), "unknown API version")
 }
 
+// Verifies bootstrap normalization maps command-validation sentinels to invalid-input classification.
 func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T) {
 	err := normalizeBootstrapError(invalidFlagValuef("resource lookup requires a non-empty --id"))
 
@@ -98,6 +103,7 @@ func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T
 	require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(err))
 }
 
+// Verifies shared command-validation sentinels normalize to the invalid-input class.
 func TestNormalizeCommandErrorMapsSharedValidationSentinels(t *testing.T) {
 	t.Parallel()
 
@@ -120,6 +126,7 @@ func TestNormalizeCommandErrorMapsSharedValidationSentinels(t *testing.T) {
 	}
 }
 
+// Verifies bootstrap normalization rule-table mappings for known and fallback error cases.
 func TestNormalizeBootstrapErrorMapsSharedBootstrapRules(t *testing.T) {
 	t.Parallel()
 
@@ -159,6 +166,7 @@ func TestNormalizeBootstrapErrorMapsSharedBootstrapRules(t *testing.T) {
 	}
 }
 
+// Helper-process entrypoint for config-validation failure normalization coverage.
 func TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -171,6 +179,7 @@ func TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper(t *testing.
 	Execute()
 }
 
+// Helper-process entrypoint for unsupported-version failure normalization coverage.
 func TestExecute_UnsupportedVersionUsesSharedFailureModelHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

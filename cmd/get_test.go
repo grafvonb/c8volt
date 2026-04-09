@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies `get --help` lists supported get subcommands.
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
@@ -25,6 +26,7 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "resource")
 }
 
+// Verifies `get resource --help` documents required id-based lookup usage.
 func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
@@ -34,6 +36,7 @@ func TestGetResourceHelp(t *testing.T) {
 	require.Contains(t, output, "resource id to fetch")
 }
 
+// Verifies `get cluster --help` exposes nested cluster resource commands.
 func TestGetClusterHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "--help")
 
@@ -44,6 +47,7 @@ func TestGetClusterHelp(t *testing.T) {
 	require.Contains(t, output, "topology")
 }
 
+// Verifies `get cluster license --help` describes license retrieval usage.
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
@@ -51,6 +55,7 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 	require.Contains(t, output, "c8volt get cluster license")
 }
 
+// Verifies legacy `get cluster-topology --help` remains available with deprecation guidance.
 func TestGetClusterTopologyLegacyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster-topology", "--help")
 
@@ -58,6 +63,7 @@ func TestGetClusterTopologyLegacyHelp(t *testing.T) {
 	require.Contains(t, output, "Deprecated but supported: use `c8volt get cluster topology`.")
 }
 
+// Verifies nested `get cluster topology` succeeds and renders topology fields.
 func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -96,6 +102,7 @@ func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
 	require.Contains(t, output, `"ClusterSize": 1`)
 }
 
+// Verifies legacy `get cluster-topology` command still succeeds without deprecation noise in output.
 func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -135,6 +142,7 @@ func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
 	require.NotContains(t, output, "Deprecated:")
 }
 
+// Verifies legacy `ct` alias resolves to cluster-topology retrieval.
 func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -159,6 +167,7 @@ func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
 	require.NotContains(t, output, "Deprecated:")
 }
 
+// Verifies nested `get cluster license` succeeds with required license fields.
 func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -183,6 +192,7 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	require.NotContains(t, output, `"IsCommercial"`)
 }
 
+// Verifies optional license fields are rendered when the API returns them.
 func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -207,6 +217,7 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 	require.Contains(t, output, `"ValidLicense": true`)
 }
 
+// Verifies cluster license HTTP failures map to unavailable exit behavior.
 func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -231,6 +242,7 @@ func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 	require.Contains(t, string(output), "error fetching cluster license")
 }
 
+// Verifies nested cluster topology HTTP failures map to unavailable exit behavior.
 func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
@@ -254,6 +266,7 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	require.Contains(t, string(output), "error fetching topology")
 }
 
+// Verifies legacy cluster-topology HTTP failures map to unavailable exit behavior.
 func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
@@ -278,6 +291,7 @@ func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "Deprecated:")
 }
 
+// Verifies malformed successful license responses are classified as malformed-response failures.
 func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/license", r.URL.Path)
@@ -302,6 +316,7 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	require.Contains(t, string(output), "malformed response")
 }
 
+// Verifies `get process-definition --xml` returns raw XML content by key.
 func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -318,6 +333,7 @@ func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 	require.Equal(t, "<definitions id=\"order-process\"/>", output)
 }
 
+// Verifies XML output preserves formatting and line breaks from the API payload.
 func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -334,6 +350,7 @@ func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) 
 	require.Equal(t, "<definitions id=\"order-process\">\n  <process id=\"order\" />\n</definitions>\n", output)
 }
 
+// Verifies process-definition key lookup renders model output instead of XML.
 func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -358,6 +375,7 @@ func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	require.NotContains(t, output, "<definitions")
 }
 
+// Verifies `get resource --id` succeeds and renders default table output.
 func TestGetResourceCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -385,6 +403,7 @@ func TestGetResourceCommand_Success(t *testing.T) {
 	require.Contains(t, output, "v7/stable")
 }
 
+// Verifies resource lookup JSON view uses serialized model field keys.
 func TestGetResourceCommand_JSONOutput(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -413,6 +432,7 @@ func TestGetResourceCommand_JSONOutput(t *testing.T) {
 	require.Contains(t, output, `"versionTag": "stable"`)
 }
 
+// Verifies keys-only mode emits only the resource id.
 func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -436,6 +456,7 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 	require.Equal(t, "resource-id-123\n", output)
 }
 
+// Verifies resource lookup HTTP failures map to not-found exit behavior.
 func TestGetResourceCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -461,6 +482,7 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	require.Contains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+// Verifies `--no-err-codes` preserves failure output while returning success exit status.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -483,6 +505,7 @@ func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t 
 	require.Contains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+// Verifies resource command rejects missing `--id` input.
 func TestGetResourceCommand_RequiresID(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -493,6 +516,7 @@ func TestGetResourceCommand_RequiresID(t *testing.T) {
 	require.Contains(t, output, "resource lookup requires a non-empty --id")
 }
 
+// Verifies resource command rejects whitespace-only `--id` values.
 func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -503,6 +527,7 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 	require.Contains(t, output, "resource lookup requires a non-empty --id")
 }
 
+// Verifies whitespace-only `--id` failures exit through invalid-args handling.
 func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -522,6 +547,7 @@ func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T
 	require.Contains(t, string(output), "resource lookup requires a non-empty --id")
 }
 
+// Verifies malformed successful resource payloads are treated as malformed-response failures.
 func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -550,6 +576,7 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 	require.Contains(t, string(output), "malformed response")
 }
 
+// Verifies gateway timeout responses map to timeout exit behavior.
 func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -576,6 +603,7 @@ func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
 	require.Contains(t, string(output), "error fetching resource by id timeout-resource")
 }
 
+// Verifies XML mode requires `--key` to target a single process definition.
 func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -594,6 +622,7 @@ func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	require.Contains(t, string(output), "xml output requires --key")
 }
 
+// Verifies XML mode rejects incompatible presentation and selection flags.
 func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -614,6 +643,7 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 	require.Contains(t, string(output), "--latest")
 }
 
+// Verifies process-definition XML HTTP failures map to unavailable exit behavior.
 func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -640,6 +670,7 @@ func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "<definitions")
 }
 
+// Helper-process entrypoint for nested cluster-topology failure-path coverage.
 func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -653,6 +684,7 @@ func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for legacy cluster-topology failure-path coverage.
 func TestGetClusterTopologyLegacyCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -666,6 +698,7 @@ func TestGetClusterTopologyLegacyCommand_FailureHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for malformed cluster-license response coverage.
 func TestGetClusterLicenseNestedCommand_MalformedResponseHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -679,6 +712,7 @@ func TestGetClusterLicenseNestedCommand_MalformedResponseHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for cluster-license HTTP failure-path coverage.
 func TestGetClusterLicenseNestedCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -692,6 +726,7 @@ func TestGetClusterLicenseNestedCommand_FailureHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for XML command missing-key validation.
 func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -704,6 +739,7 @@ func TestGetProcessDefinitionXMLCommand_RequiresKeyHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for whitespace resource-id invalid-args validation.
 func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -716,6 +752,7 @@ func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper(t *tes
 	Execute()
 }
 
+// Helper-process entrypoint for resource lookup HTTP failure-path coverage.
 func TestGetResourceCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -729,6 +766,7 @@ func TestGetResourceCommand_FailureHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for `--no-err-codes` resource failure behavior coverage.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -742,6 +780,7 @@ func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExitHel
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for malformed resource response coverage.
 func TestGetResourceCommand_MalformedResponseHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -755,6 +794,7 @@ func TestGetResourceCommand_MalformedResponseHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for timeout exit-code mapping coverage.
 func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCodeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -768,6 +808,7 @@ func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCodeHelper(t *testing.T
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for XML incompatible-flag validation.
 func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -780,6 +821,7 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper(t *testin
 	Execute()
 }
 
+// Helper-process entrypoint for process-definition XML HTTP failure coverage.
 func TestGetProcessDefinitionXMLCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

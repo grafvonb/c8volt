@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies deploy process-definition rejects multiple stdin markers in --file arguments.
 func TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFile(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -28,6 +29,7 @@ func TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFile(t *testing.T) {
 	require.Contains(t, string(output), "only one '-' (stdin) allowed")
 }
 
+// Helper-process entrypoint for repeated-stdin-file validation.
 func TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFileHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

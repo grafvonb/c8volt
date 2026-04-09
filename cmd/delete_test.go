@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies search-mode deletion builds the expected date-filtered search request before failing on empty matches.
 func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +47,7 @@ func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.Contains(t, output, "no process instance keys provided or found to delete")
 }
 
+// Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -56,6 +58,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	require.Contains(t, string(output), `invalid range for --end-date-after and --end-date-before: "2026-02-01" is later than "2026-01-31"`)
 }
 
+// Verifies invalid date literals for date flags are rejected with a clear YYYY-MM-DD validation error.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateValue(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -66,6 +69,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateValue(t *testing.T) {
 	require.Contains(t, string(output), `invalid value for --start-date-after: "2026-02-30", expected YYYY-MM-DD`)
 }
 
+// Verifies date filters cannot be combined with direct key lookup mode.
 func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -76,6 +80,7 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	require.Contains(t, string(output), "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+// Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
 func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -86,6 +91,7 @@ func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	require.Contains(t, string(output), "process-instance date filters require Camunda 8.8")
 }
 
+// Verifies date-filtered search selection deletes matched instances and preserves descendant lookup behavior.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
 	var deleted []string
@@ -146,6 +152,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+// Verifies delete exits with an error when a date-filtered search returns no process instances.
 func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(t *testing.T) {
 	var requests []string
 
@@ -171,6 +178,7 @@ func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(
 	require.Contains(t, output, "no process instance keys provided or found to delete")
 }
 
+// Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
 func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -226,6 +234,7 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return string(output), nil
 }
 
+// Helper-process entrypoint for the search scaffold failure test.
 func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -238,6 +247,7 @@ func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for invalid date range validation.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -250,6 +260,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.
 	Execute()
 }
 
+// Helper-process entrypoint for invalid date format validation.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateValueHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -262,6 +273,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateValueHelper(t *testing.T
 	Execute()
 }
 
+// Helper-process entrypoint for key-and-date-filter exclusivity validation.
 func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -274,6 +286,7 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.
 	Execute()
 }
 
+// Helper-process entrypoint for version capability validation on Camunda 8.7.
 func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -286,6 +299,7 @@ func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T
 	Execute()
 }
 
+// Helper-process entrypoint for the successful search-select-and-delete flow test.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatchesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -298,6 +312,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 	Execute()
 }
 
+// Helper-process entrypoint for the no-matches failure test.
 func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -310,6 +325,7 @@ func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesH
 	Execute()
 }
 
+// Helper-process entrypoint for delete process-definition target-selector validation.
 func TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies run process-instance rejects mutually exclusive definition selectors.
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -30,6 +31,7 @@ func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *te
 	require.Contains(t, string(output), "flags --pd-key and --bpmn-process-id are mutually exclusive")
 }
 
+// Verifies run process-instance maps HTTP 409 responses to the conflict exit code.
 func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
@@ -56,6 +58,7 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.Contains(t, string(output), "running process instance(s)")
 }
 
+// Helper-process entrypoint for mutually-exclusive definition-flag validation.
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -68,6 +71,7 @@ func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper
 	_ = root.Execute()
 }
 
+// Helper-process entrypoint for conflict exit-code mapping validation.
 func TestRunProcessInstanceCommand_ConflictUsesConflictExitCodeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

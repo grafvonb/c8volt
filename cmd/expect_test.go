@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies expect process-instance rejects unsupported state values through invalid-input handling.
 func TestExpectProcessInstanceCommand_RejectsInvalidStates(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -28,6 +29,7 @@ func TestExpectProcessInstanceCommand_RejectsInvalidStates(t *testing.T) {
 	require.Contains(t, string(output), "error parsing states")
 }
 
+// Helper-process entrypoint for invalid expect-state validation.
 func TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

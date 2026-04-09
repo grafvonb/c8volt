@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies completion bootstrap bypass detection treats internal completion seams as safe bootstrap exceptions.
 func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *testing.T) {
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__complete"}))
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__completeNoDesc"}))
@@ -16,6 +17,7 @@ func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *test
 	require.False(t, bypassRootBootstrap(&cobra.Command{Use: "get"}))
 }
 
+// Verifies completion requests work without config bootstrap and stay focused on candidates.
 func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
 
@@ -26,6 +28,7 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 	require.NotContains(t, output, "Usage:")
 }
 
+// Verifies top-level completion includes user-facing command descriptions.
 func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "")
 
@@ -34,6 +37,7 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
+// Verifies partial top-level completion keeps readable user-facing suggestions.
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "g")
 
@@ -41,6 +45,7 @@ func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
+// Verifies nested completion surfaces user-facing get subcommands.
 func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 	output := executeCompletionForTest(t, "get", "")
 
@@ -49,6 +54,7 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
+// Verifies value completion output stays clean when descriptions are intentionally absent.
 func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
 	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
 
@@ -68,6 +74,7 @@ func requireCompletionOutputStaysUserFacing(t *testing.T, output string) {
 	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
 }
 
+// Verifies `completion zsh` emits description-bearing completion requests.
 func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequests(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 	cmd := exec.Command(os.Args[0], "-test.run=TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper")
@@ -83,6 +90,7 @@ func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequests(t *testin
 	require.NotContains(t, string(output), "__completeNoDesc")
 }
 
+// Helper-process entrypoint for zsh completion command request-shape validation.
 func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

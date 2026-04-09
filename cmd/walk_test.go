@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies walk process-instance rejects unsupported --mode values.
 func TestWalkProcessInstanceCommand_RejectsInvalidMode(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -28,6 +29,7 @@ func TestWalkProcessInstanceCommand_RejectsInvalidMode(t *testing.T) {
 	require.Contains(t, string(output), "invalid --mode")
 }
 
+// Helper-process entrypoint for invalid walk-mode validation.
 func TestWalkProcessInstanceCommand_RejectsInvalidModeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
