@@ -17,29 +17,35 @@ c8volt get process-instance [flags]
 ```
   ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+  ./c8volt get pi --end-date-before 2026-03-31 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977
 ```
 
 ### Options
 
 ```
-  -b, --bpmn-process-id string   BPMN process ID to filter process instances
-      --children-only            show only child process instances, meaning instances that have a parent key set
-  -n, --count int32              number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
-      --fail-fast                stop scheduling new instances after the first error
-  -h, --help                     help for process-instance
-      --incidents-only           show only process instances that have incidents
-  -k, --key strings              process instance key(s) to fetch
-      --no-incidents-only        show only process instances that have no incidents
-      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
-      --orphan-children-only     show only child instances where parent key is set but the parent process instance does not exist (anymore)
-      --parent-key string        parent process instance key to filter process instances
-      --pd-key string            process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)
-      --pd-version int32         process definition version
-      --pd-version-tag string    process definition version tag
-      --roots-only               show only root process instances, meaning instances with empty parent key
-  -s, --state string             state to filter process instances: all, active, completed, canceled (default "all")
-  -w, --workers int              maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -b, --bpmn-process-id string     BPMN process ID to filter process instances
+      --children-only              show only child process instances, meaning instances that have a parent key set
+  -n, --count int32                number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
+      --end-date-after string      inclusive lower end-date bound in YYYY-MM-DD format
+      --end-date-before string     inclusive upper end-date bound in YYYY-MM-DD format
+      --fail-fast                  stop scheduling new instances after the first error
+  -h, --help                       help for process-instance
+      --incidents-only             show only process instances that have incidents
+  -k, --key strings                process instance key(s) to fetch
+      --no-incidents-only          show only process instances that have no incidents
+      --no-worker-limit            disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --orphan-children-only       show only child instances where parent key is set but the parent process instance does not exist (anymore)
+      --parent-key string          parent process instance key to filter process instances
+      --pd-key string              process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)
+      --pd-version int32           process definition version
+      --pd-version-tag string      process definition version tag
+      --roots-only                 show only root process instances, meaning instances with empty parent key
+      --start-date-after string    inclusive lower start-date bound in YYYY-MM-DD format
+      --start-date-before string   inclusive upper start-date bound in YYYY-MM-DD format
+  -s, --state string               state to filter process instances: all, active, completed, canceled (default "all")
+  -w, --workers int                maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands

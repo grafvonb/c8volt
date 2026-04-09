@@ -94,6 +94,7 @@ api/camunda-docs/.git/
 /docs/.sass-cache/
 
 # Ralph local run artifacts
+.codex-*
 scripts/ralph/.last-branch
 scripts/ralph/.codex-last-message*.txt
 scripts/ralph/.codex-output-iter-*.txt
