@@ -47,3 +47,22 @@ Started: 2026-04-09 11:55:52
 - Extending the existing search scaffold tests is enough to verify management commands serialize date bounds through the shared `populatePISearchFilterOpts()` path.
 - Shared invalid-input coverage for management commands belongs at the helper-process seam because `ferrors.HandleAndExit` terminates through `os.Exit`.
 ---
+
+## Iteration 4 - 2026-04-09 12:11:31 CEST
+**User Story**: User Story 1 - Cancel by Date-Filtered Search
+**Tasks Completed**:
+- [x] T005: Add cancel command coverage for v8.8 date-filtered search selection in `cmd/cancel_test.go`
+- [x] T006: Add cancel command coverage for no-match search failure behavior with date filters in `cmd/cancel_test.go`
+- [x] T007: Implement date-filter-aware search selection and examples in `cmd/cancel_processinstance.go`
+- [x] T008: Verify cancel search selection keeps using the existing shared process-instance filter path in `cmd/cancel_processinstance.go` and `cmd/get_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- specs/093-extend-pi-date-filters/progress.md
+- specs/093-extend-pi-date-filters/tasks.md
+**Learnings**:
+- The cancel-command helper-process seam can exercise real search, ancestry, descendant, and cancellation calls with a single local IPv4 test server when `--no-state-check` and `--no-wait` keep the workflow bounded.
+- Verifying the follow-up descendant search carries `parentProcessInstanceKey` is a practical regression check that cancel still relies on the shared process-instance filter composition instead of a management-only search path.
+---

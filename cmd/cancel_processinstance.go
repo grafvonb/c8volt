@@ -18,6 +18,8 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instance(s) by key(s) and wait for the cancellation to complete",
 	Example: `  ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt cancel pi --state active --start-date-before 2026-03-31
+  ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {

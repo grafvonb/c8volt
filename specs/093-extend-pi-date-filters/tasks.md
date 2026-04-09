@@ -43,13 +43,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [US1] Add cancel command coverage for v8.8 date-filtered search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
-- [ ] T006 [US1] Add cancel command coverage for no-match search failure behavior with date filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T005 [US1] Add cancel command coverage for v8.8 date-filtered search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T006 [US1] Add cancel command coverage for no-match search failure behavior with date filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement date-filter-aware search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
-- [ ] T008 [US1] Verify cancel search selection keeps using the existing shared process-instance filter path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T007 [US1] Implement date-filter-aware search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
+- [x] T008 [US1] Verify cancel search selection keeps using the existing shared process-instance filter path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 
 **Checkpoint**: User Story 1 is fully functional and testable on its own as the MVP slice.
 
