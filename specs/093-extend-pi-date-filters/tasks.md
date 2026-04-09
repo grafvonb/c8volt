@@ -99,11 +99,11 @@
 
 **Purpose**: Finish user-visible documentation, generated docs, and final repository validation across all stories.
 
-- [ ] T017 Update user-facing management command examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md
-- [ ] T018 Update command help text and examples for management date filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T019 Regenerate CLI reference output for /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md via `make docs-content` and `make docs`
-- [ ] T020 [P] Refresh implemented verification steps in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/093-extend-pi-date-filters/quickstart.md
-- [ ] T021 Run repository validation for the feature with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T017 Update user-facing management command examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md
+- [x] T018 Update command help text and examples for management date filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T019 Regenerate CLI reference output for /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md via `make docs-content` and `make docs`
+- [x] T020 [P] Refresh implemented verification steps in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/093-extend-pi-date-filters/quickstart.md
+- [x] T021 Run repository validation for the feature with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

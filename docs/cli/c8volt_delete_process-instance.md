@@ -6,7 +6,7 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt delete process-instance
 
-Delete process instance(s), optionally cancelling first
+Delete process instance(s) by key or search filters, optionally cancelling first
 
 ```
 c8volt delete process-instance [flags]
@@ -16,24 +16,30 @@ c8volt delete process-instance [flags]
 
 ```
   ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
+  ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
 ```
 
 ### Options
 
 ```
-  -b, --bpmn-process-id string   BPMN process ID to filter process instances
-      --fail-fast                stop scheduling new instances after the first error
-      --force                    force cancellation of the process instance(s), prior to deletion
-  -h, --help                     help for process-instance
-  -k, --key strings              process instance key(s) to delete
-      --no-state-check           skip checking the current state of the process instance before deleting it
-      --no-wait                  skip waiting for the deletion to be fully processed
-      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
-      --pd-version int32         process definition version
-      --pd-version-tag string    process definition version tag
-  -s, --state string             state to filter process instances: all, active, completed, canceled (default "all")
-  -w, --workers int              maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -b, --bpmn-process-id string     BPMN process ID to filter process instances
+      --end-date-after string      inclusive lower end-date bound in YYYY-MM-DD format
+      --end-date-before string     inclusive upper end-date bound in YYYY-MM-DD format
+      --fail-fast                  stop scheduling new instances after the first error
+      --force                      force cancellation of the process instance(s), prior to deletion
+  -h, --help                       help for process-instance
+  -k, --key strings                process instance key(s) to delete
+      --no-state-check             skip checking the current state of the process instance before deleting it
+      --no-wait                    skip waiting for the deletion to be fully processed
+      --no-worker-limit            disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --pd-version int32           process definition version
+      --pd-version-tag string      process definition version tag
+      --start-date-after string    inclusive lower start-date bound in YYYY-MM-DD format
+      --start-date-before string   inclusive upper start-date bound in YYYY-MM-DD format
+  -s, --state string               state to filter process instances: all, active, completed, canceled (default "all")
+  -w, --workers int                maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands

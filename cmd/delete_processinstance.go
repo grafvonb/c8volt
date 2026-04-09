@@ -15,10 +15,10 @@ var (
 
 var deleteProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Delete process instance(s), optionally cancelling first",
+	Short: "Delete process instance(s) by key or search filters, optionally cancelling first",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
-  ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --auto-confirm
+  ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {

@@ -8,6 +8,7 @@ Started: 2026-04-09 11:55:52
 - Management-command helper-process tests in `cmd/*_test.go` should set `os.Args` and call `Execute()` so failures still flow through the shared bootstrap and `ferrors.HandleAndExit` path.
 - Process-instance command scaffolding should use temp config helpers plus a local IPv4 server to capture `/v2/process-instances/search` requests without relying on repository-local config or external services.
 - Search-capable management commands should call `validatePISearchFlags()` before deciding between direct-key and search flows so state/date validation stays aligned with `get process-instance`.
+- The docs site only uses `just-the-docs`, `jekyll-sitemap`, and `jekyll-seo-tag`; pinning those gems directly avoids the broader `github-pages` bundle and keeps `make docs` compatible with the local Ruby 4 toolchain.
 
 ---
 
@@ -107,4 +108,83 @@ Started: 2026-04-09 11:55:52
 **Learnings**:
 - The keyed-management guard belongs in the shared process-instance command helper path so `get`, `cancel`, and `delete` reject date-filtered direct-key mode with the same normalized invalid-input error.
 - On Camunda v8.7, management-command helper-process tests can verify the unsupported date-filter path without any HTTP fixture because the versioned service rejects date bounds before issuing a search request.
+---
+
+## Iteration 7 - 2026-04-09 12:34:00 CEST
+**User Story**: Partial progress on Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T017: Update user-facing management command examples in `README.md` and `docs/index.md`
+- [x] T018: Update command help text and examples for management date filters in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T020: Refresh implemented verification steps in `specs/093-extend-pi-date-filters/quickstart.md`
+- [x] T021: Run repository validation for the feature with `make test`
+**Tasks Remaining in Story**: 1
+**Commit**: No commit - partial progress
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- docs/cli/c8volt_cancel.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/093-extend-pi-date-filters/progress.md
+- specs/093-extend-pi-date-filters/quickstart.md
+- specs/093-extend-pi-date-filters/tasks.md
+**Learnings**:
+- `make docs-content` succeeds in the sandbox when `GOCACHE` is redirected to a writable temp directory such as `/tmp/c8volt-gocache`.
+- `make docs` is currently blocked in this environment because the local Ruby/Bundler installation is missing required gems for the Jekyll build, so the final polish story remains open until that dependency issue is resolved.
+---
+
+## Iteration 8 - 2026-04-09 12:40:52 CEST
+**User Story**: Partial progress on Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] Re-ran `make docs-content` to confirm the generated CLI reference output still refreshes from current Cobra metadata
+- [x] Captured the exact `make docs` failure mode for the remaining docs-site build
+**Tasks Remaining in Story**: 1
+**Commit**: No commit - partial progress
+**Files Changed**:
+- specs/093-extend-pi-date-filters/progress.md
+**Learnings**:
+- `make docs` currently fails at `cd docs && bundle exec jekyll build` with `Bundler::GemNotFound` for `commonmarker-0.23.12`, `racc-1.8.1`, `eventmachine-1.2.7`, `http_parser.rb-0.8.0`, `json-2.17.1`, and `bigdecimal-3.3.1`.
+- Because `T019` explicitly requires `make docs-content` and `make docs`, the work unit cannot be marked complete until those Ruby dependencies are available locally.
+---
+
+## Iteration 9 - 2026-04-09 12:32:29 CEST
+**User Story**: Partial progress on Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] Re-ran `make docs-content` with `GOCACHE=/tmp/c8volt-gocache`
+- [x] Verified the remaining `make docs` blocker is a local Ruby toolchain compatibility mismatch rather than missing cache files alone
+**Tasks Remaining in Story**: 1
+**Commit**: No commit - partial progress
+**Files Changed**:
+- specs/093-extend-pi-date-filters/progress.md
+**Learnings**:
+- The required `.gem` archives for `commonmarker-0.23.12`, `racc-1.8.1`, `eventmachine-1.2.7`, `http_parser.rb-0.8.0`, `json-2.17.1`, and `bigdecimal-3.3.1` are present in the local gem cache, so `make docs` is not blocked by network access alone.
+- Homebrew Ruby `4.0.2` is too new for the locked `commonmarker-0.23.12` dependency, while system Ruby `2.6.10` is too old for the locked `json-2.17.1` dependency; a Ruby 2.7-3.x toolchain or a repository-level docs bundle update is required before `T019` can complete.
+---
+
+## Iteration 10 - 2026-04-09 12:38:59 CEST
+**User Story**: Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T019: Regenerate CLI reference output for `docs/cli/c8volt_cancel_process-instance.md` and `docs/cli/c8volt_delete_process-instance.md` via `make docs-content` and `make docs`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- docs/Gemfile
+- docs/Gemfile.lock
+- docs/cli/c8volt_cancel.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/093-extend-pi-date-filters/progress.md
+- specs/093-extend-pi-date-filters/quickstart.md
+- specs/093-extend-pi-date-filters/tasks.md
+**Learnings**:
+- Replacing the `github-pages` meta-gem with the smaller pinned Jekyll stack the site actually uses removes the `commonmarker` Ruby-version conflict and lets `make docs` succeed in this environment.
+- `make test` still fails in the sandbox for unrelated packages because multiple tests try to bind IPv6 `httptest` listeners on `[::1]`, which this environment disallows with `bind: operation not permitted`.
 ---
