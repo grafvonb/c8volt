@@ -44,13 +44,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [US1] Add command coverage for relative start-day and end-day search requests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T007 [US1] Add facade mapping coverage proving derived relative-day bounds use the canonical absolute date fields in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T006 [US1] Add command coverage for relative start-day and end-day search requests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T007 [US1] Add facade mapping coverage proving derived relative-day bounds use the canonical absolute date fields in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement relative-day-aware `get process-instance` search filter composition in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T009 [US1] Verify the shared process-instance filter shape continues to carry derived absolute date bounds unchanged through /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/processinstance.go
+- [x] T008 [US1] Implement relative-day-aware `get process-instance` search filter composition in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T009 [US1] Verify the shared process-instance filter shape continues to carry derived absolute date bounds unchanged through /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/processinstance.go
 
 **Checkpoint**: User Story 1 is fully functional and independently testable as the MVP slice.
 

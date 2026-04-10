@@ -51,3 +51,22 @@ Started: 2026-04-10 12:02:02
 - Keeping relative-day parsing in the existing `validatePISearchFlags()` and `populatePISearchFilterOpts()` seam lets management commands inherit the same behavior without extra command-specific branches.
 - A small direct helper test for derived bounds is enough to prove the foundational conversion path while later user-story iterations add CLI-level behavior coverage.
 ---
+
+## Iteration 3 - 2026-04-10 12:12:22 CEST
+**User Story**: User Story 1 - Filter Get Results by Relative Day Offsets
+**Tasks Completed**:
+- [x] T006 [US1] Add command coverage for relative start-day and end-day search requests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T007 [US1] Add facade mapping coverage proving derived relative-day bounds use the canonical absolute date fields in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T008 [US1] Implement relative-day-aware `get process-instance` search filter composition in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T009 [US1] Verify the shared process-instance filter shape continues to carry derived absolute date bounds unchanged through /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/processinstance.go
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- cmd/get_processinstance_test.go
+- specs/095-processinstance-day-filters/progress.md
+- specs/095-processinstance-day-filters/tasks.md
+**Learnings**:
+- Relative-day command regressions are most stable when they stub `relativeDayNow` and assert the captured v8.8 search request timestamps instead of only checking intermediate `YYYY-MM-DD` strings.
+- The facade/domain seam for process-instance filters is already the canonical absolute-date path, so derived relative-day coverage belongs in `c8volt/process/client_test.go` as a pass-through assertion rather than a new filter type.
+---

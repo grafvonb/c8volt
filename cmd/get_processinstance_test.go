@@ -184,6 +184,67 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	})
 }
 
+func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	t.Run("start-day range search request uses derived absolute bounds", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServer(t, &requests)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--start-after-days", "30",
+			"--start-before-days", "7",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+
+		requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-03-11T00:00:00Z")
+		requireCapturedPISearchDateBound(t, filter, "startDate", "$lte", "2026-04-03T23:59:59.999999999Z")
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &got))
+		require.NotContains(t, got, "error")
+	})
+
+	t.Run("end-day upper bound search request uses derived absolute bounds", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServer(t, &requests)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--state", "completed",
+			"--end-before-days", "14",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+
+		require.Equal(t, "COMPLETED", filter["state"])
+		requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-03-27T23:59:59.999999999Z")
+		requireCapturedPISearchDateExists(t, filter, "endDate")
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &got))
+		require.NotContains(t, got, "error")
+	})
+}
+
 func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
