@@ -70,3 +70,26 @@ Started: 2026-04-10 12:02:02
 - Relative-day command regressions are most stable when they stub `relativeDayNow` and assert the captured v8.8 search request timestamps instead of only checking intermediate `YYYY-MM-DD` strings.
 - The facade/domain seam for process-instance filters is already the canonical absolute-date path, so derived relative-day coverage belongs in `c8volt/process/client_test.go` as a pass-through assertion rather than a new filter type.
 ---
+
+## Iteration 4 - 2026-04-10 12:16:24 CEST
+**User Story**: User Story 2 - Use the Same Relative Filters for Search-Based Cancel and Delete
+**Tasks Completed**:
+- [x] T010 [US2] Add cancel-command coverage for relative-day search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T011 [US2] Add delete-command coverage for relative-day search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T012 [US2] Implement relative-day search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
+- [x] T013 [US2] Implement relative-day search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T014 [US2] Confirm shared relative-day filter composition continues to flow through the existing management search path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/cmd_processinstance_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- specs/095-processinstance-day-filters/progress.md
+- specs/095-processinstance-day-filters/tasks.md
+**Learnings**:
+- Helper-process command tests can reuse the shared `relativeDayNow` seam by passing an override through environment, which keeps management-command coverage deterministic without adding production-only test hooks.
+- The existing cancel/delete search path already preserves derived relative-day bounds from `populatePISearchFilterOpts()`, so User Story 2 needed request-shape assertions and surfaced examples rather than new search plumbing.
+---

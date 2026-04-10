@@ -135,6 +135,63 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+// Verifies relative-day search selection derives canonical end-date bounds before deleting matches.
+func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDeletesMatches(t *testing.T) {
+	var requests []string
+	var deleted []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			var searchBody map[string]any
+			require.NoError(t, json.Unmarshal(body, &searchBody))
+
+			filter, _ := searchBody["filter"].(map[string]any)
+			parentKey, _ := filter["parentProcessInstanceKey"].(string)
+
+			w.Header().Set("Content-Type", "application/json")
+			if parentKey == "2251799813711967" {
+				_, _ = w.Write([]byte(`{"items":[]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-02-10T18:00:00Z","endDate":"2026-03-15T08:30:00Z","state":"COMPLETED","tenantId":"tenant"}]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813711967":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-02-10T18:00:00Z","endDate":"2026-03-15T08:30:00Z","state":"COMPLETED","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/2251799813711967":
+			deleted = append(deleted, r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := executeDeleteProcessInstanceSuccessHelper(t, "TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDeletesMatchesHelper", cfgPath)
+
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(requests), 2)
+	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted)
+	filter := decodeCapturedPISearchFilter(t, requests[:1])
+
+	require.Equal(t, "COMPLETED", filter["state"])
+	require.Equal(t, "order-process", filter["processDefinitionId"])
+	requireCapturedPISearchDateBound(t, filter, "endDate", "$gte", "2026-02-09T00:00:00Z")
+	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-04-03T23:59:59.999999999Z")
+	requireCapturedPISearchDateExists(t, filter, "endDate")
+
+	descendantSearch := decodeCapturedPISearchRequest(t, requests[len(requests)-1])
+	descFilter := descendantSearch["filter"].(map[string]any)
+	require.Equal(t, "2251799813711967", descFilter["parentProcessInstanceKey"])
+	require.NotContains(t, output, "no process instance keys provided or found to delete")
+}
+
 // Verifies delete exits with an error when a date-filtered search returns no process instances.
 func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(t *testing.T) {
 	var requests []string
@@ -159,6 +216,7 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
+		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -178,6 +236,7 @@ func executeDeleteProcessInstanceFailureHelper(t *testing.T, helperName string, 
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
+		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -213,6 +272,7 @@ func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -226,6 +286,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -239,6 +300,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidDateValueHelper(t *testing.T
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -252,6 +314,7 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -265,6 +328,7 @@ func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -278,10 +342,25 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--end-date-before", "2026-01-31", "--auto-confirm", "--no-state-check", "--no-wait"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for the successful relative-day search-select-and-delete flow test.
+func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDeletesMatchesHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--end-after-days", "60", "--end-before-days", "7", "--auto-confirm", "--no-state-check", "--no-wait"}
 
 	Execute()
 }
@@ -291,6 +370,7 @@ func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesH
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })

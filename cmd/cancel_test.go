@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const cancelDeleteRelativeDayNow = "2026-04-10T12:00:00Z"
+
 // Verifies search-mode cancellation builds the expected date-filtered search request before failing on empty matches.
 func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
@@ -84,6 +86,61 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
 	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-01-31T23:59:59.999999999Z")
 	requireCapturedPISearchDateExists(t, filter, "endDate")
+
+	descendantSearch := decodeCapturedPISearchRequest(t, requests[1])
+	descFilter := descendantSearch["filter"].(map[string]any)
+	require.Equal(t, "2251799813711967", descFilter["parentProcessInstanceKey"])
+	require.NotContains(t, output, "no process instance keys provided or found to cancel")
+}
+
+// Verifies relative-day search selection derives canonical start-date bounds before cancelling matches.
+func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatches(t *testing.T) {
+	var requests []string
+	var cancelled []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			var searchBody map[string]any
+			require.NoError(t, json.Unmarshal(body, &searchBody))
+
+			filter, _ := searchBody["filter"].(map[string]any)
+			parentKey, _ := filter["parentProcessInstanceKey"].(string)
+
+			w.Header().Set("Content-Type", "application/json")
+			if parentKey == "2251799813711967" {
+				_, _ = w.Write([]byte(`{"items":[]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-03-11T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813711967":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-03-11T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/2251799813711967/cancellation":
+			cancelled = append(cancelled, r.URL.Path)
+			w.WriteHeader(http.StatusAccepted)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatchesHelper", cfgPath)
+
+	require.NoError(t, err)
+	require.Len(t, requests, 2)
+	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled)
+	filter := decodeCapturedPISearchFilter(t, requests[:1])
+
+	require.Equal(t, "ACTIVE", filter["state"])
+	require.Equal(t, "order-process", filter["processDefinitionId"])
+	requireCapturedPISearchDateBound(t, filter, "startDate", "$lte", "2026-03-11T23:59:59.999999999Z")
 
 	descendantSearch := decodeCapturedPISearchRequest(t, requests[1])
 	descFilter := descendantSearch["filter"].(map[string]any)
@@ -169,6 +226,7 @@ func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, 
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
+		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -186,6 +244,7 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
+		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -204,6 +263,7 @@ func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -217,10 +277,25 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--end-date-before", "2026-01-31", "--auto-confirm", "--no-state-check", "--no-wait"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for the successful relative-day search-select-and-cancel flow test.
+func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatchesHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-before-days", "30", "--auto-confirm", "--no-state-check", "--no-wait"}
 
 	Execute()
 }
@@ -230,6 +305,7 @@ func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesH
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -243,6 +319,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidSearchStateHelper(t *testing
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -256,6 +333,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateFilterHelper(t *testing.
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -269,6 +347,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidDateRangeHelper(t *testing.T
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -282,6 +361,7 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -295,6 +375,7 @@ func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })

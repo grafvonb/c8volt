@@ -64,14 +64,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Add cancel-command coverage for relative-day search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
-- [ ] T011 [P] [US2] Add delete-command coverage for relative-day search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T010 [P] [US2] Add cancel-command coverage for relative-day search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T011 [P] [US2] Add delete-command coverage for relative-day search selection in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Implement relative-day search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
-- [ ] T013 [US2] Implement relative-day search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T014 [US2] Confirm shared relative-day filter composition continues to flow through the existing management search path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T012 [US2] Implement relative-day search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
+- [x] T013 [US2] Implement relative-day search selection and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T014 [US2] Confirm shared relative-day filter composition continues to flow through the existing management search path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 
 **Checkpoint**: User Story 2 works independently and preserves management-command search behavior while adding relative-day narrowing.
 

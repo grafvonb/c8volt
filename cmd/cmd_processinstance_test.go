@@ -5,10 +5,34 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+const testRelativeDayNowEnv = "C8VOLT_TEST_RELATIVE_DAY_NOW"
+
+func applyRelativeDayNowOverrideFromEnv(t *testing.T) {
+	t.Helper()
+
+	now := os.Getenv(testRelativeDayNowEnv)
+	if now == "" {
+		return
+	}
+
+	parsed, err := time.Parse(time.RFC3339, now)
+	require.NoError(t, err)
+
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return parsed
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+}
 
 // newProcessInstanceSearchCaptureServer starts an IPv4 test server that captures
 // search request bodies and returns an empty process-instance search result.
