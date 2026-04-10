@@ -44,6 +44,28 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.NotContains(t, got, "error")
 }
 
+func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--with-age",
+	)
+
+	require.NotEmpty(t, requests)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	meta, ok := got["meta"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, true, meta["withAge"])
+}
+
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.
 func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("start date command coverage", func(t *testing.T) {
@@ -424,6 +446,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIStartBeforeDays = -1
 	flagGetPIEndAfterDays = -1
 	flagGetPIEndBeforeDays = -1
+	flagGetPIWithAge = false
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize

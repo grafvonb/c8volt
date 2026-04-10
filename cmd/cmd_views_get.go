@@ -2,18 +2,28 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
 //nolint:unused
 func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
+	if pickMode() == RenderModeJSON && flagGetPIWithAge {
+		cmd.Print(toolx.ToJSONString(processInstanceWithAgeMeta(item)))
+		return nil
+	}
 	return itemView(cmd, item, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }
 
 func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
+	if pickMode() == RenderModeJSON && flagGetPIWithAge {
+		cmd.Print(toolx.ToJSONString(processInstancesWithAgeMeta(resp)))
+		return nil
+	}
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }
 
@@ -30,10 +40,80 @@ func oneLinePI(it process.ProcessInstance) string {
 	if it.ProcessVersionTag != "" {
 		vTag = "/" + it.ProcessVersionTag
 	}
+	ageTag := ""
+	if flagGetPIWithAge {
+		if age, ok := processInstanceAgeDays(it.StartDate); ok {
+			if age == 0 {
+				ageTag = " (today)"
+			} else {
+				ageTag = fmt.Sprintf(" (%d days ago)", age)
+			}
+		}
+	}
 	return fmt.Sprintf(
-		"%-16s %s %s v%d%s %-10s s:%-20s%s%s i:%t",
-		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag, it.State, it.StartDate, eTag, pTag, it.Incident,
+		"%-16s %s %s v%d%s %-10s s:%-20s%s%s i:%t%s",
+		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag, it.State, it.StartDate, eTag, pTag, it.Incident, ageTag,
 	)
+}
+
+type processInstanceAgeMeta struct {
+	WithAge   bool           `json:"withAge"`
+	AgeDays   int            `json:"ageDays,omitempty"`
+	AgeDaysBy map[string]int `json:"ageDaysByKey,omitempty"`
+}
+
+type processInstanceJSONWithMeta struct {
+	Item process.ProcessInstance `json:"item"`
+	Meta processInstanceAgeMeta  `json:"meta"`
+}
+
+type processInstancesJSONWithMeta struct {
+	Total int32                     `json:"total,omitempty"`
+	Items []process.ProcessInstance `json:"items,omitempty"`
+	Meta  processInstanceAgeMeta    `json:"meta"`
+}
+
+func processInstanceWithAgeMeta(item process.ProcessInstance) processInstanceJSONWithMeta {
+	meta := processInstanceAgeMeta{WithAge: true}
+	if age, ok := processInstanceAgeDays(item.StartDate); ok {
+		meta.AgeDays = age
+	}
+	return processInstanceJSONWithMeta{Item: item, Meta: meta}
+}
+
+func processInstancesWithAgeMeta(resp process.ProcessInstances) processInstancesJSONWithMeta {
+	meta := processInstanceAgeMeta{WithAge: true, AgeDaysBy: map[string]int{}}
+	for _, it := range resp.Items {
+		if age, ok := processInstanceAgeDays(it.StartDate); ok {
+			meta.AgeDaysBy[it.Key] = age
+		}
+	}
+	if len(meta.AgeDaysBy) == 0 {
+		meta.AgeDaysBy = nil
+	}
+	return processInstancesJSONWithMeta{
+		Total: resp.Total,
+		Items: resp.Items,
+		Meta:  meta,
+	}
+}
+
+func processInstanceAgeDays(startDate string) (int, bool) {
+	if startDate == "" {
+		return 0, false
+	}
+	start, err := time.Parse(time.RFC3339Nano, startDate)
+	if err != nil {
+		return 0, false
+	}
+	now := relativeDayNow().UTC()
+	startDay := time.Date(start.UTC().Year(), start.UTC().Month(), start.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	if nowDay.Before(startDay) {
+		return 0, false
+	}
+	days := int(nowDay.Sub(startDay).Hours() / 24)
+	return days, true
 }
 
 func processDefinitionView(cmd *cobra.Command, item process.ProcessDefinition) error {

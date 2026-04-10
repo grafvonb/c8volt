@@ -105,5 +105,6 @@ func init() {
 	// flags from get process instance for filtering
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
+	registerPISharedRenderFlags(fs)
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }

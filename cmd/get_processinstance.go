@@ -25,6 +25,7 @@ var (
 	flagGetPIStartBeforeDays      int
 	flagGetPIEndAfterDays         int
 	flagGetPIEndBeforeDays        int
+	flagGetPIWithAge              bool
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -140,6 +141,7 @@ func init() {
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
+	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
@@ -179,6 +181,10 @@ func registerPISharedProcessDefinitionFilterFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
+}
+
+func registerPISharedRenderFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&flagGetPIWithAge, "with-age", false, "include process instance age in one-line output and JSON meta")
 }
 
 func populatePISearchFilterOpts() process.ProcessInstanceFilter {
