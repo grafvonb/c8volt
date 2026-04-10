@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -183,6 +184,44 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	})
 }
 
+func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	flagGetPIStartAfterDays = 7
+	flagGetPIStartBeforeDays = 30
+	flagGetPIEndAfterDays = 14
+	flagGetPIEndBeforeDays = 1
+
+	filter := populatePISearchFilterOpts()
+
+	require.Equal(t, "2026-04-03", filter.StartDateAfter)
+	require.Equal(t, "2026-03-11", filter.StartDateBefore)
+	require.Equal(t, "2026-03-27", filter.EndDateAfter)
+	require.Equal(t, "2026-04-09", filter.EndDateBefore)
+}
+
+func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIStartDateAfter = "2026-04-03"
+	flagGetPIStartBeforeDays = 7
+
+	err := validatePISearchFlags()
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "start-date absolute and relative day filters cannot be combined")
+}
+
 func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	t.Helper()
 
@@ -237,6 +276,10 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIStartDateBefore = ""
 	flagGetPIEndDateAfter = ""
 	flagGetPIEndDateBefore = ""
+	flagGetPIStartAfterDays = -1
+	flagGetPIStartBeforeDays = -1
+	flagGetPIEndAfterDays = -1
+	flagGetPIEndBeforeDays = -1
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize

@@ -8,6 +8,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -20,6 +21,10 @@ var (
 	flagGetPIStartDateBefore      string
 	flagGetPIEndDateAfter         string
 	flagGetPIEndDateBefore        string
+	flagGetPIStartAfterDays       int
+	flagGetPIStartBeforeDays      int
+	flagGetPIEndAfterDays         int
+	flagGetPIEndBeforeDays        int
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -138,6 +143,7 @@ func init() {
 	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
 	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
 	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
+	registerPIRelativeDayFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
@@ -157,6 +163,17 @@ func init() {
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 }
 
+var relativeDayNow = func() time.Time {
+	return time.Now().UTC()
+}
+
+func registerPIRelativeDayFlags(fs *pflag.FlagSet) {
+	fs.IntVar(&flagGetPIStartAfterDays, "start-after-days", -1, "inclusive lower start-date bound derived from today minus N days")
+	fs.IntVar(&flagGetPIStartBeforeDays, "start-before-days", -1, "inclusive upper start-date bound derived from today minus N days")
+	fs.IntVar(&flagGetPIEndAfterDays, "end-after-days", -1, "inclusive lower end-date bound derived from today minus N days")
+	fs.IntVar(&flagGetPIEndBeforeDays, "end-before-days", -1, "inclusive upper end-date bound derived from today minus N days")
+}
+
 func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 	f := process.ProcessInstanceFilter{
 		ParentKey:            flagGetPIParentKey,
@@ -164,10 +181,10 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 		ProcessVersion:       flagGetPIProcessVersion,
 		ProcessVersionTag:    flagGetPIProcessVersionTag,
 		ProcessDefinitionKey: flagGetPIProcessDefinitionKey,
-		StartDateAfter:       flagGetPIStartDateAfter,
-		StartDateBefore:      flagGetPIStartDateBefore,
-		EndDateAfter:         flagGetPIEndDateAfter,
-		EndDateBefore:        flagGetPIEndDateBefore,
+		StartDateAfter:       pickPIDateBound(flagGetPIStartDateAfter, flagGetPIStartAfterDays),
+		StartDateBefore:      pickPIDateBound(flagGetPIStartDateBefore, flagGetPIStartBeforeDays),
+		EndDateAfter:         pickPIDateBound(flagGetPIEndDateAfter, flagGetPIEndAfterDays),
+		EndDateBefore:        pickPIDateBound(flagGetPIEndDateBefore, flagGetPIEndBeforeDays),
 	}
 
 	if s := flagGetPIState; s != "" && s != "all" {
@@ -195,8 +212,15 @@ func hasPIDateFilterFlags() bool {
 		flagGetPIEndDateBefore != ""
 }
 
+func hasPIRelativeDayFilterFlags() bool {
+	return flagGetPIStartAfterDays >= 0 ||
+		flagGetPIStartBeforeDays >= 0 ||
+		flagGetPIEndAfterDays >= 0 ||
+		flagGetPIEndBeforeDays >= 0
+}
+
 func validatePIKeyedModeDateFilters(keyCount int) error {
-	if keyCount > 0 && hasPIDateFilterFlags() {
+	if keyCount > 0 && (hasPIDateFilterFlags() || hasPIRelativeDayFilterFlags()) {
 		return mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key")
 	}
 	return nil
@@ -233,10 +257,31 @@ func validatePISearchFlags() error {
 	if err := validatePIDateFlag("--end-date-before", flagGetPIEndDateBefore); err != nil {
 		return err
 	}
+	if err := validatePIRelativeDayFlag("--start-after-days", flagGetPIStartAfterDays); err != nil {
+		return err
+	}
+	if err := validatePIRelativeDayFlag("--start-before-days", flagGetPIStartBeforeDays); err != nil {
+		return err
+	}
+	if err := validatePIRelativeDayFlag("--end-after-days", flagGetPIEndAfterDays); err != nil {
+		return err
+	}
+	if err := validatePIRelativeDayFlag("--end-before-days", flagGetPIEndBeforeDays); err != nil {
+		return err
+	}
+	if err := validatePIMixedDateFilterInputs(); err != nil {
+		return err
+	}
 	if err := validatePIDateRange("--start-date-after", flagGetPIStartDateAfter, "--start-date-before", flagGetPIStartDateBefore); err != nil {
 		return err
 	}
 	if err := validatePIDateRange("--end-date-after", flagGetPIEndDateAfter, "--end-date-before", flagGetPIEndDateBefore); err != nil {
+		return err
+	}
+	if err := validatePIDateRange("--start-after-days", pickPIDateBound("", flagGetPIStartAfterDays), "--start-before-days", pickPIDateBound("", flagGetPIStartBeforeDays)); err != nil {
+		return err
+	}
+	if err := validatePIDateRange("--end-after-days", pickPIDateBound("", flagGetPIEndAfterDays), "--end-before-days", pickPIDateBound("", flagGetPIEndBeforeDays)); err != nil {
 		return err
 	}
 	if flagGetPIBpmnProcessID == "" &&
@@ -252,12 +297,48 @@ func validatePISearchFlags() error {
 	return nil
 }
 
+func validatePIMixedDateFilterInputs() error {
+	if hasStartPIAbsoluteDateFlags() && hasStartPIRelativeDayFlags() {
+		return mutuallyExclusiveFlagsf("start-date absolute and relative day filters cannot be combined")
+	}
+	if hasEndPIAbsoluteDateFlags() && hasEndPIRelativeDayFlags() {
+		return mutuallyExclusiveFlagsf("end-date absolute and relative day filters cannot be combined")
+	}
+	return nil
+}
+
+func hasStartPIAbsoluteDateFlags() bool {
+	return flagGetPIStartDateAfter != "" || flagGetPIStartDateBefore != ""
+}
+
+func hasEndPIAbsoluteDateFlags() bool {
+	return flagGetPIEndDateAfter != "" || flagGetPIEndDateBefore != ""
+}
+
+func hasStartPIRelativeDayFlags() bool {
+	return flagGetPIStartAfterDays >= 0 || flagGetPIStartBeforeDays >= 0
+}
+
+func hasEndPIRelativeDayFlags() bool {
+	return flagGetPIEndAfterDays >= 0 || flagGetPIEndBeforeDays >= 0
+}
+
 func validatePIDateFlag(flagName, value string) error {
 	if value == "" {
 		return nil
 	}
 	if _, err := time.Parse(time.DateOnly, value); err != nil {
 		return invalidFlagValuef("invalid value for %s: %q, expected YYYY-MM-DD", flagName, value)
+	}
+	return nil
+}
+
+func validatePIRelativeDayFlag(flagName string, value int) error {
+	if value < 0 {
+		if value == -1 {
+			return nil
+		}
+		return invalidFlagValuef("invalid value for %s: %d, expected non-negative integer", flagName, value)
 	}
 	return nil
 }
@@ -279,4 +360,18 @@ func validatePIDateRange(afterFlag, afterValue, beforeFlag, beforeValue string) 
 		return invalidFlagValuef("invalid range for %s and %s: %q is later than %q", afterFlag, beforeFlag, afterValue, beforeValue)
 	}
 	return nil
+}
+
+func pickPIDateBound(absolute string, relativeDays int) string {
+	if absolute != "" {
+		return absolute
+	}
+	if relativeDays < 0 {
+		return ""
+	}
+	return derivePIDateBound(relativeDays)
+}
+
+func derivePIDateBound(relativeDays int) string {
+	return relativeDayNow().AddDate(0, 0, -relativeDays).Format(time.DateOnly)
 }
