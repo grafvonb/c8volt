@@ -93,3 +93,27 @@ Started: 2026-04-10 12:02:02
 - Helper-process command tests can reuse the shared `relativeDayNow` seam by passing an override through environment, which keeps management-command coverage deterministic without adding production-only test hooks.
 - The existing cancel/delete search path already preserves derived relative-day bounds from `populatePISearchFilterOpts()`, so User Story 2 needed request-shape assertions and surfaced examples rather than new search plumbing.
 ---
+
+## Iteration 5 - 2026-04-10 12:21:28 CEST
+**User Story**: User Story 3 - Receive Clear Validation and Version Responses
+**Tasks Completed**:
+- [x] T015 [US3] Add command coverage for invalid values, mixed absolute-plus-relative filters, invalid ranges, and local-day derivation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T016 [US3] Add management-command coverage for invalid `--key` combinations and v8.7 unsupported relative-day usage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T017 [US3] Add service regression coverage for missing `endDate` exclusion and v8.7 not-implemented behavior with derived absolute bounds in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
+- [x] T018 [US3] Enforce invalid relative-day combinations and derived-range validation before search execution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T019 [US3] Preserve invalid `--key` plus relative-day rejection for management commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T020 [US3] Verify relative-day flows reuse the existing v8.7 rejection and v8.8 missing-`endDate` handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- specs/095-processinstance-day-filters/progress.md
+- specs/095-processinstance-day-filters/tasks.md
+**Learnings**:
+- The shared command validation path from `validatePISearchFlags()` and `validatePIKeyedModeDateFilters()` already covered the User Story 3 rejection rules; the missing work was proving those behaviors through helper-process command tests instead of adding a second validation branch.
+- A timezone-bearing `relativeDayNow` override is enough to prove local-day derivation at the CLI seam, while service regressions only need to assert the canonical absolute bounds they receive and preserve the existing v8.8 `endDate` existence filter and v8.7 unsupported-capability path.
+---

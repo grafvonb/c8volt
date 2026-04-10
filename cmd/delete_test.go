@@ -67,11 +67,33 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFilters(t *testing.T) {
 	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+// Verifies relative-day filters cannot be combined with direct key lookup mode.
+func TestDeleteProcessInstanceCommand_RejectsKeyAndRelativeDayFilters(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsKeyAndRelativeDayFiltersHelper", cfgPath)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, output, "invalid input")
+	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
+}
+
 // Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
 func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
 	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper", cfgPath)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, output, "unsupported capability")
+	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
+}
+
+// Verifies relative-day process-instance filters are also rejected for Camunda 8.7.
+func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper", cfgPath)
 
 	require.Equal(t, exitcode.Error, code)
 	require.Contains(t, output, "unsupported capability")
@@ -323,6 +345,20 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndDateFiltersHelper(t *testing.
 	Execute()
 }
 
+// Helper-process entrypoint for key-and-relative-day-filter exclusivity validation.
+func TestDeleteProcessInstanceCommand_RejectsKeyAndRelativeDayFiltersHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--key", "2251799813711967", "--end-before-days", "7"}
+
+	Execute()
+}
+
 // Helper-process entrypoint for version capability validation on Camunda 8.7.
 func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -333,6 +369,20 @@ func TestDeleteProcessInstanceCommand_RejectsDateFiltersOnV87Helper(t *testing.T
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--auto-confirm"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for relative-day version capability validation on Camunda 8.7.
+func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--end-before-days", "7", "--auto-confirm"}
 
 	Execute()
 }

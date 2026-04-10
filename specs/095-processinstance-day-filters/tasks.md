@@ -85,15 +85,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T015 [P] [US3] Add command coverage for invalid values, mixed absolute-plus-relative filters, invalid ranges, and local-day derivation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T016 [P] [US3] Add management-command coverage for invalid `--key` combinations and v8.7 unsupported relative-day usage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
-- [ ] T017 [P] [US3] Add service regression coverage for missing `endDate` exclusion and v8.7 not-implemented behavior with derived absolute bounds in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
+- [x] T015 [P] [US3] Add command coverage for invalid values, mixed absolute-plus-relative filters, invalid ranges, and local-day derivation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T016 [P] [US3] Add management-command coverage for invalid `--key` combinations and v8.7 unsupported relative-day usage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T017 [P] [US3] Add service regression coverage for missing `endDate` exclusion and v8.7 not-implemented behavior with derived absolute bounds in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Enforce invalid relative-day combinations and derived-range validation before search execution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T019 [US3] Preserve invalid `--key` plus relative-day rejection for management commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T020 [US3] Verify relative-day flows reuse the existing v8.7 rejection and v8.8 missing-`endDate` handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go
+- [x] T018 [US3] Enforce invalid relative-day combinations and derived-range validation before search execution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T019 [US3] Preserve invalid `--key` plus relative-day rejection for management commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T020 [US3] Verify relative-day flows reuse the existing v8.7 rejection and v8.8 missing-`endDate` handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go
 
 **Checkpoint**: User Story 3 delivers clear validation failures and preserves the existing version-specific service contract.
 

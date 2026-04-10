@@ -309,6 +309,41 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Equal(t, "123", items[0].Key)
 	})
 
+	t.Run("RequiresExistingEndDateForSingleDerivedUpperBound", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Filter)
+				require.NotNil(t, body.Filter.EndDate)
+
+				endDate, err := body.Filter.EndDate.AsAdvancedDateTimeFilter()
+				require.NoError(t, err)
+				require.Nil(t, endDate.Gte)
+				require.NotNil(t, endDate.Lte)
+				require.NotNil(t, endDate.Exists)
+				assert.Equal(t, true, *endDate.Exists)
+				assert.Equal(t, time.Date(2026, time.April, 3, 23, 59, 59, int(time.Second-time.Nanosecond), time.UTC), *endDate.Lte)
+
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+						Items: []camundav88.ProcessInstanceResult{*makeProcessInstanceResult("123", "COMPLETED", "")},
+					},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			EndDateBefore: "2026-04-03",
+		}, 25)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, "123", items[0].Key)
+	})
+
 	t.Run("OmitsTenantFilterWhenConfigTenantIsEmpty", func(t *testing.T) {
 		cfg := testConfig()
 		cfg.App.Tenant = ""

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -245,6 +246,62 @@ func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
 	})
 }
 
+func TestGetProcessInstanceRelativeDayValidation(t *testing.T) {
+	t.Run("negative relative-day values exit through shared invalid-input path", func(t *testing.T) {
+		cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+		output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceNegativeRelativeDayHelper", cfgPath)
+
+		require.Equal(t, exitcode.InvalidArgs, code)
+		require.Contains(t, output, "invalid input")
+		require.Contains(t, output, "invalid value for --start-after-days: -2, expected non-negative integer")
+	})
+
+	t.Run("mixed absolute and relative start-date filters are rejected", func(t *testing.T) {
+		cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+		output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceMixedAbsoluteAndRelativeDateFiltersHelper", cfgPath)
+
+		require.Equal(t, exitcode.InvalidArgs, code)
+		require.Contains(t, output, "invalid input")
+		require.Contains(t, output, "start-date absolute and relative day filters cannot be combined")
+	})
+
+	t.Run("invalid derived relative-day ranges are rejected", func(t *testing.T) {
+		cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+		output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceInvalidRelativeDayRangeHelper", cfgPath)
+
+		require.Equal(t, exitcode.InvalidArgs, code)
+		require.Contains(t, output, "invalid input")
+		require.Contains(t, output, `invalid range for --start-after-days and --start-before-days: "2026-04-03" is later than "2026-03-11"`)
+	})
+
+	t.Run("local-day derivation honors the configured day boundary override", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServer(t, &requests)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForProcessInstanceTestWithEnv(t,
+			[]string{testRelativeDayNowEnv + "=2026-04-10T00:30:00+02:00"},
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--start-after-days", "0",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+
+		requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-04-10T00:00:00Z")
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &got))
+		require.NotContains(t, got, "error")
+	})
+}
+
 func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -327,6 +384,32 @@ func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	return buf.String()
 }
 
+func executeRootForProcessInstanceTestWithEnv(t *testing.T, env []string, args ...string) string {
+	t.Helper()
+
+	prevNow := relativeDayNow
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	for _, kv := range env {
+		key, value, ok := strings.Cut(kv, "=")
+		require.True(t, ok)
+		prevValue, hadValue := os.LookupEnv(key)
+		require.NoError(t, os.Setenv(key, value))
+		t.Cleanup(func() {
+			if hadValue {
+				require.NoError(t, os.Setenv(key, prevValue))
+				return
+			}
+			require.NoError(t, os.Unsetenv(key))
+		})
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	return executeRootForProcessInstanceTest(t, args...)
+}
+
 func resetProcessInstanceCommandGlobals() {
 	flagGetPIKeys = nil
 	flagGetPIBpmnProcessID = ""
@@ -366,6 +449,45 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	return string(output), exitErr.ExitCode()
+}
+
+// Helper-process entrypoint for negative relative-day validation.
+func TestGetProcessInstanceNegativeRelativeDayHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-after-days", "-2"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for mixed absolute-plus-relative start-date validation.
+func TestGetProcessInstanceMixedAbsoluteAndRelativeDateFiltersHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after", "2026-04-03", "--start-before-days", "7"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for invalid relative-day range validation.
+func TestGetProcessInstanceInvalidRelativeDayRangeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-after-days", "7", "--start-before-days", "30"}
+
+	Execute()
 }
 
 // Helper-process entrypoint for invalid date format validation.
