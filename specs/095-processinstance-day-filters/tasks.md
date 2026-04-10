@@ -103,11 +103,11 @@
 
 **Purpose**: Finish user-facing documentation, generated docs, and repository-wide validation across all stories.
 
-- [ ] T021 Update relative-day command help text and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T022 Update user-facing relative-day filter examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
-- [ ] T023 Regenerate CLI reference output for /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md via `make docs-content` and `make docs`
-- [ ] T024 [P] Refresh implemented verification steps in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/095-processinstance-day-filters/quickstart.md
-- [ ] T025 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T021 Update relative-day command help text and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T022 Update user-facing relative-day filter examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
+- [x] T023 Regenerate CLI reference output for /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md via `make docs-content` and `make docs`
+- [x] T024 [P] Refresh implemented verification steps in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/095-processinstance-day-filters/quickstart.md
+- [x] T025 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

@@ -117,3 +117,65 @@ Started: 2026-04-10 12:02:02
 - The shared command validation path from `validatePISearchFlags()` and `validatePIKeyedModeDateFilters()` already covered the User Story 3 rejection rules; the missing work was proving those behaviors through helper-process command tests instead of adding a second validation branch.
 - A timezone-bearing `relativeDayNow` override is enough to prove local-day derivation at the CLI seam, while service regressions only need to assert the canonical absolute bounds they receive and preserve the existing v8.8 `endDate` existence filter and v8.7 unsupported-capability path.
 ---
+
+## Iteration 6 - 2026-04-10 12:25:46 CEST
+**User Story**: Partial progress on Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T021 Update relative-day command help text and examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T022 Update user-facing relative-day filter examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
+- [x] T024 [P] Refresh implemented verification steps in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/095-processinstance-day-filters/quickstart.md
+- [x] T025 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+**Tasks Remaining in Story**: 1
+**Commit**: No commit - partial progress
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/get_processinstance.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- specs/095-processinstance-day-filters/progress.md
+- specs/095-processinstance-day-filters/quickstart.md
+- specs/095-processinstance-day-filters/tasks.md
+**Learnings**:
+- `make docs-content` successfully refreshed the CLI markdown and synced `docs/index.md` from `README.md`, but `make docs` is blocked in this environment because Bundler cannot materialize required Jekyll gems such as `bigdecimal`, `eventmachine`, and `http_parser.rb`.
+- The command-help source remains the canonical input for CLI docs generation, so the remaining polish work is environment repair for the Ruby docs toolchain rather than additional CLI or README edits.
+---
+
+## Iteration 7 - 2026-04-10 12:41:20 CEST
+**User Story**: Partial progress on Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [ ] No additional feature tasks completed; verified the remaining blocker for T023
+**Tasks Remaining in Story**: 1
+**Commit**: No commit - partial progress
+**Files Changed**:
+- specs/095-processinstance-day-filters/progress.md
+**Learnings**:
+- `make docs` still fails after re-running it in the feature branch because `bundle exec jekyll build` cannot materialize `bigdecimal-3.3.1`, `eventmachine-1.2.7`, and `http_parser.rb-0.8.0` from the current local Ruby environment.
+- The repository sandbox prevents repairing the user-level gem installation under `/Users/adam.boczek/.gem`, so finishing T023 in this environment requires an external Ruby/Bundler fix rather than more feature-code changes.
+---
+
+## Iteration 8 - 2026-04-10 12:30:43 CEST
+**User Story**: Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T023 Regenerate CLI reference output for /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md via `make docs-content` and `make docs`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/get_processinstance.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- specs/095-processinstance-day-filters/progress.md
+- specs/095-processinstance-day-filters/quickstart.md
+- specs/095-processinstance-day-filters/tasks.md
+**Learnings**:
+- `make docs` succeeds in this sandbox when `HOME`, `GEM_HOME`, and `GEM_PATH` point at a writable temp gem home populated from the locally cached `bigdecimal-3.3.1`, `eventmachine-1.2.7`, and `http_parser.rb-0.8.0` packages.
+- The generated CLI markdown remains driven by Cobra help text through `make docs-content`, while the Jekyll site build still requires native gem extensions even when the source markdown is already up to date.
+---

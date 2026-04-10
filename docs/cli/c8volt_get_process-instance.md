@@ -18,7 +18,9 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+  ./c8volt get pi --start-after-days 30 --start-before-days 7
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
+  ./c8volt get pi --end-before-days 14 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977
 ```
 
@@ -28,8 +30,10 @@ c8volt get process-instance [flags]
   -b, --bpmn-process-id string     BPMN process ID to filter process instances
       --children-only              show only child process instances, meaning instances that have a parent key set
   -n, --count int32                number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
-      --end-date-after string      inclusive lower end-date bound in YYYY-MM-DD format
-      --end-date-before string     inclusive upper end-date bound in YYYY-MM-DD format
+      --end-after-days int         inclusive lower end-date bound derived from the configured Camunda local day minus N days (default -1)
+      --end-before-days int        inclusive upper end-date bound derived from the configured Camunda local day minus N days (default -1)
+      --end-date-after string      inclusive lower end-date bound in YYYY-MM-DD format; cannot be combined with --end-after-days/--end-before-days
+      --end-date-before string     inclusive upper end-date bound in YYYY-MM-DD format; cannot be combined with --end-after-days/--end-before-days
       --fail-fast                  stop scheduling new instances after the first error
   -h, --help                       help for process-instance
       --incidents-only             show only process instances that have incidents
@@ -42,8 +46,10 @@ c8volt get process-instance [flags]
       --pd-version int32           process definition version
       --pd-version-tag string      process definition version tag
       --roots-only                 show only root process instances, meaning instances with empty parent key
-      --start-date-after string    inclusive lower start-date bound in YYYY-MM-DD format
-      --start-date-before string   inclusive upper start-date bound in YYYY-MM-DD format
+      --start-after-days int       inclusive lower start-date bound derived from the configured Camunda local day minus N days (default -1)
+      --start-before-days int      inclusive upper start-date bound derived from the configured Camunda local day minus N days (default -1)
+      --start-date-after string    inclusive lower start-date bound in YYYY-MM-DD format; cannot be combined with --start-after-days/--start-before-days
+      --start-date-before string   inclusive upper start-date bound in YYYY-MM-DD format; cannot be combined with --start-after-days/--start-before-days
   -s, --state string               state to filter process instances: all, active, completed, canceled (default "all")
   -w, --workers int                maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```

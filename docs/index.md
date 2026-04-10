@@ -106,16 +106,18 @@ Camunda may reject a direct cancellation of a child instance when the real actio
 ./c8volt cancel pi --key 2251799813711977
 ./c8volt cancel pi --key 2251799813711977 --force
 ./c8volt cancel pi --state active --start-date-before 2026-03-31
+./c8volt cancel pi --state active --start-before-days 30
 ```
 
 With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
-The same search-driven flow also supports inclusive `--start-date-*` and `--end-date-*` filters when you want to target matching instances without collecting keys first.
+The same search-driven flow also supports inclusive absolute `--start-date-*` / `--end-date-*` filters and relative `--start-*-days` / `--end-*-days` shortcuts when you want to target matching instances without collecting keys first.
 
 ### 5. Delete thoroughly
 
 ```bash
 ./c8volt delete pi --key 2251799813711967 --force
 ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
+./c8volt delete pi --state completed --end-after-days 60 --end-before-days 7 --auto-confirm
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
 ```
 
@@ -157,13 +159,16 @@ This makes `c8volt` useful not only for action commands, but also for environmen
 
 ```bash
 ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+./c8volt get pi --start-after-days 30 --start-before-days 7
 ./c8volt get pi --end-date-after 2026-02-01
 ./c8volt get pi --end-date-before 2026-03-31 --state completed
 ./c8volt cancel pi --state active --start-date-after 2026-03-01 --start-date-before 2026-03-31
+./c8volt cancel pi --state active --start-before-days 30
 ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
+./c8volt delete pi --state completed --end-after-days 60 --end-before-days 7 --auto-confirm
 ```
 
-The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. They narrow `get pi` results and also support search-driven `cancel pi` / `delete pi` selection, they exclude missing `endDate` values when end-date filters are used, and they are intentionally not supported with `--key` direct lookup.
+The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. The `--start-*-days` and `--end-*-days` flags derive the same inclusive bounds from the configured Camunda local day minus `N` days. Both forms narrow `get pi` results and also support search-driven `cancel pi` / `delete pi` selection, they exclude missing `endDate` values when end-date filters are used, they reject mixing absolute and relative filters for the same field, and they are intentionally not supported with `--key` direct lookup.
 
 ### Export bundled fixtures for editing or custom deployment
 

@@ -45,7 +45,9 @@ var getProcessInstanceCmd = &cobra.Command{
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
+  ./c8volt get pi --start-after-days 30 --start-before-days 7
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
+  ./c8volt get pi --end-before-days 14 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -139,10 +141,10 @@ func init() {
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
-	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
-	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
-	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
-	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
+	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format; cannot be combined with --start-after-days/--start-before-days")
+	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format; cannot be combined with --start-after-days/--start-before-days")
+	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format; cannot be combined with --end-after-days/--end-before-days")
+	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format; cannot be combined with --end-after-days/--end-before-days")
 	registerPIRelativeDayFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
 
@@ -168,10 +170,10 @@ var relativeDayNow = func() time.Time {
 }
 
 func registerPIRelativeDayFlags(fs *pflag.FlagSet) {
-	fs.IntVar(&flagGetPIStartAfterDays, "start-after-days", -1, "inclusive lower start-date bound derived from today minus N days")
-	fs.IntVar(&flagGetPIStartBeforeDays, "start-before-days", -1, "inclusive upper start-date bound derived from today minus N days")
-	fs.IntVar(&flagGetPIEndAfterDays, "end-after-days", -1, "inclusive lower end-date bound derived from today minus N days")
-	fs.IntVar(&flagGetPIEndBeforeDays, "end-before-days", -1, "inclusive upper end-date bound derived from today minus N days")
+	fs.IntVar(&flagGetPIStartAfterDays, "start-after-days", -1, "inclusive lower start-date bound derived from the configured Camunda local day minus N days")
+	fs.IntVar(&flagGetPIStartBeforeDays, "start-before-days", -1, "inclusive upper start-date bound derived from the configured Camunda local day minus N days")
+	fs.IntVar(&flagGetPIEndAfterDays, "end-after-days", -1, "inclusive lower end-date bound derived from the configured Camunda local day minus N days")
+	fs.IntVar(&flagGetPIEndBeforeDays, "end-before-days", -1, "inclusive upper end-date bound derived from the configured Camunda local day minus N days")
 }
 
 func populatePISearchFilterOpts() process.ProcessInstanceFilter {

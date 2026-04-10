@@ -31,6 +31,13 @@ make docs
 make test
 ```
 
+## Implemented Verification Notes
+
+- Confirm the generated command help for `get process-instance`, `cancel process-instance`, and `delete process-instance` now shows all four `*-days` flags and examples that use them.
+- Confirm README examples cover both absolute `YYYY-MM-DD` filters and relative day shortcuts for read and management flows.
+- Keep generated `docs/cli/` pages in sync by changing Cobra help text first, then rerunning `make docs-content` and `make docs`.
+- Finish the iteration with `make test`; do not mark the polish work complete if the repository-wide validation gate fails.
+
 ## Manual Smoke Checks
 
 ```bash
