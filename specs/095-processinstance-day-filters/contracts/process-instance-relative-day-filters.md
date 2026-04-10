@@ -14,10 +14,10 @@ New flags on all three commands:
 
 | Flag | Value | Meaning |
 |------|-------|---------|
-| `--start-after-days` | non-negative integer | Inclusive lower bound for `startDate`, derived from today minus `N` days |
-| `--start-before-days` | non-negative integer | Inclusive upper bound for `startDate`, derived from today minus `N` days |
-| `--end-after-days` | non-negative integer | Inclusive lower bound for `endDate`, derived from today minus `N` days |
-| `--end-before-days` | non-negative integer | Inclusive upper bound for `endDate`, derived from today minus `N` days |
+| `--start-date-after-days` | non-negative integer | Inclusive lower bound for `startDate`, derived from today minus `N` days |
+| `--start-date-before-days` | non-negative integer | Inclusive upper bound for `startDate`, derived from today minus `N` days |
+| `--end-date-after-days` | non-negative integer | Inclusive lower bound for `endDate`, derived from today minus `N` days |
+| `--end-date-before-days` | non-negative integer | Inclusive upper bound for `endDate`, derived from today minus `N` days |
 
 ## Validity Rules
 
@@ -34,11 +34,11 @@ New flags on all three commands:
 
 | Input combination | Required behavior |
 |------------------|-------------------|
-| `--start-after-days N` | Behave as the equivalent of `startDate >= today - N days` |
-| `--start-before-days N` | Behave as the equivalent of `startDate <= today - N days` |
+| `--start-date-after-days N` | Behave as the equivalent of `startDate >= today - N days` |
+| `--start-date-before-days N` | Behave as the equivalent of `startDate <= today - N days` |
 | Both start-day flags | Behave as an inclusive derived start-date range |
-| `--end-after-days N` | Behave as the equivalent of `endDate >= today - N days` |
-| `--end-before-days N` | Behave as the equivalent of `endDate <= today - N days` |
+| `--end-date-after-days N` | Behave as the equivalent of `endDate >= today - N days` |
+| `--end-date-before-days N` | Behave as the equivalent of `endDate <= today - N days` |
 | Both end-day flags | Behave as an inclusive derived end-date range |
 | Any relative day filter | Use the configured Camunda environment’s local calendar day for derivation |
 | Any relative end-day filter on instance with no `endDate` | Exclude that instance from the result or selected set |

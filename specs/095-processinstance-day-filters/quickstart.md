@@ -12,7 +12,7 @@
 ## Implementation Walkthrough
 
 1. Start in [`cmd/get_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go), where the shared process-instance search helpers already live for `get`, `cancel`, and `delete`.
-2. Add shared flag variables and registration for `--start-before-days`, `--start-after-days`, `--end-before-days`, and `--end-after-days`, keeping help text aligned across all three commands.
+2. Add shared flag variables and registration for `--start-date-before-days`, `--start-date-after-days`, `--end-date-before-days`, and `--end-date-after-days`, keeping help text aligned across all three commands.
 3. Extend `validatePISearchFlags()` to parse non-negative integer day inputs, reject mixed absolute-plus-relative filters for the same field, reject invalid derived ranges, and preserve the explicit `--key` incompatibility for search-only filters.
 4. Update `populatePISearchFilterOpts()` so relative day flags are converted into the existing absolute date fields on `process.ProcessInstanceFilter` before the facade call path is used.
 5. Reuse the existing search helper calls already present in [`cmd/cancel_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go) and [`cmd/delete_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go) so search-based management commands inherit the same derived-bound logic automatically.
@@ -41,11 +41,11 @@ make test
 ## Manual Smoke Checks
 
 ```bash
-./c8volt get process-instance --start-after-days 7 --config /tmp/c8volt-v88.yaml
-./c8volt get process-instance --start-after-days 30 --start-before-days 7 --config /tmp/c8volt-v88.yaml
-./c8volt cancel process-instance --state active --start-before-days 30 --config /tmp/c8volt-v88.yaml
-./c8volt delete process-instance --end-after-days 60 --end-before-days 7 --auto-confirm --config /tmp/c8volt-v88.yaml
-./c8volt cancel process-instance --key 2251799813711967 --start-after-days 7 --config /tmp/c8volt-v88.yaml
-./c8volt get process-instance --start-after-days -1 --config /tmp/c8volt-v88.yaml
-./c8volt get process-instance --end-before-days 14 --config /tmp/c8volt-v87.yaml
+./c8volt get process-instance --start-date-after-days 7 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --start-date-after-days 30 --start-date-before-days 7 --config /tmp/c8volt-v88.yaml
+./c8volt cancel process-instance --state active --start-date-before-days 30 --config /tmp/c8volt-v88.yaml
+./c8volt delete process-instance --end-date-after-days 60 --end-date-before-days 7 --auto-confirm --config /tmp/c8volt-v88.yaml
+./c8volt cancel process-instance --key 2251799813711967 --start-date-after-days 7 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --start-date-after-days -1 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --end-date-before-days 14 --config /tmp/c8volt-v87.yaml
 ```

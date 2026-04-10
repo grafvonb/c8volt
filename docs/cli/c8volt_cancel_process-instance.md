@@ -18,9 +18,9 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
-  ./c8volt cancel pi --state active --start-before-days 30
+		  ./c8volt cancel pi --state active --start-date-before-days 30
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt cancel pi --bpmn-process-id order-process --start-after-days 14 --state active
+		  ./c8volt cancel pi --bpmn-process-id order-process --start-date-after-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -
 ```
@@ -28,26 +28,26 @@ c8volt cancel process-instance [flags]
 ### Options
 
 ```
-  -b, --bpmn-process-id string     BPMN process ID to filter process instances
-      --end-after-days int         inclusive lower end-date bound derived from the configured Camunda local day minus N days (default -1)
-      --end-before-days int        inclusive upper end-date bound derived from the configured Camunda local day minus N days (default -1)
-      --end-date-after string      inclusive lower end-date bound in YYYY-MM-DD format; cannot be combined with --end-after-days/--end-before-days
-      --end-date-before string     inclusive upper end-date bound in YYYY-MM-DD format; cannot be combined with --end-after-days/--end-before-days
-      --fail-fast                  stop scheduling new instances after the first error
-      --force                      force cancellation of the root process instance if a process instance is a child, including all its child instances
-  -h, --help                       help for process-instance
-  -k, --key strings                process instance key(s) to cancel
-      --no-state-check             skip checking the current state of the process instance before cancelling it
-      --no-wait                    skip waiting for the cancellation to be fully processed
-      --no-worker-limit            disable limiting the number of workers to GOMAXPROCS when --workers > 1
-      --pd-version int32           process definition version
-      --pd-version-tag string      process definition version tag
-      --start-after-days int       inclusive lower start-date bound derived from the configured Camunda local day minus N days (default -1)
-      --start-before-days int      inclusive upper start-date bound derived from the configured Camunda local day minus N days (default -1)
-      --start-date-after string    inclusive lower start-date bound in YYYY-MM-DD format; cannot be combined with --start-after-days/--start-before-days
-      --start-date-before string   inclusive upper start-date bound in YYYY-MM-DD format; cannot be combined with --start-after-days/--start-before-days
-  -s, --state string               state to filter process instances: all, active, completed, canceled (default "all")
-  -w, --workers int                maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -b, --bpmn-process-id string       BPMN process ID to filter process instances
+      --end-date-after string        only include process instances with end date >= YYYY-MM-DD
+      --end-date-after-days int      only include process instances with end date >= N days ago (0 means today) (default -1)
+      --end-date-before string       only include process instances with end date <= YYYY-MM-DD
+      --end-date-before-days int     only include process instances with end date <= N days ago (0 means today) (default -1)
+      --fail-fast                    stop scheduling new instances after the first error
+      --force                        force cancellation of the root process instance if a process instance is a child, including all its child instances
+  -h, --help                         help for process-instance
+  -k, --key strings                  process instance key(s) to cancel
+      --no-state-check               skip checking the current state of the process instance before cancelling it
+      --no-wait                      skip waiting for the cancellation to be fully processed
+      --no-worker-limit              disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --pd-version int32             process definition version
+      --pd-version-tag string        process definition version tag
+      --start-date-after string      only include process instances with start date >= YYYY-MM-DD
+      --start-date-after-days int    only include process instances with start date >= N days ago (0 means today) (default -1)
+      --start-date-before string     only include process instances with start date <= YYYY-MM-DD
+      --start-date-before-days int   only include process instances with start date <= N days ago (0 means today) (default -1)
+  -s, --state string                 state to filter process instances: all, active, completed, canceled (default "all")
+  -w, --workers int                  maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands

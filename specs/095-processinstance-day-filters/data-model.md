@@ -4,10 +4,10 @@
 
 - **Purpose**: Represents the user-facing integer shortcut supplied through the new `*-days` flags before it is translated into the canonical absolute date filter model.
 - **User-visible inputs**:
-  - `--start-after-days`
-  - `--start-before-days`
-  - `--end-after-days`
-  - `--end-before-days`
+  - `--start-date-after-days`
+  - `--start-date-before-days`
+  - `--end-date-after-days`
+  - `--end-date-before-days`
 - **Validation rules**:
   - Each value is optional and must be a non-negative integer.
   - A relative day input may not be combined with the corresponding absolute date flag for the same field.

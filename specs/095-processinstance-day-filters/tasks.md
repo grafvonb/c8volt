@@ -40,7 +40,7 @@
 
 **Goal**: Let users narrow `get process-instance` results with relative day-based shortcut flags that behave like the existing absolute date filters.
 
-**Independent Test**: Run `c8volt get process-instance --start-after-days 7`, `--start-before-days 30`, and `--end-before-days 14` against a v8.8 config and verify the resulting search request behaves like the equivalent derived absolute date filters, including inclusive boundaries.
+**Independent Test**: Run `c8volt get process-instance --start-date-after-days 7`, `--start-date-before-days 30`, and `--end-date-before-days 14` against a v8.8 config and verify the resulting search request behaves like the equivalent derived absolute date filters, including inclusive boundaries.
 
 ### Tests for User Story 1
 
@@ -60,7 +60,7 @@
 
 **Goal**: Let users apply the new relative day-based shortcut flags to search-driven `cancel process-instance` and `delete process-instance` workflows without changing direct key behavior.
 
-**Independent Test**: Run `c8volt cancel process-instance --state active --start-before-days 30` and `c8volt delete process-instance --end-after-days 60 --end-before-days 7 --auto-confirm` on v8.8 and verify only matching instances are selected through the existing search-based management path.
+**Independent Test**: Run `c8volt cancel process-instance --state active --start-date-before-days 30` and `c8volt delete process-instance --end-date-after-days 60 --end-date-before-days 7 --auto-confirm` on v8.8 and verify only matching instances are selected through the existing search-based management path.
 
 ### Tests for User Story 2
 
