@@ -18,7 +18,9 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instance(s) by key or search filters, optionally cancelling first",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
+  ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
+  ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -41,10 +43,12 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
+		searched := false
 
 		switch {
 		case len(keys) > 0:
 		default:
+			searched = true
 			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
@@ -59,6 +63,10 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
+			if searched {
+				cmd.Println("found:", 0)
+				return
+			}
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to delete")))
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
@@ -94,12 +102,8 @@ func init() {
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering
-	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
-	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
-	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "inclusive lower start-date bound in YYYY-MM-DD format")
-	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "inclusive upper start-date bound in YYYY-MM-DD format")
-	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "inclusive lower end-date bound in YYYY-MM-DD format")
-	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "inclusive upper end-date bound in YYYY-MM-DD format")
+	registerPISharedProcessDefinitionFilterFlags(fs)
+	registerPISharedDateRangeFlags(fs)
+	registerPISharedRenderFlags(fs)
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }

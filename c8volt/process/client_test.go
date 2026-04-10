@@ -73,6 +73,35 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 	require.NoError(t, err)
 }
 
+func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanonicalDateFields(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, int32(10), size)
+			assert.Equal(t, d.ProcessInstanceFilter{
+				StartDateAfter:  "2026-03-11",
+				StartDateBefore: "2026-04-03",
+				EndDateAfter:    "2026-02-09",
+				EndDateBefore:   "2026-03-27",
+			}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstance{}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	_, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
+		StartDateAfter:  "2026-03-11",
+		StartDateBefore: "2026-04-03",
+		EndDateAfter:    "2026-02-09",
+		EndDateBefore:   "2026-03-27",
+	}, 10, options.WithVerbose())
+
+	require.NoError(t, err)
+}
+
 type stubProcessDefinitionAPI struct {
 	getProcessDefinitionXML func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
