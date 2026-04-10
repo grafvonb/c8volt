@@ -46,9 +46,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		  Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-		  ./c8volt get pi --start-date-after-days 30 --start-date-before-days 7
+		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
-		  ./c8volt get pi --end-date-before-days 14 --state completed
+		  ./c8volt get pi --end-date-newer-days 14 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -171,10 +171,10 @@ func registerPISharedDateRangeFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&flagGetPIEndDateAfter, "end-date-after", "", "only include process instances with end date >= YYYY-MM-DD")
 	fs.StringVar(&flagGetPIEndDateBefore, "end-date-before", "", "only include process instances with end date <= YYYY-MM-DD")
 
-	fs.IntVar(&flagGetPIStartAfterDays, "start-date-after-days", -1, "only include process instances with start date >= N days ago (0 means today)")
-	fs.IntVar(&flagGetPIStartBeforeDays, "start-date-before-days", -1, "only include process instances with start date <= N days ago (0 means today)")
-	fs.IntVar(&flagGetPIEndAfterDays, "end-date-after-days", -1, "only include process instances with end date >= N days ago (0 means today)")
-	fs.IntVar(&flagGetPIEndBeforeDays, "end-date-before-days", -1, "only include process instances with end date <= N days ago (0 means today)")
+	fs.IntVar(&flagGetPIStartAfterDays, "start-date-older-days", -1, "only include process instances N days old or older")
+	fs.IntVar(&flagGetPIStartBeforeDays, "start-date-newer-days", -1, "only include process instances N days old or newer (0 means today)")
+	fs.IntVar(&flagGetPIEndAfterDays, "end-date-older-days", -1, "only include process instances with end date N days old or older")
+	fs.IntVar(&flagGetPIEndBeforeDays, "end-date-newer-days", -1, "only include process instances with end date N days old or newer (0 means today)")
 }
 
 func registerPISharedProcessDefinitionFilterFlags(fs *pflag.FlagSet) {
@@ -194,10 +194,10 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 		ProcessVersion:       flagGetPIProcessVersion,
 		ProcessVersionTag:    flagGetPIProcessVersionTag,
 		ProcessDefinitionKey: flagGetPIProcessDefinitionKey,
-		StartDateAfter:       pickPIDateBound(flagGetPIStartDateAfter, flagGetPIStartAfterDays),
-		StartDateBefore:      pickPIDateBound(flagGetPIStartDateBefore, flagGetPIStartBeforeDays),
-		EndDateAfter:         pickPIDateBound(flagGetPIEndDateAfter, flagGetPIEndAfterDays),
-		EndDateBefore:        pickPIDateBound(flagGetPIEndDateBefore, flagGetPIEndBeforeDays),
+		StartDateAfter:       pickPIDateBound(flagGetPIStartDateAfter, flagGetPIStartBeforeDays),
+		StartDateBefore:      pickPIDateUpperBound(flagGetPIStartDateBefore, flagGetPIStartAfterDays),
+		EndDateAfter:         pickPIDateBound(flagGetPIEndDateAfter, flagGetPIEndBeforeDays),
+		EndDateBefore:        pickPIDateUpperBound(flagGetPIEndDateBefore, flagGetPIEndAfterDays),
 	}
 
 	if s := flagGetPIState; s != "" && s != "all" {
@@ -270,16 +270,16 @@ func validatePISearchFlags() error {
 	if err := validatePIDateFlag("--end-date-before", flagGetPIEndDateBefore); err != nil {
 		return err
 	}
-	if err := validatePIRelativeDayFlag("--start-date-after-days", flagGetPIStartAfterDays); err != nil {
+	if err := validatePIRelativeDayFlag("--start-date-older-days", flagGetPIStartAfterDays); err != nil {
 		return err
 	}
-	if err := validatePIRelativeDayFlag("--start-date-before-days", flagGetPIStartBeforeDays); err != nil {
+	if err := validatePIRelativeDayFlag("--start-date-newer-days", flagGetPIStartBeforeDays); err != nil {
 		return err
 	}
-	if err := validatePIRelativeDayFlag("--end-date-after-days", flagGetPIEndAfterDays); err != nil {
+	if err := validatePIRelativeDayFlag("--end-date-older-days", flagGetPIEndAfterDays); err != nil {
 		return err
 	}
-	if err := validatePIRelativeDayFlag("--end-date-before-days", flagGetPIEndBeforeDays); err != nil {
+	if err := validatePIRelativeDayFlag("--end-date-newer-days", flagGetPIEndBeforeDays); err != nil {
 		return err
 	}
 	if err := validatePIMixedDateFilterInputs(); err != nil {
@@ -291,10 +291,10 @@ func validatePISearchFlags() error {
 	if err := validatePIDateRange("--end-date-after", flagGetPIEndDateAfter, "--end-date-before", flagGetPIEndDateBefore); err != nil {
 		return err
 	}
-	if err := validatePIDateRange("--start-date-after-days", pickPIDateBound("", flagGetPIStartAfterDays), "--start-date-before-days", pickPIDateBound("", flagGetPIStartBeforeDays)); err != nil {
+	if err := validatePIDateRange("--start-date-newer-days", pickPIDateBound("", flagGetPIStartBeforeDays), "--start-date-older-days", pickPIDateUpperBound("", flagGetPIStartAfterDays)); err != nil {
 		return err
 	}
-	if err := validatePIDateRange("--end-date-after-days", pickPIDateBound("", flagGetPIEndAfterDays), "--end-date-before-days", pickPIDateBound("", flagGetPIEndBeforeDays)); err != nil {
+	if err := validatePIDateRange("--end-date-newer-days", pickPIDateBound("", flagGetPIEndBeforeDays), "--end-date-older-days", pickPIDateUpperBound("", flagGetPIEndAfterDays)); err != nil {
 		return err
 	}
 	if flagGetPIBpmnProcessID == "" &&
@@ -385,6 +385,21 @@ func pickPIDateBound(absolute string, relativeDays int) string {
 	return derivePIDateBound(relativeDays)
 }
 
+func pickPIDateUpperBound(absolute string, relativeDays int) string {
+	if absolute != "" {
+		return absolute
+	}
+	if relativeDays < 0 {
+		return ""
+	}
+	return derivePIUpperDateBound(relativeDays)
+}
+
 func derivePIDateBound(relativeDays int) string {
 	return relativeDayNow().AddDate(0, 0, -relativeDays).Format(time.DateOnly)
 }
+
+func derivePIUpperDateBound(relativeDays int) string {
+	return relativeDayNow().AddDate(0, 0, -relativeDays).Format(time.DateOnly)
+}
+

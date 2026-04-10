@@ -140,7 +140,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 
 	require.Equal(t, "ACTIVE", filter["state"])
 	require.Equal(t, "order-process", filter["processDefinitionId"])
-	requireCapturedPISearchDateBound(t, filter, "startDate", "$lte", "2026-03-11T23:59:59.999999999Z")
+	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-03-11T00:00:00Z")
 
 	descendantSearch := decodeCapturedPISearchRequest(t, requests[1])
 	descFilter := descendantSearch["filter"].(map[string]any)
@@ -317,7 +317,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-before-days", "30", "--auto-confirm", "--no-state-check", "--no-wait"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-newer-days", "30", "--auto-confirm", "--no-state-check", "--no-wait"}
 
 	Execute()
 }
@@ -401,7 +401,7 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndRelativeDayFiltersHelper(t *t
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--key", "2251799813711967", "--start-date-before-days", "30"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--key", "2251799813711967", "--start-date-newer-days", "30"}
 
 	Execute()
 }
@@ -429,7 +429,7 @@ func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper(t *te
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-before-days", "30"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-newer-days", "30"}
 
 	Execute()
 }

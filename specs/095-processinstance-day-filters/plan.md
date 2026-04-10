@@ -93,7 +93,7 @@ docs/cli/
 
 ## Phase 1: Design
 
-- Add shared relative-day flag variables and command registration for `--start-date-before-days`, `--start-date-after-days`, `--end-date-before-days`, and `--end-date-after-days` across `get process-instance`, `cancel process-instance`, and `delete process-instance`.
+- Add shared relative-day flag variables and command registration for `--start-date-newer-days`, `--start-date-older-days`, `--end-date-newer-days`, and `--end-date-older-days` across `get process-instance`, `cancel process-instance`, and `delete process-instance`.
 - Reuse the existing command-layer validation seam to parse non-negative integer day values, reject mixed absolute-plus-relative filters for the same field, reject invalid derived ranges, and reject explicit `--key` combined with relative day filters before any search-based action occurs.
 - Derive relative day shortcuts into the existing absolute date bound fields used by `process.ProcessInstanceFilter` so downstream facade and service layers continue to operate on the canonical absolute filter model.
 - Keep v8.8 behavior inside the existing native process-instance search mapping and keep v8.7 behavior inside the existing not-implemented service path; add lower-level tests only where the new derived inputs change observable request construction.

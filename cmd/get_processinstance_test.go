@@ -227,8 +227,8 @@ func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
 			"--config", cfgPath,
 			"--json",
 			"get", "process-instance",
-			"--start-date-after-days", "30",
-			"--start-date-before-days", "7",
+			"--start-date-older-days", "7",
+			"--start-date-newer-days", "30",
 		)
 
 		filter := decodeCapturedPISearchFilter(t, requests)
@@ -253,13 +253,13 @@ func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
 			"--json",
 			"get", "process-instance",
 			"--state", "completed",
-			"--end-date-before-days", "14",
+			"--end-date-newer-days", "14",
 		)
 
 		filter := decodeCapturedPISearchFilter(t, requests)
 
 		require.Equal(t, "COMPLETED", filter["state"])
-		requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-03-27T23:59:59.999999999Z")
+		requireCapturedPISearchDateBound(t, filter, "endDate", "$gte", "2026-03-27T00:00:00Z")
 		requireCapturedPISearchDateExists(t, filter, "endDate")
 
 		var got map[string]any
@@ -276,7 +276,7 @@ func TestGetProcessInstanceRelativeDayValidation(t *testing.T) {
 
 		require.Equal(t, exitcode.InvalidArgs, code)
 		require.Contains(t, output, "invalid input")
-		require.Contains(t, output, "invalid value for --start-date-after-days: -2, expected non-negative integer")
+		require.Contains(t, output, "invalid value for --start-date-older-days: -2, expected non-negative integer")
 	})
 
 	t.Run("mixed absolute and relative start-date filters are rejected", func(t *testing.T) {
@@ -296,7 +296,7 @@ func TestGetProcessInstanceRelativeDayValidation(t *testing.T) {
 
 		require.Equal(t, exitcode.InvalidArgs, code)
 		require.Contains(t, output, "invalid input")
-		require.Contains(t, output, `invalid range for --start-date-after-days and --start-date-before-days: "2026-04-03" is later than "2026-03-11"`)
+		require.Contains(t, output, `invalid range for --start-date-newer-days and --start-date-older-days: "2026-04-03" is later than "2026-03-11"`)
 	})
 
 	t.Run("local-day derivation honors the configured day boundary override", func(t *testing.T) {
@@ -311,12 +311,12 @@ func TestGetProcessInstanceRelativeDayValidation(t *testing.T) {
 			"--config", cfgPath,
 			"--json",
 			"get", "process-instance",
-			"--start-date-after-days", "0",
+			"--start-date-older-days", "0",
 		)
 
 		filter := decodeCapturedPISearchFilter(t, requests)
 
-		requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-04-10T00:00:00Z")
+		requireCapturedPISearchDateBound(t, filter, "startDate", "$lte", "2026-04-10T23:59:59.999999999Z")
 
 		var got map[string]any
 		require.NoError(t, json.Unmarshal([]byte(output), &got))
@@ -343,10 +343,10 @@ func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 
 	filter := populatePISearchFilterOpts()
 
-	require.Equal(t, "2026-04-03", filter.StartDateAfter)
-	require.Equal(t, "2026-03-11", filter.StartDateBefore)
-	require.Equal(t, "2026-03-27", filter.EndDateAfter)
-	require.Equal(t, "2026-04-09", filter.EndDateBefore)
+	require.Equal(t, "2026-03-11", filter.StartDateAfter)
+	require.Equal(t, "2026-04-03", filter.StartDateBefore)
+	require.Equal(t, "2026-04-09", filter.EndDateAfter)
+	require.Equal(t, "2026-03-27", filter.EndDateBefore)
 }
 
 func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.T) {
@@ -482,7 +482,7 @@ func TestGetProcessInstanceNegativeRelativeDayHelper(t *testing.T) {
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after-days", "-2"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-older-days", "-2"}
 
 	Execute()
 }
@@ -495,7 +495,7 @@ func TestGetProcessInstanceMixedAbsoluteAndRelativeDateFiltersHelper(t *testing.
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after", "2026-04-03", "--start-date-before-days", "7"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after", "2026-04-03", "--start-date-newer-days", "7"}
 
 	Execute()
 }
@@ -508,7 +508,7 @@ func TestGetProcessInstanceInvalidRelativeDayRangeHelper(t *testing.T) {
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-after-days", "7", "--start-date-before-days", "30"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-older-days", "30", "--start-date-newer-days", "7"}
 
 	Execute()
 }

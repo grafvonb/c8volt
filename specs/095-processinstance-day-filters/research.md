@@ -42,7 +42,7 @@
 
 ## Decision 6: Keep missing-`endDate` handling identical to the existing absolute end-date filters
 
-- **Decision**: Exclude process instances with no `endDate` whenever `--end-date-before-days` or `--end-date-after-days` is used.
+- **Decision**: Exclude process instances with no `endDate` whenever `--end-date-newer-days` or `--end-date-older-days` is used.
 - **Rationale**: The spec clarification explicitly carries forward the existing absolute end-date behavior from issue `#90`, and the v8.8 service already has logic for end-date existence when end-date filters are present.
 - **Alternatives considered**:
   - Treat missing `endDate` as matching `before` filters: rejected because it conflates incomplete data with a concrete completed date.

@@ -16,7 +16,7 @@
 ### Session 2026-04-10
 
 - Q: How should `cancel process-instance` and `delete process-instance` behave when explicit `--key` values are combined with one or more `--start-*-days` or `--end-*-days` flags? → A: Treat the combination as an invalid command.
-- Q: How should relative `--end-*-days` filters treat process instances that do not have an `endDate`? → A: Exclude instances with no `endDate` whenever `--end-date-before-days` or `--end-date-after-days` is used.
+- Q: How should relative `--end-*-days` filters treat process instances that do not have an `endDate`? → A: Exclude instances with no `endDate` whenever `--end-date-newer-days` or `--end-date-older-days` is used.
 - Q: Which calendar day interpretation should relative day-based filters use? → A: Derive relative day boundaries using the configured Camunda environment's local calendar day.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -31,9 +31,9 @@ As a CLI user, I want `c8volt get process-instance` to accept relative day-based
 
 **Acceptance Scenarios**:
 
-1. **Given** a v8.8 environment with process instances across multiple recent and older days, **When** the user runs `c8volt get process-instance --start-date-after-days 7`, **Then** only process instances whose start date is on or after the derived day boundary for seven days ago are returned.
-2. **Given** a v8.8 environment with process instances across multiple recent and older days, **When** the user runs `c8volt get process-instance --start-date-after-days 30 --start-date-before-days 7`, **Then** only process instances whose start date falls within the inclusive derived day range are returned.
-3. **Given** a v8.8 environment with completed process instances that ended on different days, **When** the user runs `c8volt get process-instance --end-date-before-days 14`, **Then** only process instances whose end date is on or before the derived boundary for fourteen days ago are returned.
+1. **Given** a v8.8 environment with process instances across multiple recent and older days, **When** the user runs `c8volt get process-instance --start-date-older-days 7`, **Then** only process instances whose start date is on or after the derived day boundary for seven days ago are returned.
+2. **Given** a v8.8 environment with process instances across multiple recent and older days, **When** the user runs `c8volt get process-instance --start-date-older-days 30 --start-date-newer-days 7`, **Then** only process instances whose start date falls within the inclusive derived day range are returned.
+3. **Given** a v8.8 environment with completed process instances that ended on different days, **When** the user runs `c8volt get process-instance --end-date-newer-days 14`, **Then** only process instances whose end date is on or before the derived boundary for fourteen days ago are returned.
 
 ---
 
@@ -47,8 +47,8 @@ As a CLI user, I want `c8volt cancel process-instance` and `c8volt delete proces
 
 **Acceptance Scenarios**:
 
-1. **Given** a v8.8 environment with active process instances started on different days, **When** the user runs `c8volt cancel process-instance --state active --start-date-before-days 30`, **Then** only active process instances whose start date is on or before the derived thirty-day boundary are selected for cancellation.
-2. **Given** a v8.8 environment with completed process instances ending on different days, **When** the user runs `c8volt delete process-instance --end-date-after-days 60 --end-date-before-days 7 --auto-confirm`, **Then** only process instances whose end date falls within that inclusive derived day range are selected for deletion.
+1. **Given** a v8.8 environment with active process instances started on different days, **When** the user runs `c8volt cancel process-instance --state active --start-date-newer-days 30`, **Then** only active process instances whose start date is on or before the derived thirty-day boundary are selected for cancellation.
+2. **Given** a v8.8 environment with completed process instances ending on different days, **When** the user runs `c8volt delete process-instance --end-date-older-days 60 --end-date-newer-days 7 --auto-confirm`, **Then** only process instances whose end date falls within that inclusive derived day range are selected for deletion.
 3. **Given** a user provides explicit `--key` values together with one or more relative day-based flags for cancel or delete, **When** the command is executed, **Then** the command fails with a clear invalid-combination error instead of attempting key-based selection.
 
 ---
@@ -64,7 +64,7 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 **Acceptance Scenarios**:
 
 1. **Given** a user provides a negative value to any `*-days` flag, **When** the command is executed, **Then** the command fails with a clear validation error identifying the invalid non-negative day requirement.
-2. **Given** a user mixes `--start-date-after-days` with `--start-date-after` or any other relative and absolute flag pair for the same field, **When** the command is executed, **Then** the command fails with a clear validation error instead of choosing one input silently.
+2. **Given** a user mixes `--start-date-older-days` with `--start-date-after` or any other relative and absolute flag pair for the same field, **When** the command is executed, **Then** the command fails with a clear validation error instead of choosing one input silently.
 3. **Given** the configured Camunda version is v8.7, **When** the user supplies any of the new relative day-based flags to `get process-instance`, `cancel process-instance`, or `delete process-instance`, **Then** the command returns a clear not-implemented response through the existing error model and does not execute a date-filtered search.
 
 ### Edge Cases
@@ -73,7 +73,7 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 - If both `before` and `after` relative day flags are provided for the same field, the derived inclusive range must be validated after conversion and rejected when the lower bound would be later than the upper bound.
 - Relative day flags must continue to compose with existing non-date search filters as additional narrowing constraints rather than replacing current behavior.
 - Direct key-based behavior for `cancel process-instance` and `delete process-instance` must remain unchanged when no relative day flags are provided, but any combination of explicit `--key` values with relative day flags must be rejected.
-- A process instance with no `endDate` must be excluded whenever `--end-date-before-days` or `--end-date-after-days` is used.
+- A process instance with no `endDate` must be excluded whenever `--end-date-newer-days` or `--end-date-older-days` is used.
 - Mixing an absolute date flag and a relative day flag for the same field must be rejected even if the two inputs would point to the same calendar day.
 - A value of `0` days must be accepted and interpreted using the configured Camunda environment's local calendar day, matching the existing absolute date filters.
 - Any use of the new relative day-based flags on v8.7 must trigger the unsupported-version response, even if the other command arguments are otherwise valid.
@@ -83,14 +83,14 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST extend `c8volt get process-instance` with `--start-date-before-days`, `--start-date-after-days`, `--end-date-before-days`, and `--end-date-after-days`.
-- **FR-002**: The system MUST extend `c8volt cancel process-instance` with `--start-date-before-days`, `--start-date-after-days`, `--end-date-before-days`, and `--end-date-after-days`.
-- **FR-003**: The system MUST extend `c8volt delete process-instance` with `--start-date-before-days`, `--start-date-after-days`, `--end-date-before-days`, and `--end-date-after-days`.
+- **FR-001**: The system MUST extend `c8volt get process-instance` with `--start-date-newer-days`, `--start-date-older-days`, `--end-date-newer-days`, and `--end-date-older-days`.
+- **FR-002**: The system MUST extend `c8volt cancel process-instance` with `--start-date-newer-days`, `--start-date-older-days`, `--end-date-newer-days`, and `--end-date-older-days`.
+- **FR-003**: The system MUST extend `c8volt delete process-instance` with `--start-date-newer-days`, `--start-date-older-days`, `--end-date-newer-days`, and `--end-date-older-days`.
 - **FR-004**: The system MUST translate each new relative day-based flag into the corresponding existing absolute date filter introduced by issues #90 and #93 before search-based filtering is applied.
-- **FR-005**: The system MUST treat `--start-date-before-days N` as an inclusive upper bound derived from the local calendar day for today minus `N` days.
-- **FR-006**: The system MUST treat `--start-date-after-days N` as an inclusive lower bound derived from the local calendar day for today minus `N` days.
-- **FR-007**: The system MUST treat `--end-date-before-days N` as an inclusive upper bound derived from the local calendar day for today minus `N` days.
-- **FR-008**: The system MUST treat `--end-date-after-days N` as an inclusive lower bound derived from the local calendar day for today minus `N` days.
+- **FR-005**: The system MUST treat `--start-date-newer-days N` as an inclusive upper bound derived from the local calendar day for today minus `N` days.
+- **FR-006**: The system MUST treat `--start-date-older-days N` as an inclusive lower bound derived from the local calendar day for today minus `N` days.
+- **FR-007**: The system MUST treat `--end-date-newer-days N` as an inclusive upper bound derived from the local calendar day for today minus `N` days.
+- **FR-008**: The system MUST treat `--end-date-older-days N` as an inclusive lower bound derived from the local calendar day for today minus `N` days.
 - **FR-009**: When both `before` and `after` relative day flags are provided for the same field, the system MUST combine them into an inclusive derived date range.
 - **FR-010**: The system MUST accept relative day values only as valid non-negative integers.
 - **FR-011**: The system MUST reject any command invocation that mixes a relative day flag and an absolute date flag for the same field with a clear validation error.
@@ -98,7 +98,7 @@ As a CLI user, I want invalid relative-day input, conflicting filter combination
 - **FR-013**: The system MUST validate the derived start-date bounds and derived end-date bounds independently before any search-based action is executed.
 - **FR-014**: The system MUST reject the command with a clear validation error when the derived lower bound for a field is later than the derived upper bound for that same field.
 - **FR-015**: On v8.8, the system MUST apply the derived date filters to search-based process-instance selection using the same inclusive day granularity already defined for the existing absolute date filters.
-- **FR-016**: On v8.8, the system MUST exclude process instances with no `endDate` whenever one or more `--end-date-before-days` or `--end-date-after-days` filters are supplied.
+- **FR-016**: On v8.8, the system MUST exclude process instances with no `endDate` whenever one or more `--end-date-newer-days` or `--end-date-older-days` filters are supplied.
 - **FR-017**: On v8.8, the system MUST combine the derived date filters with existing process-instance search filters without changing the current behavior of those existing filters.
 - **FR-018**: The system MUST reject any `cancel process-instance` or `delete process-instance` invocation that combines explicit `--key` values with one or more relative day-based flags.
 - **FR-019**: On v8.8, the system MUST preserve direct `--key` behavior for `cancel process-instance` and `delete process-instance` when none of the new relative day-based flags is used.
