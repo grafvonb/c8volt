@@ -215,6 +215,7 @@ func hasPISearchFilterFlags() bool {
 		flagGetPIProcessVersionTag != "" ||
 		flagGetPIProcessDefinitionKey != "" ||
 		hasPIDateFilterFlags() ||
+		hasPIRelativeDayFilterFlags() ||
 		(flagGetPIState != "" && flagGetPIState != "all")
 }
 

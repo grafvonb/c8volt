@@ -164,6 +164,22 @@ func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(
 	require.Contains(t, output, "no process instance keys provided or found to cancel")
 }
 
+// Verifies a relative-day-only filter is sufficient to trigger search mode.
+func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficientHelper", cfgPath)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Len(t, requests, 1)
+	require.NotContains(t, output, "either at least one --key is required, or sufficient filtering options")
+	require.Contains(t, output, "no process instance keys provided or found to cancel")
+}
+
 // Verifies invalid --state values are rejected through the shared invalid-args error path.
 func TestCancelProcessInstanceCommand_RejectsInvalidSearchState(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -332,6 +348,20 @@ func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesH
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--end-date-before", "2026-01-31"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for relative-day-only sufficiency validation.
+func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficientHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--start-date-older-days", "72"}
 
 	Execute()
 }

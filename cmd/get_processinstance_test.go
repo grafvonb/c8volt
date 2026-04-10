@@ -362,6 +362,15 @@ func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.
 	require.Contains(t, err.Error(), "start-date absolute and relative day filters cannot be combined")
 }
 
+func TestHasPISearchFilterFlags_WithRelativeDaysOnly(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIStartAfterDays = 72
+
+	require.True(t, hasPISearchFilterFlags())
+}
+
 func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	t.Helper()
 
