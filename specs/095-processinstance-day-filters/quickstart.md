@@ -1,0 +1,42 @@
+# Quickstart: Relative Day-Based Process-Instance Date Shortcuts
+
+## Prerequisites
+
+- Work on branch `095-processinstance-day-filters`
+- Keep issue `#90` absolute date-filter behavior and issue `#93` management-command wiring as the canonical source for downstream semantics
+- Use explicit temp configs in command tests that execute non-help paths so repository-local configuration cannot leak into results
+- Set `app.camunda_version` explicitly in temp configs whenever a test exercises version-specific behavior
+- Regenerate generated CLI docs rather than editing files under `docs/cli/` by hand
+
+## Implementation Walkthrough
+
+1. Start in [`cmd/get_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go), where the shared process-instance search helpers already live for `get`, `cancel`, and `delete`.
+2. Add shared flag variables and registration for `--start-before-days`, `--start-after-days`, `--end-before-days`, and `--end-after-days`, keeping help text aligned across all three commands.
+3. Extend `validatePISearchFlags()` to parse non-negative integer day inputs, reject mixed absolute-plus-relative filters for the same field, reject invalid derived ranges, and preserve the explicit `--key` incompatibility for search-only filters.
+4. Update `populatePISearchFilterOpts()` so relative day flags are converted into the existing absolute date fields on `process.ProcessInstanceFilter` before the facade call path is used.
+5. Reuse the existing search helper calls already present in [`cmd/cancel_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go) and [`cmd/delete_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go) so search-based management commands inherit the same derived-bound logic automatically.
+6. Add or update command tests in [`cmd/get_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go), [`cmd/cancel_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go), and [`cmd/delete_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go) to cover valid conversions, invalid values, absolute-plus-relative conflicts, invalid ranges, explicit `--key` conflicts, and v8.7 behavior.
+7. Extend lower-level regression coverage only where needed to prove derived bounds still reach the existing canonical absolute date filter path in [`c8volt/process/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go), [`internal/services/processinstance/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go), and [`internal/services/processinstance/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go).
+8. Update `README.md`, regenerate CLI docs with `make docs-content` and `make docs`, then run `make test`.
+
+## Suggested Verification Commands
+
+```bash
+go test ./cmd -run 'TestGetProcessInstance.*Days|TestCancelProcessInstance.*Days|TestDeleteProcessInstance.*Days' -count=1
+go test ./c8volt/process ./internal/services/processinstance/... -count=1
+make docs-content
+make docs
+make test
+```
+
+## Manual Smoke Checks
+
+```bash
+./c8volt get process-instance --start-after-days 7 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --start-after-days 30 --start-before-days 7 --config /tmp/c8volt-v88.yaml
+./c8volt cancel process-instance --state active --start-before-days 30 --config /tmp/c8volt-v88.yaml
+./c8volt delete process-instance --end-after-days 60 --end-before-days 7 --auto-confirm --config /tmp/c8volt-v88.yaml
+./c8volt cancel process-instance --key 2251799813711967 --start-after-days 7 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --start-after-days -1 --config /tmp/c8volt-v88.yaml
+./c8volt get process-instance --end-before-days 14 --config /tmp/c8volt-v87.yaml
+```
