@@ -18,9 +18,9 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instance(s) by key or search filters, optionally cancelling first",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
-		  ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
+  ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
-		  ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
+  ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -43,10 +43,12 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
+		searched := false
 
 		switch {
 		case len(keys) > 0:
 		default:
+			searched = true
 			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
@@ -61,6 +63,10 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
+			if searched {
+				cmd.Println("found:", 0)
+				return
+			}
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to delete")))
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)

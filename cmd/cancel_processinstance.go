@@ -19,9 +19,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Example: `  ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
-		  ./c8volt cancel pi --state active --start-date-newer-days 30
+  ./c8volt cancel pi --state active --start-date-newer-days 30
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
-		  ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
+  ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -`,
 	Aliases: []string{"pi"},
@@ -48,10 +48,12 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
+		searched := false
 
 		switch {
 		case len(keys) > 0:
 		default:
+			searched = true
 			if !hasPISearchFilterFlags() {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
@@ -66,6 +68,10 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
+			if searched {
+				cmd.Println("found:", 0)
+				return
+			}
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to cancel")))
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)

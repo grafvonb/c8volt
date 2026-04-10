@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -15,7 +14,7 @@ import (
 
 const cancelDeleteRelativeDayNow = "2026-04-10T12:00:00Z"
 
-// Verifies search-mode cancellation builds the expected date-filtered search request before failing on empty matches.
+// Verifies search-mode cancellation builds the expected date-filtered search request and no-ops cleanly on empty matches.
 func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
 	srv := newProcessInstanceSearchCaptureServer(t, &requests)
@@ -23,17 +22,19 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceSearchScaffoldHelper", cfgPath)
+	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceSearchScaffoldHelper", cfgPath)
 
 	filter := decodeCapturedPISearchFilter(t, requests)
 
-	require.Equal(t, exitcode.Error, code)
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
 	require.Equal(t, "ACTIVE", filter["state"])
 	require.Equal(t, "order-process", filter["processDefinitionId"])
 	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
 	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-01-31T23:59:59.999999999Z")
 	requireCapturedPISearchDateExists(t, filter, "endDate")
-	require.Contains(t, output, "no process instance keys provided or found to cancel")
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
 // Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
@@ -148,7 +149,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
-// Verifies cancel exits with an error when a date-filtered search returns no process instances.
+// Verifies cancel no-ops successfully when a date-filtered search returns no process instances.
 func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(t *testing.T) {
 	var requests []string
 
@@ -157,11 +158,12 @@ func TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesHelper", cfgPath)
+	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesHelper", cfgPath)
 
-	require.Equal(t, exitcode.Error, code)
+	require.NoError(t, err)
 	require.Len(t, requests, 1)
-	require.Contains(t, output, "no process instance keys provided or found to cancel")
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
 // Verifies a relative-day-only filter is sufficient to trigger search mode.
@@ -172,12 +174,13 @@ func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficientHelper", cfgPath)
+	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficientHelper", cfgPath)
 
-	require.Equal(t, exitcode.Error, code)
+	require.NoError(t, err)
 	require.Len(t, requests, 1)
 	require.NotContains(t, output, "either at least one --key is required, or sufficient filtering options")
-	require.Contains(t, output, "no process instance keys provided or found to cancel")
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
 // Verifies invalid --state values are rejected through the shared invalid-args error path.
@@ -289,9 +292,6 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	out := string(output)
 	if err != nil {
 		return out, err
-	}
-	if strings.Contains(out, "PASS") {
-		return "", nil
 	}
 	return out, nil
 }

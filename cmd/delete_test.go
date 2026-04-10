@@ -6,14 +6,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/stretchr/testify/require"
 )
 
-// Verifies search-mode deletion builds the expected date-filtered search request before failing on empty matches.
+// Verifies search-mode deletion builds the expected date-filtered search request and no-ops cleanly on empty matches.
 func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
 	srv := newProcessInstanceSearchCaptureServer(t, &requests)
@@ -21,17 +20,19 @@ func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceSearchScaffoldHelper", cfgPath)
+	output, err := executeDeleteProcessInstanceSuccessHelper(t, "TestDeleteProcessInstanceSearchScaffoldHelper", cfgPath)
 
 	filter := decodeCapturedPISearchFilter(t, requests)
 
-	require.Equal(t, exitcode.Error, code)
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
 	require.Equal(t, "COMPLETED", filter["state"])
 	require.Equal(t, "order-process", filter["processDefinitionId"])
 	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
 	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-01-31T23:59:59.999999999Z")
 	requireCapturedPISearchDateExists(t, filter, "endDate")
-	require.Contains(t, output, "no process instance keys provided or found to delete")
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
 // Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
@@ -214,7 +215,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
-// Verifies delete exits with an error when a date-filtered search returns no process instances.
+// Verifies delete no-ops successfully when a date-filtered search returns no process instances.
 func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(t *testing.T) {
 	var requests []string
 
@@ -223,11 +224,12 @@ func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesHelper", cfgPath)
+	output, err := executeDeleteProcessInstanceSuccessHelper(t, "TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatchesHelper", cfgPath)
 
-	require.Equal(t, exitcode.Error, code)
+	require.NoError(t, err)
 	require.Len(t, requests, 1)
-	require.Contains(t, output, "no process instance keys provided or found to delete")
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
 // Verifies a relative-day-only filter is sufficient to trigger search mode.
@@ -238,12 +240,13 @@ func TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficientHelper", cfgPath)
+	output, err := executeDeleteProcessInstanceSuccessHelper(t, "TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficientHelper", cfgPath)
 
-	require.Equal(t, exitcode.Error, code)
+	require.NoError(t, err)
 	require.Len(t, requests, 1)
 	require.NotContains(t, output, "either at least one --key is required, or sufficient filtering options")
-	require.Contains(t, output, "no process instance keys provided or found to delete")
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
@@ -298,9 +301,6 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	out := string(output)
 	if err != nil {
 		return out, err
-	}
-	if strings.Contains(out, "PASS") {
-		return "", nil
 	}
 	return out, nil
 }
