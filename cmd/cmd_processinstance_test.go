@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,4 +29,47 @@ func newProcessInstanceSearchCaptureServer(t *testing.T, requests *[]string) *ht
 	return srv
 }
 
+// decodeCapturedPISearchFilter returns the JSON search filter captured by the
+// shared process-instance search server so command tests can assert canonical
+// absolute-date fields regardless of how inputs were provided.
+func decodeCapturedPISearchFilter(t *testing.T, requests []string) map[string]any {
+	t.Helper()
 
+	body := decodeSingleRequestJSON(t, requests)
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok, "expected search request filter object")
+	return filter
+}
+
+func requireCapturedPISearchDateBound(t *testing.T, filter map[string]any, field string, operator string, want string) {
+	t.Helper()
+
+	dateFilter, ok := filter[field].(map[string]any)
+	require.True(t, ok, "expected %s filter object", field)
+	require.Equal(t, want, dateFilter[operator])
+}
+
+func requireCapturedPISearchDateExists(t *testing.T, filter map[string]any, field string) {
+	t.Helper()
+
+	dateFilter, ok := filter[field].(map[string]any)
+	require.True(t, ok, "expected %s filter object", field)
+	require.Equal(t, true, dateFilter["$exists"])
+}
+
+func decodeCapturedPISearchPage(t *testing.T, requests []string) map[string]any {
+	t.Helper()
+
+	body := decodeSingleRequestJSON(t, requests)
+	page, ok := body["page"].(map[string]any)
+	require.True(t, ok, "expected search request page object")
+	return page
+}
+
+func decodeCapturedPISearchRequest(t *testing.T, request string) map[string]any {
+	t.Helper()
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(request), &got))
+	return got
+}

@@ -23,17 +23,14 @@ func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 
 	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceSearchScaffoldHelper", cfgPath)
 
-	body := decodeSingleRequestJSON(t, requests)
-	filter := body["filter"].(map[string]any)
-	startDate := filter["startDate"].(map[string]any)
-	endDate := filter["endDate"].(map[string]any)
+	filter := decodeCapturedPISearchFilter(t, requests)
 
 	require.Equal(t, exitcode.Error, code)
 	require.Equal(t, "COMPLETED", filter["state"])
 	require.Equal(t, "order-process", filter["processDefinitionId"])
-	require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
-	require.Equal(t, "2026-01-31T23:59:59.999999999Z", endDate["$lte"])
-	require.Equal(t, true, endDate["$exists"])
+	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
+	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-01-31T23:59:59.999999999Z")
+	requireCapturedPISearchDateExists(t, filter, "endDate")
 	require.Contains(t, output, "no process instance keys provided or found to delete")
 }
 
@@ -124,19 +121,15 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(requests), 2)
 	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted)
-	body := decodeSingleRequestJSON(t, requests[:1])
-	filter := body["filter"].(map[string]any)
-	startDate := filter["startDate"].(map[string]any)
-	endDate := filter["endDate"].(map[string]any)
+	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "COMPLETED", filter["state"])
 	require.Equal(t, "order-process", filter["processDefinitionId"])
-	require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
-	require.Equal(t, "2026-01-31T23:59:59.999999999Z", endDate["$lte"])
-	require.Equal(t, true, endDate["$exists"])
+	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
+	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-01-31T23:59:59.999999999Z")
+	requireCapturedPISearchDateExists(t, filter, "endDate")
 
-	var descendantSearch map[string]any
-	require.NoError(t, json.Unmarshal([]byte(requests[len(requests)-1]), &descendantSearch))
+	descendantSearch := decodeCapturedPISearchRequest(t, requests[len(requests)-1])
 	descFilter := descendantSearch["filter"].(map[string]any)
 	require.Equal(t, "2251799813711967", descFilter["parentProcessInstanceKey"])
 	require.NotContains(t, output, "no process instance keys provided or found to delete")

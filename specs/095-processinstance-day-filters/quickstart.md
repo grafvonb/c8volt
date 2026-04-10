@@ -6,6 +6,7 @@
 - Keep issue `#90` absolute date-filter behavior and issue `#93` management-command wiring as the canonical source for downstream semantics
 - Use explicit temp configs in command tests that execute non-help paths so repository-local configuration cannot leak into results
 - Set `app.camunda_version` explicitly in temp configs whenever a test exercises version-specific behavior
+- Reuse the shared process-instance search capture helpers in [`cmd/cmd_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go) so relative-day command coverage asserts the derived canonical absolute-date request fields instead of open-coding JSON walking in each test
 - Regenerate generated CLI docs rather than editing files under `docs/cli/` by hand
 
 ## Implementation Walkthrough
@@ -15,13 +16,14 @@
 3. Extend `validatePISearchFlags()` to parse non-negative integer day inputs, reject mixed absolute-plus-relative filters for the same field, reject invalid derived ranges, and preserve the explicit `--key` incompatibility for search-only filters.
 4. Update `populatePISearchFilterOpts()` so relative day flags are converted into the existing absolute date fields on `process.ProcessInstanceFilter` before the facade call path is used.
 5. Reuse the existing search helper calls already present in [`cmd/cancel_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go) and [`cmd/delete_processinstance.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go) so search-based management commands inherit the same derived-bound logic automatically.
-6. Add or update command tests in [`cmd/get_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go), [`cmd/cancel_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go), and [`cmd/delete_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go) to cover valid conversions, invalid values, absolute-plus-relative conflicts, invalid ranges, explicit `--key` conflicts, and v8.7 behavior.
+6. Add or update command tests in [`cmd/get_processinstance_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go), [`cmd/cancel_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go), and [`cmd/delete_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go) to cover valid conversions, invalid values, absolute-plus-relative conflicts, invalid ranges, explicit `--key` conflicts, and v8.7 behavior, while keeping shared request-shape assertions in the common test helpers so later relative-day cases only need to vary CLI inputs and expected derived bounds.
 7. Extend lower-level regression coverage only where needed to prove derived bounds still reach the existing canonical absolute date filter path in [`c8volt/process/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go), [`internal/services/processinstance/v87/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go), and [`internal/services/processinstance/v88/service.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go).
 8. Update `README.md`, regenerate CLI docs with `make docs-content` and `make docs`, then run `make test`.
 
 ## Suggested Verification Commands
 
 ```bash
+go test ./cmd -run 'TestGetProcessInstance(SearchScaffold|DateFilterScaffold)|TestCancelProcessInstance(SearchScaffold|Command_.*Date)|TestDeleteProcessInstance(SearchScaffold|Command_.*Date)' -count=1
 go test ./cmd -run 'TestGetProcessInstance.*Days|TestCancelProcessInstance.*Days|TestDeleteProcessInstance.*Days' -count=1
 go test ./c8volt/process ./internal/services/processinstance/... -count=1
 make docs-content

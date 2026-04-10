@@ -31,9 +31,8 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 		"--count", "5",
 	)
 
-	body := decodeSingleRequestJSON(t, requests)
-	filter := body["filter"].(map[string]any)
-	page := body["page"].(map[string]any)
+	filter := decodeCapturedPISearchFilter(t, requests)
+	page := decodeCapturedPISearchPage(t, requests)
 
 	require.Equal(t, "ACTIVE", filter["state"])
 	require.EqualValues(t, 5, page["limit"])
@@ -60,12 +59,10 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 				"--start-date-after", "2026-01-01",
 			)
 
-			body := decodeSingleRequestJSON(t, requests)
-			filter := body["filter"].(map[string]any)
-			startDate := filter["startDate"].(map[string]any)
+			filter := decodeCapturedPISearchFilter(t, requests)
 
-			require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
-			require.NotContains(t, startDate, "$lte")
+			requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
+			require.NotContains(t, filter["startDate"], "$lte")
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &got))
@@ -87,12 +84,10 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 				"--start-date-before", "2026-01-31",
 			)
 
-			body := decodeSingleRequestJSON(t, requests)
-			filter := body["filter"].(map[string]any)
-			startDate := filter["startDate"].(map[string]any)
+			filter := decodeCapturedPISearchFilter(t, requests)
 
-			require.Equal(t, "2026-01-01T00:00:00Z", startDate["$gte"])
-			require.Equal(t, "2026-01-31T23:59:59.999999999Z", startDate["$lte"])
+			requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-01-01T00:00:00Z")
+			requireCapturedPISearchDateBound(t, filter, "startDate", "$lte", "2026-01-31T23:59:59.999999999Z")
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &got))
@@ -115,13 +110,11 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 				"--end-date-after", "2026-02-01",
 			)
 
-			body := decodeSingleRequestJSON(t, requests)
-			filter := body["filter"].(map[string]any)
-			endDate := filter["endDate"].(map[string]any)
+			filter := decodeCapturedPISearchFilter(t, requests)
 
-			require.Equal(t, "2026-02-01T00:00:00Z", endDate["$gte"])
-			require.Equal(t, true, endDate["$exists"])
-			require.NotContains(t, endDate, "$lte")
+			requireCapturedPISearchDateBound(t, filter, "endDate", "$gte", "2026-02-01T00:00:00Z")
+			requireCapturedPISearchDateExists(t, filter, "endDate")
+			require.NotContains(t, filter["endDate"], "$lte")
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &got))
@@ -144,14 +137,12 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 				"--end-date-before", "2026-03-31",
 			)
 
-			body := decodeSingleRequestJSON(t, requests)
-			filter := body["filter"].(map[string]any)
-			endDate := filter["endDate"].(map[string]any)
+			filter := decodeCapturedPISearchFilter(t, requests)
 
 			require.Equal(t, "COMPLETED", filter["state"])
-			require.Equal(t, "2026-02-01T00:00:00Z", endDate["$gte"])
-			require.Equal(t, "2026-03-31T23:59:59.999999999Z", endDate["$lte"])
-			require.Equal(t, true, endDate["$exists"])
+			requireCapturedPISearchDateBound(t, filter, "endDate", "$gte", "2026-02-01T00:00:00Z")
+			requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-03-31T23:59:59.999999999Z")
+			requireCapturedPISearchDateExists(t, filter, "endDate")
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &got))
