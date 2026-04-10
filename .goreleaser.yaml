@@ -54,6 +54,8 @@ changelog:
   sort: desc
   filters:
     exclude:
+      - "^Merge pull request #[0-9]+"
       - "^docs(\\(.+\\))?:"
       - "^test(\\(.+\\))?:"
       - "^chore(\\(.+\\))?:"
+      - "^refactor(\\(.+\\))?:"
