@@ -295,6 +295,7 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
+		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
 	)
 
 	output, err := cmd.CombinedOutput()

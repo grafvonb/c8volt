@@ -473,6 +473,7 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
+		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -488,6 +489,7 @@ func TestGetProcessInstanceNegativeRelativeDayHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -501,6 +503,7 @@ func TestGetProcessInstanceMixedAbsoluteAndRelativeDateFiltersHelper(t *testing.
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -514,6 +517,7 @@ func TestGetProcessInstanceInvalidRelativeDayRangeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -527,6 +531,7 @@ func TestGetProcessInstanceInvalidDateFormatHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -540,6 +545,7 @@ func TestGetProcessInstanceInvalidStartDateRangeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
@@ -553,6 +559,7 @@ func TestGetProcessInstanceDateFiltersWithKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
+	applyRelativeDayNowOverrideFromEnv(t)
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })

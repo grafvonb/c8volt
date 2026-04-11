@@ -17,9 +17,9 @@ c8volt delete process-instance [flags]
 ```
   ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
-		  ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
+  ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
-		  ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
+  ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
 ```
 

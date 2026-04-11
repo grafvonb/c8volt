@@ -30,3 +30,47 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: docs
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Build docs for c8volt.info
+        run: make docs-site-build-root
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Publish docs to IONOS via SFTP
+        env:
+          IONOS_SFTP_HOST: ${{ secrets.IONOS_SFTP_HOST }}
+          IONOS_SFTP_PORT: ${{ secrets.IONOS_SFTP_PORT }}
+          IONOS_SFTP_USERNAME: ${{ secrets.IONOS_SFTP_USERNAME }}
+          IONOS_SFTP_PASSWORD: ${{ secrets.IONOS_SFTP_PASSWORD }}
+          IONOS_SFTP_REMOTE_PATH: ${{ secrets.IONOS_SFTP_REMOTE_PATH }}
+        run: |
+          test -n "${IONOS_SFTP_HOST}"
+          test -n "${IONOS_SFTP_USERNAME}"
+          test -n "${IONOS_SFTP_PASSWORD}"
+          test -n "${IONOS_SFTP_REMOTE_PATH}"
+
+          lftp -u "${IONOS_SFTP_USERNAME},${IONOS_SFTP_PASSWORD}" "sftp://${IONOS_SFTP_HOST}:${IONOS_SFTP_PORT:-22}" <<EOF
+          set ssl:verify-certificate yes
+          set sftp:auto-confirm yes
+          mirror --reverse --delete --verbose docs/_site "${IONOS_SFTP_REMOTE_PATH}"
+          bye
+          EOF
