@@ -5,19 +5,19 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-10-g008538c-dirty`, commit `008538c`, built `2026-04-11T09:33:11Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-12-g1b38efe-dirty`, commit `1b38efe`, built `2026-04-11T19:08:51Z` | camunda: 8.7, 8.8
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
-# c8volt
+# c8volt Camunda 8 CLI
 
-**Camunda 8 Operations CLI for workflows that must actually finish.**
+**c8volt is a Camunda 8 CLI for workflow operations. For workflows that must actually finish.**
 
 > **done is done**
 >
 > If an action needs retries, waiting, tree traversal, state checks, or cleanup before it is truly finished, `c8volt` should do that work for you instead of making you script the last mile yourself.
 
-`c8volt` is not just a CRUD shell around Camunda 8 APIs. It is a CLI shaped around operational intent:
+`c8volt` is not just a CRUD shell around Camunda 8 APIs. It is a Camunda CLI shaped around operational intent:
 
 - start a process and confirm it is really active
 - cancel a child process by finding the root that must actually be cancelled
@@ -26,24 +26,31 @@ has_toc: true
 
 Standard read/list/get commands still matter, but they are not the headline. The headline is operational confidence.
 
+`c8volt` helps when people are searching for a Camunda 8 CLI, a Zeebe operations CLI, a BPMN deployment CLI, or a reliable way to run, inspect, cancel, delete, and verify Camunda process instances from the terminal. It is designed for operators, developers, support engineers, CI pipelines, and local development environments that need outcome verification instead of "request accepted" ambiguity.
+
+## What c8volt Is
+
+`c8volt` is a command-line tool for Camunda 8 workflow operations. It focuses on the parts of workflow automation that teams often end up scripting around by hand:
+
+- deploy BPMN process definitions from the CLI
+- start Camunda 8 process instances and confirm they are active
+- inspect parent and child process-instance trees
+- cancel the correct root process instance when a child cannot be canceled directly
+- delete a full process-instance family instead of one visible node
+- wait for a target process state in scripts and CI jobs
+- validate `c8volt` connection and authentication config before running production actions
+
+If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN deployment tool for Camunda 8, or a terminal workflow tool that behaves well in automation, those are the main problems `c8volt` is built to solve.
+
 ## At A Glance
 
-```text
-best for:
-  deploy + run + verify
-  inspect process trees
-  cancel safely
-  delete thoroughly
-  wait for the state you actually need
-
-also includes:
-  cluster topology and license inspection
-  effective config rendering and validation
-  embedded BPMN fixture export
-  process definition XML retrieval
-  resource lookup by id
-  tenant-aware operations
-```
+- deploy BPMN and use it immediately
+- run process instances and confirm they are active
+- inspect process-instance trees before changing them
+- cancel safely, including root escalation with `--force`
+- delete process-instance families thoroughly
+- wait for the state you actually need
+- validate config and inspect cluster metadata
 
 ## Why It Feels Different
 
@@ -432,6 +439,8 @@ Download the appropriate archive from [c8volt Releases](https://github.com/grafv
 ./c8volt version
 ```
 
+Release archives are the main installation path for local operator machines, CI runners, and ephemeral environments. The project is especially useful when you want a portable Camunda 8 CLI binary for Linux or macOS that can deploy BPMN, inspect workflow state, and automate process-instance operations from shell scripts.
+
 ### Verify connectivity
 
 ```bash
@@ -479,6 +488,7 @@ Example:
 ## Documentation
 
 - Project site: [c8volt.info](https://c8volt.info)
+- Search-oriented use cases and FAQ: [docs/use-cases.md](./docs/use-cases.md)
 - Generated CLI reference: [docs/cli/index.md](./cli/index.md)
 
 Regenerate the CLI reference with:

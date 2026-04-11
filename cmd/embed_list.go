@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"path/filepath"
+
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/embedded"
@@ -33,10 +35,14 @@ var embedListCmd = &cobra.Command{
 		}
 
 		for _, f := range files {
+			view := f
+			if !flagEmbedListDetails {
+				view = filepath.Base(f)
+			}
 			if flagViewAsJson {
-				cmd.Println(toolx.ToJSONString(f))
+				cmd.Println(toolx.ToJSONString(view))
 			} else {
-				cmd.Println(f)
+				cmd.Println(view)
 			}
 		}
 	},
