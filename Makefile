@@ -28,7 +28,7 @@ generate-clients: ## Regenerate API clients using the repository refresh script.
 docs: docs-content docs-site-build ## Build all documentation outputs, including generated markdown and the local docs site.
 
 docs-content: ## Regenerate the markdown CLI reference and sync the docs homepage from README.md.
-	go run ./docsgen -out ./docs/cli -format markdown
+	go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown
 
 docs-site-install: ## Install the Ruby dependencies needed to build and serve the docs site locally.
 	./scripts/docs-site.sh install

@@ -5,6 +5,8 @@ nav_order: 1
 has_toc: true
 ---
 
+> Generated with `c8volt v2.1.0-8-g26bc54c-dirty (26bc54c, 2026-04-11T09:25:25Z) | camunda: 8.7, 8.8`
+
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
 # c8volt
