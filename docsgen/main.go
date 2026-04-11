@@ -97,5 +97,13 @@ has_toc: true
 }
 
 func formatDocsBuildInfo(info cmd.BuildInfo) string {
-	return fmt.Sprintf("> Generated with `c8volt %s (%s, %s) | camunda: %s`\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+	if isTaggedReleaseVersion(info.Version) {
+		return fmt.Sprintf("> Generated from release `%s`, commit `%s`, built `%s` | camunda: %s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+	}
+
+	return fmt.Sprintf("> Generated from build `c8volt %s`, commit `%s`, built `%s` | camunda: %s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+}
+
+func isTaggedReleaseVersion(version string) bool {
+	return strings.HasPrefix(version, "v") && !strings.Contains(version, "-") && version != "dev"
 }
