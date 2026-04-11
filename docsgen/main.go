@@ -88,8 +88,22 @@ has_toc: true
 
 `
 
-	if err := os.WriteFile(dst, []byte(frontMatter+body), 0o644); err != nil {
+	buildInfo := formatDocsBuildInfo(cmd.CurrentBuildInfo())
+
+	if err := os.WriteFile(dst, []byte(frontMatter+buildInfo+body), 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
 	return nil
+}
+
+func formatDocsBuildInfo(info cmd.BuildInfo) string {
+	if isTaggedReleaseVersion(info.Version) {
+		return fmt.Sprintf("> Generated from release `%s`, commit `%s`, built `%s` | camunda: %s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+	}
+
+	return fmt.Sprintf("> Generated from build `c8volt %s`, commit `%s`, built `%s` | camunda: %s\n\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions)
+}
+
+func isTaggedReleaseVersion(version string) bool {
+	return strings.HasPrefix(version, "v") && !strings.Contains(version, "-") && version != "dev"
 }
