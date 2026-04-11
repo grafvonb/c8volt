@@ -74,12 +74,12 @@ func normalizeVersion(v int32) *int32 {
 	// Camunda latest sentinel is -1
 	switch {
 	case v == -1:
-		return toolx.Ptr(int32(-1))
+		return new(int32(-1))
 	case v > 0:
-		return toolx.Ptr(v)
+		return new(v)
 	default:
 		// 0 or unset. Default to latest = -1
-		return toolx.Ptr(int32(-1))
+		return new(int32(-1))
 	}
 }
 

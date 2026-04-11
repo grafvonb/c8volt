@@ -515,11 +515,10 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 		}, &mockOperateClient{
 			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev88.RequestEditorFn) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				msg := wrongStateMessage()
 				return &operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
 					ApplicationproblemJSON400: &operatev88.Error{
-						Message: &msg,
+						Message: new(wrongStateMessage()),
 					},
 				}, nil
 			},
@@ -701,8 +700,7 @@ func makeProcessInstanceResult(key string, state string, parentKey string) *camu
 		ProcessDefinitionName:    "demo",
 		ProcessDefinitionVersion: 3,
 		ProcessDefinitionVersionTag: func() *string {
-			tag := "stable"
-			return &tag
+			return new("stable")
 		}(),
 		ProcessInstanceKey: key,
 		StartDate:          startDate,

@@ -19,7 +19,6 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
-	"github.com/grafvonb/c8volt/toolx"
 )
 
 type mockClusterClient struct {
@@ -61,20 +60,20 @@ func TestService_GetClusterTopology(t *testing.T) {
 	ctx := context.Background()
 
 	validTopology := camundav87.TopologyResponse{
-		ClusterSize:       toolx.Ptr(int32(3)),
-		GatewayVersion:    toolx.Ptr("8.7.0"),
-		PartitionsCount:   toolx.Ptr(int32(3)),
-		ReplicationFactor: toolx.Ptr(int32(3)),
-		Brokers: toolx.Ptr([]camundav87.BrokerInfo{
+		ClusterSize:       new(int32(3)),
+		GatewayVersion:    new("8.7.0"),
+		PartitionsCount:   new(int32(3)),
+		ReplicationFactor: new(int32(3)),
+		Brokers: new([]camundav87.BrokerInfo{
 			{
-				Host:   toolx.Ptr("broker-0"),
-				NodeId: toolx.Ptr(int32(0)),
-				Port:   toolx.Ptr(int32(26501)),
-				Partitions: toolx.Ptr([]camundav87.Partition{
+				Host:   new("broker-0"),
+				NodeId: new(int32(0)),
+				Port:   new(int32(26501)),
+				Partitions: new([]camundav87.Partition{
 					{
-						PartitionId: toolx.Ptr(int32(1)),
-						Role:        toolx.Ptr(camundav87.Leader),
-						Health:      toolx.Ptr(camundav87.Healthy),
+						PartitionId: new(int32(1)),
+						Role:        new(camundav87.Leader),
+						Health:      new(camundav87.Healthy),
 					},
 				}),
 			},
@@ -175,8 +174,8 @@ func TestService_GetClusterLicense(t *testing.T) {
 	ctx := context.Background()
 
 	validLicense := camundav87.LicenseResponse{
-		LicenseType:  toolx.Ptr("SaaS"),
-		ValidLicense: toolx.Ptr(true),
+		LicenseType:  new("SaaS"),
+		ValidLicense: new(true),
 	}
 
 	tests := []struct {

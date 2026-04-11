@@ -400,7 +400,6 @@ func processInstanceKeyInt64(key string) (int64, error) {
 }
 
 func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter, size int32) (operatev87.SearchProcessInstancesJSONRequestBody, error) {
-	st := operatev87.ProcessInstanceState(filter.State)
 	parentKey, err := toolx.StringToInt64Ptr(filter.ParentKey)
 	if err != nil {
 		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
@@ -410,7 +409,7 @@ func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter
 		BpmnProcessId:     &filter.BpmnProcessId,
 		ProcessVersion:    toolx.PtrIfNonZero(filter.ProcessVersion),
 		ProcessVersionTag: &filter.ProcessVersionTag,
-		State:             &st,
+		State:             new(operatev87.ProcessInstanceState(filter.State)),
 		ParentKey:         parentKey,
 	}
 	return operatev87.SearchProcessInstancesJSONRequestBody{

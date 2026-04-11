@@ -14,7 +14,6 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v88 "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -123,7 +122,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-						Items: &[]camundav88.ProcessElementStatisticsResult{{Active: toolx.Ptr(int64(1))}},
+						Items: &[]camundav88.ProcessElementStatisticsResult{{Active: new(int64(1))}},
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -213,7 +212,7 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 		JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-			Items: &[]camundav88.ProcessElementStatisticsResult{{Active: toolx.Ptr(int64(2))}},
+			Items: &[]camundav88.ProcessElementStatisticsResult{{Active: new(int64(2))}},
 		},
 	}
 
@@ -253,10 +252,9 @@ func TestService_GetProcessDefinition(t *testing.T) {
 		{
 			name: "Success without stats",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				json200 := makeProcessDefinitionResult("proc", "123", 2)
 				resp := &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
-					JSON200:      &json200,
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
 			},
@@ -288,15 +286,14 @@ func TestService_GetProcessDefinition(t *testing.T) {
 		{
 			name: "Stats requested",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				json200 := makeProcessDefinitionResult("proc", "123", 2)
 				resp := &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
-					JSON200:      &json200,
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-						Items: &[]camundav88.ProcessElementStatisticsResult{{Completed: toolx.Ptr(int64(5))}},
+						Items: &[]camundav88.ProcessElementStatisticsResult{{Completed: new(int64(5))}},
 					},
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
@@ -311,10 +308,9 @@ func TestService_GetProcessDefinition(t *testing.T) {
 		{
 			name: "Stats retrieval fails",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				json200 := makeProcessDefinitionResult("proc", "123", 2)
 				resp := &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
-					JSON200:      &json200,
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
 				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return((*camundav88.GetProcessDefinitionStatisticsResponse)(nil), mockErr)
@@ -325,10 +321,9 @@ func TestService_GetProcessDefinition(t *testing.T) {
 		{
 			name: "Stats missing payload is tolerated",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				json200 := makeProcessDefinitionResult("proc", "123", 2)
 				resp := &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
-					JSON200:      &json200,
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
@@ -382,10 +377,9 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 		{
 			name: "Success",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				xml := "<definitions id=\"proc\"/>"
 				resp := &camundav88.GetProcessDefinitionXMLResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
-					XML200:       &xml,
+					XML200:       new("<definitions id=\"proc\"/>"),
 				}
 				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
 			},
@@ -394,11 +388,10 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 		{
 			name: "Success falls back to raw body",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				parsedXML := "\n  \n  \n"
 				resp := &camundav88.GetProcessDefinitionXMLResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
 					Body:         []byte("<definitions id=\"proc\"/>"),
-					XML200:       &parsedXML,
+					XML200:       new("\n  \n  \n"),
 				}
 				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
 			},
@@ -407,11 +400,10 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 		{
 			name: "Success prefers formatted raw body",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				parsedXML := "\n  \n    \n"
 				resp := &camundav88.GetProcessDefinitionXMLResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
 					Body:         []byte("<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n"),
-					XML200:       &parsedXML,
+					XML200:       new("\n  \n    \n"),
 				}
 				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
 			},
@@ -505,12 +497,12 @@ func testConfig() *config.Config {
 
 func makeProcessDefinitionResult(id, key string, version int32) camundav88.ProcessDefinitionResult {
 	return camundav88.ProcessDefinitionResult{
-		ProcessDefinitionId:  toolx.Ptr(id),
-		ProcessDefinitionKey: toolx.Ptr(key),
-		Name:                 toolx.Ptr("name-" + id),
-		Version:              toolx.Ptr(version),
-		TenantId:             toolx.Ptr("tenant"),
-		VersionTag:           toolx.Ptr("tag"),
+		ProcessDefinitionId:  new(id),
+		ProcessDefinitionKey: new(key),
+		Name:                 new("name-" + id),
+		Version:              new(version),
+		TenantId:             new("tenant"),
+		VersionTag:           new("tag"),
 	}
 }
 

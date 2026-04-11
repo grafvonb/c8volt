@@ -194,8 +194,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 		v.AddConfigPath("/etc/c8volt")
 	}
 	if err := v.ReadInConfig(); err != nil {
-		var nf viper.ConfigFileNotFoundError
-		if !errors.As(err, &nf) || v.GetString("config") != "" {
+		if _, ok := errors.AsType[viper.ConfigFileNotFoundError](err); !ok || v.GetString("config") != "" {
 			return fmt.Errorf("read config file: %w", err)
 		}
 	}

@@ -175,21 +175,18 @@ func searchProcessDefinitionsRequest(filter d.ProcessDefinitionFilter, size int3
 		IsLatestVersion:     toolx.PtrIf(filter.IsLatestVersion, false),
 	}
 	page := camundav88.SearchQueryPageRequest{}
-	from := int32(0)
 	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
-		From:  &from,
+		From:  new(int32(0)),
 		Limit: &size,
 	})
-	orderDesc := camundav88.DESC
-	orderAsc := camundav88.ASC
 	sort := []camundav88.ProcessDefinitionSearchQuerySortRequest{
 		{
 			Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldVersion,
-			Order: &orderDesc,
+			Order: new(camundav88.DESC),
 		},
 		{
 			Field: camundav88.ProcessDefinitionSearchQuerySortRequestFieldName,
-			Order: &orderAsc,
+			Order: new(camundav88.ASC),
 		},
 	}
 	return camundav88.SearchProcessDefinitionsJSONRequestBody{

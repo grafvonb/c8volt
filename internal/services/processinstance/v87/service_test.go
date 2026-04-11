@@ -76,9 +76,9 @@ func TestService_CreateProcessInstance(t *testing.T) {
 					return &camundav87.PostProcessInstancesResponse{
 						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
 						JSON200: &camundav87.CreateProcessInstanceResult{
-							ProcessDefinitionId:      toolx.Ptr("demo"),
-							ProcessDefinitionVersion: toolx.Ptr(int32(7)),
-							TenantId:                 toolx.Ptr("tenant-a"),
+							ProcessDefinitionId:      new("demo"),
+							ProcessDefinitionVersion: new(int32(7)),
+							TenantId:                 new("tenant-a"),
 							Variables:                &map[string]interface{}{"orderId": "42"},
 						},
 					}, nil
@@ -596,11 +596,10 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 				}, nil
 			},
 			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				msg := wrongStateMessage()
 				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
 					ApplicationproblemJSON400: &operatev87.Error{
-						Message: &msg,
+						Message: new(wrongStateMessage()),
 					},
 				}, nil
 			},
@@ -754,24 +753,23 @@ func waitTestConfig() *config.Config {
 }
 
 func makeProcessInstanceResponse(key int64, state string, parentKey string) *operatev87.ProcessInstance {
-	processState := operatev87.ProcessInstanceState(state)
 	item := &operatev87.ProcessInstance{
-		Key:                  toolx.Ptr(key),
-		BpmnProcessId:        toolx.Ptr("demo"),
-		ProcessDefinitionKey: toolx.Ptr(int64(9001)),
-		ProcessVersion:       toolx.Ptr(int32(3)),
-		ProcessVersionTag:    toolx.Ptr("stable"),
-		StartDate:            toolx.Ptr("2026-03-23T18:00:00Z"),
-		State:                &processState,
-		TenantId:             toolx.Ptr("tenant"),
-		Incident:             toolx.Ptr(false),
+		Key:                  new(key),
+		BpmnProcessId:        new("demo"),
+		ProcessDefinitionKey: new(int64(9001)),
+		ProcessVersion:       new(int32(3)),
+		ProcessVersionTag:    new("stable"),
+		StartDate:            new("2026-03-23T18:00:00Z"),
+		State:                new(operatev87.ProcessInstanceState(state)),
+		TenantId:             new("tenant"),
+		Incident:             new(false),
 	}
 	if parentKey != "" {
 		parsedParentKey, err := toolx.StringToInt64(parentKey)
 		if err != nil {
 			panic(err)
 		}
-		item.ParentKey = toolx.Ptr(parsedParentKey)
+		item.ParentKey = new(parsedParentKey)
 	}
 	return item
 }
