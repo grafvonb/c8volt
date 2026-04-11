@@ -92,6 +92,7 @@ api/camunda-docs/.git/
 /docs/.jekyll-cache/
 /docs/.jekyll-metadata
 /docs/.sass-cache/
+/docs/.bundle/
 
 # Ralph local run artifacts
 .codex-*
