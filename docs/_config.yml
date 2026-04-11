@@ -12,8 +12,8 @@ plugins:
   - jekyll-sitemap
   - jekyll-seo-tag
 
-url: "https://grafvonb.github.io"
-baseurl: "/c8volt"
+url: "https://c8volt.info"
+baseurl: ""
 
 color_scheme: c8volt
 search_enabled: true

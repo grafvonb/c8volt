@@ -39,7 +39,7 @@ Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
-Refer to the documentation at https://c8volt.boczek.info for more information.`,
+Refer to the documentation at https://c8volt.info for more information.`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},

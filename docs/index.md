@@ -476,7 +476,7 @@ Example:
 
 ## Documentation
 
-- Project site: [c8volt.boczek.info](https://c8volt.boczek.info)
+- Project site: [c8volt.info](https://c8volt.info)
 - Generated CLI reference: [docs/cli/index.md](./cli/index.md)
 
 Regenerate the CLI reference with:
