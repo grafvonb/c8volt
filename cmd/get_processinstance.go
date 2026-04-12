@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -43,7 +44,7 @@ var (
 var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
-		  Example: `  ./c8volt get pi --state active
+	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
@@ -104,7 +105,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
-			pis, err = cli.SearchProcessInstances(ctx, filter, pickPISearchSize())
+			pis, err = cli.SearchProcessInstances(ctx, filter, resolvePISearchSize(cmd, cfg))
 			if err != nil {
 				fail(fmt.Errorf("error fetching process instances: %w", err))
 			}
@@ -163,6 +164,24 @@ func init() {
 
 var relativeDayNow = func() time.Time {
 	return time.Now().UTC()
+}
+
+type processInstanceContinuationState string
+
+const (
+	processInstanceContinuationPrompt          processInstanceContinuationState = "prompt"
+	processInstanceContinuationAutoContinue    processInstanceContinuationState = "auto_continue"
+	processInstanceContinuationCompleted       processInstanceContinuationState = "completed"
+	processInstanceContinuationPartialComplete processInstanceContinuationState = "partial_complete"
+	processInstanceContinuationWarningStop     processInstanceContinuationState = "warning_stop"
+)
+
+type processInstanceProgressSummary struct {
+	PageSize          int32
+	CurrentPageCount  int
+	CumulativeCount   int
+	OverflowState     process.ProcessInstanceOverflowState
+	ContinuationState processInstanceContinuationState
 }
 
 func registerPISharedDateRangeFlags(fs *pflag.FlagSet) {
@@ -245,6 +264,47 @@ func pickPISearchSize() int32 {
 		return consts.MaxPISearchSize
 	}
 	return flagGetPISize
+}
+
+func resolvePISearchSize(cmd *cobra.Command, cfg *config.Config) int32 {
+	if cmd != nil && cmd.Flags().Changed("count") {
+		return pickPISearchSize()
+	}
+	if cfg != nil && cfg.App.ProcessInstancePageSize > 0 && cfg.App.ProcessInstancePageSize <= consts.MaxPISearchSize {
+		return cfg.App.ProcessInstancePageSize
+	}
+	return consts.MaxPISearchSize
+}
+
+func newPISearchPageRequest(cmd *cobra.Command, cfg *config.Config, from int32) process.ProcessInstancePageRequest {
+	return process.ProcessInstancePageRequest{
+		From: from,
+		Size: resolvePISearchSize(cmd, cfg),
+	}
+}
+
+func pickPIContinuationState(overflow process.ProcessInstanceOverflowState, autoConfirm bool) processInstanceContinuationState {
+	switch overflow {
+	case process.ProcessInstanceOverflowStateHasMore:
+		if autoConfirm {
+			return processInstanceContinuationAutoContinue
+		}
+		return processInstanceContinuationPrompt
+	case process.ProcessInstanceOverflowStateIndeterminate:
+		return processInstanceContinuationWarningStop
+	default:
+		return processInstanceContinuationCompleted
+	}
+}
+
+func newPIProgressSummary(page process.ProcessInstancePage, cumulative int, autoConfirm bool) processInstanceProgressSummary {
+	return processInstanceProgressSummary{
+		PageSize:          page.Request.Size,
+		CurrentPageCount:  len(page.Items),
+		CumulativeCount:   cumulative,
+		OverflowState:     page.OverflowState,
+		ContinuationState: pickPIContinuationState(page.OverflowState, autoConfirm),
+	}
 }
 
 func validatePISearchFlags() error {
@@ -403,4 +463,3 @@ func derivePIDateBound(relativeDays int) string {
 func derivePIUpperDateBound(relativeDays int) string {
 	return relativeDayNow().AddDate(0, 0, -relativeDays).Format(time.DateOnly)
 }
-

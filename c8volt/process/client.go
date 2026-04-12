@@ -87,11 +87,22 @@ func (c *client) CreateProcessInstances(ctx context.Context, datas []ProcessInst
 }
 
 func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error) {
-	pis, err := c.piApi.SearchForProcessInstances(ctx, toDomainProcessInstanceFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
+	page, err := c.SearchProcessInstancesPage(ctx, filter, ProcessInstancePageRequest{Size: size}, opts...)
 	if err != nil {
 		return ProcessInstances{}, ferr.FromDomain(err)
 	}
-	return fromDomainProcessInstances(pis), nil
+	return ProcessInstances{
+		Total: int32(len(page.Items)),
+		Items: page.Items,
+	}, nil
+}
+
+func (c *client) SearchProcessInstancesPage(ctx context.Context, filter ProcessInstanceFilter, page ProcessInstancePageRequest, opts ...options.FacadeOption) (ProcessInstancePage, error) {
+	pis, err := c.piApi.SearchForProcessInstancesPage(ctx, toDomainProcessInstanceFilter(filter), toDomainProcessInstancePageRequest(page), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessInstancePage{}, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstancePage(pis), nil
 }
 
 func (c *client) CancelProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (CancelReport, ProcessInstances, error) {

@@ -174,24 +174,36 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 }
 
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	page, err := s.SearchForProcessInstancesPage(ctx, filter, d.ProcessInstancePageRequest{Size: size}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
 	if hasDateFilterBounds(filter) {
-		return nil, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
+		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
 	}
-	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, size)
+	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, pageReq.Size)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
 	resp, err := s.co.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
-	return toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse), nil
+	return d.ProcessInstancePage{
+		Items:         toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse),
+		Request:       pageReq,
+		OverflowState: d.ProcessInstanceOverflowStateIndeterminate,
+	}, nil
 }
 
 func hasDateFilterBounds(filter d.ProcessInstanceFilter) bool {

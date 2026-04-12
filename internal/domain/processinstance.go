@@ -30,6 +30,25 @@ type ProcessInstanceFilter struct {
 	ParentKey            string
 }
 
+type ProcessInstancePageRequest struct {
+	From int32
+	Size int32
+}
+
+type ProcessInstanceOverflowState string
+
+const (
+	ProcessInstanceOverflowStateNoMore        ProcessInstanceOverflowState = "no_more"
+	ProcessInstanceOverflowStateHasMore       ProcessInstanceOverflowState = "has_more"
+	ProcessInstanceOverflowStateIndeterminate ProcessInstanceOverflowState = "indeterminate"
+)
+
+type ProcessInstancePage struct {
+	Items         []ProcessInstance
+	Request       ProcessInstancePageRequest
+	OverflowState ProcessInstanceOverflowState
+}
+
 type CancelResponse struct {
 	Ok         bool
 	StatusCode int

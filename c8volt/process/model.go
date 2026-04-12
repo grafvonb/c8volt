@@ -59,6 +59,25 @@ type ProcessInstances struct {
 	Items []ProcessInstance `json:"items,omitempty"`
 }
 
+type ProcessInstancePageRequest struct {
+	From int32 `json:"from,omitempty"`
+	Size int32 `json:"size,omitempty"`
+}
+
+type ProcessInstanceOverflowState string
+
+const (
+	ProcessInstanceOverflowStateNoMore        ProcessInstanceOverflowState = "no_more"
+	ProcessInstanceOverflowStateHasMore       ProcessInstanceOverflowState = "has_more"
+	ProcessInstanceOverflowStateIndeterminate ProcessInstanceOverflowState = "indeterminate"
+)
+
+type ProcessInstancePage struct {
+	Request       ProcessInstancePageRequest   `json:"request,omitempty"`
+	OverflowState ProcessInstanceOverflowState `json:"overflowState,omitempty"`
+	Items         []ProcessInstance            `json:"items,omitempty"`
+}
+
 type ProcessInstanceFilter struct {
 	Key                  string `json:"key,omitempty"`
 	BpmnProcessId        string `json:"bpmnProcessId,omitempty"`

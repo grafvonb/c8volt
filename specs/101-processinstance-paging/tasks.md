@@ -28,10 +28,10 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T003 Add the shared process-instance paging default config field and normalization in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/app.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/config.go
-- [ ] T004 Bind the shared process-instance paging default into the Cobra/Viper bootstrap in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
-- [ ] T005 Extend paging-related process-instance facade and service contracts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/api.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go
-- [ ] T006 Create shared page-size resolution, continuation-state, and progress-summary helpers in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T003 Add the shared process-instance paging default config field and normalization in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/app.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/config.go
+- [x] T004 Bind the shared process-instance paging default into the Cobra/Viper bootstrap in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
+- [x] T005 Extend paging-related process-instance facade and service contracts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/api.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go
+- [x] T006 Create shared page-size resolution, continuation-state, and progress-summary helpers in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 
 **Checkpoint**: The repository has one shared page-size config path and one shared command/service seam for paging metadata and continuation decisions.
 

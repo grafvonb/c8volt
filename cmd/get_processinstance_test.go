@@ -12,8 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -371,6 +374,68 @@ func TestHasPISearchFilterFlags_WithRelativeDaysOnly(t *testing.T) {
 	require.True(t, hasPISearchFilterFlags())
 }
 
+func TestResolvePISearchSize(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := getProcessInstanceCmd
+	resetPISearchCountFlag(t, cmd)
+
+	t.Run("uses shared config default when count flag is unchanged", func(t *testing.T) {
+		resetPISearchCountFlag(t, cmd)
+		cfg := &config.Config{}
+		cfg.App.ProcessInstancePageSize = 250
+
+		require.Equal(t, int32(250), resolvePISearchSize(cmd, cfg))
+	})
+
+	t.Run("uses count override when the flag is changed", func(t *testing.T) {
+		resetPISearchCountFlag(t, cmd)
+		require.NoError(t, cmd.Flags().Set("count", "125"))
+		cfg := &config.Config{}
+		cfg.App.ProcessInstancePageSize = 250
+
+		require.Equal(t, int32(125), resolvePISearchSize(cmd, cfg))
+	})
+
+	t.Run("falls back to repository default for invalid config values", func(t *testing.T) {
+		resetProcessInstanceCommandGlobals()
+		resetPISearchCountFlag(t, cmd)
+		cfg := &config.Config{}
+		cfg.App.ProcessInstancePageSize = 0
+
+		require.Equal(t, int32(consts.MaxPISearchSize), resolvePISearchSize(cmd, cfg))
+	})
+}
+
+func TestPIContinuationHelpers(t *testing.T) {
+	t.Run("auto-confirm chooses auto-continue for overflow", func(t *testing.T) {
+		page := process.ProcessInstancePage{
+			Request:       process.ProcessInstancePageRequest{Size: 50},
+			OverflowState: process.ProcessInstanceOverflowStateHasMore,
+			Items:         []process.ProcessInstance{{Key: "1"}, {Key: "2"}},
+		}
+
+		summary := newPIProgressSummary(page, 2, true)
+
+		require.Equal(t, processInstanceContinuationAutoContinue, summary.ContinuationState)
+		require.Equal(t, 50, int(summary.PageSize))
+		require.Equal(t, 2, summary.CurrentPageCount)
+		require.Equal(t, 2, summary.CumulativeCount)
+	})
+
+	t.Run("indeterminate overflow stops with warning", func(t *testing.T) {
+		page := process.ProcessInstancePage{
+			Request:       process.ProcessInstancePageRequest{Size: 25},
+			OverflowState: process.ProcessInstanceOverflowStateIndeterminate,
+		}
+
+		summary := newPIProgressSummary(page, 0, false)
+
+		require.Equal(t, processInstanceContinuationWarningStop, summary.ContinuationState)
+	})
+}
+
 func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	t.Helper()
 
@@ -464,6 +529,15 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIOrphanChildrenOnly = false
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
+}
+
+func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
+	t.Helper()
+
+	flag := cmd.Flags().Lookup("count")
+	require.NotNil(t, flag)
+	require.NoError(t, flag.Value.Set("1000"))
+	flag.Changed = false
 }
 
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
