@@ -9,6 +9,8 @@ Started: 2026-04-12 08:25:10
 - For paging regressions, prefer sequential fake search responses plus captured `page` assertions over ad hoc per-test handlers; this keeps request-order checks and pagination-shape checks aligned.
 - Shared process-instance paging defaults should flow through `config.App`, a Viper bootstrap default, and a command-layer resolver that only honors `--count` when Cobra marks the flag as changed.
 - For incremental paging seams, keep the existing one-shot `SearchProcessInstances` facade/service methods as wrappers over the richer page-aware request type so current callers stay stable while new metadata propagates.
+- For Camunda 8.7 paging fallbacks, use Operate's `total` field when present, and treat full pages without `total` as indeterminate so the CLI can stop with a warning instead of inventing certainty.
+- Keep one-line paging progress output machine-readable but append a short detail or warning clause on the same line so `get`, `cancel`, and `delete` share the same operator cues for prompt, auto-continue, partial completion, and warning-stop states.
 
 ---
 
@@ -113,4 +115,31 @@ Started: 2026-04-12 08:25:10
 **Learnings**:
 - Search-based write paging must restart each follow-up search from `from=0` after each processed page; reusing offset pagination against a mutating result set would skip remaining matches as cancellation or deletion changes the underlying search set.
 - `--auto-confirm` for paged destructive flows still routes the first page through the shared confirmation helper, but the helper exits immediately without interactive input; continuation between later pages stays fully automatic.
+---
+
+## Iteration 5 - 2026-04-12 09:30:10 CEST
+**User Story**: User Story 3 - Receive Version-Aware Overflow Handling and Clear Operator Feedback
+**Tasks Completed**:
+- [x] T019 [P] [US3] Add command coverage for partial-completion summaries, cumulative counts, and warning-stop behavior in `cmd/get_processinstance_test.go`, `cmd/cancel_test.go`, and `cmd/delete_test.go`
+- [x] T020 [P] [US3] Add v8.7 service regression coverage for fallback overflow detection and indeterminate-warning behavior in `internal/services/processinstance/v87/service_test.go`
+- [x] T021 [P] [US3] Add cross-version paging metadata contract coverage in `c8volt/process/client_test.go` and `internal/services/processinstance/v88/service_test.go`
+- [x] T022 [US3] Implement v8.7 fallback overflow detection and indeterminate-warning signaling in `internal/services/processinstance/v87/service.go`
+- [x] T023 [US3] Implement partial-completion and warning-stop summaries in the shared command paging helpers in `cmd/get_processinstance.go`
+- [x] T024 [US3] Align cross-command paging output wording and continuation-state reporting in `cmd/get_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- specs/101-processinstance-paging/tasks.md
+- specs/101-processinstance-paging/progress.md
+**Learnings**:
+- The Operate 8.7 search response already carries enough fallback signal for safe overflow handling when `total` is present; the real unsafe case is a full page without `total`, which should become an explicit warning-stop.
+- Shared progress output can stay backward-friendly if the stable paging counters remain at the front of the line and richer partial or warning context is appended as a trailing detail clause.
 ---

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	operatev87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/operate"
 
@@ -187,7 +188,8 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if hasDateFilterBounds(filter) {
 		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
 	}
-	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, pageReq.Size)
+	fetchSize := pickProcessInstanceSearchFetchSize(pageReq)
+	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, fetchSize)
 	if err != nil {
 		return d.ProcessInstancePage{}, err
 	}
@@ -199,11 +201,60 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, err
 	}
+	items := toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse)
+	window, overflow := trimProcessInstancePageWindow(items, payload.Total, pageReq, fetchSize)
 	return d.ProcessInstancePage{
-		Items:         toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse),
+		Items:         window,
 		Request:       pageReq,
-		OverflowState: d.ProcessInstanceOverflowStateIndeterminate,
+		OverflowState: overflow,
 	}, nil
+}
+
+func pickProcessInstanceSearchFetchSize(pageReq d.ProcessInstancePageRequest) int32 {
+	if pageReq.Size <= 0 {
+		return 0
+	}
+	fetchSize := pageReq.From + pageReq.Size
+	if fetchSize <= 0 {
+		return pageReq.Size
+	}
+	if fetchSize > consts.MaxPISearchSize {
+		return consts.MaxPISearchSize
+	}
+	return fetchSize
+}
+
+func trimProcessInstancePageWindow(items []d.ProcessInstance, total *int64, pageReq d.ProcessInstancePageRequest, fetchSize int32) ([]d.ProcessInstance, d.ProcessInstanceOverflowState) {
+	if pageReq.From < 0 {
+		pageReq.From = 0
+	}
+	start := int(pageReq.From)
+	if start >= len(items) {
+		return nil, pickProcessInstanceOverflowState(total, pageReq, 0, len(items), fetchSize)
+	}
+	end := start + int(pageReq.Size)
+	if end > len(items) {
+		end = len(items)
+	}
+	window := items[start:end]
+	return window, pickProcessInstanceOverflowState(total, pageReq, len(window), len(items), fetchSize)
+}
+
+func pickProcessInstanceOverflowState(total *int64, pageReq d.ProcessInstancePageRequest, windowCount int, fetchedCount int, fetchSize int32) d.ProcessInstanceOverflowState {
+	visibleThrough := int64(pageReq.From) + int64(windowCount)
+	if total != nil {
+		if *total > visibleThrough {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	if pageReq.From+pageReq.Size > consts.MaxPISearchSize {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	if int32(fetchedCount) < fetchSize {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	return d.ProcessInstanceOverflowStateIndeterminate
 }
 
 func hasDateFilterBounds(filter d.ProcessInstanceFilter) bool {

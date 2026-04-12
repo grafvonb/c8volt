@@ -438,13 +438,17 @@ func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSu
 	if cmd == nil || pickMode() != RenderModeOneLine {
 		return
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "page size: %d, current page: %d, total so far: %d, more matches: %s, next step: %s\n",
+	line := fmt.Sprintf("page size: %d, current page: %d, total so far: %d, more matches: %s, next step: %s",
 		summary.PageSize,
 		summary.CurrentPageCount,
 		summary.CumulativeCount,
 		describePIOverflowState(summary.OverflowState),
 		describePIContinuationState(summary.ContinuationState),
 	)
+	if detail := describePIProgressDetail(summary); detail != "" {
+		line += ", " + detail
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), line)
 }
 
 func describePIOverflowState(state process.ProcessInstanceOverflowState) string {
@@ -470,6 +474,21 @@ func describePIContinuationState(state processInstanceContinuationState) string 
 		return "warning-stop"
 	default:
 		return "complete"
+	}
+}
+
+func describePIProgressDetail(summary processInstanceProgressSummary) string {
+	switch summary.ContinuationState {
+	case processInstanceContinuationPrompt:
+		return "detail: prompt before processing the next page"
+	case processInstanceContinuationAutoContinue:
+		return "detail: auto-confirm will continue with the next page"
+	case processInstanceContinuationPartialComplete:
+		return fmt.Sprintf("detail: stopped after %d processed process instance(s); remaining matches were left untouched", summary.CumulativeCount)
+	case processInstanceContinuationWarningStop:
+		return fmt.Sprintf("warning: stopped after %d processed process instance(s) because more matching process instances may remain", summary.CumulativeCount)
+	default:
+		return "detail: no additional matching process instances remain"
 	}
 }
 

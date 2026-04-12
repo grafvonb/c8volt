@@ -424,6 +424,82 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	})
 }
 
+func TestService_SearchForProcessInstancesPage_FallbackOverflowDetection(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("uses total to report has-more and trim the requested window", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Size)
+				assert.Equal(t, int32(4), *body.Size)
+				items := []operatev87.ProcessInstance{
+					*makeProcessInstanceResponse(101, "ACTIVE", ""),
+					*makeProcessInstanceResponse(102, "ACTIVE", ""),
+					*makeProcessInstanceResponse(103, "ACTIVE", ""),
+					*makeProcessInstanceResponse(104, "ACTIVE", ""),
+				}
+				total := int64(5)
+				return &operatev87.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &operatev87.ResultsProcessInstance{
+						Items: &items,
+						Total: &total,
+					},
+				}, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 2, Size: 2})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+		require.Len(t, page.Items, 2)
+		assert.Equal(t, "103", page.Items[0].Key)
+		assert.Equal(t, "104", page.Items[1].Key)
+	})
+
+	t.Run("missing total on a full page stays indeterminate", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Size)
+				assert.Equal(t, int32(2), *body.Size)
+				items := []operatev87.ProcessInstance{
+					*makeProcessInstanceResponse(201, "ACTIVE", ""),
+					*makeProcessInstanceResponse(202, "ACTIVE", ""),
+				}
+				return &operatev87.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &operatev87.ResultsProcessInstance{
+						Items: &items,
+					},
+				}, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 0, Size: 2})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateIndeterminate, page.OverflowState)
+		require.Len(t, page.Items, 2)
+	})
+}
+
 func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 	ctx := context.Background()
 

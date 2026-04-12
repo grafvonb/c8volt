@@ -448,6 +448,36 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
 		require.Len(t, page.Items, 2)
 	})
+
+	t.Run("respects hasMoreTotalItems when totals are capped", func(t *testing.T) {
+		hasMore := true
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+						Items: []camundav88.ProcessInstanceResult{
+							*makeProcessInstanceResult("123", "ACTIVE", ""),
+							*makeProcessInstanceResult("124", "ACTIVE", ""),
+						},
+						Page: camundav88.SearchQueryPageResponse{
+							TotalItems:        2,
+							HasMoreTotalItems: &hasMore,
+						},
+					},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 0, Size: 2})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+		require.Len(t, page.Items, 2)
+	})
 }
 
 func TestService_GetProcessInstanceStateByKey(t *testing.T) {

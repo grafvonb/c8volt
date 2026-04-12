@@ -133,6 +133,34 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	assert.Equal(t, "2251799813711967", page.Items[0].Key)
 }
 
+func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 2}, page)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+	}, ProcessInstancePageRequest{Size: 2})
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstanceOverflowStateNoMore, page.OverflowState)
+	require.Len(t, page.Items, 1)
+}
+
 func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	t.Parallel()
 
