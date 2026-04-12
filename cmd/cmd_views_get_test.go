@@ -98,6 +98,3 @@ func TestProcessInstancesWithAgeMeta(t *testing.T) {
 	require.True(t, payload.Meta.WithAge)
 	require.Equal(t, 4, payload.Meta.AgeDaysBy["2251799813758959"])
 }
-
-
-

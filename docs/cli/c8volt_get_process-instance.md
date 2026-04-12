@@ -17,6 +17,8 @@ c8volt get process-instance [flags]
 ```
   ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
+  ./c8volt get pi --state active --auto-confirm
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
@@ -29,7 +31,7 @@ c8volt get process-instance [flags]
 ```
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --children-only               show only child process instances, meaning instances that have a parent key set
-  -n, --count int32                 number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
+  -n, --count int32                 number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)

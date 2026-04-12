@@ -2,17 +2,15 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 )
 
@@ -880,39 +878,15 @@ func executeCompletionNoDescForTest(t *testing.T, args ...string) string {
 }
 
 func resetCommandTreeFlags(cmd *cobra.Command) {
-	resetFlagSet := func(fs *pflag.FlagSet) {
-		fs.VisitAll(func(flag *pflag.Flag) {
-			_ = flag.Value.Set(flag.DefValue)
-			flag.Changed = false
-		})
-	}
-
-	resetFlagSet(cmd.Flags())
-	resetFlagSet(cmd.PersistentFlags())
-	resetFlagSet(cmd.InheritedFlags())
-
-	for _, child := range cmd.Commands() {
-		resetCommandTreeFlags(child)
-	}
+	testx.ResetCommandTreeFlags(cmd)
 }
 
 func writeTestConfig(t *testing.T, baseURL string) string {
 	t.Helper()
-	return writeTestConfigForVersion(t, baseURL, "8.8")
+	return testx.WriteTestConfig(t, baseURL)
 }
 
 func writeTestConfigForVersion(t *testing.T, baseURL string, camundaVersion string) string {
 	t.Helper()
-
-	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
-	content := fmt.Sprintf(`app:
-  camunda_version: %q
-auth:
-  mode: none
-apis:
-  camunda_api:
-    base_url: %q
-`, camundaVersion, baseURL)
-	require.NoError(t, os.WriteFile(cfgPath, []byte(content), 0o600))
-	return cfgPath
+	return testx.WriteTestConfigForVersion(t, baseURL, camundaVersion)
 }

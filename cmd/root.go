@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/auth"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
@@ -74,6 +75,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			log.Debug("no config file loaded, using defaults and environment variables")
 			var configKeys = []string{
 				"app.camunda_version",
+				"app.process_instance_page_size",
 				"apis.camunda_api.base_url",
 				"auth.mode",
 			}
@@ -176,6 +178,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	v.SetDefault("log.format", "plain")
 	v.SetDefault("log.with_source", false)
 	v.SetDefault("log.with_request_body", false)
+	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
 
 	v.SetEnvPrefix("c8volt")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))

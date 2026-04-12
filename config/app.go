@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
 type App struct {
-	CamundaVersion toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
-	Tenant         string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
-	Backoff        BackoffConfig        `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
-	NoErrCodes     bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`
+	CamundaVersion          toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
+	Tenant                  string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
+	ProcessInstancePageSize int32                `mapstructure:"process_instance_page_size" json:"process_instance_page_size" yaml:"process_instance_page_size"`
+	Backoff                 BackoffConfig        `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
+	NoErrCodes              bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`
 }
 
 func (a *App) ViewTenant() string {
@@ -36,6 +38,9 @@ func (a *App) Normalize() error {
 	}
 	if err := a.Backoff.Normalize(); err != nil {
 		errs = append(errs, fmt.Errorf("backoff: %w", err))
+	}
+	if a.ProcessInstancePageSize <= 0 {
+		a.ProcessInstancePageSize = consts.MaxPISearchSize
 	}
 	return errors.Join(errs...)
 }

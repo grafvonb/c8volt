@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -104,7 +105,7 @@ func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.
 // Verifies date-filtered search selection deletes matched instances and preserves descendant lookup behavior.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -129,7 +130,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-01-03T18:00:00Z","endDate":"2026-01-12T08:30:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/2251799813711967":
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -143,7 +144,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(requests), 2)
-	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted)
+	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "COMPLETED", filter["state"])
@@ -161,7 +162,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 // Verifies relative-day search selection derives canonical end-date bounds before deleting matches.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -186,7 +187,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-02-10T18:00:00Z","endDate":"2026-03-15T08:30:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/2251799813711967":
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -200,7 +201,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(requests), 2)
-	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted)
+	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "COMPLETED", filter["state"])
@@ -247,6 +248,425 @@ func TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 	require.NotContains(t, output, "either at least one --key is required, or sufficient filtering options")
 	require.Contains(t, output, "found: 0")
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
+}
+
+func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
+	var requests []string
+	var deleted safeSlice[string]
+	searchPage := 0
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if _, ok := filter["parentProcessInstanceKey"]; ok {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			switch searchPage {
+			case 0:
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"401","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"},{"processInstanceKey":"402","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`))
+			case 1:
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"403","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected top-level search request %d", searchPage)
+			}
+			searchPage++
+		case r.Method == http.MethodGet && (r.URL.Path == "/v2/process-instances/401" || r.URL.Path == "/v2/process-instances/402" || r.URL.Path == "/v2/process-instances/403"):
+			key := r.URL.Path[len("/v2/process-instances/"):]
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/401" || r.URL.Path == "/v1/process-instances/402" || r.URL.Path == "/v1/process-instances/403"):
+			deleted.Append(r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Len(t, pages, 2)
+	require.EqualValues(t, 2, pages[0]["limit"])
+	require.EqualValues(t, 0, pages[0]["from"])
+	require.EqualValues(t, 2, pages[1]["from"])
+	require.ElementsMatch(t, []string{
+		"/v1/process-instances/401",
+		"/v1/process-instances/402",
+		"/v1/process-instances/403",
+	}, deleted.Snapshot())
+	require.Len(t, prompts, 2)
+	require.Contains(t, prompts[0], "You are about to delete 2 process instance(s)")
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+}
+
+func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
+	var requests []string
+	var deleted safeSlice[string]
+	searchPage := 0
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if parentKey, ok := filter["parentKey"]; ok && parentKey != nil {
+					parent := int64(parentKey.(float64))
+					if parent != 901 && parent != 902 {
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`{"items":[]}`))
+						return
+					}
+					childKey := "1901"
+					if parent == 902 {
+						childKey = "1902"
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[{"key":` + childKey + `,"parentKey":` + fmt.Sprintf("%d", parent) + `,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			switch searchPage {
+			case 0:
+				_, _ = w.Write([]byte(`{"items":[{"key":901,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":902,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}],"total":3}`))
+			case 1:
+				_, _ = w.Write([]byte(`{"items":[{"key":901,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":902,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":903,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}],"total":3}`))
+			default:
+				t.Fatalf("unexpected top-level search request %d", searchPage)
+			}
+			searchPage++
+		case r.Method == http.MethodGet && (r.URL.Path == "/v1/process-instances/901" || r.URL.Path == "/v1/process-instances/902" || r.URL.Path == "/v1/process-instances/903" || r.URL.Path == "/v1/process-instances/1901" || r.URL.Path == "/v1/process-instances/1902"):
+			key := r.URL.Path[len("/v1/process-instances/"):]
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"key":` + key + `,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/901" || r.URL.Path == "/v1/process-instances/902" || r.URL.Path == "/v1/process-instances/903" || r.URL.Path == "/v1/process-instances/1901" || r.URL.Path == "/v1/process-instances/1902"):
+			deleted.Append(r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	_ = executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	sizes := decodeCapturedTopLevelPISearchSizes(t, requests)
+	require.Equal(t, []float64{2, 4}, sizes)
+	require.ElementsMatch(t, []string{
+		"/v1/process-instances/1901",
+		"/v1/process-instances/1902",
+		"/v1/process-instances/901",
+		"/v1/process-instances/902",
+		"/v1/process-instances/903",
+	}, deleted.Snapshot())
+	require.Len(t, prompts, 2)
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 4 including dependencies). More matching process instances remain. Continue?")
+}
+
+func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
+	var requests []string
+	var deleted safeSlice[string]
+	searchPage := 0
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if _, ok := filter["parentProcessInstanceKey"]; ok {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			switch searchPage {
+			case 0:
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"501","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"},{"processInstanceKey":"502","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`))
+			case 1:
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"503","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected top-level search request %d", searchPage)
+			}
+			searchPage++
+		case r.Method == http.MethodGet && (r.URL.Path == "/v2/process-instances/501" || r.URL.Path == "/v2/process-instances/502" || r.URL.Path == "/v2/process-instances/503"):
+			key := r.URL.Path[len("/v2/process-instances/"):]
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/501" || r.URL.Path == "/v1/process-instances/502" || r.URL.Path == "/v1/process-instances/503"):
+			deleted.Append(r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	promptCalls := 0
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		promptCalls++
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"--auto-confirm",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Len(t, pages, 2)
+	require.EqualValues(t, 2, pages[0]["limit"])
+	require.EqualValues(t, 2, pages[1]["from"])
+	require.Equal(t, 1, promptCalls)
+	require.ElementsMatch(t, []string{
+		"/v1/process-instances/501",
+		"/v1/process-instances/502",
+		"/v1/process-instances/503",
+	}, deleted.Snapshot())
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+}
+
+func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
+	var requests []string
+	var deleted safeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if _, ok := filter["parentProcessInstanceKey"]; ok {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"511","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"},{"processInstanceKey":"512","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`))
+		case r.Method == http.MethodGet && (r.URL.Path == "/v2/process-instances/511" || r.URL.Path == "/v2/process-instances/512"):
+			key := r.URL.Path[len("/v2/process-instances/"):]
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/511" || r.URL.Path == "/v1/process-instances/512"):
+			deleted.Append(r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	callCount := 0
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		callCount++
+		if callCount == 1 {
+			return nil
+		}
+		return ErrCmdAborted
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Len(t, pages, 1)
+	require.ElementsMatch(t, []string{
+		"/v1/process-instances/511",
+		"/v1/process-instances/512",
+	}, deleted.Snapshot())
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: partial-complete")
+	require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
+}
+
+func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
+	var requests []string
+	var deleted safeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if _, ok := filter["parentProcessInstanceKey"]; ok {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"521","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"},{"processInstanceKey":"522","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{}}`))
+		case r.Method == http.MethodGet && (r.URL.Path == "/v2/process-instances/521" || r.URL.Path == "/v2/process-instances/522"):
+			key := r.URL.Path[len("/v2/process-instances/"):]
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/521" || r.URL.Path == "/v1/process-instances/522"):
+			deleted.Append(r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Len(t, pages, 1)
+	require.ElementsMatch(t, []string{
+		"/v1/process-instances/521",
+		"/v1/process-instances/522",
+	}, deleted.Snapshot())
+	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
+	require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
+}
+
+func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
+	var requests []string
+	var deleted safeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/601":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"601","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/601":
+			deleted.Append(r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	_ = executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"delete", "process-instance",
+		"--key", "601",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Empty(t, pages)
+	require.Equal(t, []string{"/v1/process-instances/601"}, deleted.Snapshot())
 }
 
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.

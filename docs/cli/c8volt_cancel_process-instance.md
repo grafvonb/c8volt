@@ -17,8 +17,10 @@ c8volt cancel process-instance [flags]
 ```
   ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt cancel pi --state active --count 250
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
+  ./c8volt cancel pi --bpmn-process-id order-process --state active --count 200 --auto-confirm
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
@@ -29,6 +31,7 @@ c8volt cancel process-instance [flags]
 
 ```
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
+  -n, --count int32                 number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)

@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,8 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -371,6 +374,198 @@ func TestHasPISearchFilterFlags_WithRelativeDaysOnly(t *testing.T) {
 	require.True(t, hasPISearchFilterFlags())
 }
 
+func TestResolvePISearchSize(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := getProcessInstanceCmd
+	resetPISearchCountFlag(t, cmd)
+
+	t.Run("uses shared config default when count flag is unchanged", func(t *testing.T) {
+		resetPISearchCountFlag(t, cmd)
+		cfg := &config.Config{}
+		cfg.App.ProcessInstancePageSize = 250
+
+		require.Equal(t, int32(250), resolvePISearchSize(cmd, cfg))
+	})
+
+	t.Run("uses count override when the flag is changed", func(t *testing.T) {
+		resetPISearchCountFlag(t, cmd)
+		require.NoError(t, cmd.Flags().Set("count", "125"))
+		cfg := &config.Config{}
+		cfg.App.ProcessInstancePageSize = 250
+
+		require.Equal(t, int32(125), resolvePISearchSize(cmd, cfg))
+	})
+
+	t.Run("falls back to repository default for invalid config values", func(t *testing.T) {
+		resetProcessInstanceCommandGlobals()
+		resetPISearchCountFlag(t, cmd)
+		cfg := &config.Config{}
+		cfg.App.ProcessInstancePageSize = 0
+
+		require.Equal(t, int32(consts.MaxPISearchSize), resolvePISearchSize(cmd, cfg))
+	})
+}
+
+func TestGetProcessInstancePagingFlow(t *testing.T) {
+	t.Run("uses shared config default and prompts before the next page", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		prompts := []string{}
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			prompts = append(prompts, prompt)
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"get", "process-instance",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 2)
+		require.EqualValues(t, 1000, pages[0]["limit"])
+		require.EqualValues(t, 0, pages[0]["from"])
+		require.EqualValues(t, 2, pages[1]["from"])
+		require.Len(t, prompts, 1)
+		require.Contains(t, prompts[0], "More matching process instances remain")
+		require.Contains(t, output, "page size: 1000, current page: 2, total so far: 2, more matches: yes, next step: prompt")
+		require.Contains(t, output, "page size: 1000, current page: 1, total so far: 3, more matches: no, next step: complete")
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "124")
+		require.Contains(t, output, "125")
+	})
+
+	t.Run("count override and auto-confirm fetch every page without prompt", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		promptCalls := 0
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			promptCalls++
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"--auto-confirm",
+			"get", "process-instance",
+			"--count", "2",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 2)
+		require.EqualValues(t, 2, pages[0]["limit"])
+		require.EqualValues(t, 0, pages[0]["from"])
+		require.EqualValues(t, 2, pages[1]["from"])
+		require.Zero(t, promptCalls)
+		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	})
+
+	t.Run("declined continuation reports partial completion summary", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			return localPreconditionError(ErrCmdAborted)
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"get", "process-instance",
+			"--count", "2",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 1)
+		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
+		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: partial-complete")
+		require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "124")
+	})
+
+	t.Run("indeterminate overflow stops with warning summary", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"get", "process-instance",
+			"--count", "2",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 1)
+		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
+		require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
+	})
+}
+
+func TestPIContinuationHelpers(t *testing.T) {
+	t.Run("auto-confirm chooses auto-continue for overflow", func(t *testing.T) {
+		page := process.ProcessInstancePage{
+			Request:       process.ProcessInstancePageRequest{Size: 50},
+			OverflowState: process.ProcessInstanceOverflowStateHasMore,
+			Items:         []process.ProcessInstance{{Key: "1"}, {Key: "2"}},
+		}
+
+		summary := newPIProgressSummary(page, 2, true)
+
+		require.Equal(t, processInstanceContinuationAutoContinue, summary.ContinuationState)
+		require.Equal(t, 50, int(summary.PageSize))
+		require.Equal(t, 2, summary.CurrentPageCount)
+		require.Equal(t, 2, summary.CumulativeCount)
+	})
+
+	t.Run("indeterminate overflow stops with warning", func(t *testing.T) {
+		page := process.ProcessInstancePage{
+			Request:       process.ProcessInstancePageRequest{Size: 25},
+			OverflowState: process.ProcessInstanceOverflowStateIndeterminate,
+		}
+
+		summary := newPIProgressSummary(page, 0, false)
+
+		require.Equal(t, processInstanceContinuationWarningStop, summary.ContinuationState)
+	})
+}
+
 func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	t.Helper()
 
@@ -383,24 +578,15 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 
 func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
-
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Skipf("local listener unavailable in this environment: %v", err)
-	}
-
-	srv := httptest.NewUnstartedServer(handler)
-	srv.Listener = listener
-	srv.Start()
-	t.Cleanup(srv.Close)
-
-	return srv
+	return testx.NewIPv4Server(t, handler)
 }
 
 func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	t.Helper()
 
+	prevConfirm := confirmCmdOrAbortFn
 	resetProcessInstanceCommandGlobals()
+	confirmCmdOrAbortFn = prevConfirm
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	root := Root()
@@ -442,6 +628,8 @@ func executeRootForProcessInstanceTestWithEnv(t *testing.T, env []string, args .
 }
 
 func resetProcessInstanceCommandGlobals() {
+	flagCancelPIKeys = nil
+	flagDeletePIKeys = nil
 	flagGetPIKeys = nil
 	flagGetPIBpmnProcessID = ""
 	flagGetPIProcessVersion = 0
@@ -464,6 +652,26 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIOrphanChildrenOnly = false
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
+	flagCmdAutoConfirm = false
+	flagVerbose = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+	flagNoWait = false
+	flagForce = false
+	flagNoStateCheck = false
+	flagWorkers = 0
+	flagNoWorkerLimit = false
+	flagFailFast = false
+	confirmCmdOrAbortFn = confirmCmdOrAbort
+}
+
+func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
+	t.Helper()
+
+	flag := cmd.Flags().Lookup("count")
+	require.NotNil(t, flag)
+	require.NoError(t, flag.Value.Set("1000"))
+	flag.Changed = false
 }
 
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {

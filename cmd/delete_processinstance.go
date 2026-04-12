@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -17,9 +19,11 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Delete process instance(s) by key or search filters, optionally cancelling first",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt delete pi --state completed --count 250
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
+  ./c8volt delete pi --bpmn-process-id order-process --state completed --count 200 --auto-confirm
   ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
@@ -53,14 +57,17 @@ var deleteProcessInstanceCmd = &cobra.Command{
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, consts.MaxPISearchSize, collectOptions()...)
+			err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageImpact, error) {
+				keys := make(types.Keys, 0, len(page.Items))
+				for _, pi := range page.Items {
+					keys = append(keys, pi.Key)
+				}
+				return deleteProcessInstancePage(cmd, cli, keys, firstPage)
+			})
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error deleting process instances: %w", err))
 			}
-			keys = make([]string, 0, len(pisr.Items))
-			for _, pi := range pisr.Items {
-				keys = append(keys, pi.Key)
-			}
+			return
 		}
 		if len(keys) == 0 {
 			if searched {
@@ -88,6 +95,31 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	},
 }
 
+func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageImpact, error) {
+	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
+	if err != nil {
+		return processInstancePageImpact{}, fmt.Errorf("validating process instance keys for cancellation: %w", err)
+	}
+	impact := processInstancePageImpact{Requested: len(keys), Affected: len(collected), Roots: len(roots)}
+
+	if firstPage {
+		affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
+		prompt := fmt.Sprintf("You are about to delete %d process instance(s). Do you want to proceed?", affectedCount)
+		if affectedCount > requestedCount {
+			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+		}
+		if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
+			return processInstancePageImpact{}, err
+		}
+	}
+
+	_, err = cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
+	if err != nil {
+		return processInstancePageImpact{}, fmt.Errorf("deleting process instance(s): %w", err)
+	}
+	return impact, nil
+}
+
 func init() {
 	deleteCmd.AddCommand(deleteProcessInstanceCmd)
 
@@ -105,5 +137,6 @@ func init() {
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
+	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }

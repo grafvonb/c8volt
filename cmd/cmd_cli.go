@@ -72,6 +72,8 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 	}
 }
 
+var confirmCmdOrAbortFn = confirmCmdOrAbort
+
 func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
 	keys := append([]string{}, baseKeys...)
 

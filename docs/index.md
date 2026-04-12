@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-15-g34227cf-dirty`, commit `34227cf`, built `2026-04-12T04:45:42Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-23-g6b6427c-dirty`, commit `6b6427c`, built `2026-04-12T07:32:59Z` | camunda: 8.7, 8.8
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -137,6 +137,17 @@ The same search-driven flow also supports inclusive absolute `--start-date-*` / 
 ```
 
 Deletion in real environments often means cancel-first, then remove, then verify. `c8volt` is built for that operational sequence.
+
+### 6. Page through large process-instance result sets safely
+
+```bash
+./c8volt get pi --state active
+./c8volt get pi --state active --count 250
+./c8volt cancel pi --state active --count 250
+./c8volt delete pi --state completed --count 250 --auto-confirm
+```
+
+Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing unless `--auto-confirm` is set. Direct `--key` workflows still bypass paging and keep their existing behavior.
 
 ## Precision Tools
 
@@ -296,6 +307,21 @@ The most useful starting commands are:
 ./c8volt config show --template
 ./c8volt --profile prod config show
 ```
+
+### Process-instance paging defaults
+
+Search-based `get process-instance`, `cancel process-instance`, and `delete process-instance` share one default page-size setting:
+
+```yaml
+app:
+  process_instance_page_size: 250
+```
+
+- Default behavior stays at `1000` when this key is unset.
+- `--count` overrides the configured value for one command run.
+- `C8VOLT_APP_PROCESS_INSTANCE_PAGE_SIZE` provides the same setting through the environment.
+- `--auto-confirm` continues to the next page automatically; without it, the CLI prompts between pages.
+- Direct `--key` usage for `cancel pi` and `delete pi` remains non-paged.
 
 ### Tenant support
 

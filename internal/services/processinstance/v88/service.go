@@ -158,24 +158,32 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 }
 
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	page, err := s.SearchForProcessInstancesPage(ctx, filter, d.ProcessInstancePageRequest{Size: size}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
 
 	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
 	if err != nil {
-		return nil, fmt.Errorf("building start-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
 	}
 	startDateBefore, err := parseInclusiveDateUpperBound(filter.StartDateBefore)
 	if err != nil {
-		return nil, fmt.Errorf("building start-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
 	}
 	endDateAfter, err := parseInclusiveDateLowerBound(filter.EndDateAfter)
 	if err != nil {
-		return nil, fmt.Errorf("building end-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
 	endDateBefore, err := parseInclusiveDateUpperBound(filter.EndDateBefore)
 	if err != nil {
-		return nil, fmt.Errorf("building end-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
 	endDateExists := endDateExistsFilter(filter)
 
@@ -192,8 +200,8 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	}
 	page := camundav88.SearchQueryPageRequest{}
 	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
-		From:  new(int32(0)),
-		Limit: &size,
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
 	})
 	sort := []camundav88.ProcessInstanceSearchQuerySortRequest{
 		{
@@ -222,13 +230,31 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 	}
 	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
-	return toolx.MapSlice(payload.Items, fromProcessInstanceResult), nil
+	return d.ProcessInstancePage{
+		Items:         toolx.MapSlice(payload.Items, fromProcessInstanceResult),
+		Request:       pageReq,
+		OverflowState: pickProcessInstanceOverflowState(payload.Page, pageReq, len(payload.Items)),
+	}, nil
+}
+
+func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	visibleCount := int64(req.From) + int64(itemCount)
+	if page.HasMoreTotalItems != nil && *page.HasMoreTotalItems {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems > visibleCount {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 && itemCount > 0 {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	return d.ProcessInstanceOverflowStateNoMore
 }
 
 // parseInclusiveDateLowerBound parses a YYYY-MM-DD date into the start of that day in UTC.
