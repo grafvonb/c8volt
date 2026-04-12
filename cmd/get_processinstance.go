@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,6 +47,8 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
+  ./c8volt get pi --state active --auto-confirm
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
@@ -105,27 +108,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
-			pis, err = cli.SearchProcessInstances(ctx, filter, resolvePISearchSize(cmd, cfg))
+			pis, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
 			if err != nil {
 				fail(fmt.Errorf("error fetching process instances: %w", err))
-			}
-			if flagGetPIChildrenOnly {
-				pis = pis.FilterChildrenOnly()
-			}
-			if flagGetPIRootsOnly {
-				pis = pis.FilterRootsOnly()
-			}
-			if flagGetPIOrphanChildrenOnly {
-				pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(ctx, pis.Items)
-				if err != nil {
-					fail(fmt.Errorf("error filtering orphan children: %w", err))
-				}
-			}
-			if flagGetPIIncidentsOnly {
-				pis = pis.FilterByHavingIncidents(true)
-			}
-			if flagGetPINoIncidentsOnly {
-				pis = pis.FilterByHavingIncidents(false)
 			}
 		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
@@ -143,7 +128,7 @@ func init() {
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -304,6 +289,118 @@ func newPIProgressSummary(page process.ProcessInstancePage, cumulative int, auto
 		CumulativeCount:   cumulative,
 		OverflowState:     page.OverflowState,
 		ContinuationState: pickPIContinuationState(page.OverflowState, autoConfirm),
+	}
+}
+
+func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (process.ProcessInstances, error) {
+	pageReq := newPISearchPageRequest(cmd, cfg, 0)
+	var collected process.ProcessInstances
+
+	for {
+		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
+		if err != nil {
+			return process.ProcessInstances{}, err
+		}
+
+		filtered, err := applyPISearchResultFilters(cmd, cli, process.ProcessInstances{
+			Total: int32(len(page.Items)),
+			Items: page.Items,
+		})
+		if err != nil {
+			return process.ProcessInstances{}, err
+		}
+		collected.Items = append(collected.Items, filtered.Items...)
+		collected.Total = int32(len(collected.Items))
+
+		summary := newPIProgressSummary(page, int(collected.Total), flagCmdAutoConfirm)
+		printPISearchProgress(cmd, summary)
+
+		switch summary.ContinuationState {
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
+			return collected, nil
+		case processInstanceContinuationAutoContinue:
+			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
+			continue
+		case processInstanceContinuationPrompt:
+			prompt := fmt.Sprintf("Fetched %d process instance(s) on this page (%d total so far). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount)
+			if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
+				if errors.Is(err, ErrCmdAborted) {
+					printPISearchProgress(cmd, processInstanceProgressSummary{
+						PageSize:          summary.PageSize,
+						CurrentPageCount:  summary.CurrentPageCount,
+						CumulativeCount:   summary.CumulativeCount,
+						OverflowState:     summary.OverflowState,
+						ContinuationState: processInstanceContinuationPartialComplete,
+					})
+					return collected, nil
+				}
+				return process.ProcessInstances{}, err
+			}
+			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
+		}
+	}
+}
+
+func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.ProcessInstances, error) {
+	var err error
+	if flagGetPIChildrenOnly {
+		pis = pis.FilterChildrenOnly()
+	}
+	if flagGetPIRootsOnly {
+		pis = pis.FilterRootsOnly()
+	}
+	if flagGetPIOrphanChildrenOnly {
+		pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items, collectOptions()...)
+		if err != nil {
+			return process.ProcessInstances{}, fmt.Errorf("error filtering orphan children: %w", err)
+		}
+		pis.Total = int32(len(pis.Items))
+	}
+	if flagGetPIIncidentsOnly {
+		pis = pis.FilterByHavingIncidents(true)
+	}
+	if flagGetPINoIncidentsOnly {
+		pis = pis.FilterByHavingIncidents(false)
+	}
+	return pis, nil
+}
+
+func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {
+	if cmd == nil || pickMode() != RenderModeOneLine {
+		return
+	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "page size: %d, current page: %d, total so far: %d, more matches: %s, next step: %s\n",
+		summary.PageSize,
+		summary.CurrentPageCount,
+		summary.CumulativeCount,
+		describePIOverflowState(summary.OverflowState),
+		describePIContinuationState(summary.ContinuationState),
+	)
+}
+
+func describePIOverflowState(state process.ProcessInstanceOverflowState) string {
+	switch state {
+	case process.ProcessInstanceOverflowStateHasMore:
+		return "yes"
+	case process.ProcessInstanceOverflowStateIndeterminate:
+		return "unknown"
+	default:
+		return "no"
+	}
+}
+
+func describePIContinuationState(state processInstanceContinuationState) string {
+	switch state {
+	case processInstanceContinuationPrompt:
+		return "prompt"
+	case processInstanceContinuationAutoContinue:
+		return "auto-continue"
+	case processInstanceContinuationPartialComplete:
+		return "partial-complete"
+	case processInstanceContinuationWarningStop:
+		return "warning-stop"
+	default:
+		return "complete"
 	}
 }
 

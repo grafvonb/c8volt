@@ -133,6 +133,38 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	assert.Equal(t, "2251799813711967", page.Items[0].Key)
 }
 
+func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 2}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+					{Key: "2251799813711968", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	items, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+	}, 2, options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), items.Total)
+	require.Len(t, items.Items, 2)
+	assert.Equal(t, "2251799813711967", items.Items[0].Key)
+	assert.Equal(t, "2251799813711968", items.Items[1].Key)
+}
+
 type stubProcessDefinitionAPI struct {
 	getProcessDefinitionXML func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }

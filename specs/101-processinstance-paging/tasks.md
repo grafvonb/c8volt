@@ -45,16 +45,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Add `get process-instance` command coverage for shared default page size, `--count` overrides, prompt flow, and auto-confirm flow in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T008 [P] [US1] Add facade regression coverage for process-instance paging metadata propagation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
-- [ ] T009 [P] [US1] Add v8.8 service coverage for native page metadata and exact-boundary non-overflow behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
+- [x] T007 [P] [US1] Add `get process-instance` command coverage for shared default page size, `--count` overrides, prompt flow, and auto-confirm flow in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T008 [P] [US1] Add facade regression coverage for process-instance paging metadata propagation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T009 [P] [US1] Add v8.8 service coverage for native page metadata and exact-boundary non-overflow behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement v8.8 process-instance search metadata extraction and overflow signaling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go
-- [ ] T011 [US1] Implement facade mapping for paged process-instance search results in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go
-- [ ] T012 [US1] Implement shared `get process-instance` paging orchestration, continuation prompts, and progress output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T013 [US1] Update `get process-instance` examples and help text for paging behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T010 [US1] Implement v8.8 process-instance search metadata extraction and overflow signaling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go
+- [x] T011 [US1] Implement facade mapping for paged process-instance search results in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go
+- [x] T012 [US1] Implement shared `get process-instance` paging orchestration, continuation prompts, and progress output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T013 [US1] Update `get process-instance` examples and help text for paging behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 
 **Checkpoint**: User Story 1 is independently functional and testable as the MVP slice for paging-aware read-only search.
 

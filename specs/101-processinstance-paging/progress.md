@@ -63,3 +63,29 @@ Started: 2026-04-12 08:25:10
 - Cobra flag `Changed` state persists across in-process command tests, so paging resolver coverage needs explicit flag-state resets before asserting config-backed defaults.
 - Wrapping the current one-shot search methods around a page-aware request/response contract lets later iterations add real overflow metadata without breaking existing resource and command callers.
 ---
+
+## Iteration 3 - 2026-04-12 09:22:14 CEST
+**User Story**: User Story 1 - Page Through Matching Process Instances
+**Tasks Completed**:
+- [x] T007 [P] [US1] Add `get process-instance` command coverage for shared default page size, `--count` overrides, prompt flow, and auto-confirm flow in `cmd/get_processinstance_test.go`
+- [x] T008 [P] [US1] Add facade regression coverage for process-instance paging metadata propagation in `c8volt/process/client_test.go`
+- [x] T009 [P] [US1] Add v8.8 service coverage for native page metadata and exact-boundary non-overflow behavior in `internal/services/processinstance/v88/service_test.go`
+- [x] T010 [US1] Implement v8.8 process-instance search metadata extraction and overflow signaling in `internal/services/processinstance/v88/service.go`
+- [x] T011 [US1] Implement facade mapping for paged process-instance search results in `c8volt/process/client.go`
+- [x] T012 [US1] Implement shared `get process-instance` paging orchestration, continuation prompts, and progress output in `cmd/get_processinstance.go`
+- [x] T013 [US1] Update `get process-instance` examples and help text for paging behavior in `cmd/get_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- cmd/cmd_cli.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- specs/101-processinstance-paging/tasks.md
+- specs/101-processinstance-paging/progress.md
+**Learnings**:
+- Package-wide `cmd` regression runs need the shared process-instance test reset helper to clear root render flags such as `--json`, otherwise later assertions can silently observe the wrong output mode.
+- Camunda v8.8 page overflow can be derived safely from the native `totalItems` window even when `hasMoreTotalItems` is absent or false, which keeps exact-boundary final pages from being mislabeled as overflow.
+---
