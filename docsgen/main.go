@@ -36,7 +36,7 @@ func main() {
 				title := strings.ReplaceAll(name, "_", " ")
 				return fmt.Sprintf("---\ntitle: %q\nslug: %q\ndescription: \"CLI reference for %s\"\n---\n\n", title, name, title)
 			}
-			link := func(name string) string { return strings.ToLower(name) }
+			link := func(name string) string { return docsLinkName(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
 				log.Fatal(err)
 			}
@@ -47,7 +47,7 @@ func main() {
 				title := strings.ReplaceAll(name, "_", " ")
 				return fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n[CLI Reference]({{ \"/cli/\" | relative_url }})\n", title)
 			}
-			link := func(name string) string { return strings.ToLower(name) }
+			link := func(name string) string { return docsLinkName(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
 				log.Fatal(err)
 			}
@@ -77,7 +77,7 @@ func syncDocsIndexFromReadme(src, dst string) error {
 
 	body := string(b)
 	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
-	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/index.md)")
+	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
 
 	const frontMatter = `---
 title: "c8volt"
@@ -94,6 +94,11 @@ has_toc: true
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
 	return nil
+}
+
+func docsLinkName(name string) string {
+	lower := strings.ToLower(name)
+	return strings.TrimSuffix(lower, filepath.Ext(lower))
 }
 
 func formatDocsBuildInfo(info cmd.BuildInfo) string {

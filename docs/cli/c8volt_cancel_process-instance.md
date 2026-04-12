@@ -73,5 +73,5 @@ c8volt cancel process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel.md)	 - Cancel resources
+* [c8volt cancel](c8volt_cancel)	 - Cancel resources
 

@@ -46,5 +46,5 @@ c8volt embed list [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed.md)	 - Manage embedded resources
+* [c8volt embed](c8volt_embed)	 - Manage embedded resources
 

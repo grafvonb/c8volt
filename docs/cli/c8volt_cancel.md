@@ -45,6 +45,6 @@ c8volt cancel [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt cancel process-instance](c8volt_cancel_process-instance.md)	 - Cancel process instance(s) by key or search filters and wait for completion
+* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt cancel process-instance](c8volt_cancel_process-instance)	 - Cancel process instance(s) by key or search filters and wait for completion
 

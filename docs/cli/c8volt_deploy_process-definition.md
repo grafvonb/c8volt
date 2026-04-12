@@ -51,5 +51,5 @@ c8volt deploy process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt deploy](c8volt_deploy.md)	 - Deploy resources
+* [c8volt deploy](c8volt_deploy)	 - Deploy resources
 

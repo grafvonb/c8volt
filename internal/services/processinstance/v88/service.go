@@ -191,21 +191,18 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		ParentProcessInstanceKey:    common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey),
 	}
 	page := camundav88.SearchQueryPageRequest{}
-	from := int32(0)
 	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
-		From:  &from,
+		From:  new(int32(0)),
 		Limit: &size,
 	})
-	orderDesc := camundav88.DESC
-	orderAsc := camundav88.ASC
 	sort := []camundav88.ProcessInstanceSearchQuerySortRequest{
 		{
 			Field: camundav88.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionName,
-			Order: &orderDesc,
+			Order: new(camundav88.DESC),
 		},
 		{
 			Field: camundav88.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionVersion,
-			Order: &orderAsc,
+			Order: new(camundav88.ASC),
 		},
 	}
 	body := camundav88.SearchProcessInstancesJSONRequestBody{
@@ -265,8 +262,7 @@ func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
 	if filter.EndDateAfter == "" && filter.EndDateBefore == "" {
 		return nil
 	}
-	exists := true
-	return &exists
+	return new(true)
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {

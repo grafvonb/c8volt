@@ -224,12 +224,12 @@ func TestService_Get(t *testing.T) {
 					return &camundav87.GetResourcesResourceKeyResponse{
 						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
 						JSON200: &camundav87.ResourceResult{
-							ResourceId:   testStringPtr("demo-process"),
-							ResourceKey:  testStringPtr("resource-1"),
-							ResourceName: testStringPtr("demo.bpmn"),
-							TenantId:     testStringPtr("tenant-a"),
-							Version:      testInt32Ptr(7),
-							VersionTag:   testStringPtr("v1"),
+							ResourceId:   new("demo-process"),
+							ResourceKey:  new("resource-1"),
+							ResourceName: new("demo.bpmn"),
+							TenantId:     new("tenant-a"),
+							Version:      new(int32(7)),
+							VersionTag:   new("v1"),
 						},
 					}, nil
 				},

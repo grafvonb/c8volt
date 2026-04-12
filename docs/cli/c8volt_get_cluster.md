@@ -45,7 +45,7 @@ c8volt get cluster [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get.md)	 - Get resources
-* [c8volt get cluster license](c8volt_get_cluster_license.md)	 - Get the cluster license of the connected Camunda 8 cluster
-* [c8volt get cluster topology](c8volt_get_cluster_topology.md)	 - Get the cluster topology of the connected Camunda 8 cluster
+* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt get cluster license](c8volt_get_cluster_license)	 - Get the cluster license of the connected Camunda 8 cluster
+* [c8volt get cluster topology](c8volt_get_cluster_topology)	 - Get the cluster topology of the connected Camunda 8 cluster
 

@@ -101,5 +101,5 @@ INFO configuration is valid
 
 ### SEE ALSO
 
-* [c8volt config](c8volt_config.md)	 - Manage application configuration
+* [c8volt config](c8volt_config)	 - Manage application configuration
 

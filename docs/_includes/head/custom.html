@@ -1,2 +1,34 @@
 <link rel="icon" href="{{ '/favicon.ico' | relative_url }}" type="image/x-icon">
 <link rel="shortcut icon" href="{{ '/favicon.ico' | relative_url }}" type="image/x-icon">
+<link rel="apple-touch-icon" href="{{ '/favicon/apple-touch-icon.png' | relative_url }}">
+<link rel="manifest" href="{{ '/favicon/site.webmanifest' | relative_url }}">
+<meta name="theme-color" content="#fc6f0a">
+<meta name="keywords" content="Camunda 8 CLI, Camunda CLI, BPMN deployment CLI, workflow operations CLI, process instance management, Camunda automation, workflow debugging">
+<meta property="og:image" content="{{ '/logo/c8volt_orange_black_bkg_white_950x360.png' | absolute_url }}">
+<meta name="twitter:image" content="{{ '/logo/c8volt_orange_black_bkg_white_950x360.png' | absolute_url }}">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "c8volt",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS",
+  "description": "c8volt is a Camunda 8 CLI for deploying BPMN, running workflows, canceling and deleting process instances, and verifying workflow state from the terminal.",
+  "url": "{{ '/' | absolute_url }}",
+  "downloadUrl": "https://github.com/grafvonb/c8volt/releases",
+  "codeRepository": "https://github.com/grafvonb/c8volt",
+  "softwareHelp": "{{ '/cli/' | absolute_url }}",
+  "keywords": [
+    "Camunda 8 CLI",
+    "Camunda CLI",
+    "BPMN deployment CLI",
+    "workflow operations",
+    "process instance management"
+  ],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>

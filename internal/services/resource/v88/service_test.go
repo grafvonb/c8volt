@@ -190,11 +190,9 @@ func TestService_Deploy(t *testing.T) {
 			processClient: &mockProcessDefinitionClient{
 				getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
 					assert.Equal(t, "proc-2", key)
-					processDefinitionID := camundav88.ProcessDefinitionId("demo")
-					processDefinitionKey := camundav88.ProcessDefinitionKey("proc-2")
 					respBody := camundav88.ProcessDefinitionResult{
-						ProcessDefinitionId:  &processDefinitionID,
-						ProcessDefinitionKey: &processDefinitionKey,
+						ProcessDefinitionId:  new(camundav88.ProcessDefinitionId("demo")),
+						ProcessDefinitionKey: new(camundav88.ProcessDefinitionKey("proc-2")),
 					}
 					return &camundav88.GetProcessDefinitionResponse{
 						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/proc-2", http.StatusOK, "200 OK"),
@@ -342,17 +340,15 @@ func TestService_Get(t *testing.T) {
 				},
 				getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
 					assert.Equal(t, "resource-1", resourceKey)
-					key := camundav88.ResourceKey("resource-1")
-					tenantID := camundav88.TenantId("tenant-a")
 					return &camundav88.GetResourceResponse{
 						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/resources/resource-1", http.StatusOK, "200 OK"),
 						JSON200: &camundav88.ResourceResult{
-							ResourceId:   testStringPtr("demo-process"),
-							ResourceKey:  &key,
-							ResourceName: testStringPtr("demo.bpmn"),
-							TenantId:     &tenantID,
-							Version:      testInt32Ptr(7),
-							VersionTag:   testStringPtr("v1"),
+							ResourceId:   new("demo-process"),
+							ResourceKey:  new(camundav88.ResourceKey("resource-1")),
+							ResourceName: new("demo.bpmn"),
+							TenantId:     new(camundav88.TenantId("tenant-a")),
+							Version:      new(int32(7)),
+							VersionTag:   new("v1"),
 						},
 					}, nil
 				},
@@ -491,11 +487,9 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 			},
 		}, &mockProcessDefinitionClient{
 			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
-				processDefinitionID := camundav88.ProcessDefinitionId("demo")
-				processDefinitionKey := camundav88.ProcessDefinitionKey("proc-1")
 				respBody := camundav88.ProcessDefinitionResult{
-					ProcessDefinitionId:  &processDefinitionID,
-					ProcessDefinitionKey: &processDefinitionKey,
+					ProcessDefinitionId:  new(camundav88.ProcessDefinitionId("demo")),
+					ProcessDefinitionKey: new(camundav88.ProcessDefinitionKey("proc-1")),
 				}
 				return &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/proc-1", http.StatusOK, "200 OK"),

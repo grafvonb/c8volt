@@ -43,6 +43,6 @@ c8volt config [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt config show](c8volt_config_show.md)	 - Show effective configuration
+* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt config show](c8volt_config_show)	 - Show effective configuration
 

@@ -71,5 +71,5 @@ c8volt delete process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt delete](c8volt_delete.md)	 - Delete resources
+* [c8volt delete](c8volt_delete)	 - Delete resources
 

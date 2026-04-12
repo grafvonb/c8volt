@@ -46,5 +46,5 @@ c8volt get cluster license [flags]
 
 ### SEE ALSO
 
-* [c8volt get cluster](c8volt_get_cluster.md)	 - Get cluster resources
+* [c8volt get cluster](c8volt_get_cluster)	 - Get cluster resources
 

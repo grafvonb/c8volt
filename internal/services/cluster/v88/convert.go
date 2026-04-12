@@ -19,7 +19,7 @@ func fromTopologyResponse(r camundav88.TopologyResponse) d.Topology {
 func fromLicenseResponse(r camundav88.LicenseResponse) d.License {
 	return d.License{
 		ExpiresAt:    r.ExpiresAt,
-		IsCommercial: toolx.Ptr(r.IsCommercial),
+		IsCommercial: new(r.IsCommercial),
 		LicenseType:  r.LicenseType,
 		ValidLicense: r.ValidLicense,
 	}

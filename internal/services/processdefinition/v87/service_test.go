@@ -14,7 +14,6 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v87 "github.com/grafvonb/c8volt/internal/services/processdefinition/v87"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -194,10 +193,9 @@ func TestService_GetProcessDefinition(t *testing.T) {
 			name: "Success",
 			key:  "123",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				json200 := makeProcessDefinition(1, "proc", 2)
 				resp := &operatev87.GetProcessDefinitionByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123", http.StatusOK, "200"),
-					JSON200:      &json200,
+					JSON200:      new(makeProcessDefinition(1, "proc", 2)),
 				}
 				m.On("GetProcessDefinitionByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
 			},
@@ -296,10 +294,9 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 			name: "Success",
 			key:  "123",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				xml := "<definitions id=\"proc\"/>"
 				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
-					XML200:       &xml,
+					XML200:       new("<definitions id=\"proc\"/>"),
 				}
 				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
 			},
@@ -309,11 +306,10 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 			name: "SuccessFallsBackToRawBody",
 			key:  "123",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				parsedXML := "\n  \n  \n"
 				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
 					Body:         []byte("<definitions id=\"proc\"/>"),
-					XML200:       &parsedXML,
+					XML200:       new("\n  \n  \n"),
 				}
 				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
 			},
@@ -323,11 +319,10 @@ func TestService_GetProcessDefinitionXML(t *testing.T) {
 			name: "SuccessPrefersFormattedRawBody",
 			key:  "123",
 			setupMock: func(m *mockProcessDefinitionClient) {
-				parsedXML := "\n  \n    \n"
 				resp := &operatev87.GetProcessDefinitionAsXmlByKeyResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process/123/xml", http.StatusOK, "200"),
 					Body:         []byte("<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n"),
-					XML200:       &parsedXML,
+					XML200:       new("\n  \n    \n"),
 				}
 				m.On("GetProcessDefinitionAsXmlByKeyWithResponse", mock.Anything, int64(123)).Return(resp, nil)
 			},
@@ -439,10 +434,10 @@ func testConfig() *config.Config {
 
 func makeProcessDefinition(key int64, id string, version int32) operatev87.ProcessDefinition {
 	return operatev87.ProcessDefinition{
-		Key:           toolx.Ptr(key),
-		BpmnProcessId: toolx.Ptr(id),
-		Version:       toolx.Ptr(version),
-		Name:          toolx.Ptr("name-" + id),
+		Key:           new(key),
+		BpmnProcessId: new(id),
+		Version:       new(version),
+		Name:          new("name-" + id),
 	}
 }
 

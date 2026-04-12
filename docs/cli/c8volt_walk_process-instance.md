@@ -52,5 +52,5 @@ c8volt walk process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt walk](c8volt_walk.md)	 - Traverse (walk) the parent/child graph of resource type
+* [c8volt walk](c8volt_walk)	 - Traverse (walk) the parent/child graph of resource type
 

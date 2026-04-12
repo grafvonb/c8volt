@@ -53,8 +53,7 @@ func MapNullable[T, U any](n nullable.Nullable[T], f func(T) U) (*U, error) {
 	if err != nil {
 		return nil, err
 	}
-	u := f(v)
-	return &u, nil
+	return new(f(v)), nil
 }
 
 // MapNullableV maps a nullable field to a value using f; returns def for unspecified or null.
@@ -107,8 +106,7 @@ func CopyPtr[T any](p *T) *T {
 	if p == nil {
 		return nil
 	}
-	v := *p
-	return &v
+	return new(*p)
 }
 
 // MapPtr applies f to *S and returns *D (nil-safe).
@@ -116,8 +114,7 @@ func MapPtr[S, D any](p *S, f func(S) D) *D {
 	if p == nil {
 		return nil
 	}
-	v := f(*p)
-	return &v
+	return new(f(*p))
 }
 
 // Deref returns the value pointed to by p, or def if p is nil.
@@ -226,8 +223,7 @@ func StringToInt32Ptr(s string) (*int32, error) {
 	if err != nil {
 		return nil, err
 	}
-	x := int32(v)
-	return &x, nil
+	return new(int32(v)), nil
 }
 
 // StringPtrToInt64Ptr converts *string → *int64. Returns nil if input is nil, error if parsing fails.
@@ -268,8 +264,7 @@ func PtrIfNonEmptyMap[K comparable, V any](m map[K]V) *map[K]V {
 	if len(m) == 0 {
 		return nil
 	}
-	cp := m
-	return &cp
+	return new(m)
 }
 
 // PtrIfNonEmptySlice returns *[]T when s has at least one element, otherwise nil.
@@ -277,8 +272,7 @@ func PtrIfNonEmptySlice[T any](s []T) *[]T {
 	if len(s) == 0 {
 		return nil
 	}
-	cp := s
-	return &cp
+	return new(s)
 }
 
 // CopyMap returns a shallow copy of in (nil-safe).
@@ -299,8 +293,7 @@ func PtrCopyMap[K comparable, V any](in map[K]V) *map[K]V {
 	if in == nil {
 		return nil
 	}
-	out := CopyMap(in)
-	return &out
+	return new(CopyMap(in))
 }
 
 // ExtractSlice extracts a slice of K from a slice of T using extractor function.

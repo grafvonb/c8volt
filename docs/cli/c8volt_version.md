@@ -38,5 +38,5 @@ c8volt version [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
 
