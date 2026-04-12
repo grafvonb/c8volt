@@ -132,3 +132,22 @@ func decodeCapturedPISearchPages(t *testing.T, requests []string) []map[string]a
 	}
 	return pages
 }
+
+func decodeCapturedTopLevelPISearchPages(t *testing.T, requests []string) []map[string]any {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	pages := make([]map[string]any, 0, len(decoded))
+	for _, request := range decoded {
+		filter, _ := request["filter"].(map[string]any)
+		if filter != nil {
+			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
+				continue
+			}
+		}
+		page, ok := request["page"].(map[string]any)
+		require.True(t, ok, "expected search request page object")
+		pages = append(pages, page)
+	}
+	return pages
+}

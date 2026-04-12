@@ -341,6 +341,75 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	}
 }
 
+func processPISearchPagesWithAction(
+	cmd *cobra.Command,
+	cli process.API,
+	cfg *config.Config,
+	filter process.ProcessInstanceFilter,
+	processPage func(page process.ProcessInstancePage, firstPage bool) error,
+) error {
+	pageReq := newPISearchPageRequest(cmd, cfg, 0)
+	cumulative := 0
+	firstPage := true
+
+	for {
+		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
+		if err != nil {
+			return err
+		}
+		if len(page.Items) == 0 {
+			if cumulative == 0 {
+				cmd.Println("found:", 0)
+			}
+			return nil
+		}
+
+		if err := processPage(page, firstPage); err != nil {
+			if !firstPage && errors.Is(err, ErrCmdAborted) {
+				printPISearchProgress(cmd, processInstanceProgressSummary{
+					PageSize:          page.Request.Size,
+					CurrentPageCount:  len(page.Items),
+					CumulativeCount:   cumulative,
+					OverflowState:     page.OverflowState,
+					ContinuationState: processInstanceContinuationPartialComplete,
+				})
+				return nil
+			}
+			return err
+		}
+
+		cumulative += len(page.Items)
+		summary := newPIProgressSummary(page, cumulative, flagCmdAutoConfirm)
+		printPISearchProgress(cmd, summary)
+
+		switch summary.ContinuationState {
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
+			return nil
+		case processInstanceContinuationAutoContinue:
+			firstPage = false
+			pageReq = newPISearchPageRequest(cmd, cfg, 0)
+			continue
+		case processInstanceContinuationPrompt:
+			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%d total so far). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount)
+			if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
+				if errors.Is(err, ErrCmdAborted) {
+					printPISearchProgress(cmd, processInstanceProgressSummary{
+						PageSize:          summary.PageSize,
+						CurrentPageCount:  summary.CurrentPageCount,
+						CumulativeCount:   summary.CumulativeCount,
+						OverflowState:     summary.OverflowState,
+						ContinuationState: processInstanceContinuationPartialComplete,
+					})
+					return nil
+				}
+				return err
+			}
+			firstPage = false
+			pageReq = newPISearchPageRequest(cmd, cfg, 0)
+		}
+	}
+}
+
 func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.ProcessInstances, error) {
 	var err error
 	if flagGetPIChildrenOnly {

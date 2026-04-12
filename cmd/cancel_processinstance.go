@@ -5,6 +5,9 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/consts"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -17,8 +20,10 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instance(s) by key or search filters and wait for completion",
 	Example: `  ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt cancel pi --state active --count 250
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
+  ./c8volt cancel pi --bpmn-process-id order-process --state active --count 200 --auto-confirm
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
@@ -57,14 +62,17 @@ var cancelProcessInstanceCmd = &cobra.Command{
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			pisr, err := cli.SearchProcessInstances(cmd.Context(), searchFilterOpts, resolvePISearchSize(cmd, cfg))
+			err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) error {
+				keys := make(types.Keys, 0, len(page.Items))
+				for _, pi := range page.Items {
+					keys = append(keys, pi.Key)
+				}
+				return cancelProcessInstancePage(cmd, cli, keys, firstPage)
+			})
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error fetching process instances: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error cancelling process instances: %w", err))
 			}
-			keys = make([]string, 0, len(pisr.Items))
-			for _, pi := range pisr.Items {
-				keys = append(keys, pi.Key)
-			}
+			return
 		}
 		if len(keys) == 0 {
 			if searched {
@@ -92,6 +100,30 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	},
 }
 
+func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) error {
+	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
+	if err != nil {
+		return fmt.Errorf("validating process instance keys for cancellation: %w", err)
+	}
+
+	if firstPage {
+		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
+		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
+		if affectedCount > requestedCount {
+			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+		}
+		if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
+			return err
+		}
+	}
+
+	_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
+	if err != nil {
+		return fmt.Errorf("cancelling process instance(s): %w", err)
+	}
+	return nil
+}
+
 func init() {
 	cancelCmd.AddCommand(cancelProcessInstanceCmd)
 
@@ -111,5 +143,6 @@ func init() {
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
+	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 }

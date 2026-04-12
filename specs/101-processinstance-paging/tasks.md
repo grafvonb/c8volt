@@ -68,14 +68,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Add paging regression coverage for search-based cancellation, prompt flow, and auto-confirm continuation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
-- [ ] T015 [P] [US2] Add paging regression coverage for search-based deletion, prompt flow, and auto-confirm continuation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T014 [P] [US2] Add paging regression coverage for search-based cancellation, prompt flow, and auto-confirm continuation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T015 [P] [US2] Add paging regression coverage for search-based deletion, prompt flow, and auto-confirm continuation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Implement shared search-page processing for cancellation flows in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
-- [ ] T017 [US2] Implement shared search-page processing for deletion flows in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T018 [US2] Preserve direct-key bypass and align paging-aware examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T016 [US2] Implement shared search-page processing for cancellation flows in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go
+- [x] T017 [US2] Implement shared search-page processing for deletion flows in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T018 [US2] Preserve direct-key bypass and align paging-aware examples in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
 
 **Checkpoint**: User Story 2 works independently and applies the same page-by-page continuation model to search-based write commands without altering direct-key workflows.
 

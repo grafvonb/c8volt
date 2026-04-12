@@ -89,3 +89,28 @@ Started: 2026-04-12 08:25:10
 - Package-wide `cmd` regression runs need the shared process-instance test reset helper to clear root render flags such as `--json`, otherwise later assertions can silently observe the wrong output mode.
 - Camunda v8.8 page overflow can be derived safely from the native `totalItems` window even when `hasMoreTotalItems` is absent or false, which keeps exact-boundary final pages from being mislabeled as overflow.
 ---
+
+## Iteration 4 - 2026-04-12 09:22:38 CEST
+**User Story**: User Story 2 - Continue Search-Based Cancel and Delete Safely Across Pages
+**Tasks Completed**:
+- [x] T014 [P] [US2] Add paging regression coverage for search-based cancellation, prompt flow, and auto-confirm continuation in `cmd/cancel_test.go`
+- [x] T015 [P] [US2] Add paging regression coverage for search-based deletion, prompt flow, and auto-confirm continuation in `cmd/delete_test.go`
+- [x] T016 [US2] Implement shared search-page processing for cancellation flows in `cmd/cancel_processinstance.go`
+- [x] T017 [US2] Implement shared search-page processing for deletion flows in `cmd/delete_processinstance.go`
+- [x] T018 [US2] Preserve direct-key bypass and align paging-aware examples in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/cmd_processinstance_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- specs/101-processinstance-paging/tasks.md
+- specs/101-processinstance-paging/progress.md
+**Learnings**:
+- Search-based write paging must restart each follow-up search from `from=0` after each processed page; reusing offset pagination against a mutating result set would skip remaining matches as cancellation or deletion changes the underlying search set.
+- `--auto-confirm` for paged destructive flows still routes the first page through the shared confirmation helper, but the helper exits immediately without interactive input; continuation between later pages stays fully automatic.
+---

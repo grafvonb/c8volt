@@ -583,6 +583,8 @@ func executeRootForProcessInstanceTestWithEnv(t *testing.T, env []string, args .
 }
 
 func resetProcessInstanceCommandGlobals() {
+	flagCancelPIKeys = nil
+	flagDeletePIKeys = nil
 	flagGetPIKeys = nil
 	flagGetPIBpmnProcessID = ""
 	flagGetPIProcessVersion = 0
@@ -606,8 +608,15 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
 	flagCmdAutoConfirm = false
+	flagVerbose = false
 	flagViewAsJson = false
 	flagViewKeysOnly = false
+	flagNoWait = false
+	flagForce = false
+	flagNoStateCheck = false
+	flagWorkers = 0
+	flagNoWorkerLimit = false
+	flagFailFast = false
 	confirmCmdOrAbortFn = confirmCmdOrAbort
 }
 
