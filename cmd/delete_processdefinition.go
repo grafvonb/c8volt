@@ -70,12 +70,11 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
 		}
 
-		fmt.Println("WARNING: Camunda's API v8.8+ deletion process removes process definition resources (from Zeebe) only; historic/Operate data remain.")
-		fmt.Println("To avoid inconsistent data state c8volt cancels running instances (if any) to make definitions deletable, but final removal must be done manually in Operate.")
-		prompt := fmt.Sprintf("You are about to delete %d process definition(s)?", len(keys))
-		if !flagForce {
-			fmt.Println("If you want to delete resource(s) from Zeebe without purging Operate data, please use --allow-inconsistent to confirm.")
-			prompt = fmt.Sprintf("You are about to prepare %d process definition(s) for deletion in Operate?", len(keys))
+		fmt.Println("WARNING: This removes process-definition resources from Zeebe only. Operate history remains and must be cleaned up manually.")
+		prompt := fmt.Sprintf("Delete %d process definition(s) from Zeebe?", len(keys))
+		if !flagAllowInconsistent {
+			fmt.Println("Without --allow-inconsistent, c8volt prepares deletion only (for example, cancels active instances).")
+			prompt = fmt.Sprintf("Prepare %d process definition(s) for later manual deletion?", len(keys))
 		}
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
