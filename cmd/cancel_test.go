@@ -41,7 +41,7 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 // Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -66,7 +66,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/2251799813711967/cancellation":
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -80,7 +80,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 
 	require.NoError(t, err)
 	require.Len(t, requests, 2)
-	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled)
+	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "ACTIVE", filter["state"])
@@ -98,7 +98,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 // Verifies relative-day search selection derives canonical start-date bounds before cancelling matches.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -123,7 +123,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-03-11T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/2251799813711967/cancellation":
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -137,7 +137,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 
 	require.NoError(t, err)
 	require.Len(t, requests, 2)
-	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled)
+	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "ACTIVE", filter["state"])
@@ -186,7 +186,7 @@ func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -221,7 +221,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/101/cancellation" || r.URL.Path == "/v2/process-instances/102/cancellation" || r.URL.Path == "/v2/process-instances/103/cancellation"):
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -257,7 +257,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"/v2/process-instances/101/cancellation",
 		"/v2/process-instances/102/cancellation",
 		"/v2/process-instances/103/cancellation",
-	}, cancelled)
+	}, cancelled.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[0], "You are about to cancel 2 process instance(s)")
 	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
@@ -267,7 +267,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +308,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"key":` + key + `,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/701/cancellation" || r.URL.Path == "/v2/process-instances/702/cancellation" || r.URL.Path == "/v2/process-instances/703/cancellation"):
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -341,14 +341,14 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 		"/v2/process-instances/701/cancellation",
 		"/v2/process-instances/702/cancellation",
 		"/v2/process-instances/703/cancellation",
-	}, cancelled)
+	}, cancelled.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 4 including dependencies). More matching process instances remain. Continue?")
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +383,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/201/cancellation" || r.URL.Path == "/v2/process-instances/202/cancellation" || r.URL.Path == "/v2/process-instances/203/cancellation"):
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -420,14 +420,14 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"/v2/process-instances/201/cancellation",
 		"/v2/process-instances/202/cancellation",
 		"/v2/process-instances/203/cancellation",
-	}, cancelled)
+	}, cancelled.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -453,7 +453,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/211/cancellation" || r.URL.Path == "/v2/process-instances/212/cancellation"):
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -488,14 +488,14 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/211/cancellation",
 		"/v2/process-instances/212/cancellation",
-	}, cancelled)
+	}, cancelled.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: partial-complete")
 	require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -521,7 +521,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/221/cancellation" || r.URL.Path == "/v2/process-instances/222/cancellation"):
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -549,14 +549,14 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/221/cancellation",
 		"/v2/process-instances/222/cancellation",
-	}, cancelled)
+	}, cancelled.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
 	require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
 }
 
 func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests []string
-	var cancelled []string
+	var cancelled safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -570,7 +570,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"301","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/301/cancellation":
-			cancelled = append(cancelled, r.URL.Path)
+			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -594,7 +594,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
 	require.Empty(t, pages)
-	require.Equal(t, []string{"/v2/process-instances/301/cancellation"}, cancelled)
+	require.Equal(t, []string{"/v2/process-instances/301/cancellation"}, cancelled.Snapshot())
 }
 
 // Verifies invalid --state values are rejected through the shared invalid-args error path.

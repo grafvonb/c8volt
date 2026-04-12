@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -578,18 +578,7 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 
 func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
-
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Skipf("local listener unavailable in this environment: %v", err)
-	}
-
-	srv := httptest.NewUnstartedServer(handler)
-	srv.Listener = listener
-	srv.Start()
-	t.Cleanup(srv.Close)
-
-	return srv
+	return testx.NewIPv4Server(t, handler)
 }
 
 func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {

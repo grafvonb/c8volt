@@ -105,7 +105,7 @@ func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.
 // Verifies date-filtered search selection deletes matched instances and preserves descendant lookup behavior.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -130,7 +130,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-01-03T18:00:00Z","endDate":"2026-01-12T08:30:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/2251799813711967":
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -144,7 +144,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(requests), 2)
-	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted)
+	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "COMPLETED", filter["state"])
@@ -162,7 +162,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 // Verifies relative-day search selection derives canonical end-date bounds before deleting matches.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -187,7 +187,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","startDate":"2026-02-10T18:00:00Z","endDate":"2026-03-15T08:30:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/2251799813711967":
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -201,7 +201,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(requests), 2)
-	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted)
+	require.Equal(t, []string{"/v1/process-instances/2251799813711967"}, deleted.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
 	require.Equal(t, "COMPLETED", filter["state"])
@@ -252,7 +252,7 @@ func TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -287,7 +287,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/401" || r.URL.Path == "/v1/process-instances/402" || r.URL.Path == "/v1/process-instances/403"):
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -323,7 +323,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"/v1/process-instances/401",
 		"/v1/process-instances/402",
 		"/v1/process-instances/403",
-	}, deleted)
+	}, deleted.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[0], "You are about to delete 2 process instance(s)")
 	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
@@ -333,7 +333,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -378,7 +378,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"key":` + key + `,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/901" || r.URL.Path == "/v1/process-instances/902" || r.URL.Path == "/v1/process-instances/903" || r.URL.Path == "/v1/process-instances/1901" || r.URL.Path == "/v1/process-instances/1902"):
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -413,14 +413,14 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 		"/v1/process-instances/901",
 		"/v1/process-instances/902",
 		"/v1/process-instances/903",
-	}, deleted)
+	}, deleted.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 4 including dependencies). More matching process instances remain. Continue?")
 }
 
 func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -455,7 +455,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/501" || r.URL.Path == "/v1/process-instances/502" || r.URL.Path == "/v1/process-instances/503"):
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -492,14 +492,14 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"/v1/process-instances/501",
 		"/v1/process-instances/502",
 		"/v1/process-instances/503",
-	}, deleted)
+	}, deleted.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
 func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -525,7 +525,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/511" || r.URL.Path == "/v1/process-instances/512"):
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -560,14 +560,14 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	require.ElementsMatch(t, []string{
 		"/v1/process-instances/511",
 		"/v1/process-instances/512",
-	}, deleted)
+	}, deleted.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: partial-complete")
 	require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
 }
 
 func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -593,7 +593,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"` + key + `","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/521" || r.URL.Path == "/v1/process-instances/522"):
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -621,14 +621,14 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	require.ElementsMatch(t, []string{
 		"/v1/process-instances/521",
 		"/v1/process-instances/522",
-	}, deleted)
+	}, deleted.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
 	require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
 }
 
 func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests []string
-	var deleted []string
+	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -642,7 +642,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"processInstanceKey":"601","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`))
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/601":
-			deleted = append(deleted, r.URL.Path)
+			deleted.Append(r.URL.Path)
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -666,7 +666,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
 	require.Empty(t, pages)
-	require.Equal(t, []string{"/v1/process-instances/601"}, deleted)
+	require.Equal(t, []string{"/v1/process-instances/601"}, deleted.Snapshot())
 }
 
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
