@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -677,14 +678,10 @@ func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.
 func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run="+helperName)
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+		"C8VOLT_TEST_CONFIG":  cfgPath,
+		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -695,14 +692,10 @@ func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, 
 func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, cfgPath string) (string, error) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run="+helperName)
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+		"C8VOLT_TEST_CONFIG":  cfgPath,
+		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
+	})
 	out := string(output)
 	if err != nil {
 		return out, err

@@ -1,25 +1,82 @@
 package cmd
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T) {
+	var sawDeploy bool
+	var sawRun bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tenantId":"<default>"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances":
+			sawRun = true
+			defer r.Body.Close()
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, "order-process", body["processDefinitionId"])
+			require.Equal(t, "<default>", body["tenantId"])
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionVersion":1,"tenantId":"<default>","variables":{}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`))
+
+	output, err := testx.RunCmdSubprocess(t, "TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG":    cfgPath,
+		"C8VOLT_TEST_BPMN_PATH": bpmnPath,
+	})
+	require.NoError(t, err, string(output))
+
+	require.True(t, sawDeploy)
+	require.True(t, sawRun)
+}
+
+func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"deploy", "process-definition",
+		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
+		"--run",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
 
 // Verifies deploy process-definition rejects multiple stdin markers in --file arguments.
 func TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFile(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFileHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFileHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -27,6 +84,13 @@ func TestDeployProcessDefinitionCommand_RejectsRepeatedStdinFile(t *testing.T) {
 	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "invalid input")
 	require.Contains(t, string(output), "only one '-' (stdin) allowed")
+}
+
+func writeTempFile(t *testing.T, name string, data []byte) string {
+	t.Helper()
+	path := t.TempDir() + string(os.PathSeparator) + name
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	return path
 }
 
 // Helper-process entrypoint for repeated-stdin-file validation.

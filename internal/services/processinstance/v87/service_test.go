@@ -58,6 +58,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 	tests := []struct {
 		name          string
 		camunda       *mockCamundaClient
+		opts          []services.CallOption
 		expectedError error
 		assertResult  func(*testing.T, d.ProcessInstanceCreation)
 	}{
@@ -88,12 +89,42 @@ func TestService_CreateProcessInstance(t *testing.T) {
 					return nil, nil
 				},
 			},
+			opts: []services.CallOption{services.WithNoWait()},
 			assertResult: func(t *testing.T, creation d.ProcessInstanceCreation) {
 				assert.Equal(t, "demo", creation.BpmnProcessId)
 				assert.Equal(t, int32(7), creation.ProcessDefinitionVersion)
 				assert.Equal(t, "tenant-a", creation.TenantId)
 				assert.Equal(t, "42", creation.Variables["orderId"])
 				assert.NotEmpty(t, creation.StartDate)
+			},
+		},
+		{
+			name: "SuccessSkipsWaitWhenKeyUnknown",
+			camunda: &mockCamundaClient{
+				postProcessInstancesWithResponse: func(ctx context.Context, body camundav87.PostProcessInstancesJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesResponse, error) {
+					return &camundav87.PostProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+						JSON200: &camundav87.CreateProcessInstanceResult{
+							ProcessDefinitionId:      new("demo"),
+							ProcessDefinitionVersion: new(int32(7)),
+							TenantId:                 new("tenant-a"),
+							Variables:                &map[string]interface{}{"orderId": "42"},
+						},
+					}, nil
+				},
+				postProcessInstancesProcessInstanceKeyCancellationWithResponse: func(ctx context.Context, processInstanceKey string, body camundav87.PostProcessInstancesProcessInstanceKeyCancellationJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesProcessInstanceKeyCancellationResponse, error) {
+					t.Fatalf("unexpected cancellation call")
+					return nil, nil
+				},
+			},
+			assertResult: func(t *testing.T, creation d.ProcessInstanceCreation) {
+				assert.Equal(t, "<unknown in v87>", creation.Key)
+				assert.Equal(t, "demo", creation.BpmnProcessId)
+				assert.Equal(t, int32(7), creation.ProcessDefinitionVersion)
+				assert.Equal(t, "tenant-a", creation.TenantId)
+				assert.Equal(t, "42", creation.Variables["orderId"])
+				assert.NotEmpty(t, creation.StartDate)
+				assert.Empty(t, creation.StartConfirmedAt)
 			},
 		},
 		{
@@ -110,6 +141,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 					return nil, nil
 				},
 			},
+			opts:          []services.CallOption{services.WithNoWait()},
 			expectedError: d.ErrMalformedResponse,
 		},
 	}
@@ -123,7 +155,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 				ProcessDefinitionVersion: 7,
 				TenantId:                 "tenant-a",
 				Variables:                map[string]any{"orderId": "42"},
-			}, services.WithNoWait())
+			}, tt.opts...)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)

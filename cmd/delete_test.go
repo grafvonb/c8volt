@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -250,6 +251,7 @@ func TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+// Verifies paged delete search prompts between pages and continues when confirmations are accepted.
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	var requests []string
 	var deleted safeSlice[string]
@@ -331,6 +333,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
+// Verifies v8.7 paged delete prompts include dependency-inclusive totals across continuation pages.
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
 	var requests []string
 	var deleted safeSlice[string]
@@ -418,6 +421,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 4 including dependencies). More matching process instances remain. Continue?")
 }
 
+// Verifies paged delete search auto-continues without continuation prompts when --auto-confirm is set.
 func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
 	var requests []string
 	var deleted safeSlice[string]
@@ -497,6 +501,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
+// Verifies paged delete reports a partial-completion summary when continuation is aborted.
 func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests []string
 	var deleted safeSlice[string]
@@ -565,6 +570,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
 }
 
+// Verifies paged delete emits a warning-stop summary when overflow state is indeterminate.
 func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
 	var requests []string
 	var deleted safeSlice[string]
@@ -626,6 +632,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
 }
 
+// Verifies direct --key deletion bypasses top-level search pagination logic.
 func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests []string
 	var deleted safeSlice[string]
@@ -673,14 +680,10 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":  cfgPath,
+		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -690,17 +693,14 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	require.Contains(t, string(output), "either --key or --bpmn-process-id must be provided")
 }
 
+// Runs a delete helper subprocess expected to fail and returns combined output with the exit code.
 func executeDeleteProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run="+helperName)
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+		"C8VOLT_TEST_CONFIG":  cfgPath,
+		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -708,17 +708,14 @@ func executeDeleteProcessInstanceFailureHelper(t *testing.T, helperName string, 
 	return string(output), exitErr.ExitCode()
 }
 
+// Runs a delete helper subprocess and returns combined output with the underlying execution error.
 func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, cfgPath string) (string, error) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run="+helperName)
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+		"C8VOLT_TEST_CONFIG":  cfgPath,
+		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
+	})
 	out := string(output)
 	if err != nil {
 		return out, err

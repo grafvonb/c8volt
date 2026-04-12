@@ -108,6 +108,11 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	pi := fromPostProcessInstancesResponse(*payload)
 	s.log.Debug(fmt.Sprintf("created new process instance %s using process definition id %s, %s, v%d, tenant: %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
 	if !cCfg.NoWait {
+		if pi.Key == "" || pi.Key == unknownProcessInstanceKeyV87 {
+			pi.StartDate = time.Now().UTC().Format(time.RFC3339)
+			s.log.Info(fmt.Sprintf("process instance creation requested at %s (run not confirmed, as v8.7 returns no process-instance key) using process definition id %s, %s, v%d, tenant: %s", pi.StartDate, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+			return pi, nil
+		}
 		s.log.Info(fmt.Sprintf("waiting for process instance of %s with key %s to be started by workflow engine...", pi.ProcessDefinitionKey, pi.Key))
 		states := []d.State{d.StateActive}
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/embedded"
 	"github.com/spf13/cobra"
@@ -82,13 +81,9 @@ var embedDeployCmd = &cobra.Command{
 
 		if flagEmbedDeployWithRun {
 			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
-			datas := make([]process.ProcessInstanceData, 0, len(pdds))
-			for _, pdd := range pdds {
-				datas = append(datas, process.ProcessInstanceData{
-					ProcessDefinitionSpecificId: pdd.DefinitionKey,
-					Variables:                   nil,
-					TenantId:                    cfg.App.Tenant,
-				})
+			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, units, cfg.App.Tenant)
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}
 			_, err = cli.CreateProcessInstances(cmd.Context(), datas, opts...)
 			if err != nil {

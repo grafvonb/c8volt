@@ -677,14 +677,10 @@ func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run="+helperName)
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		testRelativeDayNowEnv+"="+cancelDeleteRelativeDayNow,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+		"C8VOLT_TEST_CONFIG":  cfgPath,
+		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)

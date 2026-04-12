@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,4 +28,37 @@ func TestAppNormalize_PreservesPositiveProcessInstancePageSize(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, int32(250), app.ProcessInstancePageSize)
+}
+
+func TestAppNormalize_DefaultTenantForV87(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: toolx.V87}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.Equal(t, DefaultTenant, app.Tenant)
+}
+
+func TestAppNormalize_DoesNotForceDefaultTenantForV88(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: toolx.V88}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.Empty(t, app.Tenant)
+}
+
+func TestAppNormalize_PreservesExplicitTenantForV87(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: toolx.V87, Tenant: "tenant-a"}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.Equal(t, "tenant-a", app.Tenant)
 }

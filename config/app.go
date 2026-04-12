@@ -16,9 +16,11 @@ type App struct {
 	NoErrCodes              bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`
 }
 
+const DefaultTenant = "<default>"
+
 func (a *App) ViewTenant() string {
 	if a.Tenant == "" {
-		return "<default>"
+		return DefaultTenant
 	}
 	return a.Tenant
 }
@@ -38,6 +40,9 @@ func (a *App) Normalize() error {
 	}
 	if err := a.Backoff.Normalize(); err != nil {
 		errs = append(errs, fmt.Errorf("backoff: %w", err))
+	}
+	if a.Tenant == "" && a.CamundaVersion == toolx.V87 {
+		a.Tenant = DefaultTenant
 	}
 	if a.ProcessInstancePageSize <= 0 {
 		a.ProcessInstancePageSize = consts.MaxPISearchSize
