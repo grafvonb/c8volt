@@ -193,6 +193,43 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
 }
 
+func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestry: func(_ context.Context, startKey string, _ ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+			switch startKey {
+			case "c1", "c2":
+				return "r1", nil, nil, nil
+			case "c3":
+				return "r2", nil, nil, nil
+			default:
+				t.Fatalf("unexpected key %q", startKey)
+				return "", nil, nil, nil
+			}
+		},
+		descendants: func(_ context.Context, rootKey string, _ ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+			switch rootKey {
+			case "r1":
+				return []string{"r1", "c1", "c2"}, nil, nil, nil
+			case "r2":
+				return []string{"r2", "c3"}, nil, nil, nil
+			default:
+				t.Fatalf("unexpected root %q", rootKey)
+				return nil, nil, nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(ctx, typex.Keys{"c1", "c2", "c3"})
+
+	require.NoError(t, err)
+	assert.Equal(t, typex.Keys{"r1", "r2"}, roots)
+	assert.Equal(t, typex.Keys{"r1", "c1", "c2", "r2", "c3"}, collected)
+}
+
 type stubProcessDefinitionAPI struct {
 	getProcessDefinitionXML func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
@@ -221,6 +258,8 @@ var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 type stubProcessInstanceAPI struct {
 	searchForProcessInstances     func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+	ancestry                      func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
+	descendants                   func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
 }
 
 func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
@@ -279,12 +318,18 @@ func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, strin
 	panic("unexpected call")
 }
 
-func (stubProcessInstanceAPI) Ancestry(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+	if s.ancestry == nil {
+		panic("unexpected call")
+	}
+	return s.ancestry(ctx, startKey, opts...)
 }
 
-func (stubProcessInstanceAPI) Descendants(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	if s.descendants == nil {
+		panic("unexpected call")
+	}
+	return s.descendants(ctx, rootKey, opts...)
 }
 
 func (stubProcessInstanceAPI) Family(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {

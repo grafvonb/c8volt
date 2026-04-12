@@ -16,6 +16,7 @@ func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.K
 		}
 		roots = append(roots, root)
 	}
+	roots = roots.Unique()
 	for _, root := range roots {
 		fam, _, _, err := c.Descendants(ctx, root, opts...)
 		if err != nil {
@@ -23,5 +24,5 @@ func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.K
 		}
 		collected = append(collected, fam...)
 	}
-	return roots, collected, nil
+	return roots, collected.Unique(), nil
 }
