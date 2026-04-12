@@ -53,5 +53,5 @@ c8volt expect process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt expect](c8volt_expect.md)	 - Expect resources to be in a certain state
+* [c8volt expect](c8volt_expect)	 - Expect resources to be in a certain state
 

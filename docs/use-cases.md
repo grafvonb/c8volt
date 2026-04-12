@@ -101,7 +101,7 @@ Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`,
 
 ## Where to go next
 
-- [Project overview](./index.md)
-- [CLI reference](./cli/index.md)
+- [Project overview](./)
+- [CLI reference](./cli/)
 - [GitHub repository](https://github.com/grafvonb/c8volt)
 - [Releases](https://github.com/grafvonb/c8volt/releases)

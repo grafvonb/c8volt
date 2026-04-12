@@ -43,6 +43,6 @@ c8volt walk [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt walk process-instance](c8volt_walk_process-instance.md)	 - Inspect the parent/child tree of process instances
+* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt walk process-instance](c8volt_walk_process-instance)	 - Inspect the parent/child tree of process instances
 

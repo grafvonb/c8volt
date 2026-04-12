@@ -43,14 +43,14 @@ c8volt [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel.md)	 - Cancel resources
-* [c8volt config](c8volt_config.md)	 - Manage application configuration
-* [c8volt delete](c8volt_delete.md)	 - Delete resources
-* [c8volt deploy](c8volt_deploy.md)	 - Deploy resources
-* [c8volt embed](c8volt_embed.md)	 - Manage embedded resources
-* [c8volt expect](c8volt_expect.md)	 - Expect resources to be in a certain state
-* [c8volt get](c8volt_get.md)	 - Get resources
-* [c8volt run](c8volt_run.md)	 - Run resources
-* [c8volt version](c8volt_version.md)	 - Print version information
-* [c8volt walk](c8volt_walk.md)	 - Traverse (walk) the parent/child graph of resource type
+* [c8volt cancel](c8volt_cancel)	 - Cancel resources
+* [c8volt config](c8volt_config)	 - Manage application configuration
+* [c8volt delete](c8volt_delete)	 - Delete resources
+* [c8volt deploy](c8volt_deploy)	 - Deploy resources
+* [c8volt embed](c8volt_embed)	 - Manage embedded resources
+* [c8volt expect](c8volt_expect)	 - Expect resources to be in a certain state
+* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt run](c8volt_run)	 - Run resources
+* [c8volt version](c8volt_version)	 - Print version information
+* [c8volt walk](c8volt_walk)	 - Traverse (walk) the parent/child graph of resource type
 

@@ -57,5 +57,5 @@ c8volt run process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt run](c8volt_run.md)	 - Run resources
+* [c8volt run](c8volt_run)	 - Run resources
 

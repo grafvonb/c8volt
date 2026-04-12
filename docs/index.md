@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-13-g54e08eb-dirty`, commit `54e08eb`, built `2026-04-11T19:34:13Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-15-g34227cf-dirty`, commit `34227cf`, built `2026-04-12T04:45:42Z` | camunda: 8.7, 8.8
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -51,6 +51,12 @@ If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN d
 - delete process-instance families thoroughly
 - wait for the state you actually need
 - validate config and inspect cluster metadata
+
+## c8volt vs c8ctl
+
+[`c8ctl`](https://docs.camunda.io/build-with-camunda/) is Camunda's broader official CLI for the full Camunda 8 lifecycle. `c8volt` is more focused: it is built for operators and automation flows that care about what happened after the request, not just whether the request was accepted.
+
+In practice, that means `c8volt` leans hardest into state confirmation, process-tree inspection, root-aware cancellation, thorough deletion, and shell-friendly operational workflows.
 
 ## Why It Feels Different
 
@@ -527,14 +533,8 @@ And when you want to move from "query" to "bulk action" without leaving the shel
 ## Documentation
 
 - Project site: [c8volt.info](https://c8volt.info)
-- Search-oriented use cases and FAQ: [docs/use-cases.md](./docs/use-cases.md)
-- Generated CLI reference: [docs/cli/index.md](./cli/index.md)
-
-Regenerate the CLI reference with:
-
-```bash
-make docs
-```
+- Search-oriented use cases and FAQ: [c8volt.info/use-cases](https://c8volt.info/use-cases.html)
+- Generated CLI reference: [c8volt.info/cli](https://c8volt.info/cli/)
 
 ## Copyright
 

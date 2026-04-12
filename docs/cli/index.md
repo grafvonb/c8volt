@@ -4,7 +4,7 @@ nav_order: 2
 has_toc: true
 ---
 
-## [c8volt](../index.md) CLI Reference
+## [c8volt](../) CLI Reference
 
 **Camunda 8 Operations CLI for workflows that must actually finish.**
 
@@ -31,13 +31,13 @@ This section is the generated command reference for `c8volt`. It is best read as
 
 If you are new to `c8volt`, start with the workflows that define the tool:
 
-- [root command](./c8volt.md)
-- [deploy bundled BPMN fixtures](./c8volt_embed_deploy.md)
-- [deploy BPMN files](./c8volt_deploy_process-definition.md)
-- [run process instances](./c8volt_run_process-instance.md)
-- [walk process trees](./c8volt_walk_process-instance.md)
-- [cancel process instances](./c8volt_cancel_process-instance.md)
-- [delete process instances](./c8volt_delete_process-instance.md)
+- [root command](./c8volt)
+- [deploy bundled BPMN fixtures](./c8volt_embed_deploy)
+- [deploy BPMN files](./c8volt_deploy_process-definition)
+- [run process instances](./c8volt_run_process-instance)
+- [walk process trees](./c8volt_walk_process-instance)
+- [cancel process instances](./c8volt_cancel_process-instance)
+- [delete process instances](./c8volt_delete_process-instance)
 
 ## Signature Workflows
 
@@ -60,42 +60,42 @@ These are the workflows where `c8volt` stands apart from a basic CRUD-oriented C
 
 The following implemented commands are also especially useful:
 
-- [show config](./c8volt_config_show.md)
+- [show config](./c8volt_config_show)
   Render sanitized effective `c8volt` config, validate it, or print a copy-paste-ready template.
-- [get cluster topology](./c8volt_get_cluster_topology.md)
+- [get cluster topology](./c8volt_get_cluster_topology)
   Verify the connected Camunda cluster shape quickly.
-- [get cluster license](./c8volt_get_cluster_license.md)
+- [get cluster license](./c8volt_get_cluster_license)
   Inspect license details from the connected cluster.
-- [get process definition](./c8volt_get_process-definition.md)
+- [get process definition](./c8volt_get_process-definition)
   List definitions, fetch latest versions, or retrieve raw XML for one key.
-- [get resource](./c8volt_get_resource.md)
+- [get resource](./c8volt_get_resource)
   Fetch a single resource by id.
-- [embed export](./c8volt_embed_export.md)
+- [embed export](./c8volt_embed_export)
   Export bundled BPMN fixtures to local files for editing or custom deployment.
 
 Tenant-aware operations are supported through the global `--tenant` flag and the `app.tenant` config setting, and the `config` command family is specifically about configuring `c8volt` itself.
 
 ## Command Map
 
-- [embed commands](./c8volt_embed.md)
+- [embed commands](./c8volt_embed)
   Work with bundled BPMN fixtures through list, deploy, and export flows.
-- [deploy commands](./c8volt_deploy.md)
+- [deploy commands](./c8volt_deploy)
   Deploy BPMN process definitions from files or stdin.
-- [run commands](./c8volt_run.md)
+- [run commands](./c8volt_run)
   Start process instances and confirm activation by default.
-- [walk commands](./c8volt_walk.md)
+- [walk commands](./c8volt_walk)
   Inspect ancestors, descendants, and full family trees.
-- [cancel commands](./c8volt_cancel.md)
+- [cancel commands](./c8volt_cancel)
   Cancel resources and wait for a confirmed state change.
-- [delete commands](./c8volt_delete.md)
+- [delete commands](./c8volt_delete)
   Delete process instances or process definitions with safety checks.
-- [expect commands](./c8volt_expect.md)
+- [expect commands](./c8volt_expect)
   Wait until process instances reach a target state.
-- [get commands](./c8volt_get.md)
+- [get commands](./c8volt_get)
   Read cluster, definition, instance, and resource data.
-- [config commands](./c8volt_config.md)
+- [config commands](./c8volt_config)
   Inspect, validate, and template `c8volt` configuration.
-- [version command](./c8volt_version.md)
+- [version command](./c8volt_version)
   Print build, compatibility, and copyright information.
 
 ## Common Flags
@@ -108,4 +108,4 @@ These flags appear across many operational commands:
 - `--auto-confirm` for non-interactive runs
 - `--workers` for controlled concurrency
 
-For the higher-level product story and quick-start examples, see the project [README](../../README.md).
+For the higher-level product story and quick-start examples, see the [project overview](../).

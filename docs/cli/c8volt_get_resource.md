@@ -54,5 +54,5 @@ c8volt get resource [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get.md)	 - Get resources
+* [c8volt get](c8volt_get)	 - Get resources
 

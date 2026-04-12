@@ -45,6 +45,6 @@ c8volt expect [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt expect process-instance](c8volt_expect_process-instance.md)	 - Expect a process instance(s) to reach a certain state from list of states
+* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt expect process-instance](c8volt_expect_process-instance)	 - Expect a process instance(s) to reach a certain state from list of states
 

@@ -45,6 +45,6 @@ c8volt run [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt.md)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt run process-instance](c8volt_run_process-instance.md)	 - Start process instance(s) and confirm they are active
+* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt run process-instance](c8volt_run_process-instance)	 - Start process instance(s) and confirm they are active
 
