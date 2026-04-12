@@ -143,3 +143,26 @@ Started: 2026-04-12 08:25:10
 - The Operate 8.7 search response already carries enough fallback signal for safe overflow handling when `total` is present; the real unsafe case is a full page without `total`, which should become an explicit warning-stop.
 - Shared progress output can stay backward-friendly if the stable paging counters remain at the front of the line and richer partial or warning context is appended as a trailing detail clause.
 ---
+
+## Iteration 6 - 2026-04-12 09:33:35 CEST
+**User Story**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T025 Update user-facing paging behavior and config guidance in `README.md`
+- [x] T026 Regenerate CLI reference output for `docs/cli/c8volt_get_process-instance.md`, `docs/cli/c8volt_cancel_process-instance.md`, and `docs/cli/c8volt_delete_process-instance.md` via `make docs-content` and `make docs`
+- [x] T027 [P] Refresh implemented verification notes in `specs/101-processinstance-paging/quickstart.md`
+- [x] T028 Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- docs/index.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- specs/101-processinstance-paging/quickstart.md
+- specs/101-processinstance-paging/tasks.md
+- specs/101-processinstance-paging/progress.md
+**Learnings**:
+- README remains the effective source for docs homepage content, so `make docs-content` should follow any user-facing workflow or config guidance updates before the site build.
+- Regenerated Cobra docs are the safest way to surface new paging examples and `--count` wording consistently across `get`, `cancel`, and `delete`.
+---
