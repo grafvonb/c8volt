@@ -43,6 +43,12 @@ If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN d
 - wait for the state you actually need
 - validate config and inspect cluster metadata
 
+## c8volt vs c8ctl
+
+[`c8ctl`](https://docs.camunda.io/build-with-camunda/) is Camunda's broader official CLI for the full Camunda 8 lifecycle. `c8volt` is more focused: it is built for operators and automation flows that care about what happened after the request, not just whether the request was accepted.
+
+In practice, that means `c8volt` leans hardest into state confirmation, process-tree inspection, root-aware cancellation, thorough deletion, and shell-friendly operational workflows.
+
 ## Why It Feels Different
 
 Many CLIs stop at "request accepted."
