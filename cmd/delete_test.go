@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -306,6 +307,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
+		"--verbose",
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
@@ -316,7 +318,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 0, pages[0]["from"])
-	require.EqualValues(t, 0, pages[1]["from"])
+	require.EqualValues(t, 2, pages[1]["from"])
 	require.ElementsMatch(t, []string{
 		"/v1/process-instances/401",
 		"/v1/process-instances/402",
@@ -324,9 +326,96 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	}, deleted)
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[0], "You are about to delete 2 process instance(s)")
-	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 total so far). More matching process instances remain. Continue?")
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+}
+
+func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
+	var requests []string
+	var deleted []string
+	searchPage := 0
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if parentKey, ok := filter["parentKey"]; ok && parentKey != nil {
+					parent := int64(parentKey.(float64))
+					if parent != 901 && parent != 902 {
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = w.Write([]byte(`{"items":[]}`))
+						return
+					}
+					childKey := "1901"
+					if parent == 902 {
+						childKey = "1902"
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[{"key":` + childKey + `,"parentKey":` + fmt.Sprintf("%d", parent) + `,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			switch searchPage {
+			case 0:
+				_, _ = w.Write([]byte(`{"items":[{"key":901,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":902,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}],"total":3}`))
+			case 1:
+				_, _ = w.Write([]byte(`{"items":[{"key":901,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":902,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"},{"key":903,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}],"total":3}`))
+			default:
+				t.Fatalf("unexpected top-level search request %d", searchPage)
+			}
+			searchPage++
+		case r.Method == http.MethodGet && (r.URL.Path == "/v1/process-instances/901" || r.URL.Path == "/v1/process-instances/902" || r.URL.Path == "/v1/process-instances/903" || r.URL.Path == "/v1/process-instances/1901" || r.URL.Path == "/v1/process-instances/1902"):
+			key := r.URL.Path[len("/v1/process-instances/"):]
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"key":` + key + `,"bpmnProcessId":"demo","processVersion":3,"state":"COMPLETED","startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","tenantId":"tenant"}`))
+		case r.Method == http.MethodDelete && (r.URL.Path == "/v1/process-instances/901" || r.URL.Path == "/v1/process-instances/902" || r.URL.Path == "/v1/process-instances/903" || r.URL.Path == "/v1/process-instances/1901" || r.URL.Path == "/v1/process-instances/1902"):
+			deleted = append(deleted, r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	_ = executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"delete", "process-instance",
+		"--state", "completed",
+		"--no-wait",
+		"--count", "2",
+	)
+
+	sizes := decodeCapturedTopLevelPISearchSizes(t, requests)
+	require.Equal(t, []float64{2, 4}, sizes)
+	require.ElementsMatch(t, []string{
+		"/v1/process-instances/1901",
+		"/v1/process-instances/1902",
+		"/v1/process-instances/901",
+		"/v1/process-instances/902",
+		"/v1/process-instances/903",
+	}, deleted)
+	require.Len(t, prompts, 2)
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 4 including dependencies). More matching process instances remain. Continue?")
 }
 
 func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
@@ -386,6 +475,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
+		"--verbose",
 		"--auto-confirm",
 		"delete", "process-instance",
 		"--state", "completed",
@@ -396,7 +486,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
-	require.EqualValues(t, 0, pages[1]["from"])
+	require.EqualValues(t, 2, pages[1]["from"])
 	require.Equal(t, 1, promptCalls)
 	require.ElementsMatch(t, []string{
 		"/v1/process-instances/501",
@@ -458,6 +548,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
+		"--verbose",
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
@@ -518,6 +609,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
+		"--verbose",
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",

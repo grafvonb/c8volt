@@ -429,6 +429,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		output := executeRootForProcessInstanceTest(t,
 			"--config", cfgPath,
 			"--tenant", "tenant",
+			"--verbose",
 			"get", "process-instance",
 		)
 
@@ -466,6 +467,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		output := executeRootForProcessInstanceTest(t,
 			"--config", cfgPath,
 			"--tenant", "tenant",
+			"--verbose",
 			"--auto-confirm",
 			"get", "process-instance",
 			"--count", "2",
@@ -491,13 +493,14 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 		prevConfirm := confirmCmdOrAbortFn
 		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
-			return ErrCmdAborted
+			return localPreconditionError(ErrCmdAborted)
 		}
 		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
 		output := executeRootForProcessInstanceTest(t,
 			"--config", cfgPath,
 			"--tenant", "tenant",
+			"--verbose",
 			"get", "process-instance",
 			"--count", "2",
 		)
@@ -523,6 +526,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		output := executeRootForProcessInstanceTest(t,
 			"--config", cfgPath,
 			"--tenant", "tenant",
+			"--verbose",
 			"get", "process-instance",
 			"--count", "2",
 		)

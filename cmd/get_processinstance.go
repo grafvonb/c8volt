@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -108,9 +109,13 @@ var getProcessInstanceCmd = &cobra.Command{
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
-			pis, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
+			var renderedIncrementally bool
+			pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
 			if err != nil {
 				fail(fmt.Errorf("error fetching process instances: %w", err))
+			}
+			if renderedIncrementally {
+				return
 			}
 		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
@@ -161,12 +166,34 @@ const (
 	processInstanceContinuationWarningStop     processInstanceContinuationState = "warning_stop"
 )
 
+// processInstanceProgressSummary describes the current pagination state for user-facing progress output.
+//
+// It is used to render one-line progress diagnostics (in verbose mode) and to drive continuation behavior
+// such as prompting, auto-continue, warning stop, and partial-complete reporting.
 type processInstanceProgressSummary struct {
-	PageSize          int32
-	CurrentPageCount  int
-	CumulativeCount   int
-	OverflowState     process.ProcessInstanceOverflowState
+	// PageSize is the configured request size used for the current page fetch.
+	PageSize int32
+	// CurrentPageCount is the number of process instances returned on this page.
+	CurrentPageCount int
+	// CumulativeCount is the total number of process instances processed/collected so far.
+	CumulativeCount int
+	// OverflowState indicates whether additional matching items are known, unknown, or exhausted.
+	OverflowState process.ProcessInstanceOverflowState
+	// ContinuationState determines the next paging action (prompt/auto-continue/complete/etc.).
 	ContinuationState processInstanceContinuationState
+}
+
+// processInstancePageImpact captures per-page impact counts used by cancel/delete paging prompts.
+//
+// These values are accumulated across pages to present users with a continuation prompt that reflects
+// both the visible page size and the real operational impact when dependencies are included.
+type processInstancePageImpact struct {
+	// Requested is the raw number of keys selected from the current search page.
+	Requested int
+	// Affected is the expanded number of instances impacted after dependency resolution.
+	Affected int
+	// Roots is the number of root instances in the expanded impact set.
+	Roots int
 }
 
 func registerPISharedDateRangeFlags(fs *pflag.FlagSet) {
@@ -292,14 +319,25 @@ func newPIProgressSummary(page process.ProcessInstancePage, cumulative int, auto
 	}
 }
 
-func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (process.ProcessInstances, error) {
+func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (process.ProcessInstances, bool, error) {
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	var collected process.ProcessInstances
+	incremental := shouldRenderPISearchPageIncrementally()
+	processedTotal := 0
+	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
+		if incremental {
+			if pickMode() == RenderModeOneLine {
+				cmd.Println("found:", processedTotal)
+			}
+			return process.ProcessInstances{}, true, nil
+		}
+		return collected, false, nil
+	}
 
 	for {
 		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
 		if err != nil {
-			return process.ProcessInstances{}, err
+			return process.ProcessInstances{}, false, err
 		}
 
 		filtered, err := applyPISearchResultFilters(cmd, cli, process.ProcessInstances{
@@ -307,24 +345,33 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 			Items: page.Items,
 		})
 		if err != nil {
-			return process.ProcessInstances{}, err
+			return process.ProcessInstances{}, false, err
 		}
-		collected.Items = append(collected.Items, filtered.Items...)
-		collected.Total = int32(len(collected.Items))
+		if incremental {
+			for _, item := range filtered.Items {
+				if err := processInstanceView(cmd, item); err != nil {
+					return process.ProcessInstances{}, false, err
+				}
+			}
+		} else {
+			collected.Items = append(collected.Items, filtered.Items...)
+			collected.Total = int32(len(collected.Items))
+		}
+		processedTotal += len(filtered.Items)
 
-		summary := newPIProgressSummary(page, int(collected.Total), flagCmdAutoConfirm)
+		summary := newPIProgressSummary(page, processedTotal, flagCmdAutoConfirm)
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
-			return collected, nil
+			return printFoundAndReturn()
 		case processInstanceContinuationAutoContinue:
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 			continue
 		case processInstanceContinuationPrompt:
 			prompt := fmt.Sprintf("Fetched %d process instance(s) on this page (%d total so far). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount)
 			if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
-				if errors.Is(err, ErrCmdAborted) {
+				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
 						PageSize:          summary.PageSize,
 						CurrentPageCount:  summary.CurrentPageCount,
@@ -332,13 +379,34 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 						OverflowState:     summary.OverflowState,
 						ContinuationState: processInstanceContinuationPartialComplete,
 					})
-					return collected, nil
+					return printFoundAndReturn()
 				}
-				return process.ProcessInstances{}, err
+				return process.ProcessInstances{}, false, err
 			}
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 		}
 	}
+}
+
+func shouldRenderPISearchPageIncrementally() bool {
+	if flagCmdAutoConfirm {
+		return false
+	}
+	mode := pickMode()
+	return mode == RenderModeOneLine || mode == RenderModeKeysOnly
+}
+
+func isCmdAborted(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, ErrCmdAborted) {
+		return true
+	}
+	if errors.Is(err, ferrors.ErrLocalPrecondition) && strings.Contains(err.Error(), ErrCmdAborted.Error()) {
+		return true
+	}
+	return false
 }
 
 func processPISearchPagesWithAction(
@@ -346,10 +414,11 @@ func processPISearchPagesWithAction(
 	cli process.API,
 	cfg *config.Config,
 	filter process.ProcessInstanceFilter,
-	processPage func(page process.ProcessInstancePage, firstPage bool) error,
+	processPage func(page process.ProcessInstancePage, firstPage bool) (processInstancePageImpact, error),
 ) error {
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	cumulative := 0
+	cumulativeAffected := 0
 	firstPage := true
 
 	for {
@@ -364,8 +433,9 @@ func processPISearchPagesWithAction(
 			return nil
 		}
 
-		if err := processPage(page, firstPage); err != nil {
-			if !firstPage && errors.Is(err, ErrCmdAborted) {
+		impact, err := processPage(page, firstPage)
+		if err != nil {
+			if !firstPage && isCmdAborted(err) {
 				printPISearchProgress(cmd, processInstanceProgressSummary{
 					PageSize:          page.Request.Size,
 					CurrentPageCount:  len(page.Items),
@@ -379,6 +449,11 @@ func processPISearchPagesWithAction(
 		}
 
 		cumulative += len(page.Items)
+		if impact.Affected > 0 {
+			cumulativeAffected += impact.Affected
+		} else {
+			cumulativeAffected += len(page.Items)
+		}
 		summary := newPIProgressSummary(page, cumulative, flagCmdAutoConfirm)
 		printPISearchProgress(cmd, summary)
 
@@ -387,12 +462,12 @@ func processPISearchPagesWithAction(
 			return nil
 		case processInstanceContinuationAutoContinue:
 			firstPage = false
-			pageReq = newPISearchPageRequest(cmd, cfg, 0)
+			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 			continue
 		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%d total so far). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount)
+			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%d requested so far, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount, cumulativeAffected)
 			if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
-				if errors.Is(err, ErrCmdAborted) {
+				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
 						PageSize:          summary.PageSize,
 						CurrentPageCount:  summary.CurrentPageCount,
@@ -405,7 +480,7 @@ func processPISearchPagesWithAction(
 				return err
 			}
 			firstPage = false
-			pageReq = newPISearchPageRequest(cmd, cfg, 0)
+			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 		}
 	}
 }
@@ -435,7 +510,7 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 }
 
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {
-	if cmd == nil || pickMode() != RenderModeOneLine {
+	if cmd == nil || !flagVerbose || pickMode() != RenderModeOneLine {
 		return
 	}
 	line := fmt.Sprintf("page size: %d, current page: %d, total so far: %d, more matches: %s, next step: %s",

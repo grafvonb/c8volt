@@ -95,6 +95,7 @@
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing `c8volt/ferrors`, `internal/exitcode`, `internal/domain`, `internal/services`, and command packages under `cmd/` (19-cli-error-model)
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing command helpers under `cmd/` (82-tab-completion-format)
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing process-instance command helpers in `cmd/`, shared facade/domain filters in `c8volt/process` and `internal/domain`, generated Camunda clients under `internal/clients/camunda/...`, existing versioned services under `internal/services/processinstance/...` (095-processinstance-day-filters)
+- Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing process-instance command helpers in `cmd/`, facade types in `c8volt/process`, config model in `config/`, versioned services in `internal/services/processinstance/v87` and `internal/services/processinstance/v88`, generated Camunda clients under `internal/clients/camunda/...` (101-processinstance-paging)
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`

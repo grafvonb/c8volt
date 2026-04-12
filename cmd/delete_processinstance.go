@@ -57,7 +57,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) error {
+			err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageImpact, error) {
 				keys := make(types.Keys, 0, len(page.Items))
 				for _, pi := range page.Items {
 					keys = append(keys, pi.Key)
@@ -95,28 +95,29 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	},
 }
 
-func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) error {
+func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageImpact, error) {
 	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 	if err != nil {
-		return fmt.Errorf("validating process instance keys for cancellation: %w", err)
+		return processInstancePageImpact{}, fmt.Errorf("validating process instance keys for cancellation: %w", err)
 	}
+	impact := processInstancePageImpact{Requested: len(keys), Affected: len(collected), Roots: len(roots)}
 
 	if firstPage {
-		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
+		affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
 		prompt := fmt.Sprintf("You are about to delete %d process instance(s). Do you want to proceed?", affectedCount)
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
 		if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
-			return err
+			return processInstancePageImpact{}, err
 		}
 	}
 
 	_, err = cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
 	if err != nil {
-		return fmt.Errorf("deleting process instance(s): %w", err)
+		return processInstancePageImpact{}, fmt.Errorf("deleting process instance(s): %w", err)
 	}
-	return nil
+	return impact, nil
 }
 
 func init() {

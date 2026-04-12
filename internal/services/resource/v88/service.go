@@ -16,8 +16,8 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
-	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	pds "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
+	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	"github.com/grafvonb/c8volt/toolx/poller"
 )
 

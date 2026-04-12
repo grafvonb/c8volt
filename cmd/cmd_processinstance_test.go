@@ -144,10 +144,35 @@ func decodeCapturedTopLevelPISearchPages(t *testing.T, requests []string) []map[
 			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
 				continue
 			}
+			if parentKey, hasParent := filter["parentKey"]; hasParent && parentKey != nil {
+				continue
+			}
 		}
 		page, ok := request["page"].(map[string]any)
 		require.True(t, ok, "expected search request page object")
 		pages = append(pages, page)
 	}
 	return pages
+}
+
+func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []float64 {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	sizes := make([]float64, 0, len(decoded))
+	for _, request := range decoded {
+		filter, _ := request["filter"].(map[string]any)
+		if filter != nil {
+			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
+				continue
+			}
+			if parentKey, hasParent := filter["parentKey"]; hasParent && parentKey != nil {
+				continue
+			}
+		}
+		size, ok := request["size"].(float64)
+		require.True(t, ok, "expected search request size value")
+		sizes = append(sizes, size)
+	}
+	return sizes
 }
