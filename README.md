@@ -17,7 +17,7 @@
 
 Standard read/list/get commands still matter, but they are not the headline. The headline is operational confidence.
 
-`c8volt` helps when people are searching for a Camunda 8 CLI, a Zeebe operations CLI, a BPMN deployment CLI, or a reliable way to run, inspect, cancel, delete, and verify Camunda process instances from the terminal. It is designed for operators, developers, support engineers, CI pipelines, and local development environments that need outcome verification instead of "request accepted" ambiguity.
+`c8volt` helps when people are searching for a Camunda 8 CLI, a BPMN deployment CLI, or a reliable way to run, inspect, cancel, delete, and verify Camunda process instances from the terminal. It is designed for operators, developers, support engineers, CI pipelines, and local development environments that need outcome verification instead of "request accepted" ambiguity.
 
 ## What c8volt Is
 
@@ -518,14 +518,8 @@ And when you want to move from "query" to "bulk action" without leaving the shel
 ## Documentation
 
 - Project site: [c8volt.info](https://c8volt.info)
-- Search-oriented use cases and FAQ: [docs/use-cases.md](./docs/use-cases.md)
-- Generated CLI reference: [docs/cli/index.md](./docs/cli/index.md)
-
-Regenerate the CLI reference with:
-
-```bash
-make docs
-```
+- Search-oriented use cases and FAQ: [c8volt.info/use-cases](https://c8volt.info/use-cases.html)
+- Generated CLI reference: [c8volt.info/cli](https://c8volt.info/cli/)
 
 ## Copyright
 

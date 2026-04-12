@@ -1,6 +1,6 @@
 ---
 title: "Camunda 8 CLI Use Cases"
-description: "Use cases and FAQ for teams searching for a Camunda 8 CLI, Zeebe CLI, BPMN deployment CLI, and process-instance operations tooling."
+description: "Use cases and FAQ for teams searching for a Camunda 8 CLI, BPMN deployment CLI, and process-instance operations tooling."
 nav_order: 3
 has_toc: true
 ---
@@ -13,7 +13,6 @@ This page is for common search intents such as:
 
 - Camunda 8 CLI
 - Camunda CLI for operations
-- Zeebe CLI alternative or companion
 - BPMN deployment CLI
 - cancel process instance Camunda 8
 - delete process instance Camunda 8
@@ -88,9 +87,9 @@ This targets operational cleanup flows behind searches such as "delete process i
 
 Yes. `c8volt` is a Camunda 8 CLI focused on BPMN deployment, process-instance control, process-tree inspection, and state verification.
 
-### Is c8volt a Zeebe CLI?
+### How is c8volt different from c8ctl?
 
-It is better described as a Camunda 8 CLI. People searching for a "Zeebe CLI" are often really looking for command-line workflow operations, process-instance management, and deployment tooling around Camunda 8. `c8volt` is designed for that broader operational use case.
+`c8ctl` is Camunda's newer official Camunda 8 CLI, especially oriented around the broader Camunda lifecycle and newer platform capabilities. `c8volt` has a narrower and more operations-heavy focus: deploy, run, inspect trees, cancel safely, delete thoroughly, wait for state, and work well in scripts where outcome verification matters more than broad API coverage.
 
 ### What makes c8volt different from a basic API wrapper?
 

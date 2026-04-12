@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-12-g1b38efe-dirty`, commit `1b38efe`, built `2026-04-11T19:08:51Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-13-g54e08eb-dirty`, commit `54e08eb`, built `2026-04-11T19:34:13Z` | camunda: 8.7, 8.8
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -26,7 +26,7 @@ has_toc: true
 
 Standard read/list/get commands still matter, but they are not the headline. The headline is operational confidence.
 
-`c8volt` helps when people are searching for a Camunda 8 CLI, a Zeebe operations CLI, a BPMN deployment CLI, or a reliable way to run, inspect, cancel, delete, and verify Camunda process instances from the terminal. It is designed for operators, developers, support engineers, CI pipelines, and local development environments that need outcome verification instead of "request accepted" ambiguity.
+`c8volt` helps when people are searching for a Camunda 8 CLI, a BPMN deployment CLI, or a reliable way to run, inspect, cancel, delete, and verify Camunda process instances from the terminal. It is designed for operators, developers, support engineers, CI pipelines, and local development environments that need outcome verification instead of "request accepted" ambiguity.
 
 ## What c8volt Is
 
@@ -143,7 +143,10 @@ Use `expect` when a script or operator workflow needs a concrete state transitio
 ```bash
 ./c8volt expect pi --key 2251799813685255 --state active
 ./c8volt expect pi --key 2251799813685255 --state completed --state absent
+./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
 ```
+
+`expect` is where `c8volt` becomes a strong automation partner instead of just a command runner: it can wait for `active`, `completed`, `canceled`, `terminated`, or `absent` and it works naturally with piped keys for bulk verification flows.
 
 ### Inspect the environment before acting
 
@@ -161,8 +164,22 @@ This makes `c8volt` useful not only for action commands, but also for environmen
 
 ```bash
 ./c8volt get pd --key 2251799813686017 --xml
+./c8volt get pd --bpmn-process-id order-process --latest --stat
 ./c8volt get resource --id resource-id-123
 ```
+
+When you need more than "list everything," `c8volt` can pull the sharp edges too: the latest deployed definition, raw BPMN XML for one exact definition, definition statistics, and single resources by id.
+
+### Find the exact process instances you want
+
+```bash
+./c8volt get pi --state active --incidents-only
+./c8volt get pi --roots-only --with-age
+./c8volt get pi --children-only
+./c8volt get pi --orphan-children-only
+```
+
+This is one of the quiet strengths of the tool. `c8volt` can narrow process-instance views to roots, children, orphaned children, instances with incidents, instances without incidents, or age-annotated views when you need a faster operational read on what is actually happening.
 
 ### Narrow process instances by start or end day
 
@@ -182,9 +199,13 @@ The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds 
 ### Export bundled fixtures for editing or custom deployment
 
 ```bash
+./c8volt embed list
+./c8volt embed list --details
 ./c8volt embed export --all --out ./fixtures
 ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
 ```
+
+The embedded-fixture workflow is more than a demo convenience: you can list what ships in the binary, switch between short names and full embedded paths, export selected assets, and turn the built-in fixtures into a fast local lab for repeatable testing.
 
 ## Command Map
 
@@ -215,6 +236,9 @@ c8volt
 │   └── resource              Fetch a single resource by id
 └── config                    Inspect and validate c8volt configuration
     └── show                  Render, validate, or template c8volt config
+
+plus:
+  version                     Print build and compatibility information
 ```
 
 ## Quick Start
@@ -460,12 +484,17 @@ The supporting read and deployment commands are still part of the core toolbox:
 
 ```bash
 ./c8volt deploy pd --file ./order-process.bpmn
+./c8volt deploy pd --file ./order-process.bpmn --run
 ./c8volt --tenant tenant-a deploy pd --file ./order-process.bpmn
 ./c8volt get pd --bpmn-process-id order-process --latest
+./c8volt get pd --bpmn-process-id order-process --latest --stat
+./c8volt run pi -b order-process --vars '{"customerId":"1234"}'
 ./c8volt get pi --state active
+./c8volt get pi --state active --incidents-only --with-age
 ./c8volt get cluster topology
 ./c8volt get resource --id resource-id-123
 ./c8volt config show
+./c8volt version
 ```
 
 ## Good in Pipelines
@@ -476,13 +505,23 @@ The supporting read and deployment commands are still part of the core toolbox:
 - `--keys-only` for command chaining
 - `--auto-confirm` for non-interactive runs
 - `--workers` for controlled concurrency
+- `--fail-fast` when one error should stop the next wave of work
+- `--backoff-*` retry controls for API-facing flows
 - `--quiet` and `--verbose` for different execution contexts
+- `--profile` and `--config` for environment switching without shell gymnastics
 - stable operational error handling and exit behavior
 
 Example:
 
 ```bash
 ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active --keys-only
+```
+
+And when you want to move from "query" to "bulk action" without leaving the shell:
+
+```bash
+./c8volt get pi --state active --keys-only | ./c8volt cancel pi -
+./c8volt get pd --bpmn-process-id order-process --latest --keys-only | ./c8volt delete pd - --auto-confirm
 ```
 
 ## Documentation
