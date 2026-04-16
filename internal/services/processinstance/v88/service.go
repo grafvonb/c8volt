@@ -245,7 +245,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 
 func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
 	visibleCount := int64(req.From) + int64(itemCount)
-	if page.HasMoreTotalItems != nil && *page.HasMoreTotalItems {
+	if page.HasMoreTotalItems {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	if page.TotalItems > visibleCount {

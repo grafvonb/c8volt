@@ -17,7 +17,7 @@ type API interface {
 
 type GenResourceClientCamunda interface {
 	CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error)
-	DeleteResourceWithResponse(ctx context.Context, resourceKey camundav88.ResourceKey, body camundav88.DeleteResourceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceResponse, error)
+	DeleteResourceOpWithResponse(ctx context.Context, resourceKey camundav88.ResourceKey, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error)
 	GetResourceWithResponse(ctx context.Context, resourceKey camundav88.ResourceKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error)
 }
 

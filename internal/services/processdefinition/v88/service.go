@@ -80,7 +80,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 	if err != nil {
 		return nil, err
 	}
-	out := toolx.DerefSlicePtr(payload.Items, fromProcessDefinitionResult)
+	out := toolx.MapSlice(payload.Items, fromProcessDefinitionResult)
 	d.SortByBpmnProcessIdAscThenByVersionDesc(out)
 
 	if cCfg.WithStat {
@@ -152,14 +152,14 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	if err = httpc.HttpStatusErr(stats.HTTPResponse, stats.Body); err != nil {
 		return err
 	}
-	if stats.JSON200 == nil || stats.JSON200.Items == nil {
+	if stats.JSON200 == nil {
 		s.log.Warn(fmt.Sprintf("no process definition stats found for key %s", pd.Key))
 		return nil
 	}
 	items := stats.JSON200.Items
 	var ret d.ProcessDefinitionStatistics
-	if len(*items) > 0 {
-		ret = fromProcessElementStatisticsResult((*items)[len(*items)-1])
+	if len(items) > 0 {
+		ret = fromProcessElementStatisticsResult(items[len(items)-1])
 	} else {
 		ret = d.ProcessDefinitionStatistics{}
 	}

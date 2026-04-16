@@ -450,7 +450,6 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 	})
 
 	t.Run("respects hasMoreTotalItems when totals are capped", func(t *testing.T) {
-		hasMore := true
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
@@ -464,7 +463,7 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 						},
 						Page: camundav88.SearchQueryPageResponse{
 							TotalItems:        2,
-							HasMoreTotalItems: &hasMore,
+							HasMoreTotalItems: true,
 						},
 					},
 				}, nil
@@ -787,11 +786,9 @@ func makeProcessInstanceResult(key string, state string, parentKey string) *camu
 		HasIncident:              false,
 		ProcessDefinitionId:      "demo",
 		ProcessDefinitionKey:     "9001",
-		ProcessDefinitionName:    "demo",
+		ProcessDefinitionName:    ptr("demo"),
 		ProcessDefinitionVersion: 3,
-		ProcessDefinitionVersionTag: func() *string {
-			return new("stable")
-		}(),
+		ProcessDefinitionVersionTag: ptr("stable"),
 		ProcessInstanceKey: key,
 		StartDate:          startDate,
 		State:              camundav88.ProcessInstanceStateEnum(state),
@@ -805,6 +802,10 @@ func makeProcessInstanceResult(key string, state string, parentKey string) *camu
 
 func wrongStateMessage() string {
 	return "Process instances needs to be in one of the states [COMPLETED, CANCELED]"
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
 
 func marshalJSON(t *testing.T, v any) string {

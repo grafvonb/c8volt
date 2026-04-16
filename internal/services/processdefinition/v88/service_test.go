@@ -72,7 +72,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: &[]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -116,13 +116,13 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: &[]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
 					},
 				}
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-						Items: &[]camundav88.ProcessElementStatisticsResult{{Active: new(int64(1))}},
+						Items: []camundav88.ProcessElementStatisticsResult{{Active: 1}},
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -140,7 +140,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: &[]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
@@ -155,7 +155,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-						Items: &[]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
 					},
 				}
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
@@ -205,14 +205,14 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	resp := &camundav88.SearchProcessDefinitionsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
-			Items: &[]camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 1)},
+			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 1)},
 		},
 	}
 
 	statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 		JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-			Items: &[]camundav88.ProcessElementStatisticsResult{{Active: new(int64(2))}},
+			Items: []camundav88.ProcessElementStatisticsResult{{Active: 2}},
 		},
 	}
 
@@ -293,7 +293,7 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-						Items: &[]camundav88.ProcessElementStatisticsResult{{Completed: new(int64(5))}},
+						Items: []camundav88.ProcessElementStatisticsResult{{Completed: 5}},
 					},
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
@@ -497,13 +497,17 @@ func testConfig() *config.Config {
 
 func makeProcessDefinitionResult(id, key string, version int32) camundav88.ProcessDefinitionResult {
 	return camundav88.ProcessDefinitionResult{
-		ProcessDefinitionId:  new(id),
-		ProcessDefinitionKey: new(key),
-		Name:                 new("name-" + id),
-		Version:              new(version),
-		TenantId:             new("tenant"),
-		VersionTag:           new("tag"),
+		ProcessDefinitionId:  id,
+		ProcessDefinitionKey: key,
+		Name:                 ptr("name-" + id),
+		Version:              version,
+		TenantId:             "tenant",
+		VersionTag:           ptr("tag"),
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
 
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
