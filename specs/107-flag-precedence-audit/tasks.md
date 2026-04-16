@@ -89,14 +89,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Add or update shared regression coverage that proves the critical baseline settings are checked everywhere they appear in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/*test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/*test.go
-- [ ] T020 [P] [US3] Add documentation-alignment validation notes and quickstart verification cases in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/quickstart.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/contracts/config-precedence.md
+- [x] T019 [P] [US3] Add or update shared regression coverage that proves the critical baseline settings are checked everywhere they appear in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/*test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/*test.go
+- [x] T020 [P] [US3] Add documentation-alignment validation notes and quickstart verification cases in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/quickstart.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/contracts/config-precedence.md
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Update shared internal precedence guidance and traceability notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/research.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/data-model.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/contracts/config-precedence.md
-- [ ] T022 [US3] Update operator-facing precedence and override guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/config_show.go
-- [ ] T023 [US3] Regenerate affected CLI reference output under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/ from updated Cobra help text and docs commands
+- [x] T021 [US3] Update shared internal precedence guidance and traceability notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/research.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/data-model.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/contracts/config-precedence.md
+- [x] T022 [US3] Update operator-facing precedence and override guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/config_show.go
+- [x] T023 [US3] Regenerate affected CLI reference output under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/ from updated Cobra help text and docs commands
 
 **Checkpoint**: User Story 3 is independently testable: the precedence contract is covered, documented, and reviewable from one internal and one operator-facing perspective.
 

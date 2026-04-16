@@ -168,6 +168,22 @@ Use `expect` when a script or operator workflow needs a concrete state transitio
 
 This makes `c8volt` useful not only for action commands, but also for environment checks, support flows, and CI diagnostics. The `config` command family is about `c8volt` itself: how the CLI connects, authenticates, renders logs, and selects profiles.
 
+## Configuration Precedence
+
+`c8volt` resolves config-backed settings with one shared order:
+
+`flag > env > profile > base config > default`
+
+That applies to root persistent flags such as `--tenant` and `--profile`, command-local config-backed flags, API base URLs, auth mode, and auth credentials/scopes.
+
+- An explicit flag wins over environment variables, profile values, and base config.
+- An environment variable wins when no explicit flag overrides it.
+- The active profile overlays base config field by field and never overwrites an explicit flag or environment winner.
+- Explicit empty or zero-like higher-precedence values are preserved for validation instead of silently falling back to a lower-precedence source.
+- When `c8volt` cannot determine a safe winner, it fails explicitly instead of guessing.
+
+Use `./c8volt config show` to inspect the effective configuration that a command will actually use, or `./c8volt config show --validate` to confirm the resolved config is valid before running changes against a cluster.
+
 ### Pull exact artifacts and metadata
 
 ```bash

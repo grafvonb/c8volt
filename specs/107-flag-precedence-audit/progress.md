@@ -5,6 +5,8 @@ Started: 2026-04-16 21:31:31
 
 ## Codebase Patterns
 
+- `README.md` is the source for the docs homepage and Cobra metadata is the source for `docs/cli/`; update those inputs first, then regenerate with `make docs-content` instead of hand-editing generated docs.
+- The most reviewable US3 audit shape is one resolver-level baseline matrix in `config/config_test.go` plus one command-surface baseline matrix in `cmd/config_test.go`, with deeper command-family tests left to command-specific behavior.
 - The authoritative precedence seam now runs through `config.ResolveEffectiveConfig(...)`; bootstrap should pass source-awareness callbacks into that resolver instead of re-implementing merge logic in `cmd/root.go`.
 - Shared config-backed flag packs should only define flags locally; `cmd/root.go::initViper` is responsible for binding those flags and defaults into the bootstrap-scoped Viper instance.
 - Profile overlays can preserve explicit flag and env winners by checking canonical config keys against `v.InConfig("profiles.<name>.<key>")` for profile presence and tracked flag/env sources for higher-precedence winners.
@@ -127,4 +129,33 @@ Started: 2026-04-16 21:31:31
 - Empty environment variables only participate in Viper precedence when `AllowEmptyEnv(true)` is enabled; without that, explicit empty env inputs silently fall back to lower-precedence config.
 - Source-aware normalization needs to distinguish unset values from explicitly configured zero/empty values before applying defaults or derived fallbacks such as inherited API base URLs.
 - Unknown active profiles should bypass the blanket bootstrap local-precondition wrapper so the shared bootstrap mapper can classify them as invalid input.
+---
+
+## Iteration 5 - 2026-04-17 00:20:00 CEST
+**User Story**: User Story 3 - Trust the Contract Through Shared Coverage and Documentation
+**Tasks Completed**:
+- [x] T019: Add shared regression coverage that proves the critical baseline settings stay aligned in the shared resolver and across the audited command surface
+- [x] T020: Add documentation-alignment validation notes and quickstart verification cases
+- [x] T021: Update shared internal precedence guidance and traceability notes
+- [x] T022: Update operator-facing precedence and override guidance in README, generated docs index, and `config show` help text
+- [x] T023: Regenerate affected CLI reference output from updated Cobra help text and docs generation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/config_show.go
+- cmd/config_test.go
+- config/config_test.go
+- docs/cli/c8volt_config_show.md
+- docs/index.md
+- specs/107-flag-precedence-audit/contracts/config-precedence.md
+- specs/107-flag-precedence-audit/data-model.md
+- specs/107-flag-precedence-audit/progress.md
+- specs/107-flag-precedence-audit/quickstart.md
+- specs/107-flag-precedence-audit/research.md
+- specs/107-flag-precedence-audit/tasks.md
+**Learnings**:
+- A single command-surface bootstrap matrix is enough to prove the shared baseline reaches every audited command family without duplicating each command-specific test’s business assertions.
+- `config show` is the right operator-facing seam for the precedence contract because it exposes the same effective config bootstrap the action commands consume.
+- `make test` can stay a commit gate for a completed story even when the phase plan still leaves later polish tasks open.
 ---

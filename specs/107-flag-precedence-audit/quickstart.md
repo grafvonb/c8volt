@@ -19,6 +19,14 @@
 5. Keep user-facing docs aligned: update [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), regenerate [`docs/index.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md) via the repo workflow, and regenerate affected `docs/cli/` pages from Cobra help text.
 6. Treat every config-backed command path as in scope, even if the baseline settings appear to be the highest-risk subset.
 
+## Shared Audit Matrix
+
+| Audit seam | What it proves |
+|------------|----------------|
+| `config/config_test.go::TestResolveEffectiveConfig_CriticalBaselineSettingsShareOneContract` | The authoritative resolver applies one precedence contract to active profile selection, tenant, API base URLs, auth mode, and auth credentials/scopes |
+| `cmd/config_test.go::TestRetrieveAndNormalizeConfig_CriticalBaselineSettingsStayAlignedAcrossCommands` | `config show`, `get`, `cancel`, `delete`, `deploy`, `expect`, `run`, and `walk` all bootstrap the same effective values for the critical baseline |
+| Existing command-family tests under `cmd/` | Command-specific behavior still matches the shared baseline where individual commands add request shaping, waiting, paging, or delete/cancel semantics |
+
 ## Audit Baseline Captured In Setup
 
 - Root persistent config-backed settings currently enter through `cmd/root.go` and should remain the only authoritative effective-config bootstrap.
@@ -55,3 +63,4 @@ C8VOLT_AUTH_MODE=none ./c8volt --config /tmp/c8volt.yaml --profile prod get clus
 - Confirm API base URL and auth settings follow the same precedence rules as tenant and do not diverge between commands.
 - Confirm command-local shared flag packs, such as backoff settings, do not resolve through a different registry than the root bootstrap path.
 - Confirm ambiguity and invalid-value cases fail explicitly through the shared CLI error model instead of silently selecting a lower-precedence value.
+- Confirm the generated CLI help and operator-facing docs describe the same `flag > env > profile > base config > default` order that the shared tests enforce.

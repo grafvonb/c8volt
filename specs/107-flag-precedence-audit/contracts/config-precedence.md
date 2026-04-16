@@ -48,6 +48,15 @@ The audit must verify the following settings everywhere they appear:
 
 Additional command-specific config-backed settings remain in scope beyond this baseline.
 
+## Audit Traceability
+
+The shared audit proof for this feature is split across two repository-native seams:
+
+- `config/config_test.go` proves the authoritative resolver applies one contract to the baseline settings themselves: active profile selection, tenant, API base URLs, auth mode, and auth credentials/scopes.
+- `cmd/config_test.go` proves the same baseline resolves identically across the audited command surface: `config show`, `get`, `cancel`, `delete`, `deploy`, `expect`, `run`, and `walk`.
+
+More focused command-family tests remain responsible for command-specific behavior beyond the shared baseline.
+
 ## Validation Contract
 
 | Condition | Required behavior |

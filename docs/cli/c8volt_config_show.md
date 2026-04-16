@@ -12,6 +12,14 @@ Show effective configuration
 
 Show the effective configuration with sensitive values sanitized.
 
+Precedence follows one shared contract for all config-backed settings:
+flag > env > profile > base config > default.
+
+Use this command to inspect the values a command will actually use after
+applying flags, environment variables, profile overlays, base config, and
+defaults. Profile values overlay base config field by field and never override
+an explicit flag or environment winner.
+
 ```
 c8volt config show [flags]
 ```
@@ -71,6 +79,12 @@ log:
     with_source: false
 
 INFO configuration is valid
+
+# Inspect how flags override env/profile/config for the current command invocation
+./c8volt --config ./config.yaml --profile prod --tenant ops-tenant config show
+
+# Validate the effective config after env/profile/config resolution
+C8VOLT_AUTH_MODE=oauth2 ./c8volt --config ./config.yaml config show --validate
 ```
 
 ### Options

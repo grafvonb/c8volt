@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,6 +122,69 @@ profiles:
 	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
 }
 
+// Verifies the critical baseline settings resolve identically across the audited command surface.
+func TestRetrieveAndNormalizeConfig_CriticalBaselineSettingsStayAlignedAcrossCommands(t *testing.T) {
+	t.Setenv("C8VOLT_ACTIVE_PROFILE", "ignored-env-profile")
+	t.Setenv("C8VOLT_AUTH_MODE", "oauth2")
+	t.Setenv("C8VOLT_AUTH_OAUTH2_CLIENT_ID", "env-client")
+	t.Setenv("C8VOLT_AUTH_OAUTH2_CLIENT_SECRET", "env-secret")
+	t.Setenv("C8VOLT_AUTH_OAUTH2_SCOPES_CAMUNDA_API", "env-scope")
+
+	cfgPath := writeRawTestConfig(t, `active_profile: base
+app:
+  tenant: base-tenant
+auth:
+  mode: cookie
+  oauth2:
+    token_url: http://token.example.test
+    client_id: base-client
+    client_secret: base-secret
+    scopes:
+      camunda_api: profile-scope
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+    require_scope: true
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`)
+
+	testCases := []struct {
+		name string
+		cmd  *cobra.Command
+	}{
+		{name: "config-show", cmd: configShowCmd},
+		{name: "get", cmd: getCmd},
+		{name: "cancel", cmd: cancelCmd},
+		{name: "delete", cmd: deleteCmd},
+		{name: "deploy", cmd: deployCmd},
+		{name: "expect", cmd: expectCmd},
+		{name: "run", cmd: runCmd},
+		{name: "walk", cmd: walkCmd},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := resolveCommandConfigForTest(t, tc.cmd, cfgPath, func(cmd *cobra.Command) {
+				require.NoError(t, Root().PersistentFlags().Set("tenant", "flag-tenant"))
+			})
+
+			require.Equal(t, "dev", cfg.ActiveProfile)
+			require.Equal(t, "flag-tenant", cfg.App.Tenant)
+			require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+			require.Equal(t, config.ModeOAuth2, cfg.Auth.Mode)
+			require.Equal(t, "env-client", cfg.Auth.OAuth2.ClientID)
+			require.Equal(t, "env-secret", cfg.Auth.OAuth2.ClientSecret)
+			require.Equal(t, "env-scope", cfg.Auth.OAuth2.Scope(config.CamundaApiKeyConst))
+		})
+	}
+}
+
 func TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModel(t *testing.T) {
 	cfgPath := writeRawTestConfig(t, `active_profile: dev
 auth:
@@ -234,6 +298,6 @@ func resolveCommandConfigForTest(t *testing.T, cmd *cobra.Command, cfgPath strin
 func writeRawTestConfig(t *testing.T, content string) string {
 	t.Helper()
 	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(content), 0o600))
+	require.NoError(t, os.WriteFile(cfgPath, []byte(strings.TrimLeft(content, "\n")), 0o600))
 	return cfgPath
 }

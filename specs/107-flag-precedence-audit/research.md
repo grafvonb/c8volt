@@ -72,6 +72,14 @@
   - Add a separate configuration test harness first: rejected because it duplicates existing coverage patterns and increases maintenance cost.
   - Rely on manual smoke testing for precedence correctness: rejected because this feature exists specifically to prevent regressions in a subtle shared contract.
 
+## Decision 10: Keep the baseline audit traceable through one resolver test and one command-surface test
+
+- **Decision**: Record the shared audit proof in two repository-native tests: one config-level resolver test and one command-surface bootstrap test.
+- **Rationale**: User Story 3 requires a durable, reviewable contract. A single resolver test makes the precedence rule easy to inspect, while a single command-surface matrix makes it easy to confirm the same rule reaches every audited command family without re-reading each individual command test.
+- **Alternatives considered**:
+  - Depend only on many command-specific tests: rejected because the shared contract becomes hard to review and easy to miss during future refactors.
+  - Add a separate audit manifest outside the test suite: rejected because it can drift from the executable proof.
+
 ## Audit Inventory: Current Precedence Surface
 
 ### Shared bootstrap and normalization seam
