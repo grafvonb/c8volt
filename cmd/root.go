@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -31,6 +32,31 @@ var (
 
 func Root() *cobra.Command { return rootCmd }
 
+type resolverBindings struct {
+	flags map[string]*pflag.Flag
+}
+
+func newResolverBindings() *resolverBindings {
+	return &resolverBindings{
+		flags: make(map[string]*pflag.Flag),
+	}
+}
+
+func (r *resolverBindings) bindPFlag(v *viper.Viper, key string, flag *pflag.Flag) {
+	if flag == nil {
+		return
+	}
+	_ = v.BindPFlag(key, flag)
+	r.flags[key] = flag
+}
+
+func (r *resolverBindings) hasHigherPrecedenceSource(key string) bool {
+	if flag, ok := r.flags[key]; ok && flag != nil && flag.Changed {
+		return true
+	}
+	return hasEnvConfigByKeys([]string{key})
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
 	Short: "c8volt: Camunda 8 Operations CLI",
@@ -46,7 +72,8 @@ Refer to the documentation at https://c8volt.info for more information.`,
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
-		if err := initViper(v, cmd); err != nil {
+		bindings, err := initViper(v, cmd)
+		if err != nil {
 			return bootstrapLocalPrecondition(err)
 		}
 		if hasHelpFlag(cmd) {
@@ -59,8 +86,11 @@ Refer to the documentation at https://c8volt.info for more information.`,
 		case flagDebug:
 			v.Set("log.level", "debug")
 		}
-		cfg, err := retrieveAndNormalizeConfig(v)
+		cfg, err := retrieveAndNormalizeConfig(v, bindings)
 		if err != nil {
+			if errors.Is(err, config.ErrProfileNotFound) {
+				return normalizeBootstrapError(err)
+			}
 			return bootstrapLocalPrecondition(err)
 		}
 		ctx := cfg.ToContext(cmd.Context())
@@ -159,20 +189,22 @@ func init() {
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
 }
 
-func initViper(v *viper.Viper, cmd *cobra.Command) error {
+func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	fs := cmd.Flags()
+	bindings := newResolverBindings()
 
-	_ = v.BindPFlag("config", fs.Lookup("config"))
-	_ = v.BindPFlag("active_profile", fs.Lookup("profile"))
+	bindings.bindPFlag(v, "config", fs.Lookup("config"))
+	bindings.bindPFlag(v, "active_profile", fs.Lookup("profile"))
 
-	_ = v.BindPFlag("log.level", fs.Lookup("log-level"))
-	_ = v.BindPFlag("log.format", fs.Lookup("log-format"))
-	_ = v.BindPFlag("log.with_source", fs.Lookup("log-with-source"))
+	bindings.bindPFlag(v, "log.level", fs.Lookup("log-level"))
+	bindings.bindPFlag(v, "log.format", fs.Lookup("log-format"))
+	bindings.bindPFlag(v, "log.with_source", fs.Lookup("log-with-source"))
 
-	_ = v.BindPFlag("app.tenant", fs.Lookup("tenant"))
-	_ = v.BindPFlag("app.camunda_version", fs.Lookup("camunda-version"))
-	_ = v.BindPFlag("app.no_err_codes", fs.Lookup("no-err-codes"))
-	_ = v.BindPFlag("app.auto-confirm", fs.Lookup("auto-confirm"))
+	bindings.bindPFlag(v, "app.tenant", fs.Lookup("tenant"))
+	bindings.bindPFlag(v, "app.camunda_version", fs.Lookup("camunda-version"))
+	bindings.bindPFlag(v, "app.no_err_codes", fs.Lookup("no-err-codes"))
+	bindings.bindPFlag(v, "app.auto-confirm", fs.Lookup("auto-confirm"))
+	bindCommandLocalConfigFlags(v, bindings, fs)
 
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.format", "plain")
@@ -198,27 +230,40 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	}
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := errors.AsType[viper.ConfigFileNotFoundError](err); !ok || v.GetString("config") != "" {
-			return fmt.Errorf("read config file: %w", err)
+			return nil, fmt.Errorf("read config file: %w", err)
 		}
 	}
-	return nil
+	return bindings, nil
 }
 
-func retrieveAndNormalizeConfig(v *viper.Viper) (*config.Config, error) {
-	// Bind environment variables to config struct fields
-	// This makes sure that environment variables are used even if the key is not in the config file
-	config.BindConfigEnvVars(v)
+func bindCommandLocalConfigFlags(v *viper.Viper, bindings *resolverBindings, fs *pflag.FlagSet) {
+	bindings.bindPFlag(v, "app.backoff.timeout", fs.Lookup("backoff-timeout"))
+	bindings.bindPFlag(v, "app.backoff.max_retries", fs.Lookup("backoff-max-retries"))
 
-	var base config.Config
-	if err := v.Unmarshal(&base); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %w", err)
+	if fs.Lookup("backoff-timeout") == nil {
+		return
 	}
-	cfg, err := base.WithProfile()
+	v.SetDefault("app.backoff.timeout", defaultBackoffTimeout)
+	v.SetDefault("app.backoff.max_retries", defaultBackoffMaxRetries)
+	v.SetDefault("app.backoff.strategy", defaultBackoffStrategy)
+	v.SetDefault("app.backoff.initial_delay", defaultBackoffInitialDelay)
+	v.SetDefault("app.backoff.max_delay", defaultBackoffMaxDelay)
+	v.SetDefault("app.backoff.multiplier", defaultBackoffMultiplier)
+}
+
+func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*config.Config, error) {
+	cfg, err := config.ResolveEffectiveConfig(
+		v,
+		bindings.hasHigherPrecedenceSource,
+		func(activeProfile, key string) bool {
+			if activeProfile == "" {
+				return false
+			}
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("apply profile: %w", err)
-	}
-	if err := cfg.Normalize(); err != nil {
-		return nil, fmt.Errorf("normalize config: %w", err)
+		return nil, err
 	}
 	return cfg, nil
 }

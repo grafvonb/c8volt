@@ -1,15 +1,72 @@
 package cmd
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "22s")
+
+	cfg := resolveCommandConfigForTest(t, runCmd, writeBackoffPrecedenceConfig(t), func(cmd *cobra.Command) {
+		require.NoError(t, cmd.PersistentFlags().Set("backoff-timeout", "44s"))
+	})
+
+	require.Equal(t, 44*time.Second, cfg.App.Backoff.Timeout)
+}
+
+// Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
+func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {
+	baseSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("base profile server should not be used: %s %s", r.Method, r.URL.Path)
+	}))
+	t.Cleanup(baseSrv.Close)
+
+	prodSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances", r.URL.Path)
+		defer r.Body.Close()
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "profile-tenant", body["tenantId"])
+		require.Equal(t, "order-process", body["processDefinitionId"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionVersion":1,"tenantId":"profile-tenant","variables":{}}`))
+	}))
+	t.Cleanup(prodSrv.Close)
+
+	cfgPath := writeRawTestConfig(t, `active_profile: base
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+baseSrv.URL+`
+profiles:
+  prod:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: `+prodSrv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURLHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.NoError(t, err, string(output))
+}
 
 // Verifies run process-instance rejects mutually exclusive definition selectors.
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
@@ -79,6 +136,27 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCodeHelper(t *testing
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "run", "process-instance", "--bpmn-process-id", "order-process", "--no-wait"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURLHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	flagRunPIProcessDefinitionKey = nil
+	flagRunPIProcessDefinitionBpmnProcessIds = nil
+
+	root := Root()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--profile", "prod",
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--no-wait",
+	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

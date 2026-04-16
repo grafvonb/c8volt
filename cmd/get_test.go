@@ -7,12 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "21s")
+
+	cfg := resolveCommandConfigForTest(t, getCmd, writeBackoffPrecedenceConfig(t), func(cmd *cobra.Command) {
+		require.NoError(t, cmd.PersistentFlags().Set("backoff-timeout", "45s"))
+	})
+
+	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
+}
 
 // Verifies `get --help` lists supported get subcommands.
 func TestGetHelp(t *testing.T) {
@@ -59,6 +70,37 @@ func TestGetClusterTopologyLegacyHelp(t *testing.T) {
 
 	require.Contains(t, output, "Get the cluster topology of the connected Camunda 8 cluster")
 	require.Contains(t, output, "Deprecated but supported: use `c8volt get cluster topology`.")
+}
+
+// Verifies get commands consume env-overridden oauth2 scopes when authenticating against the configured API.
+func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
+	t.Setenv("C8VOLT_AUTH_OAUTH2_SCOPES_CAMUNDA_API", "env-scope")
+
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/token", r.URL.Path)
+		require.NoError(t, r.ParseForm())
+		require.Equal(t, "client_credentials", r.Form.Get("grant_type"))
+		require.Equal(t, "env-scope", r.Form.Get("scope"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"env-token","token_type":"Bearer"}`))
+	}))
+	t.Cleanup(tokenSrv.Close)
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		require.Equal(t, "Bearer env-token", r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"brokers":[],"clusterSize":1,"gatewayVersion":"8.8.0","partitionsCount":1,"replicationFactor":1,"lastCompletedChangeId":""}`))
+	}))
+	t.Cleanup(apiSrv.Close)
+
+	cfgPath := writeRawTestConfig(t, "auth:\n  mode: oauth2\n  oauth2:\n    token_url: "+tokenSrv.URL+"\n    client_id: base-client\n    client_secret: base-secret\n    scopes:\n      camunda_api: profile-scope\napis:\n  camunda_api:\n    base_url: "+apiSrv.URL+"\n    require_scope: true\n")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
+
+	require.Contains(t, output, `"ClusterSize": 1`)
 }
 
 // Verifies nested `get cluster topology` succeeds and renders topology fields.

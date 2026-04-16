@@ -4,10 +4,19 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/stretchr/testify/require"
 )
+
+func TestExpectCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "19s")
+
+	cfg := resolveCommandConfigForTest(t, expectCmd, writeBackoffPrecedenceConfig(t), nil)
+
+	require.Equal(t, 19*time.Second, cfg.App.Backoff.Timeout)
+}
 
 // Verifies expect process-instance rejects unsupported state values through invalid-input handling.
 func TestExpectProcessInstanceCommand_RejectsInvalidStates(t *testing.T) {

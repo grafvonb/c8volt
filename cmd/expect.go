@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var expectCmd = &cobra.Command{
@@ -20,5 +19,5 @@ var expectCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(expectCmd)
 
-	addBackoffFlagsAndBindings(expectCmd, viper.GetViper())
+	addBackoffFlagsAndBindings(expectCmd)
 }

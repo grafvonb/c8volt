@@ -29,6 +29,13 @@ func (c *Auth) Normalize() error {
 	return nil
 }
 
+func (c *Auth) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
+	if strings.TrimSpace(string(c.Mode)) == "" && !isConfigured("auth.mode") {
+		c.Mode = ModeNone
+	}
+	return nil
+}
+
 func (c *Auth) Validate() error {
 	var errs []error
 	if !c.Mode.IsValid() {

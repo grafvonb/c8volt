@@ -64,6 +64,40 @@ func (a *APIs) Normalize() error {
 	return errors.Join(errs...)
 }
 
+func (a *APIs) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
+	var errs []error
+	if a.Camunda.Key == "" && !isConfigured("apis.camunda_api.key") {
+		a.Camunda.Key = CamundaApiKeyConst
+	}
+	if a.Camunda.Version == "" && !isConfigured("apis.camunda_api.version") {
+		a.Camunda.Version = CamundaApiVersionConst
+	}
+	if a.Operate.Key == "" && !isConfigured("apis.operate_api.key") {
+		a.Operate.Key = OperateApiKeyConst
+	}
+	if a.Operate.Version == "" && !isConfigured("apis.operate_api.version") {
+		a.Operate.Version = OperateApiVersionConst
+	}
+	if a.Tasklist.Key == "" && !isConfigured("apis.tasklist_api.key") {
+		a.Tasklist.Key = TasklistApiKeyConst
+	}
+	if a.Tasklist.Version == "" && !isConfigured("apis.tasklist_api.version") {
+		a.Tasklist.Version = TasklistApiVersionConst
+	}
+	if a.Operate.BaseURL == "" && !isConfigured("apis.operate_api.base_url") {
+		a.Operate.BaseURL = a.Camunda.BaseURL
+	}
+	if a.Tasklist.BaseURL == "" && !isConfigured("apis.tasklist_api.base_url") {
+		a.Tasklist.BaseURL = a.Camunda.BaseURL
+	}
+	if !a.VersioningDisable {
+		a.Camunda.BaseURL = withAPIVersion(a.Camunda.BaseURL, a.Camunda.Version)
+		a.Operate.BaseURL = withAPIVersion(a.Operate.BaseURL, a.Operate.Version)
+		a.Tasklist.BaseURL = withAPIVersion(a.Tasklist.BaseURL, a.Tasklist.Version)
+	}
+	return errors.Join(errs...)
+}
+
 func (a *APIs) Validate(scopes Scopes) error {
 	var errs []error
 	if a.Camunda.BaseURL == "" {
