@@ -61,3 +61,31 @@ Started: 2026-04-16 21:31:31
 - In-process Cobra tests need explicit flag reset cleanup after mutating shared root flags; otherwise later executions inherit stale bootstrap values such as `--profile`.
 - The foundational phase is green with `go test ./config ./cmd -count=1` and `make test`, so follow-up user-story work can build on the shared resolver instead of reopening bootstrap mechanics.
 ---
+
+## Iteration 3 - 2026-04-16 21:52:58 CEST
+**User Story**: User Story 1 - Resolve Effective Values Consistently
+**Tasks Completed**:
+- [x] T007: Add root bootstrap precedence tests for tenant, profile selection, and config-file loading
+- [x] T008: Add config-level precedence and overlay tests for active profile, API base URLs, auth mode, and auth credentials/scopes
+- [x] T009: Add command regression tests that verify baseline settings resolve consistently in representative get, deploy, run, and walk flows
+- [x] T010: Implement the authoritative effective-config resolution flow for env-backed oauth2 scope maps and per-entry profile overlay
+- [x] T011: Align baseline setting resolution with the shared resolver for root/profile/env combinations
+- [x] T012: Verify and normalize baseline setting consumption across bootstrap and representative command execution paths
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- config/config.go
+- config/config_test.go
+- cmd/bootstrap_errors_test.go
+- cmd/config_test.go
+- cmd/get_test.go
+- cmd/deploy_test.go
+- cmd/run_test.go
+- cmd/walk_test.go
+- specs/107-flag-precedence-audit/tasks.md
+- specs/107-flag-precedence-audit/progress.md
+**Learnings**:
+- Env-backed nested map entries such as `auth.oauth2.scopes.<api>` do not populate through the existing struct-only env binding pass, so the shared resolver needs an explicit env overlay step for known scope keys.
+- Profile overlay for map-backed settings should resolve per entry, not as a whole-map replacement, otherwise a profile scope map can stomp higher-precedence env winners for individual keys.
+- Fresh helper-process command tests should avoid the generic shared-flag reset before `SetArgs()` when `StringSlice` flags are involved; clearing the specific globals is safer than round-tripping `"[]"` defaults into argv parsing.
+---

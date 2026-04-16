@@ -125,3 +125,118 @@ profiles:
 
 	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
 }
+
+func TestResolveEffectiveConfig_ActiveProfileFlagOverridesEnvAndBaseConfig(t *testing.T) {
+	t.Setenv("C8VOLT_ACTIVE_PROFILE", "dev")
+
+	v := viper.New()
+	v.SetEnvPrefix("c8volt")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.AutomaticEnv()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+active_profile: base
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: profile-dev
+    apis:
+      camunda_api:
+        base_url: http://dev.example.test
+  prod:
+    app:
+      tenant: profile-prod
+    apis:
+      camunda_api:
+        base_url: http://prod.example.test
+`))
+	require.NoError(t, err)
+
+	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flags.String("profile", "", "")
+	require.NoError(t, flags.Parse([]string{"--profile", "prod"}))
+	require.NoError(t, v.BindPFlag("active_profile", flags.Lookup("profile")))
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		func(key string) bool {
+			return key == "active_profile" && flags.Lookup("profile").Changed || HasEnvConfigByKey(key)
+		},
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, "prod", cfg.ActiveProfile)
+	require.Equal(t, "profile-prod", cfg.App.Tenant)
+	require.Equal(t, "http://prod.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+func TestResolveEffectiveConfig_EnvOverridesProfileForAPIAuthCredentialsAndScopes(t *testing.T) {
+	t.Setenv("C8VOLT_AUTH_MODE", "oauth2")
+	t.Setenv("C8VOLT_AUTH_OAUTH2_CLIENT_ID", "env-client")
+	t.Setenv("C8VOLT_AUTH_OAUTH2_CLIENT_SECRET", "env-secret")
+	t.Setenv("C8VOLT_AUTH_OAUTH2_SCOPES_CAMUNDA_API", "env-scope")
+	t.Setenv("C8VOLT_APIS_CAMUNDA_API_BASE_URL", "http://env.example.test")
+
+	v := viper.New()
+	v.SetEnvPrefix("c8volt")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.AutomaticEnv()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+active_profile: dev
+app:
+  tenant: base-tenant
+auth:
+  mode: cookie
+  oauth2:
+    token_url: http://base-token.example.test
+    client_id: base-client
+    client_secret: base-secret
+    scopes:
+      camunda_api: base-scope
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+    require_scope: true
+profiles:
+  dev:
+    auth:
+      mode: oauth2
+      oauth2:
+        token_url: http://profile-token.example.test
+        client_id: profile-client
+        client_secret: profile-secret
+        scopes:
+          camunda_api: profile-scope
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`))
+	require.NoError(t, err)
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		HasEnvConfigByKey,
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, ModeOAuth2, cfg.Auth.Mode)
+	require.Equal(t, "http://profile-token.example.test", cfg.Auth.OAuth2.TokenURL)
+	require.Equal(t, "env-client", cfg.Auth.OAuth2.ClientID)
+	require.Equal(t, "env-secret", cfg.Auth.OAuth2.ClientSecret)
+	require.Equal(t, "env-scope", cfg.Auth.OAuth2.Scope(CamundaApiKeyConst))
+	require.Equal(t, "http://env.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}

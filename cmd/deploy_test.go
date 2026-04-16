@@ -13,6 +13,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
+
+	var sawDeploy bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			require.Equal(t, "flag-tenant", r.FormValue("tenantId"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tenantId":"flag-tenant"}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `active_profile: dev
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+`)
+	bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`))
+
+	output, err := testx.RunCmdSubprocess(t, "TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfigHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":    cfgPath,
+		"C8VOLT_TEST_BPMN_PATH": bpmnPath,
+	})
+	require.NoError(t, err, string(output))
+	require.True(t, sawDeploy)
+}
+
 func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T) {
 	var sawDeploy bool
 	var sawRun bool
@@ -64,6 +108,24 @@ func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper(t *test
 		"deploy", "process-definition",
 		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
 		"--run",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfigHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--tenant", "flag-tenant",
+		"deploy", "process-definition",
+		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
+		"--no-wait",
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

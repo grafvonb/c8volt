@@ -112,6 +112,7 @@ func ResolveEffectiveConfig(
 	if err := v.Unmarshal(&base); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
+	applyEnvScopeOverrides(&base)
 
 	cfg, err := base.withProfileOverlay(hasHigherPrecedenceSource, isProfileKeyConfigured)
 	if err != nil {
@@ -185,18 +186,32 @@ func overlayProfileValue(
 			overlayProfileValue(dst.Field(i), src.Field(i), append(path, tag), activeProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)
 		}
 	case reflect.Map:
-		key := strings.Join(path, ".")
-		if !profileKeyConfigured(activeProfile, key, src, isProfileKeyConfigured) {
-			return
-		}
-		if hasHigherPrecedenceSource != nil && hasHigherPrecedenceSource(key) {
-			return
-		}
 		if src.IsNil() {
+			key := strings.Join(path, ".")
+			if !profileKeyConfigured(activeProfile, key, src, isProfileKeyConfigured) {
+				return
+			}
+			if hasHigherPrecedenceSource != nil && hasHigherPrecedenceSource(key) {
+				return
+			}
 			dst.Set(reflect.Zero(dst.Type()))
 			return
 		}
-		dst.Set(src)
+		if dst.IsNil() {
+			dst.Set(reflect.MakeMapWithSize(dst.Type(), src.Len()))
+		}
+		for _, mapKey := range src.MapKeys() {
+			entryPath := append(path, fmt.Sprint(mapKey.Interface()))
+			entryValue := src.MapIndex(mapKey)
+			key := strings.Join(entryPath, ".")
+			if !profileKeyConfigured(activeProfile, key, entryValue, isProfileKeyConfigured) {
+				continue
+			}
+			if hasHigherPrecedenceSource != nil && hasHigherPrecedenceSource(key) {
+				continue
+			}
+			dst.SetMapIndex(mapKey, entryValue)
+		}
 	default:
 		key := strings.Join(path, ".")
 		if !profileKeyConfigured(activeProfile, key, src, isProfileKeyConfigured) {
@@ -219,6 +234,56 @@ func profileKeyConfigured(
 		return isProfileKeyConfigured(activeProfile, key)
 	}
 	return !src.IsZero()
+}
+
+func applyEnvScopeOverrides(cfg *Config) {
+	keys := knownOAuth2ScopeKeys(cfg)
+	if len(keys) == 0 {
+		return
+	}
+	if cfg.Auth.OAuth2.Scopes == nil {
+		cfg.Auth.OAuth2.Scopes = Scopes{}
+	}
+	for _, key := range keys {
+		if val, ok := os.LookupEnv(envName("auth.oauth2.scopes." + key)); ok {
+			cfg.Auth.OAuth2.Scopes[key] = val
+		}
+	}
+}
+
+func knownOAuth2ScopeKeys(cfg *Config) []string {
+	seen := make(map[string]struct{})
+	var keys []string
+	add := func(key string) {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return
+		}
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		keys = append(keys, key)
+	}
+
+	add(CamundaApiKeyConst)
+	add(OperateApiKeyConst)
+	add(TasklistApiKeyConst)
+	add(cfg.APIs.Camunda.Key)
+	add(cfg.APIs.Operate.Key)
+	add(cfg.APIs.Tasklist.Key)
+	for key := range cfg.Auth.OAuth2.Scopes {
+		add(key)
+	}
+	for _, profile := range cfg.Profiles {
+		add(profile.APIs.Camunda.Key)
+		add(profile.APIs.Operate.Key)
+		add(profile.APIs.Tasklist.Key)
+		for key := range profile.Auth.OAuth2.Scopes {
+			add(key)
+		}
+	}
+	return keys
 }
 
 func HasEnvConfigByKey(key string) bool {

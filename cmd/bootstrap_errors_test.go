@@ -95,6 +95,44 @@ func TestExecute_UnsupportedVersionUsesSharedFailureModel(t *testing.T) {
 	require.Contains(t, string(output), "unknown API version")
 }
 
+// Verifies an explicit --config path wins over default search-path config discovery.
+func TestExecute_ConfigFlagOverridesDefaultSearchPath(t *testing.T) {
+	dir := t.TempDir()
+	defaultCfgPath := filepath.Join(dir, "config.yaml")
+	explicitCfgPath := filepath.Join(dir, "explicit.yaml")
+
+	defaultCfg := `app:
+  tenant: default-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://default.example.test
+`
+	explicitCfg := `app:
+  tenant: explicit-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://explicit.example.test
+`
+	require.NoError(t, os.WriteFile(defaultCfgPath, []byte(defaultCfg), 0o600))
+	require.NoError(t, os.WriteFile(explicitCfgPath, []byte(explicitCfg), 0o600))
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ConfigFlagOverridesDefaultSearchPathHelper")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+explicitCfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "tenant: explicit-tenant")
+	require.NotContains(t, string(output), "tenant: default-tenant")
+}
+
 // Verifies bootstrap normalization maps command-validation sentinels to invalid-input classification.
 func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T) {
 	err := normalizeBootstrapError(invalidFlagValuef("resource lookup requires a non-empty --id"))
@@ -188,6 +226,19 @@ func TestExecute_UnsupportedVersionUsesSharedFailureModelHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "topology"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for explicit-config precedence over default search-path config.
+func TestExecute_ConfigFlagOverridesDefaultSearchPathHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "show"}
 
 	Execute()
 }
