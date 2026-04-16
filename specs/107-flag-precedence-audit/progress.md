@@ -89,3 +89,42 @@ Started: 2026-04-16 21:31:31
 - Profile overlay for map-backed settings should resolve per entry, not as a whole-map replacement, otherwise a profile scope map can stomp higher-precedence env winners for individual keys.
 - Fresh helper-process command tests should avoid the generic shared-flag reset before `SetArgs()` when `StringSlice` flags are involved; clearing the specific globals is safer than round-tripping `"[]"` defaults into argv parsing.
 ---
+
+## Iteration 4 - 2026-04-17 00:12:00 CEST
+**User Story**: User Story 2 - Preserve Correctness Across Command Types and Edge Cases
+**Tasks Completed**:
+- [x] T013: Add command-local precedence regression tests for shared backoff/config-backed flags
+- [x] T014: Add edge-case tests for explicit empty/zero values and non-fallback behavior
+- [x] T015: Add subprocess or shared-failure-model tests for ambiguous-precedence validation failures
+- [x] T016: Implement shared command-local binding and precedence handling for config-backed flag packs
+- [x] T017: Implement explicit ambiguity and invalid-value failure handling
+- [x] T018: Normalize zero/empty-value preservation and non-fallback behavior
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/bootstrap_errors.go
+- cmd/bootstrap_errors_test.go
+- cmd/cmd_errors.go
+- cmd/cmd_subprocess_scope_test.go
+- cmd/config_test.go
+- cmd/get_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- cmd/deploy_test.go
+- cmd/expect_test.go
+- cmd/root.go
+- cmd/run_test.go
+- config/api.go
+- config/app.go
+- config/app_test.go
+- config/auth.go
+- config/backoff.go
+- config/config.go
+- config/config_test.go
+- specs/107-flag-precedence-audit/tasks.md
+- specs/107-flag-precedence-audit/progress.md
+**Learnings**:
+- Empty environment variables only participate in Viper precedence when `AllowEmptyEnv(true)` is enabled; without that, explicit empty env inputs silently fall back to lower-precedence config.
+- Source-aware normalization needs to distinguish unset values from explicitly configured zero/empty values before applying defaults or derived fallbacks such as inherited API base URLs.
+- Unknown active profiles should bypass the blanket bootstrap local-precondition wrapper so the shared bootstrap mapper can classify them as invalid input.
+---

@@ -240,3 +240,98 @@ profiles:
 	require.Equal(t, "env-scope", cfg.Auth.OAuth2.Scope(CamundaApiKeyConst))
 	require.Equal(t, "http://env.example.test/v2", cfg.APIs.Camunda.BaseURL)
 }
+
+func TestResolveEffectiveConfig_PreservesExplicitEmptyAuthModeForValidation(t *testing.T) {
+	t.Setenv("C8VOLT_AUTH_MODE", "")
+
+	v := viper.New()
+	v.SetEnvPrefix("c8volt")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.AutomaticEnv()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+auth:
+  mode: oauth2
+  oauth2:
+    token_url: http://token.example.test
+    client_id: client
+    client_secret: secret
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+`))
+	require.NoError(t, err)
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		HasEnvConfigByKey,
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.Empty(t, cfg.Auth.Mode)
+	require.ErrorContains(t, cfg.Validate(), `mode: invalid value ""`)
+}
+
+func TestResolveEffectiveConfig_PreservesExplicitZeroAndNegativeAppValuesForValidation(t *testing.T) {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+app:
+  process_instance_page_size: 0
+  backoff:
+    timeout: 0s
+    max_retries: -1
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+`))
+	require.NoError(t, err)
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		nil,
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, int32(0), cfg.App.ProcessInstancePageSize)
+	require.Zero(t, cfg.App.Backoff.Timeout)
+	require.Equal(t, -1, cfg.App.Backoff.MaxRetries)
+	require.ErrorContains(t, cfg.Validate(), "process_instance_page_size must be greater than 0")
+	require.ErrorContains(t, cfg.Validate(), "max_retries must be non-negative")
+	require.ErrorContains(t, cfg.Validate(), "timeout must be a positive duration")
+}
+
+func TestResolveEffectiveConfig_UnknownProfileReturnsSentinel(t *testing.T) {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+active_profile: missing
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: tenant-dev
+`))
+	require.NoError(t, err)
+
+	_, err = ResolveEffectiveConfig(
+		v,
+		nil,
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.ErrorIs(t, err, ErrProfileNotFound)
+}

@@ -78,3 +78,21 @@ func TestAppNormalize_PreservesExplicitBackoffTimeout(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 45*time.Second, app.Backoff.Timeout)
 }
+
+func TestAppValidate_RejectsInvalidExplicitBackoffAndPageSize(t *testing.T) {
+	t.Parallel()
+
+	app := &App{
+		ProcessInstancePageSize: 0,
+		Backoff: BackoffConfig{
+			Timeout:    0,
+			MaxRetries: -1,
+		},
+	}
+
+	err := app.Validate()
+
+	require.ErrorContains(t, err, "process_instance_page_size must be greater than 0")
+	require.ErrorContains(t, err, "max_retries must be non-negative")
+	require.ErrorContains(t, err, "timeout must be a positive duration")
+}

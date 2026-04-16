@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
@@ -15,6 +16,14 @@ import (
 )
 
 const cancelDeleteRelativeDayNow = "2026-04-10T12:00:00Z"
+
+func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "27s")
+
+	cfg := resolveCommandConfigForTest(t, cancelCmd, writeBackoffPrecedenceConfig(t), nil)
+
+	require.Equal(t, 27*time.Second, cfg.App.Backoff.Timeout)
+}
 
 // Verifies search-mode cancellation builds the expected date-filtered search request and no-ops cleanly on empty matches.
 func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {

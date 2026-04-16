@@ -189,6 +189,11 @@ func TestNormalizeBootstrapErrorMapsSharedBootstrapRules(t *testing.T) {
 			wantClass: ferrors.ClassLocalPrecondition,
 		},
 		{
+			name:      "missing profile becomes invalid input",
+			err:       config.ErrProfileNotFound,
+			wantClass: ferrors.ClassInvalidInput,
+		},
+		{
 			name:      "unmapped errors fall back to internal",
 			err:       errors.New("boom"),
 			wantClass: ferrors.ClassInternal,

@@ -12,6 +12,7 @@ var (
 	ErrForbiddenFlagCombination = errors.New("forbidden flag combination")
 	ErrMissingDependentFlags    = errors.New("missing dependent flags")
 	ErrMutuallyExclusiveFlags   = errors.New("mutually exclusive flags")
+	ErrAmbiguousConfigValue     = errors.New("ambiguous config value")
 )
 
 type errorClassRule struct {
@@ -24,6 +25,7 @@ var commandErrorClassRules = []errorClassRule{
 	{match: ErrForbiddenFlagCombination, class: ferrors.ErrInvalidInput},
 	{match: ErrMissingDependentFlags, class: ferrors.ErrInvalidInput},
 	{match: ErrMutuallyExclusiveFlags, class: ferrors.ErrInvalidInput},
+	{match: ErrAmbiguousConfigValue, class: ferrors.ErrInvalidInput},
 }
 
 func invalidFlagValuef(format string, args ...any) error {
@@ -48,6 +50,10 @@ func forbiddenFlagCombinationf(format string, args ...any) error {
 
 func mutuallyExclusiveFlagsf(format string, args ...any) error {
 	return commandInputError(ErrMutuallyExclusiveFlags, format, args...)
+}
+
+func ambiguousConfigValuef(format string, args ...any) error {
+	return commandInputError(ErrAmbiguousConfigValue, format, args...)
 }
 
 func normalizeCommandError(err error) error {

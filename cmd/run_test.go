@@ -7,11 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "22s")
+
+	cfg := resolveCommandConfigForTest(t, runCmd, writeBackoffPrecedenceConfig(t), func(cmd *cobra.Command) {
+		require.NoError(t, cmd.PersistentFlags().Set("backoff-timeout", "44s"))
+	})
+
+	require.Equal(t, 44*time.Second, cfg.App.Backoff.Timeout)
+}
 
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
 func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {

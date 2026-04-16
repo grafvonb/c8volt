@@ -7,11 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDeployCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "18s")
+
+	cfg := resolveCommandConfigForTest(t, deployCmd, writeBackoffPrecedenceConfig(t), func(cmd *cobra.Command) {
+		require.NoError(t, cmd.PersistentFlags().Set("backoff-timeout", "41s"))
+	})
+
+	require.Equal(t, 41*time.Second, cfg.App.Backoff.Timeout)
+}
 
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")

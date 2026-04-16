@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	ErrNoBaseURL      = errors.New("no base_url provided in api configuration")
-	ErrNoTokenURL     = errors.New("token_url is required")
-	ErrNoClientID     = errors.New("client_id is required")
-	ErrNoClientSecret = errors.New("client_secret is required")
+	ErrNoBaseURL       = errors.New("no base_url provided in api configuration")
+	ErrNoTokenURL      = errors.New("token_url is required")
+	ErrNoClientID      = errors.New("client_id is required")
+	ErrNoClientSecret  = errors.New("client_secret is required")
+	ErrProfileNotFound = errors.New("profile not found")
 
 	ErrNoConfigInContext       = errors.New("no config in context")
 	ErrInvalidServiceInContext = errors.New("invalid config in context")
@@ -106,6 +107,7 @@ func ResolveEffectiveConfig(
 	hasHigherPrecedenceSource func(string) bool,
 	isProfileKeyConfigured func(activeProfile string, key string) bool,
 ) (*Config, error) {
+	v.AllowEmptyEnv(true)
 	BindConfigEnvVars(v)
 
 	var base Config
@@ -118,7 +120,7 @@ func ResolveEffectiveConfig(
 	if err != nil {
 		return nil, fmt.Errorf("apply profile: %w", err)
 	}
-	if err := cfg.Normalize(); err != nil {
+	if err := cfg.normalizeWithConfiguredKeys(newConfigKeyRegistry(v, cfg.ActiveProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)); err != nil {
 		return nil, fmt.Errorf("normalize config: %w", err)
 	}
 	return cfg, nil
@@ -138,7 +140,7 @@ func (c *Config) withProfileOverlay(
 	}
 	p, ok := c.Profiles[c.ActiveProfile]
 	if !ok {
-		return nil, fmt.Errorf("profile %q not found", c.ActiveProfile)
+		return nil, fmt.Errorf("%w: %q", ErrProfileNotFound, c.ActiveProfile)
 	}
 
 	eff := *c
@@ -299,14 +301,18 @@ func envName(key string) string {
 }
 
 func (c *Config) Normalize() error {
+	return c.normalizeWithConfiguredKeys(func(string) bool { return false })
+}
+
+func (c *Config) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
 	var errs []error
-	if err := c.App.Normalize(); err != nil {
+	if err := c.App.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("app: %w", err))
 	}
-	if err := c.Auth.Normalize(); err != nil {
+	if err := c.Auth.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("auth: %w", err))
 	}
-	if err := c.APIs.Normalize(); err != nil {
+	if err := c.APIs.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("apis: %w", err))
 	}
 	if err := c.HTTP.Normalize(); err != nil {
@@ -318,6 +324,9 @@ func (c *Config) Normalize() error {
 
 func (c *Config) Validate() error {
 	var errs []error
+	if err := c.App.Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("app: %w", err))
+	}
 	if err := c.Auth.Validate(); err != nil {
 		errs = append(errs, err)
 	}
@@ -331,6 +340,26 @@ func (c *Config) Validate() error {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+func newConfigKeyRegistry(
+	v *viper.Viper,
+	activeProfile string,
+	hasHigherPrecedenceSource func(string) bool,
+	isProfileKeyConfigured func(activeProfile string, key string) bool,
+) func(string) bool {
+	return func(key string) bool {
+		if hasHigherPrecedenceSource != nil && hasHigherPrecedenceSource(key) {
+			return true
+		}
+		if v != nil && v.InConfig(key) {
+			return true
+		}
+		if activeProfile != "" && isProfileKeyConfigured != nil && isProfileKeyConfigured(activeProfile, key) {
+			return true
+		}
+		return false
+	}
 }
 
 type ctxConfigKey struct{}

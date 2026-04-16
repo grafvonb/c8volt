@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -120,6 +121,35 @@ profiles:
 	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModel(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `active_profile: dev
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+profiles:
+  dev:
+    app:
+      tenant: dev-tenant
+`)
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModelHelper")
+	cmd.Env = append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		"C8VOLT_TEST_CONFIG="+cfgPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), `profile not found: "missing"`)
+}
+
 // Helper-process entrypoint for invalid effective-config failure-path validation.
 func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -141,6 +171,64 @@ func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper
 	configShowCmd.SetOut(os.Stdout)
 	configShowCmd.SetErr(os.Stderr)
 	configShowCmd.Run(configShowCmd, nil)
+}
+
+func TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModelHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--profile", "missing", "config", "show"}
+
+	Execute()
+}
+
+func writeBackoffPrecedenceConfig(t *testing.T) string {
+	t.Helper()
+
+	return writeRawTestConfig(t, `active_profile: dev
+app:
+  backoff:
+    timeout: 12s
+    max_retries: 2
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+profiles:
+  dev:
+    app:
+      backoff:
+        timeout: 9s
+        max_retries: 4
+`)
+}
+
+func resolveCommandConfigForTest(t *testing.T, cmd *cobra.Command, cfgPath string, configure func(*cobra.Command)) *config.Config {
+	t.Helper()
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+	require.NoError(t, root.PersistentFlags().Set("profile", "dev"))
+	if configure != nil {
+		configure(cmd)
+	}
+
+	v := viper.New()
+	bindings, err := initViper(v, cmd)
+	require.NoError(t, err)
+
+	cfg, err := retrieveAndNormalizeConfig(v, bindings)
+	require.NoError(t, err)
+	return cfg
 }
 
 func writeRawTestConfig(t *testing.T, content string) string {

@@ -7,12 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "21s")
+
+	cfg := resolveCommandConfigForTest(t, getCmd, writeBackoffPrecedenceConfig(t), func(cmd *cobra.Command) {
+		require.NoError(t, cmd.PersistentFlags().Set("backoff-timeout", "45s"))
+	})
+
+	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
+}
 
 // Verifies `get --help` lists supported get subcommands.
 func TestGetHelp(t *testing.T) {

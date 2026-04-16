@@ -88,6 +88,9 @@ Refer to the documentation at https://c8volt.info for more information.`,
 		}
 		cfg, err := retrieveAndNormalizeConfig(v, bindings)
 		if err != nil {
+			if errors.Is(err, config.ErrProfileNotFound) {
+				return normalizeBootstrapError(err)
+			}
 			return bootstrapLocalPrecondition(err)
 		}
 		ctx := cfg.ToContext(cmd.Context())
