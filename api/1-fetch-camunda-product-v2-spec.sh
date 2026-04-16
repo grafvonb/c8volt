@@ -17,7 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="${SCRIPT_DIR}/camunda"
 REPO="git@github.com:camunda/camunda.git"
-SPEC_PATH='/zeebe/gateway-protocol/src/main/proto/rest-api.yaml'
+SPEC_PATH='/zeebe/gateway-protocol/src/main/proto'
 TAG="${1:-}"
 COMMIT_SHA=""
 
