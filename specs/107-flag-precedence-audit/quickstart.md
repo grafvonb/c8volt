@@ -1,6 +1,6 @@
 # Quickstart: Audit and Fix CLI Config Precedence
 
-## Planned Behavior
+## Implemented Behavior
 
 - Every config-backed setting resolves with one shared order: `flag > env > profile > base config > default`.
 - Profiles act as a lower-precedence overlay over base config instead of replacing whole config sections after flags or env vars have already been applied.
@@ -9,6 +9,14 @@
 - Ambiguous precedence cases fail explicitly instead of preserving legacy behavior or silently choosing a winner.
 - The shared audit baseline covers `tenant`, active profile selection, API base URLs, auth mode, and auth credentials/scopes everywhere they appear.
 - The same precedence contract is documented in internal guidance and the relevant user-facing CLI/config docs.
+
+## Implementation Notes
+
+- [`config.ResolveEffectiveConfig(...)`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/config/config.go) is the authoritative precedence seam; bootstrap passes source-awareness into that resolver instead of open-coding merge rules in [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go).
+- Profile application is field-aware and source-aware, so active-profile values only fill gaps left by higher-precedence flags and environment variables.
+- Shared command-local flag packs now define flags locally and rely on root bootstrap binding so `get`, `cancel`, `delete`, `deploy`, `expect`, and `run` resolve config-backed backoff settings through the same bootstrap-scoped Viper instance.
+- Ambiguous precedence cases and invalid effective values fail through the shared CLI/bootstrap error mapping instead of silent fallback or command-specific winner selection.
+- Operator-facing precedence guidance now lives in [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), [`docs/index.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md), and [`cmd/config_show.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/config_show.go), with regenerated CLI reference output under `docs/cli/`.
 
 ## Verification Focus
 
@@ -43,6 +51,14 @@ go test ./cmd -run 'Test.*Backoff.*|Test.*Completion.*|Test.*Subprocess.*' -coun
 make test
 ```
 
+## Verification Coverage Added
+
+- `config/config_test.go::TestResolveEffectiveConfig_CriticalBaselineSettingsShareOneContract`
+- `config/config_test.go::TestResolveEffectiveConfig_PreservesExplicitEmptyAndZeroLikeValues`
+- `cmd/config_test.go::TestRetrieveAndNormalizeConfig_CriticalBaselineSettingsStayAlignedAcrossCommands`
+- `cmd/bootstrap_errors_test.go` bootstrap ambiguity and invalid-effective-config coverage
+- Command-family precedence coverage in `cmd/get_test.go`, `cmd/cancel_test.go`, `cmd/delete_test.go`, `cmd/deploy_test.go`, `cmd/expect_test.go`, `cmd/run_test.go`, and `cmd/walk_test.go`
+
 ## Manual Smoke Checks
 
 Use one base config file with at least two profiles and then exercise the same setting through multiple source combinations:
@@ -64,3 +80,4 @@ C8VOLT_AUTH_MODE=none ./c8volt --config /tmp/c8volt.yaml --profile prod get clus
 - Confirm command-local shared flag packs, such as backoff settings, do not resolve through a different registry than the root bootstrap path.
 - Confirm ambiguity and invalid-value cases fail explicitly through the shared CLI error model instead of silently selecting a lower-precedence value.
 - Confirm the generated CLI help and operator-facing docs describe the same `flag > env > profile > base config > default` order that the shared tests enforce.
+- Run the suggested commands as the final polish gate before closing the feature; the docs updates in this file do not replace `T025` or `T026`.

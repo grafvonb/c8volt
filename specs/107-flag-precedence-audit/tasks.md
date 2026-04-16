@@ -106,9 +106,9 @@
 
 **Purpose**: Finish the full audit trail, validate the feature end to end, and leave the planning artifacts aligned with the shipped result.
 
-- [ ] T024 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/quickstart.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/plan.md
-- [ ] T025 Run targeted precedence validation with `go test ./config -count=1` and focused `go test ./cmd ... -count=1` commands from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T026 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T024 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/quickstart.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/107-flag-precedence-audit/plan.md
+- [x] T025 Run targeted precedence validation with `go test ./config -count=1` and focused `go test ./cmd ... -count=1` commands from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T026 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

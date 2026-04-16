@@ -159,3 +159,36 @@ Started: 2026-04-16 21:31:31
 - `config show` is the right operator-facing seam for the precedence contract because it exposes the same effective config bootstrap the action commands consume.
 - `make test` can stay a commit gate for a completed story even when the phase plan still leaves later polish tasks open.
 ---
+
+## Iteration 6 - 2026-04-16 22:09:29 CEST
+**User Story**: Partial progress on Phase 6 - Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T024: Refresh implementation and verification notes in `quickstart.md` and `plan.md`
+**Tasks Remaining in Story**: 2
+**Commit**: No commit - partial progress
+**Files Changed**:
+- specs/107-flag-precedence-audit/plan.md
+- specs/107-flag-precedence-audit/progress.md
+- specs/107-flag-precedence-audit/quickstart.md
+- specs/107-flag-precedence-audit/tasks.md
+**Learnings**:
+- The polish phase should distinguish between implemented coverage already present in the repo and the final validation commands that still need to be executed; documenting both in `quickstart.md` reduces ambiguity for the closing iteration.
+- `plan.md` benefits from an explicit implementation-status section once the design is mostly shipped, because the remaining open work is validation rather than more resolver or docs changes.
+---
+
+## Iteration 7 - 2026-04-17 00:31:00 CEST
+**User Story**: Phase 6 - Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T025: Run targeted precedence validation with `go test ./config -count=1` and focused `go test ./cmd ... -count=1` commands
+- [x] T026: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/107-flag-precedence-audit/plan.md
+- specs/107-flag-precedence-audit/progress.md
+- specs/107-flag-precedence-audit/quickstart.md
+- specs/107-flag-precedence-audit/tasks.md
+**Learnings**:
+- The focused `./cmd` validation stays readable if it is split into the baseline config/profile suite and the backoff/completion/subprocess suite before the final `make test` gate.
+- Finishing the polish phase cleanly requires carrying the earlier no-commit `T024` artifact updates into the same closing commit as the final validation results and tracker updates.
+---
