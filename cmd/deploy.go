@@ -9,7 +9,6 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var deployCmd = &cobra.Command{
@@ -27,7 +26,7 @@ var deployCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(deployCmd)
 
-	addBackoffFlagsAndBindings(deployCmd, viper.GetViper())
+	addBackoffFlagsAndBindings(deployCmd)
 }
 
 func validateFiles(files []string) error {

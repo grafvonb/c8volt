@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -100,8 +101,37 @@ func BindAllEnvVars(v *viper.Viper, prefix string, t reflect.Type, path []string
 	}
 }
 
+func ResolveEffectiveConfig(
+	v *viper.Viper,
+	hasHigherPrecedenceSource func(string) bool,
+	isProfileKeyConfigured func(activeProfile string, key string) bool,
+) (*Config, error) {
+	BindConfigEnvVars(v)
+
+	var base Config
+	if err := v.Unmarshal(&base); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	cfg, err := base.withProfileOverlay(hasHigherPrecedenceSource, isProfileKeyConfigured)
+	if err != nil {
+		return nil, fmt.Errorf("apply profile: %w", err)
+	}
+	if err := cfg.Normalize(); err != nil {
+		return nil, fmt.Errorf("normalize config: %w", err)
+	}
+	return cfg, nil
+}
+
 // WithProfile returns an effective config for the selected profile.
 func (c *Config) WithProfile() (*Config, error) {
+	return c.withProfileOverlay(nil, nil)
+}
+
+func (c *Config) withProfileOverlay(
+	hasHigherPrecedenceSource func(string) bool,
+	isProfileKeyConfigured func(activeProfile string, key string) bool,
+) (*Config, error) {
 	if c.ActiveProfile == "" {
 		return c, nil
 	}
@@ -111,32 +141,96 @@ func (c *Config) WithProfile() (*Config, error) {
 	}
 
 	eff := *c
-	eff.App = p.App
-	eff.Auth = p.Auth
-	eff.APIs = p.APIs
-	eff.HTTP = p.HTTP
-
-	// Fallback for missing auth credentials from root configuration (allows env var overrides)
-	if eff.Auth.OAuth2.ClientSecret == "" && c.Auth.OAuth2.ClientSecret != "" {
-		eff.Auth.OAuth2.ClientSecret = c.Auth.OAuth2.ClientSecret
-	}
-	if eff.Auth.OAuth2.ClientID == "" && c.Auth.OAuth2.ClientID != "" {
-		eff.Auth.OAuth2.ClientID = c.Auth.OAuth2.ClientID
-	}
-	if eff.Auth.OAuth2.TokenURL == "" && c.Auth.OAuth2.TokenURL != "" {
-		eff.Auth.OAuth2.TokenURL = c.Auth.OAuth2.TokenURL
-	}
-	if eff.Auth.Cookie.Password == "" && c.Auth.Cookie.Password != "" {
-		eff.Auth.Cookie.Password = c.Auth.Cookie.Password
-	}
-	if eff.Auth.Cookie.Username == "" && c.Auth.Cookie.Username != "" {
-		eff.Auth.Cookie.Username = c.Auth.Cookie.Username
-	}
-	if eff.Auth.Cookie.BaseURL == "" && c.Auth.Cookie.BaseURL != "" {
-		eff.Auth.Cookie.BaseURL = c.Auth.Cookie.BaseURL
-	}
+	overlayProfileValue(reflect.ValueOf(&eff.App).Elem(), reflect.ValueOf(p.App), []string{"app"}, c.ActiveProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)
+	overlayProfileValue(reflect.ValueOf(&eff.Auth).Elem(), reflect.ValueOf(p.Auth), []string{"auth"}, c.ActiveProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)
+	overlayProfileValue(reflect.ValueOf(&eff.APIs).Elem(), reflect.ValueOf(p.APIs), []string{"apis"}, c.ActiveProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)
+	overlayProfileValue(reflect.ValueOf(&eff.HTTP).Elem(), reflect.ValueOf(p.HTTP), []string{"http"}, c.ActiveProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)
 
 	return &eff, nil
+}
+
+func overlayProfileValue(
+	dst reflect.Value,
+	src reflect.Value,
+	path []string,
+	activeProfile string,
+	hasHigherPrecedenceSource func(string) bool,
+	isProfileKeyConfigured func(activeProfile string, key string) bool,
+) {
+	if !dst.CanSet() || !src.IsValid() {
+		return
+	}
+
+	if src.Kind() == reflect.Pointer {
+		if src.IsNil() {
+			return
+		}
+		src = src.Elem()
+	}
+	if dst.Kind() == reflect.Pointer {
+		if dst.IsNil() {
+			dst.Set(reflect.New(dst.Type().Elem()))
+		}
+		dst = dst.Elem()
+	}
+
+	switch src.Kind() {
+	case reflect.Struct:
+		for i := 0; i < src.NumField(); i++ {
+			field := src.Type().Field(i)
+			tag := field.Tag.Get("mapstructure")
+			if tag == "" || tag == "-" {
+				continue
+			}
+			overlayProfileValue(dst.Field(i), src.Field(i), append(path, tag), activeProfile, hasHigherPrecedenceSource, isProfileKeyConfigured)
+		}
+	case reflect.Map:
+		key := strings.Join(path, ".")
+		if !profileKeyConfigured(activeProfile, key, src, isProfileKeyConfigured) {
+			return
+		}
+		if hasHigherPrecedenceSource != nil && hasHigherPrecedenceSource(key) {
+			return
+		}
+		if src.IsNil() {
+			dst.Set(reflect.Zero(dst.Type()))
+			return
+		}
+		dst.Set(src)
+	default:
+		key := strings.Join(path, ".")
+		if !profileKeyConfigured(activeProfile, key, src, isProfileKeyConfigured) {
+			return
+		}
+		if hasHigherPrecedenceSource != nil && hasHigherPrecedenceSource(key) {
+			return
+		}
+		dst.Set(src)
+	}
+}
+
+func profileKeyConfigured(
+	activeProfile string,
+	key string,
+	src reflect.Value,
+	isProfileKeyConfigured func(activeProfile string, key string) bool,
+) bool {
+	if isProfileKeyConfigured != nil {
+		return isProfileKeyConfigured(activeProfile, key)
+	}
+	return !src.IsZero()
+}
+
+func HasEnvConfigByKey(key string) bool {
+	_, ok := os.LookupEnv(envName(key))
+	return ok
+}
+
+func envName(key string) string {
+	key = strings.ReplaceAll(key, ".", "_")
+	key = strings.ReplaceAll(key, "-", "_")
+	key = strings.ToUpper(key)
+	return "C8VOLT_" + key
 }
 
 func (c *Config) Normalize() error {

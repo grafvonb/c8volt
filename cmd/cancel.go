@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var cancelCmd = &cobra.Command{
@@ -20,5 +19,5 @@ var cancelCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(cancelCmd)
 
-	addBackoffFlagsAndBindings(cancelCmd, viper.GetViper())
+	addBackoffFlagsAndBindings(cancelCmd)
 }
