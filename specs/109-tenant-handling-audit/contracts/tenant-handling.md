@@ -28,7 +28,7 @@ Supported tenant mismatch must not reveal whether the resource exists in another
 | Version/operation state | Required behavior |
 |-------------------------|-------------------|
 | `v8.8` operation has a tenant-safe upstream path | Use it |
-| `v8.7` operation can be made tenant-safe through current generated-client semantics | Use it |
+| `v8.7` operation can be made tenant-safe through current generated-client semantics | Use it and keep the supported scope limited to that exact tenant-safe path |
 | `v8.7` operation cannot be made tenant-safe through current generated-client semantics | Return an explicit unsupported outcome for that exact operation or flow segment |
 | `v8.9` planning scope without repository implementation | Record as audit/follow-up only; do not claim current runtime support |
 
@@ -42,8 +42,8 @@ The feature must use the following operation-level contract as the authoritative
 |------------------|------------------------|------------------------|-----------------------|
 | Direct get by key | Must resolve through a tenant-safe upstream path and return tenant-safe `not found` on mismatch | Supported only if a tenant-safe upstream equivalent exists; otherwise explicit unsupported outcome | Current direct-get endpoints appear unscoped in both versions and must not remain the authoritative tenant seam |
 | State check by key | Must inherit the same tenant-safe contract as direct lookup | Supported only where the lookup path can stay tenant-safe; otherwise explicit unsupported outcome | Wait and mutation preflight depend on this seam |
-| Search by filter | Must include effective tenant context in the upstream request | Must include effective tenant context in the upstream request | Search is the safest current upstream tenant seam in both supported versions |
-| Direct children lookup | Must be derived from tenant-safe search | Must be derived from tenant-safe search | `ParentKey` searches can stay supported when the search path is tenant-safe |
+| Search by filter | Must include effective tenant context in the upstream request | Must include effective tenant context in the upstream request | Search is the safest current upstream tenant seam in both supported versions and remains supported in `v8.7` |
+| Direct children lookup | Must be derived from tenant-safe search | Must be derived from tenant-safe search | `ParentKey` searches can stay supported when the search path is tenant-safe, including the current `v8.7` implementation |
 | Ancestry / descendants / family | Must compose only tenant-safe lookup steps | Must fail only on the exact unsafe segment when a required lookup step cannot be tenant-safe | Mixed-flow helpers must not reintroduce unsafe direct-get behavior |
 | Wait / polling | Must inherit tenant-safe `not found` or matched outcomes from the backing state-check path | Must fail explicitly only when the backing state-check path is unsafe | Wait must not become a side channel for cross-tenant existence |
 | Cancel / delete preflight | Must validate targets through tenant-safe lookup/state-check paths before mutating | Must fail explicitly only when the required validation segment is unsafe | Mutation must stop before acting on cross-tenant targets |

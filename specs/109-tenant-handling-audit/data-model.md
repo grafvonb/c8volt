@@ -55,9 +55,9 @@
   - Preferred tenant-safe lookup strategy
   - Unsupported-operation notes
 - **Current repository mapping**:
-  - `8.7`: supported service exists, but some direct-get-adjacent flows may require explicit unsupported outcomes
-  - `8.8`: supported service exists and search-based tenant filtering is already available
-  - `8.9`: version normalizes in config/tooling, but no process-instance service implementation exists yet
+  - `8.7`: supported service exists, search-backed flows remain tenant-safe, but keyed direct lookup and keyed state-check seams stay explicitly unsupported where no tenant-safe upstream equivalent exists
+  - `8.8`: supported service exists and search-backed lookup/state behavior is the tenant-safe authority for direct-get-adjacent flows
+  - `8.9`: version normalizes in config/tooling, but no process-instance service implementation exists yet, so process-instance runtime support is still unavailable
 
 ## Tenant-Aware Command Family
 

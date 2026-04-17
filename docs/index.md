@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-26-g4d300b9-dirty`, commit `4d300b9`, built `2026-04-16T20:05:46Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-36-g5e3d9bd-dirty`, commit `5e3d9bd`, built `2026-04-17T02:33:06Z` | camunda: 8.7, 8.8
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -192,6 +192,18 @@ That applies to root persistent flags such as `--tenant` and `--profile`, comman
 - When `c8volt` cannot determine a safe winner, it fails explicitly instead of guessing.
 
 Use `./c8volt config show` to inspect the effective configuration that a command will actually use, or `./c8volt config show --validate` to confirm the resolved config is valid before running changes against a cluster.
+
+## Tenant-Aware Version Notes
+
+Tenant-aware process-instance commands follow one shared contract across `get`, `walk`, `cancel`, `delete`, `expect`, and run-confirmation flows:
+
+- the effective tenant follows `flag > env > profile > base config > default`
+- supported wrong-tenant lookups behave like `not found`
+- `v8.8` uses tenant-safe search-backed lookup/state behavior as the authoritative path for direct-get-adjacent flows
+- `v8.7` keeps search-backed tenant-safe flows available, but keyed direct lookup and keyed state checks stay explicitly unsupported where no tenant-safe upstream equivalent exists
+- `8.9` is recognized by config normalization, but process-instance runtime support in this repository still stops at `v8.8`
+
+That split is intentional: `c8volt` does not fake tenant safety by doing an unsafe cross-tenant fetch and hiding the result afterward.
 
 ### Pull exact artifacts and metadata
 

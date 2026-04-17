@@ -152,3 +152,34 @@ Started: 2026-04-17 03:50:08
 - `v88` remains fully tenant-safe for mixed flows because every follow-up step reduces to tenant-filtered search-backed lookups, while `v87` now fails only when a keyed direct/state seam would otherwise become the authority.
 - US2 verification is already anchored in repository-native tests: `walker` and `waiter` unit tests for helper composition, versioned service tests for preflight behavior, and command-family subprocess tests for tenant propagation and unsupported-surface handling.
 ---
+
+## Iteration 7 - 2026-04-17 04:33:00 CEST
+**User Story**: User Story 3 - Make Version Behavior Explicit and Predictable
+**Tasks Completed**:
+- [x] T020: Add factory/app version-matrix coverage for supported runtime versions and unsupported `8.9` process-instance runtime behavior
+- [x] T021: Add regression coverage that proves `v87` unsupported outcomes stay scoped to keyed direct/state seams while search-backed behavior remains available
+- [x] T022: Update feature research, data model, quickstart, and tenant contract docs for the settled version boundary
+- [x] T023: Update README and root Cobra help text with the explicit tenant-aware runtime support notes
+- [x] T024: Regenerate CLI reference output from the updated Cobra metadata
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/get_processinstance_test.go
+- cmd/root.go
+- config/app_test.go
+- docs/cli/
+- docs/index.md
+- internal/services/processinstance/factory_test.go
+- internal/services/processinstance/v87/service_test.go
+- specs/109-tenant-handling-audit/contracts/tenant-handling.md
+- specs/109-tenant-handling-audit/data-model.md
+- specs/109-tenant-handling-audit/progress.md
+- specs/109-tenant-handling-audit/quickstart.md
+- specs/109-tenant-handling-audit/research.md
+- specs/109-tenant-handling-audit/tasks.md
+**Learnings**:
+- The honest runtime matrix now has explicit proof at both config and factory layers: `8.9` is a normalized config value, but process-instance runtime support still stops at `v87` and `v88`.
+- `v87` safe behavior is narrower than the command-family surface but not empty: search-backed reads such as filtered search and direct-child lookup remain tenant-safe even while keyed direct lookup and keyed state checks stay unsupported.
+- Regenerating CLI docs inside the sandbox required redirecting `GOCACHE` into a writable path; the generated output itself remains the normal `make docs-content` result.
+---

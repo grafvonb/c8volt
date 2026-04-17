@@ -66,6 +66,11 @@ Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
+Tenant-aware process-instance flows use one effective tenant context per command execution.
+Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
+is implemented for Camunda 8.7 and 8.8; version 8.9 is recognized by config normalization but
+does not yet have a process-instance service implementation in this repository.
+
 Refer to the documentation at https://c8volt.info for more information.`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
@@ -182,7 +187,7 @@ func init() {
 	pf.String("log-format", "plain", "log format (json, plain, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
-	pf.String("tenant", "", "default tenant ID")
+	pf.String("tenant", "", "tenant ID for tenant-aware command flows (overrides env, profile, and base config)")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))

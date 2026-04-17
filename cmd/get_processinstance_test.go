@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -186,6 +187,36 @@ apis:
 		require.Equal(t, "123", filter["processInstanceKey"])
 		require.Contains(t, output, `"tenantId": "tenant-a"`)
 	})
+}
+
+func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"<default>"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--state", "active",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, "<default>", filter["tenantId"])
+	require.Equal(t, "ACTIVE", filter["state"])
+	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.

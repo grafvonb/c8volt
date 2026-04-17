@@ -108,6 +108,13 @@
 - Walker, waiter, cancel, and delete inherit the contract of the lookup and state-check methods they compose, so unsupported behavior must be assigned per composed segment rather than per command family.
 - `v8.9` is audited only for parity and documentation in this feature; no runtime-support claim is valid until `internal/services/processinstance/factory.go` and companion tests admit a real `v89` implementation.
 
+### Implemented verification anchors
+
+- `internal/services/processinstance/factory_test.go` now locks in the honest runtime matrix: `v87` and `v88` construct real services, while normalized `8.9` still fails as an unsupported process-instance runtime version.
+- `config/app_test.go` now proves config normalization accepts `8.9` as a known version value without silently treating it like `v87` default-tenant behavior; audit scope and runtime support remain separate concerns.
+- `internal/services/processinstance/v87/service_test.go` now proves the unsupported surface stays narrow: direct key lookup and state-by-key remain unsupported, but search-backed child lookup still works with tenant scoping.
+- `cmd/get_processinstance_test.go` now proves the command family follows the same split in real CLI flows: `get process-instance --key` stays unsupported on `v87`, while tenant-scoped search mode still succeeds.
+
 ### Mixed-flow helpers
 
 - [`internal/services/processinstance/walker/walker.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go) composes `GetProcessInstance` and `GetDirectChildrenOfProcessInstance`, making it a primary cross-tenant leakage seam.

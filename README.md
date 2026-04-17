@@ -184,6 +184,18 @@ That applies to root persistent flags such as `--tenant` and `--profile`, comman
 
 Use `./c8volt config show` to inspect the effective configuration that a command will actually use, or `./c8volt config show --validate` to confirm the resolved config is valid before running changes against a cluster.
 
+## Tenant-Aware Version Notes
+
+Tenant-aware process-instance commands follow one shared contract across `get`, `walk`, `cancel`, `delete`, `expect`, and run-confirmation flows:
+
+- the effective tenant follows `flag > env > profile > base config > default`
+- supported wrong-tenant lookups behave like `not found`
+- `v8.8` uses tenant-safe search-backed lookup/state behavior as the authoritative path for direct-get-adjacent flows
+- `v8.7` keeps search-backed tenant-safe flows available, but keyed direct lookup and keyed state checks stay explicitly unsupported where no tenant-safe upstream equivalent exists
+- `8.9` is recognized by config normalization, but process-instance runtime support in this repository still stops at `v8.8`
+
+That split is intentional: `c8volt` does not fake tenant safety by doing an unsafe cross-tenant fetch and hiding the result afterward.
+
 ### Pull exact artifacts and metadata
 
 ```bash
