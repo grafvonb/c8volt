@@ -1,27 +1,34 @@
 ---
-title: "c8volt version"
+title: "c8volt capabilities"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt version
+## c8volt capabilities
 
-Print version information
+Describe machine-readable CLI capabilities
 
 ### Synopsis
 
-Print version information.
+Describe the machine-readable c8volt command surface for automation.
+Use this command to discover command paths, flags, output modes, mutation behavior, and contract support without scraping prose help.
 
-Default output stays compact for human use. Use --json when automation needs the shared result envelope and version metadata fields.
+Prefer `c8volt capabilities --json` when driving the CLI from AI agents, scripts, or CI. The human-facing command taxonomy and help output remain unchanged; this command is the repository-native discovery surface for automation.
 
 ```
-c8volt version [flags]
+c8volt capabilities [flags]
+```
+
+### Examples
+
+```
+  ./c8volt capabilities --json
 ```
 
 ### Options
 
 ```
-  -h, --help   help for version
+  -h, --help   help for capabilities
 ```
 
 ### Options inherited from parent commands

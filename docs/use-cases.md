@@ -97,7 +97,7 @@ The main difference is outcome verification. `c8volt` is designed to wait, walk 
 
 ### Does c8volt work well in scripts and CI?
 
-Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`, `--auto-confirm`, `--workers`, `--quiet`, and `--no-wait` where appropriate.
+Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`, `--auto-confirm`, `--workers`, `--quiet`, and `--no-wait` where appropriate. For machine discovery, use `c8volt capabilities --json`; for supported command families, `--json` returns the shared result envelope without changing the normal human-facing command structure.
 
 ## Where to go next
 

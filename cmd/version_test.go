@@ -8,16 +8,12 @@ import (
 )
 
 func TestCurrentBuildInfoIncludesSupportedCamundaVersions(t *testing.T) {
-	t.Parallel()
-
 	info := CurrentBuildInfo()
 
 	require.Equal(t, "8.7, 8.8, 8.9", info.SupportedCamundaVersions)
 }
 
 func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
-	t.Parallel()
-
 	output := executeRootForTest(t, "version", "--json")
 
 	var envelope struct {
@@ -30,4 +26,13 @@ func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 	require.Equal(t, "version", envelope.Command)
 	payload := envelope.Payload
 	require.Equal(t, "8.7, 8.8, 8.9", payload["supportedCamundaVersions"])
+}
+
+func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
+	output := executeRootForTest(t, "version")
+
+	require.Contains(t, output, "c8volt ")
+	require.Contains(t, output, "camunda: 8.7, 8.8, 8.9")
+	require.NotContains(t, output, `"outcome"`)
+	require.NotContains(t, output, `"command"`)
 }

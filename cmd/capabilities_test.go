@@ -54,8 +54,8 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	}
 	require.Equal(t, "get process-instance", processInstanceCapability.Path)
 	require.Contains(t, processInstanceCapability.OutputModes, OutputModeContract{
-		Name:      "json",
-		Supported: true,
+		Name:             "json",
+		Supported:        true,
 		MachinePreferred: true,
 	})
 	require.Contains(t, processInstanceCapability.OutputModes, OutputModeContract{
@@ -67,8 +67,8 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.NotEmpty(t, runCapability.Children)
 	require.Equal(t, ContractSupportFull, runCapability.Children[0].ContractSupport)
 	require.Contains(t, runCapability.Children[0].OutputModes, OutputModeContract{
-		Name:      "json",
-		Supported: true,
+		Name:             "json",
+		Supported:        true,
 		MachinePreferred: true,
 	})
 }
@@ -91,6 +91,14 @@ func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, "walk", walkCapability.Path)
 	require.Equal(t, ContractSupportLimited, walkCapability.ContractSupport)
 	require.Equal(t, CommandMutationReadOnly, walkCapability.Mutation)
+}
+
+func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--help")
+
+	require.Contains(t, output, "machine-readable c8volt command surface for automation")
+	require.Contains(t, output, "c8volt capabilities --json")
+	require.Contains(t, output, "human-facing command taxonomy and help output remain unchanged")
 }
 
 func TestResultEnvelopeForError_UsesSharedOutcomeMapping(t *testing.T) {

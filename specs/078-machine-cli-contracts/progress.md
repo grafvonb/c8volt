@@ -8,6 +8,7 @@ Started: 2026-04-17 18:14:53
 - Root-level machine metadata should be derived from the existing Cobra command tree and persistent flag definitions in `cmd/root.go`, not from generated docs or a parallel registry.
 - Shared machine-readable rendering should extend the existing `pickMode` / `itemView` / `listOrJSON` seams in `cmd/` and keep current public payload models intact.
 - Generated docs anchors for CLI behavior come from Cobra metadata and `README.md`; feature research should record doc targets, but implementation should update source metadata first and regenerate output afterward.
+- Human-facing CLI guidance should stay in Cobra `Long`/`Example` strings and `README.md`, then flow into generated `docs/cli/` and `docs/index.md` through `make docs` and `make docs-content` instead of hand-editing generated pages.
 - Shared discovery metadata can live on Cobra command annotations and be computed from the live command tree, which keeps command paths, inherited flags, and contract support in one repository-native source of truth.
 - Foundational machine-result helpers should stay in `cmd/` while `c8volt/ferrors` only exposes the bounded failure-to-outcome mapping needed to preserve exit-code authority.
 
@@ -144,4 +145,44 @@ Started: 2026-04-17 18:14:53
 - The shared envelope can stay honest and incremental by living at the `cmd/` render boundary while reusing existing domain payload models and `ferrors.ResolveExitCode` for process-level authority.
 - `--no-wait` semantics map cleanly to `accepted` when the command already returns a repository-native payload, while read-only JSON flows can adopt `succeeded` without changing their underlying item/list render helpers.
 - Process-instance search actions needed accumulated reporter data to make paged cancel/delete JSON output truthful for machine consumers instead of only covering direct-key flows.
+---
+
+## Iteration 5 - 2026-04-17 18:54:15 CEST
+**User Story**: User Story 3 - Keep Human CLI Behavior Intact
+**Tasks Completed**:
+- [x] T019: Add compatibility regression tests that prove plain-text and keys-only behavior remain intact for representative commands
+- [x] T020: Add discovery/help-text regression coverage for the new top-level command and unchanged CLI taxonomy
+- [x] T021: Update machine-contract and automation guidance in README and docs content
+- [x] T022: Update Cobra help text for the discovery command and affected machine-readable guidance
+- [x] T023: Regenerate generated CLI reference output from the updated Cobra command metadata
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/capabilities.go
+- cmd/capabilities_test.go
+- cmd/get_resource.go
+- cmd/get_test.go
+- cmd/root.go
+- cmd/root_test.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- cmd/version.go
+- cmd/version_test.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- docs/cli/c8volt.md
+- docs/cli/c8volt_capabilities.md
+- docs/cli/c8volt_get_resource.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/cli/c8volt_version.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- docs/use-cases.md
+- specs/078-machine-cli-contracts/progress.md
+- specs/078-machine-cli-contracts/tasks.md
+**Learnings**:
+- The version command tests cannot use `t.Parallel()` because the shared Cobra root and flag reset helpers mutate global command state under `-race`.
+- User-facing automation guidance is safest when it reinforces the new machine contract without changing default plain-text or `--keys-only` behavior for existing operator flows.
+- Generated CLI reference coverage for new top-level commands comes entirely from Cobra metadata, so adding help text plus `make docs` is sufficient to publish them.
 ---

@@ -166,6 +166,29 @@ func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	require.NotContains(t, string(output), "get 2251799813685255")
 }
 
+func TestWalkProcessInstanceCommand_DefaultOutputRemainsHumanReadable(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "2251799813685255",
+		"--children",
+	)
+
+	require.Contains(t, output, "2251799813685255")
+	require.NotContains(t, output, `"outcome"`)
+	require.NotContains(t, output, `"command"`)
+}
+
 // Helper-process entrypoint for invalid walk-mode validation.
 func TestWalkProcessInstanceCommand_RejectsInvalidModeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {

@@ -168,6 +168,28 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	require.EqualValues(t, 1, payload["total"])
 }
 
+func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","state":"ACTIVE","tenantId":"<default>","variables":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--no-wait",
+	)
+
+	require.NotContains(t, output, `"outcome"`)
+	require.NotContains(t, output, `"command"`)
+}
+
 // Helper-process entrypoint for mutually-exclusive definition-flag validation.
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {

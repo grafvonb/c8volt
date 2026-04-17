@@ -76,8 +76,8 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
 	require.Equal(t, ContractSupportFull, runPI.ContractSupport)
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
-		Name:      "json",
-		Supported: true,
+		Name:             "json",
+		Supported:        true,
 		MachinePreferred: true,
 	})
 }
@@ -88,6 +88,7 @@ func TestGetResourceHelp(t *testing.T) {
 
 	require.Contains(t, output, "Get a single resource by id")
 	require.Contains(t, output, "c8volt get resource")
+	require.Contains(t, output, "Default output stays human-oriented")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
 }
@@ -252,6 +253,31 @@ func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
 
 	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
 	require.NotContains(t, output, "Deprecated:")
+}
+
+func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "resource", "--id", "resource-id-123")
+
+	require.Contains(t, output, "resource-id-123")
+	require.NotContains(t, output, `"outcome"`)
+	require.NotContains(t, output, `"command"`)
 }
 
 // Verifies nested `get cluster license` succeeds with required license fields.

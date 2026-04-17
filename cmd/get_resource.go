@@ -15,7 +15,8 @@ var getResourceCmd = &cobra.Command{
 	Use:   "resource",
 	Short: "Get a resource by id",
 	Long: "Get a single resource by id.\n" +
-		"It requires --id to select exactly one resource and renders the standard single-resource view.",
+		"It requires --id to select exactly one resource and renders the standard single-resource view.\n\n" +
+		"Default output stays human-oriented. Use --json for the shared machine-readable result envelope or --keys-only when chaining ids into other commands.",
 	Example: `  ./c8volt get resource --id resource-id-123
   ./c8volt --json get resource --id resource-id-123
   ./c8volt --keys-only get resource --id resource-id-123`,

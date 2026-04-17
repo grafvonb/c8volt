@@ -39,6 +39,8 @@ func buildYear() int {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
+	Long: "Print version information.\n\n" +
+		"Default output stays compact for human use. Use --json when automation needs the shared result envelope and version metadata fields.",
 	Run: func(cmd *cobra.Command, args []string) {
 		info := CurrentBuildInfo()
 		if flagViewAsJson {
