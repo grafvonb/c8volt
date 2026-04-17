@@ -89,14 +89,17 @@ const (
 	contractVersionAnnotation = "machine-contract/version"
 )
 
+// setCapabilityDocumentVersion stores the discovery document version on the root command.
 func setCapabilityDocumentVersion(cmd *cobra.Command, version string) {
 	ensureCommandAnnotations(cmd)[contractVersionAnnotation] = version
 }
 
+// setCommandMutation records whether a command reads state or changes it.
 func setCommandMutation(cmd *cobra.Command, mutation CommandMutation) {
 	ensureCommandAnnotations(cmd)[commandMutationAnnotation] = string(mutation)
 }
 
+// commandMutationForCommand resolves the effective mutation classification for discovery output.
 func commandMutationForCommand(cmd *cobra.Command) CommandMutation {
 	if cmd == nil {
 		return CommandMutationReadOnly
@@ -116,10 +119,12 @@ func commandMutationForCommand(cmd *cobra.Command) CommandMutation {
 	}
 }
 
+// setContractSupport records how fully a command implements the shared machine contract.
 func setContractSupport(cmd *cobra.Command, support ContractSupport) {
 	ensureCommandAnnotations(cmd)[contractSupportAnnotation] = string(support)
 }
 
+// contractSupportForCommand resolves a command's support level, including inherited limited support from children.
 func contractSupportForCommand(cmd *cobra.Command) ContractSupport {
 	if cmd == nil {
 		return ContractSupportUnsupported
@@ -138,6 +143,7 @@ func contractSupportForCommand(cmd *cobra.Command) ContractSupport {
 	return ContractSupportUnsupported
 }
 
+// setOutputModes stores explicit output-mode metadata for commands that need custom discovery reporting.
 func setOutputModes(cmd *cobra.Command, modes ...OutputModeContract) {
 	if cmd == nil {
 		return
@@ -149,6 +155,7 @@ func setOutputModes(cmd *cobra.Command, modes ...OutputModeContract) {
 	ensureCommandAnnotations(cmd)[outputModesAnnotation] = strings.Join(parts, ",")
 }
 
+// outputModesForCommand returns explicit or inferred output modes for discovery consumers.
 func outputModesForCommand(cmd *cobra.Command) []OutputModeContract {
 	if cmd == nil {
 		return nil
@@ -184,6 +191,7 @@ func outputModesForCommand(cmd *cobra.Command) []OutputModeContract {
 	return modes
 }
 
+// capabilityDocumentForRoot builds the top-level discovery document from the live Cobra tree.
 func capabilityDocumentForRoot(root *cobra.Command) CapabilityDocument {
 	version := defaultContractVersion
 	if root != nil {
@@ -209,6 +217,7 @@ func capabilityDocumentForRoot(root *cobra.Command) CapabilityDocument {
 	}
 }
 
+// commandCapabilityForCommand converts one Cobra command and its discoverable children into capability metadata.
 func commandCapabilityForCommand(cmd *cobra.Command) CommandCapability {
 	children := make([]CommandCapability, 0)
 	for _, child := range cmd.Commands() {
@@ -230,6 +239,7 @@ func commandCapabilityForCommand(cmd *cobra.Command) CommandCapability {
 	}
 }
 
+// flagContractsForCommand serializes visible flags into machine-readable flag metadata.
 func flagContractsForCommand(cmd *cobra.Command) []FlagContract {
 	if cmd == nil {
 		return nil
@@ -257,6 +267,7 @@ func flagContractsForCommand(cmd *cobra.Command) []FlagContract {
 	return flags
 }
 
+// commandPath returns the command path without the root binary name.
 func commandPath(cmd *cobra.Command) string {
 	if cmd == nil {
 		return ""
@@ -269,6 +280,7 @@ func commandPath(cmd *cobra.Command) string {
 	return strings.TrimSpace(strings.TrimPrefix(path, root))
 }
 
+// isDiscoverableCommand filters out hidden and shell-internal commands from capability output.
 func isDiscoverableCommand(cmd *cobra.Command) bool {
 	if cmd == nil || cmd.Hidden {
 		return false
@@ -279,10 +291,12 @@ func isDiscoverableCommand(cmd *cobra.Command) bool {
 	return cmd.Name() != "help"
 }
 
+// hasFlag reports whether a command exposes a given flag after Cobra inheritance is applied.
 func hasFlag(cmd *cobra.Command, name string) bool {
 	return cmd != nil && cmd.Flags().Lookup(name) != nil
 }
 
+// isRequiredFlag reports whether Cobra marks a flag as required.
 func isRequiredFlag(flag *pflag.Flag) bool {
 	if flag == nil || flag.Annotations == nil {
 		return false
@@ -291,6 +305,7 @@ func isRequiredFlag(flag *pflag.Flag) bool {
 	return ok
 }
 
+// isRepeatedFlagType identifies flag types that can appear multiple times in one invocation.
 func isRepeatedFlagType(flagType string) bool {
 	switch flagType {
 	case "stringSlice", "stringArray", "intSlice", "durationSlice":
@@ -300,6 +315,7 @@ func isRepeatedFlagType(flagType string) bool {
 	}
 }
 
+// ensureCommandAnnotations lazily creates the annotation map used for machine-contract metadata.
 func ensureCommandAnnotations(cmd *cobra.Command) map[string]string {
 	if cmd.Annotations == nil {
 		cmd.Annotations = make(map[string]string)
@@ -307,6 +323,7 @@ func ensureCommandAnnotations(cmd *cobra.Command) map[string]string {
 	return cmd.Annotations
 }
 
+// encodeOutputMode flattens one output-mode contract into a compact annotation string.
 func encodeOutputMode(mode OutputModeContract) string {
 	parts := []string{mode.Name}
 	if mode.Supported {
@@ -323,6 +340,7 @@ func encodeOutputMode(mode OutputModeContract) string {
 	return strings.Join(parts, "|")
 }
 
+// decodeOutputModes expands stored annotation text back into output-mode contract values.
 func decodeOutputModes(raw string) []OutputModeContract {
 	if strings.TrimSpace(raw) == "" {
 		return nil

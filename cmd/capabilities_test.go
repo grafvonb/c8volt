@@ -32,7 +32,7 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportLimited, capabilitiesCapability.ContractSupport)
 	require.Equal(t, []OutputModeContract{
 		{Name: "json", Supported: true, MachinePreferred: true, Notes: "canonical discovery format"},
-		{Name: "one-line", Supported: false, Notes: "use JSON discovery output"},
+		{Name: "one-line", Supported: true, Notes: "human-readable summary"},
 	}, capabilitiesCapability.OutputModes)
 
 	require.Equal(t, "get", getCapability.Path)
@@ -98,7 +98,17 @@ func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.
 
 	require.Contains(t, output, "machine-readable c8volt command surface for automation")
 	require.Contains(t, output, "c8volt capabilities --json")
-	require.Contains(t, output, "human-facing command taxonomy and help output remain unchanged")
+	require.Contains(t, output, "plain output summarizes the command surface for humans")
+}
+
+func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {
+	output := executeRootForTest(t, "capabilities")
+
+	require.Contains(t, output, "Machine-readable CLI capabilities")
+	require.Contains(t, output, "Use --json for the canonical automation contract.")
+	require.Contains(t, output, "- capabilities [read_only, limited] modes: json, one-line")
+	require.Contains(t, output, "- get [read_only, limited] modes: one-line, json, keys-only")
+	require.NotContains(t, output, "\"command\":\"capabilities\"")
 }
 
 func TestResultEnvelopeForError_UsesSharedOutcomeMapping(t *testing.T) {
