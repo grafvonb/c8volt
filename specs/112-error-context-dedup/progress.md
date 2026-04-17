@@ -148,3 +148,19 @@ Started: 2026-04-17 15:38:09
 - The remaining non-not-found duplication seam lived in shared cluster helpers that repeated the same fetch-stage wording already owned by the CLI command layer.
 - Removing the inner cluster fetch wrapper keeps exit-code and normalized-prefix behavior stable because `ferrors` still classifies the domain error the same way; only the wrapped detail chain became shorter.
 ---
+
+## Iteration 6 - 2026-04-17 16:09 CEST
+**User Story**: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T021 Review whether user-facing docs need wording updates; no `README.md` or `docs/index.md` changes were required because the final audit found no user-facing docs depending on the old duplicated wording
+- [x] T022 Run focused validation with `go test ./c8volt/ferrors -count=1`, `go test ./internal/services/processinstance/... -count=1`, and `go test ./cmd -count=1`
+- [x] T023 Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/112-error-context-dedup/tasks.md
+- specs/112-error-context-dedup/progress.md
+**Learnings**:
+- The doc review remained a no-op because repository-facing documentation describes command behavior and examples, not the previously duplicated internal error prose.
+- The focused test gates and `make test` repository gate both passed without requiring any follow-up fixes, so the shipped behavior and final audit state are aligned.
+---
