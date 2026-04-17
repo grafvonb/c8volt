@@ -37,6 +37,13 @@ func PrepareServiceDeps(cfg *config.Config, httpClient *http.Client, log *slog.L
 	return ServiceDeps{Config: cfg, HTTPClient: httpClient, Logger: log}, nil
 }
 
+func EffectiveTenant(cfg *config.Config) string {
+	if cfg == nil {
+		return ""
+	}
+	return cfg.App.Tenant
+}
+
 func EnsureLoggerAndClients(logger *slog.Logger, clients ...interface{}) (*slog.Logger, error) {
 	if logger == nil {
 		logger = slog.Default()

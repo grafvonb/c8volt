@@ -193,6 +193,55 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
 }
 
+func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
+			assert.Equal(t, int32(2), size)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstance{
+				{Key: "2251799813711967", State: d.StateActive, TenantId: "tenant-a"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	pi, err := cli.LookupProcessInstance(ctx, "2251799813711967", options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, StateActive, pi.State)
+	assert.Equal(t, "tenant-a", pi.TenantId)
+}
+
+func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
+			assert.Equal(t, int32(2), size)
+			return []d.ProcessInstance{
+				{Key: "2251799813711967", State: d.StateCompleted, TenantId: "tenant-a"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, "2251799813711967")
+
+	require.NoError(t, err)
+	assert.Equal(t, StateCompleted, report.State)
+	assert.Equal(t, "COMPLETED", report.Status)
+	assert.Equal(t, "2251799813711967", report.Key)
+	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, StateCompleted, pi.State)
+}
+
 func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *testing.T) {
 	t.Parallel()
 

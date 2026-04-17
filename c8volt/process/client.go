@@ -66,6 +66,23 @@ func (c *client) GetProcessInstance(ctx context.Context, key string, opts ...opt
 	return fromDomainProcessInstance(pi), nil
 }
 
+func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
+	pi, err := pisvc.LookupProcessInstance(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessInstance{}, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstance(pi), nil
+}
+
+func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
+	got, pi, err := pisvc.LookupProcessInstanceStateByKey(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	pgot, _ := ParseState(got.String())
+	if err != nil {
+		return StateReport{State: pgot}, ProcessInstance{}, ferr.FromDomain(err)
+	}
+	return StateReport{State: pgot, Status: got.String(), Key: pi.Key}, fromDomainProcessInstance(pi), nil
+}
+
 func (c *client) CreateProcessInstance(ctx context.Context, data ProcessInstanceData, opts ...options.FacadeOption) (ProcessInstance, error) {
 	pic, err := c.piApi.CreateProcessInstance(ctx, toProcessInstanceData(data), options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {

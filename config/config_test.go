@@ -241,6 +241,81 @@ profiles:
 	require.Equal(t, "http://env.example.test/v2", cfg.APIs.Camunda.BaseURL)
 }
 
+func TestResolveEffectiveConfig_EnvTenantOverridesProfileAndBaseConfig(t *testing.T) {
+	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
+
+	v := viper.New()
+	v.SetEnvPrefix("c8volt")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.AutomaticEnv()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+active_profile: dev
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`))
+	require.NoError(t, err)
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		HasEnvConfigByKey,
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, "env-tenant", cfg.App.Tenant)
+	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+func TestResolveEffectiveConfig_ProfileTenantOverridesBaseConfigWhenNoHigherPrecedenceSource(t *testing.T) {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+active_profile: dev
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`))
+	require.NoError(t, err)
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		func(string) bool { return false },
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, "profile-tenant", cfg.App.Tenant)
+	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
 func TestResolveEffectiveConfig_CriticalBaselineSettingsShareOneContract(t *testing.T) {
 	t.Setenv("C8VOLT_ACTIVE_PROFILE", "prod")
 	t.Setenv("C8VOLT_AUTH_MODE", "oauth2")

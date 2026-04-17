@@ -122,6 +122,87 @@ profiles:
 	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestRetrieveAndNormalizeConfig_EnvironmentTenantWinsWhenRootFlagIsUnset(t *testing.T) {
+	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
+
+	cfgPath := writeRawTestConfig(t, `active_profile: base
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`)
+
+	cfg := resolveCommandConfigForTest(t, getCmd, cfgPath, nil)
+
+	require.Equal(t, "dev", cfg.ActiveProfile)
+	require.Equal(t, "env-tenant", cfg.App.Tenant)
+	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+func TestRetrieveAndNormalizeConfig_ProfileTenantWinsWhenFlagAndEnvAreUnset(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `active_profile: base
+app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    app:
+      tenant: profile-tenant
+    apis:
+      camunda_api:
+        base_url: http://profile.example.test
+`)
+
+	cfg := resolveCommandConfigForTest(t, walkCmd, cfgPath, nil)
+
+	require.Equal(t, "dev", cfg.ActiveProfile)
+	require.Equal(t, "profile-tenant", cfg.App.Tenant)
+	require.Equal(t, "http://profile.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
+func TestRetrieveAndNormalizeConfig_BaseConfigTenantWinsWhenNoHigherPrecedenceSourceExists(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  tenant: base-tenant
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+`)
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+	require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
+
+	v := viper.New()
+	bindings, err := initViper(v, root)
+	require.NoError(t, err)
+
+	cfg, err := retrieveAndNormalizeConfig(v, bindings)
+	require.NoError(t, err)
+
+	require.Empty(t, cfg.ActiveProfile)
+	require.Equal(t, "base-tenant", cfg.App.Tenant)
+	require.Equal(t, "http://base.example.test/v2", cfg.APIs.Camunda.BaseURL)
+}
+
 // Verifies the critical baseline settings resolve identically across the audited command surface.
 func TestRetrieveAndNormalizeConfig_CriticalBaselineSettingsStayAlignedAcrossCommands(t *testing.T) {
 	t.Setenv("C8VOLT_ACTIVE_PROFILE", "ignored-env-profile")
