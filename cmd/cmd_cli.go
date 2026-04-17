@@ -41,6 +41,9 @@ func handleNewCliError(cmd *cobra.Command, log *slog.Logger, cfg *config.Config,
 		return
 	}
 
+	// This helper owns runtime context only. Shared classification and final
+	// rendering stay inside ferrors so command bootstrapping does not grow a
+	// parallel error-composition path.
 	noErrCodes := false
 	if cfg != nil {
 		noErrCodes = cfg.App.NoErrCodes

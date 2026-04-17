@@ -29,9 +29,9 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T004 Define the authoritative prefix-preserving dedup contract and breadcrumb-shortening rules in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/contracts/cli-error-rendering.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/data-model.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/plan.md
-- [ ] T005 Keep shared classification and exit behavior fixed while tightening helper expectations in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_cli.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_errors.go
-- [ ] T006 [P] Add foundational regression coverage for unchanged shared classification and exit behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/bootstrap_errors_test.go
+- [x] T004 Define the authoritative prefix-preserving dedup contract and breadcrumb-shortening rules in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/contracts/cli-error-rendering.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/data-model.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/plan.md
+- [x] T005 Keep shared classification and exit behavior fixed while tightening helper expectations in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_cli.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_errors.go
+- [x] T006 [P] Add foundational regression coverage for unchanged shared classification and exit behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/ferrors/errors_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/bootstrap_errors_test.go
 
 **Checkpoint**: The repository has one explicit rendering contract, and shared classification/exit behavior is protected before story-specific cleanup starts.
 

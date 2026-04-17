@@ -147,3 +147,25 @@ func TestWrapClassPreservesExistingClassification(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidInput)
 	require.Equal(t, ClassInvalidInput, Classify(err))
 }
+
+func TestNormalizeKeepsAlreadyNormalizedDetailStable(t *testing.T) {
+	t.Parallel()
+
+	err := WrapClass(ErrNotFound, errors.New("get 123: process instance 123 not found"))
+	got := Normalize(err)
+
+	require.Equal(t, "resource not found: get 123: process instance 123 not found", got.Error())
+	require.ErrorIs(t, got, ErrNotFound)
+	require.Equal(t, ClassNotFound, Classify(got))
+	require.Equal(t, exitcode.NotFound, ExitCode(got))
+}
+
+func TestWrapClassPreservesWrappedDetailText(t *testing.T) {
+	t.Parallel()
+
+	err := WrapClass(ErrUnsupported, errors.New("render topology: feature disabled by server"))
+
+	require.Equal(t, "unsupported capability: render topology: feature disabled by server", err.Error())
+	require.ErrorIs(t, err, ErrUnsupported)
+	require.Equal(t, ClassUnsupported, Classify(err))
+}

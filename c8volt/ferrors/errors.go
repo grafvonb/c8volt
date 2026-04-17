@@ -108,7 +108,9 @@ func NormalizeLocal(err error) error {
 	}
 }
 
-// Normalize is the shared CLI normalization entry point used before rendering or exit-code resolution.
+// Normalize is the shared CLI normalization entry point used before rendering or
+// exit-code resolution. It classifies failures but intentionally preserves the
+// wrapped detail text; upstream wrappers own message deduplication.
 func Normalize(err error) error {
 	if err == nil {
 		return nil
@@ -124,7 +126,8 @@ func Normalize(err error) error {
 	return wrap(ErrInternal, err)
 }
 
-// WrapClass applies a shared CLI failure class without changing the wrapped error text.
+// WrapClass applies a shared CLI failure class without changing the wrapped
+// error text. It must not become a second message-composition layer.
 func WrapClass(classErr error, err error) error {
 	return wrap(classErr, err)
 }

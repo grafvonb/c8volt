@@ -126,6 +126,7 @@ Design artifacts are captured in:
 - [contracts/cli-error-rendering.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/112-error-context-dedup/contracts/cli-error-rendering.md)
 
 - Keep `c8volt/ferrors/errors.go` unchanged as the classification and exit-code boundary; the rendered prefix remains the shared class error already selected by normalization.
+- Keep the shared helper seams explicit: `ferrors.Normalize`, `ferrors.WrapClass`, `cmd.normalizeCommandError`, `cmd.normalizeBootstrapError`, and the `handle*Error` helpers may classify, select exit behavior, and supply logger context, but they must not become a second message-dedup layer.
 - Introduce one repository-native error-composition contract for affected wrappers: wrappers may add stage breadcrumbs, may shorten breadcrumb wording when meaning stays equivalent, but must not restate the same root failure detail or class meaning multiple times.
 - Treat duplication by pattern family, not by one command at a time: process-instance lookup/traversal, process-instance mutation/wait flows, single-resource fetch commands, and simple transport fetch wrappers are planned as separate regression families.
 - Prefer the smallest local change at each seam: if the lower layer already produces the root failure detail, upper layers should contribute only stage context and let `ferrors` render the class prefix once.
@@ -136,6 +137,7 @@ Design artifacts are captured in:
 | Concern | Required design contract |
 |--------|---------------------------|
 | Shared class prefix | Preserve the existing normalized prefix such as `resource not found:` or `unsupported capability:` |
+| Shared helper boundary | Preserve current class-selection and exit-code behavior in `ferrors` and command/bootstrap helpers; dedup remains an upstream wrapper concern |
 | Breadcrumb context | Keep concise stage breadcrumbs in order; shortening is allowed only when the same stage remains identifiable |
 | Root failure detail | Render the root resource or operation failure once in the final message |
 | Cross-class behavior | Apply the same prefix-preserving dedup rule to other shared error classes when the duplication pattern is otherwise the same |

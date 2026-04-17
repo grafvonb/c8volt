@@ -12,6 +12,18 @@ All affected CLI failures must preserve the existing normalized error-class pref
 
 This feature must not change the class-selection or exit-code contract.
 
+## Helper Boundary Contract
+
+The shared helper boundary for this feature is intentionally narrow.
+
+| Helper seam | Required behavior |
+|-------------|-------------------|
+| `c8volt/ferrors.Normalize` and `WrapClass` | Keep owning only shared classification, prefix rendering, and exit-code inputs; they must not rewrite or deduplicate wrapped detail text |
+| `cmd.normalizeCommandError` and `cmd.normalizeBootstrapError` | Map known command/bootstrap sentinels to shared classes, then defer to `ferrors` for all remaining normalization |
+| `cmd.handleNewCliError` and `cmd.handleBootstrapError` | Resolve logger and `noErrCodes` context, then render through `ferrors.HandleAndExit` without adding another message-composition layer |
+
+These helpers are not allowed to introduce a second dedup system. Story-specific cleanup must happen in the upstream command, helper, and service wrappers that compose the breadcrumb chain.
+
 ## Breadcrumb Contract
 
 | Rule | Required behavior |
@@ -28,6 +40,7 @@ This feature must not change the class-selection or exit-code contract.
 | Single root detail | The final rendered error includes the underlying root failure detail once |
 | Identifier deduplication | Repeated identifiers should be removed when they do not add new context |
 | Cross-class rule | The same single-root-detail contract applies to matching non-not-found error classes |
+| Helper ownership | Shared helpers preserve the wrapped detail as-is; upstream wrappers own whether the detail is already concise enough |
 
 ## Scope Contract
 
