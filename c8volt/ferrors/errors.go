@@ -10,6 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // Class is the bounded machine-facing classification for CLI failures.
@@ -96,6 +97,8 @@ func NormalizeLocal(err error) error {
 		errors.Is(err, services.ErrNoLogger):
 		return wrap(ErrLocalPrecondition, err)
 	case errors.Is(err, services.ErrUnknownAPIVersion):
+		return wrap(ErrUnsupported, err)
+	case errors.Is(err, toolx.ErrUnknownCamundaVersion):
 		return wrap(ErrUnsupported, err)
 	case errors.Is(err, context.Canceled),
 		errors.Is(err, ErrFailedFast):

@@ -17,6 +17,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRootCommand_V89SupportMessagingIsUpdated(t *testing.T) {
+	t.Parallel()
+
+	root := Root()
+
+	require.Contains(t, root.Long, "Camunda 8.7, 8.8, and 8.9")
+	require.NotContains(t, root.Long, "version 8.9 is recognized by config normalization")
+	require.Contains(t, root.PersistentFlags().Lookup("camunda-version").Usage, toolx.SupportedCamundaVersionsString())
+}
+
 // Verifies NewCli maps missing bootstrap context to the shared local-precondition error class.
 func TestNewCliNormalizesMissingBootstrapContext(t *testing.T) {
 	cmd := &cobra.Command{}
@@ -27,11 +37,16 @@ func TestNewCliNormalizesMissingBootstrapContext(t *testing.T) {
 	require.Equal(t, ferrors.ClassLocalPrecondition, ferrors.Classify(err))
 }
 
-// Verifies NewCli maps unsupported client construction to the shared unsupported error class.
-func TestNewCliNormalizesUnsupportedClientConstruction(t *testing.T) {
+// Verifies NewCli now constructs a v8.9-backed client instead of rejecting the version at bootstrap.
+func TestNewCliConstructsSupportedV89Client(t *testing.T) {
 	cfg := &config.Config{
 		App: config.App{
 			CamundaVersion: toolx.V89,
+		},
+		APIs: config.APIs{
+			Camunda: config.API{
+				BaseURL: "http://127.0.0.1:1",
+			},
 		},
 		HTTP: config.HTTP{
 			Timeout: "30s",
@@ -45,9 +60,9 @@ func TestNewCliNormalizesUnsupportedClientConstruction(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetContext(httpSvc.ToContext(ctx))
 
-	_, _, _, err = NewCli(cmd)
-	require.Error(t, err)
-	require.Equal(t, ferrors.ClassUnsupported, ferrors.Classify(err))
+	_, _, cli, err := NewCli(cmd)
+	require.NoError(t, err)
+	require.NotNil(t, cli)
 }
 
 // Verifies execute-time config validation failures use the shared failure model and exit behavior.
@@ -75,11 +90,11 @@ auth:
 	require.Contains(t, string(output), "local precondition failed: normalize config:")
 }
 
-// Verifies unsupported API versions are surfaced through the shared unsupported-capability failure model.
-func TestExecute_UnsupportedVersionUsesSharedFailureModel(t *testing.T) {
+// Verifies v8.9 command execution now proceeds past bootstrap and surfaces downstream runtime failures normally.
+func TestExecute_V89RuntimeFailuresUseSharedFailureModel(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_UnsupportedVersionUsesSharedFailureModelHelper")
+	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_V89RuntimeFailuresUseSharedFailureModelHelper")
 	cmd.Env = append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",
 		"C8VOLT_TEST_CONFIG="+cfgPath,
@@ -91,8 +106,8 @@ func TestExecute_UnsupportedVersionUsesSharedFailureModel(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "unsupported capability")
-	require.Contains(t, string(output), "unknown API version")
+	require.Contains(t, string(output), "internal error")
+	require.Contains(t, string(output), "error fetching topology")
 }
 
 // Verifies an explicit --config path wins over default search-path config discovery.
@@ -222,8 +237,8 @@ func TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper(t *testing.
 	Execute()
 }
 
-// Helper-process entrypoint for unsupported-version failure normalization coverage.
-func TestExecute_UnsupportedVersionUsesSharedFailureModelHelper(t *testing.T) {
+// Helper-process entrypoint for v8.9 runtime-failure normalization coverage.
+func TestExecute_V89RuntimeFailuresUseSharedFailureModelHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}

@@ -20,6 +20,17 @@ func TestAppNormalize_DefaultsProcessInstancePageSize(t *testing.T) {
 	require.Equal(t, int32(consts.MaxPISearchSize), app.ProcessInstancePageSize)
 }
 
+func TestAppNormalize_DefaultsMissingCamundaVersionToCurrentVersion(t *testing.T) {
+	t.Parallel()
+
+	app := &App{}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.Equal(t, toolx.CurrentCamundaVersion, app.CamundaVersion)
+}
+
 func TestAppNormalize_PreservesPositiveProcessInstancePageSize(t *testing.T) {
 	t.Parallel()
 
@@ -74,6 +85,16 @@ func TestAppNormalize_PreservesExplicitTenantForV87(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "tenant-a", app.Tenant)
+}
+
+func TestAppNormalize_RejectsUnsupportedCamundaVersion(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: "9.9"}
+
+	err := app.Normalize()
+
+	require.ErrorContains(t, err, "version: unknown Camunda version: 9.9")
 }
 
 func TestAppNormalizeWithConfiguredKeys_PreservesExplicitEmptyTenantForV87(t *testing.T) {

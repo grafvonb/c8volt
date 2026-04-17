@@ -35,6 +35,16 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "resource")
 }
 
+// Verifies root help advertises the finalized v8.9 runtime support contract.
+func TestRootHelp_V89SupportMessaging(t *testing.T) {
+	output := executeRootForTest(t, "--help")
+
+	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
+	require.Contains(t, output, "same repository command-family coverage on 8.9 that already")
+	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
+	require.NotContains(t, output, "does not yet have a process-instance service implementation")
+}
+
 // Verifies `get resource --help` documents required id-based lookup usage.
 func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
@@ -304,6 +314,58 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
 	require.Contains(t, string(output), "error fetching topology")
+}
+
+func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T) {
+	t.Run("cluster topology", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"brokers":[],"clusterSize":1,"gatewayVersion":"8.9.0","partitionsCount":1,"replicationFactor":1,"lastCompletedChangeId":""}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
+
+		require.Contains(t, output, "8.9.0")
+	})
+
+	t.Run("process definition lookup", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"2251799813685255","processDefinitionName":"order-process","processDefinitionVersion":3,"processDefinitionVersionTag":"stable","tenantId":"tenant"}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "process-definition", "--key", "2251799813685255")
+
+		require.Contains(t, output, "order-process")
+		require.Contains(t, output, "2251799813685255")
+	})
+
+	t.Run("resource lookup", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"resourceId":"resource-id-123","resourceKey":"resource-key-123","resourceName":"order-process.bpmn","version":2,"tenantId":"tenant"}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "resource", "--id", "resource-id-123")
+
+		require.Contains(t, output, "resource-id-123")
+		require.Contains(t, output, "k:resource-key-123")
+	})
 }
 
 // Verifies legacy cluster-topology HTTP failures map to unavailable exit behavior.

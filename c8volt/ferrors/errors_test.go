@@ -8,6 +8,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,6 +78,13 @@ func TestNormalizeLocal(t *testing.T) {
 		{
 			name:      "unknown version becomes unsupported",
 			err:       services.ErrUnknownAPIVersion,
+			wantIs:    ErrUnsupported,
+			wantClass: ClassUnsupported,
+			wantCode:  exitcode.Error,
+		},
+		{
+			name:      "unknown configured camunda version becomes unsupported",
+			err:       toolx.ErrUnknownCamundaVersion,
 			wantIs:    ErrUnsupported,
 			wantClass: ClassUnsupported,
 			wantCode:  exitcode.Error,

@@ -219,6 +219,25 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
+func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "2251799813711967",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, "2251799813711967", filter["processInstanceKey"])
+	require.Contains(t, output, `"key": "2251799813711967"`)
+}
+
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.
 func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	t.Run("start date command coverage", func(t *testing.T) {
@@ -782,6 +801,11 @@ func resetProcessInstanceCommandGlobals() {
 	flagCancelPIKeys = nil
 	flagDeletePIKeys = nil
 	flagGetPIKeys = nil
+	flagRunPIProcessDefinitionBpmnProcessIds = nil
+	flagRunPIProcessDefinitionKey = nil
+	flagRunPIProcessDefinitionVersion = 0
+	flagRunPICount = 1
+	flagRunPIVars = ""
 	flagGetPIBpmnProcessID = ""
 	flagGetPIProcessVersion = 0
 	flagGetPIProcessVersionTag = ""

@@ -7,6 +7,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	v87 "github.com/grafvonb/c8volt/internal/services/resource/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/resource/v88"
+	v89 "github.com/grafvonb/c8volt/internal/services/resource/v89"
 )
 
 type API interface {
@@ -19,3 +20,4 @@ type API interface {
 // resource service surface while the internals are refactored.
 var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
+var _ API = (v89.API)(nil)

@@ -229,6 +229,57 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *testing.T) {
+	var requests []string
+	var deleted []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			var searchBody map[string]any
+			require.NoError(t, json.Unmarshal(body, &searchBody))
+			filter, _ := searchBody["filter"].(map[string]any)
+			key, _ := filter["processInstanceKey"].(string)
+			parentKey, _ := filter["parentProcessInstanceKey"].(string)
+
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case key == "2251799813711967":
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813711967","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			case parentKey == "2251799813711967":
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/2251799813711967/deletion":
+			deleted = append(deleted, r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"delete", "process-instance",
+		"--key", "2251799813711967",
+		"--no-wait",
+	)
+
+	require.NotEmpty(t, requests)
+	require.Equal(t, []string{"/v2/process-instances/2251799813711967/deletion"}, deleted)
+	require.Contains(t, requests[0], `"processInstanceKey":"2251799813711967"`)
+	require.Contains(t, requests[len(requests)-1], `"parentProcessInstanceKey":"2251799813711967"`)
+	require.Empty(t, output)
+}
+
 // Verifies delete no-ops successfully when a date-filtered search returns no process instances.
 func TestDeleteProcessInstanceCommand_FailsWhenDateFilteredSearchFindsNoMatches(t *testing.T) {
 	var requests []string

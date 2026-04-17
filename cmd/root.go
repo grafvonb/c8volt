@@ -68,8 +68,9 @@ waiting for state transitions, walking process trees, cancelling safely, and del
 
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
-is implemented for Camunda 8.7 and 8.8; version 8.9 is recognized by config normalization but
-does not yet have a process-instance service implementation in this repository.
+is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned service
+factories and facades, with the same repository command-family coverage on 8.9 that already
+exists on 8.8.
 
 Refer to the documentation at https://c8volt.info for more information.`,
 	CompletionOptions: cobra.CompletionOptions{
