@@ -289,7 +289,8 @@ func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching cluster license")
+	require.Contains(t, string(output), "get cluster license")
+	require.NotContains(t, string(output), "error fetching cluster license")
 }
 
 // Verifies nested cluster topology HTTP failures map to unavailable exit behavior.
@@ -313,7 +314,8 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching topology")
+	require.Contains(t, string(output), "get cluster topology")
+	require.NotContains(t, string(output), "error fetching topology")
 }
 
 func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T) {
@@ -389,7 +391,8 @@ func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching topology")
+	require.Contains(t, string(output), "get cluster topology")
+	require.NotContains(t, string(output), "error fetching topology")
 	require.NotContains(t, string(output), "Deprecated:")
 }
 
@@ -414,7 +417,8 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching cluster license")
+	require.Contains(t, string(output), "get cluster license")
+	require.NotContains(t, string(output), "error fetching cluster license")
 	require.Contains(t, string(output), "malformed response")
 }
 
@@ -581,7 +585,9 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching resource by id missing-resource")
+	require.Contains(t, string(output), "get resource")
+	require.Contains(t, string(output), "resource not found")
+	require.NotContains(t, string(output), "error fetching resource by id missing-resource")
 }
 
 // Verifies `--no-err-codes` preserves failure output while returning success exit status.
@@ -604,7 +610,8 @@ func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t 
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err)
 	require.Contains(t, string(output), "resource not found")
-	require.Contains(t, string(output), "error fetching resource by id missing-resource")
+	require.Contains(t, string(output), "get resource")
+	require.NotContains(t, string(output), "error fetching resource by id missing-resource")
 }
 
 // Verifies resource command rejects missing `--id` input.
@@ -717,8 +724,9 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching resource by id resource-id-123")
+	require.Contains(t, string(output), "get resource")
 	require.Contains(t, string(output), "malformed response")
+	require.NotContains(t, string(output), "error fetching resource by id resource-id-123")
 }
 
 // Verifies gateway timeout responses map to timeout exit behavior.
@@ -745,7 +753,8 @@ func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Timeout, exitErr.ExitCode())
 	require.Contains(t, string(output), "operation timed out")
-	require.Contains(t, string(output), "error fetching resource by id timeout-resource")
+	require.Contains(t, string(output), "get resource")
+	require.NotContains(t, string(output), "error fetching resource by id timeout-resource")
 }
 
 // Verifies XML mode requires `--key` to target a single process definition.
@@ -811,7 +820,8 @@ func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
-	require.Contains(t, string(output), "error fetching process definition xml by key 2251799813685255")
+	require.Contains(t, string(output), "get process definition xml")
+	require.NotContains(t, string(output), "error fetching process definition xml by key 2251799813685255")
 	require.NotContains(t, string(output), "<definitions")
 }
 

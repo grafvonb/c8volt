@@ -59,7 +59,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 	log.Debug(fmt.Sprintf("fetching process definition xml by key: %s", filter.Key))
 	xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error fetching process definition xml by key %s: %w", filter.Key, err))
+		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition xml: %w", err))
 	}
 	if _, err := io.WriteString(cmd.OutOrStdout(), xml); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error writing process definition xml: %w", err))
@@ -70,7 +70,7 @@ func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.
 	log.Debug(fmt.Sprintf("searching by key: %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error fetching process definition by key %s: %w", key, err))
+		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition: %w", err))
 	}
 	if err := processDefinitionView(cmd, pd); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering key-only view: %w", err))
@@ -90,7 +90,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 		pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter, collectOptions()...)
 	}
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error fetching process definition(s): %w", err))
+		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("search process definitions: %w", err))
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering items view: %w", err))

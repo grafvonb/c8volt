@@ -222,7 +222,8 @@ func TestService_GetProcessInstance(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrNotFound)
-		assert.Contains(t, err.Error(), "fetching process instance with key 123")
+		assert.Contains(t, err.Error(), "get process instance")
+		assert.NotContains(t, err.Error(), "fetching process instance with key 123")
 	})
 }
 
@@ -554,7 +555,9 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrMalformedResponse)
-		assert.Contains(t, err.Error(), "fetching process instance with key 123")
+		assert.Contains(t, err.Error(), "get process instance state")
+		assert.Contains(t, err.Error(), "get process instance")
+		assert.NotContains(t, err.Error(), "fetching process instance with key 123")
 	})
 
 	t.Run("WrongTenantLooksLikeNotFound", func(t *testing.T) {
@@ -574,7 +577,9 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrNotFound)
-		assert.Contains(t, err.Error(), "fetching process instance with key 123")
+		assert.Contains(t, err.Error(), "get process instance state")
+		assert.Contains(t, err.Error(), "get process instance")
+		assert.NotContains(t, err.Error(), "fetching process instance with key 123")
 	})
 }
 

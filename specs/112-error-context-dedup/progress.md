@@ -8,6 +8,7 @@ Started: 2026-04-17 15:38:09
 - Wrapper ownership should stay at the CLI-facing seam: `ferrors` owns shared class prefixes and exit behavior, while command/service wrappers own breadcrumb context and must not restate the same root detail.
 - Process-instance duplication clusters around walker breadcrumbs (`get %s`, `list children of %s`, `ancestry fetch`) plus versioned service wrappers such as `fetching process instance with key %s` and `waiting for ... failed`.
 - Existing regression anchors already map cleanly by pattern family: `walk` for traversal, `cancel` and `delete` for mutation/wait flows, `get` for single-resource fetch wrappers, and `c8volt/ferrors` plus bootstrap tests for unchanged class and exit behavior.
+- The lowest-risk dedup change is to shorten wrappers to stage-only breadcrumbs such as `get process instance`, `cancel wait`, or `get cluster topology`; this preserves ordering while leaving the deepest normalized failure detail intact.
 
 ---
 
@@ -52,4 +53,40 @@ Started: 2026-04-17 15:38:09
 **Learnings**:
 - The foundational contract is now explicit that `ferrors` and the command/bootstrap helpers own class selection, prefix rendering, and exit behavior only; later dedup work must stay in upstream wrappers.
 - Locking normalized-error stability in focused tests gives later story work room to shorten breadcrumbs and remove duplicate detail text without accidentally moving the shared error boundary.
+---
+
+## Iteration 3 - 2026-04-17 15:55 CEST
+**User Story**: User Story 1 - Keep CLI failures readable
+**Tasks Completed**:
+- [x] T007 Add traversal-family regression tests in `cmd/walk_test.go` and `internal/services/processinstance/walker/walker_test.go`
+- [x] T008 Add mutation-family regression tests in `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v87/service_test.go`, and `internal/services/processinstance/v88/service_test.go`
+- [x] T009 Add single-resource fetch regression tests in `cmd/get_test.go` and related `get_*` command tests
+- [x] T010 Refactor lookup and traversal wrappers in `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T011 Refactor mutation and wait follow-up wrappers in the versioned process-instance services and aligned wait-facing seams
+- [x] T012 Sweep representative CLI fetch and orchestration wrappers in `cmd/get_*` commands and `c8volt/resource/client.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/resource/client.go
+- cmd/bootstrap_errors_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- cmd/get_cluster_license.go
+- cmd/get_cluster_topology.go
+- cmd/get_processdefinition.go
+- cmd/get_resource.go
+- cmd/get_test.go
+- cmd/walk_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/walker/walker.go
+- internal/services/processinstance/walker/walker_test.go
+- specs/112-error-context-dedup/tasks.md
+- specs/112-error-context-dedup/progress.md
+**Learnings**:
+- Command-level regressions are important here because some process-instance flows fail during key-validation orchestration before reaching the obvious cancel/delete service entrypoints.
+- Short stage-only breadcrumbs are enough to keep failures diagnosable once the deepest layer already owns the resource-specific detail.
 ---

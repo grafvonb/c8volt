@@ -46,7 +46,7 @@ func runGetResourceByID(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, no
 	log.Debug(fmt.Sprintf("fetching resource by id: %s", id))
 	resource, err := cli.GetResource(cmd.Context(), id, collectOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error fetching resource by id %s: %w", id, err))
+		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get resource: %w", err))
 	}
 	if err := resourceView(cmd, resource); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering resource view: %w", err))

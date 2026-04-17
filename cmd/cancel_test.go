@@ -605,6 +605,27 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	require.Equal(t, []string{"/v2/process-instances/301/cancellation"}, cancelled.Snapshot())
 }
 
+func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper", cfgPath)
+
+	require.Equal(t, exitcode.NotFound, code)
+	require.Contains(t, output, "resource not found")
+	require.Contains(t, output, "validating process instance keys for cancellation")
+	require.Contains(t, output, "ancestry get")
+	require.Contains(t, output, "get process instance")
+	require.NotContains(t, output, "fetching process instance with key")
+}
+
 // Verifies invalid --state values are rejected through the shared invalid-args error path.
 func TestCancelProcessInstanceCommand_RejectsInvalidSearchState(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -887,6 +908,19 @@ func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper(t *te
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--bpmn-process-id", "order-process", "--start-date-newer-days", "30"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "cancel", "process-instance", "--key", "301", "--no-wait"}
 
 	Execute()
 }

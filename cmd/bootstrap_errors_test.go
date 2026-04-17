@@ -107,7 +107,7 @@ func TestExecute_V89RuntimeFailuresUseSharedFailureModel(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "internal error")
-	require.Contains(t, string(output), "error fetching topology")
+	require.Contains(t, string(output), "get cluster topology")
 }
 
 // Verifies an explicit --config path wins over default search-path config discovery.

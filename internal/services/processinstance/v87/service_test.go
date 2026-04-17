@@ -534,7 +534,7 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.expectedError)
-				assert.Contains(t, err.Error(), "fetching process instance with key")
+				assert.Contains(t, err.Error(), "get process instance state")
 				if errors.Is(tt.expectedError, d.ErrUnsupported) {
 					assert.Contains(t, err.Error(), "process-instance state lookup by key is not tenant-safe in Camunda 8.7")
 				}
