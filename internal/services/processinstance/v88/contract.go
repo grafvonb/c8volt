@@ -30,7 +30,6 @@ type API interface {
 
 type GenProcessInstanceClientCamunda interface {
 	CancelProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error)
-	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error)
 	CreateProcessInstanceWithResponse(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error)
 	SearchProcessInstancesWithResponse(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error)
 }

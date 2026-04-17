@@ -64,6 +64,15 @@
   - Cover only changed code paths: rejected by clarification because every tenant-aware command family needs explicit regression proof.
   - Collapse non-flag tenant sources into one “derived tenant” case: rejected because issue `#107` already demonstrated source-specific propagation bugs.
 
+## Decision 9: Freeze the unsupported-version boundary at the operation level before code changes
+
+- **Decision**: Treat the current repository boundary as an operation matrix, not as a blanket version toggle: `v8.8` should converge on tenant-safe search-backed lookup semantics for direct-get-adjacent flows, `v8.7` should keep only the segments that can stay tenant-safe through existing upstream calls, and `v8.9` remains audit-only until a repository-native service exists.
+- **Rationale**: The shared API refactor needs one authoritative contract before interface changes start. Without an operation-level boundary, later code could over-block all of `v8.7`, leave unsafe `v8.8` direct-key seams in place, or accidentally imply that `8.9` is supported at runtime when the factory still stops at `v88`.
+- **Alternatives considered**:
+  - Defer the boundary definition until implementation: rejected because the shared API refactor would otherwise encode assumptions ad hoc.
+  - Treat `v8.8` as already correct because tenant filtering exists on search: rejected because direct get and state-check seams still look unscoped.
+  - Treat `v8.9` as implicitly supported because `toolx` normalizes it: rejected because the factory and tests still restrict runtime support to `v87` and `v88`.
+
 ## Audit Inventory: Current Tenant-Sensitive Seams
 
 ### Shared bootstrap and config seam
@@ -91,6 +100,13 @@
 - [`toolx/version.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/toolx/version.go) normalizes `8.7`, `8.8`, and `8.9`, but `SupportedCamundaVersions()` still returns only `8.7` and `8.8`.
 - [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go) matches that support surface exactly by constructing only `v87.New(...)` and `v88.New(...)`; all other normalized values fail through `services.ErrUnknownAPIVersion`.
 - [`internal/services/processinstance/factory_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory_test.go) already locks that behavior in with concrete-type assertions for `v87` and `v88` and an unsupported-version assertion that expects the rendered version to normalize to `"unknown"`.
+
+### Authoritative unsupported-version boundary for this feature
+
+- `v8.8` is the preferred tenant-safe baseline, but direct get and state-by-key must not remain authoritative if they cannot carry tenant scope; those paths need search-backed or equivalent tenant-safe behavior before they count as supported.
+- `v8.7` may keep search-backed tenant-safe flows such as filtered search and child lookup built on that search path, but any direct-get-dependent segment that cannot be made tenant-safe must surface an explicit unsupported outcome at that exact seam.
+- Walker, waiter, cancel, and delete inherit the contract of the lookup and state-check methods they compose, so unsupported behavior must be assigned per composed segment rather than per command family.
+- `v8.9` is audited only for parity and documentation in this feature; no runtime-support claim is valid until `internal/services/processinstance/factory.go` and companion tests admit a real `v89` implementation.
 
 ### Mixed-flow helpers
 

@@ -46,15 +46,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add `v88` service tests for tenant-safe direct lookup and supported wrong-tenant `not found` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
-- [ ] T009 [P] [US1] Add `v87` service tests for supported direct-lookup cases and explicit unsupported outcomes where tenant-safe retrieval is impossible in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
-- [ ] T010 [P] [US1] Add command regression tests for direct process-instance lookup with explicit `--tenant`, environment-derived tenant, profile-derived tenant, and base-config-derived tenant in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
+- [x] T008 [P] [US1] Add `v88` service tests for tenant-safe direct lookup and supported wrong-tenant `not found` behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
+- [x] T009 [P] [US1] Add `v87` service tests for supported direct-lookup cases and explicit unsupported outcomes where tenant-safe retrieval is impossible in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
+- [x] T010 [P] [US1] Add command regression tests for direct process-instance lookup with explicit `--tenant`, environment-derived tenant, profile-derived tenant, and base-config-derived tenant in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement tenant-safe direct lookup and state lookup behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go
-- [ ] T012 [US1] Audit and narrow `v87` direct lookup behavior to supported tenant-safe cases plus exact unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go
-- [ ] T013 [US1] Normalize facade and command handling for tenant-safe `not found` and unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
+- [x] T011 [US1] Implement tenant-safe direct lookup and state lookup behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/contract.go
+- [x] T012 [US1] Audit and narrow `v87` direct lookup behavior to supported tenant-safe cases plus exact unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/contract.go
+- [x] T013 [US1] Normalize facade and command handling for tenant-safe `not found` and unsupported outcomes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
 
 **Checkpoint**: User Story 1 is independently testable: direct tenant-aware lookups are safe, supported wrong-tenant requests resolve as `not found`, and unsafe `v87` segments fail explicitly.
 

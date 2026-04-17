@@ -131,20 +131,11 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	oldKey, err := processInstanceKeyInt64(key)
+	_, err := processInstanceKeyInt64(key)
 	if err != nil {
 		return d.ProcessInstance{}, err
 	}
-	s.log.Debug(fmt.Sprintf("fetching process instance with key %d", oldKey))
-	resp, err := s.co.GetProcessInstanceByKeyWithResponse(ctx, oldKey)
-	if err != nil {
-		return d.ProcessInstance{}, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return d.ProcessInstance{}, err
-	}
-	return fromProcessInstanceResponse(*payload), nil
+	return d.ProcessInstance{}, fmt.Errorf("%w: process-instance direct lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
@@ -352,21 +343,11 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("checking state of process instance with key %s", key))
-	oldKey, err := processInstanceKeyInt64(key)
+	_, err := processInstanceKeyInt64(key)
 	if err != nil {
 		return "", d.ProcessInstance{}, err
 	}
-	pi, err := s.co.GetProcessInstanceByKeyWithResponse(ctx, oldKey)
-	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
-	}
-	payload, err := common.RequirePayload(pi.HTTPResponse, pi.Body, pi.JSON200)
-	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
-	}
-	st := d.State(*payload.State)
-	s.log.Debug(fmt.Sprintf("process instance with key %s is in state %s", key, st))
-	return st, fromProcessInstanceResponse(*payload), nil
+	return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, fmt.Errorf("%w: process-instance state lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported))
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {

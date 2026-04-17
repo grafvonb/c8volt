@@ -567,6 +567,49 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 	require.Contains(t, output, "resource lookup requires a non-empty --id")
 }
 
+func TestGetProcessInstanceKeyLookup_WrongTenantLooksLikeNotFound(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceKeyLookupWrongTenantHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
+	require.Len(t, requests, 1)
+	require.Contains(t, string(output), "resource not found")
+	require.Contains(t, string(output), "error fetching 1 process instances")
+}
+
+func TestGetProcessInstanceKeyLookup_V87ReportsUnsupported(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.7
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceKeyLookupUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
+}
+
 // Verifies whitespace-only `--id` failures exit through invalid-args handling.
 func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -873,6 +916,32 @@ func TestGetProcessDefinitionXMLCommand_FailureHelper(t *testing.T) {
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+// Helper-process entrypoint for tenant-safe keyed process-instance not-found coverage.
+func TestGetProcessInstanceKeyLookupWrongTenantHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--key", "123"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for unsupported v8.7 keyed process-instance lookup coverage.
+func TestGetProcessInstanceKeyLookupUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123"}
+
+	Execute()
 }
 
 func executeRootForTest(t *testing.T, args ...string) string {

@@ -59,11 +59,7 @@ func (c *client) GetProcessDefinitionXML(ctx context.Context, key string, opts .
 }
 
 func (c *client) GetProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
-	pi, err := c.piApi.GetProcessInstance(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessInstance{}, ferr.FromDomain(err)
-	}
-	return fromDomainProcessInstance(pi), nil
+	return c.LookupProcessInstance(ctx, key, opts...)
 }
 
 func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
