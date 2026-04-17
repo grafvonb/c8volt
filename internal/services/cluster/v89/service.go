@@ -1,11 +1,15 @@
 package v89
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	clustercommon "github.com/grafvonb/c8volt/internal/services/cluster/common"
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
@@ -59,4 +63,34 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	}
 	s.log = logger
 	return s, nil
+}
+
+func (s *Service) GetClusterTopology(ctx context.Context, opts ...services.CallOption) (d.Topology, error) {
+	return clustercommon.GetClusterTopology(ctx, s.log, s.cfg.APIs.Camunda.BaseURL, opts, func(ctx context.Context) (clustercommon.PayloadResponse[camundav89.TopologyResponse], error) {
+		resp, err := s.c.GetTopologyWithResponse(ctx)
+		if resp == nil || err != nil {
+			return clustercommon.PayloadResponse[camundav89.TopologyResponse]{Received: resp != nil}, err
+		}
+		return clustercommon.PayloadResponse[camundav89.TopologyResponse]{
+			Received:     true,
+			HTTPResponse: resp.HTTPResponse,
+			Body:         resp.Body,
+			Payload:      resp.JSON200,
+		}, nil
+	}, fromTopologyResponse)
+}
+
+func (s *Service) GetClusterLicense(ctx context.Context, opts ...services.CallOption) (d.License, error) {
+	return clustercommon.GetClusterLicense(ctx, s.log, s.cfg.APIs.Camunda.BaseURL, opts, func(ctx context.Context) (clustercommon.PayloadResponse[camundav89.LicenseResponse], error) {
+		resp, err := s.c.GetLicenseWithResponse(ctx)
+		if resp == nil || err != nil {
+			return clustercommon.PayloadResponse[camundav89.LicenseResponse]{Received: resp != nil}, err
+		}
+		return clustercommon.PayloadResponse[camundav89.LicenseResponse]{
+			Received:     true,
+			HTTPResponse: resp.HTTPResponse,
+			Body:         resp.Body,
+			Payload:      resp.JSON200,
+		}, nil
+	}, fromLicenseResponse)
 }

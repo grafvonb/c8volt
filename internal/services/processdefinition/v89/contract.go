@@ -2,6 +2,7 @@ package v89
 
 import (
 	"context"
+	"io"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -18,7 +19,7 @@ type API interface {
 type GenProcessDefinitionClientCamunda interface {
 	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error)
 	GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionXMLResponse, error)
-	SearchProcessDefinitionsWithResponse(ctx context.Context, body camundav89.SearchProcessDefinitionsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessDefinitionsResponse, error)
+	SearchProcessDefinitionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessDefinitionsResponse, error)
 	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body camundav89.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionStatisticsResponse, error)
 }
 

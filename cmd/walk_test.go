@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -62,6 +64,50 @@ profiles:
 	})
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "2251799813685256")
+}
+
+func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *testing.T) {
+	var requests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		var searchBody map[string]any
+		require.NoError(t, json.Unmarshal(body, &searchBody))
+		filter, _ := searchBody["filter"].(map[string]any)
+		key, _ := filter["processInstanceKey"].(string)
+		parentKey, _ := filter["parentProcessInstanceKey"].(string)
+
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case key == "2251799813685255":
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case parentKey == "2251799813685255":
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685256","parentProcessInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case parentKey == "2251799813685256":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected search body: %s", string(body))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "2251799813685255",
+		"--children",
+	)
+
+	require.Len(t, requests, 3)
+	require.Contains(t, output, "2251799813685256")
 }
 
 // Verifies walk process-instance rejects unsupported --mode values.

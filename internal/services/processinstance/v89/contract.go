@@ -2,6 +2,7 @@ package v89
 
 import (
 	"context"
+	"io"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -32,7 +33,7 @@ type GenProcessInstanceClientCamunda interface {
 	CreateProcessInstanceWithResponse(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error)
 	DeleteProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav89.ProcessInstanceKey, body camundav89.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteProcessInstanceResponse, error)
 	GetProcessInstanceWithResponse(ctx context.Context, processInstanceKey camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error)
-	SearchProcessInstancesWithResponse(ctx context.Context, body camundav89.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error)
+	SearchProcessInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error)
 }
 
 var _ GenProcessInstanceClientCamunda = (*camundav89.ClientWithResponses)(nil)

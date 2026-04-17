@@ -11,6 +11,111 @@ Started: 2026-04-17 08:42:48
 - When the repository needs to advertise a broader supported-version contract before every factory implements it, keep separate helper surfaces for contract support versus runtime-implemented versions so factory error text stays truthful during incremental rollout.
 - When top-level client support lags behind advertised version support, lock the behavior with a `c8volt.New(...)` regression test so the first failing factory remains the only version gate and commands do not grow their own branching.
 - When a new versioned service family is not wired yet, add constructor-only `v89` package scaffolds plus interface-level `api.go` assertions first; this preserves package shape and generated-client contracts without falsely claiming runtime support.
+- Camunda `v89` search endpoints can diverge from their generated typed aliases; when the generated request/response types flatten away required `filter`/`sort` or `items` fields, stay on the generated client boundary by using its raw-body `WithBodyWithResponse` method and decode the real JSON envelope locally in the service.
+- Resource `v89` deploy/get/delete behavior can mirror `v88` directly, including deployment confirmation polling through the version-local process-definition client, because the generated Camunda `v89` resource and definition endpoints retain the same response contracts.
+- Process-instance `v89` search has the same generated alias gap as process-definition `v89`: typed search bodies lose `filter` and `sort`, and typed `JSON200` omits `items`, so the service needs a version-local raw-body request/response wrapper while still staying on the generated `v89` Camunda client boundary.
+- Camunda `v89` single-instance deletion uses the generated `/process-instances/{key}/deletion` POST operation rather than the older `DELETE /v1/process-instances/{key}` seam, so command proof tests should assert the generated-client endpoint shape directly.
+- In-process command tests that touch `run` flags must reset the shared `flagRunPI*` globals alongside the process-instance search flags, otherwise later tests can inherit stale selector state and fail with false mutually-exclusive-flag errors.
+- Deploy command tests that set `StringSlice` file flags should prefer the existing subprocess helper pattern over the generic in-process root executor, because Cobra can round-trip the shared default as a literal `[]` when the tree is reset in-process.
+
+---
+
+## Iteration 8 - 2026-04-17 09:41 CEST
+**User Story**: User Story 1 - Run Existing Commands on v8.9
+**Tasks Completed**:
+- [x] T011: Add native `v89` service tests for process-instance create/get/search/cancel/delete/wait behavior
+- [x] T012: Add explicit `v8.9` command execution tests for cluster, process-definition/resource, and process-instance command families
+- [x] T016: Wire the new `v89` services through the shared client and process/resource facades
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/client_test.go
+- cmd/bootstrap_errors_test.go
+- cmd/delete_test.go
+- cmd/deploy_test.go
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- cmd/run_test.go
+- cmd/walk_test.go
+- specs/110-camunda-v89-support/tasks.md
+- specs/110-camunda-v89-support/progress.md
+**Learnings**:
+- Native `v89` command proof is easiest to keep honest by asserting the exact generated Camunda endpoint seams per family, especially the search-backed process-instance lookups and the `/deletion` process-instance delete operation.
+- `c8volt.New(...)` plus one process facade call and one resource facade call is enough to prove the shared client wiring now reaches the `v89` runtime path without reintroducing command-local version branching.
+- User Story 1 now passes the required validation bar with `go test ./internal/services/processinstance/... -count=1`, `go test ./c8volt ./cmd -count=1`, and `make test`.
+---
+
+## Iteration 7 - 2026-04-17 09:27 CEST
+**User Story**: Partial progress on User Story 1 - Run Existing Commands on v8.9
+**Tasks Completed**:
+- [x] T015: Implement the native `v89` process-instance service and factory selection
+**Tasks Remaining in Story**: 3
+**Commit**: No commit - partial progress
+**Files Changed**:
+- c8volt/client_test.go
+- internal/services/processinstance/factory.go
+- internal/services/processinstance/factory_test.go
+- internal/services/processinstance/v89/bulk.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/convert.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/v89/service_test.go
+- specs/110-camunda-v89-support/tasks.md
+- specs/110-camunda-v89-support/progress.md
+**Learnings**:
+- Final native `v89` process-instance behavior can keep the tenant-safe lookup model by staying search-backed for key/state reads, while cancel/delete/walker/waiter compose on top of that shared lookup seam.
+- Camunda `v89` delete semantics can stay repository-compatible without the old Operate dependency: recursive child deletion, conflict-on-active handling, optional cancel-first retry, and absent-state waiting all work on the `v89` Camunda boundary.
+- Focused validation for this slice passes with `go test ./c8volt ./internal/services/processinstance ./internal/services/processinstance/... -count=1`.
+---
+
+## Iteration 6 - 2026-04-17 09:52 CEST
+**User Story**: Partial progress on User Story 1 - Run Existing Commands on v8.9
+**Tasks Completed**:
+- [x] T010: Add native `v89` service tests for resource deploy/get/delete behavior
+- [x] T014: Implement native `v89` resource service plus factory selection
+**Tasks Remaining in Story**: 4
+**Commit**: No commit - partial progress
+**Files Changed**:
+- internal/services/resource/factory.go
+- internal/services/resource/factory_test.go
+- internal/services/resource/v89/contract.go
+- internal/services/resource/v89/convert.go
+- internal/services/resource/v89/service.go
+- internal/services/resource/v89/service_test.go
+- specs/110-camunda-v89-support/tasks.md
+- specs/110-camunda-v89-support/progress.md
+**Learnings**:
+- The generated Camunda `v89` resource endpoints preserve the same deploy/get/delete response contracts as `v88`, so the native service can reuse the existing repository patterns without fallback.
+- Deployment confirmation for resources should stay aligned with the `v89` process-definition client rather than reaching across versions, which keeps the final native path on the required `v89` Camunda client boundary.
+- Focused validation for this slice passes with `go test ./internal/services/resource/... -count=1`.
+---
+
+## Iteration 5 - 2026-04-17 09:10 CEST
+**User Story**: Partial progress on User Story 1 - Run Existing Commands on v8.9
+**Tasks Completed**:
+- [x] T008: Add native `v89` service tests for cluster topology/license behavior
+- [x] T009: Add native `v89` service tests for process-definition search/get/XML/statistics behavior
+- [x] T013: Implement native `v89` cluster and process-definition services plus factory selection
+**Tasks Remaining in Story**: 6
+**Commit**: No commit - partial progress
+**Files Changed**:
+- internal/services/cluster/factory.go
+- internal/services/cluster/factory_test.go
+- internal/services/cluster/v89/convert.go
+- internal/services/cluster/v89/service.go
+- internal/services/cluster/v89/service_test.go
+- internal/services/processdefinition/factory.go
+- internal/services/processdefinition/factory_test.go
+- internal/services/processdefinition/v89/contract.go
+- internal/services/processdefinition/v89/convert.go
+- internal/services/processdefinition/v89/service.go
+- internal/services/processdefinition/v89/service_test.go
+- specs/110-camunda-v89-support/tasks.md
+- specs/110-camunda-v89-support/progress.md
+**Learnings**:
+- Native `v89` cluster support mirrors `v88` directly, so the main work there is converter parity plus factory routing and regression proof.
+- `processdefinition/v89` cannot reuse the `v88` typed search request path because the generated `v89` aliases drop the search `filter`/`sort` fields and the typed search response omits `items`; local JSON envelopes on top of the generated raw-body method preserve the repository contract without leaving the `v89` client boundary.
+- Focused validation for this slice passes with `go test ./internal/services/cluster/... ./internal/services/processdefinition/... -count=1`.
 
 ---
 

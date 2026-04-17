@@ -21,4 +21,9 @@ type GenResourceClientCamunda interface {
 	GetResourceWithResponse(ctx context.Context, resourceKey camundav89.ResourceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error)
 }
 
+type GenProcessDefinitionClientCamunda interface {
+	GetProcessDefinitionWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error)
+}
+
 var _ GenResourceClientCamunda = (*camundav89.ClientWithResponses)(nil)
+var _ GenProcessDefinitionClientCamunda = (*camundav89.ClientWithResponses)(nil)

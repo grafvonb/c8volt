@@ -109,6 +109,38 @@ func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T)
 	require.True(t, sawRun)
 }
 
+func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
+	var sawDeploy bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			require.Equal(t, "order-process.bpmn", r.MultipartForm.File["resources"][0].Filename)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-123","tenantId":"<default>","deployments":[{"processDefinition":{"processDefinitionId":"order-process","processDefinitionKey":"2251799813685255","processDefinitionVersion":3,"resourceName":"order-process.bpmn","tenantId":"<default>"}}]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	bpmnPath := writeTempFile(t, "order-process.bpmn", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:process id="order-process" isExecutable="true" />
+</bpmn:definitions>`))
+
+	output, err := testx.RunCmdSubprocess(t, "TestDeployProcessDefinitionCommand_V89NoWaitHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":    cfgPath,
+		"C8VOLT_TEST_BPMN_PATH": bpmnPath,
+	})
+
+	require.NoError(t, err, string(output))
+	require.True(t, sawDeploy)
+	require.Contains(t, string(output), "2251799813685255")
+}
+
 func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -135,6 +167,23 @@ func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfigHe
 	root.SetArgs([]string{
 		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
 		"--tenant", "flag-tenant",
+		"deploy", "process-definition",
+		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeployProcessDefinitionCommand_V89NoWaitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
 		"deploy", "process-definition",
 		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
 		"--no-wait",

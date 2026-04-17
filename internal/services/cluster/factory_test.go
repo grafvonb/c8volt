@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/cluster"
 	v87 "github.com/grafvonb/c8volt/internal/services/cluster/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/cluster/v88"
+	v89 "github.com/grafvonb/c8volt/internal/services/cluster/v89"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
@@ -45,6 +46,13 @@ func TestFactory_SupportedVersions(t *testing.T) {
 				require.IsType(t, &v88.Service{}, svc)
 			},
 		},
+		{
+			name:    "v89",
+			version: toolx.V89,
+			assert: func(t *testing.T, svc cluster.API) {
+				require.IsType(t, &v89.Service{}, svc)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -59,19 +67,6 @@ func TestFactory_SupportedVersions(t *testing.T) {
 			tt.assert(t, svc)
 		})
 	}
-}
-
-func TestFactory_V89IsAdvertisedButNotYetRuntimeSupported(t *testing.T) {
-	cfg := testConfig()
-	cfg.App.CamundaVersion = toolx.V89
-
-	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
-
-	require.Error(t, err)
-	require.Nil(t, svc)
-	require.ErrorIs(t, err, services.ErrUnknownAPIVersion)
-	require.Contains(t, err.Error(), "\"8.9\"")
-	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
 }
 
 func TestFactory_UnknownVersion(t *testing.T) {

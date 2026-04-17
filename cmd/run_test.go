@@ -115,6 +115,35 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 	require.Contains(t, string(output), "running process instance(s)")
 }
 
+func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
+	var sawRun bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances", r.URL.Path)
+		sawRun = true
+		defer r.Body.Close()
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "order-process", body["processDefinitionId"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","tenantId":"<default>","variables":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--no-wait",
+	)
+
+	require.True(t, sawRun)
+	require.Empty(t, output)
+}
+
 // Helper-process entrypoint for mutually-exclusive definition-flag validation.
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
