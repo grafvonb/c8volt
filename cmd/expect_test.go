@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,6 +40,24 @@ func TestExpectProcessInstanceCommand_RejectsInvalidStates(t *testing.T) {
 	require.Contains(t, string(output), "error parsing states")
 }
 
+func TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelope(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelopeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(output, &got))
+	require.Equal(t, string(OutcomeInvalid), got["outcome"])
+	require.Equal(t, "expect process-instance", got["command"])
+}
+
 // Helper-process entrypoint for invalid expect-state validation.
 func TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -46,6 +66,18 @@ func TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper(t *testing.T) {
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--key", "2251799813685255", "--state", "broken"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelopeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--key", "2251799813685255", "--state", "broken"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

@@ -46,7 +46,8 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &got))
-	require.NotContains(t, got, "error")
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
 }
 
 func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
@@ -66,7 +67,9 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	require.NotEmpty(t, requests)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &got))
-	meta, ok := got["meta"].(map[string]any)
+	payload, ok := got["payload"].(map[string]any)
+	require.True(t, ok)
+	meta, ok := payload["meta"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, true, meta["withAge"])
 }

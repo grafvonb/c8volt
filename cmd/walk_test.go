@@ -102,13 +102,20 @@ func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--json",
 		"walk", "process-instance",
 		"--key", "2251799813685255",
 		"--children",
 	)
 
 	require.Len(t, requests, 3)
-	require.Contains(t, output, "2251799813685256")
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "walk process-instance", got["command"])
+	payload, ok := got["payload"].([]any)
+	require.True(t, ok)
+	require.Len(t, payload, 2)
 }
 
 // Verifies walk process-instance rejects unsupported --mode values.

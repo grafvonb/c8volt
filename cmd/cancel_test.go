@@ -592,9 +592,10 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
-	_ = executeRootForProcessInstanceTest(t,
+	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
+		"--json",
 		"cancel", "process-instance",
 		"--key", "301",
 		"--no-wait",
@@ -604,6 +605,10 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
 	require.Empty(t, pages)
 	require.Equal(t, []string{"/v2/process-instances/301/cancellation"}, cancelled.Snapshot())
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	require.Equal(t, "cancel process-instance", got["command"])
 }
 
 func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {

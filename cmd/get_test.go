@@ -72,12 +72,13 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 		}
 	}
 
-	require.Equal(t, ContractSupportLimited, getPI.ContractSupport)
-	require.Equal(t, ContractSupportUnsupported, runPI.ContractSupport)
+	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
+	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
+	require.Equal(t, ContractSupportFull, runPI.ContractSupport)
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
 		Name:      "json",
-		Supported: false,
-		Notes:     "shared result envelope not wired yet",
+		Supported: true,
+		MachinePreferred: true,
 	})
 }
 
@@ -630,6 +631,32 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
+		http.Error(w, "missing", http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_JSONFailureUsesEnvelopeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(output, &got))
+	require.Equal(t, string(OutcomeFailed), got["outcome"])
+	require.Equal(t, "get resource", got["command"])
+	require.Equal(t, "not_found", got["class"])
+}
+
 // Verifies `--no-err-codes` preserves failure output while returning success exit status.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -957,6 +984,19 @@ func TestGetResourceCommand_FailureHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "missing-resource"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetResourceCommand_JSONFailureUsesEnvelopeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "resource", "--id", "missing-resource"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

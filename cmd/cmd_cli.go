@@ -55,7 +55,7 @@ func handleNewCliError(cmd *cobra.Command, log *slog.Logger, cfg *config.Config,
 		noErrCodes = fallbackNoErrCodes
 	}
 
-	ferrors.HandleAndExit(log, noErrCodes, err)
+	handleCommandError(cmd, log, noErrCodes, err)
 }
 
 func confirmCmdOrAbort(autoConfirm bool, prompt string) error {

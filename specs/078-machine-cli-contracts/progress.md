@@ -99,3 +99,49 @@ Started: 2026-04-17 18:14:53
 - A metadata-only discovery command should bypass the full root bootstrap path so automation can inspect the CLI surface without config or network prerequisites.
 - The current repository already has enough command-local render seams to distinguish `limited` read-only JSON support from state-changing commands that should stay explicitly `unsupported` until the shared envelope lands.
 ---
+
+## Iteration 4 - 2026-04-17 18:44:41 CEST
+**User Story**: User Story 2 - Receive Stable Machine Results
+**Tasks Completed**:
+- [x] T013: Add `get` and `walk` result-envelope regression tests for confirmed successful read-only flows
+- [x] T014: Add `run`, `deploy`, `delete`, and `cancel` regression tests for `accepted` versus `succeeded` behavior
+- [x] T015: Add `invalid` and `failed` envelope regression tests with exit-code alignment
+- [x] T016: Integrate the shared result envelope into read-only command rendering
+- [x] T017: Integrate the shared result envelope into representative state-changing command families
+- [x] T018: Align `accepted`, `invalid`, and `failed` envelope behavior with repository-native `--no-wait` and `ferrors` semantics
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/capabilities_test.go
+- cmd/cmd_cli.go
+- cmd/cmd_views_contract.go
+- cmd/cmd_views_get.go
+- cmd/cmd_views_rendermode.go
+- cmd/cmd_views_walk.go
+- cmd/command_contract_test.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/deploy_processdefinition.go
+- cmd/deploy_test.go
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_resource.go
+- cmd/get_test.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- cmd/version.go
+- cmd/version_test.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- specs/078-machine-cli-contracts/tasks.md
+- specs/078-machine-cli-contracts/progress.md
+**Learnings**:
+- The shared envelope can stay honest and incremental by living at the `cmd/` render boundary while reusing existing domain payload models and `ferrors.ResolveExitCode` for process-level authority.
+- `--no-wait` semantics map cleanly to `accepted` when the command already returns a repository-native payload, while read-only JSON flows can adopt `succeeded` without changing their underlying item/list render helpers.
+- Process-instance search actions needed accumulated reporter data to make paged cancel/delete JSON output truthful for machine consumers instead of only covering direct-key flows.
+---

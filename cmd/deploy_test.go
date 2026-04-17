@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -138,7 +139,15 @@ func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 
 	require.NoError(t, err, string(output))
 	require.True(t, sawDeploy)
-	require.Contains(t, string(output), "2251799813685255")
+	var got map[string]any
+	start := bytes.IndexByte(output, '{')
+	require.NotEqual(t, -1, start)
+	require.NoError(t, json.NewDecoder(bytes.NewReader(output[start:])).Decode(&got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	require.Equal(t, "deploy process-definition", got["command"])
+	payload, ok := got["payload"].([]any)
+	require.True(t, ok)
+	require.Len(t, payload, 1)
 }
 
 func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87Helper(t *testing.T) {
@@ -184,6 +193,7 @@ func TestDeployProcessDefinitionCommand_V89NoWaitHelper(t *testing.T) {
 	root := Root()
 	root.SetArgs([]string{
 		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--json",
 		"deploy", "process-definition",
 		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),
 		"--no-wait",

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -27,6 +29,39 @@ func renderAcceptedResult[T any](cmd *cobra.Command, payload T) error {
 		Command: commandPath(cmd),
 		Payload: payload,
 	})
+}
+
+func commandUsesSharedEnvelope(cmd *cobra.Command, mode RenderMode) bool {
+	return cmd != nil && mode == RenderModeJSON && contractSupportForCommand(cmd) == ContractSupportFull
+}
+
+func renderJSONPayload[T any](cmd *cobra.Command, mode RenderMode, payload T) error {
+	if commandUsesSharedEnvelope(cmd, mode) {
+		return renderSucceededResult(cmd, payload)
+	}
+	cmd.Print(toolx.ToJSONString(payload))
+	return nil
+}
+
+func renderCommandResult[T any](cmd *cobra.Command, payload T) error {
+	if !commandUsesSharedEnvelope(cmd, pickMode()) {
+		return nil
+	}
+	if commandMutationForCommand(cmd) == CommandMutationStateChanging && flagNoWait {
+		return renderAcceptedResult(cmd, payload)
+	}
+	return renderSucceededResult(cmd, payload)
+}
+
+func handleCommandError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, err error) {
+	if err == nil {
+		return
+	}
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		_ = renderResultEnvelope(cmd, resultEnvelopeForError(cmd, err))
+		os.Exit(ferrors.ResolveExitCode(noErrCodes, err))
+	}
+	ferrors.HandleAndExit(log, noErrCodes, err)
 }
 
 func resultEnvelopeForError(cmd *cobra.Command, err error) ResultEnvelope[any] {

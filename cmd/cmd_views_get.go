@@ -6,23 +6,20 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
 //nolint:unused
 func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
 	if pickMode() == RenderModeJSON && flagGetPIWithAge {
-		cmd.Print(toolx.ToJSONString(processInstanceWithAgeMeta(item)))
-		return nil
+		return renderJSONPayload(cmd, RenderModeJSON, processInstanceWithAgeMeta(item))
 	}
 	return itemView(cmd, item, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }
 
 func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
 	if pickMode() == RenderModeJSON && flagGetPIWithAge {
-		cmd.Print(toolx.ToJSONString(processInstancesWithAgeMeta(resp)))
-		return nil
+		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
 	}
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }

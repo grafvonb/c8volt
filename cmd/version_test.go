@@ -20,7 +20,14 @@ func TestVersionCommandJSONIncludesSupportedCamundaVersions(t *testing.T) {
 
 	output := executeRootForTest(t, "version", "--json")
 
-	var payload map[string]string
-	require.NoError(t, json.Unmarshal([]byte(output), &payload))
+	var envelope struct {
+		Outcome string            `json:"outcome"`
+		Command string            `json:"command"`
+		Payload map[string]string `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope.Outcome)
+	require.Equal(t, "version", envelope.Command)
+	payload := envelope.Payload
 	require.Equal(t, "8.7, 8.8, 8.9", payload["supportedCamundaVersions"])
 }

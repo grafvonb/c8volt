@@ -32,7 +32,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 
 	require.Equal(t, "get resource", capability.Path)
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
-	require.Equal(t, ContractSupportLimited, capability.ContractSupport)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Contains(t, capability.Aliases, "r")
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "id",
@@ -60,10 +60,11 @@ func TestCommandCapabilityForCommand_UsesExplicitUnsupportedOutputModes(t *testi
 
 	require.Equal(t, "run process-instance", capability.Path)
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
-	require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
-		{Name: "json", Supported: false, Notes: "shared result envelope not wired yet"},
+		{Name: "json", Supported: true, MachinePreferred: true},
+		{Name: "keys-only", Supported: true},
 	}, capability.OutputModes)
 }
 

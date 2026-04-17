@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +35,7 @@ func runGetResource(cmd *cobra.Command, args []string) {
 
 	id, err := validatedResourceID()
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 	}
 
 	runGetResourceByID(cmd, cli, log, cfg.App.NoErrCodes, id)
@@ -46,10 +45,10 @@ func runGetResourceByID(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, no
 	log.Debug(fmt.Sprintf("fetching resource by id: %s", id))
 	resource, err := cli.GetResource(cmd.Context(), id, collectOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get resource: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get resource: %w", err))
 	}
 	if err := resourceView(cmd, resource); err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering resource view: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("error rendering resource view: %w", err))
 	}
 }
 
@@ -61,7 +60,7 @@ func init() {
 	_ = getResourceCmd.MarkFlagRequired("id")
 
 	setCommandMutation(getResourceCmd, CommandMutationReadOnly)
-	setContractSupport(getResourceCmd, ContractSupportLimited)
+	setContractSupport(getResourceCmd, ContractSupportFull)
 }
 
 func validatedResourceID() (string, error) {

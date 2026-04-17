@@ -56,19 +56,20 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Contains(t, processInstanceCapability.OutputModes, OutputModeContract{
 		Name:      "json",
 		Supported: true,
+		MachinePreferred: true,
 	})
 	require.Contains(t, processInstanceCapability.OutputModes, OutputModeContract{
 		Name:      "keys-only",
 		Supported: true,
 	})
-	require.Equal(t, ContractSupportLimited, processInstanceCapability.ContractSupport)
-	require.Equal(t, ContractSupportUnsupported, runCapability.ContractSupport)
+	require.Equal(t, ContractSupportFull, processInstanceCapability.ContractSupport)
+	require.Equal(t, ContractSupportLimited, runCapability.ContractSupport)
 	require.NotEmpty(t, runCapability.Children)
-	require.Equal(t, ContractSupportUnsupported, runCapability.Children[0].ContractSupport)
+	require.Equal(t, ContractSupportFull, runCapability.Children[0].ContractSupport)
 	require.Contains(t, runCapability.Children[0].OutputModes, OutputModeContract{
 		Name:      "json",
-		Supported: false,
-		Notes:     "shared result envelope not wired yet",
+		Supported: true,
+		MachinePreferred: true,
 	})
 }
 

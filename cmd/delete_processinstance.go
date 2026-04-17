@@ -41,11 +41,11 @@ var deleteProcessInstanceCmd = &cobra.Command{
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg)
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		searched := false
 
@@ -54,10 +54,10 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		default:
 			searched = true
 			if !hasPISearchFilterFlags() {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageImpact, error) {
+			reports, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))
 				for _, pi := range page.Items {
 					keys = append(keys, pi.Key)
@@ -65,7 +65,16 @@ var deleteProcessInstanceCmd = &cobra.Command{
 				return deleteProcessInstancePage(cmd, cli, keys, firstPage)
 			})
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
+			}
+			if len(reports) > 0 {
+				payload := process.DeleteReports{Items: make([]process.DeleteReport, len(reports))}
+				for i, report := range reports {
+					payload.Items[i] = process.DeleteReport(report)
+				}
+				if err := renderCommandResult(cmd, payload); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete result: %w", err))
+				}
 			}
 			return
 		}
@@ -74,11 +83,11 @@ var deleteProcessInstanceCmd = &cobra.Command{
 				cmd.Println("found:", 0)
 				return
 			}
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to delete")))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to delete")))
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("delete validation: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("delete validation: %w", err))
 		}
 		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
 		prompt := fmt.Sprintf("You are about to delete %d process instance(s). Do you want to proceed?", affectedCount)
@@ -86,19 +95,22 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
 		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
+		reports, err := cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
+		}
+		if err := renderCommandResult(cmd, reports); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete result: %w", err))
 		}
 	},
 }
 
-func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageImpact, error) {
+func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
 	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 	if err != nil {
-		return processInstancePageImpact{}, fmt.Errorf("delete validation: %w", err)
+		return processInstancePageActionResult{}, fmt.Errorf("delete validation: %w", err)
 	}
 	impact := processInstancePageImpact{Requested: len(keys), Affected: len(collected), Roots: len(roots)}
 
@@ -109,15 +121,22 @@ func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
 		if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
-			return processInstancePageImpact{}, err
+			return processInstancePageActionResult{}, err
 		}
 	}
 
-	_, err = cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
+	reports, err := cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
 	if err != nil {
-		return processInstancePageImpact{}, fmt.Errorf("delete process instances: %w", err)
+		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
 	}
-	return impact, nil
+	result := processInstancePageActionResult{
+		Impact:  impact,
+		Reports: make([]process.Reporter, len(reports.Items)),
+	}
+	for i, report := range reports.Items {
+		result.Reports[i] = process.Reporter(report)
+	}
+	return result, nil
 }
 
 func init() {
@@ -141,16 +160,5 @@ func init() {
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)
-	setContractSupport(deleteProcessInstanceCmd, ContractSupportUnsupported)
-	setOutputModes(deleteProcessInstanceCmd,
-		OutputModeContract{
-			Name:      RenderModeOneLine.String(),
-			Supported: true,
-		},
-		OutputModeContract{
-			Name:      RenderModeJSON.String(),
-			Supported: false,
-			Notes:     "shared result envelope not wired yet",
-		},
-	)
+	setContractSupport(deleteProcessInstanceCmd, ContractSupportFull)
 }

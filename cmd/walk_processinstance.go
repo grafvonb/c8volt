@@ -94,10 +94,10 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 		path, chain, err := w.fetch()
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := w.view(cmd, path, chain); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -121,5 +121,5 @@ func init() {
 	})
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
-	setContractSupport(walkProcessInstanceCmd, ContractSupportLimited)
+	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
 }

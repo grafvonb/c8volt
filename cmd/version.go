@@ -48,7 +48,9 @@ var versionCmd = &cobra.Command{
 				"date":                     info.Date,
 				"supportedCamundaVersions": info.SupportedCamundaVersions,
 			}
-			cmd.Println(toolx.ToJSONString(out))
+			if err := renderJSONPayload(cmd, RenderModeJSON, out); err != nil {
+				handleCommandError(cmd, nil, flagNoErrCodes, err)
+			}
 			return
 		}
 		cmd.Printf("c8volt %s (%s, %s) | camunda: %s | (c) %d Adam Bogdan Boczek | https://boczek.info\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, buildYear())
@@ -57,4 +59,6 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	setCommandMutation(versionCmd, CommandMutationReadOnly)
+	setContractSupport(versionCmd, ContractSupportFull)
 }
