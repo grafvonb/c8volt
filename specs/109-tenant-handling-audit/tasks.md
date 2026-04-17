@@ -107,9 +107,9 @@
 
 **Purpose**: Finish repository-wide validation and leave the planning artifacts aligned with the shipped result.
 
-- [ ] T025 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/109-tenant-handling-audit/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/109-tenant-handling-audit/quickstart.md
-- [ ] T026 Run targeted tenant-handling validation with `go test ./internal/services/processinstance/... -count=1`, focused `go test ./cmd ... -count=1`, and focused `go test ./config ... -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T027 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T025 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/109-tenant-handling-audit/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/109-tenant-handling-audit/quickstart.md
+- [x] T026 Run targeted tenant-handling validation with `go test ./internal/services/processinstance/... -count=1`, focused `go test ./cmd ... -count=1`, and focused `go test ./config ... -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T027 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

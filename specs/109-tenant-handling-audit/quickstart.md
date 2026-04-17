@@ -33,10 +33,12 @@
 
 ```bash
 go test ./internal/services/processinstance/... -count=1
-go test ./cmd -run 'Test.*Tenant|Test.*ProcessInstance|Test.*Walk|Test.*Cancel|Test.*Delete|Test.*Run' -count=1
-go test ./config -run 'Test.*Tenant|Test.*Profile' -count=1
+go test ./cmd -count=1
+go test ./config -count=1
 make test
 ```
+
+Run the three focused suites first to isolate tenant-handling regressions by layer, then run `make test` as the repository gate required by project policy.
 
 ## Manual Smoke Ideas
 

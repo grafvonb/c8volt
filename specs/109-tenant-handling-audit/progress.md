@@ -183,3 +183,22 @@ Started: 2026-04-17 03:50:08
 - `v87` safe behavior is narrower than the command-family surface but not empty: search-backed reads such as filtered search and direct-child lookup remain tenant-safe even while keyed direct lookup and keyed state checks stay unsupported.
 - Regenerating CLI docs inside the sandbox required redirecting `GOCACHE` into a writable path; the generated output itself remains the normal `make docs-content` result.
 ---
+
+## Iteration 8 - 2026-04-17 04:36:12 CEST
+**User Story**: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T025: Refresh implementation and verification notes in `plan.md` and `quickstart.md`
+- [x] T026: Run targeted tenant-handling validation for process-instance services, `cmd`, and `config`
+- [x] T027: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/109-tenant-handling-audit/plan.md
+- specs/109-tenant-handling-audit/quickstart.md
+- specs/109-tenant-handling-audit/tasks.md
+- specs/109-tenant-handling-audit/progress.md
+**Learnings**:
+- The final polish work for this feature is artifact-heavy rather than code-heavy: the main deliverable is a reproducible validation trail that matches the already-landed tenant contract.
+- The repository-wide gate remains the meaningful close-out signal here because the targeted service, command, and config suites can all pass while unrelated packages still regress under `-race`.
+- Leaving unrelated local edits unstaged is important for Ralph iterations in a dirty worktree; the feature bookkeeping commit should contain only the completed work unit artifacts.
+---

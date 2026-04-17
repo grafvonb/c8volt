@@ -158,6 +158,21 @@ Task generation should break the work into dependency-ordered slices:
 - **Documentation Matches User Behavior**: Still passes with planned README and generated CLI doc updates if command-visible tenant behavior changes.
 - **Small, Compatible, Repository-Native Changes**: Still passes. The design keeps all changes inside current `cmd`, `c8volt/process`, and `internal/services/processinstance` patterns without introducing parallel service hierarchies.
 
+## Final Implementation Notes
+
+- The shipped tenant contract now matches the design boundary: `v8.8` direct-get-adjacent behavior resolves through tenant-safe search-backed lookup/state flows, while `v8.7` keeps only the segments that can remain tenant-safe without post-filtering.
+- Shared mixed-flow helpers now inherit the same contract instead of redefining it: walker ancestry/descendants and waiter polling compose the versioned process-instance service methods directly, so tenant mismatch remains `not found` on supported paths and explicit unsupported on the exact unsafe `v8.7` seam.
+- User-facing guidance is aligned with the runtime truth: README and generated CLI help explicitly state that `8.9` is normalized in config but process-instance runtime support in this repository still stops at `v8.8`.
+
+## Final Verification Notes
+
+- Targeted validation for this feature is:
+  - `go test ./internal/services/processinstance/... -count=1`
+  - `go test ./cmd -count=1`
+  - `go test ./config -count=1`
+- Repository validation remains `make test`, which is required before the final polish work unit can be considered complete.
+- Existing dirty-worktree context must be respected during validation; only feature artifacts and intentional code changes should be staged for the final polish commit.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
