@@ -109,9 +109,9 @@
 
 **Purpose**: Finish repository-wide validation and leave the feature artifacts aligned with the shipped result.
 
-- [ ] T027 [P] Refresh implementation notes and final support-boundary records in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/research.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/data-model.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/contracts/v89-support.md
-- [ ] T028 Run focused `v8.9` validation with `go test ./internal/services/cluster/... -count=1`, `go test ./internal/services/processdefinition/... -count=1`, `go test ./internal/services/processinstance/... -count=1`, `go test ./internal/services/resource/... -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T029 Run documentation regeneration and repository validation with `make docs`, `make docs-content`, and `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T027 [P] Refresh implementation notes and final support-boundary records in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/research.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/data-model.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/contracts/v89-support.md
+- [x] T028 Run focused `v8.9` validation with `go test ./internal/services/cluster/... -count=1`, `go test ./internal/services/processdefinition/... -count=1`, `go test ./internal/services/processinstance/... -count=1`, `go test ./internal/services/resource/... -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T029 Run documentation regeneration and repository validation with `make docs`, `make docs-content`, and `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
 
 ---
 

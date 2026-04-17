@@ -5,7 +5,7 @@
 | Surface | Required behavior |
 |--------|-------------------|
 | Version normalization | `8.9`, `89`, `v89`, and `v8.9` normalize to `toolx.V89` |
-| Supported-version lists | User-facing support lists include `8.9`; until native factories land, runtime error text may still list only implemented versions |
+| Supported-version lists | User-facing support lists include `8.9`, and runtime-implemented version messaging matches that support boundary |
 | Factory selection | `cluster`, `processdefinition`, `processinstance`, and `resource` factories return native `v89` implementations when `app.camunda_version` is `v8.9` |
 | Unsupported version handling | Missing or unsupported versions continue to fail through the existing unknown-version error path |
 | Implemented-version error text | Runtime unsupported-version errors now list `8.7`, `8.8`, and `8.9` because all four versioned service families have native `v89` implementations |
@@ -35,7 +35,7 @@ Mixed-client internals are allowed only inside documented temporary fallback pat
 | Temporary fallback exists | It must be documented for maintainers and tracked as non-final |
 | Feature reaches final acceptance for a service family that already uses versioned services | Temporary fallback must be removed and replaced by the native `v8.9` path |
 
-Current feature status: no remaining repository command family relies on a temporary fallback path for `v8.9`; the transition-only rule remains documented here only as a bounded implementation guard.
+Current feature status: no remaining repository command family relies on a temporary fallback path for `v8.9`; the transition-only rule remains documented here only as a bounded implementation guard, and any future mixed-client or older-version fallback in a `v8.9` path is a regression from the accepted feature state.
 
 ## Repository Command-Family Parity Contract
 
@@ -70,6 +70,17 @@ Adding `v8.9` support must not silently regress or reclassify `v8.7` or `v8.8` b
 | Root command help | No longer claims runtime support stops at `v8.8` |
 
 Documentation updates are part of release readiness and are not optional follow-up work.
+
+## Final Acceptance Record
+
+| Acceptance area | Final state |
+|-----------------|-------------|
+| Shared version truth | `toolx`, root help, README, and generated docs all advertise `8.9` as supported |
+| Runtime path selection | Factories and `c8volt/client.go` route `v8.9` to native `v89` services |
+| Client boundary | Final native `v8.9` services stay on the generated `v89` Camunda client only |
+| Command-family parity | Cluster, process-definition, resource, and process-instance command families all have explicit `v8.9` proof |
+| Transition-only fallback | None active in the accepted runtime implementation |
+| Release gate | Completion still requires focused validation plus repository-wide `make test` |
 
 ## Repository Implementation Seams
 

@@ -276,3 +276,24 @@ Started: 2026-04-17 08:42:48
 - Constructor-only `v89` scaffolds are enough to validate dependency wiring, logger/client setup, and version-local generated-client contracts without prematurely routing factory selection to unfinished code.
 - Focused validation for the completed foundational phase passes with `go test ./internal/services/cluster ./internal/services/processdefinition ./internal/services/processinstance ./internal/services/resource ./c8volt ./toolx ./cmd -count=1`.
 ---
+
+## Iteration 11 - 2026-04-17 13:47 CEST
+**User Story**: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T027: Refresh implementation notes and final support-boundary records
+- [x] T028: Run focused `v8.9` validation
+- [x] T029: Run documentation regeneration and repository validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/110-camunda-v89-support/contracts/v89-support.md
+- specs/110-camunda-v89-support/data-model.md
+- specs/110-camunda-v89-support/progress.md
+- specs/110-camunda-v89-support/research.md
+- specs/110-camunda-v89-support/tasks.md
+**Learnings**:
+- The final polish pass is mostly artifact alignment and proof: once the runtime and docs stories are complete, the remaining work is to replace rollout-era wording in feature records with the final accepted `v8.9` support boundary.
+- `make docs-content` refreshed `docs/index.md` build metadata from the current dirty tree even without new README edits, so generated doc output still belongs in the final validation commit when that gate is part of the work unit.
+- The closing verification bar for this feature passes with the focused `v8.9` suites, `make docs`, `make docs-content`, and repository-wide `make test`.
+---

@@ -85,34 +85,33 @@
   - File follow-up doc work after code lands: rejected because it would leave the runtime truth and operator guidance out of sync.
   - Update only developer-facing docs: rejected because the version-support claim is user-facing.
 
-## Current Runtime Boundary Inventory
+## Final Runtime Boundary Inventory
 
 ### Version source of truth
 
-- [`toolx/version.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/toolx/version.go) already normalizes `8.9`, but `SupportedCamundaVersions()` still returns only `8.7` and `8.8`.
-- [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), `docs/index.md`, and generated `docs/cli/c8volt.md` still describe runtime support as stopping at `v8.8`.
+- [`toolx/version.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/toolx/version.go) now normalizes `8.9` and advertises `8.7`, `8.8`, and `8.9` through `SupportedCamundaVersions()`.
+- [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), `docs/index.md`, and generated `docs/cli/c8volt.md` now present `v8.9` as supported runtime coverage with the same repository command-family scope already available on `v8.8`.
 
-### Repository-wide `v8.8` command-family parity inventory
+### Repository-wide `v8.9` parity inventory
 
-- [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md) advertises the current operator-facing command families that already work on `v8.8`: cluster metadata inspection, process-definition discovery, resource lifecycle, and process-instance lifecycle/traversal.
-- [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go) still states that process-instance runtime support is implemented only for `8.7` and `8.8`, so the current root help text is an explicit release-gate surface for this feature.
-- The repository parity boundary for `v8.9` therefore remains:
+- [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md) and [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go) now advertise the operator-facing command families supported on `v8.9`.
+- The repository parity boundary shipped for `v8.9` is:
   - Cluster metadata: `get cluster topology`, `get cluster license`
   - Process-definition discovery: `get process-definition` search/latest/XML/statistics
   - Resource lifecycle: `deploy process-definition`, `delete process-definition`, `get resource`
   - Process-instance lifecycle and traversal: `run`, `get process-instance`, `walk`, `expect`, `cancel`, `delete`
-- No Phase 1 evidence suggests a hidden command family outside those four runtime-backed areas; additional commands such as config or embed are not part of the versioned service parity boundary defined by the issue/spec.
+- No implementation or verification evidence revealed a hidden command family outside those four runtime-backed areas; additional commands such as config or embed remain outside the versioned service parity boundary defined by the issue/spec.
 
 ### Versioned factory boundary
 
-- [`internal/services/cluster/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory.go), [`internal/services/processdefinition/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go), [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go), and [`internal/services/resource/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory.go) all stop at `v87`/`v88`.
-- Factory tests already exist for all four service families and are the primary seam for proving `v89` selection plus preserved older-version behavior.
+- [`internal/services/cluster/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/cluster/factory.go), [`internal/services/processdefinition/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/factory.go), [`internal/services/processinstance/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/factory.go), and [`internal/services/resource/factory.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/resource/factory.go) now route `v8.7`, `v8.8`, and `v8.9` to version-local implementations.
+- Factory tests remain the primary seam proving `v89` selection plus preserved older-version behavior.
 
 ### Service-family client boundary
 
-- `cluster`, `processdefinition`, and `resource` `v88` services already depend only on the generated `v88` Camunda client and therefore map cleanly to the final `v89` rule.
-- `processinstance/v88` still mixes `internal/clients/camunda/v88/camunda` and `internal/clients/camunda/v88/operate`, making it the main design-sensitive family for `v89`.
-- The generated `internal/clients/camunda/v89/camunda/client.gen.go` surface includes the endpoints needed to move process-instance final behavior back onto a single client boundary.
+- `cluster/v89`, `processdefinition/v89`, `processinstance/v89`, and `resource/v89` all now depend only on the generated `internal/clients/camunda/v89/camunda/client.gen.go` surface.
+- `processinstance/v89` closed the main design-sensitive gap by replacing the earlier mixed-client `v88` pattern with a version-local Camunda-only implementation for search, lookup, cancel, delete, walker, and waiter behavior.
+- Verification for this feature therefore treats any future mixed-client `v8.9` behavior as a regression rather than an accepted transition state.
 
 ### Repository command-family boundary
 
@@ -123,19 +122,16 @@
 
 These command families are the user-facing proof surface for repository-wide `v8.8` parity on `v8.9`.
 
-## Phase 1 Setup Findings
+## Final Implementation Findings
 
-### T001: Current support boundary and user-facing gap
+### T027: Final support boundary and feature records
 
-- The runtime support claim is currently inconsistent by design:
-  - `toolx` already accepts `8.9` as a normalized version input.
-  - `README.md` and `cmd/root.go` still tell users that runtime support stops at `v8.8`.
-  - The four versioned service factories still reject `v8.9`, with `processinstance/factory_test.go` explicitly asserting that `v8.9` is normalized but unsupported at runtime.
-- This means the current repository state is not a partial native `v8.9` rollout; it is still a documentation-plus-factory boundary that deliberately caps real runtime support at `v8.8`.
+- The repository now presents one consistent `v8.9` runtime-support contract across shared version helpers, service factories, top-level client wiring, command help, README content, and generated docs.
+- All four versioned service families now expose native `v89` implementations through their existing factories, so `v8.9` is no longer a normalization-only or docs-only state anywhere in the shipped runtime path.
+- The feature closes without any active temporary fallback inside the repository's versioned service architecture; the documented fallback language remains only as a future-change guardrail.
+- Final release readiness for this feature depends on the focused validation set plus the repository gate `make test`, not on any remaining implementation gap.
 
-User Story 2 supersedes this setup snapshot for runtime selection behavior: the factories now select native `v89` implementations, implemented-version messaging includes `8.9`, and the stale root help text is the remaining user-facing surface to keep aligned with the runtime truth until the documentation story lands.
-
-### T002: Generated `v89` Camunda client endpoints required for parity
+### Final generated-client boundary record
 
 - The generated [`internal/clients/camunda/v89/camunda/client.gen.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v89/camunda/client.gen.go) already exposes the main endpoints needed to build the final native `v89` runtime path:
   - Cluster: `GetTopology`
@@ -143,9 +139,9 @@ User Story 2 supersedes this setup snapshot for runtime selection behavior: the 
   - Resource: `CreateDeploymentWithBody`, `GetResource`, `GetResourceContent`, `DeleteResourceOp`
   - Process instance: `GetProcessInstance`, `SearchProcessInstances`, `CancelProcessInstance`, `DeleteProcessInstance`, `GetProcessInstanceCallHierarchy`, `GetProcessInstanceStatistics`
 - The generated client also includes the batch process-instance operations, which keeps future paging or bulk flows inside the same `v89` Camunda boundary if later iterations need them.
-- Phase 1 did not reveal a missing endpoint that would force permanent fallback to `v8.8` or permanent dependence on `operate` for the final accepted `v89` path.
+- Final implementation confirmed there was no missing endpoint that required permanent fallback to `v8.8` or permanent dependence on `operate` for accepted `v89` behavior.
 
-### T003: Existing factory, client-wiring, and regression-test seams
+### Final verification seam record
 
 - [`c8volt/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/client.go) is already the sole top-level runtime wiring seam: it constructs `cluster`, `processdefinition`, `processinstance`, and `resource` through their factories, then wraps them in the public facades. That is the correct place to preserve centralized version selection.
 - Each versioned service family already has a focused factory regression suite:
@@ -153,5 +149,5 @@ User Story 2 supersedes this setup snapshot for runtime selection behavior: the 
   - `internal/services/processdefinition/factory_test.go`
   - `internal/services/processinstance/factory_test.go`
   - `internal/services/resource/factory_test.go`
-- Those tests all assert concrete returned service types for supported versions and `services.ErrUnknownAPIVersion` for unsupported ones, so they are the right seam for adding `v89` support while explicitly proving `v8.7`/`v8.8` behavior is preserved.
-- The command-layer regression seam remains the `cmd/*_test.go` suites identified in `tasks.md`; Phase 1 confirms that later explicit `v8.9` execution coverage should stay there rather than adding version-specific branching to command code.
+- Those tests all assert concrete returned service types for supported versions and `services.ErrUnknownAPIVersion` for unsupported ones, so they remain the right seam for keeping `v8.9` support and preserved `v8.7`/`v8.8` behavior honest over time.
+- The command-layer regression seam remains the `cmd/*_test.go` suites identified in `tasks.md`; final implementation kept parity proof there rather than adding version-specific branching to command code.
