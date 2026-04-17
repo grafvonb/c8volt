@@ -35,6 +35,12 @@
 5. Remote or infrastructure failures return `failed` while preserving current process exit behavior.
 6. Unsupported or limited commands remain visible in discovery and are not misreported as full support.
 
+## Final Contract Snapshot
+
+- Discovery is exposed through `c8volt capabilities --json` and reports top-level plus nested command metadata from the live Cobra tree.
+- Shared machine-readable execution results are now rolled out for the representative `get`, `run`, `expect`, `walk`, `deploy`, `delete`, and `cancel` command families.
+- Human-oriented output modes such as plain text and `--keys-only` remain intact; the shared envelope is layered onto structured JSON mode instead of replacing operator-facing flows.
+
 ## Suggested Test Order
 
 ```bash
@@ -46,6 +52,14 @@ make test
 ```
 
 Run the focused suites first so failures in outcome mapping or discovery metadata are isolated before the repository-wide test gate.
+
+## Verification Baseline
+
+- Verified on 2026-04-17 with `go test ./c8volt/ferrors -count=1`
+- Verified on 2026-04-17 with `go test ./cmd -count=1`
+- Verified on 2026-04-17 with `make docs`
+- Verified on 2026-04-17 with `make docs-content`
+- Verified on 2026-04-17 with `make test`
 
 ## Manual Smoke Ideas
 

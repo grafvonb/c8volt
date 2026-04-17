@@ -174,6 +174,11 @@ Task generation should break the work into dependency-ordered slices:
   - `make docs-content`
 - Repository validation remains `make test`, which is required before the feature is considered complete.
 
+## Implementation Closure
+
+- The final contract shape is now implemented with `c8volt capabilities --json` as the discovery entry point and shared result envelopes across the representative `get`, `run`, `expect`, `walk`, `deploy`, `delete`, and `cancel` command families.
+- Validation completed on 2026-04-17 with the focused suites, docs regeneration, and repository-wide `make test`, confirming the contract rollout, generated docs, and preserved human CLI behavior remain aligned.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |

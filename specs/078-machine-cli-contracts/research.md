@@ -86,6 +86,14 @@
   - Update only the new discovery command help text: rejected because the feature also changes the recommended automation usage guidance.
   - Delay docs until implementation stabilizes: rejected because the repo requires user-facing docs to move with behavior changes.
 
+## Decision 11: Preserve the final verification sequence as the implementation handoff baseline
+
+- **Decision**: Treat `go test ./c8volt/ferrors -count=1`, `go test ./cmd -count=1`, `make docs`, `make docs-content`, and `make test` as the settled validation sequence for this feature.
+- **Rationale**: The final contract spans shared outcome mapping, representative CLI behavior, generated docs, and repository-wide compatibility. Keeping the exact sequence in the feature artifacts makes later follow-up work validate the same contract surface instead of inventing a narrower gate.
+- **Alternatives considered**:
+  - Rely on only `make test`: rejected because it would not explicitly capture the docs regeneration and focused contract checks that define this feature's rollout boundary.
+  - Keep the validation guidance only in `tasks.md`: rejected because the handoff notes should survive task completion and remain visible in the design artifacts.
+
 ## Representative Contract Anchors
 
 | Family | Current anchors | Why they are the right starting seams |
@@ -137,3 +145,4 @@
 - The initial machine contract uses one shared envelope and existing family payloads.
 - Commands without full support remain visible in discovery with explicit support status.
 - Exit codes remain authoritative even in machine-readable mode.
+- The feature's final implementation and verification baseline has been exercised successfully on 2026-04-17 through the focused suites, docs regeneration, and `make test`.

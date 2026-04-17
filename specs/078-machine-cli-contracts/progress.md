@@ -186,3 +186,25 @@ Started: 2026-04-17 18:14:53
 - User-facing automation guidance is safest when it reinforces the new machine contract without changing default plain-text or `--keys-only` behavior for existing operator flows.
 - Generated CLI reference coverage for new top-level commands comes entirely from Cobra metadata, so adding help text plus `make docs` is sufficient to publish them.
 ---
+
+## Iteration 6 - 2026-04-17 18:58:30 CEST
+**User Story**: Phase 6 - Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T024: Refresh implementation and verification notes in quickstart, research, and plan
+- [x] T025: Run focused machine-contract validation with `go test ./c8volt/ferrors -count=1` and `go test ./cmd -count=1`
+- [x] T026: Run documentation regeneration validation with `make docs` and `make docs-content`
+- [x] T027: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/078-machine-cli-contracts/plan.md
+- specs/078-machine-cli-contracts/progress.md
+- specs/078-machine-cli-contracts/quickstart.md
+- specs/078-machine-cli-contracts/research.md
+- specs/078-machine-cli-contracts/tasks.md
+**Learnings**:
+- The final polish pass only regenerated tracked docs metadata in `docs/index.md`; the machine-contract command reference pages were already in sync with the committed Cobra help text.
+- Keeping the focused contract suites ahead of `make test` makes it obvious whether a regression belongs to shared outcome mapping, command behavior, or a broader repository interaction.
+- `make docs-content` is still part of the required validation path because README-sourced homepage metadata changes can advance even when the CLI reference pages themselves do not.
+---

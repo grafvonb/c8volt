@@ -106,10 +106,10 @@
 
 **Purpose**: Finish validation, refresh planning artifacts, and leave the feature ready for implementation handoff or direct execution.
 
-- [ ] T024 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/078-machine-cli-contracts/quickstart.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/078-machine-cli-contracts/research.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/078-machine-cli-contracts/plan.md after the final contract shape settles
-- [ ] T025 Run focused machine-contract validation with `go test ./c8volt/ferrors -count=1` and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T026 Run documentation regeneration validation with `make docs` and `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
-- [ ] T027 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T024 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/078-machine-cli-contracts/quickstart.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/078-machine-cli-contracts/research.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/078-machine-cli-contracts/plan.md after the final contract shape settles
+- [x] T025 Run focused machine-contract validation with `go test ./c8volt/ferrors -count=1` and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T026 Run documentation regeneration validation with `make docs` and `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T027 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 
