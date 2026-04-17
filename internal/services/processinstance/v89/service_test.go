@@ -28,6 +28,8 @@ type mockCamundaClient struct {
 	getProcessInstanceWithResponse    func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error)
 }
 
+var _ v89.GenProcessInstanceClientCamunda = (*mockCamundaClient)(nil)
+
 func (m *mockCamundaClient) CreateProcessInstanceWithResponse(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
 	return m.createProcessInstanceWithResponse(ctx, body, reqEditors...)
 }
@@ -319,6 +321,14 @@ func TestService_WithClientAndLoggerOptions(t *testing.T) {
 	v89.WithLogger(nil)(svc)
 	require.Equal(t, camundaClient, svc.ClientCamunda())
 	require.Equal(t, logger, svc.Logger())
+}
+
+func TestService_FinalV89BoundaryUsesVersionLocalCamundaContract(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, testConfig(), newStrictCamundaClient(t))
+
+	require.Implements(t, (*v89.GenProcessInstanceClientCamunda)(nil), svc.ClientCamunda())
 }
 
 type searchProcessInstancesResult struct {

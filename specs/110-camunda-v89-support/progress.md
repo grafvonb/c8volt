@@ -7,6 +7,7 @@ Started: 2026-04-17 08:42:48
 
 - `c8volt/client.go` is the single top-level wiring seam; keep version selection in the service factories and facade wiring instead of branching in commands.
 - Factory regression tests under `internal/services/*/factory_test.go` prove supported-version routing by asserting concrete service types and `services.ErrUnknownAPIVersion` behavior.
+- When `toolx.CurrentCamundaVersion` stays on an older default during a new-version rollout, add explicit factory regressions that keep the default pinned to the current runtime (`v8.8` here) so broader support claims do not silently change default selection behavior.
 - Feature research is the right place to record support-boundary inventory and generated-client capability checks before implementation starts.
 - When the repository needs to advertise a broader supported-version contract before every factory implements it, keep separate helper surfaces for contract support versus runtime-implemented versions so factory error text stays truthful during incremental rollout.
 - When top-level client support lags behind advertised version support, lock the behavior with a `c8volt.New(...)` regression test so the first failing factory remains the only version gate and commands do not grow their own branching.
@@ -43,6 +44,42 @@ Started: 2026-04-17 08:42:48
 - Native `v89` command proof is easiest to keep honest by asserting the exact generated Camunda endpoint seams per family, especially the search-backed process-instance lookups and the `/deletion` process-instance delete operation.
 - `c8volt.New(...)` plus one process facade call and one resource facade call is enough to prove the shared client wiring now reaches the `v89` runtime path without reintroducing command-local version branching.
 - User Story 1 now passes the required validation bar with `go test ./internal/services/processinstance/... -count=1`, `go test ./c8volt ./cmd -count=1`, and `make test`.
+---
+
+## Iteration 9 - 2026-04-17 10:25 CEST
+**User Story**: User Story 2 - Keep Version Selection Predictable
+**Tasks Completed**:
+- [x] T017: Add regression coverage for supported-version selection and preserved `v8.7`/`v8.8` behavior
+- [x] T018: Add bootstrap and config regression coverage for `v8.9` support messaging and unsupported-version failures
+- [x] T019: Add process-instance-specific regression coverage that proves final native `v8.9` paths stay on the `v89` Camunda client boundary and any temporary fallback stays documented/non-final
+- [x] T020: Update root command version messaging and supported-version behavior for `v8.9`
+- [x] T021: Preserve older-version behavior while extending version-aware helpers and error normalization for `v8.9`
+- [x] T022: Finalize documented transition-only fallback rules and removal conditions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ferrors/errors.go
+- c8volt/ferrors/errors_test.go
+- cmd/bootstrap_errors_test.go
+- cmd/root.go
+- config/app.go
+- config/app_test.go
+- internal/services/cluster/factory_test.go
+- internal/services/processdefinition/factory_test.go
+- internal/services/processinstance/factory_test.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/resource/factory_test.go
+- specs/110-camunda-v89-support/contracts/v89-support.md
+- specs/110-camunda-v89-support/plan.md
+- specs/110-camunda-v89-support/progress.md
+- specs/110-camunda-v89-support/research.md
+- specs/110-camunda-v89-support/tasks.md
+- toolx/version.go
+- toolx/version_test.go
+**Learnings**:
+- Once native `v89` implementations exist for every versioned service family, `ImplementedCamundaVersions()` and runtime unsupported-version error text must move forward with them; leaving the old list behind makes bootstrap and factory behavior look partially unsupported even when routing is complete.
+- Preserved-version regression is clearer when each factory also proves the unchanged default runtime path explicitly; `toolx.CurrentCamundaVersion` staying on `v8.8` is a separate promise from `v8.9` being supported.
+- The `processinstance/v89` client-boundary rule is easiest to keep honest with the version-local `GenProcessInstanceClientCamunda` interface plus tests that exercise lookup/search behavior without any fallback-specific client seam.
 ---
 
 ## Iteration 7 - 2026-04-17 09:27 CEST

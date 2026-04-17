@@ -63,7 +63,7 @@ func SupportedCamundaVersions() []CamundaVersion {
 }
 
 func ImplementedCamundaVersions() []CamundaVersion {
-	return []CamundaVersion{V87, V88}
+	return []CamundaVersion{V87, V88, V89}
 }
 
 func SupportedCamundaVersionsString() string {

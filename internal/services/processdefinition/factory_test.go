@@ -80,3 +80,14 @@ func TestFactory_UnknownVersion(t *testing.T) {
 	require.Contains(t, err.Error(), "\"unknown\"")
 	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
 }
+
+func TestFactory_CurrentDefaultVersionStillUsesV88(t *testing.T) {
+	cfg := testConfig()
+	cfg.App.CamundaVersion = toolx.CurrentCamundaVersion
+
+	svc, err := processdefinition.New(cfg, &http.Client{}, slog.Default())
+
+	require.NoError(t, err)
+	require.NotNil(t, svc)
+	require.IsType(t, &v88.Service{}, svc)
+}

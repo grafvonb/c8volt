@@ -72,6 +72,11 @@
   - Ban fallback entirely: rejected because the clarification session explicitly allowed it as a bridge.
   - Allow indefinite fallback if users cannot tell: rejected because it contradicts the native `v8.9` end-state requirement.
 
+### User Story 2 update
+
+- User Story 1 removed the need for any active fallback in the repository's versioned service families: `cluster`, `processdefinition`, `processinstance`, and `resource` now all execute on native `v89` services.
+- The remaining fallback guidance is therefore purely a maintenance guard for future incomplete work, not an active description of the current `v8.9` runtime path.
+
 ## Decision 10: Make documentation updates part of the feature’s release gate
 
 - **Decision**: README, docs homepage content, and generated CLI docs must all be updated before the feature is considered complete.
@@ -127,6 +132,8 @@ These command families are the user-facing proof surface for repository-wide `v8
   - `README.md` and `cmd/root.go` still tell users that runtime support stops at `v8.8`.
   - The four versioned service factories still reject `v8.9`, with `processinstance/factory_test.go` explicitly asserting that `v8.9` is normalized but unsupported at runtime.
 - This means the current repository state is not a partial native `v8.9` rollout; it is still a documentation-plus-factory boundary that deliberately caps real runtime support at `v8.8`.
+
+User Story 2 supersedes this setup snapshot for runtime selection behavior: the factories now select native `v89` implementations, implemented-version messaging includes `8.9`, and the stale root help text is the remaining user-facing surface to keep aligned with the runtime truth until the documentation story lands.
 
 ### T002: Generated `v89` Camunda client endpoints required for parity
 

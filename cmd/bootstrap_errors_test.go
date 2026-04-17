@@ -17,6 +17,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRootCommand_V89SupportMessagingIsUpdated(t *testing.T) {
+	t.Parallel()
+
+	root := Root()
+
+	require.Contains(t, root.Long, "Camunda 8.7, 8.8, and 8.9")
+	require.NotContains(t, root.Long, "version 8.9 is recognized by config normalization")
+	require.Contains(t, root.PersistentFlags().Lookup("camunda-version").Usage, toolx.SupportedCamundaVersionsString())
+}
+
 // Verifies NewCli maps missing bootstrap context to the shared local-precondition error class.
 func TestNewCliNormalizesMissingBootstrapContext(t *testing.T) {
 	cmd := &cobra.Command{}

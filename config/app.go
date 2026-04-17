@@ -27,16 +27,8 @@ func (a *App) ViewTenant() string {
 
 func (a *App) Normalize() error {
 	var errs []error
-	switch a.CamundaVersion {
-	case "":
-		a.CamundaVersion = toolx.CurrentCamundaVersion
-	default:
-		v, err := toolx.NormalizeCamundaVersion(string(a.CamundaVersion))
-		if err != nil {
-			errs = append(errs, fmt.Errorf("version: %w", err))
-		} else {
-			a.CamundaVersion = v
-		}
+	if err := a.normalizeCamundaVersion(nil); err != nil {
+		errs = append(errs, err)
 	}
 	if err := a.Backoff.Normalize(); err != nil {
 		errs = append(errs, fmt.Errorf("backoff: %w", err))
@@ -52,18 +44,8 @@ func (a *App) Normalize() error {
 
 func (a *App) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
 	var errs []error
-	switch a.CamundaVersion {
-	case "":
-		if !isConfigured("app.camunda_version") {
-			a.CamundaVersion = toolx.CurrentCamundaVersion
-		}
-	default:
-		v, err := toolx.NormalizeCamundaVersion(string(a.CamundaVersion))
-		if err != nil {
-			errs = append(errs, fmt.Errorf("version: %w", err))
-		} else {
-			a.CamundaVersion = v
-		}
+	if err := a.normalizeCamundaVersion(isConfigured); err != nil {
+		errs = append(errs, err)
 	}
 	if err := a.Backoff.normalizeWithConfiguredKeys(isConfigured); err != nil {
 		errs = append(errs, fmt.Errorf("backoff: %w", err))
@@ -75,6 +57,22 @@ func (a *App) normalizeWithConfiguredKeys(isConfigured func(string) bool) error 
 		a.ProcessInstancePageSize = consts.MaxPISearchSize
 	}
 	return errors.Join(errs...)
+}
+
+func (a *App) normalizeCamundaVersion(isConfigured func(string) bool) error {
+	if a.CamundaVersion == "" {
+		if isConfigured == nil || !isConfigured("app.camunda_version") {
+			a.CamundaVersion = toolx.CurrentCamundaVersion
+		}
+		return nil
+	}
+
+	v, err := toolx.NormalizeCamundaVersion(string(a.CamundaVersion))
+	if err != nil {
+		return fmt.Errorf("version: %w", err)
+	}
+	a.CamundaVersion = v
+	return nil
 }
 
 func (a *App) Validate() error {

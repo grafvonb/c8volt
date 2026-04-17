@@ -8,6 +8,7 @@
 | Supported-version lists | User-facing support lists include `8.9`; until native factories land, runtime error text may still list only implemented versions |
 | Factory selection | `cluster`, `processdefinition`, `processinstance`, and `resource` factories return native `v89` implementations when `app.camunda_version` is `v8.9` |
 | Unsupported version handling | Missing or unsupported versions continue to fail through the existing unknown-version error path |
+| Implemented-version error text | Runtime unsupported-version errors now list `8.7`, `8.8`, and `8.9` because all four versioned service families have native `v89` implementations |
 
 ## Foundational Phase Gate
 
@@ -33,6 +34,8 @@ Mixed-client internals are allowed only inside documented temporary fallback pat
 | Native `v8.9` path is still incomplete during implementation | Temporary fallback may be used if the user-facing command contract is preserved |
 | Temporary fallback exists | It must be documented for maintainers and tracked as non-final |
 | Feature reaches final acceptance for a service family that already uses versioned services | Temporary fallback must be removed and replaced by the native `v8.9` path |
+
+Current feature status: no remaining repository command family relies on a temporary fallback path for `v8.9`; the transition-only rule remains documented here only as a bounded implementation guard.
 
 ## Repository Command-Family Parity Contract
 
