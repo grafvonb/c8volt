@@ -132,3 +132,23 @@ Started: 2026-04-17 03:50:08
 - `v87` direct get and keyed state checks now fail at the exact unsupported seam, and command regressions that previously depended on those preflight calls need to assert the narrower unsupported outcome rather than broad command-family success.
 - Paging assertions must ignore per-key tenant-safe lookups and count only the actual top-level search requests; otherwise prompt/continuation tests overcount the new preflight traffic.
 ---
+
+## Iteration 6 - 2026-04-17 04:26:49 CEST
+**User Story**: User Story 2 - Preserve Tenant Boundaries Through Multi-Step Flows
+**Tasks Completed**:
+- [x] T014: Add walker and waiter regression tests for tenant-safe ancestry, descendants, family, and state polling behavior
+- [x] T015: Add versioned service tests for mixed search plus direct-get flows, cancel preflight, and delete preflight behavior
+- [x] T016: Add command-family regression tests for `walk`, `cancel`, `delete`, and `run` tenant propagation across flag/env/profile/base-config sources
+- [x] T017: Implement tenant-safe traversal and direct-child lookup behavior
+- [x] T018: Implement tenant-aware wait, cancel, and delete preflight handling with narrowly scoped unsupported outcomes
+- [x] T019: Align tenant-aware command flows with the service-layer contract
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/109-tenant-handling-audit/tasks.md
+- specs/109-tenant-handling-audit/progress.md
+**Learnings**:
+- The mixed-flow contract is now coherent across layers: walker traversal and waiter polling inherit tenant safety entirely from `GetProcessInstance`, `GetDirectChildrenOfProcessInstance`, and `GetProcessInstanceStateByKey`, so command code can stay thin.
+- `v88` remains fully tenant-safe for mixed flows because every follow-up step reduces to tenant-filtered search-backed lookups, while `v87` now fails only when a keyed direct/state seam would otherwise become the authority.
+- US2 verification is already anchored in repository-native tests: `walker` and `waiter` unit tests for helper composition, versioned service tests for preflight behavior, and command-family subprocess tests for tenant propagation and unsupported-surface handling.
+---
