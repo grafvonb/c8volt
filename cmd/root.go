@@ -193,6 +193,10 @@ func init() {
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
+
+	setCapabilityDocumentVersion(rootCmd, defaultContractVersion)
+	setCommandMutation(rootCmd, CommandMutationReadOnly)
+	setContractSupport(rootCmd, ContractSupportLimited)
 }
 
 func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
