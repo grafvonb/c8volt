@@ -100,6 +100,7 @@
 - File-based YAML config plus environment variables; no persistent datastore changes (107-flag-precedence-audit)
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, process-instance walker/waiter helpers under `internal/services/processinstance/` (109-tenant-handling-audit)
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, shared facades under `c8volt/...` (110-camunda-v89-support)
+- Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing `c8volt/ferrors`, command helpers under `cmd/`, versioned services under `internal/services/...`, walker/waiter helpers under `internal/services/processinstance/` (112-error-context-dedup)
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`
