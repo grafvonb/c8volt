@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,6 +69,154 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	meta, ok := got["meta"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, true, meta["withAge"])
+}
+
+func TestGetProcessInstanceKeyLookup_UsesEffectiveTenantForSearchBackedLookup(t *testing.T) {
+	response := `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
+
+	t.Run("explicit flag tenant", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  tenant: base-tenant
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"--tenant", "tenant-a",
+			"get", "process-instance",
+			"--key", "123",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+		require.Equal(t, "tenant-a", filter["tenantId"])
+		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Contains(t, output, `"tenantId": "tenant-a"`)
+	})
+
+	t.Run("environment tenant", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+		output := executeRootForProcessInstanceTestWithEnv(t,
+			[]string{"C8VOLT_APP_TENANT=tenant-a"},
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--key", "123",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+		require.Equal(t, "tenant-a", filter["tenantId"])
+		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Contains(t, output, `"tenantId": "tenant-a"`)
+	})
+
+	t.Run("profile tenant", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeRawTestConfig(t, `active_profile: base
+app:
+  camunda_version: 8.8
+  tenant: base-tenant
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+profiles:
+  dev:
+    app:
+      tenant: tenant-a
+    apis:
+      camunda_api:
+        base_url: `+srv.URL+`
+`)
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"--profile", "dev",
+			"get", "process-instance",
+			"--key", "123",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+		require.Equal(t, "tenant-a", filter["tenantId"])
+		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Contains(t, output, `"tenantId": "tenant-a"`)
+	})
+
+	t.Run("base config tenant", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  tenant: tenant-a
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--key", "123",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+		require.Equal(t, "tenant-a", filter["tenantId"])
+		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Contains(t, output, `"tenantId": "tenant-a"`)
+	})
+}
+
+func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"<default>"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--state", "active",
+	)
+
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, "<default>", filter["tenantId"])
+	require.Equal(t, "ACTIVE", filter["state"])
+	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.
@@ -590,6 +740,7 @@ func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	root := Root()
+	resetRootPersistentFlags(t, root)
 	buf := &bytes.Buffer{}
 	root.SetOut(buf)
 	root.SetErr(buf)
@@ -672,6 +823,15 @@ func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
 	require.NotNil(t, flag)
 	require.NoError(t, flag.Value.Set("1000"))
 	flag.Changed = false
+}
+
+func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {
+	t.Helper()
+
+	root.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+		require.NoError(t, flag.Value.Set(flag.DefValue))
+		flag.Changed = false
+	})
 }
 
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {

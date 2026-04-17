@@ -70,7 +70,7 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	cCfg := services.ApplyCallOptions(opts)
 
 	if cCfg.AllowInconsistent {
-		resp, err := s.c.DeleteResourceWithResponse(ctx, resourceKey, camundav88.DeleteResourceJSONRequestBody{})
+		resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, camundav88.DeleteResourceOpJSONRequestBody{})
 		if err != nil {
 			return err
 		}

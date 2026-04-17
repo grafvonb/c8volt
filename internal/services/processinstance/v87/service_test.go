@@ -2,6 +2,7 @@ package v87_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -181,57 +182,16 @@ func TestService_GetProcessInstance(t *testing.T) {
 		assertResult      func(*testing.T, d.ProcessInstance)
 	}{
 		{
-			name: "Success",
-			key:  "123",
-			operate: &mockOperateClient{
-				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-					assert.Equal(t, int64(123), key)
-					return &operatev87.GetProcessInstanceByKeyResponse{
-						HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-						JSON200:      makeProcessInstanceResponse(123, "ACTIVE", ""),
-					}, nil
-				},
-				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-					t.Fatalf("unexpected search call")
-					return nil, nil
-				},
-				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-					t.Fatalf("unexpected delete call")
-					return nil, nil
-				},
-			},
-			assertResult: func(t *testing.T, pi d.ProcessInstance) {
-				assert.Equal(t, "123", pi.Key)
-				assert.Equal(t, d.StateActive, pi.State)
-				assert.Equal(t, "tenant", pi.TenantId)
-			},
+			name:          "TenantSafeLookupUnsupported",
+			key:           "123",
+			operate:       newStrictOperateClient(t),
+			expectedError: d.ErrUnsupported,
 		},
 		{
 			name:              "KeyConversionError",
 			key:               "not-a-number",
 			operate:           newStrictOperateClient(t),
 			expectedErrSubstr: "converting process instance key",
-		},
-		{
-			name: "MalformedSuccessPayload",
-			key:  "123",
-			operate: &mockOperateClient{
-				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-					return &operatev87.GetProcessInstanceByKeyResponse{
-						Body:         []byte(`{"detail":"missing payload"}`),
-						HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-					}, nil
-				},
-				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-					t.Fatalf("unexpected search call")
-					return nil, nil
-				},
-				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-					t.Fatalf("unexpected delete call")
-					return nil, nil
-				},
-			},
-			expectedError: d.ErrMalformedResponse,
 		},
 	}
 
@@ -249,6 +209,9 @@ func TestService_GetProcessInstance(t *testing.T) {
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.expectedError)
+				if errors.Is(tt.expectedError, d.ErrUnsupported) {
+					assert.Contains(t, err.Error(), "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
+				}
 				return
 			}
 
@@ -544,55 +507,16 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 		assertResult      func(*testing.T, d.State, d.ProcessInstance)
 	}{
 		{
-			name: "Success",
-			key:  "123",
-			operate: &mockOperateClient{
-				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-					return &operatev87.GetProcessInstanceByKeyResponse{
-						HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-						JSON200:      makeProcessInstanceResponse(123, "COMPLETED", ""),
-					}, nil
-				},
-				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-					t.Fatalf("unexpected search call")
-					return nil, nil
-				},
-				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-					t.Fatalf("unexpected delete call")
-					return nil, nil
-				},
-			},
-			assertResult: func(t *testing.T, state d.State, pi d.ProcessInstance) {
-				assert.Equal(t, d.StateCompleted, state)
-				assert.Equal(t, "123", pi.Key)
-			},
+			name:          "TenantSafeLookupUnsupported",
+			key:           "123",
+			operate:       newStrictOperateClient(t),
+			expectedError: d.ErrUnsupported,
 		},
 		{
 			name:              "KeyConversionError",
 			key:               "invalid",
 			operate:           newStrictOperateClient(t),
 			expectedErrSubstr: "converting process instance key",
-		},
-		{
-			name: "MalformedSuccessPayload",
-			key:  "123",
-			operate: &mockOperateClient{
-				getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-					return &operatev87.GetProcessInstanceByKeyResponse{
-						Body:         []byte(`{"detail":"missing payload"}`),
-						HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-					}, nil
-				},
-				searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
-					t.Fatalf("unexpected search call")
-					return nil, nil
-				},
-				deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-					t.Fatalf("unexpected delete call")
-					return nil, nil
-				},
-			},
-			expectedError: d.ErrMalformedResponse,
 		},
 	}
 
@@ -611,6 +535,9 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.expectedError)
 				assert.Contains(t, err.Error(), "fetching process instance with key")
+				if errors.Is(tt.expectedError, d.ErrUnsupported) {
+					assert.Contains(t, err.Error(), "process-instance state lookup by key is not tenant-safe in Camunda 8.7")
+				}
 				return
 			}
 
@@ -618,6 +545,40 @@ func TestService_GetProcessInstanceStateByKey(t *testing.T) {
 			tt.assertResult(t, state, pi)
 		})
 	}
+}
+
+func TestService_V87SearchBackedChildrenRemainSupported(t *testing.T) {
+	ctx := context.Background()
+
+	svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
+		getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+		searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+			require.NotNil(t, body.Filter)
+			require.Equal(t, int64(123), *body.Filter.ParentKey)
+			require.Equal(t, "tenant", *body.Filter.TenantId)
+			items := []operatev87.ProcessInstance{*makeProcessInstanceResponse(456, "ACTIVE", "123")}
+			return &operatev87.SearchProcessInstancesResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+				JSON200: &operatev87.ResultsProcessInstance{
+					Items: &items,
+				},
+			}, nil
+		},
+		deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+	})
+
+	children, err := svc.GetDirectChildrenOfProcessInstance(ctx, "123")
+
+	require.NoError(t, err)
+	require.Len(t, children, 1)
+	assert.Equal(t, "456", children[0].Key)
+	assert.Equal(t, "123", children[0].ParentKey)
 }
 
 func TestService_CancelProcessInstance(t *testing.T) {
@@ -650,15 +611,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SuccessNoWait", func(t *testing.T) {
-		var deletedKeys []int64
 		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
-			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-				assert.Equal(t, int64(123), key)
-				return &operatev87.GetProcessInstanceByKeyResponse{
-					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-					JSON200:      makeProcessInstanceResponse(123, "COMPLETED", ""),
-				}, nil
-			},
 			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
 				items := []operatev87.ProcessInstance{}
 				return &operatev87.SearchProcessInstancesResponse{
@@ -669,31 +622,19 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 				}, nil
 			},
 			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				deletedKeys = append(deletedKeys, key)
-				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
-					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-					JSON200:      &operatev87.ChangeStatus{},
-				}, nil
+				t.Fatalf("unexpected delete call")
+				return nil, nil
 			},
 		})
 
-		resp, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
+		_, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
 
-		require.NoError(t, err)
-		assert.Equal(t, []int64{123}, deletedKeys)
-		assert.True(t, resp.Ok)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
 	})
 
 	t.Run("WrongStateWithoutForceReturnsConflict", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
-			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-				assert.Equal(t, int64(123), key)
-				return &operatev87.GetProcessInstanceByKeyResponse{
-					HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-					JSON200:      makeProcessInstanceResponse(123, "ACTIVE", ""),
-				}, nil
-			},
 			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
 				items := []operatev87.ProcessInstance{}
 				return &operatev87.SearchProcessInstancesResponse{
@@ -704,40 +645,19 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 				}, nil
 			},
 			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
-					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
-					ApplicationproblemJSON400: &operatev87.Error{
-						Message: new(wrongStateMessage()),
-					},
-				}, nil
+				t.Fatalf("unexpected delete call")
+				return nil, nil
 			},
 		})
 
-		resp, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
+		_, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
 
-		require.NoError(t, err)
-		assert.False(t, resp.Ok)
-		assert.Equal(t, http.StatusConflict, resp.StatusCode)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
 	})
 
 	t.Run("SuccessWaitsForAbsentState", func(t *testing.T) {
-		getCalls := 0
 		svc := newTestService(t, waitTestConfig(), newStrictCamundaClient(t), &mockOperateClient{
-			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
-				getCalls++
-				switch getCalls {
-				case 1:
-					return &operatev87.GetProcessInstanceByKeyResponse{
-						HTTPResponse: newHTTPResponse(http.MethodGet, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-						JSON200:      makeProcessInstanceResponse(123, "COMPLETED", ""),
-					}, nil
-				case 2:
-					return nil, d.ErrNotFound
-				default:
-					t.Fatalf("unexpected get call #%d", getCalls)
-					return nil, nil
-				}
-			},
 			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
 				items := []operatev87.ProcessInstance{}
 				return &operatev87.SearchProcessInstancesResponse{
@@ -748,19 +668,15 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 				}, nil
 			},
 			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
-				return &operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
-					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
-					JSON200:      &operatev87.ChangeStatus{},
-				}, nil
+				t.Fatalf("unexpected delete call")
+				return nil, nil
 			},
 		})
 
-		resp, err := svc.DeleteProcessInstance(ctx, "123")
+		_, err := svc.DeleteProcessInstance(ctx, "123")
 
-		require.NoError(t, err)
-		assert.True(t, resp.Ok)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, 2, getCalls)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
 	})
 }
 

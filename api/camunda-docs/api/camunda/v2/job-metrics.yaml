@@ -10,7 +10,7 @@ paths:
 
         [[CONSISTENCY:EVENTUAL]]
 
-        Returns global aggregated counts for jobs. Optionally filter by the creation time window and/or jobType.
+        Returns global aggregated counts for jobs. Filter by the creation time window (required) and optionally by jobType.
       parameters:
         - name: from
           in: query
@@ -96,7 +96,7 @@ paths:
 
         [[CONSISTENCY:EVENTUAL]]
 
-        Returns aggregated metrics per worker for the given jobType.
+        Get statistics about jobs, grouped by worker, for a given job type.
       requestBody:
         required: true
         content:
@@ -359,7 +359,7 @@ components:
         - failed
       properties:
         worker:
-          description: The worker identifier.
+          description: The name of the worker activating the jobs, mostly used for logging purposes.
           type: string
           example: worker-1
         created:

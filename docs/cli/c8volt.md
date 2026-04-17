@@ -16,6 +16,11 @@ Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
+Tenant-aware process-instance flows use one effective tenant context per command execution.
+Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
+is implemented for Camunda 8.7 and 8.8; version 8.9 is recognized by config normalization but
+does not yet have a process-instance service implementation in this repository.
+
 Refer to the documentation at https://c8volt.info for more information.
 
 ```
@@ -37,7 +42,7 @@ c8volt [flags]
       --no-err-codes        suppress error codes in error outputs
       --profile string      config active profile name to use (e.g. dev, prod)
   -q, --quiet               suppress all output, except errors, overrides --log-level
-      --tenant string       default tenant ID
+      --tenant string       tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose             adds additional verbosity to the output, e.g. for progress indication
 ```
 

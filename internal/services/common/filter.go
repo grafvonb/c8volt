@@ -4,6 +4,7 @@ import (
 	"time"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
 )
 
 func NewStringEqFilterPtr(v string) *camundav88.StringFilterProperty {
@@ -49,6 +50,15 @@ func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav
 		Lte:    before,
 		Exists: exists,
 	}, (*camundav88.DateTimeFilterProperty).FromAdvancedDateTimeFilter)
+}
+
+func ProcessInstanceFilterHasTenantSafeLookupFields(filter d.ProcessInstanceFilter) bool {
+	return filter.Key != "" ||
+		filter.BpmnProcessId != "" ||
+		filter.ProcessVersion != 0 ||
+		filter.ProcessVersionTag != "" ||
+		filter.ParentKey != "" ||
+		filter.State != ""
 }
 
 func newFilterPtr[T any, D any](v D, init func(*T, D) error) *T {

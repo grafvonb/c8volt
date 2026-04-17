@@ -53,6 +53,18 @@ func TestAppNormalize_DoesNotForceDefaultTenantForV88(t *testing.T) {
 	require.Empty(t, app.Tenant)
 }
 
+func TestAppNormalize_DoesNotForceDefaultTenantForV89AuditOnlyConfig(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: toolx.V89}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.Equal(t, toolx.V89, app.CamundaVersion)
+	require.Empty(t, app.Tenant)
+}
+
 func TestAppNormalize_PreservesExplicitTenantForV87(t *testing.T) {
 	t.Parallel()
 
@@ -62,6 +74,33 @@ func TestAppNormalize_PreservesExplicitTenantForV87(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "tenant-a", app.Tenant)
+}
+
+func TestAppNormalizeWithConfiguredKeys_PreservesExplicitEmptyTenantForV87(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: toolx.V87}
+
+	err := app.normalizeWithConfiguredKeys(func(key string) bool {
+		return key == "app.tenant"
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, app.Tenant)
+}
+
+func TestAppNormalizeWithConfiguredKeys_PreservesExplicitEmptyTenantForV89(t *testing.T) {
+	t.Parallel()
+
+	app := &App{CamundaVersion: toolx.V89}
+
+	err := app.normalizeWithConfiguredKeys(func(key string) bool {
+		return key == "app.tenant"
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, toolx.V89, app.CamundaVersion)
+	require.Empty(t, app.Tenant)
 }
 
 func TestAppNormalize_PreservesExplicitBackoffTimeout(t *testing.T) {

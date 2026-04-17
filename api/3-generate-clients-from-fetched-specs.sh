@@ -88,13 +88,63 @@ git_ref_or_unknown() {
   echo "unknown"
 }
 
+resolve_camunda_v2_spec() {
+  local legacy_path="./camunda/zeebe/gateway-protocol/src/main/proto/rest-api.yaml"
+  local relocated_path="./camunda/zeebe/gateway-protocol/src/main/proto/v2/rest-api.yaml"
+
+  if [ -f "$relocated_path" ]; then
+    echo "$relocated_path"
+    return 0
+  fi
+
+  if [ -f "$legacy_path" ]; then
+    echo "$legacy_path"
+    return 0
+  fi
+
+  echo "Could not find Camunda v2 OpenAPI spec in either expected location." >&2
+  exit 1
+}
+
+bundle_camunda_v2_spec() {
+  local spec_path="$1"
+
+  if [[ "$spec_path" != *"/zeebe/gateway-protocol/src/main/proto/v2/"* ]]; then
+    echo "$spec_path"
+    return 0
+  fi
+
+  if ! command -v redocly >/dev/null 2>&1; then
+    echo "missing tool: redocly" >&2
+    exit 127
+  fi
+
+  local spec_dir
+  local spec_name
+  local bundled_path
+
+  spec_dir="$(dirname "$spec_path")"
+  spec_name="$(basename "${spec_path%.yaml}")"
+  bundled_path="${spec_dir}/${spec_name}-bundled.yaml"
+
+  redocly bundle "$spec_path" -o "$bundled_path" >/dev/null
+  echo "$bundled_path"
+}
+
+CAMUNDA_V2_SPEC="$(resolve_camunda_v2_spec)"
+CAMUNDA_V2_WORKING_SPEC="$(bundle_camunda_v2_spec "$CAMUNDA_V2_SPEC")"
+CAMUNDA_V2_SPEC_DIR="$(dirname "$CAMUNDA_V2_WORKING_SPEC")"
+
 # auth
 ./generate-go-client.sh ./auth/oauth2-openapi.json ../internal/clients/auth/oauth2/client.gen.go oauth2
 
 # v89
 ./generate-go-client.sh ./camunda-docs/api/administration-sm/administration-sm-openapi.yaml ../internal/clients/camunda/v89/administrationsm/client.gen.go administrationsm
-python3 ./mutations/mutate-fix-jobresult-discriminator.py ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api.yaml
-./generate-go-client.sh ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api-jobresult-fixed.yaml ../internal/clients/camunda/v89/camunda/client.gen.go camunda
+python3 ./mutations/mutate-fix-jobresult-discriminator.py "$CAMUNDA_V2_WORKING_SPEC"
+CAMUNDA_V2_JOBRESULT_FIXED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-jobresult-fixed.yaml"
+python3 ./mutations/mutate-fix-camunda-v2-operation-id-collisions.py "$CAMUNDA_V2_JOBRESULT_FIXED"
+CAMUNDA_V2_V89_READY="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-jobresult-fixed-opids-fixed.yaml"
+./generate-go-client.sh "$CAMUNDA_V2_V89_READY" ../internal/clients/camunda/v89/camunda/client.gen.go camunda
 
 python3 ./mutations/mutate-operation-ids.py ./camunda-docs/api/operate/operate-openapi.yaml
 python3 ./mutations/mutate-remove-sort-values.py ./camunda-docs/api/operate/operate-openapi-oids-updated.yaml
@@ -105,11 +155,17 @@ python3 ./mutations/mutate-remove-sort-values.py ./camunda-docs/api/operate/oper
 # v88
 ./generate-go-client.sh ./camunda-docs/api/administration-sm/administration-sm-openapi.yaml ../internal/clients/camunda/v88/administrationsm/client.gen.go administrationsm
 
-python3 ./mutations/mutate-search-query-schemas.py ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api.yaml
-python3 ./mutations/mutate-search-result-schemas.py ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api-search-query-patched.yaml
-python3 ./mutations/mutate-fix-process-instance-filter-fields.py ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api-search-query-patched-search-result-patched.yaml
-python3 ./mutations/mutate-fix-jobresult-discriminator.py ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api-search-query-patched-search-result-patched-process-instance-filter-fields-fixed.yaml
-./generate-go-client.sh ./camunda/zeebe/gateway-protocol/src/main/proto/rest-api-search-query-patched-search-result-patched-process-instance-filter-fields-fixed-jobresult-fixed.yaml ../internal/clients/camunda/v88/camunda/client.gen.go camunda
+python3 ./mutations/mutate-search-query-schemas.py "$CAMUNDA_V2_WORKING_SPEC"
+CAMUNDA_V2_SEARCH_QUERY_PATCHED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched.yaml"
+python3 ./mutations/mutate-search-result-schemas.py "$CAMUNDA_V2_SEARCH_QUERY_PATCHED"
+CAMUNDA_V2_SEARCH_RESULT_PATCHED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched.yaml"
+python3 ./mutations/mutate-fix-process-instance-filter-fields.py "$CAMUNDA_V2_SEARCH_RESULT_PATCHED"
+CAMUNDA_V2_PROCESS_INSTANCE_FIXED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed.yaml"
+python3 ./mutations/mutate-fix-jobresult-discriminator.py "$CAMUNDA_V2_PROCESS_INSTANCE_FIXED"
+CAMUNDA_V2_JOBRESULT_FIXED_SEARCH="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed-jobresult-fixed.yaml"
+python3 ./mutations/mutate-fix-camunda-v2-operation-id-collisions.py "$CAMUNDA_V2_JOBRESULT_FIXED_SEARCH"
+CAMUNDA_V2_V88_READY="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed-jobresult-fixed-opids-fixed.yaml"
+./generate-go-client.sh "$CAMUNDA_V2_V88_READY" ../internal/clients/camunda/v88/camunda/client.gen.go camunda
 
 python3 ./mutations/mutate-operation-ids.py ./camunda-docs/api/operate/operate-openapi.yaml
 python3 ./mutations/mutate-remove-sort-values.py ./camunda-docs/api/operate/operate-openapi-oids-updated.yaml

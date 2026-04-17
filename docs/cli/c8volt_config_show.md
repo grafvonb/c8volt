@@ -109,7 +109,7 @@ C8VOLT_AUTH_MODE=oauth2 ./c8volt --config ./config.yaml config show --validate
       --no-err-codes        suppress error codes in error outputs
       --profile string      config active profile name to use (e.g. dev, prod)
   -q, --quiet               suppress all output, except errors, overrides --log-level
-      --tenant string       default tenant ID
+      --tenant string       tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose             adds additional verbosity to the output, e.g. for progress indication
 ```
 

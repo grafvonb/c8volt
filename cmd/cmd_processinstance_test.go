@@ -141,6 +141,12 @@ func decodeCapturedTopLevelPISearchPages(t *testing.T, requests []string) []map[
 	for _, request := range decoded {
 		filter, _ := request["filter"].(map[string]any)
 		if filter != nil {
+			if _, hasKey := filter["processInstanceKey"]; hasKey {
+				continue
+			}
+			if key, hasKey := filter["key"]; hasKey && key != nil {
+				continue
+			}
 			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
 				continue
 			}
@@ -163,6 +169,12 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 	for _, request := range decoded {
 		filter, _ := request["filter"].(map[string]any)
 		if filter != nil {
+			if _, hasKey := filter["processInstanceKey"]; hasKey {
+				continue
+			}
+			if key, hasKey := filter["key"]; hasKey && key != nil {
+				continue
+			}
 			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
 				continue
 			}

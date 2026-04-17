@@ -245,7 +245,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 
 func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
 	visibleCount := int64(req.From) + int64(itemCount)
-	if page.HasMoreTotalItems != nil && *page.HasMoreTotalItems {
+	if page.HasMoreTotalItems {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
 	if page.TotalItems > visibleCount {
@@ -372,18 +372,14 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("checking state of process instance with key %s", key))
-	pi, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
+	s.log.Debug(fmt.Sprintf("checking tenant-safe state of process instance with key %s", key))
+	pi, err := s.GetProcessInstance(ctx, key, opts...)
 	if err != nil {
 		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	payload, err := common.RequirePayload(pi.HTTPResponse, pi.Body, pi.JSON200)
-	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
-	}
-	st := d.State(payload.State)
+	st := pi.State
 	s.log.Debug(fmt.Sprintf("process instance with key %s is in state %s", key, st))
-	return st, fromProcessInstanceResult(*payload), nil
+	return st, pi, nil
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -462,16 +458,16 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-
-	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
+	s.log.Debug(fmt.Sprintf("performing tenant-safe lookup for process instance with key %s", key))
+	items, err := s.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{Key: key}, 2, opts...)
 	if err != nil {
-		return d.ProcessInstance{}, err
+		return d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	pi, err := common.RequireSingleProcessInstance(items, key)
 	if err != nil {
-		return d.ProcessInstance{}, err
+		return d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
 	}
-	return fromProcessInstanceResult(*payload), nil
+	return pi, nil
 }
 
 func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
