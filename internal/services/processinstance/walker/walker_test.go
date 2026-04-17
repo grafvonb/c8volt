@@ -2,6 +2,7 @@ package walker
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -109,7 +110,9 @@ func TestAncestry(t *testing.T) {
 		_, _, _, err := Ancestry(context.Background(), w, "child")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "ancestry get")
+		assert.Contains(t, err.Error(), "ancestry")
+		assert.NotContains(t, err.Error(), "ancestry get")
+		assert.True(t, strings.HasPrefix(err.Error(), "ancestry:"))
 		assert.NotContains(t, err.Error(), "get child")
 	})
 }
@@ -173,7 +176,9 @@ func TestDescendants(t *testing.T) {
 		_, _, _, err := Descendants(context.Background(), w, "root")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "descendants list children")
+		assert.Contains(t, err.Error(), "descendants children")
+		assert.NotContains(t, err.Error(), "descendants list children")
+		assert.True(t, strings.HasPrefix(err.Error(), "descendants children:"))
 		assert.NotContains(t, err.Error(), "list children of root")
 	})
 }
@@ -206,7 +211,9 @@ func TestFamily(t *testing.T) {
 		_, _, _, err := Family(context.Background(), w, "child")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "family ancestry")
+		assert.Contains(t, err.Error(), "family")
+		assert.NotContains(t, err.Error(), "family ancestry")
+		assert.True(t, strings.HasPrefix(err.Error(), "family:"))
 		assert.NotContains(t, err.Error(), "ancestry fetch")
 	})
 }

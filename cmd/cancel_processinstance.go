@@ -70,7 +70,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 				return cancelProcessInstancePage(cmd, cli, keys, firstPage)
 			})
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error cancelling process instances: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
 			}
 			return
 		}
@@ -83,7 +83,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating process instance keys for cancellation: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancel validation: %w", err))
 		}
 		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
 		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
@@ -95,7 +95,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		}
 		_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancelling process instance(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
 		}
 	},
 }
@@ -103,7 +103,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageImpact, error) {
 	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 	if err != nil {
-		return processInstancePageImpact{}, fmt.Errorf("validating process instance keys for cancellation: %w", err)
+		return processInstancePageImpact{}, fmt.Errorf("cancel validation: %w", err)
 	}
 	impact := processInstancePageImpact{Requested: len(keys), Affected: len(collected), Roots: len(roots)}
 
@@ -120,7 +120,7 @@ func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 
 	_, err = cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
 	if err != nil {
-		return processInstancePageImpact{}, fmt.Errorf("cancelling process instance(s): %w", err)
+		return processInstancePageImpact{}, fmt.Errorf("cancel process instances: %w", err)
 	}
 	return impact, nil
 }

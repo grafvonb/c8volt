@@ -657,7 +657,8 @@ apis:
 	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
 	require.Len(t, requests, 1)
 	require.Contains(t, string(output), "resource not found")
-	require.Contains(t, string(output), "error fetching 1 process instances")
+	require.Contains(t, string(output), "get process instances")
+	require.NotContains(t, string(output), "error fetching 1 process instances")
 }
 
 func TestGetProcessInstanceKeyLookup_V87ReportsUnsupported(t *testing.T) {

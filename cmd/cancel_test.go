@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -620,9 +621,13 @@ func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *t
 
 	require.Equal(t, exitcode.NotFound, code)
 	require.Contains(t, output, "resource not found")
-	require.Contains(t, output, "validating process instance keys for cancellation")
-	require.Contains(t, output, "ancestry get")
+	require.Contains(t, output, "cancel validation")
+	require.Contains(t, output, "ancestry")
+	require.NotContains(t, output, "validating process instance keys for cancellation")
+	require.NotContains(t, output, "ancestry get")
 	require.Contains(t, output, "get process instance")
+	require.Less(t, strings.Index(output, "cancel validation"), strings.Index(output, "ancestry"))
+	require.Less(t, strings.Index(output, "ancestry"), strings.Index(output, "get process instance"))
 	require.NotContains(t, output, "fetching process instance with key")
 }
 

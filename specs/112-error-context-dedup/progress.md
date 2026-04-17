@@ -9,6 +9,8 @@ Started: 2026-04-17 15:38:09
 - Process-instance duplication clusters around walker breadcrumbs (`get %s`, `list children of %s`, `ancestry fetch`) plus versioned service wrappers such as `fetching process instance with key %s` and `waiting for ... failed`.
 - Existing regression anchors already map cleanly by pattern family: `walk` for traversal, `cancel` and `delete` for mutation/wait flows, `get` for single-resource fetch wrappers, and `c8volt/ferrors` plus bootstrap tests for unchanged class and exit behavior.
 - The lowest-risk dedup change is to shorten wrappers to stage-only breadcrumbs such as `get process instance`, `cancel wait`, or `get cluster topology`; this preserves ordering while leaving the deepest normalized failure detail intact.
+- Helper-level regressions should assert raw wrapper prefixes and stage order directly, because those seams run before `ferrors` normalization and therefore do not carry the shared class prefix yet.
+- Equivalent shortening is safest when wrapper labels collapse to the stage noun or a short noun pair, for example `ancestry`, `family`, `process instance state`, `cancel validation`, or `delete wait absent`.
 
 ---
 
@@ -89,4 +91,35 @@ Started: 2026-04-17 15:38:09
 **Learnings**:
 - Command-level regressions are important here because some process-instance flows fail during key-validation orchestration before reaching the obvious cancel/delete service entrypoints.
 - Short stage-only breadcrumbs are enough to keep failures diagnosable once the deepest layer already owns the resource-specific detail.
+---
+
+## Iteration 4 - 2026-04-17 16:01 CEST
+**User Story**: User Story 2 - Preserve where the failure happened
+**Tasks Completed**:
+- [x] T013 Add helper-level tests for ordered and equivalent breadcrumb preservation in `internal/services/processinstance/walker/walker_test.go` and `internal/services/processinstance/v87/service_test.go`
+- [x] T014 Add command-level regression tests for recognizable breadcrumb stages after shortening in `cmd/walk_test.go`, `cmd/cancel_test.go`, and `cmd/delete_test.go`
+- [x] T015 Adjust breadcrumb wording in shared traversal and process-instance wrappers to preserve equivalent stage meaning with less noise in `internal/services/processinstance/walker/walker.go`, `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T016 Align command-surface wrappers with the equivalent-breadcrumb contract in `cmd/get_processinstance.go`, `cmd/walk_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_processinstance.go
+- cmd/get_test.go
+- cmd/walk_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service.go
+- internal/services/processinstance/walker/walker.go
+- internal/services/processinstance/walker/walker_test.go
+- specs/112-error-context-dedup/tasks.md
+- specs/112-error-context-dedup/progress.md
+**Learnings**:
+- Raw helper errors are not normalized through `ferrors`, so helper-level ordering tests should assert breadcrumb prefixes and wrapper order without assuming a shared class prefix at that seam.
+- The stable equivalent-shortening pattern for this feature is to trim wrapper labels down to stage nouns or short stage pairs such as `ancestry`, `family`, `process instance state`, `cancel validation`, and `delete wait absent`.
 ---

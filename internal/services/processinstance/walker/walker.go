@@ -41,7 +41,7 @@ func Ancestry(ctx context.Context, s PIWalker, startKey string, opts ...services
 			if cur != startKey && errors.Is(getErr, d.ErrNotFound) {
 				return cur, nil, chain, fmt.Errorf("%w: non-existing parent %s of starting key %s", services.ErrOrphanedInstance, cur, startKey)
 			}
-			return "", nil, chain, fmt.Errorf("ancestry get: %w", getErr)
+			return "", nil, chain, fmt.Errorf("ancestry: %w", getErr)
 		}
 		chain[cur] = it
 		path = append(path, cur)
@@ -83,14 +83,14 @@ func Descendants(ctx context.Context, s PIWalker, rootKey string, opts ...servic
 		if _, ok := chain[parent]; !ok {
 			it, getErr := s.GetProcessInstance(ctx, parent, opts...)
 			if getErr != nil {
-				return fmt.Errorf("descendants get: %w", getErr)
+				return fmt.Errorf("descendants: %w", getErr)
 			}
 			chain[parent] = it
 		}
 
 		children, e := s.GetDirectChildrenOfProcessInstance(ctx, parent, opts...)
 		if e != nil {
-			return fmt.Errorf("descendants list children: %w", e)
+			return fmt.Errorf("descendants children: %w", e)
 		}
 
 		// keep an entry even if no children (useful for tree rendering)
@@ -121,7 +121,7 @@ func Descendants(ctx context.Context, s PIWalker, rootKey string, opts ...servic
 func Family(ctx context.Context, s PIWalker, startKey string, opts ...services.CallOption) (fam []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
 	rootKey, _, _, err := Ancestry(ctx, s, startKey, opts...)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("family ancestry: %w", err)
+		return nil, nil, nil, fmt.Errorf("family: %w", err)
 	}
 	return Descendants(ctx, s, rootKey, opts...)
 }

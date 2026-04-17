@@ -100,9 +100,9 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 			pis, err = cli.GetProcessInstances(ctx, ukeys, lk, collectOptions()...)
 			if err != nil {
-				msg := fmt.Errorf("error fetching %d process instances: %w", lk, err)
+				msg := fmt.Errorf("get process instances: %w", err)
 				if flagVerbose {
-					msg = fmt.Errorf("error fetching %d process instances for key(s) [%s]: %w", lk, ukeys, err)
+					msg = fmt.Errorf("get process instances for key(s) [%s]: %w", ukeys, err)
 				}
 				fail(msg)
 			}
@@ -112,14 +112,14 @@ var getProcessInstanceCmd = &cobra.Command{
 			var renderedIncrementally bool
 			pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
 			if err != nil {
-				fail(fmt.Errorf("error fetching process instances: %w", err))
+				fail(fmt.Errorf("get process instances: %w", err))
 			}
 			if renderedIncrementally {
 				return
 			}
 		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
-			fail(fmt.Errorf("error rendering items view: %w", err))
+			fail(fmt.Errorf("render process instances: %w", err))
 		}
 	},
 }

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -150,8 +151,10 @@ func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
 	require.Contains(t, string(output), "resource not found")
-	require.Contains(t, string(output), "ancestry get")
+	require.Contains(t, string(output), "ancestry")
+	require.NotContains(t, string(output), "ancestry get")
 	require.Contains(t, string(output), "get process instance")
+	require.Less(t, strings.Index(string(output), "ancestry"), strings.Index(string(output), "get process instance"))
 	require.NotContains(t, string(output), "fetching process instance with key")
 	require.NotContains(t, string(output), "get 2251799813685255")
 }
