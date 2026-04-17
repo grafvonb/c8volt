@@ -59,12 +59,24 @@ func NormalizeCamundaVersion(s string) (CamundaVersion, error) {
 }
 
 func SupportedCamundaVersions() []CamundaVersion {
+	return []CamundaVersion{V87, V88, V89}
+}
+
+func ImplementedCamundaVersions() []CamundaVersion {
 	return []CamundaVersion{V87, V88}
 }
 
 func SupportedCamundaVersionsString() string {
+	return joinCamundaVersions(SupportedCamundaVersions())
+}
+
+func ImplementedCamundaVersionsString() string {
+	return joinCamundaVersions(ImplementedCamundaVersions())
+}
+
+func joinCamundaVersions(versions []CamundaVersion) string {
 	var parts []string
-	for _, v := range SupportedCamundaVersions() {
+	for _, v := range versions {
 		parts = append(parts, v.String())
 	}
 	return strings.Join(parts, ", ")

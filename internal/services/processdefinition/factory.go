@@ -20,6 +20,6 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, er
 	case toolx.V87:
 		return v87.New(cfg, httpClient, log)
 	default:
-		return nil, fmt.Errorf("%w: %q (supported: %v)", services.ErrUnknownAPIVersion, v, toolx.SupportedCamundaVersionsString())
+		return nil, fmt.Errorf("%w: %q (supported: %v)", services.ErrUnknownAPIVersion, v, toolx.ImplementedCamundaVersionsString())
 	}
 }

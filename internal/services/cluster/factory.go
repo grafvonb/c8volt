@@ -27,7 +27,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, er
 	v := cfg.App.CamundaVersion
 	build, ok := constructors[v]
 	if !ok {
-		return nil, fmt.Errorf("%w: %q (supported: %v)", services.ErrUnknownAPIVersion, v, toolx.SupportedCamundaVersionsString())
+		return nil, fmt.Errorf("%w: %q (supported: %v)", services.ErrUnknownAPIVersion, v, toolx.ImplementedCamundaVersionsString())
 	}
 	return build(cfg, httpClient, log)
 }

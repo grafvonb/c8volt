@@ -61,6 +61,19 @@ func TestFactory_SupportedVersions(t *testing.T) {
 	}
 }
 
+func TestFactory_V89IsAdvertisedButNotYetRuntimeSupported(t *testing.T) {
+	cfg := testConfig()
+	cfg.App.CamundaVersion = toolx.V89
+
+	svc, err := cluster.New(cfg, &http.Client{}, slog.Default())
+
+	require.Error(t, err)
+	require.Nil(t, svc)
+	require.ErrorIs(t, err, services.ErrUnknownAPIVersion)
+	require.Contains(t, err.Error(), "\"8.9\"")
+	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
+}
+
 func TestFactory_UnknownVersion(t *testing.T) {
 	cfg := testConfig()
 	cfg.App.CamundaVersion = "v0"
@@ -71,5 +84,5 @@ func TestFactory_UnknownVersion(t *testing.T) {
 	require.Nil(t, svc)
 	require.ErrorIs(t, err, services.ErrUnknownAPIVersion)
 	require.Contains(t, err.Error(), "\"unknown\"")
-	require.Contains(t, err.Error(), toolx.SupportedCamundaVersionsString())
+	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
 }
