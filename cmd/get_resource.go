@@ -59,6 +59,9 @@ func init() {
 	fs := getResourceCmd.Flags()
 	fs.StringVarP(&flagGetResourceID, "id", "i", "", "resource id to fetch")
 	_ = getResourceCmd.MarkFlagRequired("id")
+
+	setCommandMutation(getResourceCmd, CommandMutationReadOnly)
+	setContractSupport(getResourceCmd, ContractSupportLimited)
 }
 
 func validatedResourceID() (string, error) {

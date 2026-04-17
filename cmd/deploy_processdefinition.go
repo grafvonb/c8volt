@@ -67,4 +67,18 @@ func init() {
 	_ = deployProcessDefinitionCmd.MarkFlagRequired("file")
 
 	fs.BoolVar(&flagDeployPDWithRun, "run", false, "run single process instance without vars after deploying process definition(s)")
+
+	setCommandMutation(deployProcessDefinitionCmd, CommandMutationStateChanging)
+	setContractSupport(deployProcessDefinitionCmd, ContractSupportUnsupported)
+	setOutputModes(deployProcessDefinitionCmd,
+		OutputModeContract{
+			Name:      RenderModeOneLine.String(),
+			Supported: true,
+		},
+		OutputModeContract{
+			Name:      RenderModeJSON.String(),
+			Supported: false,
+			Notes:     "shared result envelope not wired yet",
+		},
+	)
 }

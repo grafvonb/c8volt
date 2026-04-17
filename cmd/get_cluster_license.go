@@ -18,6 +18,16 @@ var getClusterLicenseCmd = &cobra.Command{
 
 func init() {
 	getClusterCmd.AddCommand(getClusterLicenseCmd)
+
+	setCommandMutation(getClusterLicenseCmd, CommandMutationReadOnly)
+	setContractSupport(getClusterLicenseCmd, ContractSupportLimited)
+	setOutputModes(getClusterLicenseCmd,
+		OutputModeContract{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	)
 }
 
 func runGetClusterLicense(cmd *cobra.Command, args []string) {

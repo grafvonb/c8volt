@@ -127,8 +127,13 @@ func contractSupportForCommand(cmd *cobra.Command) ContractSupport {
 	if value := strings.TrimSpace(cmd.Annotations[contractSupportAnnotation]); value != "" {
 		return ContractSupport(value)
 	}
-	if hasFlag(cmd, "json") {
-		return ContractSupportLimited
+	for _, child := range cmd.Commands() {
+		if !isDiscoverableCommand(child) {
+			continue
+		}
+		if contractSupportForCommand(child) != ContractSupportUnsupported {
+			return ContractSupportLimited
+		}
 	}
 	return ContractSupportUnsupported
 }

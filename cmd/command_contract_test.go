@@ -52,6 +52,21 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 	})
 }
 
+func TestCommandCapabilityForCommand_UsesExplicitUnsupportedOutputModes(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(runProcessInstanceCmd)
+
+	require.Equal(t, "run process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: false, Notes: "shared result envelope not wired yet"},
+	}, capability.OutputModes)
+}
+
 func TestCommandPath_TrimsRootName(t *testing.T) {
 	require.Equal(t, "", commandPath(Root()))
 	require.Equal(t, "version", commandPath(versionCmd))

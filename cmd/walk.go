@@ -18,4 +18,6 @@ var walkCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(walkCmd)
+
+	setCommandMutation(walkCmd, CommandMutationReadOnly)
 }

@@ -27,6 +27,7 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 
 	addBackoffFlagsAndBindings(deployCmd)
+	setCommandMutation(deployCmd, CommandMutationStateChanging)
 }
 
 func validateFiles(files []string) error {

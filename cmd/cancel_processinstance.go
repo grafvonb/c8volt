@@ -146,4 +146,18 @@ func init() {
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
+
+	setCommandMutation(cancelProcessInstanceCmd, CommandMutationStateChanging)
+	setContractSupport(cancelProcessInstanceCmd, ContractSupportUnsupported)
+	setOutputModes(cancelProcessInstanceCmd,
+		OutputModeContract{
+			Name:      RenderModeOneLine.String(),
+			Supported: true,
+		},
+		OutputModeContract{
+			Name:      RenderModeJSON.String(),
+			Supported: false,
+			Notes:     "shared result envelope not wired yet",
+		},
+	)
 }

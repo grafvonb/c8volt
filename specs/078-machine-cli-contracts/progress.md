@@ -55,3 +55,47 @@ Started: 2026-04-17 18:14:53
 - Read-only versus state-changing discovery defaults can be inferred safely from the existing top-level command taxonomy, with command annotations reserved for future exceptions and explicit rollouts.
 - The foundational envelope helpers can be validated before any command-family rollout by testing document generation and failure outcome mapping in isolation.
 ---
+
+## Iteration 3 - 2026-04-17 18:30:40 CEST
+**User Story**: User Story 1 - Discover Safe Command Contracts
+**Tasks Completed**:
+- [x] T008: Add discovery-command regression tests for top-level and nested command metadata
+- [x] T009: Add command-metadata coverage for flags, output modes, and support-status reporting
+- [x] T010: Implement the dedicated top-level discovery command
+- [x] T011: Populate representative capability metadata for `get`, `run`, `expect`, `walk`, `deploy`, `delete`, and `cancel` command families
+- [x] T012: Mark unsupported and limited machine-contract support honestly in the discovery surface for non-rolled-out commands
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/capabilities.go
+- cmd/capabilities_test.go
+- cmd/cmd_checks.go
+- cmd/command_contract.go
+- cmd/command_contract_test.go
+- cmd/get.go
+- cmd/get_cluster.go
+- cmd/get_cluster_license.go
+- cmd/get_cluster_topology.go
+- cmd/get_processdefinition.go
+- cmd/get_processinstance.go
+- cmd/get_resource.go
+- cmd/get_test.go
+- cmd/run.go
+- cmd/run_processinstance.go
+- cmd/expect.go
+- cmd/expect_processinstance.go
+- cmd/walk.go
+- cmd/walk_processinstance.go
+- cmd/deploy.go
+- cmd/deploy_processdefinition.go
+- cmd/delete.go
+- cmd/delete_processinstance.go
+- cmd/cancel.go
+- cmd/cancel_processinstance.go
+- specs/078-machine-cli-contracts/tasks.md
+- specs/078-machine-cli-contracts/progress.md
+**Learnings**:
+- Inherited root flags are not enough to infer honest machine-contract support; discovery needs explicit command annotations plus child-derived roll-up for parent nodes.
+- A metadata-only discovery command should bypass the full root bootstrap path so automation can inspect the CLI surface without config or network prerequisites.
+- The current repository already has enough command-local render seams to distinguish `limited` read-only JSON support from state-changing commands that should stay explicitly `unsupported` until the shared envelope lands.
+---

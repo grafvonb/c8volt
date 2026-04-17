@@ -65,4 +65,18 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+
+	setCommandMutation(expectProcessInstanceCmd, CommandMutationReadOnly)
+	setContractSupport(expectProcessInstanceCmd, ContractSupportUnsupported)
+	setOutputModes(expectProcessInstanceCmd,
+		OutputModeContract{
+			Name:      RenderModeOneLine.String(),
+			Supported: true,
+		},
+		OutputModeContract{
+			Name:      RenderModeJSON.String(),
+			Supported: false,
+			Notes:     "shared result envelope not wired yet",
+		},
+	)
 }

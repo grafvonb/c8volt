@@ -20,4 +20,5 @@ func init() {
 	rootCmd.AddCommand(getCmd)
 
 	addBackoffFlagsAndBindings(getCmd)
+	setCommandMutation(getCmd, CommandMutationReadOnly)
 }

@@ -20,4 +20,5 @@ func init() {
 	rootCmd.AddCommand(expectCmd)
 
 	addBackoffFlagsAndBindings(expectCmd)
+	setCommandMutation(expectCmd, CommandMutationReadOnly)
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,8 +42,43 @@ func TestRootHelp_V89SupportMessaging(t *testing.T) {
 
 	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
 	require.Contains(t, output, "same repository command-family coverage on 8.9 that already")
+	require.Contains(t, output, "capabilities")
 	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
 	require.NotContains(t, output, "does not yet have a process-instance service implementation")
+}
+
+func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	var getPI CommandCapability
+	var runPI CommandCapability
+	for _, command := range doc.Commands {
+		if command.Path == "get" {
+			for _, child := range command.Children {
+				if child.Path == "get process-instance" {
+					getPI = child
+				}
+			}
+		}
+		if command.Path == "run" {
+			for _, child := range command.Children {
+				if child.Path == "run process-instance" {
+					runPI = child
+				}
+			}
+		}
+	}
+
+	require.Equal(t, ContractSupportLimited, getPI.ContractSupport)
+	require.Equal(t, ContractSupportUnsupported, runPI.ContractSupport)
+	require.Contains(t, runPI.OutputModes, OutputModeContract{
+		Name:      "json",
+		Supported: false,
+		Notes:     "shared result envelope not wired yet",
+	})
 }
 
 // Verifies `get resource --help` documents required id-based lookup usage.

@@ -46,14 +46,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add discovery-command regression tests for top-level and nested command metadata in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities_test.go
-- [ ] T009 [P] [US1] Add command-metadata coverage for flags, output modes, and support-status reporting in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
+- [x] T008 [P] [US1] Add discovery-command regression tests for top-level and nested command metadata in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities_test.go
+- [x] T009 [P] [US1] Add command-metadata coverage for flags, output modes, and support-status reporting in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement the dedicated top-level discovery command in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go and register it from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
-- [ ] T011 [US1] Populate representative capability metadata for `get`, `run`, `expect`, `walk`, `deploy`, `delete`, and `cancel` command families in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go and the related command files under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
-- [ ] T012 [US1] Mark unsupported and limited machine-contract support honestly in the discovery surface for non-rolled-out commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go
+- [x] T010 [US1] Implement the dedicated top-level discovery command in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go and register it from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
+- [x] T011 [US1] Populate representative capability metadata for `get`, `run`, `expect`, `walk`, `deploy`, `delete`, and `cancel` command families in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go and the related command files under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
+- [x] T012 [US1] Mark unsupported and limited machine-contract support honestly in the discovery surface for non-rolled-out commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go
 
 **Checkpoint**: User Story 1 is independently testable: automation can discover the command surface and support status from one top-level machine-readable command.
 

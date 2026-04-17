@@ -119,4 +119,7 @@ func init() {
 	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{walkPIModeParent, walkPIModeChildren, walkPIModeFamily}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
+	setContractSupport(walkProcessInstanceCmd, ContractSupportLimited)
 }
