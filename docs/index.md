@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-36-g5e3d9bd-dirty`, commit `5e3d9bd`, built `2026-04-17T02:33:06Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-44-ga0e30a6-dirty`, commit `a0e30a6`, built `2026-04-17T07:50:28Z` | camunda: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -51,6 +51,14 @@ If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN d
 - delete process-instance families thoroughly
 - wait for the state you actually need
 - validate config and inspect cluster metadata
+
+## Camunda Version Support
+
+`c8volt` supports Camunda `8.7`, `8.8`, and `8.9` as runtime targets.
+
+- `8.9` now has the same repository command-family coverage that `8.8` already had: cluster metadata, process-definition discovery, resource lifecycle, and process-instance lifecycle/traversal.
+- `8.8` remains the default runtime target in this repository until that default is changed deliberately.
+- `8.7` remains supported with its existing version-specific limits, including the explicitly unsupported keyed tenant-safe process-instance lookup/state paths where no equivalent upstream API exists.
 
 ## c8volt vs c8ctl
 
@@ -199,9 +207,9 @@ Tenant-aware process-instance commands follow one shared contract across `get`, 
 
 - the effective tenant follows `flag > env > profile > base config > default`
 - supported wrong-tenant lookups behave like `not found`
+- `8.9` now uses the same native tenant-safe process-instance runtime path and repository command-family coverage that `8.8` provides
 - `v8.8` uses tenant-safe search-backed lookup/state behavior as the authoritative path for direct-get-adjacent flows
 - `v8.7` keeps search-backed tenant-safe flows available, but keyed direct lookup and keyed state checks stay explicitly unsupported where no tenant-safe upstream equivalent exists
-- `8.9` is recognized by config normalization, but process-instance runtime support in this repository still stops at `v8.8`
 
 That split is intentional: `c8volt` does not fake tenant safety by doing an unsafe cross-tenant fetch and hiding the result afterward.
 

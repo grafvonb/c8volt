@@ -35,6 +35,16 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "resource")
 }
 
+// Verifies root help advertises the finalized v8.9 runtime support contract.
+func TestRootHelp_V89SupportMessaging(t *testing.T) {
+	output := executeRootForTest(t, "--help")
+
+	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
+	require.Contains(t, output, "same repository command-family coverage on 8.9 that already")
+	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
+	require.NotContains(t, output, "does not yet have a process-instance service implementation")
+}
+
 // Verifies `get resource --help` documents required id-based lookup usage.
 func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")

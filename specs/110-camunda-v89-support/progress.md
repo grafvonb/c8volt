@@ -5,6 +5,7 @@ Started: 2026-04-17 08:42:48
 
 ## Codebase Patterns
 
+- User-facing version-support wording should be authored in `cmd/root.go` and `README.md`, then propagated through `make docs-content`; generated docs are verification output, not the source of truth.
 - `c8volt/client.go` is the single top-level wiring seam; keep version selection in the service factories and facade wiring instead of branching in commands.
 - Factory regression tests under `internal/services/*/factory_test.go` prove supported-version routing by asserting concrete service types and `services.ErrUnknownAPIVersion` behavior.
 - When `toolx.CurrentCamundaVersion` stays on an older default during a new-version rollout, add explicit factory regressions that keep the default pinned to the current runtime (`v8.8` here) so broader support claims do not silently change default selection behavior.
@@ -44,6 +45,32 @@ Started: 2026-04-17 08:42:48
 - Native `v89` command proof is easiest to keep honest by asserting the exact generated Camunda endpoint seams per family, especially the search-backed process-instance lookups and the `/deletion` process-instance delete operation.
 - `c8volt.New(...)` plus one process facade call and one resource facade call is enough to prove the shared client wiring now reaches the `v89` runtime path without reintroducing command-local version branching.
 - User Story 1 now passes the required validation bar with `go test ./internal/services/processinstance/... -count=1`, `go test ./c8volt ./cmd -count=1`, and `make test`.
+---
+
+## Iteration 10 - 2026-04-17 09:52 CEST
+**User Story**: User Story 3 - Make v8.9 Support Verifiable and Explicit
+**Tasks Completed**:
+- [x] T023: Add doc-facing regression coverage for updated supported-version output
+- [x] T024: Add or refresh final verification notes and quickstart validation guidance
+- [x] T025: Update user-facing version-support guidance
+- [x] T026: Regenerate CLI reference output for the updated help text and sync homepage content from README.md
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/get_test.go
+- cmd/root.go
+- cmd/version_test.go
+- docs/cli/c8volt.md
+- docs/index.md
+- specs/110-camunda-v89-support/plan.md
+- specs/110-camunda-v89-support/progress.md
+- specs/110-camunda-v89-support/quickstart.md
+- specs/110-camunda-v89-support/tasks.md
+**Learnings**:
+- Root help and `README.md` are the authored version-support sources; `make docs-content` is the required sync step that carries the same wording into `docs/index.md` and generated CLI reference pages.
+- Doc-facing regression stays cheap and stable when it pins the rendered root help and JSON `version` output instead of asserting generated markdown directly.
+- This story closes cleanly only after the wording changes survive both `go test ./cmd -count=1` and the repository gate `make test`, because user-facing support claims now live in tested command metadata as well as generated docs.
 ---
 
 ## Iteration 9 - 2026-04-17 10:25 CEST

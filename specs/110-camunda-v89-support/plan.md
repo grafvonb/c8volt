@@ -194,7 +194,9 @@ Task generation should break the work into dependency-ordered slices:
   - `make docs`
   - `make docs-content`
 - Repository validation remains `make test`, which is required before the feature can be considered done.
-- Documentation regeneration should follow command/help text changes so generated docs stay in sync with the runtime truth.
+- Documentation regeneration should follow command/help text and `README.md` changes so generated docs stay in sync with the runtime truth.
+- User-facing version messaging is complete only when root help, `README.md`, `docs/index.md`, and generated `docs/cli/*` all agree that `8.9` is supported with the same repository command-family coverage already available on `8.8`.
+- Final verification for this story should explicitly check that no user-facing surface still says `8.9` is normalization-only or that runtime support stops at `8.8`.
 
 ## Complexity Tracking
 

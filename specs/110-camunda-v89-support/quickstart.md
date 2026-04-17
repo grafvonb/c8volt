@@ -29,7 +29,7 @@
 4. Confirm native `v89` cluster, process-definition, resource, and process-instance paths depend only on the generated `v89` Camunda client.
 5. Confirm `v8.7` and `v8.8` behavior remains unchanged.
 6. Confirm at least one explicit `v8.9` command execution path succeeds for each repository command family.
-7. Confirm README and generated docs no longer claim runtime support stops at `v8.8`.
+7. Confirm README, docs homepage content, and generated CLI docs all describe `v8.9` as a supported runtime with `v8.8` command parity.
 
 ## Foundational Checkpoint
 
@@ -52,6 +52,12 @@ make test
 ```
 
 Run the focused service and command suites first to isolate factory/runtime regressions, regenerate documentation after help or README updates, then run `make test` as the repository gate.
+
+## Final Verification Notes
+
+- Treat `README.md` and root help text as the authored source for user-facing version messaging; regenerate `docs/index.md` and `docs/cli/*` instead of hand-editing them.
+- Final release-ready wording must say that `8.9` is supported, that the repository command families already covered on `8.8` are also covered on `8.9`, and that `8.7` keeps its existing version-specific limitations.
+- The release gate for this story is not satisfied until `go test ./cmd -count=1`, `make docs-content`, and `make test` all pass against the updated wording.
 
 ## Manual Smoke Ideas
 

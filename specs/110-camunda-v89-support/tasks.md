@@ -93,13 +93,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Add doc-facing regression coverage for updated supported-version output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/version.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
-- [ ] T024 [P] [US3] Add or refresh final verification notes and quickstart validation guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/quickstart.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/plan.md
+- [x] T023 [P] [US3] Add doc-facing regression coverage for updated supported-version output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/version.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
+- [x] T024 [P] [US3] Add or refresh final verification notes and quickstart validation guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/quickstart.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/110-camunda-v89-support/plan.md
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Update user-facing version-support guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
-- [ ] T026 [US3] Regenerate CLI reference output for the updated help text in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/ and sync homepage content from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
+- [x] T025 [US3] Update user-facing version-support guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go
+- [x] T026 [US3] Regenerate CLI reference output for the updated help text in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/ and sync homepage content from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
 
 **Checkpoint**: User Story 3 is independently testable: the runtime truth, docs, and validation guidance all agree on what `v8.9` support means.
 
