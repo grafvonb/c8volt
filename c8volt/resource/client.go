@@ -61,12 +61,12 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 				}
 				roots, collected, err := c.papi.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, opts...)
 				if err != nil {
-					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("validating process instance keys for cancellation: %w", err)
+					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("delete process definition cancellation validation: %w", err)
 				}
 				c.log.Debug(fmt.Sprintf("found %d process instance(s) to cancel (requested %d, root %d) for process definition %s", len(collected), len(keys), len(roots), key))
 				_, err = c.papi.CancelProcessInstances(ctx, roots, len(roots), opts...)
 				if err != nil {
-					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cancelling active process instances for process definition %s before deletion failed: %w", key, err)
+					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("delete process definition cancel active instances: %w", err)
 				}
 			} else {
 				return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cannot delete process definition %s with active process instances; user --force to cancel them automatically", key)
@@ -81,7 +81,7 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 		/*
 			if !cCfg.NoWait {
 				if err := c.waitForProcessDefinitionRemoval(ctx, key, opts...); err != nil {
-					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("waiting for process definition %s removal failed: %w", key, err)
+					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("wait for process definition removal: %w", err)
 				}
 			}
 		*/

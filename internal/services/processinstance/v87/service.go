@@ -117,7 +117,7 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		states := []d.State{d.StateActive}
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
-			return d.ProcessInstanceCreation{}, fmt.Errorf("waiting for started state failed for %s: %w", pi.Key, err)
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for started state: %w", err)
 		}
 		pi.StartDate = created.StartDate
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
@@ -145,7 +145,7 @@ func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key st
 	}
 	resp, err := s.SearchForProcessInstances(ctx, filter, 1000, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("searching for children of process instance with key %s: %w", key, err)
+		return nil, fmt.Errorf("search child process instances: %w", err)
 	}
 	return resp, nil
 }
@@ -282,12 +282,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Debug("child process, looking up root process instance in ancestry")
 			rootPIKey, _, _, erra := walker.Ancestry(ctx, s, key, opts...)
 			if erra != nil {
-				return d.CancelResponse{}, pis, fmt.Errorf("fetching ancestry for process instance with key %s: %w", key, erra)
+				return d.CancelResponse{}, pis, fmt.Errorf("cancel ancestry: %w", erra)
 			}
 			if cCfg.Force {
 				keys, _, family, err := walker.Descendants(ctx, s, rootPIKey, opts...)
 				if err != nil {
-					return d.CancelResponse{}, pis, fmt.Errorf("fetching descendants for root process instance with key %s: %w", rootPIKey, err)
+					return d.CancelResponse{}, pis, fmt.Errorf("cancel descendants: %w", err)
 				}
 				for i := range family {
 					pis = append(pis, family[i])
@@ -322,12 +322,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	if !cCfg.NoWait {
 		keys, _, _, err := s.Family(ctx, key, opts...)
 		if err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("fetching family for process instance with key %s: %w", key, err)
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
 		}
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 		states := []d.State{d.StateCanceled, d.StateTerminated}
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
 		}
 		s.log.Info(fmt.Sprintf("process instance with key %s was successfully (confirmed) cancelled", key))
 	} else {
@@ -347,7 +347,7 @@ func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, 
 	if err != nil {
 		return "", d.ProcessInstance{}, err
 	}
-	return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, fmt.Errorf("%w: process-instance state lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported))
+	return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", fmt.Errorf("%w: process-instance state lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported))
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -390,12 +390,12 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Info(fmt.Sprintf("process instance with key %s not in one of terminated states; cancelling it first", key))
 			_, _, err = s.CancelProcessInstance(ctx, key, opts...)
 			if err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("error cancelling process instance with key %s: %w", key, err)
+				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 			states := []d.State{d.StateCanceled, d.StateTerminated}
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states); err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("retrying deletion of process instance with key %d", oldKey))
 			resp, err = s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
@@ -411,7 +411,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be deleted by workflow engine...", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-			return d.DeleteResponse{}, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
 		}
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {

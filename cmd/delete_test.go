@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -723,6 +724,31 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	require.Equal(t, []string{"/v1/process-instances/601"}, deleted.Snapshot())
 }
 
+func TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeDeleteProcessInstanceFailureHelper(t, "TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper", cfgPath)
+
+	require.Equal(t, exitcode.NotFound, code)
+	require.Contains(t, output, "resource not found")
+	require.Contains(t, output, "delete validation")
+	require.Contains(t, output, "ancestry")
+	require.NotContains(t, output, "validating process instance keys for cancellation")
+	require.NotContains(t, output, "ancestry get")
+	require.Contains(t, output, "get process instance")
+	require.Less(t, strings.Index(output, "delete validation"), strings.Index(output, "ancestry"))
+	require.Less(t, strings.Index(output, "ancestry"), strings.Index(output, "get process instance"))
+	require.NotContains(t, output, "fetching process instance with key")
+}
+
 // Verifies delete process-definition requires either --key or --bpmn-process-id as a target selector.
 func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -948,4 +974,17 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper(t *testing.
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+func TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "delete", "process-instance", "--key", "601", "--no-wait"}
+
+	Execute()
 }

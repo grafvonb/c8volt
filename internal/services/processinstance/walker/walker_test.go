@@ -2,6 +2,7 @@ package walker
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -92,6 +93,28 @@ func TestAncestry(t *testing.T) {
 		assert.Nil(t, path)
 		assert.Equal(t, d.ProcessInstance{Key: "child", ParentKey: "missing"}, chain["child"])
 	})
+
+	t.Run("keeps ancestry breadcrumb without restating the same key detail", func(t *testing.T) {
+		t.Parallel()
+
+		w := stubPIWalker{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				return d.ProcessInstance{}, d.ErrNotFound
+			},
+			getDirectChildrenProcessInstance: func(ctx context.Context, key string) ([]d.ProcessInstance, error) {
+				t.Fatalf("unexpected GetDirectChildrenOfProcessInstance call")
+				return nil, nil
+			},
+		}
+
+		_, _, _, err := Ancestry(context.Background(), w, "child")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "ancestry")
+		assert.NotContains(t, err.Error(), "ancestry get")
+		assert.True(t, strings.HasPrefix(err.Error(), "ancestry:"))
+		assert.NotContains(t, err.Error(), "get child")
+	})
 }
 
 func TestDescendants(t *testing.T) {
@@ -137,6 +160,27 @@ func TestDescendants(t *testing.T) {
 		assert.Nil(t, edges)
 		assert.Nil(t, chain)
 	})
+
+	t.Run("keeps descendants breadcrumb without restating the same key detail", func(t *testing.T) {
+		t.Parallel()
+
+		w := stubPIWalker{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				return d.ProcessInstance{}, nil
+			},
+			getDirectChildrenProcessInstance: func(ctx context.Context, key string) ([]d.ProcessInstance, error) {
+				return nil, d.ErrNotFound
+			},
+		}
+
+		_, _, _, err := Descendants(context.Background(), w, "root")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "descendants children")
+		assert.NotContains(t, err.Error(), "descendants list children")
+		assert.True(t, strings.HasPrefix(err.Error(), "descendants children:"))
+		assert.NotContains(t, err.Error(), "list children of root")
+	})
 }
 
 func TestFamily(t *testing.T) {
@@ -149,6 +193,28 @@ func TestFamily(t *testing.T) {
 		assert.Equal(t, []string{"root", "child-a", "grandchild", "child-b"}, family)
 		assert.Equal(t, []string{"child-a", "child-b"}, edges["root"])
 		assert.Equal(t, "child-a", chain["grandchild"].ParentKey)
+	})
+
+	t.Run("keeps family breadcrumb without the old ancestry fetch wording", func(t *testing.T) {
+		t.Parallel()
+
+		w := stubPIWalker{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				return d.ProcessInstance{}, d.ErrNotFound
+			},
+			getDirectChildrenProcessInstance: func(ctx context.Context, key string) ([]d.ProcessInstance, error) {
+				t.Fatalf("unexpected GetDirectChildrenOfProcessInstance call")
+				return nil, nil
+			},
+		}
+
+		_, _, _, err := Family(context.Background(), w, "child")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "family")
+		assert.NotContains(t, err.Error(), "family ancestry")
+		assert.True(t, strings.HasPrefix(err.Error(), "family:"))
+		assert.NotContains(t, err.Error(), "ancestry fetch")
 	})
 }
 

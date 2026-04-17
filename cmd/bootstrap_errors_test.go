@@ -107,7 +107,7 @@ func TestExecute_V89RuntimeFailuresUseSharedFailureModel(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "internal error")
-	require.Contains(t, string(output), "error fetching topology")
+	require.Contains(t, string(output), "get cluster topology")
 }
 
 // Verifies an explicit --config path wins over default search-path config discovery.
@@ -156,6 +156,18 @@ func TestNormalizeBootstrapErrorMapsCommandValidationToInvalidInput(t *testing.T
 	require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(err))
 }
 
+// Verifies bootstrap normalization keeps already-normalized shared failures stable.
+func TestNormalizeBootstrapErrorPreservesNormalizedFailures(t *testing.T) {
+	t.Parallel()
+
+	err := ferrors.WrapClass(ferrors.ErrLocalPrecondition, errors.New("loading configuration: missing base url"))
+	got := normalizeBootstrapError(err)
+
+	require.Equal(t, "local precondition failed: loading configuration: missing base url", got.Error())
+	require.Equal(t, ferrors.ClassLocalPrecondition, ferrors.Classify(got))
+	require.Equal(t, exitcode.Error, ferrors.ExitCode(got))
+}
+
 // Verifies shared command-validation sentinels normalize to the invalid-input class.
 func TestNormalizeCommandErrorMapsSharedValidationSentinels(t *testing.T) {
 	t.Parallel()
@@ -177,6 +189,18 @@ func TestNormalizeCommandErrorMapsSharedValidationSentinels(t *testing.T) {
 			require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(normalizeCommandError(tt.err)))
 		})
 	}
+}
+
+// Verifies command normalization does not restack an already-normalized shared failure.
+func TestNormalizeCommandErrorPreservesNormalizedFailures(t *testing.T) {
+	t.Parallel()
+
+	err := ferrors.WrapClass(ferrors.ErrInvalidInput, errors.New("invalid flag value: boom"))
+	got := normalizeCommandError(err)
+
+	require.Equal(t, "invalid input: invalid flag value: boom", got.Error())
+	require.Equal(t, ferrors.ClassInvalidInput, ferrors.Classify(got))
+	require.Equal(t, exitcode.InvalidArgs, ferrors.ExitCode(got))
 }
 
 // Verifies bootstrap normalization rule-table mappings for known and fallback error cases.

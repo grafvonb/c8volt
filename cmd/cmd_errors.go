@@ -61,6 +61,8 @@ func normalizeCommandError(err error) error {
 		return nil
 	}
 
+	// Command-local sentinels may pick the shared class, but all remaining
+	// normalization still routes through ferrors to keep one rendering boundary.
 	for _, rule := range commandErrorClassRules {
 		if errors.Is(err, rule.match) {
 			return ferrors.WrapClass(rule.class, err)

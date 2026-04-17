@@ -65,7 +65,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 				return deleteProcessInstancePage(cmd, cli, keys, firstPage)
 			})
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("error deleting process instances: %w", err))
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
 			}
 			return
 		}
@@ -78,7 +78,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		}
 		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("validating process instance keys for cancellation: %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("delete validation: %w", err))
 		}
 		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
 		prompt := fmt.Sprintf("You are about to delete %d process instance(s). Do you want to proceed?", affectedCount)
@@ -90,7 +90,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		}
 		_, err = cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process instance(s): %w", err))
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
 		}
 	},
 }
@@ -98,7 +98,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageImpact, error) {
 	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
 	if err != nil {
-		return processInstancePageImpact{}, fmt.Errorf("validating process instance keys for cancellation: %w", err)
+		return processInstancePageImpact{}, fmt.Errorf("delete validation: %w", err)
 	}
 	impact := processInstancePageImpact{Requested: len(keys), Affected: len(collected), Roots: len(roots)}
 
@@ -115,7 +115,7 @@ func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 
 	_, err = cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
 	if err != nil {
-		return processInstancePageImpact{}, fmt.Errorf("deleting process instance(s): %w", err)
+		return processInstancePageImpact{}, fmt.Errorf("delete process instances: %w", err)
 	}
 	return impact, nil
 }
