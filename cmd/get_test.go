@@ -291,6 +291,7 @@ func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
 	require.Contains(t, string(output), "get cluster license")
 	require.NotContains(t, string(output), "error fetching cluster license")
+	require.NotContains(t, string(output), "fetch cluster license")
 }
 
 // Verifies nested cluster topology HTTP failures map to unavailable exit behavior.
@@ -316,6 +317,7 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
 	require.Contains(t, string(output), "get cluster topology")
 	require.NotContains(t, string(output), "error fetching topology")
+	require.NotContains(t, string(output), "fetch cluster topology")
 }
 
 func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T) {
@@ -394,6 +396,7 @@ func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 	require.Contains(t, string(output), "get cluster topology")
 	require.NotContains(t, string(output), "error fetching topology")
 	require.NotContains(t, string(output), "Deprecated:")
+	require.NotContains(t, string(output), "fetch cluster topology")
 }
 
 // Verifies malformed successful license responses are classified as malformed-response failures.
@@ -419,6 +422,7 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "get cluster license")
 	require.NotContains(t, string(output), "error fetching cluster license")
+	require.NotContains(t, string(output), "fetch cluster license")
 	require.Contains(t, string(output), "malformed response")
 }
 

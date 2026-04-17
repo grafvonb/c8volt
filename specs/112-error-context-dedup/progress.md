@@ -123,3 +123,28 @@ Started: 2026-04-17 15:38:09
 - Raw helper errors are not normalized through `ferrors`, so helper-level ordering tests should assert breadcrumb prefixes and wrapper order without assuming a shared class prefix at that seam.
 - The stable equivalent-shortening pattern for this feature is to trim wrapper labels down to stage nouns or short stage pairs such as `ancestry`, `family`, `process instance state`, `cancel validation`, and `delete wait absent`.
 ---
+
+## Iteration 5 - 2026-04-17 16:05 CEST
+**User Story**: User Story 3 - Keep failure semantics unchanged
+**Tasks Completed**:
+- [x] T017 Add cross-class regression tests for preserved normalized prefixes and unchanged exit behavior in `c8volt/ferrors/errors_test.go` and `cmd/get_test.go`
+- [x] T018 Add representative regression tests for the audited non-not-found duplication family in `cmd/get_test.go`
+- [x] T019 Sweep the remaining matched non-not-found duplication pattern in `internal/services/cluster/common/license.go` and `internal/services/cluster/common/topology.go`
+- [x] T020 Refresh the shipped rendering contract and implementation notes in `specs/112-error-context-dedup/research.md`, `specs/112-error-context-dedup/data-model.md`, `specs/112-error-context-dedup/quickstart.md`, and `specs/112-error-context-dedup/contracts/cli-error-rendering.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ferrors/errors_test.go
+- cmd/get_test.go
+- internal/services/cluster/common/license.go
+- internal/services/cluster/common/topology.go
+- specs/112-error-context-dedup/contracts/cli-error-rendering.md
+- specs/112-error-context-dedup/data-model.md
+- specs/112-error-context-dedup/progress.md
+- specs/112-error-context-dedup/quickstart.md
+- specs/112-error-context-dedup/research.md
+- specs/112-error-context-dedup/tasks.md
+**Learnings**:
+- The remaining non-not-found duplication seam lived in shared cluster helpers that repeated the same fetch-stage wording already owned by the CLI command layer.
+- Removing the inner cluster fetch wrapper keeps exit-code and normalized-prefix behavior stable because `ferrors` still classifies the domain error the same way; only the wrapped detail chain became shorter.
+---

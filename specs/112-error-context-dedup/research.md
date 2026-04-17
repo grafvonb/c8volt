@@ -95,6 +95,13 @@ This audit did not justify changes inside `c8volt/ferrors`, transport clients, o
 - Commands such as [`cmd/get_processdefinition.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go), [`cmd/get_resource.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_resource.go), [`cmd/get_cluster_license.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster_license.go), and [`cmd/get_cluster_topology.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster_topology.go) all add top-level `error fetching ...` wrappers.
 - Some of these may be acceptable one-layer context, while others may duplicate lower-layer fetch wording; the audit needs to separate stage-only wrappers from repeated-detail wrappers.
 
+### Final audit result: Cluster license/topology share the remaining non-not-found duplication seam
+
+- The final audit confirmed one matched non-not-found family after User Stories 1 and 2: cluster license and topology failures still repeated the same fetch-stage meaning across `internal/services/cluster/common` and `cmd/get_*`.
+- The shared cluster helper now returns transport and HTTP-status failures without adding `fetch cluster license` or `fetch cluster topology`, leaving the command layer to own the single user-facing stage breadcrumb.
+- Representative command regressions in `cmd/get_test.go` now assert the final rendered output keeps the shared `service unavailable:` or `malformed response:` prefix while excluding the old inner fetch-stage duplication.
+- Shared-prefix coverage in `c8volt/ferrors/errors_test.go` now explicitly locks the unavailable-class rendering behavior alongside the existing unsupported and not-found coverage.
+
 ### Pattern family 4: Resource/client orchestration wrappers
 
 - [`c8volt/resource/client.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client.go) and resource service files layer additional operation text around process-instance validation, cancellation, and wait flows.

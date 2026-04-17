@@ -81,5 +81,6 @@ Confirmed regression anchors for the setup audit are:
 | Process-instance mutation/wait | `cmd/cancel_test.go`, `cmd/delete_test.go`, `internal/services/processinstance/v87/service_test.go`, `internal/services/processinstance/v88/service_test.go` |
 | Single-resource fetch wrappers | `cmd/get_test.go` and focused `get_*` command tests |
 | Shared class/exit behavior | `c8volt/ferrors/errors_test.go`, `cmd/bootstrap_errors_test.go` |
+| Cluster license/topology unavailable and malformed-response paths | `cmd/get_test.go` plus shared unavailable-prefix checks in `c8volt/ferrors/errors_test.go` |
 
 The tests should assert semantic rendering outcomes, not every exact original wording choice, except where the preserved shared class prefix is part of the public contract.

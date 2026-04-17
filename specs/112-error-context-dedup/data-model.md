@@ -58,6 +58,7 @@
   - Process-instance mutation and wait follow-up
   - Single-resource command fetch wrappers
   - Resource/client orchestration wrappers
+  - Cluster license/topology fetch wrappers for unavailable and malformed-response failures
 - **Invariants**:
   - Each affected family needs at least one representative regression anchor.
   - Fixes should be applied consistently across all paths in a family once the pattern is confirmed.

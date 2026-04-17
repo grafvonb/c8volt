@@ -169,3 +169,14 @@ func TestWrapClassPreservesWrappedDetailText(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnsupported)
 	require.Equal(t, ClassUnsupported, Classify(err))
 }
+
+func TestWrapClassPreservesUnavailablePrefixAndDetailText(t *testing.T) {
+	t.Parallel()
+
+	err := WrapClass(ErrUnavailable, errors.New("get cluster topology: upstream returned 503"))
+
+	require.Equal(t, "service unavailable: get cluster topology: upstream returned 503", err.Error())
+	require.ErrorIs(t, err, ErrUnavailable)
+	require.Equal(t, ClassUnavailable, Classify(err))
+	require.Equal(t, exitcode.Unavailable, ExitCode(err))
+}
