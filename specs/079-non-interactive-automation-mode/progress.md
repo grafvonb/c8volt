@@ -148,3 +148,25 @@ Started: 2026-04-19 06:53:03
 - Existing paging prompt regressions for `cancel` and `delete` already exercised the preserved human path, so this iteration mainly needed contract-specific assertions that those flows stay in `prompt` mode until callers opt into automation or `--auto-confirm`.
 - Regenerating docs after Cobra help changes also refreshed many root inherited-flag pages, which is expected because the root persistent flag descriptions flow through every generated command reference page.
 ---
+
+## Iteration 6 - 2026-04-19 07:25 CEST
+**User Story**: Phase 6 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T021: refreshed final implementation and validation notes in `specs/079-non-interactive-automation-mode/plan.md`, `specs/079-non-interactive-automation-mode/research.md`, and `specs/079-non-interactive-automation-mode/quickstart.md`
+- [x] T022: ran focused automation regression coverage with `go test ./cmd -count=1`
+- [x] T023: regenerated documentation with `make docs` and `make docs-content`
+- [x] T024: ran repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/079-non-interactive-automation-mode/plan.md
+- specs/079-non-interactive-automation-mode/progress.md
+- specs/079-non-interactive-automation-mode/quickstart.md
+- specs/079-non-interactive-automation-mode/research.md
+- specs/079-non-interactive-automation-mode/tasks.md
+**Learnings**:
+- The final contract boundary is clearest when the feature artifacts name both the supported automation families and the intentional `expect`/`walk` exclusions, rather than restating only the original rollout intent.
+- `make docs-content` refreshes the generated build banner in `docs/index.md` even when README prose is unchanged, so that generated file belongs in the same validation pass as command-doc regeneration.
+- The feature-level validation stack is stable in the documented order: focused `go test ./cmd -count=1`, then docs regeneration, then repository-wide `make test`.
+---

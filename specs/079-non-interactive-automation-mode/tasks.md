@@ -103,10 +103,10 @@
 
 **Purpose**: Finish validation and refresh the feature artifacts around the final implementation.
 
-- [ ] T021 [P] Refresh implementation and validation notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/079-non-interactive-automation-mode/plan.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/079-non-interactive-automation-mode/research.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/079-non-interactive-automation-mode/quickstart.md after the final contract shape lands
-- [ ] T022 Run focused automation-mode regression coverage with `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T023 Run documentation regeneration with `make docs` and `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T024 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T021 [P] Refresh implementation and validation notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/079-non-interactive-automation-mode/plan.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/079-non-interactive-automation-mode/research.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/079-non-interactive-automation-mode/quickstart.md after the final contract shape lands
+- [x] T022 Run focused automation-mode regression coverage with `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T023 Run documentation regeneration with `make docs` and `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T024 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
 
 ---
 
