@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0ty5i8n" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.46.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <bpmn:process id="C89_SimpleUserTask_Process" name="C89 Simple User Task Process" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="v1.0.0" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="SimpleUserTaskRequested_StartEvent" name="Simple User Task requested">
+      <bpmn:outgoing>Flow_1b6a1ym</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_1b6a1ym" sourceRef="SimpleUserTaskRequested_StartEvent" targetRef="SimpleUserTask_UserTask" />
+    <bpmn:userTask id="SimpleUserTask_UserTask" name="Simple User Task">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1b6a1ym</bpmn:incoming>
+      <bpmn:outgoing>Flow_0nwy12g</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="SimpleUserTaskFinished_EndEvent" name="Simple User Task finished">
+      <bpmn:incoming>Flow_0nwy12g</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0nwy12g" sourceRef="SimpleUserTask_UserTask" targetRef="SimpleUserTaskFinished_EndEvent" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C89_SimpleUserTask_Process">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="SimpleUserTaskRequested_StartEvent">
+        <dc:Bounds x="182" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="157" y="145" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0h8iy0c_di" bpmnElement="SimpleUserTask_UserTask">
+        <dc:Bounds x="270" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0q1qq3w_di" bpmnElement="SimpleUserTaskFinished_EndEvent">
+        <dc:Bounds x="422" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="397" y="145" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1b6a1ym_di" bpmnElement="Flow_1b6a1ym">
+        <di:waypoint x="218" y="120" />
+        <di:waypoint x="270" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0nwy12g_di" bpmnElement="Flow_0nwy12g">
+        <di:waypoint x="370" y="120" />
+        <di:waypoint x="422" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0nsrc8i" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.46.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <bpmn:process id="C89_MultipleSubProcessesParentProcess" name="C89 Multiple SubProcesses Parent Process" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="v1.0.0" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="SimpleParentProcess_StartEvent" name="Simple Parent Process requested">
+      <bpmn:outgoing>Flow_03q0fiq</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="SimpleParentProcess_EndEvent" name="Simple Parent Process finished">
+      <bpmn:incoming>Flow_0z6rpia</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0h0n1mq" sourceRef="SimpleParentProcess_Activity" targetRef="SimpleUserTask_UserTask" />
+    <bpmn:callActivity id="SimpleParentProcess_Activity" name="Simple Parent Process">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="C89_SimpleParentProcess" propagateAllChildVariables="false" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_10sh1uh</bpmn:incoming>
+      <bpmn:outgoing>Flow_0h0n1mq</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="Flow_03q0fiq" sourceRef="SimpleParentProcess_StartEvent" targetRef="MultipleProcesses_Gateway" />
+    <bpmn:parallelGateway id="MultipleProcesses_Gateway">
+      <bpmn:incoming>Flow_03q0fiq</bpmn:incoming>
+      <bpmn:outgoing>Flow_10sh1uh</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1jyi5q7</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_10sh1uh" sourceRef="MultipleProcesses_Gateway" targetRef="SimpleParentProcess_Activity" />
+    <bpmn:callActivity id="SimpleUserTaskProcess_Activity" name="Simple User Task Process">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="C89_SimpleUserTask_Process" propagateAllChildVariables="false" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1jyi5q7</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dkt39e</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:sequenceFlow id="Flow_1jyi5q7" sourceRef="MultipleProcesses_Gateway" targetRef="SimpleUserTaskProcess_Activity" />
+    <bpmn:userTask id="SimpleUserTask_UserTask" name="Simple User Task">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0h0n1mq</bpmn:incoming>
+      <bpmn:outgoing>Flow_02674c9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_02674c9" sourceRef="SimpleUserTask_UserTask" targetRef="MergeMultipleProcesses_Gateway" />
+    <bpmn:parallelGateway id="MergeMultipleProcesses_Gateway">
+      <bpmn:incoming>Flow_02674c9</bpmn:incoming>
+      <bpmn:incoming>Flow_1dkt39e</bpmn:incoming>
+      <bpmn:outgoing>Flow_0z6rpia</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_0z6rpia" sourceRef="MergeMultipleProcesses_Gateway" targetRef="SimpleParentProcess_EndEvent" />
+    <bpmn:sequenceFlow id="Flow_1dkt39e" sourceRef="SimpleUserTaskProcess_Activity" targetRef="MergeMultipleProcesses_Gateway" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="C89_MultipleSubProcessesParentProcess">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="SimpleParentProcess_StartEvent">
+        <dc:Bounds x="182" y="82" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="165" y="125" width="70" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_03kjsr2_di" bpmnElement="SimpleParentProcess_EndEvent">
+        <dc:Bounds x="752" y="82" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="730" y="125" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1cdq8ik_di" bpmnElement="SimpleParentProcess_Activity">
+        <dc:Bounds x="360" y="60" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0boh5k6_di" bpmnElement="MultipleProcesses_Gateway">
+        <dc:Bounds x="265" y="75" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1atudxy" bpmnElement="SimpleUserTaskProcess_Activity">
+        <dc:Bounds x="360" y="190" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0h8iy0c_di" bpmnElement="SimpleUserTask_UserTask">
+        <dc:Bounds x="510" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_07ioccd" bpmnElement="MergeMultipleProcesses_Gateway">
+        <dc:Bounds x="655" y="75" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0h0n1mq_di" bpmnElement="Flow_0h0n1mq">
+        <di:waypoint x="460" y="100" />
+        <di:waypoint x="510" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03q0fiq_di" bpmnElement="Flow_03q0fiq">
+        <di:waypoint x="218" y="100" />
+        <di:waypoint x="265" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10sh1uh_di" bpmnElement="Flow_10sh1uh">
+        <di:waypoint x="315" y="100" />
+        <di:waypoint x="360" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jyi5q7_di" bpmnElement="Flow_1jyi5q7">
+        <di:waypoint x="290" y="125" />
+        <di:waypoint x="290" y="230" />
+        <di:waypoint x="360" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02674c9_di" bpmnElement="Flow_02674c9">
+        <di:waypoint x="610" y="100" />
+        <di:waypoint x="655" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0z6rpia_di" bpmnElement="Flow_0z6rpia">
+        <di:waypoint x="705" y="100" />
+        <di:waypoint x="752" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dkt39e_di" bpmnElement="Flow_1dkt39e">
+        <di:waypoint x="460" y="230" />
+        <di:waypoint x="680" y="230" />
+        <di:waypoint x="680" y="125" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

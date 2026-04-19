@@ -52,7 +52,8 @@ Thumbs.db
 # c8volt
 config*.yaml
 config*.yaml.bak
-processdefinitions
+processdefinitions/
+!embedded/processdefinitions
 
 # JetBrains IDEs
 *.iml
