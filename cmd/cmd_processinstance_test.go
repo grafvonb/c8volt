@@ -133,6 +133,32 @@ func decodeCapturedPISearchPages(t *testing.T, requests []string) []map[string]a
 	return pages
 }
 
+func decodeCapturedTopLevelPISearchFilters(t *testing.T, requests []string) []map[string]any {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	filters := make([]map[string]any, 0, len(decoded))
+	for _, request := range decoded {
+		filter, _ := request["filter"].(map[string]any)
+		if filter != nil {
+			if _, hasKey := filter["processInstanceKey"]; hasKey {
+				continue
+			}
+			if key, hasKey := filter["key"]; hasKey && key != nil {
+				continue
+			}
+			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
+				continue
+			}
+			if parentKey, hasParent := filter["parentKey"]; hasParent && parentKey != nil {
+				continue
+			}
+		}
+		filters = append(filters, filter)
+	}
+	return filters
+}
+
 func decodeCapturedTopLevelPISearchPages(t *testing.T, requests []string) []map[string]any {
 	t.Helper()
 

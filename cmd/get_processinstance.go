@@ -255,7 +255,23 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 			f.State = st
 		}
 	}
+	if flagGetPIChildrenOnly {
+		f.HasParent = boolPtr(true)
+	}
+	if flagGetPIRootsOnly {
+		f.HasParent = boolPtr(false)
+	}
+	if flagGetPIIncidentsOnly {
+		f.HasIncident = boolPtr(true)
+	}
+	if flagGetPINoIncidentsOnly {
+		f.HasIncident = boolPtr(false)
+	}
 	return f
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
 
 func hasPISearchFilterFlags() bool {

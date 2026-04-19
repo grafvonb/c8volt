@@ -533,6 +533,19 @@ func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 	require.Equal(t, "2026-03-27", filter.EndDateBefore)
 }
 
+func TestPopulatePISearchFilterOpts_TranslatesSupportedPresenceFlags(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIChildrenOnly = true
+	flagGetPIIncidentsOnly = true
+
+	filter := populatePISearchFilterOpts()
+
+	require.Equal(t, testBoolPtr(true), filter.HasParent)
+	require.Equal(t, testBoolPtr(true), filter.HasIncident)
+}
+
 func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -868,6 +881,58 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
 		require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
 	})
+
+	t.Run("supported filters keep paging summaries aligned with server-filtered pages", func(t *testing.T) {
+		for _, version := range []string{"8.8", "8.9"} {
+			t.Run(version, func(t *testing.T) {
+				var requests []string
+				srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+					`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","parentProcessInstanceKey":"456"},{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","parentProcessInstanceKey":"457"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+					`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","parentProcessInstanceKey":"458"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+				)
+				t.Cleanup(srv.Close)
+
+				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+				prompts := []string{}
+				prevConfirm := confirmCmdOrAbortFn
+				confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+					prompts = append(prompts, prompt)
+					return nil
+				}
+				t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+				output := executeRootForProcessInstanceTest(t,
+					"--config", cfgPath,
+					"--tenant", "tenant",
+					"--verbose",
+					"get", "process-instance",
+					"--children-only",
+					"--incidents-only",
+					"--count", "2",
+				)
+
+				pages := decodeCapturedPISearchPages(t, requests)
+				decoded := decodeCapturedPISearchRequests(t, requests)
+				require.Len(t, pages, 2)
+				require.Len(t, decoded, 2)
+				require.EqualValues(t, 2, pages[0]["limit"])
+				require.EqualValues(t, 0, pages[0]["from"])
+				require.EqualValues(t, 2, pages[1]["from"])
+				filter, ok := decoded[0]["filter"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, true, filter["hasIncident"])
+
+				parentFilter, ok := filter["parentProcessInstanceKey"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, true, parentFilter["$exists"])
+
+				require.Len(t, prompts, 1)
+				require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2 total so far)")
+				require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
+				require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+			})
+		}
+	})
 }
 
 func TestPIContinuationHelpers(t *testing.T) {
@@ -1036,6 +1101,10 @@ func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
 	require.NotNil(t, flag)
 	require.NoError(t, flag.Value.Set("1000"))
 	flag.Changed = false
+}
+
+func testBoolPtr(v bool) *bool {
+	return &v
 }
 
 func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {

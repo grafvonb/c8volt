@@ -196,7 +196,8 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		StartDate:                   common.NewDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil),
 		EndDate:                     common.NewDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExists),
 		State:                       common.NewProcessInstanceStateEqFilterPtr(string(filter.State)),
-		ParentProcessInstanceKey:    common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey),
+		HasIncident:                 filter.HasIncident,
+		ParentProcessInstanceKey:    newParentProcessInstanceKeyFilter(filter),
 	}
 	page := camundav88.SearchQueryPageRequest{}
 	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
@@ -225,6 +226,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		bodyFilter.StartDate != nil ||
 		bodyFilter.EndDate != nil ||
 		bodyFilter.State != nil ||
+		bodyFilter.HasIncident != nil ||
 		bodyFilter.ParentProcessInstanceKey != nil {
 		body.Filter = &bodyFilter
 	}
@@ -241,6 +243,13 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Request:       pageReq,
 		OverflowState: pickProcessInstanceOverflowState(payload.Page, pageReq, len(payload.Items)),
 	}, nil
+}
+
+func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) *camundav88.ProcessInstanceKeyFilterProperty {
+	if filter.ParentKey != "" {
+		return common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey)
+	}
+	return common.NewProcessInstanceKeyExistsFilterPtr(filter.HasParent)
 }
 
 func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {

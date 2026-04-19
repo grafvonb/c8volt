@@ -46,16 +46,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add shared filter-mapping regression coverage for parent-presence and incident-presence semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
-- [ ] T009 [P] [US1] Add `v8.8` request-capture tests for parent-presence and incident-presence pushdown in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
-- [ ] T010 [P] [US1] Add `v8.9` request-capture tests for parent-presence and incident-presence pushdown in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
-- [ ] T011 [P] [US1] Add command paging regressions for supported-version filtered page behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T008 [P] [US1] Add shared filter-mapping regression coverage for parent-presence and incident-presence semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T009 [P] [US1] Add `v8.8` request-capture tests for parent-presence and incident-presence pushdown in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
+- [x] T010 [P] [US1] Add `v8.9` request-capture tests for parent-presence and incident-presence pushdown in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
+- [x] T011 [P] [US1] Add command paging regressions for supported-version filtered page behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Translate supported list-mode flags into the shared request-capable filter fields in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T013 [US1] Implement `v8.8` request-side encoding for parent-presence and incident-presence filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/convert.go
-- [ ] T014 [US1] Implement `v8.9` request-side encoding for parent-presence and incident-presence filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/convert.go
+- [x] T012 [US1] Translate supported list-mode flags into the shared request-capable filter fields in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T013 [US1] Implement `v8.8` request-side encoding for parent-presence and incident-presence filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/convert.go
+- [x] T014 [US1] Implement `v8.9` request-side encoding for parent-presence and incident-presence filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/convert.go
 
 **Checkpoint**: User Story 1 is independently testable: supported versions send the new predicates in the search request and show paging behavior that matches the filtered server result set.
 

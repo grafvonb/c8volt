@@ -340,6 +340,42 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Equal(t, "123", items[0].Key)
 	})
 
+	t.Run("PushesDownParentPresenceAndIncidentPresence", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Filter)
+				require.NotNil(t, body.Filter.ParentProcessInstanceKey)
+
+				parentFilter, err := body.Filter.ParentProcessInstanceKey.AsAdvancedProcessInstanceKeyFilter()
+				require.NoError(t, err)
+				require.NotNil(t, parentFilter.Exists)
+				assert.Equal(t, false, *parentFilter.Exists)
+				assert.Nil(t, parentFilter.Eq)
+				require.NotNil(t, body.Filter.HasIncident)
+				assert.Equal(t, false, *body.Filter.HasIncident)
+
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+						Items: []camundav88.ProcessInstanceResult{*makeProcessInstanceResult("123", "COMPLETED", "")},
+					},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			HasParent:   testBoolPtr(false),
+			HasIncident: testBoolPtr(false),
+		}, 25)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, "123", items[0].Key)
+	})
+
 	t.Run("RequiresExistingEndDateForSingleDerivedUpperBound", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
@@ -854,6 +890,10 @@ func waitTestConfig() *config.Config {
 		Timeout:      25 * time.Millisecond,
 	}
 	return cfg
+}
+
+func testBoolPtr(v bool) *bool {
+	return &v
 }
 
 func makeProcessInstanceResult(key string, state string, parentKey string) *camundav88.ProcessInstanceResult {

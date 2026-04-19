@@ -188,7 +188,8 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		StartDate:                   newDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil),
 		EndDate:                     newDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExistsFilter(filter)),
 		State:                       newProcessInstanceStateEqFilterPtr(string(filter.State)),
-		ParentProcessInstanceKey:    newProcessInstanceKeyEqFilterPtr(filter.ParentKey),
+		HasIncident:                 filter.HasIncident,
+		ParentProcessInstanceKey:    newParentProcessInstanceKeyFilter(filter),
 	}
 	if bodyFilter.isEmpty() {
 		bodyFilter = nil
@@ -239,6 +240,13 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Request:       pageReq,
 		OverflowState: pickProcessInstanceOverflowState(result.Page, pageReq, len(result.Items)),
 	}, nil
+}
+
+func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) *camundav89.ProcessInstanceKeyFilterProperty {
+	if filter.ParentKey != "" {
+		return newProcessInstanceKeyEqFilterPtr(filter.ParentKey)
+	}
+	return newProcessInstanceKeyExistsFilterPtr(filter.HasParent)
 }
 
 func pickProcessInstanceOverflowState(page camundav89.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
