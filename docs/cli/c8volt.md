@@ -16,6 +16,10 @@ Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
+For machine discovery, use "c8volt capabilities --json". Human-oriented command families and
+plain-text usage remain the primary interactive surface; JSON and keys-only modes layer onto the
+same Cobra command tree for script-safe automation.
+
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
 is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned service
@@ -50,6 +54,7 @@ c8volt [flags]
 ### SEE ALSO
 
 * [c8volt cancel](c8volt_cancel)	 - Cancel resources
+* [c8volt capabilities](c8volt_capabilities)	 - Describe machine-readable CLI capabilities
 * [c8volt config](c8volt_config)	 - Manage application configuration
 * [c8volt delete](c8volt_delete)	 - Delete resources
 * [c8volt deploy](c8volt_deploy)	 - Deploy resources

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +15,8 @@ var getResourceCmd = &cobra.Command{
 	Use:   "resource",
 	Short: "Get a resource by id",
 	Long: "Get a single resource by id.\n" +
-		"It requires --id to select exactly one resource and renders the standard single-resource view.",
+		"It requires --id to select exactly one resource and renders the standard single-resource view.\n\n" +
+		"Default output stays human-oriented. Use --json for the shared machine-readable result envelope or --keys-only when chaining ids into other commands.",
 	Example: `  ./c8volt get resource --id resource-id-123
   ./c8volt --json get resource --id resource-id-123
   ./c8volt --keys-only get resource --id resource-id-123`,
@@ -36,7 +36,7 @@ func runGetResource(cmd *cobra.Command, args []string) {
 
 	id, err := validatedResourceID()
 	if err != nil {
-		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 	}
 
 	runGetResourceByID(cmd, cli, log, cfg.App.NoErrCodes, id)
@@ -46,10 +46,10 @@ func runGetResourceByID(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, no
 	log.Debug(fmt.Sprintf("fetching resource by id: %s", id))
 	resource, err := cli.GetResource(cmd.Context(), id, collectOptions()...)
 	if err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get resource: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get resource: %w", err))
 	}
 	if err := resourceView(cmd, resource); err != nil {
-		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering resource view: %w", err))
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("error rendering resource view: %w", err))
 	}
 }
 
@@ -59,6 +59,9 @@ func init() {
 	fs := getResourceCmd.Flags()
 	fs.StringVarP(&flagGetResourceID, "id", "i", "", "resource id to fetch")
 	_ = getResourceCmd.MarkFlagRequired("id")
+
+	setCommandMutation(getResourceCmd, CommandMutationReadOnly)
+	setContractSupport(getResourceCmd, ContractSupportFull)
 }
 
 func validatedResourceID() (string, error) {

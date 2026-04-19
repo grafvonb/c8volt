@@ -14,4 +14,6 @@ var getClusterCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getClusterCmd)
+
+	setCommandMutation(getClusterCmd, CommandMutationReadOnly)
 }

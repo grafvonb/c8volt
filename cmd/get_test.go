@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,8 +42,44 @@ func TestRootHelp_V89SupportMessaging(t *testing.T) {
 
 	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
 	require.Contains(t, output, "same repository command-family coverage on 8.9 that already")
+	require.Contains(t, output, "capabilities")
 	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
 	require.NotContains(t, output, "does not yet have a process-instance service implementation")
+}
+
+func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	var getPI CommandCapability
+	var runPI CommandCapability
+	for _, command := range doc.Commands {
+		if command.Path == "get" {
+			for _, child := range command.Children {
+				if child.Path == "get process-instance" {
+					getPI = child
+				}
+			}
+		}
+		if command.Path == "run" {
+			for _, child := range command.Children {
+				if child.Path == "run process-instance" {
+					runPI = child
+				}
+			}
+		}
+	}
+
+	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
+	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
+	require.Equal(t, ContractSupportFull, runPI.ContractSupport)
+	require.Contains(t, runPI.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
 }
 
 // Verifies `get resource --help` documents required id-based lookup usage.
@@ -51,6 +88,7 @@ func TestGetResourceHelp(t *testing.T) {
 
 	require.Contains(t, output, "Get a single resource by id")
 	require.Contains(t, output, "c8volt get resource")
+	require.Contains(t, output, "Default output stays human-oriented")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
 }
@@ -215,6 +253,31 @@ func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
 
 	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
 	require.NotContains(t, output, "Deprecated:")
+}
+
+func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "resourceId": "resource-id-123",
+  "resourceKey": "resource-key-123",
+  "resourceName": "order-process.bpmn",
+  "tenantId": "<default>",
+  "version": 7,
+  "versionTag": "stable"
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "resource", "--id", "resource-id-123")
+
+	require.Contains(t, output, "resource-id-123")
+	require.NotContains(t, output, `"outcome"`)
+	require.NotContains(t, output, `"command"`)
 }
 
 // Verifies nested `get cluster license` succeeds with required license fields.
@@ -594,6 +657,32 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "error fetching resource by id missing-resource")
 }
 
+func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
+		http.Error(w, "missing", http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_JSONFailureUsesEnvelopeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(output, &got))
+	require.Equal(t, string(OutcomeFailed), got["outcome"])
+	require.Equal(t, "get resource", got["command"])
+	require.Equal(t, "not_found", got["class"])
+}
+
 // Verifies `--no-err-codes` preserves failure output while returning success exit status.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -921,6 +1010,19 @@ func TestGetResourceCommand_FailureHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "resource", "--id", "missing-resource"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestGetResourceCommand_JSONFailureUsesEnvelopeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "resource", "--id", "missing-resource"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

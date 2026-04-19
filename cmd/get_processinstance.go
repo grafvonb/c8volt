@@ -66,7 +66,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 		ctx := cmd.Context()
 		fail := func(err error) {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			fail(invalidFlagValuef("--workers must be positive integer"))
@@ -150,6 +150,9 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+
+	setCommandMutation(getProcessInstanceCmd, CommandMutationReadOnly)
+	setContractSupport(getProcessInstanceCmd, ContractSupportFull)
 }
 
 var relativeDayNow = func() time.Time {
@@ -194,6 +197,11 @@ type processInstancePageImpact struct {
 	Affected int
 	// Roots is the number of root instances in the expanded impact set.
 	Roots int
+}
+
+type processInstancePageActionResult struct {
+	Impact  processInstancePageImpact
+	Reports []process.Reporter
 }
 
 func registerPISharedDateRangeFlags(fs *pflag.FlagSet) {
@@ -323,6 +331,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	var collected process.ProcessInstances
 	incremental := shouldRenderPISearchPageIncrementally()
+	autoContinue := shouldAutoContinuePISearchPages()
 	processedTotal := 0
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
@@ -359,7 +368,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		}
 		processedTotal += len(filtered.Items)
 
-		summary := newPIProgressSummary(page, processedTotal, flagCmdAutoConfirm)
+		summary := newPIProgressSummary(page, processedTotal, autoContinue)
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
@@ -396,6 +405,12 @@ func shouldRenderPISearchPageIncrementally() bool {
 	return mode == RenderModeOneLine || mode == RenderModeKeysOnly
 }
 
+// shouldAutoContinuePISearchPages reports whether paged process-instance search should
+// consume additional pages without interactive confirmation.
+func shouldAutoContinuePISearchPages() bool {
+	return flagCmdAutoConfirm || pickMode() == RenderModeJSON
+}
+
 func isCmdAborted(err error) bool {
 	if err == nil {
 		return false
@@ -414,26 +429,27 @@ func processPISearchPagesWithAction(
 	cli process.API,
 	cfg *config.Config,
 	filter process.ProcessInstanceFilter,
-	processPage func(page process.ProcessInstancePage, firstPage bool) (processInstancePageImpact, error),
-) error {
+	processPage func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error),
+) ([]process.Reporter, error) {
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	cumulative := 0
 	cumulativeAffected := 0
 	firstPage := true
+	var reports []process.Reporter
 
 	for {
 		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(page.Items) == 0 {
 			if cumulative == 0 {
 				cmd.Println("found:", 0)
 			}
-			return nil
+			return reports, nil
 		}
 
-		impact, err := processPage(page, firstPage)
+		result, err := processPage(page, firstPage)
 		if err != nil {
 			if !firstPage && isCmdAborted(err) {
 				printPISearchProgress(cmd, processInstanceProgressSummary{
@@ -443,11 +459,13 @@ func processPISearchPagesWithAction(
 					OverflowState:     page.OverflowState,
 					ContinuationState: processInstanceContinuationPartialComplete,
 				})
-				return nil
+				return reports, nil
 			}
-			return err
+			return nil, err
 		}
 
+		impact := result.Impact
+		reports = append(reports, result.Reports...)
 		cumulative += len(page.Items)
 		if impact.Affected > 0 {
 			cumulativeAffected += impact.Affected
@@ -459,7 +477,7 @@ func processPISearchPagesWithAction(
 
 		switch summary.ContinuationState {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
-			return nil
+			return reports, nil
 		case processInstanceContinuationAutoContinue:
 			firstPage = false
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
@@ -475,9 +493,9 @@ func processPISearchPagesWithAction(
 						OverflowState:     summary.OverflowState,
 						ContinuationState: processInstanceContinuationPartialComplete,
 					})
-					return nil
+					return reports, nil
 				}
-				return err
+				return nil, err
 			}
 			firstPage = false
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))

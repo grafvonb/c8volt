@@ -22,9 +22,12 @@ const (
 var walkProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Inspect the parent/child tree of process instances",
+	Long: "Inspect the parent/child tree of process instances.\n\n" +
+		"Human-readable list and tree output remain the default. Use --json when automation needs the shared result envelope around the returned traversal payload.",
 	Example: `  ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
-  ./c8volt walk pi --key 2251799813711977 --parent`,
+  ./c8volt walk pi --key 2251799813711977 --parent
+  ./c8volt --json walk pi --key 2251799813711967 --children`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -94,10 +97,10 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 		path, chain, err := w.fetch()
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := w.view(cmd, path, chain); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -119,4 +122,7 @@ func init() {
 	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{walkPIModeParent, walkPIModeChildren, walkPIModeFamily}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
+	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
 }

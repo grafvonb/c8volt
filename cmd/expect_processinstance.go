@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -29,27 +28,34 @@ var expectProcessInstanceCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
 		states, err := process.ParseStates(flagExpectPIStates)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagExpectPIKeys, stdinKeys, log, cfg)
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to watch")))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to watch")))
 		}
-		log.Info(fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states))
-		_, err = cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectOptions()...)
+		if !commandUsesSharedEnvelope(cmd, pickMode()) {
+			log.Info(fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states))
+		}
+		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("expecting process instance: %w", err))
 		}
-		log.Info(fmt.Sprintf("%d process instance(s) [%s] reached desired state(s) [%s]", len(keys), keys, states))
+		if err := renderCommandResult(cmd, reports); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render expect result: %w", err))
+		}
+		if !commandUsesSharedEnvelope(cmd, pickMode()) {
+			log.Info(fmt.Sprintf("%d process instance(s) [%s] reached desired state(s) [%s]", len(keys), keys, states))
+		}
 	},
 }
 
@@ -65,4 +71,7 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+
+	setCommandMutation(expectProcessInstanceCmd, CommandMutationReadOnly)
+	setContractSupport(expectProcessInstanceCmd, ContractSupportFull)
 }

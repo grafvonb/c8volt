@@ -8,6 +8,12 @@ nav_exclude: true
 
 Start process instance(s) and confirm they are active
 
+### Synopsis
+
+Start process instance(s) and confirm they are active.
+
+Default output stays operator-oriented. Use --json when automation needs the shared result envelope, and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.
+
 ```
 c8volt run process-instance [flags]
 ```
@@ -18,6 +24,7 @@ c8volt run process-instance [flags]
   ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
+  ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait
 ```
 
 ### Options

@@ -20,4 +20,5 @@ func init() {
 	rootCmd.AddCommand(cancelCmd)
 
 	addBackoffFlagsAndBindings(cancelCmd)
+	setCommandMutation(cancelCmd, CommandMutationStateChanging)
 }

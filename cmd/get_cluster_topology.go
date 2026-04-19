@@ -25,6 +25,26 @@ var getClusterTopologyNestedCmd = &cobra.Command{
 func init() {
 	getCmd.AddCommand(getClusterTopologyCmd)
 	getClusterCmd.AddCommand(getClusterTopologyNestedCmd)
+
+	setCommandMutation(getClusterTopologyCmd, CommandMutationReadOnly)
+	setContractSupport(getClusterTopologyCmd, ContractSupportLimited)
+	setOutputModes(getClusterTopologyCmd,
+		OutputModeContract{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	)
+
+	setCommandMutation(getClusterTopologyNestedCmd, CommandMutationReadOnly)
+	setContractSupport(getClusterTopologyNestedCmd, ContractSupportLimited)
+	setOutputModes(getClusterTopologyNestedCmd,
+		OutputModeContract{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	)
 }
 
 func runGetClusterTopology(cmd *cobra.Command, args []string) {

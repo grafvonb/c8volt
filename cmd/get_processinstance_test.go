@@ -46,7 +46,8 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &got))
-	require.NotContains(t, got, "error")
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get process-instance", got["command"])
 }
 
 func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
@@ -66,7 +67,9 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	require.NotEmpty(t, requests)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &got))
-	meta, ok := got["meta"].(map[string]any)
+	payload, ok := got["payload"].(map[string]any)
+	require.True(t, ok)
+	meta, ok := payload["meta"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, true, meta["withAge"])
 }
@@ -650,6 +653,44 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Zero(t, promptCalls)
 		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
 		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	})
+
+	t.Run("json mode fetches every page without prompt", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		promptCalls := 0
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			promptCalls++
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--json",
+			"get", "process-instance",
+			"--count", "2",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 2)
+		require.EqualValues(t, 2, pages[0]["limit"])
+		require.EqualValues(t, 0, pages[0]["from"])
+		require.EqualValues(t, 2, pages[1]["from"])
+		require.Zero(t, promptCalls)
+		require.Contains(t, output, `"outcome": "succeeded"`)
+		require.Contains(t, output, `"total": 3`)
+		require.Contains(t, output, `"key": "123"`)
+		require.Contains(t, output, `"key": "124"`)
+		require.Contains(t, output, `"key": "125"`)
 	})
 
 	t.Run("declined continuation reports partial completion summary", func(t *testing.T) {

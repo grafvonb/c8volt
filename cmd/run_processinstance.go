@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -22,9 +21,13 @@ var (
 var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Start process instance(s) and confirm they are active",
+	Long: "Start process instance(s) and confirm they are active.\n\n" +
+		"Default output stays operator-oriented. Use --json when automation needs the shared result envelope, " +
+		"and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.",
 	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8`,
+  ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
+  ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -32,12 +35,12 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, err)
 		}
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--count and --workers must be positive integers"))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--count and --workers must be positive integers"))
 		}
 		var vars map[string]interface{}
 		if flagRunPIVars != "" {
 			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --vars JSON: %v", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --vars JSON: %v", err))
 			}
 		}
 		var datas []process.ProcessInstanceData
@@ -45,10 +48,10 @@ var runProcessInstanceCmd = &cobra.Command{
 		switch {
 		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("flags --pd-key and --bpmn-process-id are mutually exclusive"))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, mutuallyExclusiveFlagsf("flags --pd-key and --bpmn-process-id are mutually exclusive"))
 			}
 			if flagRunPIProcessDefinitionVersion != 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("flag --pd-version is only valid with --bpmn-process-id"))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("flag --pd-version is only valid with --bpmn-process-id"))
 			}
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionKey))
@@ -63,7 +66,7 @@ var runProcessInstanceCmd = &cobra.Command{
 
 		case len(flagRunPIProcessDefinitionBpmnProcessIds) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 1 && flagRunPIProcessDefinitionVersion != 0 {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, forbiddenFlagCombinationf("cannot specify --pd-version when running multiple BPMN process IDs"))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, forbiddenFlagCombinationf("cannot specify --pd-version when running multiple BPMN process IDs"))
 			}
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionBpmnProcessIds))
@@ -78,7 +81,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)
 
 		default:
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
 		}
 
 		fopts := collectOptions()
@@ -86,19 +89,32 @@ var runProcessInstanceCmd = &cobra.Command{
 			fopts = append(fopts, foptions.WithFailFast())
 		}
 		if flagRunPICount <= 1 {
-			_, err = cli.CreateProcessInstances(cmd.Context(), datas, fopts...)
+			var created []process.ProcessInstance
+			created, err = cli.CreateProcessInstances(cmd.Context(), datas, fopts...)
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running process instance(s) for %s: %w", contextForErr, err))
+			}
+			if err := renderCommandResult(cmd, process.ProcessInstances{
+				Total: int32(len(created)),
+				Items: created,
+			}); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render process-instance result: %w", err))
 			}
 			return
 		}
 		if len(datas) > 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes,
+			handleCommandError(cmd, log, cfg.App.NoErrCodes,
 				forbiddenFlagCombinationf("--count requires exactly one process definition; got %d", len(datas)))
 		}
-		_, err = cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
+		created, err := cli.CreateNProcessInstances(cmd.Context(), datas[0], flagRunPICount, flagWorkers, fopts...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("running %d process instances for %s: %w", flagRunPICount, contextForErr, err))
+		}
+		if err := renderCommandResult(cmd, process.ProcessInstances{
+			Total: int32(len(created)),
+			Items: created,
+		}); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render process-instance result: %w", err))
 		}
 	},
 }
@@ -117,4 +133,7 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+
+	setCommandMutation(runProcessInstanceCmd, CommandMutationStateChanging)
+	setContractSupport(runProcessInstanceCmd, ContractSupportFull)
 }

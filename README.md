@@ -561,6 +561,7 @@ The supporting read and deployment commands are still part of the core toolbox:
 `c8volt` is built to behave well in scripts, CI jobs, and operator toolchains:
 
 - `--json` for structured output
+- `capabilities --json` as the canonical machine-readable discovery surface
 - `--keys-only` for command chaining
 - `--auto-confirm` for non-interactive runs
 - `--workers` for controlled concurrency
@@ -573,8 +574,11 @@ The supporting read and deployment commands are still part of the core toolbox:
 Example:
 
 ```bash
+./c8volt capabilities --json
 ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active --keys-only
 ```
+
+Use `capabilities --json` to discover command paths, flags, output modes, mutation type, and whether a command currently supports the full shared machine contract. For supported command families, `--json` returns the shared result envelope while the default command output and `--keys-only` behavior stay operator-friendly and pipeline-safe.
 
 And when you want to move from "query" to "bulk action" without leaving the shell:
 

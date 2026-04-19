@@ -188,6 +188,17 @@ func ResolveExitCode(noErrCodes bool, err error) int {
 	return code
 }
 
+func Outcome(err error) string {
+	switch Classify(err) {
+	case "":
+		return ""
+	case ClassInvalidInput:
+		return "invalid"
+	default:
+		return "failed"
+	}
+}
+
 func HandleAndExitOK(log *slog.Logger, message string) {
 	log.Info(message)
 	os.Exit(exitcode.OK)

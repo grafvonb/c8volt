@@ -269,6 +269,7 @@ func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--json",
 		"delete", "process-instance",
 		"--key", "2251799813711967",
 		"--no-wait",
@@ -278,7 +279,10 @@ func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *
 	require.Equal(t, []string{"/v2/process-instances/2251799813711967/deletion"}, deleted)
 	require.Contains(t, requests[0], `"processInstanceKey":"2251799813711967"`)
 	require.Contains(t, requests[len(requests)-1], `"parentProcessInstanceKey":"2251799813711967"`)
-	require.Empty(t, output)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
+	require.Equal(t, "delete process-instance", got["command"])
 }
 
 // Verifies delete no-ops successfully when a date-filtered search returns no process instances.
@@ -710,9 +714,10 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
-	_ = executeRootForProcessInstanceTest(t,
+	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
 		"--tenant", "tenant",
+		"--json",
 		"delete", "process-instance",
 		"--key", "601",
 		"--no-wait",
@@ -722,6 +727,9 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
 	require.Empty(t, pages)
 	require.Equal(t, []string{"/v1/process-instances/601"}, deleted.Snapshot())
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeAccepted), got["outcome"])
 }
 
 func TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {

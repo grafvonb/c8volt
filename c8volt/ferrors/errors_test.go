@@ -139,6 +139,15 @@ func TestResolveExitCodePreservesNoErrCodesOverride(t *testing.T) {
 	require.Equal(t, exitcode.OK, ResolveExitCode(true, err))
 }
 
+func TestOutcomeAlignsWithSharedFailureVocabulary(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "", Outcome(nil))
+	require.Equal(t, "invalid", Outcome(NormalizeDomain(domain.ErrBadRequest)))
+	require.Equal(t, "failed", Outcome(NormalizeDomain(domain.ErrUnavailable)))
+	require.Equal(t, "failed", Outcome(NormalizeDomain(domain.ErrNotFound)))
+}
+
 func TestWrapClassPreservesExistingClassification(t *testing.T) {
 	t.Parallel()
 

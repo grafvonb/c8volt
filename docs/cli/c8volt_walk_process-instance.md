@@ -8,6 +8,12 @@ nav_exclude: true
 
 Inspect the parent/child tree of process instances
 
+### Synopsis
+
+Inspect the parent/child tree of process instances.
+
+Human-readable list and tree output remain the default. Use --json when automation needs the shared result envelope around the returned traversal payload.
+
 ```
 c8volt walk process-instance [flags]
 ```
@@ -18,6 +24,7 @@ c8volt walk process-instance [flags]
   ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt walk pi --key 2251799813711977 --parent
+  ./c8volt --json walk pi --key 2251799813711967 --children
 ```
 
 ### Options

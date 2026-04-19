@@ -20,4 +20,5 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 
 	addBackoffFlagsAndBindings(deleteCmd)
+	setCommandMutation(deleteCmd, CommandMutationStateChanging)
 }

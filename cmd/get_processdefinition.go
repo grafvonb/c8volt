@@ -109,6 +109,9 @@ func init() {
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
+
+	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
+	setContractSupport(getProcessDefinitionCmd, ContractSupportLimited)
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {
