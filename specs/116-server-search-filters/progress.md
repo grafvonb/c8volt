@@ -13,6 +13,7 @@ Started: 2026-04-19 18:38:11
 - `v8.7` request construction should keep ignoring `HasParent` and `HasIncident`; fallback proof belongs in `internal/services/processinstance/v87/service_test.go` rather than command-local version branching.
 - `--orphan-children-only` stays on the follow-up lookup seam: command tests should show a broad top-level search plus per-parent lookup requests, while service tests can prove the lookup path with a mocked `404`.
 - The audited `get process-definition --latest` seam follows the same version split through service-level tests: `v8.8` and `v8.9` assert request-side `isLatestVersion`, while `v8.7` should prove a broad search request plus local latest-selection fallback instead of inventing a new command-layer branch.
+- Final polish for a completed feature should record the exact validation commands that passed in `plan.md` and `quickstart.md`, so the handoff artifacts reflect verified state rather than only intended behavior.
 
 ---
 
@@ -135,4 +136,21 @@ Started: 2026-04-19 18:38:11
 - `get process-definition --latest` is the only additional audited `get` seam that matches this feature's request-pushdown-versus-client-fallback pattern; the rest of the audited `get` surface is direct lookup/fetch behavior rather than late post-fetch narrowing.
 - The repository already had supported-version request-side coverage for `isLatestVersion` in `v8.8` and `v8.9`; the missing audit proof was the complementary `v8.7` fallback assertion plus explicit artifact traceability.
 - Documenting already-adopted qualifying seams separately from true no-addition cases keeps the audit honest without inventing extra implementation scope.
+---
+## Iteration 6 - 2026-04-19 20:54 CEST
+**User Story**: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T024: Refresh implementation and verification notes
+- [x] T025: Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, and `go test ./cmd -count=1`
+- [x] T026: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/116-server-search-filters/plan.md
+- specs/116-server-search-filters/progress.md
+- specs/116-server-search-filters/quickstart.md
+- specs/116-server-search-filters/tasks.md
+**Learnings**:
+- The focused suites remain the fastest way to isolate regressions in the shared filter model, versioned process-instance services, and command paging flow before paying the full `make test` cost.
+- The final feature handoff is clearer when the implementation artifacts distinguish shipped behavior and passed validation from earlier planning intent.
 ---

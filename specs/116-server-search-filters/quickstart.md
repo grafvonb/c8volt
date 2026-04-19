@@ -1,6 +1,6 @@
 # Quickstart: Push Supported Get Filters Into Search Requests
 
-## Implemented Behavior Target
+## Implemented Behavior
 
 - `get process-instance` pushes `roots-only`, `children-only`, `incidents-only`, and `no-incidents-only` into the search request on `v8.8` and `v8.9`.
 - `v8.7` keeps those four semantics as client-side fallback because the current Operate search request in this repo cannot represent them reliably.
@@ -27,6 +27,17 @@
 6. Confirm the audited `get process-definition --latest` seam still sends `isLatestVersion` request-side on `v8.8` and `v8.9` while `v8.7` keeps client-side fallback.
 7. Confirm the remaining audited `get` commands were ruled out explicitly rather than skipped silently.
 
+## Verification Record
+
+The following commands passed during the final polish iteration on 2026-04-19:
+
+```bash
+go test ./c8volt/process -count=1
+go test ./internal/services/processinstance/... -count=1
+go test ./cmd -count=1
+make test
+```
+
 ## Suggested Verification Commands
 
 ```bash
@@ -36,7 +47,7 @@ go test ./cmd -count=1
 make test
 ```
 
-Run the focused suites first to isolate shared-model, service, and command regressions, then finish with `make test` as the repository gate.
+Run the focused suites first to isolate shared-model, service, and command regressions, then finish with `make test` as the repository gate. Re-running the same sequence should reproduce the validated feature state recorded above.
 
 ## Manual Smoke Ideas
 

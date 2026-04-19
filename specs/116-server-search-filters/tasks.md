@@ -106,9 +106,9 @@
 
 **Purpose**: Finish validation, keep the feature artifacts aligned with the shipped implementation, and leave the repo ready for implementation handoff or execution.
 
-- [ ] T024 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/quickstart.md
-- [ ] T025 Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T026 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T024 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/quickstart.md
+- [x] T025 Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T026 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

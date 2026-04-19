@@ -12,7 +12,7 @@ Move request-capable `get` filter narrowing ahead of page fetches so supported v
 **Language/Version**: Go 1.26  
 **Primary Dependencies**: standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, shared process facade under `c8volt/process`, public/domain models under `c8volt/process` and `internal/domain`, generated Camunda clients under `internal/clients/camunda/v88/camunda` and `v89/camunda`, existing helpers in `internal/services/common`, versioned process-instance services under `internal/services/processinstance/{v87,v88,v89}`  
 **Storage**: File-based YAML config plus environment variables; no persistent datastore changes  
-**Testing**: focused `go test ./cmd -count=1`, `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, final repository validation with `make test`  
+**Testing**: focused `go test ./cmd -count=1`, `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, final repository validation with `make test`; all four validation commands passed on 2026-04-19 during the polish iteration  
 **Target Platform**: Cross-platform CLI for local and CI use against supported Camunda `8.7`, `8.8`, and `8.9` environments  
 **Project Type**: CLI  
 **Performance Goals**: Reduce unnecessary process-instance overfetching on supported versions, keep paging totals and continuation prompts aligned with the filtered result set, avoid user-visible regressions in keyed lookup, wait, or mutation flows, and preserve current throughput on versions that must stay on client-side fallback  
@@ -156,3 +156,16 @@ Task generation should break the work into dependency-ordered slices:
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | None | N/A | N/A |
+
+## Implementation Status
+
+- Shipped behavior matches the planned boundary: `get process-instance` pushes parent-presence and incident-presence predicates request-side on `v8.8` and `v8.9`, while `v8.7` keeps the existing client-side fallback.
+- `--orphan-children-only` remains on the follow-up lookup seam across all supported versions.
+- The broader audit outcome is finalized: `get process-definition --latest` remains the only additional qualifying seam, with request-side adoption on `v8.8` and `v8.9` and tested fallback on `v8.7`.
+
+## Verification Record
+
+- Passed `go test ./c8volt/process -count=1`
+- Passed `go test ./internal/services/processinstance/... -count=1`
+- Passed `go test ./cmd -count=1`
+- Passed `make test`
