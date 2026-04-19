@@ -21,8 +21,14 @@ var (
 var embedDeployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploy bundled BPMN fixtures for quick testing",
+	Long: "Deploy bundled BPMN fixtures for quick testing.\n\n" +
+		"Use this command when the BPMN asset you want to deploy is already embedded in the c8volt binary. " +
+		"By default c8volt waits for the deployment to be confirmed before returning. Use --no-wait when the " +
+		"accepted deployment is enough for the current step, and combine --run when the fixture should be " +
+		"smoke-tested immediately after deployment.",
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all
+  ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTask_Process.bpmn
   ./c8volt embed deploy --all --run`,
 	Aliases: []string{"dep"},
 	Run: func(cmd *cobra.Command, args []string) {

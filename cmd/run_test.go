@@ -25,6 +25,26 @@ func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 	require.Equal(t, 44*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"run"}, []string{
+		"Start state-changing work such as process instances",
+		"wait for confirmed creation by default",
+		"--no-wait",
+		"--automation",
+		"./c8volt run process-instance --bpmn-process-id order-process",
+	}, nil)
+
+	require.Contains(t, output, "process-instance")
+
+	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
+		"By default c8volt waits until the created instances can be confirmed as active before returning success",
+		"`get process-instance`, `expect process-instance`, or `walk process-instance`",
+		"accepted work should return immediately",
+		"./c8volt expect pi --key 2251799813711967 --state active",
+	}, nil)
+	require.Contains(t, output, "--no-wait")
+}
+
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
 func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {
 	baseSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -22,6 +22,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
+	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+
+	require.Contains(t, output, "Use this read-only command to inspect live or completed workflow instances")
+	require.Contains(t, output, "Use --automation as the canonical non-interactive contract")
+	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
+	require.Contains(t, output, "--auto-confirm")
+}
+
 // Verifies search-mode get process-instance sends the expected filter and pagination request shape.
 func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
@@ -913,11 +922,13 @@ func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	root := Root()
-	resetRootPersistentFlags(t, root)
 	buf := &bytes.Buffer{}
 	root.SetOut(buf)
 	root.SetErr(buf)
 	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	confirmCmdOrAbortFn = prevConfirm
 
 	_, err := root.ExecuteC()
 	require.NoError(t, err)
@@ -934,12 +945,14 @@ func executeRootForProcessInstanceWithSeparateOutputs(t *testing.T, args ...stri
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	root := Root()
-	resetRootPersistentFlags(t, root)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 	root.SetArgs(args)
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	confirmCmdOrAbortFn = prevConfirm
 
 	_, err := root.ExecuteC()
 	require.NoError(t, err)

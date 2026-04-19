@@ -20,6 +20,25 @@ func TestExpectCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 	require.Equal(t, 19*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"expect"}, []string{
+		"Wait for verification targets to reach the expected state",
+		"after a state-changing operation",
+		"wait contract",
+		"./c8volt expect process-instance --key 2251799813711967 --state absent",
+	}, nil)
+	require.Contains(t, output, "process-instance")
+
+	output = assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{
+		"Use this read-only command after `run`, `cancel`, or `delete`",
+		"waits until each keyed process instance reaches one of the requested states",
+		"Use --json when another tool needs the final wait report",
+		"`--automation` remains unsupported",
+		"./c8volt run pi --bpmn-process-id order-process --no-wait --json",
+	}, nil)
+	require.Contains(t, output, "--state")
+}
+
 // Verifies expect process-instance rejects unsupported state values through invalid-input handling.
 func TestExpectProcessInstanceCommand_RejectsInvalidStates(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")

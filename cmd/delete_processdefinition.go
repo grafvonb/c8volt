@@ -17,9 +17,18 @@ var (
 
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
-	Short: "Delete a process definition(s)",
+	Short: "Delete process definition resources from Zeebe",
+	Long: "Delete process definition resources from Zeebe.\n\n" +
+		"By default c8volt prompts before the destructive step and, unless --allow-inconsistent is set, only " +
+		"prepares the definitions for later manual cleanup rather than forcing inconsistent Operate state. Use " +
+		"--auto-confirm for unattended runs, and add --no-wait when accepted deletion work should return before " +
+		"final completion is observed.\n\n" +
+		"Follow up with `get process-definition` to confirm what remains deployed, especially when a manual " +
+		"Operate cleanup step is still required.",
 	Example: `  ./c8volt delete pd --key 2251799813686017 --auto-confirm
   ./c8volt delete pd --bpmn-process-id order-process --latest --force
+  ./c8volt delete pd --bpmn-process-id order-process --latest --allow-inconsistent --auto-confirm --no-wait
+  ./c8volt get pd --bpmn-process-id order-process --latest --json
   ./c8volt get pd --bpmn-process-id order-process --latest --keys-only | ./c8volt delete pd - --auto-confirm`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {

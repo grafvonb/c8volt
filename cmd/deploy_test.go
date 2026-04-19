@@ -26,6 +26,25 @@ func TestDeployCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 	require.Equal(t, 41*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"deploy"}, []string{
+		"Deploy state-changing resources such as BPMN definitions",
+		"`deploy process-definition`",
+		"`embed deploy`",
+		"--no-wait",
+		"./c8volt embed deploy --all --run",
+	}, nil)
+	require.Contains(t, output, "process-definition")
+
+	output = assertCommandHelpOutput(t, []string{"deploy", "process-definition"}, []string{
+		"By default c8volt waits until the deployment is confirmed before returning success",
+		"`get process-definition`",
+		"shared result envelope",
+		"./c8volt --automation --json deploy pd --file ./order-process.bpmn --no-wait",
+	}, nil)
+	require.Contains(t, output, "--run")
+}
+
 func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
 

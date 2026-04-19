@@ -27,6 +27,25 @@ func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 	require.Equal(t, 27*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"cancel"}, []string{
+		"Cancel running work with explicit confirmation semantics",
+		"--auto-confirm",
+		"--no-wait",
+		"./c8volt cancel process-instance --state active --count 200 --auto-confirm --no-wait",
+	}, nil)
+	require.Contains(t, output, "process-instance")
+
+	output = assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{
+		"validates the affected root and descendant instances",
+		"asks for confirmation before the destructive action",
+		"Use --auto-confirm for unattended runs",
+		"`get process-instance` or `expect process-instance`",
+		"./c8volt expect pi --key 2251799813711967 --state canceled --state terminated",
+	}, nil)
+	require.Contains(t, output, "--force")
+}
+
 // Verifies search-mode cancellation builds the expected date-filtered search request and no-ops cleanly on empty matches.
 func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string

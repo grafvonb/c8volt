@@ -28,6 +28,35 @@ func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 	require.Equal(t, 46*time.Second, cfg.App.Backoff.Timeout)
 }
 
+func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
+		"Delete resources with explicit destructive confirmation",
+		"--auto-confirm",
+		"--no-wait",
+		"./c8volt delete process-definition --help",
+	}, nil)
+	require.Contains(t, output, "process-instance")
+	require.Contains(t, output, "process-definition")
+
+	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
+		"validates the full affected tree",
+		"prompts before the destructive action",
+		"Use --auto-confirm for unattended runs",
+		"`expect process-instance --state absent`",
+		"./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait",
+	}, nil)
+	require.Contains(t, output, "--force")
+
+	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
+		"Delete process definition resources from Zeebe",
+		"unless --allow-inconsistent is set, only prepares the definitions for later manual cleanup",
+		"--auto-confirm for unattended runs",
+		"`get process-definition`",
+		"./c8volt delete pd --bpmn-process-id order-process --latest --allow-inconsistent --auto-confirm --no-wait",
+	}, nil)
+	require.Contains(t, output, "--allow-inconsistent")
+}
+
 // Verifies search-mode deletion builds the expected date-filtered search request and no-ops cleanly on empty matches.
 func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string
