@@ -73,11 +73,11 @@ func normalizeVersion(v int32) *int32 {
 	latest := int32(-1)
 	switch {
 	case v == -1:
-		return &latest
+		return new(latest)
 	case v > 0:
-		return &v
+		return new(v)
 	default:
-		return &latest
+		return new(latest)
 	}
 }
 
@@ -108,6 +108,7 @@ type processInstanceFilter struct {
 	StartDate                   *camundav89.DateTimeFilterProperty             `json:"startDate,omitempty"`
 	EndDate                     *camundav89.DateTimeFilterProperty             `json:"endDate,omitempty"`
 	State                       *camundav89.ProcessInstanceStateFilterProperty `json:"state,omitempty"`
+	HasIncident                 *bool                                          `json:"hasIncident,omitempty"`
 	ParentProcessInstanceKey    *camundav89.ProcessInstanceKeyFilterProperty   `json:"parentProcessInstanceKey,omitempty"`
 }
 
@@ -121,6 +122,7 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.StartDate == nil &&
 		f.EndDate == nil &&
 		f.State == nil &&
+		f.HasIncident == nil &&
 		f.ParentProcessInstanceKey == nil
 }
 
@@ -169,6 +171,19 @@ func newProcessInstanceKeyEqFilterPtr(v string) *camundav89.ProcessInstanceKeyFi
 	}
 	var f camundav89.ProcessInstanceKeyFilterProperty
 	if err := f.FromProcessInstanceKeyFilterProperty0(v); err != nil {
+		panic(err)
+	}
+	return &f
+}
+
+func newProcessInstanceKeyExistsFilterPtr(exists *bool) *camundav89.ProcessInstanceKeyFilterProperty {
+	if exists == nil {
+		return nil
+	}
+	var f camundav89.ProcessInstanceKeyFilterProperty
+	if err := f.FromAdvancedProcessInstanceKeyFilter(camundav89.AdvancedProcessInstanceKeyFilter{
+		Exists: exists,
+	}); err != nil {
 		panic(err)
 	}
 	return &f

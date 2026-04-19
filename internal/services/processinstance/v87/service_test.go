@@ -2,6 +2,7 @@ package v87_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -309,6 +310,45 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		assert.Contains(t, err.Error(), "parsing parent key")
 	})
 
+	t.Run("OmitsUnsupportedPresencePushdownFields", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Filter)
+				assert.Nil(t, body.Filter.ParentKey)
+
+				payload, err := json.Marshal(body)
+				require.NoError(t, err)
+				assert.NotContains(t, string(payload), "hasIncident")
+				assert.NotContains(t, string(payload), "parentProcessInstanceKey")
+
+				items := []operatev87.ProcessInstance{*makeProcessInstanceResponse(123, "ACTIVE", "456")}
+				return &operatev87.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &operatev87.ResultsProcessInstance{
+						Items: &items,
+					},
+				}, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+		})
+
+		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			HasParent:   new(true),
+			HasIncident: new(true),
+		}, 25)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, "123", items[0].Key)
+	})
+
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
 			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
@@ -437,12 +477,11 @@ func TestService_SearchForProcessInstancesPage_FallbackOverflowDetection(t *test
 					*makeProcessInstanceResponse(103, "ACTIVE", ""),
 					*makeProcessInstanceResponse(104, "ACTIVE", ""),
 				}
-				total := int64(5)
 				return &operatev87.SearchProcessInstancesResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
 					JSON200: &operatev87.ResultsProcessInstance{
 						Items: &items,
-						Total: &total,
+						Total: new(int64(5)),
 					},
 				}, nil
 			},

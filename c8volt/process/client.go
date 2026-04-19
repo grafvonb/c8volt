@@ -144,6 +144,8 @@ func (c *client) GetDirectChildrenOfProcessInstance(ctx context.Context, key str
 
 func (c *client) FilterProcessInstanceWithOrphanParent(ctx context.Context, items []ProcessInstance, opts ...options.FacadeOption) ([]ProcessInstance, error) {
 	in := toolx.MapSlice(items, toDomainProcessInstance)
+	// Orphan detection remains a follow-up lookup flow instead of becoming part
+	// of the initial process-instance search request.
 	out, err := c.piApi.FilterProcessInstanceWithOrphanParent(ctx, in, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return nil, ferr.FromDomain(err)

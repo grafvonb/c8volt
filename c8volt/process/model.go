@@ -90,6 +90,8 @@ type ProcessInstanceFilter struct {
 	EndDateBefore        string `json:"endDateBefore,omitempty"`
 	State                State  `json:"state,omitempty"`
 	ParentKey            string `json:"parentKey,omitempty"`
+	HasParent            *bool  `json:"hasParent,omitempty"`
+	HasIncident          *bool  `json:"hasIncident,omitempty"`
 }
 
 type Reporter struct {

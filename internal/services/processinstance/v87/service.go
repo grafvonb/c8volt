@@ -155,6 +155,9 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 	if items == nil {
 		return nil, nil
 	}
+	// Preserve the existing orphan-detection strategy: inspect candidate children
+	// and verify each parent through a follow-up lookup instead of broadening the
+	// initial search request with an approximation.
 	var result []d.ProcessInstance
 	for _, it := range items {
 		if it.ParentKey == "" {
@@ -453,6 +456,8 @@ func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter
 	if err != nil {
 		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
 	}
+	// Camunda 8.7 only supports the existing equality-style request fields here.
+	// Parent/incident presence semantics stay on the client-side fallback path.
 	bodyFilter := operatev87.ProcessInstance{
 		TenantId:          toolx.PtrIf(tenant, ""),
 		BpmnProcessId:     &filter.BpmnProcessId,

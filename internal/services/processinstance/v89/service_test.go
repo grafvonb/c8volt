@@ -200,6 +200,35 @@ func TestService_SearchAndLookup(t *testing.T) {
 		assert.Equal(t, d.StateActive, pi.State)
 		assert.Equal(t, "tenant", pi.TenantId)
 	})
+
+	t.Run("SearchPushesDownParentPresenceAndIncidentPresence", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				payload := readBody(t, body)
+				assert.Contains(t, payload, `"hasIncident":true`)
+				assert.Contains(t, payload, `"parentProcessInstanceKey":{"$exists":true}`)
+				assert.NotContains(t, payload, `"parentProcessInstanceKey":"`)
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "ACTIVE", "456")},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
+			HasParent:   new(true),
+			HasIncident: new(true),
+		}, 25)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, "123", items[0].Key)
+		assert.Equal(t, "456", items[0].ParentKey)
+	})
 }
 
 func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
@@ -441,9 +470,9 @@ func makeProcessInstanceResult(key string, state string, parentKey string) camun
 		HasIncident:                 false,
 		ProcessDefinitionId:         "demo",
 		ProcessDefinitionKey:        "9001",
-		ProcessDefinitionName:       ptr("demo"),
+		ProcessDefinitionName:       new("demo"),
 		ProcessDefinitionVersion:    3,
-		ProcessDefinitionVersionTag: ptr("stable"),
+		ProcessDefinitionVersionTag: new("stable"),
 		ProcessInstanceKey:          key,
 		StartDate:                   startDate,
 		State:                       camundav89.ProcessInstanceStateEnum(state),
@@ -453,10 +482,6 @@ func makeProcessInstanceResult(key string, state string, parentKey string) camun
 		item.ParentProcessInstanceKey = &parentKey
 	}
 	return item
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func marshalJSON(t *testing.T, v any) string {

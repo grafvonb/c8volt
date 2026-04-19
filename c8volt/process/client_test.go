@@ -40,6 +40,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 	t.Parallel()
 
 	ctx := context.Background()
+	hasParent := new(false)
+	hasIncident := new(true)
 	piAPI := stubProcessInstanceAPI{
 		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 			assert.Equal(t, int32(25), size)
@@ -52,6 +54,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 				EndDateBefore:        "2026-02-28",
 				State:                d.StateCompleted,
 				ParentKey:            "12345",
+				HasParent:            hasParent,
+				HasIncident:          hasIncident,
 			}, filter)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return []d.ProcessInstance{}, nil
@@ -68,6 +72,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 		EndDateBefore:        "2026-02-28",
 		State:                StateCompleted,
 		ParentKey:            "12345",
+		HasParent:            hasParent,
+		HasIncident:          hasIncident,
 	}, 25, options.WithVerbose())
 
 	require.NoError(t, err)
@@ -131,6 +137,41 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	assert.Equal(t, ProcessInstanceOverflowStateIndeterminate, page.OverflowState)
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, "2251799813711967", page.Items[0].Key)
+}
+
+func TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	hasParent := new(true)
+	hasIncident := new(false)
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{
+				HasParent:   hasParent,
+				HasIncident: hasIncident,
+			}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{From: 5, Size: 10}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		HasParent:   hasParent,
+		HasIncident: hasIncident,
+	}, ProcessInstancePageRequest{From: 5, Size: 10}, options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstancePageRequest{From: 5, Size: 10}, page.Request)
+	require.Len(t, page.Items, 1)
 }
 
 func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t *testing.T) {

@@ -28,6 +28,8 @@ type ProcessInstanceFilter struct {
 	EndDateBefore        string
 	State                State
 	ParentKey            string
+	HasParent            *bool
+	HasIncident          *bool
 }
 
 type ProcessInstancePageRequest struct {

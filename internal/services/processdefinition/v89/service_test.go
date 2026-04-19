@@ -501,10 +501,10 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav89.Proce
 	return camundav89.ProcessDefinitionResult{
 		ProcessDefinitionId:  id,
 		ProcessDefinitionKey: key,
-		Name:                 ptr("name-" + id),
+		Name:                 new("name-" + id),
 		Version:              version,
 		TenantId:             "tenant",
-		VersionTag:           ptr("tag"),
+		VersionTag:           new("tag"),
 	}
 }
 

@@ -533,6 +533,19 @@ func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 	require.Equal(t, "2026-03-27", filter.EndDateBefore)
 }
 
+func TestPopulatePISearchFilterOpts_TranslatesSupportedPresenceFlags(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIChildrenOnly = true
+	flagGetPIIncidentsOnly = true
+
+	filter := populatePISearchFilterOpts()
+
+	require.Equal(t, new(true), filter.HasParent)
+	require.Equal(t, new(true), filter.HasIncident)
+}
+
 func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -867,6 +880,144 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Len(t, pages, 1)
 		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: unknown, next step: warning-stop")
 		require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
+	})
+
+	t.Run("v87 fallback keeps final filtered results even when the request stays broad", func(t *testing.T) {
+		var requests []string
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant","parentKey":456,"incident":true},{"key":124,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant","incident":false}]}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--json",
+			"get", "process-instance",
+			"--children-only",
+			"--incidents-only",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+		require.NotContains(t, filter, "parentKey")
+		require.NotContains(t, filter, "hasIncident")
+		require.Contains(t, output, `"total": 1`)
+		require.Contains(t, output, `"key": "123"`)
+		require.NotContains(t, output, `"key": "124"`)
+	})
+
+	t.Run("orphan-child filtering stays on follow-up lookups for supported versions", func(t *testing.T) {
+		for _, version := range []string{"8.8", "8.9"} {
+			t.Run(version, func(t *testing.T) {
+				var requests []string
+				call := 0
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, http.MethodPost, r.Method)
+					require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+					body, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					requests = append(requests, string(body))
+
+					call++
+					w.Header().Set("Content-Type", "application/json")
+					if call == 1 {
+						_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","parentProcessInstanceKey":"456","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+						return
+					}
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"message":"not found"}`))
+				}))
+				t.Cleanup(srv.Close)
+
+				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+
+				output := executeRootForProcessInstanceTest(t,
+					"--config", cfgPath,
+					"--tenant", "tenant",
+					"--json",
+					"get", "process-instance",
+					"--orphan-children-only",
+				)
+
+				filters := decodeCapturedPISearchRequests(t, requests)
+				require.Len(t, filters, 2)
+
+				topLevelFilter, ok := filters[0]["filter"].(map[string]any)
+				require.True(t, ok)
+				require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
+				require.NotContains(t, topLevelFilter, "processInstanceKey")
+
+				lookupFilter, ok := filters[1]["filter"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, "456", lookupFilter["processInstanceKey"])
+
+				require.Contains(t, output, `"total": 1`)
+				require.Contains(t, output, `"key": "123"`)
+			})
+		}
+	})
+
+	t.Run("supported filters keep paging summaries aligned with server-filtered pages", func(t *testing.T) {
+		for _, version := range []string{"8.8", "8.9"} {
+			t.Run(version, func(t *testing.T) {
+				var requests []string
+				srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+					`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","parentProcessInstanceKey":"456"},{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","parentProcessInstanceKey":"457"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+					`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","parentProcessInstanceKey":"458"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+				)
+				t.Cleanup(srv.Close)
+
+				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+				prompts := []string{}
+				prevConfirm := confirmCmdOrAbortFn
+				confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+					prompts = append(prompts, prompt)
+					return nil
+				}
+				t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+				output := executeRootForProcessInstanceTest(t,
+					"--config", cfgPath,
+					"--tenant", "tenant",
+					"--verbose",
+					"get", "process-instance",
+					"--children-only",
+					"--incidents-only",
+					"--count", "2",
+				)
+
+				pages := decodeCapturedPISearchPages(t, requests)
+				decoded := decodeCapturedPISearchRequests(t, requests)
+				require.Len(t, pages, 2)
+				require.Len(t, decoded, 2)
+				require.EqualValues(t, 2, pages[0]["limit"])
+				require.EqualValues(t, 0, pages[0]["from"])
+				require.EqualValues(t, 2, pages[1]["from"])
+				filter, ok := decoded[0]["filter"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, true, filter["hasIncident"])
+
+				parentFilter, ok := filter["parentProcessInstanceKey"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, true, parentFilter["$exists"])
+
+				require.Len(t, prompts, 1)
+				require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2 total so far)")
+				require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
+				require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+			})
+		}
 	})
 }
 

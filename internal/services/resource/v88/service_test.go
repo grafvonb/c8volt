@@ -348,7 +348,7 @@ func TestService_Get(t *testing.T) {
 							ResourceName: "demo.bpmn",
 							TenantId:     "tenant-a",
 							Version:      7,
-							VersionTag:   testStringPtr("v1"),
+							VersionTag:   new("v1"),
 						},
 					}, nil
 				},
@@ -487,10 +487,10 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 			},
 		}, &mockProcessDefinitionClient{
 			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
-					respBody := camundav88.ProcessDefinitionResult{
+				respBody := camundav88.ProcessDefinitionResult{
 					ProcessDefinitionId:  "demo",
 					ProcessDefinitionKey: "proc-1",
-					}
+				}
 				return &camundav88.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-definitions/proc-1", http.StatusOK, "200 OK"),
 					JSON200:      &respBody,
