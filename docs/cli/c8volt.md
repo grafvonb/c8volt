@@ -6,7 +6,7 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt
 
-c8volt: Camunda 8 Operations CLI
+Operate Camunda 8 with guided help and script-safe output modes
 
 ### Synopsis
 
@@ -16,11 +16,13 @@ Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
-For machine discovery, use "c8volt capabilities --json". Human-oriented command families and
-plain-text usage remain the primary interactive surface; JSON and keys-only modes layer onto the
-same Cobra command tree for script-safe automation.
-Use --automation for the dedicated non-interactive execution contract when a command explicitly supports it.
-The same human-oriented flows remain available outside the explicit automation flag.
+Start with "c8volt <group> --help" when choosing an operator workflow, or use
+"c8volt capabilities --json" when a script, CI job, or AI caller needs the public command inventory,
+flag metadata, output modes, mutation behavior, and automation support without scraping prose help.
+Human-oriented command families remain the primary interactive surface; JSON and keys-only modes layer onto
+the same public Cobra tree for script-safe automation on supported commands.
+Prefer --json where a command exposes structured output, and use --automation only when that command's
+capabilities entry reports automation:full for the canonical non-interactive contract.
 
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
@@ -32,6 +34,15 @@ Refer to the documentation at https://c8volt.info for more information.
 
 ```
 c8volt [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get --help
+  ./c8volt run process-instance --help
+  ./c8volt capabilities --json
+  ./c8volt --config ./config.yaml config show --validate
 ```
 
 ### Options
@@ -56,15 +67,15 @@ c8volt [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel)	 - Cancel resources
-* [c8volt capabilities](c8volt_capabilities)	 - Describe machine-readable CLI capabilities
+* [c8volt cancel](c8volt_cancel)	 - Cancel running work with explicit confirmation semantics
+* [c8volt capabilities](c8volt_capabilities)	 - Describe the public CLI contract for automation and discovery
 * [c8volt config](c8volt_config)	 - Manage application configuration
-* [c8volt delete](c8volt_delete)	 - Delete resources
-* [c8volt deploy](c8volt_deploy)	 - Deploy resources
-* [c8volt embed](c8volt_embed)	 - Manage embedded resources
-* [c8volt expect](c8volt_expect)	 - Expect resources to be in a certain state
-* [c8volt get](c8volt_get)	 - Get resources
-* [c8volt run](c8volt_run)	 - Run resources
+* [c8volt delete](c8volt_delete)	 - Delete resources with explicit destructive confirmation
+* [c8volt deploy](c8volt_deploy)	 - Deploy state-changing resources such as BPMN definitions
+* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
+* [c8volt expect](c8volt_expect)	 - Wait for verification targets to reach the expected state
+* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
+* [c8volt run](c8volt_run)	 - Start state-changing work such as process instances
 * [c8volt version](c8volt_version)	 - Print version information
-* [c8volt walk](c8volt_walk)	 - Traverse (walk) the parent/child graph of resource type
+* [c8volt walk](c8volt_walk)	 - Inspect parent and child relationships for verification follow-up
 

@@ -18,6 +18,12 @@ var (
 var deleteProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Delete process instance(s) by key or search filters, optionally cancelling first",
+	Long: "Delete process instance(s) by key or search filters, optionally cancelling first.\n\n" +
+		"By default c8volt validates the full affected tree, prompts before the destructive action, and waits " +
+		"until deletion is observed. Use --auto-confirm for unattended runs, and add --no-wait when accepted " +
+		"deletion should return immediately instead of waiting for the final result.\n\n" +
+		"Use `get process-instance` or `expect process-instance --state absent` after non-blocking deletes when " +
+		"you need explicit follow-up verification.",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --count 250
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
@@ -25,6 +31,8 @@ var deleteProcessInstanceCmd = &cobra.Command{
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --state completed --count 200 --auto-confirm
   ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
+  ./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state absent
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {

@@ -106,3 +106,8 @@
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`
+
+## Active Speckit Plan
+<!-- SPECKIT START -->
+- Active implementation plan: `specs/077-cli-help-discovery/plan.md`
+<!-- SPECKIT END -->

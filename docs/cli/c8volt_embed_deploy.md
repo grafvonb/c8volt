@@ -8,6 +8,12 @@ nav_exclude: true
 
 Deploy bundled BPMN fixtures for quick testing
 
+### Synopsis
+
+Deploy bundled BPMN fixtures for quick testing.
+
+Use this command when the BPMN asset you want to deploy is already embedded in the c8volt binary. By default c8volt waits for the deployment to be confirmed before returning. Use --no-wait when the accepted deployment is enough for the current step, and combine --run when the fixture should be smoke-tested immediately after deployment.
+
 ```
 c8volt embed deploy [flags]
 ```
@@ -17,6 +23,7 @@ c8volt embed deploy [flags]
 ```
   ./c8volt embed list
   ./c8volt embed deploy --all
+  ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTask_Process.bpmn
   ./c8volt embed deploy --all --run
 ```
 
@@ -51,5 +58,5 @@ c8volt embed deploy [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Manage embedded resources
+* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
 

@@ -8,6 +8,12 @@ nav_exclude: true
 
 List embedded (virtual) files containing process definitions
 
+### Synopsis
+
+List embedded (virtual) files containing process definitions.
+
+Use this read-only command to discover which BPMN resources are packaged into the c8volt binary before exporting or deploying them. Prefer `--json` when another tool needs the file names programmatically, and add `--details` when you need the full embedded paths.
+
 ```
 c8volt embed list [flags]
 ```
@@ -16,6 +22,7 @@ c8volt embed list [flags]
 
 ```
   ./c8volt embed list
+  ./c8volt embed list --details
   ./c8volt --json embed list
 ```
 
@@ -47,5 +54,5 @@ c8volt embed list [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Manage embedded resources
+* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
 

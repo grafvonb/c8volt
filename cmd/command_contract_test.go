@@ -95,3 +95,86 @@ func TestCommandCapabilityForCommand_IncludesExplicitAutomationMetadata(t *testi
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
 	require.Equal(t, "safe for unattended execution", capability.AutomationNotes)
 }
+
+func TestIsDiscoverableCommand_FiltersHiddenAndInternalCommands(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		cmd  *cobra.Command
+		want bool
+	}{
+		{
+			name: "nil",
+			cmd:  nil,
+			want: false,
+		},
+		{
+			name: "visible public command",
+			cmd:  &cobra.Command{Use: "get", Short: "Get resources"},
+			want: true,
+		},
+		{
+			name: "hidden command",
+			cmd: &cobra.Command{
+				Use:    "completion",
+				Short:  "Shell completion",
+				Hidden: true,
+			},
+			want: false,
+		},
+		{
+			name: "help command",
+			cmd:  &cobra.Command{Use: "help", Short: "Help"},
+			want: false,
+		},
+		{
+			name: "shell completion plumbing",
+			cmd:  &cobra.Command{Use: "__complete", Short: "internal"},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isDiscoverableCommand(tt.cmd))
+		})
+	}
+}
+
+func TestContractSupportForCommand_IgnoresHiddenChildren(t *testing.T) {
+	t.Parallel()
+
+	parent := &cobra.Command{Use: "demo", Short: "Demo"}
+	hiddenChild := &cobra.Command{Use: "completion", Short: "Hidden helper", Hidden: true}
+	setContractSupport(hiddenChild, ContractSupportFull)
+	parent.AddCommand(hiddenChild)
+
+	require.Equal(t, ContractSupportUnsupported, contractSupportForCommand(parent))
+}
+
+func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	publicChild := &cobra.Command{Use: "discovery-fixture", Short: "Fixture"}
+	hiddenChild := &cobra.Command{Use: "completion", Short: "Shell completion", Hidden: true}
+	helpChild := &cobra.Command{Use: "help", Short: "Help"}
+	internalChild := &cobra.Command{Use: "__complete", Short: "internal"}
+	root.AddCommand(publicChild, hiddenChild, helpChild, internalChild)
+	t.Cleanup(func() {
+		root.RemoveCommand(publicChild, hiddenChild, helpChild, internalChild)
+	})
+
+	doc := capabilityDocumentForRoot(root)
+
+	var paths []string
+	for _, command := range doc.Commands {
+		paths = append(paths, command.Path)
+	}
+
+	require.Contains(t, paths, "discovery-fixture")
+	require.NotContains(t, paths, "completion")
+	require.NotContains(t, paths, "help")
+	require.NotContains(t, paths, "__complete")
+}

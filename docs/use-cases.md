@@ -43,6 +43,24 @@ Many workflow teams can already send requests to Camunda 8 APIs. The harder part
 - wait for active, completed, canceled, terminated, or absent states in automation
 - validate connection, auth, and profile settings before running destructive commands
 
+## Discover the right command before acting
+
+Use the normal help tree when a human operator is choosing the right workflow:
+
+```bash
+./c8volt --help
+./c8volt get --help
+./c8volt delete process-instance --help
+```
+
+Use the machine-readable discovery surface when a script, CI job, or AI caller needs the same public command inventory without scraping prose help:
+
+```bash
+./c8volt capabilities --json
+```
+
+That output keeps hidden/internal commands out of scope, reports which command paths are read-only versus state-changing, and shows whether `--automation` is supported as the canonical non-interactive contract for a given command. On command paths that already expose structured output, prefer `--json` for downstream automation.
+
 ## Typical workflow operations
 
 ### Deploy BPMN from the CLI

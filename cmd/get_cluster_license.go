@@ -12,7 +12,10 @@ var getClusterLicenseCmd = &cobra.Command{
 	Use:   "license",
 	Short: "Get the cluster license of the connected Camunda 8 cluster",
 	Long: "Get the cluster license of the connected Camunda 8 cluster.\n\n" +
-		"This command requires a configured Camunda 8 connection.",
+		"This read-only command requires a configured Camunda 8 connection. Prefer " +
+		"`--json` when automation needs the raw license payload instead of the default rendered output.",
+	Example: `  ./c8volt get cluster license
+  ./c8volt get cluster license --json`,
 	Run: runGetClusterLicense,
 }
 

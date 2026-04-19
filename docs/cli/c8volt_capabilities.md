@@ -6,14 +6,14 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt capabilities
 
-Describe machine-readable CLI capabilities
+Describe the public CLI contract for automation and discovery
 
 ### Synopsis
 
 Describe the machine-readable c8volt command surface for automation.
-Use this command to discover command paths, flags, output modes, mutation behavior, contract support, and automation-mode support without scraping prose help.
+Use this command to discover public command paths, visible flags, output modes, mutation behavior, contract support, and automation-mode support without scraping prose help.
 
-Prefer `c8volt capabilities --json` when driving the CLI from AI agents, scripts, or CI. The human-facing command taxonomy and help output remain unchanged; plain output summarizes the command surface for humans, while JSON is the repository-native discovery surface for automation, including whether each command currently supports `--automation` as the canonical non-interactive contract.
+Prefer `c8volt capabilities --json` when driving the CLI from AI agents, scripts, or CI. The human-facing command taxonomy and help output remain unchanged; plain output summarizes the public command surface for humans, while JSON is the repository-native discovery surface for automation, including whether each command currently supports `--automation` as the canonical non-interactive contract. Hidden shell-completion and internal helper commands stay out of this document.
 
 ```
 c8volt capabilities [flags]
@@ -53,5 +53,5 @@ c8volt capabilities [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
 

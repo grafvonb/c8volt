@@ -6,15 +6,27 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt walk
 
-Traverse (walk) the parent/child graph of resource type
+Inspect parent and child relationships for verification follow-up
 
 ### Synopsis
 
-Traverse (walk) the parent/child graph of resource types such as process instances.
-It is a root command and requires a subcommand to specify the resource type to walk.
+Inspect parent and child relationships for verification follow-up.
+
+Use this read-only command family when you need to understand how process instances are
+related after a run, cancel, or delete operation. Child commands explain which traversal
+shape they return, when tree rendering is available, and which output modes remain
+human-first versus structured.
 
 ```
 c8volt walk [flags]
+```
+
+### Examples
+
+```
+  ./c8volt walk process-instance --help
+  ./c8volt walk process-instance --key 2251799813711967 --family
+  ./c8volt --json walk process-instance --key 2251799813711967 --children
 ```
 
 ### Options
@@ -44,6 +56,6 @@ c8volt walk [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
 * [c8volt walk process-instance](c8volt_walk_process-instance)	 - Inspect the parent/child tree of process instances
 

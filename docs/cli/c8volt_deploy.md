@@ -6,15 +6,27 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt deploy
 
-Deploy resources
+Deploy state-changing resources such as BPMN definitions
 
 ### Synopsis
 
-Deploy resources such as BPMN process definitions.
-It is a root command and requires a subcommand to specify the resource type to deploy.
+Deploy state-changing resources such as BPMN definitions.
+
+Use this command family when you want c8volt to upload deployable assets into Camunda.
+Choose `deploy process-definition` for local files or `embed deploy` for
+bundled fixtures. Child commands explain when deployment waits for confirmation by
+default, how `--no-wait` changes the completion contract, and what to inspect next.
 
 ```
 c8volt deploy [flags]
+```
+
+### Examples
+
+```
+  ./c8volt deploy process-definition --help
+  ./c8volt deploy process-definition --file ./order-process.bpmn
+  ./c8volt embed deploy --all --run
 ```
 
 ### Options
@@ -46,6 +58,6 @@ c8volt deploy [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
 * [c8volt deploy process-definition](c8volt_deploy_process-definition)	 - Deploy BPMN process definition files
 

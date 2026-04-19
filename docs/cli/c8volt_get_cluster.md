@@ -6,15 +6,29 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster
 
-Get cluster resources
+Inspect cluster-wide topology and license information
 
 ### Synopsis
 
-Get cluster resources such as the topology or license of the connected Camunda 8 cluster.
-It is a parent command and requires a subcommand to specify the cluster resource to get.
+Inspect cluster-wide topology and license information.
+
+Use this parent command when you need cluster-level state rather than
+process-specific resources. Choose `get cluster topology` to inspect
+brokers, partitions, and gateway details, or `get cluster license` to
+confirm the connected cluster's license payload.
+
+These subcommands are read-only. Prefer `--json` on the leaf commands for
+automation and AI-assisted callers.
 
 ```
 c8volt get cluster [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get cluster topology
+  ./c8volt get cluster license --json
 ```
 
 ### Options
@@ -46,7 +60,7 @@ c8volt get cluster [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
 * [c8volt get cluster license](c8volt_get_cluster_license)	 - Get the cluster license of the connected Camunda 8 cluster
 * [c8volt get cluster topology](c8volt_get_cluster_topology)	 - Get the cluster topology of the connected Camunda 8 cluster
 

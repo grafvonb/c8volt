@@ -8,8 +8,21 @@ nav_exclude: true
 
 Get the cluster topology of the connected Camunda 8 cluster
 
+### Synopsis
+
+Get the cluster topology of the connected Camunda 8 cluster.
+
+This read-only command reports brokers, partitions, and gateway metadata for the connected cluster. Prefer `--json` for automation and machine-readable follow-up checks.
+
 ```
 c8volt get cluster topology [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get cluster topology
+  ./c8volt get cluster topology --json
 ```
 
 ### Options
@@ -41,5 +54,5 @@ c8volt get cluster topology [flags]
 
 ### SEE ALSO
 
-* [c8volt get cluster](c8volt_get_cluster)	 - Get cluster resources
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology and license information
 

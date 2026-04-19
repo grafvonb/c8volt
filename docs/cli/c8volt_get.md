@@ -6,15 +6,30 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get
 
-Get resources
+Read cluster, process, and resource state without changing it
 
 ### Synopsis
 
-Get resources such as process definitions or process instances.
-It is a root command and requires a subcommand to specify the resource type to get.
+Read cluster, process, and resource state without changing it.
+
+Use this command family when you need to inspect current Camunda state and choose a
+resource-specific child command such as cluster topology, process definitions, process
+instances, or resources. Prefer `get cluster` for cluster-wide inspection and
+use the resource-specific leaf commands when you already know the object type you need.
+
+Where a child command supports structured output, prefer `--json` for automation
+and AI-assisted callers instead of scraping the default human-readable output.
 
 ```
 c8volt get [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get cluster --help
+  ./c8volt get process-instance --json
+  ./c8volt get process-definition --keys-only
 ```
 
 ### Options
@@ -46,8 +61,8 @@ c8volt get [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt get cluster](c8volt_get_cluster)	 - Get cluster resources
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology and license information
 * [c8volt get cluster-topology](c8volt_get_cluster-topology)	 - Get the cluster topology of the connected Camunda 8 cluster
 * [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances

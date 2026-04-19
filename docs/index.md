@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-72-gce0d583-dirty`, commit `ce0d583`, built `2026-04-19T05:24:11Z` | camunda: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-83-g183d5c3-dirty`, commit `183d5c3`, built `2026-04-19T11:42:52Z` | camunda: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -51,6 +51,24 @@ If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN d
 - delete process-instance families thoroughly
 - wait for the state you actually need
 - validate config and inspect cluster metadata
+
+## Discover Command Paths Quickly
+
+Start with the human-facing command tree when you are choosing an operator workflow:
+
+```bash
+./c8volt --help
+./c8volt get --help
+./c8volt run process-instance --help
+```
+
+When a script, CI job, or AI caller needs the public command inventory without scraping prose help, use the canonical discovery surface instead:
+
+```bash
+./c8volt capabilities --json
+```
+
+That JSON document reports public command paths, visible flags, output modes, mutation behavior, and whether a command supports the dedicated `--automation` contract. Prefer `--json` wherever a command already exposes structured output, and add `--automation` only on command paths whose capabilities entry reports `automation:full`.
 
 ## Camunda Version Support
 

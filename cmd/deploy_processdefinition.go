@@ -15,8 +15,16 @@ var (
 var deployProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Deploy BPMN process definition files",
+	Long: "Deploy BPMN process definition files and report the deployed definitions.\n\n" +
+		"By default c8volt waits until the deployment is confirmed before returning success. Use --no-wait " +
+		"when accepted deployment work should return immediately, then verify the resulting definitions with " +
+		"`get process-definition`, or start a follow-up instance with --run when a smoke test should happen right away.\n\n" +
+		"Default output stays operator-oriented. Use --json for the shared result envelope and pair it with " +
+		"--automation on supported non-interactive paths.",
 	Example: `  ./c8volt deploy pd --file ./order-process.bpmn
   ./c8volt deploy pd --file ./order-process.bpmn --run
+  ./c8volt --automation --json deploy pd --file ./order-process.bpmn --no-wait
+  ./c8volt get pd --bpmn-process-id order-process --latest --json
   ./c8volt deploy pd --file - < ./order-process.bpmn`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {

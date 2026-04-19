@@ -22,14 +22,18 @@ var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Start process instance(s) and confirm they are active",
 	Long: "Start process instance(s) and confirm they are active.\n\n" +
-		"Default output stays operator-oriented. Use --json when automation needs the shared result envelope, " +
+		"By default c8volt waits until the created instances can be confirmed as active before returning success. " +
+		"Use --no-wait when accepted-but-not-yet-confirmed work should return immediately, and follow up with " +
+		"`get process-instance`, `expect process-instance`, or `walk process-instance` when you need later verification.\n\n" +
+		"Default output stays operator-oriented. Use --json when another tool needs the shared result envelope, " +
 		"use --automation as the canonical non-interactive contract for supported machine callers, " +
-		"and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.",
+		"and combine it with --no-wait when accepted work should return immediately.",
 	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
   ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
-  ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait`,
+  ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state active`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

@@ -8,6 +8,14 @@ nav_exclude: true
 
 Deploy BPMN process definition files
 
+### Synopsis
+
+Deploy BPMN process definition files and report the deployed definitions.
+
+By default c8volt waits until the deployment is confirmed before returning success. Use --no-wait when accepted deployment work should return immediately, then verify the resulting definitions with `get process-definition`, or start a follow-up instance with --run when a smoke test should happen right away.
+
+Default output stays operator-oriented. Use --json for the shared result envelope and pair it with --automation on supported non-interactive paths.
+
 ```
 c8volt deploy process-definition [flags]
 ```
@@ -17,6 +25,8 @@ c8volt deploy process-definition [flags]
 ```
   ./c8volt deploy pd --file ./order-process.bpmn
   ./c8volt deploy pd --file ./order-process.bpmn --run
+  ./c8volt --automation --json deploy pd --file ./order-process.bpmn --no-wait
+  ./c8volt get pd --bpmn-process-id order-process --latest --json
   ./c8volt deploy pd --file - < ./order-process.bpmn
 ```
 
@@ -52,5 +62,5 @@ c8volt deploy process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt deploy](c8volt_deploy)	 - Deploy resources
+* [c8volt deploy](c8volt_deploy)	 - Deploy state-changing resources such as BPMN definitions
 

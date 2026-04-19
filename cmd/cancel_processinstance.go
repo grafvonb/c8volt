@@ -17,6 +17,13 @@ var (
 var cancelProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Cancel process instance(s) by key or search filters and wait for completion",
+	Long: "Cancel process instance(s) by key or search filters and wait for completion.\n\n" +
+		"By default c8volt validates the affected root and descendant instances, asks for confirmation before " +
+		"the destructive action, and waits until cancellation is observed. Use --auto-confirm for unattended " +
+		"runs, and combine it with --no-wait when accepted cancellation should return immediately instead of " +
+		"waiting for the final state.\n\n" +
+		"After non-blocking cancellation, use `get process-instance` or `expect process-instance` to verify the " +
+		"eventual state of the affected instances.",
 	Example: `  ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
   ./c8volt cancel pi --state active --count 250
@@ -26,6 +33,8 @@ var cancelProcessInstanceCmd = &cobra.Command{
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
+  ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state canceled --state terminated
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {

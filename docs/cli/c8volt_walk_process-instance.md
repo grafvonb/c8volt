@@ -12,7 +12,9 @@ Inspect the parent/child tree of process instances
 
 Inspect the parent/child tree of process instances.
 
-Human-readable list and tree output remain the default. Use --json when automation needs the shared result envelope around the returned traversal payload.
+Use this read-only command after state-changing flows when you need to verify ancestor, child, or full-family relationships before cancelling, deleting, or confirming downstream effects. Choose --parent for ancestry, --children for descendants, and --family when you need the combined view or ASCII tree rendering.
+
+Human-readable list and tree output remain the default. Use --json when another tool needs the shared result envelope around the returned traversal payload. `--automation` remains unsupported because traversal output semantics are still human-first.
 
 ```
 c8volt walk process-instance [flags]
@@ -24,6 +26,8 @@ c8volt walk process-instance [flags]
   ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt walk pi --key 2251799813711977 --parent
+  ./c8volt cancel pi --key 2251799813711967 --no-wait --auto-confirm
+  ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt --json walk pi --key 2251799813711967 --children
 ```
 
@@ -60,5 +64,5 @@ c8volt walk process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt walk](c8volt_walk)	 - Traverse (walk) the parent/child graph of resource type
+* [c8volt walk](c8volt_walk)	 - Inspect parent and child relationships for verification follow-up
 

@@ -32,8 +32,11 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "")
 
-	require.Contains(t, output, "get\tGet resources\n")
-	require.Contains(t, output, "walk\tTraverse (walk) the parent/child graph of resource type\n")
+	require.Contains(t, output, "get\tRead cluster, process, and resource state without changing it\n")
+	require.Contains(t, output, "embed\tInspect, export, or deploy embedded BPMN resources\n")
+	require.Contains(t, output, "walk\tInspect parent and child relationships for verification follow-up\n")
+	require.Contains(t, output, "run\tStart state-changing work such as process instances\n")
+	require.Contains(t, output, "deploy\tDeploy state-changing resources such as BPMN definitions\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
@@ -41,7 +44,7 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "g")
 
-	require.Contains(t, output, "get\tGet resources\n")
+	require.Contains(t, output, "get\tRead cluster, process, and resource state without changing it\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
@@ -72,6 +75,7 @@ func requireCompletionOutputStaysUserFacing(t *testing.T, output string) {
 	require.NotContains(t, output, "__complete")
 	require.NotContains(t, output, "Usage:")
 	require.NotContains(t, output, "Get resources such as process definitions or process instances.")
+	require.NotContains(t, output, "It is a root command and requires a subcommand to specify the resource type to get.")
 }
 
 // Verifies `completion zsh` emits description-bearing completion requests.

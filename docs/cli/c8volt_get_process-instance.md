@@ -11,7 +11,7 @@ List or fetch process instances
 ### Synopsis
 
 List process instances by search filters or fetch them by key.
-Default output stays human-oriented for operator workflows.
+Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.
 
 When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
 
@@ -28,6 +28,7 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --auto-confirm
   ./c8volt --automation get pi --state active --count 250
   ./c8volt --json get pi --state active --count 250
+  ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
@@ -89,5 +90,5 @@ c8volt get process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
 

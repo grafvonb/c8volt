@@ -12,10 +12,17 @@ Get the cluster license of the connected Camunda 8 cluster
 
 Get the cluster license of the connected Camunda 8 cluster.
 
-This command requires a configured Camunda 8 connection.
+This read-only command requires a configured Camunda 8 connection. Prefer `--json` when automation needs the raw license payload instead of the default rendered output.
 
 ```
 c8volt get cluster license [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get cluster license
+  ./c8volt get cluster license --json
 ```
 
 ### Options
@@ -47,5 +54,5 @@ c8volt get cluster license [flags]
 
 ### SEE ALSO
 
-* [c8volt get cluster](c8volt_get_cluster)	 - Get cluster resources
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology and license information
 

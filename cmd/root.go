@@ -61,18 +61,20 @@ func (r *resolverBindings) hasHigherPrecedenceSource(key string) bool {
 
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
-	Short: "c8volt: Camunda 8 Operations CLI",
+	Short: "Operate Camunda 8 with guided help and script-safe output modes",
 	Long: `c8volt: Camunda 8 Operations CLI.
 
 Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
-For machine discovery, use "c8volt capabilities --json". Human-oriented command families and
-plain-text usage remain the primary interactive surface; JSON and keys-only modes layer onto the
-same Cobra command tree for script-safe automation.
-Use --automation for the dedicated non-interactive execution contract when a command explicitly supports it.
-The same human-oriented flows remain available outside the explicit automation flag.
+Start with "c8volt <group> --help" when choosing an operator workflow, or use
+"c8volt capabilities --json" when a script, CI job, or AI caller needs the public command inventory,
+flag metadata, output modes, mutation behavior, and automation support without scraping prose help.
+Human-oriented command families remain the primary interactive surface; JSON and keys-only modes layer onto
+the same public Cobra tree for script-safe automation on supported commands.
+Prefer --json where a command exposes structured output, and use --automation only when that command's
+capabilities entry reports automation:full for the canonical non-interactive contract.
 
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
@@ -81,6 +83,10 @@ factories and facades, with the same repository command-family coverage on 8.9 t
 exists on 8.8.
 
 Refer to the documentation at https://c8volt.info for more information.`,
+	Example: `  ./c8volt get --help
+  ./c8volt run process-instance --help
+  ./c8volt capabilities --json
+  ./c8volt --config ./config.yaml config show --validate`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},

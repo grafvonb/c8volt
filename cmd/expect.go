@@ -6,9 +6,15 @@ import (
 
 var expectCmd = &cobra.Command{
 	Use:   "expect",
-	Short: "Expect resources to be in a certain state",
-	Long: "Expect resources such as process instances to be in a certain state.\n" +
-		"It is a root command and requires a subcommand to specify the resource type to expect.",
+	Short: "Wait for verification targets to reach the expected state",
+	Long: `Wait for verification targets to reach the expected state.
+
+Use this read-only command family after a state-changing operation when success depends
+on a later observed state. Child commands document the wait contract, the acceptable
+target states, and which output modes are safe for follow-up verification.`,
+	Example: `  ./c8volt expect process-instance --help
+  ./c8volt expect process-instance --key 2251799813711967 --state active
+  ./c8volt expect process-instance --key 2251799813711967 --state absent`,
 	Aliases: []string{"e", "exp"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

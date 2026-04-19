@@ -6,15 +6,27 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt cancel
 
-Cancel resources
+Cancel running work with explicit confirmation semantics
 
 ### Synopsis
 
-Cancel resources such as process instances.
-It is a root command and requires a subcommand to specify the resource type to cancel.
+Cancel running work with explicit confirmation semantics.
+
+Use this command family when you need c8volt to stop active work in Camunda. Child
+commands explain what gets validated before cancellation, when prompts appear, how
+`--auto-confirm` enables unattended destructive flows, and when `--no-wait`
+returns accepted cancellation before final completion is observed.
 
 ```
 c8volt cancel [flags]
+```
+
+### Examples
+
+```
+  ./c8volt cancel process-instance --help
+  ./c8volt cancel process-instance --key 2251799813711967
+  ./c8volt cancel process-instance --state active --count 200 --auto-confirm --no-wait
 ```
 
 ### Options
@@ -46,6 +58,6 @@ c8volt cancel [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
 * [c8volt cancel process-instance](c8volt_cancel_process-instance)	 - Cancel process instance(s) by key or search filters and wait for completion
 
