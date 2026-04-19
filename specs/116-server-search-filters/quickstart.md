@@ -15,7 +15,7 @@
 - Keep CLI flag validation in `cmd/get_processinstance.go`; only the translation of supported list-mode flags into the shared filter should change.
 - Add request-side predicate encoding in `internal/services/processinstance/v88` and `v89`, not in `cmd/`.
 - Preserve `v8.7` behavior by omission: do not send unsupported predicates there.
-- Keep the audit explicit for other `get` commands even if implementation confirms there are no additional qualifying seams.
+- Keep the audit explicit for other `get` commands: `get process-definition --latest` is the additional qualifying seam already adopted in the repo, and the remaining audited `get` commands need bounded no-addition rationale.
 
 ## Verification Focus
 
@@ -24,7 +24,8 @@
 3. Confirm `v8.7` request bodies do not claim unsupported predicates for those same flags.
 4. Confirm the visible page and continuation behavior for supported versions no longer shows broad unfiltered pages before local trimming.
 5. Confirm `--orphan-children-only` still uses the existing follow-up parent lookup flow.
-6. Confirm no other `get` command family was skipped silently if the broader audit finds no additional work.
+6. Confirm the audited `get process-definition --latest` seam still sends `isLatestVersion` request-side on `v8.8` and `v8.9` while `v8.7` keeps client-side fallback.
+7. Confirm the remaining audited `get` commands were ruled out explicitly rather than skipped silently.
 
 ## Suggested Verification Commands
 
@@ -47,6 +48,8 @@ Use the same process-instance dataset across versions to compare request capture
 ./c8volt --config /tmp/c8volt-v88.yaml get pi --bpmn-process-id C88_SimpleUserTask_Process --incidents-only
 ./c8volt --config /tmp/c8volt-v87.yaml get pi --bpmn-process-id C87_SimpleUserTask_Process --roots-only
 ./c8volt --config /tmp/c8volt-v89.yaml get pi --bpmn-process-id C89_SimpleUserTask_Process --no-incidents-only
+./c8volt --config /tmp/c8volt-v88.yaml --json get process-definition --latest
+./c8volt --config /tmp/c8volt-v87.yaml --json get process-definition --latest
 ```
 
 Check that:
@@ -55,3 +58,4 @@ Check that:
 - `v8.7` still returns the correct final filtered set via local fallback
 - `orphan-children-only` behavior does not change
 - continuation prompts on supported versions match the narrowed result set
+- `get process-definition --latest` still uses request-side latest filtering on `v8.8` and `v8.9` and local latest selection on `v8.7`

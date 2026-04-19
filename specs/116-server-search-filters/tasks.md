@@ -91,12 +91,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T021 [P] [US3] Add or update regression coverage for any additional audited `get` command family that qualifies for the same pushdown pattern in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/ and the corresponding versioned service test files under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/
+- [x] T021 [P] [US3] Add or update regression coverage for any additional audited `get` command family that qualifies for the same pushdown pattern in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/ and the corresponding versioned service test files under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Audit other `get` command families for server-capable late-filtering seams in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_resource.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster.go, and any adjacent `get_*` command files under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
-- [ ] T023 [US3] Record the audit outcome and either adopted follow-up pushdown cases or explicit no-addition rationale in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/research.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/plan.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/quickstart.md
+- [x] T022 [US3] Audit other `get` command families for server-capable late-filtering seams in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_resource.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_cluster.go, and any adjacent `get_*` command files under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
+- [x] T023 [US3] Record the audit outcome and either adopted follow-up pushdown cases or explicit no-addition rationale in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/research.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/plan.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/quickstart.md
 
 **Checkpoint**: User Story 3 is independently testable: the broader `get` audit is complete, no qualifying seam was skipped silently, and any additional in-scope pushdown work is covered in this feature.
 

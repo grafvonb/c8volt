@@ -12,6 +12,7 @@ Started: 2026-04-19 18:38:11
 - Supported parent-presence pushdown should continue to prefer explicit `ParentKey` equality when present and otherwise encode `HasParent` through the generated `parentProcessInstanceKey` `"$exists"` filter; incident presence remains a plain `hasIncident` boolean on `v8.8` and `v8.9`.
 - `v8.7` request construction should keep ignoring `HasParent` and `HasIncident`; fallback proof belongs in `internal/services/processinstance/v87/service_test.go` rather than command-local version branching.
 - `--orphan-children-only` stays on the follow-up lookup seam: command tests should show a broad top-level search plus per-parent lookup requests, while service tests can prove the lookup path with a mocked `404`.
+- The audited `get process-definition --latest` seam follows the same version split through service-level tests: `v8.8` and `v8.9` assert request-side `isLatestVersion`, while `v8.7` should prove a broad search request plus local latest-selection fallback instead of inventing a new command-layer branch.
 
 ---
 
@@ -114,4 +115,24 @@ Started: 2026-04-19 18:38:11
 - `v8.7` already preserved the fallback behavior by omission; the missing work was regression proof plus making the request-boundary explicit in code and research notes.
 - Orphan-child filtering remains intentionally multi-step even on supported versions, so the right regression shape is one broad page fetch followed by parent lookups rather than another top-level request predicate.
 - Keeping `applyPISearchResultFilters(...)` active across versions lets supported pushdown and unsupported fallback share one command path without drifting semantics.
+---
+## Iteration 5 - 2026-04-19 20:51 CEST
+**User Story**: User Story 3 - Apply the same audit rule across get commands
+**Tasks Completed**:
+- [x] T021: Add or update regression coverage for the additional audited `get process-definition --latest` seam
+- [x] T022: Audit other `get` command families for server-capable late-filtering seams
+- [x] T023: Record the audit outcome and adopted-versus-non-qualifying rationale in the feature artifacts
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/services/processdefinition/v87/service_test.go
+- specs/116-server-search-filters/plan.md
+- specs/116-server-search-filters/progress.md
+- specs/116-server-search-filters/quickstart.md
+- specs/116-server-search-filters/research.md
+- specs/116-server-search-filters/tasks.md
+**Learnings**:
+- `get process-definition --latest` is the only additional audited `get` seam that matches this feature's request-pushdown-versus-client-fallback pattern; the rest of the audited `get` surface is direct lookup/fetch behavior rather than late post-fetch narrowing.
+- The repository already had supported-version request-side coverage for `isLatestVersion` in `v8.8` and `v8.9`; the missing audit proof was the complementary `v8.7` fallback assertion plus explicit artifact traceability.
+- Documenting already-adopted qualifying seams separately from true no-addition cases keeps the audit honest without inventing extra implementation scope.
 ---

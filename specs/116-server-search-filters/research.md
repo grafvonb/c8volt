@@ -49,10 +49,10 @@
   - Approximate orphan detection with parent presence alone: rejected because an orphan child still has a parent key; the missing parent is only discoverable through follow-up lookup logic.
   - Add a new multi-query server-side orphan detection flow in this feature: rejected because it would broaden scope beyond the issue’s request-side pushdown goal and would not produce a single authoritative search request.
 
-## Decision 7: The audit of other `get` commands should be explicit, but the planning scan found no other qualifying late-filter seams yet
+## Decision 7: The broader `get` audit should be explicit and should retain already-adopted seams
 
-- **Decision**: Keep an explicit audit task for other `get` commands, with a bounded no-addition rationale unless implementation finds another server-capable post-fetch filter seam.
-- **Rationale**: The issue asks for an audit broader than one example, but the current planning scan found the concrete late local filters in `cmd/get_processinstance.go` and did not identify the same pattern in other `get` command families. Recording the audit boundary keeps the task honest without inventing speculative scope.
+- **Decision**: Treat `get process-definition --latest` as an additional qualifying seam, record it as already adopted in this repository, and keep bounded no-addition rationale for the remaining audited `get` commands.
+- **Rationale**: The implementation audit found that `get process-definition --latest` follows the same broad-fetch-versus-request-pushdown rule across versions: `v8.8` and `v8.9` already send `isLatestVersion=true`, while `v8.7` still computes "latest" from a broader response because Operate cannot express the same predicate. `get resource`, `get cluster`, `get cluster topology`, and `get cluster license` are direct lookups with no comparable post-fetch narrowing seam.
 - **Alternatives considered**:
   - Treat the audit as automatically satisfied by process-instance work alone: rejected because the issue explicitly broadens the scope.
   - Expand scope preemptively to unrelated `get` commands without evidence of the same pattern: rejected because it risks needless churn and parallel structures.
@@ -84,6 +84,17 @@
 - [`c8volt/process/client_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go) should cover the new shared filter field mapping into the domain layer.
 - [`internal/services/processinstance/v88/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go) and [`internal/services/processinstance/v89/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go) should prove request-side predicate encoding for supported versions.
 - [`internal/services/processinstance/v87/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go) should prove that unsupported pushdown is intentionally absent while final results still honor the CLI flags through fallback behavior.
+- [`internal/services/processdefinition/v87/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v87/service_test.go), [`internal/services/processdefinition/v88/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go), and [`internal/services/processdefinition/v89/service_test.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service_test.go) already cover the audited `get process-definition --latest` seam: `v8.7` proves client-side "latest" selection from a broad fetch, and `v8.8`/`v8.9` prove request-side `isLatestVersion` pushdown.
+
+## Audit Outcome: Other `get` Command Families
+
+| Command family / flag | Qualifies for same pattern | Outcome |
+|--------|----------------------------|---------|
+| `get process-instance` filter flags | Yes | In-scope feature work implemented in this feature |
+| `get process-definition --latest` | Yes | Already adopted: `v8.8`/`v8.9` request-side `isLatestVersion`, `v8.7` client-side fallback retained and covered |
+| `get resource --id` | No | Direct single-resource lookup, no post-fetch narrowing seam |
+| `get cluster topology` / `get cluster license` | No | Direct read-only fetches, no filter pushdown seam |
+| `get variable` | No | Command is not surfaced and has no implemented request flow to audit |
 
 ## Setup Inventory: Late-Filtering And Version Capability Seams
 

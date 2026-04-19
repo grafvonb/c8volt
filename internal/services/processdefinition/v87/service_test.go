@@ -147,7 +147,7 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 	}
 }
 
-func TestService_SearchProcessDefinitionsLatest(t *testing.T) {
+func TestService_SearchProcessDefinitionsLatest_FallsBackToClientSideLatestSelection(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
 
@@ -162,7 +162,17 @@ func TestService_SearchProcessDefinitionsLatest(t *testing.T) {
 		},
 	}
 
-	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(operatev87.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Size)
+			assert.Equal(t, int32(1000), *body.Size)
+			assert.Nil(t, body.Filter.BpmnProcessId)
+			assert.Nil(t, body.Filter.Version)
+			assert.Nil(t, body.Filter.VersionTag)
+		}).
+		Return(resp, nil)
 
 	svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
 	require.NoError(t, err)
