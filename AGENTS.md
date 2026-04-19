@@ -109,5 +109,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/077-cli-help-discovery/plan.md`
+- Active implementation plan: `specs/116-server-search-filters/plan.md`
 <!-- SPECKIT END -->
