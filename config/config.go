@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strings"
@@ -365,8 +366,12 @@ func newConfigKeyRegistry(
 type ctxConfigKey struct{}
 
 func (c *Config) ToContext(ctx context.Context) context.Context {
+	return c.ToContextWithLogWriter(ctx, nil)
+}
+
+func (c *Config) ToContextWithLogWriter(ctx context.Context, w io.Writer) context.Context {
 	ctx = context.WithValue(ctx, ctxConfigKey{}, c)
-	log := c.Log.NewLogger()
+	log := c.Log.NewLoggerWithWriter(w)
 	return logging.ToContext(ctx, log)
 }
 

@@ -107,7 +107,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			}
 			return bootstrapLocalPrecondition(err)
 		}
-		ctx := cfg.ToContext(cmd.Context())
+		ctx := cfg.ToContextWithLogWriter(cmd.Context(), cmd.ErrOrStderr())
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))

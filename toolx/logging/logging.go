@@ -3,9 +3,11 @@ package logging
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 )
 
 var (
@@ -17,9 +19,31 @@ type LoggerConfig struct {
 	Format          string
 	WithSource      bool
 	WithRequestBody bool
+	Writer          io.Writer
 }
 
 type ctxKey struct{}
+
+type synchronizedWriter struct {
+	w  io.Writer
+	mu sync.Mutex
+}
+
+func (w *synchronizedWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Write(p)
+}
+
+func ensureSynchronizedWriter(w io.Writer) io.Writer {
+	if w == nil {
+		return nil
+	}
+	if _, ok := w.(*synchronizedWriter); ok {
+		return w
+	}
+	return &synchronizedWriter{w: w}
+}
 
 func New(cfg LoggerConfig) *slog.Logger {
 	var lv slog.Level
@@ -39,16 +63,21 @@ func New(cfg LoggerConfig) *slog.Logger {
 		Level:     lv,
 		AddSource: cfg.WithSource,
 	}
+	writer := cfg.Writer
+	if writer == nil {
+		writer = os.Stderr
+	}
+	writer = ensureSynchronizedWriter(writer)
 	var handler slog.Handler
 	switch strings.ToLower(cfg.Format) {
 	case "json":
-		handler = slog.NewJSONHandler(os.Stdout, opts)
+		handler = slog.NewJSONHandler(writer, opts)
 	case "plain":
-		handler = NewPlainHandler(os.Stdout, opts.Level).
+		handler = NewPlainHandler(writer, opts.Level).
 			WithSource(cfg.WithSource).
 			WithTimestamp(lv < slog.LevelInfo)
 	default:
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		handler = slog.NewTextHandler(writer, opts)
 	}
 	return slog.New(handler)
 }

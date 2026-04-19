@@ -150,7 +150,7 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
 
-	output := executeRootForProcessInstanceTest(t,
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
 		"--automation",
 		"--json",
@@ -161,12 +161,13 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 
 	require.True(t, sawRun)
 	var got map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	require.Equal(t, string(OutcomeAccepted), got["outcome"])
 	require.Equal(t, "run process-instance", got["command"])
 	payload, ok := got["payload"].(map[string]any)
 	require.True(t, ok)
 	require.EqualValues(t, 1, payload["total"])
+	require.Contains(t, stderr, "INFO")
 }
 
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {

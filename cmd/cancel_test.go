@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -208,16 +209,17 @@ func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var cancelled safeSlice[string]
 	searchPage := 0
+	var searchMu sync.Mutex
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -235,6 +237,8 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
+			searchMu.Lock()
+			defer searchMu.Unlock()
 			switch searchPage {
 			case 0:
 				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"101","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"processInstanceKey":"102","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`))
@@ -272,7 +276,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"--count", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 0, pages[0]["from"])
@@ -291,16 +295,17 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var cancelled safeSlice[string]
 	searchPage := 0
+	var searchMu sync.Mutex
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v1/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -319,6 +324,8 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 			}
 
 			w.Header().Set("Content-Type", "application/json")
+			searchMu.Lock()
+			defer searchMu.Unlock()
 			switch searchPage {
 			case 0:
 				_, _ = w.Write([]byte(`{"items":[{"key":701,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"},{"key":702,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":3}`))
@@ -340,7 +347,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
 	output, code := executeCancelProcessInstanceFailureHelper(t, "TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper", cfgPath)
 
-	sizes := decodeCapturedTopLevelPISearchSizes(t, requests)
+	sizes := decodeCapturedTopLevelPISearchSizes(t, requests.Snapshot())
 	require.Equal(t, exitcode.Error, code)
 	require.Equal(t, []float64{2}, sizes)
 	require.Empty(t, cancelled.Snapshot())
@@ -673,7 +680,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error { return nil }
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 
-	output := executeRootForProcessInstanceTest(t,
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 		"--config", cfgPath,
 		"--automation",
 		"--tenant", "tenant",
@@ -688,9 +695,10 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	require.Empty(t, pages)
 	require.Equal(t, []string{"/v2/process-instances/301/cancellation"}, cancelled.Snapshot())
 	var got map[string]any
-	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
 	require.Equal(t, string(OutcomeAccepted), got["outcome"])
 	require.Equal(t, "cancel process-instance", got["command"])
+	require.Contains(t, stderr, "INFO")
 }
 
 func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {
