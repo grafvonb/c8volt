@@ -24,13 +24,13 @@ func GetClusterLicense[T any](
 
 	resp, err := fetch(ctx)
 	if err != nil {
-		return d.License{}, fmt.Errorf("fetch cluster license: %w", err)
+		return d.License{}, err
 	}
 	if !resp.Received {
 		return d.License{}, fmt.Errorf("%w: license response is nil", d.ErrMalformedResponse)
 	}
 	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.License{}, fmt.Errorf("fetch cluster license: %w", err)
+		return d.License{}, err
 	}
 	if resp.Payload == nil {
 		return d.License{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",

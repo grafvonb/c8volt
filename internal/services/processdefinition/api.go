@@ -7,6 +7,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	v87 "github.com/grafvonb/c8volt/internal/services/processdefinition/v87"
 	v88 "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
+	v89 "github.com/grafvonb/c8volt/internal/services/processdefinition/v89"
 )
 
 var MaxResultSize int32 = 1000
@@ -22,3 +23,4 @@ var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
 var _ API = (v87.API)(nil)
 var _ API = (v88.API)(nil)
+var _ API = (v89.API)(nil)

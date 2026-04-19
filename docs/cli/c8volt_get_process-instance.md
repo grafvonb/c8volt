@@ -8,6 +8,13 @@ nav_exclude: true
 
 List or fetch process instances
 
+### Synopsis
+
+List process instances by search filters or fetch them by key.
+Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.
+
+When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
+
 ```
 c8volt get process-instance [flags]
 ```
@@ -17,6 +24,11 @@ c8volt get process-instance [flags]
 ```
   ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
+  ./c8volt get pi --state active --auto-confirm
+  ./c8volt --automation get pi --state active --count 250
+  ./c8volt --json get pi --state active --count 250
+  ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
@@ -29,7 +41,7 @@ c8volt get process-instance [flags]
 ```
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --children-only               show only child process instances, meaning instances that have a parent key set
-  -n, --count int32                 number of process instances to fetch (max limit 1000 enforced by server) (default 1000)
+  -n, --count int32                 number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
@@ -59,6 +71,7 @@ c8volt get process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
@@ -71,11 +84,11 @@ c8volt get process-instance [flags]
       --no-err-codes               suppress error codes in error outputs
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              default tenant ID
+      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
 

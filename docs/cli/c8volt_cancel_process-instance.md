@@ -8,6 +8,14 @@ nav_exclude: true
 
 Cancel process instance(s) by key or search filters and wait for completion
 
+### Synopsis
+
+Cancel process instance(s) by key or search filters and wait for completion.
+
+By default c8volt validates the affected root and descendant instances, asks for confirmation before the destructive action, and waits until cancellation is observed. Use --auto-confirm for unattended runs, and combine it with --no-wait when accepted cancellation should return immediately instead of waiting for the final state.
+
+After non-blocking cancellation, use `get process-instance` or `expect process-instance` to verify the eventual state of the affected instances.
+
 ```
 c8volt cancel process-instance [flags]
 ```
@@ -17,11 +25,15 @@ c8volt cancel process-instance [flags]
 ```
   ./c8volt cancel pi --key 2251799813711967
   ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt cancel pi --state active --count 250
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
+  ./c8volt cancel pi --bpmn-process-id order-process --state active --count 200 --auto-confirm
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
+  ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state canceled --state terminated
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -
 ```
 
@@ -29,6 +41,7 @@ c8volt cancel process-instance [flags]
 
 ```
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
+  -n, --count int32                 number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
@@ -55,6 +68,7 @@ c8volt cancel process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
@@ -67,11 +81,11 @@ c8volt cancel process-instance [flags]
       --no-err-codes               suppress error codes in error outputs
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              default tenant ID
+      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel)	 - Cancel resources
+* [c8volt cancel](c8volt_cancel)	 - Cancel running work with explicit confirmation semantics
 

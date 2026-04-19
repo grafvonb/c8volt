@@ -5,42 +5,80 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-15-g34227cf-dirty`, commit `34227cf`, built `2026-04-12T04:45:42Z` | camunda: 8.7, 8.8
+> Generated from build `c8volt v2.1.0-99-gb5bf05f-dirty`, commit `b5bf05f`, built `2026-04-19T20:13:46Z` | camunda: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
 # c8volt Camunda 8 CLI
 
-**c8volt is a Camunda 8 CLI for workflow operations. For workflows that must actually finish.**
+**Fresh Camunda 8.9 support. Operator-grade workflow control. AI-agent-safe command contracts.**
 
 > **done is done**
 >
-> If an action needs retries, waiting, tree traversal, state checks, or cleanup before it is truly finished, `c8volt` should do that work for you instead of making you script the last mile yourself.
+> If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you instead of making you script the last mile yourself.
 
-`c8volt` is not just a CRUD shell around Camunda 8 APIs. It is a Camunda CLI shaped around operational intent:
+`c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests.
+It is built for operators, developers, support engineers, CI pipelines, and increasingly for AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results without scraping human help text.
 
-- start a process and confirm it is really active
-- cancel a child process by finding the root that must actually be cancelled
-- delete a process instance family thoroughly, not partially
-- deploy BPMN models and use them immediately
+## Why Read This Now
 
-Standard read/list/get commands still matter, but they are not the headline. The headline is operational confidence.
+Recent changes made `c8volt` materially stronger in two areas that deserve to be at the front of the README:
 
-`c8volt` helps when people are searching for a Camunda 8 CLI, a BPMN deployment CLI, or a reliable way to run, inspect, cancel, delete, and verify Camunda process instances from the terminal. It is designed for operators, developers, support engineers, CI pipelines, and local development environments that need outcome verification instead of "request accepted" ambiguity.
+- full repository command-family support for very fresh Camunda `8.9`, with the same practical coverage already available on `8.8`
+- first-class machine-readable discovery through `c8volt capabilities --json`
+- an explicit non-interactive execution contract via `--automation` on supported command paths
+- shared JSON result envelopes for representative command families so AI agents and CI can distinguish `succeeded`, `accepted`, `invalid`, and `failed`
+- safer tenant-aware version handling, predictable config precedence, and better shell-friendly process-instance paging/filtering
 
-## What c8volt Is
+If you are evaluating `c8volt` as a Camunda 8 CLI in 2026, the short version is this: it is not only an operations CLI for humans anymore. It is also becoming a practical control surface for automation systems and AI-driven tooling.
 
-`c8volt` is a command-line tool for Camunda 8 workflow operations. It focuses on the parts of workflow automation that teams often end up scripting around by hand:
+## What Makes c8volt Different
 
-- deploy BPMN process definitions from the CLI
-- start Camunda 8 process instances and confirm they are active
-- inspect parent and child process-instance trees
-- cancel the correct root process instance when a child cannot be canceled directly
-- delete a full process-instance family instead of one visible node
-- wait for a target process state in scripts and CI jobs
-- validate `c8volt` connection and authentication config before running production actions
+Many CLIs stop at "request accepted."
 
-If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN deployment tool for Camunda 8, or a terminal workflow tool that behaves well in automation, those are the main problems `c8volt` is built to solve.
+`c8volt` is shaped around the next questions:
+
+- Did the process instance actually reach `ACTIVE`?
+- Did the cancellation hit the root that really matters?
+- Did deletion remove the whole family, not just one visible node?
+- Can a script or agent discover the right command path without scraping prose help?
+- Can unattended execution fail explicitly instead of hanging on prompts or mixing logs into stdout?
+
+That is the gap `c8volt` closes.
+
+## New Headline Capabilities
+
+### Camunda 8.9, with real parity
+
+`c8volt` supports Camunda `8.7`, `8.8`, and `8.9` as runtime targets.
+
+The important part is not just that `8.9` parses as a version value. The repository now treats `8.9` as a first-class supported runtime with the same repository command-family coverage already available on `8.8`, including:
+
+- cluster metadata
+- process-definition discovery and XML retrieval
+- resource lifecycle operations
+- process-instance lifecycle, search, waiting, traversal, cancel, and delete flows
+- tenant-aware runtime behavior through the versioned service/facade path
+
+`8.8` remains the established baseline, and `8.7` remains supported with its known upstream limitations. But if your platform is already moving to `8.9`, `c8volt` no longer reads like a tool waiting to catch up.
+
+### Built for AI agents, not just shells
+
+`c8volt` now has a clearer machine contract for AI agents and other non-human callers:
+
+- `c8volt capabilities --json` is the canonical discovery surface
+- `--automation` is the canonical non-interactive opt-in on supported command paths
+- supported commands can expose a shared machine-readable result envelope
+- automation mode keeps machine-readable results on stdout and pushes logs/progress away from stdout
+- unsupported automation paths fail explicitly instead of silently falling back to interactive behavior
+
+This matters if you are wiring `c8volt` into:
+
+- CI or deployment jobs
+- shell pipelines that need deterministic output
+- internal control planes
+- agentic tooling that must choose safe commands from a discoverable surface
+- future MCP-style adapters that should reuse stable contracts instead of reverse-engineering ad hoc CLI behavior
 
 ## At A Glance
 
@@ -50,26 +88,54 @@ If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN d
 - cancel safely, including root escalation with `--force`
 - delete process-instance families thoroughly
 - wait for the state you actually need
+- page through large process-instance result sets safely
 - validate config and inspect cluster metadata
+- discover the public command surface with `capabilities --json`
+- run supported commands non-interactively with `--automation`
+
+## Fastest Way To Understand It
+
+Human-first discovery:
+
+```bash
+./c8volt --help
+./c8volt get --help
+./c8volt run process-instance --help
+```
+
+Machine-first discovery:
+
+```bash
+./c8volt capabilities --json
+```
+
+The discovery document reports public command paths, visible flags, output modes, mutation behavior, contract support, and whether a command explicitly supports `--automation`.
+
+For unattended execution on supported commands:
+
+```bash
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
+```
+
+Use `--json` where structured output is supported. Use `--automation` only on command paths whose capabilities entry reports `automation:full`.
 
 ## c8volt vs c8ctl
 
-[`c8ctl`](https://docs.camunda.io/build-with-camunda/) is Camunda's broader official CLI for the full Camunda 8 lifecycle. `c8volt` is more focused: it is built for operators and automation flows that care about what happened after the request, not just whether the request was accepted.
+[`c8ctl`](https://docs.camunda.io/build-with-camunda/) is Camunda's broader official CLI for the wider Camunda 8 lifecycle.
 
-In practice, that means `c8volt` leans hardest into state confirmation, process-tree inspection, root-aware cancellation, thorough deletion, and shell-friendly operational workflows.
+`c8volt` is narrower and more operations-heavy:
 
-## Why It Feels Different
+- deploy
+- run
+- inspect trees
+- wait for state
+- cancel safely
+- delete thoroughly
+- behave predictably in scripts and agent workflows
 
-Many CLIs stop at "request accepted."
-
-`c8volt` is designed for the moments after that:
-
-- Did the process instance actually reach `ACTIVE`?
-- Did the cancellation propagate through the whole family?
-- Did deletion remove the tree, not just one visible node?
-- Is the deployment already usable for the next command?
-
-That is the gap `c8volt` closes.
+If you want broad product lifecycle coverage, `c8ctl` may be the better fit.
+If you want an operations CLI that is opinionated about confirmation, process families, and non-interactive safety, `c8volt` is aiming at a different target.
 
 ## Signature Workflows
 
@@ -97,6 +163,16 @@ By default, `c8volt` waits until the process instance is actually active. If you
 ```bash
 ./c8volt run pi -b C88_SimpleUserTask_Process --no-wait
 ```
+
+For supported non-interactive callers, use the dedicated automation contract instead of composing ad hoc flag bundles:
+
+```bash
+./c8volt capabilities --json
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
+```
+
+`--automation` is the canonical opt-in for unattended execution on commands that report support. `--json` keeps stdout machine-readable, and `--no-wait` still means "accepted but not yet confirmed complete" rather than implied success.
 
 For batch execution:
 
@@ -138,6 +214,19 @@ The same search-driven flow also supports inclusive absolute `--start-date-*` / 
 
 Deletion in real environments often means cancel-first, then remove, then verify. `c8volt` is built for that operational sequence.
 
+### 6. Page through large process-instance result sets safely
+
+```bash
+./c8volt get pi --state active
+./c8volt get pi --state active --count 250
+./c8volt cancel pi --state active --count 250
+./c8volt delete pi --state completed --count 250 --auto-confirm
+```
+
+Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing in human-oriented modes unless `--auto-confirm` or `--json` is set. JSON mode auto-consumes remaining pages and returns one final aggregated result. Direct `--key` workflows still bypass paging and keep their existing behavior.
+
+For supported command paths, `--automation` is the stronger non-interactive contract: it tells `c8volt` to reject unsupported automation flows explicitly, to treat supported prompts as accepted, and to keep the human-oriented default behavior unchanged when the flag is absent.
+
 ## Precision Tools
 
 The project also includes a strong set of supporting commands that are fully implemented and useful in day-to-day operator work.
@@ -165,6 +254,34 @@ Use `expect` when a script or operator workflow needs a concrete state transitio
 ```
 
 This makes `c8volt` useful not only for action commands, but also for environment checks, support flows, and CI diagnostics. The `config` command family is about `c8volt` itself: how the CLI connects, authenticates, renders logs, and selects profiles.
+
+## Configuration Precedence
+
+`c8volt` resolves config-backed settings with one shared order:
+
+`flag > env > profile > base config > default`
+
+That applies to root persistent flags such as `--tenant` and `--profile`, command-local config-backed flags, API base URLs, auth mode, and auth credentials/scopes.
+
+- An explicit flag wins over environment variables, profile values, and base config.
+- An environment variable wins when no explicit flag overrides it.
+- The active profile overlays base config field by field and never overwrites an explicit flag or environment winner.
+- Explicit empty or zero-like higher-precedence values are preserved for validation instead of silently falling back to a lower-precedence source.
+- When `c8volt` cannot determine a safe winner, it fails explicitly instead of guessing.
+
+Use `./c8volt config show` to inspect the effective configuration that a command will actually use, or `./c8volt config show --validate` to confirm the resolved config is valid before running changes against a cluster.
+
+## Tenant-Aware Version Notes
+
+Tenant-aware process-instance commands follow one shared contract across `get`, `walk`, `cancel`, `delete`, `expect`, and run-confirmation flows:
+
+- the effective tenant follows `flag > env > profile > base config > default`
+- supported wrong-tenant lookups behave like `not found`
+- `8.9` now uses the same native tenant-safe process-instance runtime path and repository command-family coverage that `8.8` provides
+- `v8.8` uses tenant-safe search-backed lookup/state behavior as the authoritative path for direct-get-adjacent flows
+- `v8.7` keeps search-backed tenant-safe flows available, but keyed direct lookup and keyed state checks stay explicitly unsupported where no tenant-safe upstream equivalent exists
+
+That split is intentional: `c8volt` does not fake tenant safety by doing an unsafe cross-tenant fetch and hiding the result afterward.
 
 ### Pull exact artifacts and metadata
 
@@ -240,6 +357,7 @@ c8volt
 │   ├── process-definition    List definitions, fetch latest versions, or retrieve XML
 │   ├── process-instance      List or fetch process instances
 │   └── resource              Fetch a single resource by id
+├── capabilities              Describe the public CLI contract for automation and discovery
 └── config                    Inspect and validate c8volt configuration
     └── show                  Render, validate, or template c8volt config
 
@@ -257,11 +375,11 @@ Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run),
 ./start.sh
 ```
 
-For local `c8run` on Camunda `8.8`, a minimal `config.yaml` for `c8volt` looks like this:
+For local `c8run`, a minimal `config.yaml` for `c8volt` looks like this:
 
 ```yaml
 apis:
-  version: "88"
+  version: "89"
   camunda_api:
     base_url: "http://localhost:8080/v2"
 auth:
@@ -297,6 +415,23 @@ The most useful starting commands are:
 ./c8volt --profile prod config show
 ```
 
+### Process-instance paging defaults
+
+Search-based `get process-instance`, `cancel process-instance`, and `delete process-instance` share one default page-size setting:
+
+```yaml
+app:
+  process_instance_page_size: 250
+```
+
+- Default behavior stays at `1000` when this key is unset.
+- `--count` overrides the configured value for one command run.
+- `C8VOLT_APP_PROCESS_INSTANCE_PAGE_SIZE` provides the same setting through the environment.
+- `--auto-confirm` continues to the next page automatically.
+- `--json` also auto-consumes remaining pages for supported machine-readable flows and returns one aggregated result.
+- Without either flag, the CLI prompts between pages in human-oriented modes.
+- Direct `--key` usage for `cancel pi` and `delete pi` remains non-paged.
+
 ### Tenant support
 
 `c8volt` supports tenant-aware operations through:
@@ -331,7 +466,7 @@ This is the smallest setup and works well for local `c8run` or unsecured develop
 
 ```yaml
 apis:
-  version: "88"
+  version: "89"
   camunda_api:
     base_url: "http://localhost:8080/v2"
 auth:
@@ -508,8 +643,10 @@ The supporting read and deployment commands are still part of the core toolbox:
 `c8volt` is built to behave well in scripts, CI jobs, and operator toolchains:
 
 - `--json` for structured output
+- `capabilities --json` as the canonical machine-readable discovery surface
+- `--automation` as the canonical non-interactive contract on supported commands
 - `--keys-only` for command chaining
-- `--auto-confirm` for non-interactive runs
+- `--auto-confirm` for human-operated bulk flows that should continue without repeated prompts
 - `--workers` for controlled concurrency
 - `--fail-fast` when one error should stop the next wave of work
 - `--backoff-*` retry controls for API-facing flows
@@ -520,8 +657,11 @@ The supporting read and deployment commands are still part of the core toolbox:
 Example:
 
 ```bash
-./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active --keys-only
+./c8volt capabilities --json
+./c8volt --automation --json get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
 ```
+
+Use `capabilities --json` to discover command paths, flags, output modes, mutation type, and whether a command currently supports the dedicated automation contract. For supported command families, combine `--automation` with `--json` when you need deterministic unattended execution and machine-readable stdout. Outside the explicit automation flag, the default command output and `--keys-only` behavior stay operator-friendly and pipeline-safe.
 
 And when you want to move from "query" to "bulk action" without leaving the shell:
 

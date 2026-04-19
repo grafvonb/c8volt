@@ -1,0 +1,528 @@
+package v89_test
+
+import (
+	"context"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/grafvonb/c8volt/config"
+	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
+	"github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	v89 "github.com/grafvonb/c8volt/internal/services/processdefinition/v89"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+type mockProcessDefinitionClient struct {
+	mock.Mock
+}
+
+func (m *mockProcessDefinitionClient) SearchProcessDefinitionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessDefinitionsResponse, error) {
+	rawBody, err := io.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	args := m.Called(ctx, contentType, string(rawBody))
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav89.SearchProcessDefinitionsResponse), args.Error(1)
+}
+
+func (m *mockProcessDefinitionClient) GetProcessDefinitionWithResponse(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav89.GetProcessDefinitionResponse), args.Error(1)
+}
+
+func (m *mockProcessDefinitionClient) GetProcessDefinitionXMLWithResponse(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionXMLResponse, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav89.GetProcessDefinitionXMLResponse), args.Error(1)
+}
+
+func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, key string, body camundav89.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionStatisticsResponse, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav89.GetProcessDefinitionStatisticsResponse), args.Error(1)
+}
+
+func TestService_SearchProcessDefinitions(t *testing.T) {
+	ctx := context.Background()
+	mockErr := errors.New("search failed")
+
+	tests := []struct {
+		name          string
+		setupMock     func(*mockProcessDefinitionClient)
+		opts          []services.CallOption
+		expectedError error
+		assertResult  func(*testing.T, []domain.ProcessDefinition)
+	}{
+		{
+			name: "Success without stats",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+					Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+				}
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+			},
+			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
+				require.Len(t, defs, 1)
+				assert.Equal(t, "proc", defs[0].BpmnProcessId)
+			},
+		},
+		{
+			name: "HTTP error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusInternalServerError, "500"),
+					Body:         []byte("boom"),
+				}
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+			},
+			expectedError: domain.ErrInternal,
+		},
+		{
+			name: "Nil payload",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+				}
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+			},
+			expectedError: domain.ErrMalformedResponse,
+		},
+		{
+			name: "Client error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return((*camundav89.SearchProcessDefinitionsResponse)(nil), mockErr)
+			},
+			expectedError: mockErr,
+		},
+		{
+			name: "Stats requested",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+					Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+				}
+				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+					JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
+						Items: []camundav89.ProcessElementStatisticsResult{{Active: 1}},
+					},
+				}
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
+				require.NotNil(t, defs[0].Statistics)
+				assert.Equal(t, int64(1), defs[0].Statistics.Active)
+			},
+		},
+		{
+			name: "Stats retrieval fails",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+					Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+				}
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return((*camundav89.GetProcessDefinitionStatisticsResponse)(nil), mockErr)
+			},
+			opts:          []services.CallOption{services.WithStat()},
+			expectedError: mockErr,
+		},
+		{
+			name: "Stats missing payload is tolerated",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+					Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+				}
+				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+				}
+				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
+				require.Len(t, defs, 1)
+				assert.Nil(t, defs[0].Statistics)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			if tt.setupMock != nil {
+				tt := tt
+				tt.setupMock(m)
+			}
+
+			svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+			require.NoError(t, err)
+			defs, err := svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{BpmnProcessId: "proc"}, 25, tt.opts...)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				if tt.assertResult != nil {
+					tt.assertResult(t, defs)
+				}
+			}
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &camundav89.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":1,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+	}
+
+	statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+		JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
+			Items: []camundav89.ProcessElementStatisticsResult{{Active: 2}},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
+		Run(func(args mock.Arguments) {
+			rawBody := args.String(2)
+			assert.True(t, strings.Contains(rawBody, `"isLatestVersion":true`))
+		}).
+		Return(resp, nil)
+
+	m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).
+		Return(statsResp, nil)
+
+	svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+	require.NoError(t, err)
+	defs, err := svc.SearchProcessDefinitionsLatest(ctx, domain.ProcessDefinitionFilter{}, services.WithStat())
+
+	require.NoError(t, err)
+	require.Len(t, defs, 1)
+	require.NotNil(t, defs[0].Statistics)
+	assert.Equal(t, int64(2), defs[0].Statistics.Active)
+	m.AssertExpectations(t)
+}
+
+func TestService_GetProcessDefinition(t *testing.T) {
+	ctx := context.Background()
+	mockErr := errors.New("get failed")
+
+	tests := []struct {
+		name          string
+		setupMock     func(*mockProcessDefinitionClient)
+		opts          []services.CallOption
+		expectedError error
+		assertResult  func(*testing.T, domain.ProcessDefinition)
+	}{
+		{
+			name: "Success without stats",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
+				assert.Equal(t, "proc", pd.BpmnProcessId)
+			},
+		},
+		{
+			name: "HTTP error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusInternalServerError, "500"),
+					Body:         []byte("fail"),
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedError: domain.ErrInternal,
+		},
+		{
+			name: "Nil payload",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedError: domain.ErrMalformedResponse,
+		},
+		{
+			name: "Stats requested",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+				}
+				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+					JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
+						Items: []camundav89.ProcessElementStatisticsResult{{Completed: 5}},
+					},
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
+				require.NotNil(t, pd.Statistics)
+				assert.Equal(t, int64(5), pd.Statistics.Completed)
+			},
+		},
+		{
+			name: "Stats retrieval fails",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return((*camundav89.GetProcessDefinitionStatisticsResponse)(nil), mockErr)
+			},
+			opts:          []services.CallOption{services.WithStat()},
+			expectedError: mockErr,
+		},
+		{
+			name: "Stats missing payload is tolerated",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
+					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
+				}
+				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
+				}
+				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
+				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
+				assert.Nil(t, pd.Statistics)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			if tt.setupMock != nil {
+				tt := tt
+				tt.setupMock(m)
+			}
+
+			svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+			require.NoError(t, err)
+			pd, err := svc.GetProcessDefinition(ctx, "123", tt.opts...)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				if tt.assertResult != nil {
+					tt.assertResult(t, pd)
+				}
+			}
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+func TestService_GetProcessDefinitionXML(t *testing.T) {
+	ctx := context.Background()
+	mockErr := errors.New("xml failed")
+
+	tests := []struct {
+		name          string
+		setupMock     func(*mockProcessDefinitionClient)
+		expectedError error
+		expectedXML   string
+	}{
+		{
+			name: "Success",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+					XML200:       new(string),
+				}
+				*resp.XML200 = "<definitions id=\"proc\"/>"
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "Success falls back to raw body",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+					Body:         []byte("<definitions id=\"proc\"/>"),
+					XML200:       new(string),
+				}
+				*resp.XML200 = "\n  \n  \n"
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\"/>",
+		},
+		{
+			name: "Success prefers formatted raw body",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+					Body:         []byte("<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n"),
+					XML200:       new(string),
+				}
+				*resp.XML200 = "\n  \n    \n"
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedXML: "<definitions id=\"proc\">\n  <process id=\"order\" />\n</definitions>\n",
+		},
+		{
+			name: "HTTP error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusInternalServerError, "500"),
+					Body:         []byte("fail"),
+				}
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedError: domain.ErrInternal,
+		},
+		{
+			name: "Nil payload",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav89.GetProcessDefinitionXMLResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123/xml", http.StatusOK, "200"),
+				}
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return(resp, nil)
+			},
+			expectedError: domain.ErrMalformedResponse,
+		},
+		{
+			name: "Client error",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				m.On("GetProcessDefinitionXMLWithResponse", mock.Anything, "123").Return((*camundav89.GetProcessDefinitionXMLResponse)(nil), mockErr)
+			},
+			expectedError: mockErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mockProcessDefinitionClient{}
+			if tt.setupMock != nil {
+				tt := tt
+				tt.setupMock(m)
+			}
+
+			svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+			require.NoError(t, err)
+			xml, err := svc.GetProcessDefinitionXML(ctx, "123")
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedXML, xml)
+			}
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+func TestService_WithClientCamunda(t *testing.T) {
+	mc := &mockProcessDefinitionClient{}
+	svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(mc))
+	require.NoError(t, err)
+	require.Equal(t, mc, svc.ClientCamunda())
+
+	v89.WithClientCamunda(nil)(svc)
+	require.Equal(t, mc, svc.ClientCamunda())
+}
+
+func TestService_WithLogger(t *testing.T) {
+	svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.NoError(t, err)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	v89.WithLogger(logger)(svc)
+	require.Equal(t, logger, svc.Logger())
+
+	v89.WithLogger(nil)(svc)
+	require.Equal(t, logger, svc.Logger())
+}
+
+func testConfig() *config.Config {
+	return &config.Config{
+		APIs: config.APIs{
+			Camunda: config.API{
+				BaseURL: "https://camunda.local/v2",
+			},
+		},
+	}
+}
+
+func makeProcessDefinitionResult(id, key string, version int32) camundav89.ProcessDefinitionResult {
+	return camundav89.ProcessDefinitionResult{
+		ProcessDefinitionId:  id,
+		ProcessDefinitionKey: key,
+		Name:                 new("name-" + id),
+		Version:              version,
+		TenantId:             "tenant",
+		VersionTag:           new("tag"),
+	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
+func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		panic(err)
+	}
+	return &http.Response{
+		StatusCode: statusCode,
+		Status:     status,
+		Request: &http.Request{
+			Method: method,
+			URL:    u,
+		},
+	}
+}

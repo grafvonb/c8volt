@@ -8,11 +8,12 @@ var completionCommands = map[string]struct{}{
 }
 
 var utilityCommands = map[string]struct{}{
-	"help":       {},
-	"version":    {},
-	"completion": {},
-	"config":     {},
-	"show":       {},
+	"capabilities": {},
+	"help":         {},
+	"version":      {},
+	"completion":   {},
+	"config":       {},
+	"show":         {},
 }
 
 func isUtilityCommand(cmd *cobra.Command) bool {

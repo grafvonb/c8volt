@@ -22,14 +22,27 @@ const (
 var walkProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Inspect the parent/child tree of process instances",
+	Long: "Inspect the parent/child tree of process instances.\n\n" +
+		"Use this read-only command after state-changing flows when you need to verify ancestor, child, or full-family " +
+		"relationships before cancelling, deleting, or confirming downstream effects. Choose --parent for ancestry, " +
+		"--children for descendants, and --family when you need the combined view or ASCII tree rendering.\n\n" +
+		"Human-readable list and tree output remain the default. Use --json when another tool needs the shared result " +
+		"envelope around the returned traversal payload. `--automation` remains unsupported because traversal output " +
+		"semantics are still human-first.",
 	Example: `  ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
-  ./c8volt walk pi --key 2251799813711977 --parent`,
+  ./c8volt walk pi --key 2251799813711977 --parent
+  ./c8volt cancel pi --key 2251799813711967 --no-wait --auto-confirm
+  ./c8volt walk pi --key 2251799813711967 --family --tree
+  ./c8volt --json walk pi --key 2251799813711967 --children`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
+		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
 		if flagViewAsTree && (!flagWalkPIModeFamily && flagWalkPIMode != walkPIModeFamily) {
@@ -94,10 +107,10 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 		path, chain, err := w.fetch()
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := w.view(cmd, path, chain); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},
 }
@@ -119,4 +132,8 @@ func init() {
 	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{walkPIModeParent, walkPIModeChildren, walkPIModeFamily}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
+	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "tree and traversal output semantics are not yet defined for automation mode")
 }

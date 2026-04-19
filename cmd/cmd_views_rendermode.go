@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -45,10 +44,14 @@ func pickMode() RenderMode {
 	}
 }
 
+func machineReadableModeEnabled(mode RenderMode) bool {
+	return mode == RenderModeJSON
+}
+
 func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:
-		cmd.Println(toolx.ToJSONString(item))
+		return renderJSONPayload(cmd, mode, item)
 	case RenderModeKeysOnly:
 		cmd.Println(keyOf(item))
 	default:
@@ -60,7 +63,7 @@ func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine 
 func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:
-		cmd.Print(toolx.ToJSONString(resp))
+		return renderJSONPayload(cmd, mode, resp)
 	case RenderModeKeysOnly:
 		for _, it := range items {
 			cmd.Println(keyOf(it))

@@ -38,6 +38,9 @@ def patch_search_result_schemas(input_file: str):
     with open(input_file, "r", encoding="utf-8") as f:
         spec = yaml.safe_load(f)
 
+    if not isinstance(spec, dict):
+        raise ValueError(f"{input_file} did not parse as an OpenAPI mapping document")
+
     components = spec.get("components", {})
     schemas = components.get("schemas", {})
 

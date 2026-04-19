@@ -9,6 +9,9 @@ path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as f:
     doc = yaml.safe_load(f)
 
+if not isinstance(doc, dict):
+    raise ValueError(f"{path} did not parse as an OpenAPI mapping document")
+
 schemas = doc.get("components", {}).get("schemas", {})
 
 mapping = {

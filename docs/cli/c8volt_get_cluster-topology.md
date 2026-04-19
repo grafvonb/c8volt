@@ -12,10 +12,17 @@ Get the cluster topology of the connected Camunda 8 cluster
 
 Get the cluster topology of the connected Camunda 8 cluster.
 
-Deprecated but supported: use `c8volt get cluster topology`.
+This read-only command reports brokers, partitions, and gateway metadata for the connected cluster. Prefer `--json` for automation. Deprecated but supported: use `c8volt get cluster topology`.
 
 ```
 c8volt get cluster-topology [flags]
+```
+
+### Examples
+
+```
+  ./c8volt get cluster-topology
+  ./c8volt get cluster topology --json
 ```
 
 ### Options
@@ -28,6 +35,7 @@ c8volt get cluster-topology [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
@@ -40,11 +48,11 @@ c8volt get cluster-topology [flags]
       --no-err-codes               suppress error codes in error outputs
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              default tenant ID
+      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
 

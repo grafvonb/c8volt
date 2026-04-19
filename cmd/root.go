@@ -4,15 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/auth"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -24,28 +27,73 @@ var (
 	flagVerbose           bool
 	flagDebug             bool
 	flagNoErrCodes        bool
+	flagCmdAutomation     bool
 	flagCmdAutoConfirm    bool
 	flagAllowInconsistent bool
 )
 
 func Root() *cobra.Command { return rootCmd }
 
+type resolverBindings struct {
+	flags map[string]*pflag.Flag
+}
+
+func newResolverBindings() *resolverBindings {
+	return &resolverBindings{
+		flags: make(map[string]*pflag.Flag),
+	}
+}
+
+func (r *resolverBindings) bindPFlag(v *viper.Viper, key string, flag *pflag.Flag) {
+	if flag == nil {
+		return
+	}
+	_ = v.BindPFlag(key, flag)
+	r.flags[key] = flag
+}
+
+func (r *resolverBindings) hasHigherPrecedenceSource(key string) bool {
+	if flag, ok := r.flags[key]; ok && flag != nil && flag.Changed {
+		return true
+	}
+	return hasEnvConfigByKeys([]string{key})
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
-	Short: "c8volt: Camunda 8 Operations CLI",
+	Short: "Operate Camunda 8 with guided help and script-safe output modes",
 	Long: `c8volt: Camunda 8 Operations CLI.
 
 Built for Camunda 8 operators and developers who need confirmation, not guesses.
 c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
 waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
 
+Start with "c8volt <group> --help" when choosing an operator workflow, or use
+"c8volt capabilities --json" when a script, CI job, or AI caller needs the public command inventory,
+flag metadata, output modes, mutation behavior, and automation support without scraping prose help.
+Human-oriented command families remain the primary interactive surface; JSON and keys-only modes layer onto
+the same public Cobra tree for script-safe automation on supported commands.
+Prefer --json where a command exposes structured output, and use --automation only when that command's
+capabilities entry reports automation:full for the canonical non-interactive contract.
+
+Tenant-aware process-instance flows use one effective tenant context per command execution.
+Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
+is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned service
+factories and facades, with the same repository command-family coverage on 8.9 that already
+exists on 8.8.
+
 Refer to the documentation at https://c8volt.info for more information.`,
+	Example: `  ./c8volt get --help
+  ./c8volt run process-instance --help
+  ./c8volt capabilities --json
+  ./c8volt --config ./config.yaml config show --validate`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
-		if err := initViper(v, cmd); err != nil {
+		bindings, err := initViper(v, cmd)
+		if err != nil {
 			return bootstrapLocalPrecondition(err)
 		}
 		if hasHelpFlag(cmd) {
@@ -58,11 +106,14 @@ Refer to the documentation at https://c8volt.info for more information.`,
 		case flagDebug:
 			v.Set("log.level", "debug")
 		}
-		cfg, err := retrieveAndNormalizeConfig(v)
+		cfg, err := retrieveAndNormalizeConfig(v, bindings)
 		if err != nil {
+			if errors.Is(err, config.ErrProfileNotFound) {
+				return normalizeBootstrapError(err)
+			}
 			return bootstrapLocalPrecondition(err)
 		}
-		ctx := cfg.ToContext(cmd.Context())
+		ctx := cfg.ToContextWithLogWriter(cmd.Context(), cmd.ErrOrStderr())
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
@@ -74,11 +125,12 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			log.Debug("no config file loaded, using defaults and environment variables")
 			var configKeys = []string{
 				"app.camunda_version",
+				"app.process_instance_page_size",
 				"apis.camunda_api.base_url",
 				"auth.mode",
 			}
 			hasEnv := hasEnvConfigByKeys(configKeys)
-			if !hasEnv {
+			if !hasEnv && !bypassRootBootstrap(cmd) {
 				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
@@ -137,6 +189,7 @@ func Execute() {
 func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
+	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the canonical non-interactive contract for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
@@ -150,32 +203,40 @@ func init() {
 	pf.String("log-format", "plain", "log format (json, plain, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
-	pf.String("tenant", "", "default tenant ID")
+	pf.String("tenant", "", "tenant ID for tenant-aware command flows (overrides env, profile, and base config)")
 	pf.BoolVar(&flagNoErrCodes, "no-err-codes", false, "suppress error codes in error outputs")
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
+
+	setCapabilityDocumentVersion(rootCmd, defaultContractVersion)
+	setCommandMutation(rootCmd, CommandMutationReadOnly)
+	setContractSupport(rootCmd, ContractSupportLimited)
 }
 
-func initViper(v *viper.Viper, cmd *cobra.Command) error {
+func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	fs := cmd.Flags()
+	bindings := newResolverBindings()
 
-	_ = v.BindPFlag("config", fs.Lookup("config"))
-	_ = v.BindPFlag("active_profile", fs.Lookup("profile"))
+	bindings.bindPFlag(v, "config", fs.Lookup("config"))
+	bindings.bindPFlag(v, "active_profile", fs.Lookup("profile"))
 
-	_ = v.BindPFlag("log.level", fs.Lookup("log-level"))
-	_ = v.BindPFlag("log.format", fs.Lookup("log-format"))
-	_ = v.BindPFlag("log.with_source", fs.Lookup("log-with-source"))
+	bindings.bindPFlag(v, "log.level", fs.Lookup("log-level"))
+	bindings.bindPFlag(v, "log.format", fs.Lookup("log-format"))
+	bindings.bindPFlag(v, "log.with_source", fs.Lookup("log-with-source"))
 
-	_ = v.BindPFlag("app.tenant", fs.Lookup("tenant"))
-	_ = v.BindPFlag("app.camunda_version", fs.Lookup("camunda-version"))
-	_ = v.BindPFlag("app.no_err_codes", fs.Lookup("no-err-codes"))
-	_ = v.BindPFlag("app.auto-confirm", fs.Lookup("auto-confirm"))
+	bindings.bindPFlag(v, "app.tenant", fs.Lookup("tenant"))
+	bindings.bindPFlag(v, "app.camunda_version", fs.Lookup("camunda-version"))
+	bindings.bindPFlag(v, "app.automation", fs.Lookup("automation"))
+	bindings.bindPFlag(v, "app.no_err_codes", fs.Lookup("no-err-codes"))
+	bindings.bindPFlag(v, "app.auto-confirm", fs.Lookup("auto-confirm"))
+	bindCommandLocalConfigFlags(v, bindings, fs)
 
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.format", "plain")
 	v.SetDefault("log.with_source", false)
 	v.SetDefault("log.with_request_body", false)
+	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
 
 	v.SetEnvPrefix("c8volt")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
@@ -195,27 +256,54 @@ func initViper(v *viper.Viper, cmd *cobra.Command) error {
 	}
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := errors.AsType[viper.ConfigFileNotFoundError](err); !ok || v.GetString("config") != "" {
-			return fmt.Errorf("read config file: %w", err)
+			return nil, fmt.Errorf("read config file: %w", err)
 		}
 	}
-	return nil
+	return bindings, nil
 }
 
-func retrieveAndNormalizeConfig(v *viper.Viper) (*config.Config, error) {
-	// Bind environment variables to config struct fields
-	// This makes sure that environment variables are used even if the key is not in the config file
-	config.BindConfigEnvVars(v)
+func bindCommandLocalConfigFlags(v *viper.Viper, bindings *resolverBindings, fs *pflag.FlagSet) {
+	bindings.bindPFlag(v, "app.backoff.timeout", fs.Lookup("backoff-timeout"))
+	bindings.bindPFlag(v, "app.backoff.max_retries", fs.Lookup("backoff-max-retries"))
 
-	var base config.Config
-	if err := v.Unmarshal(&base); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %w", err)
+	if fs.Lookup("backoff-timeout") == nil {
+		return
 	}
-	cfg, err := base.WithProfile()
+	v.SetDefault("app.backoff.timeout", defaultBackoffTimeout)
+	v.SetDefault("app.backoff.max_retries", defaultBackoffMaxRetries)
+	v.SetDefault("app.backoff.strategy", defaultBackoffStrategy)
+	v.SetDefault("app.backoff.initial_delay", defaultBackoffInitialDelay)
+	v.SetDefault("app.backoff.max_delay", defaultBackoffMaxDelay)
+	v.SetDefault("app.backoff.multiplier", defaultBackoffMultiplier)
+}
+
+func automationModeEnabled(cmd *cobra.Command) bool {
+	if cmd != nil {
+		if cfg, err := config.FromContext(cmd.Context()); err == nil && cfg != nil {
+			return cfg.App.Automation
+		}
+		if flag := cmd.Flags().Lookup("automation"); flag != nil {
+			if value, err := strconv.ParseBool(flag.Value.String()); err == nil {
+				return value
+			}
+		}
+	}
+	return flagCmdAutomation
+}
+
+func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*config.Config, error) {
+	cfg, err := config.ResolveEffectiveConfig(
+		v,
+		bindings.hasHigherPrecedenceSource,
+		func(activeProfile, key string) bool {
+			if activeProfile == "" {
+				return false
+			}
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("apply profile: %w", err)
-	}
-	if err := cfg.Normalize(); err != nil {
-		return nil, fmt.Errorf("normalize config: %w", err)
+		return nil, err
 	}
 	return cfg, nil
 }

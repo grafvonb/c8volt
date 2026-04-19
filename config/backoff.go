@@ -69,6 +69,28 @@ func (c *BackoffConfig) Normalize() error {
 	return nil
 }
 
+func (c *BackoffConfig) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
+	if c.Strategy == "" && !isConfigured("app.backoff.strategy") {
+		c.Strategy = BackoffExponential
+	}
+	if c.InitialDelay <= 0 && !isConfigured("app.backoff.initial_delay") {
+		c.InitialDelay = 500 * time.Millisecond
+	}
+	if c.MaxDelay < 0 && !isConfigured("app.backoff.max_delay") {
+		c.MaxDelay = 8 * time.Second
+	}
+	if c.MaxRetries < 0 && !isConfigured("app.backoff.max_retries") {
+		c.MaxRetries = 0 // unlimited
+	}
+	if c.Strategy == BackoffExponential && c.Multiplier <= 1 && !isConfigured("app.backoff.multiplier") {
+		c.Multiplier = 2.0
+	}
+	if c.Timeout <= 0 && !isConfigured("app.backoff.timeout") {
+		c.Timeout = 30 * time.Second
+	}
+	return nil
+}
+
 func (c *BackoffConfig) Validate() error {
 	var errs []error
 

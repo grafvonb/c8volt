@@ -39,6 +39,12 @@ func buildYear() int {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
+	Long: "Print version information.\n\n" +
+		"Use this read-only command to confirm the running c8volt build and supported Camunda versions before troubleshooting or automation setup.\n" +
+		"Default output stays compact for human use. Prefer --json when automation needs the shared result envelope and version metadata fields.",
+	Example: `  ./c8volt version
+  ./c8volt version --json
+  ./c8volt version | head -n 1`,
 	Run: func(cmd *cobra.Command, args []string) {
 		info := CurrentBuildInfo()
 		if flagViewAsJson {
@@ -48,7 +54,9 @@ var versionCmd = &cobra.Command{
 				"date":                     info.Date,
 				"supportedCamundaVersions": info.SupportedCamundaVersions,
 			}
-			cmd.Println(toolx.ToJSONString(out))
+			if err := renderJSONPayload(cmd, RenderModeJSON, out); err != nil {
+				handleCommandError(cmd, nil, flagNoErrCodes, err)
+			}
 			return
 		}
 		cmd.Printf("c8volt %s (%s, %s) | camunda: %s | (c) %d Adam Bogdan Boczek | https://boczek.info\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, buildYear())
@@ -57,4 +65,6 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	setCommandMutation(versionCmd, CommandMutationReadOnly)
+	setContractSupport(versionCmd, ContractSupportFull)
 }

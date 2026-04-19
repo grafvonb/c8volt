@@ -4,6 +4,7 @@ import (
 	"time"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
 )
 
 func NewStringEqFilterPtr(v string) *camundav88.StringFilterProperty {
@@ -25,6 +26,15 @@ func NewProcessInstanceKeyEqFilterPtr(v string) *camundav88.ProcessInstanceKeyFi
 		return nil
 	}
 	return newFilterPtr(v, (*camundav88.ProcessInstanceKeyFilterProperty).FromProcessInstanceKeyFilterProperty0)
+}
+
+func NewProcessInstanceKeyExistsFilterPtr(exists *bool) *camundav88.ProcessInstanceKeyFilterProperty {
+	if exists == nil {
+		return nil
+	}
+	return newFilterPtr(camundav88.AdvancedProcessInstanceKeyFilter{
+		Exists: exists,
+	}, (*camundav88.ProcessInstanceKeyFilterProperty).FromAdvancedProcessInstanceKeyFilter)
 }
 
 func NewProcessInstanceStateEqFilterPtr(v string) *camundav88.ProcessInstanceStateFilterProperty {
@@ -49,6 +59,15 @@ func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav
 		Lte:    before,
 		Exists: exists,
 	}, (*camundav88.DateTimeFilterProperty).FromAdvancedDateTimeFilter)
+}
+
+func ProcessInstanceFilterHasTenantSafeLookupFields(filter d.ProcessInstanceFilter) bool {
+	return filter.Key != "" ||
+		filter.BpmnProcessId != "" ||
+		filter.ProcessVersion != 0 ||
+		filter.ProcessVersionTag != "" ||
+		filter.ParentKey != "" ||
+		filter.State != ""
 }
 
 func newFilterPtr[T any, D any](v D, init func(*T, D) error) *T {

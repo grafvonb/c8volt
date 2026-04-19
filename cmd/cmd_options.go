@@ -31,5 +31,8 @@ func collectOptions() []options.FacadeOption {
 	if flagNoWorkerLimit {
 		opts = append(opts, options.WithNoWorkerLimit())
 	}
+	if flagAllowInconsistent {
+		opts = append(opts, options.WithAllowInconsistent())
+	}
 	return opts
 }

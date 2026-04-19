@@ -20,6 +20,7 @@ var bootstrapErrorClassRules = append([]errorClassRule{
 	{match: config.ErrNoClientSecret, class: ferrors.ErrLocalPrecondition},
 	{match: config.ErrInvalidLogLevel, class: ferrors.ErrLocalPrecondition},
 	{match: config.ErrInvalidLogFormat, class: ferrors.ErrLocalPrecondition},
+	{match: config.ErrProfileNotFound, class: ferrors.ErrInvalidInput},
 	{match: httpc.ErrNoHttpServiceInContext, class: ferrors.ErrLocalPrecondition},
 	{match: httpc.ErrInvalidServiceInContext, class: ferrors.ErrLocalPrecondition},
 }, commandErrorClassRules...)

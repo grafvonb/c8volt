@@ -39,6 +39,16 @@ func applyRelativeDayNowOverrideFromEnv(t *testing.T) {
 func newProcessInstanceSearchCaptureServer(t *testing.T, requests *[]string) *httptest.Server {
 	t.Helper()
 
+	return newProcessInstanceSearchCaptureServerWithResponses(t, requests, `{"items":[]}`)
+}
+
+// newProcessInstanceSearchCaptureServerWithResponses captures each search request
+// body and returns the provided JSON responses in order so paging tests can
+// assert sequential page fetch behavior without duplicating server scaffolding.
+func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *[]string, responses ...string) *httptest.Server {
+	t.Helper()
+
+	served := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
@@ -46,9 +56,11 @@ func newProcessInstanceSearchCaptureServer(t *testing.T, requests *[]string) *ht
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		*requests = append(*requests, string(body))
+		require.Less(t, served, len(responses), "unexpected extra process-instance search request")
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[]}`))
+		_, _ = w.Write([]byte(responses[served]))
+		served++
 	}))
 	return srv
 }
@@ -96,4 +108,109 @@ func decodeCapturedPISearchRequest(t *testing.T, request string) map[string]any 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(request), &got))
 	return got
+}
+
+func decodeCapturedPISearchRequests(t *testing.T, requests []string) []map[string]any {
+	t.Helper()
+
+	decoded := make([]map[string]any, 0, len(requests))
+	for _, request := range requests {
+		decoded = append(decoded, decodeCapturedPISearchRequest(t, request))
+	}
+	return decoded
+}
+
+func decodeCapturedPISearchPages(t *testing.T, requests []string) []map[string]any {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	pages := make([]map[string]any, 0, len(decoded))
+	for _, request := range decoded {
+		page, ok := request["page"].(map[string]any)
+		require.True(t, ok, "expected search request page object")
+		pages = append(pages, page)
+	}
+	return pages
+}
+
+func decodeCapturedTopLevelPISearchFilters(t *testing.T, requests []string) []map[string]any {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	filters := make([]map[string]any, 0, len(decoded))
+	for _, request := range decoded {
+		filter, _ := request["filter"].(map[string]any)
+		if filter != nil {
+			if _, hasKey := filter["processInstanceKey"]; hasKey {
+				continue
+			}
+			if key, hasKey := filter["key"]; hasKey && key != nil {
+				continue
+			}
+			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
+				continue
+			}
+			if parentKey, hasParent := filter["parentKey"]; hasParent && parentKey != nil {
+				continue
+			}
+		}
+		filters = append(filters, filter)
+	}
+	return filters
+}
+
+func decodeCapturedTopLevelPISearchPages(t *testing.T, requests []string) []map[string]any {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	pages := make([]map[string]any, 0, len(decoded))
+	for _, request := range decoded {
+		filter, _ := request["filter"].(map[string]any)
+		if filter != nil {
+			if _, hasKey := filter["processInstanceKey"]; hasKey {
+				continue
+			}
+			if key, hasKey := filter["key"]; hasKey && key != nil {
+				continue
+			}
+			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
+				continue
+			}
+			if parentKey, hasParent := filter["parentKey"]; hasParent && parentKey != nil {
+				continue
+			}
+		}
+		page, ok := request["page"].(map[string]any)
+		require.True(t, ok, "expected search request page object")
+		pages = append(pages, page)
+	}
+	return pages
+}
+
+func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []float64 {
+	t.Helper()
+
+	decoded := decodeCapturedPISearchRequests(t, requests)
+	sizes := make([]float64, 0, len(decoded))
+	for _, request := range decoded {
+		filter, _ := request["filter"].(map[string]any)
+		if filter != nil {
+			if _, hasKey := filter["processInstanceKey"]; hasKey {
+				continue
+			}
+			if key, hasKey := filter["key"]; hasKey && key != nil {
+				continue
+			}
+			if _, hasParent := filter["parentProcessInstanceKey"]; hasParent {
+				continue
+			}
+			if parentKey, hasParent := filter["parentKey"]; hasParent && parentKey != nil {
+				continue
+			}
+		}
+		size, ok := request["size"].(float64)
+		require.True(t, ok, "expected search request size value")
+		sizes = append(sizes, size)
+	}
+	return sizes
 }

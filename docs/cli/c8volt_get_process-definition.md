@@ -8,6 +8,16 @@ nav_exclude: true
 
 List or fetch deployed process definitions
 
+### Synopsis
+
+List or fetch deployed process definitions.
+
+Use this read-only command to inspect deployed BPMN models by key, BPMN process
+ID, version selectors, or the latest deployed version. Default output is aimed
+at human review; prefer `--json` when chaining the result into scripts or
+AI-assisted workflows. Use `--xml` only when you need the raw BPMN XML for a
+single definition selected by `--key`.
+
 ```
 c8volt get process-definition [flags]
 ```
@@ -17,6 +27,7 @@ c8volt get process-definition [flags]
 ```
   ./c8volt get pd --latest
   ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
+  ./c8volt get pd --key 2251799813686017 --json
   ./c8volt get pd --key 2251799813686017 --xml
 ```
 
@@ -37,6 +48,7 @@ c8volt get process-definition [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
@@ -49,11 +61,11 @@ c8volt get process-definition [flags]
       --no-err-codes               suppress error codes in error outputs
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              default tenant ID
+      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Get resources
+* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
 

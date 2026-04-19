@@ -16,8 +16,8 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
-	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	pds "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
+	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 	"github.com/grafvonb/c8volt/toolx/poller"
 )
 
@@ -70,7 +70,7 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	cCfg := services.ApplyCallOptions(opts)
 
 	if cCfg.AllowInconsistent {
-		resp, err := s.c.DeleteResourceWithResponse(ctx, resourceKey, camundav88.DeleteResourceJSONRequestBody{})
+		resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, camundav88.DeleteResourceOpJSONRequestBody{})
 		if err != nil {
 			return err
 		}

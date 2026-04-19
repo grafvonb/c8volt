@@ -8,6 +8,12 @@ nav_exclude: true
 
 Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.
 
+### Synopsis
+
+Export embedded (virtual) resources to local files.
+
+Use this command when you want to copy BPMN assets out of the c8volt binary for inspection, editing, or later deployment. Choose `--all` to export the full embedded set or repeat `--file` with exact names or quoted globs to export a narrower slice.
+
 ```
 c8volt embed export [flags]
 ```
@@ -34,6 +40,7 @@ c8volt embed export [flags]
 
 ```
   -y, --auto-confirm        auto-confirm prompts for non-interactive use
+      --automation          enable the canonical non-interactive contract for commands that explicitly support it
       --config string       path to config file
       --debug               enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json                output as JSON (where applicable)
@@ -44,11 +51,11 @@ c8volt embed export [flags]
       --no-err-codes        suppress error codes in error outputs
       --profile string      config active profile name to use (e.g. dev, prod)
   -q, --quiet               suppress all output, except errors, overrides --log-level
-      --tenant string       default tenant ID
+      --tenant string       tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose             adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Manage embedded resources
+* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
 

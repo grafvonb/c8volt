@@ -8,6 +8,14 @@ nav_exclude: true
 
 Expect a process instance(s) to reach a certain state from list of states
 
+### Synopsis
+
+Wait for process instance(s) to reach one of the requested states.
+
+Use this read-only command after `run`, `cancel`, or `delete` when the operation returned before the final state was visible, or when you need an explicit post-action assertion. The command waits until each keyed process instance reaches one of the requested states or fails with a shared error model.
+
+Default output stays human-oriented. Use --json when another tool needs the final wait report. `--automation` remains unsupported because the broader waiting contract is not yet defined there.
+
 ```
 c8volt expect process-instance [flags]
 ```
@@ -17,6 +25,8 @@ c8volt expect process-instance [flags]
 ```
   ./c8volt expect pi --key 2251799813685255 --state active
   ./c8volt expect pi --key 2251799813685255 --state completed --state absent
+  ./c8volt run pi --bpmn-process-id order-process --no-wait --json
+  ./c8volt expect pi --key 2251799813711967 --state active
   ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
 ```
 
@@ -27,7 +37,7 @@ c8volt expect process-instance [flags]
   -h, --help              help for process-instance
   -k, --key strings       process instance key(s) to expect a state for
       --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
-  -s, --state strings     state of a process instance; valid values aer: [active, completed, canceled, terminated or absent]
+  -s, --state strings     state of a process instance; valid values are: [active, completed, canceled, terminated, absent]
   -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
@@ -35,6 +45,7 @@ c8volt expect process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
@@ -47,11 +58,11 @@ c8volt expect process-instance [flags]
       --no-err-codes               suppress error codes in error outputs
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              default tenant ID
+      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt expect](c8volt_expect)	 - Expect resources to be in a certain state
+* [c8volt expect](c8volt_expect)	 - Wait for verification targets to reach the expected state
 

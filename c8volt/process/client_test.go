@@ -40,6 +40,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 	t.Parallel()
 
 	ctx := context.Background()
+	hasParent := new(false)
+	hasIncident := new(true)
 	piAPI := stubProcessInstanceAPI{
 		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 			assert.Equal(t, int32(25), size)
@@ -52,6 +54,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 				EndDateBefore:        "2026-02-28",
 				State:                d.StateCompleted,
 				ParentKey:            "12345",
+				HasParent:            hasParent,
+				HasIncident:          hasIncident,
 			}, filter)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return []d.ProcessInstance{}, nil
@@ -68,6 +72,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 		EndDateBefore:        "2026-02-28",
 		State:                StateCompleted,
 		ParentKey:            "12345",
+		HasParent:            hasParent,
+		HasIncident:          hasIncident,
 	}, 25, options.WithVerbose())
 
 	require.NoError(t, err)
@@ -102,6 +108,218 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 	require.NoError(t, err)
 }
 
+func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{From: 25, Size: 10}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateIndeterminate,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+	}, ProcessInstancePageRequest{From: 25, Size: 10}, options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstancePageRequest{From: 25, Size: 10}, page.Request)
+	assert.Equal(t, ProcessInstanceOverflowStateIndeterminate, page.OverflowState)
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, "2251799813711967", page.Items[0].Key)
+}
+
+func TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	hasParent := new(true)
+	hasIncident := new(false)
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{
+				HasParent:   hasParent,
+				HasIncident: hasIncident,
+			}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{From: 5, Size: 10}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		HasParent:   hasParent,
+		HasIncident: hasIncident,
+	}, ProcessInstancePageRequest{From: 5, Size: 10}, options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstancePageRequest{From: 5, Size: 10}, page.Request)
+	require.Len(t, page.Items, 1)
+}
+
+func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 2}, page)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+	}, ProcessInstancePageRequest{Size: 2})
+
+	require.NoError(t, err)
+	assert.Equal(t, ProcessInstanceOverflowStateNoMore, page.OverflowState)
+	require.Len(t, page.Items, 1)
+}
+
+func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{Size: 2}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+					{Key: "2251799813711968", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	items, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+	}, 2, options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), items.Total)
+	require.Len(t, items.Items, 2)
+	assert.Equal(t, "2251799813711967", items.Items[0].Key)
+	assert.Equal(t, "2251799813711968", items.Items[1].Key)
+}
+
+func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
+			assert.Equal(t, int32(2), size)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstance{
+				{Key: "2251799813711967", State: d.StateActive, TenantId: "tenant-a"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	pi, err := cli.LookupProcessInstance(ctx, "2251799813711967", options.WithVerbose())
+
+	require.NoError(t, err)
+	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, StateActive, pi.State)
+	assert.Equal(t, "tenant-a", pi.TenantId)
+}
+
+func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{Key: "2251799813711967"}, filter)
+			assert.Equal(t, int32(2), size)
+			return []d.ProcessInstance{
+				{Key: "2251799813711967", State: d.StateCompleted, TenantId: "tenant-a"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, "2251799813711967")
+
+	require.NoError(t, err)
+	assert.Equal(t, StateCompleted, report.State)
+	assert.Equal(t, "COMPLETED", report.Status)
+	assert.Equal(t, "2251799813711967", report.Key)
+	assert.Equal(t, "2251799813711967", pi.Key)
+	assert.Equal(t, StateCompleted, pi.State)
+}
+
+func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestry: func(_ context.Context, startKey string, _ ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+			switch startKey {
+			case "c1", "c2":
+				return "r1", nil, nil, nil
+			case "c3":
+				return "r2", nil, nil, nil
+			default:
+				t.Fatalf("unexpected key %q", startKey)
+				return "", nil, nil, nil
+			}
+		},
+		descendants: func(_ context.Context, rootKey string, _ ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+			switch rootKey {
+			case "r1":
+				return []string{"r1", "c1", "c2"}, nil, nil, nil
+			case "r2":
+				return []string{"r2", "c3"}, nil, nil, nil
+			default:
+				t.Fatalf("unexpected root %q", rootKey)
+				return nil, nil, nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(ctx, typex.Keys{"c1", "c2", "c3"})
+
+	require.NoError(t, err)
+	assert.Equal(t, typex.Keys{"r1", "r2"}, roots)
+	assert.Equal(t, typex.Keys{"r1", "c1", "c2", "r2", "c3"}, collected)
+}
+
 type stubProcessDefinitionAPI struct {
 	getProcessDefinitionXML func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
@@ -128,7 +346,10 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
-	searchForProcessInstances func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
+	searchForProcessInstances     func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
+	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+	ancestry                      func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
+	descendants                   func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
 }
 
 func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
@@ -154,6 +375,23 @@ func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, f
 	return s.searchForProcessInstances(ctx, filter, size, opts...)
 }
 
+func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	if s.searchForProcessInstancesPage != nil {
+		return s.searchForProcessInstancesPage(ctx, filter, page, opts...)
+	}
+	if s.searchForProcessInstances == nil {
+		panic("unexpected call")
+	}
+	items, err := s.searchForProcessInstances(ctx, filter, page.Size, opts...)
+	if err != nil {
+		return d.ProcessInstancePage{}, err
+	}
+	return d.ProcessInstancePage{
+		Request: page,
+		Items:   items,
+	}, nil
+}
+
 func (stubProcessInstanceAPI) CancelProcessInstance(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -170,12 +408,18 @@ func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, strin
 	panic("unexpected call")
 }
 
-func (stubProcessInstanceAPI) Ancestry(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+	if s.ancestry == nil {
+		panic("unexpected call")
+	}
+	return s.ancestry(ctx, startKey, opts...)
 }
 
-func (stubProcessInstanceAPI) Descendants(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	if s.descendants == nil {
+		panic("unexpected call")
+	}
+	return s.descendants(ctx, rootKey, opts...)
 }
 
 func (stubProcessInstanceAPI) Family(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {

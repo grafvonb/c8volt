@@ -43,6 +43,24 @@ Many workflow teams can already send requests to Camunda 8 APIs. The harder part
 - wait for active, completed, canceled, terminated, or absent states in automation
 - validate connection, auth, and profile settings before running destructive commands
 
+## Discover the right command before acting
+
+Use the normal help tree when a human operator is choosing the right workflow:
+
+```bash
+./c8volt --help
+./c8volt get --help
+./c8volt delete process-instance --help
+```
+
+Use the machine-readable discovery surface when a script, CI job, or AI caller needs the same public command inventory without scraping prose help:
+
+```bash
+./c8volt capabilities --json
+```
+
+That output keeps hidden/internal commands out of scope, reports which command paths are read-only versus state-changing, and shows whether `--automation` is supported as the canonical non-interactive contract for a given command. On command paths that already expose structured output, prefer `--json` for downstream automation.
+
 ## Typical workflow operations
 
 ### Deploy BPMN from the CLI
@@ -62,6 +80,15 @@ This matches searches like "deploy BPMN Camunda 8 CLI", "Camunda CLI deploy BPMN
 ```
 
 This is helpful when people search for "start process instance Camunda 8 CLI", "Camunda CLI run process instance", or "wait for process active Camunda".
+
+For unattended callers on supported command paths, the canonical contract is:
+
+```bash
+./c8volt capabilities --json
+./c8volt --automation --json run pi -b order-process
+```
+
+That keeps discovery machine-readable, preserves clean stdout for JSON results, and leaves the normal human workflow unchanged when `--automation` is absent.
 
 ### Cancel the right process instance
 
@@ -97,7 +124,7 @@ The main difference is outcome verification. `c8volt` is designed to wait, walk 
 
 ### Does c8volt work well in scripts and CI?
 
-Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`, `--auto-confirm`, `--workers`, `--quiet`, and `--no-wait` where appropriate.
+Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`, `--auto-confirm`, `--workers`, `--quiet`, and `--no-wait` where appropriate. For machine discovery, use `c8volt capabilities --json`. For supported command families, use `--automation` as the canonical non-interactive opt-in and add `--json` when stdout must stay machine-readable. `--auto-confirm` remains available for human-operated bulk runs that should continue without repeated prompts.
 
 ## Where to go next
 

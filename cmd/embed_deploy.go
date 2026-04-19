@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/embedded"
 	"github.com/spf13/cobra"
@@ -22,8 +21,14 @@ var (
 var embedDeployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploy bundled BPMN fixtures for quick testing",
+	Long: "Deploy bundled BPMN fixtures for quick testing.\n\n" +
+		"Use this command when the BPMN asset you want to deploy is already embedded in the c8volt binary. " +
+		"By default c8volt waits for the deployment to be confirmed before returning. Use --no-wait when the " +
+		"accepted deployment is enough for the current step, and combine --run when the fixture should be " +
+		"smoke-tested immediately after deployment.",
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all
+  ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTask_Process.bpmn
   ./c8volt embed deploy --all --run`,
 	Aliases: []string{"dep"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -82,13 +87,9 @@ var embedDeployCmd = &cobra.Command{
 
 		if flagEmbedDeployWithRun {
 			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
-			datas := make([]process.ProcessInstanceData, 0, len(pdds))
-			for _, pdd := range pdds {
-				datas = append(datas, process.ProcessInstanceData{
-					ProcessDefinitionSpecificId: pdd.DefinitionKey,
-					Variables:                   nil,
-					TenantId:                    cfg.App.Tenant,
-				})
+			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, units, cfg.App.Tenant)
+			if err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}
 			_, err = cli.CreateProcessInstances(cmd.Context(), datas, opts...)
 			if err != nil {

@@ -32,13 +32,13 @@ func GetClusterTopology[T any](
 
 	resp, err := fetch(ctx)
 	if err != nil {
-		return d.Topology{}, fmt.Errorf("fetch cluster topology: %w", err)
+		return d.Topology{}, err
 	}
 	if !resp.Received {
 		return d.Topology{}, fmt.Errorf("%w: topology response is nil", d.ErrMalformedResponse)
 	}
 	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.Topology{}, fmt.Errorf("fetch cluster topology: %w", err)
+		return d.Topology{}, err
 	}
 	if resp.Payload == nil {
 		return d.Topology{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",

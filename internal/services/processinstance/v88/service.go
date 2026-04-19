@@ -113,7 +113,7 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		states := []d.State{d.StateActive}
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
-			return d.ProcessInstanceCreation{}, fmt.Errorf("waiting for started state failed for %s: %w", pi.Key, err)
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for started state: %w", err)
 		}
 		pi.StartDate = created.StartDate
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
@@ -132,7 +132,7 @@ func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key st
 	}
 	resp, err := s.SearchForProcessInstances(ctx, filter, 1000, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("searching for children of process instance with key %s: %w", key, err)
+		return nil, fmt.Errorf("search child process instances: %w", err)
 	}
 	return resp, nil
 }
@@ -158,24 +158,32 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 }
 
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	page, err := s.SearchForProcessInstancesPage(ctx, filter, d.ProcessInstancePageRequest{Size: size}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
 
 	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
 	if err != nil {
-		return nil, fmt.Errorf("building start-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
 	}
 	startDateBefore, err := parseInclusiveDateUpperBound(filter.StartDateBefore)
 	if err != nil {
-		return nil, fmt.Errorf("building start-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
 	}
 	endDateAfter, err := parseInclusiveDateLowerBound(filter.EndDateAfter)
 	if err != nil {
-		return nil, fmt.Errorf("building end-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
 	endDateBefore, err := parseInclusiveDateUpperBound(filter.EndDateBefore)
 	if err != nil {
-		return nil, fmt.Errorf("building end-date filter: %w", err)
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
 	endDateExists := endDateExistsFilter(filter)
 
@@ -188,12 +196,13 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		StartDate:                   common.NewDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil),
 		EndDate:                     common.NewDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExists),
 		State:                       common.NewProcessInstanceStateEqFilterPtr(string(filter.State)),
-		ParentProcessInstanceKey:    common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey),
+		HasIncident:                 filter.HasIncident,
+		ParentProcessInstanceKey:    newParentProcessInstanceKeyFilter(filter),
 	}
 	page := camundav88.SearchQueryPageRequest{}
 	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
-		From:  new(int32(0)),
-		Limit: &size,
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
 	})
 	sort := []camundav88.ProcessInstanceSearchQuerySortRequest{
 		{
@@ -217,18 +226,44 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 		bodyFilter.StartDate != nil ||
 		bodyFilter.EndDate != nil ||
 		bodyFilter.State != nil ||
+		bodyFilter.HasIncident != nil ||
 		bodyFilter.ParentProcessInstanceKey != nil {
 		body.Filter = &bodyFilter
 	}
 	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
-	return toolx.MapSlice(payload.Items, fromProcessInstanceResult), nil
+	return d.ProcessInstancePage{
+		Items:         toolx.MapSlice(payload.Items, fromProcessInstanceResult),
+		Request:       pageReq,
+		OverflowState: pickProcessInstanceOverflowState(payload.Page, pageReq, len(payload.Items)),
+	}, nil
+}
+
+func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) *camundav88.ProcessInstanceKeyFilterProperty {
+	if filter.ParentKey != "" {
+		return common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey)
+	}
+	return common.NewProcessInstanceKeyExistsFilterPtr(filter.HasParent)
+}
+
+func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	visibleCount := int64(req.From) + int64(itemCount)
+	if page.HasMoreTotalItems {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems > visibleCount {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 && itemCount > 0 {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	return d.ProcessInstanceOverflowStateNoMore
 }
 
 // parseInclusiveDateLowerBound parses a YYYY-MM-DD date into the start of that day in UTC.
@@ -241,7 +276,7 @@ func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
 	}
-	return &t, nil
+	return new(t), nil
 }
 
 // parseInclusiveDateUpperBound parses a YYYY-MM-DD date into the end of that day in UTC.
@@ -255,7 +290,7 @@ func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
 		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
 	}
 	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
-	return &t, nil
+	return new(t), nil
 }
 
 func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
@@ -287,12 +322,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Debug("child process, looking up root process instance in ancestry")
 			rootPIKey, _, _, erra := walker.Ancestry(ctx, s, key, opts...)
 			if erra != nil {
-				return d.CancelResponse{}, pis, fmt.Errorf("fetching ancestry for process instance with key %s: %w", key, erra)
+				return d.CancelResponse{}, pis, fmt.Errorf("cancel ancestry: %w", erra)
 			}
 			if cCfg.Force {
 				keys, _, family, err := walker.Descendants(ctx, s, rootPIKey, opts...)
 				if err != nil {
-					return d.CancelResponse{}, pis, fmt.Errorf("fetching descendants for root process instance with key %s: %w", rootPIKey, err)
+					return d.CancelResponse{}, pis, fmt.Errorf("cancel descendants: %w", err)
 				}
 				for i := range family {
 					pis = append(pis, family[i])
@@ -326,12 +361,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	if !cCfg.NoWait {
 		keys, _, _, err := s.Family(ctx, key, opts...)
 		if err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("fetching family for process instance with key %s: %w", key, err)
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
 		}
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 		states := []d.State{d.StateCanceled, d.StateTerminated}
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
 		}
 		s.log.Info(fmt.Sprintf("process instance with key %s was successfully (confirmed) cancelled", key))
 	} else {
@@ -346,18 +381,14 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("checking state of process instance with key %s", key))
-	pi, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
+	s.log.Debug(fmt.Sprintf("checking tenant-safe state of process instance with key %s", key))
+	pi, err := s.GetProcessInstance(ctx, key, opts...)
 	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
+		return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", err)
 	}
-	payload, err := common.RequirePayload(pi.HTTPResponse, pi.Body, pi.JSON200)
-	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
-	}
-	st := d.State(payload.State)
+	st := pi.State
 	s.log.Debug(fmt.Sprintf("process instance with key %s is in state %s", key, st))
-	return st, fromProcessInstanceResult(*payload), nil
+	return st, pi, nil
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -400,12 +431,12 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Info(fmt.Sprintf("process instance with key %s not in one of terminated states; cancelling it first", key))
 			_, _, err = s.CancelProcessInstance(ctx, key, opts...)
 			if err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("error cancelling process instance with key %s: %w", key, err)
+				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 			states := []d.State{d.StateCanceled, d.StateTerminated}
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("retrying deletion of process instance with key %d", oldKey))
 			resp, err = s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
@@ -421,7 +452,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be deleted by workflow engine...", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-			return d.DeleteResponse{}, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
 		}
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
@@ -436,16 +467,16 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-
-	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
+	s.log.Debug(fmt.Sprintf("performing tenant-safe lookup for process instance with key %s", key))
+	items, err := s.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{Key: key}, 2, opts...)
 	if err != nil {
-		return d.ProcessInstance{}, err
+		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
 	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	pi, err := common.RequireSingleProcessInstance(items, key)
 	if err != nil {
-		return d.ProcessInstance{}, err
+		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
 	}
-	return fromProcessInstanceResult(*payload), nil
+	return pi, nil
 }
 
 func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {

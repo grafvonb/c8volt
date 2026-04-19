@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	operatev87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/operate"
 
@@ -107,11 +108,16 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	pi := fromPostProcessInstancesResponse(*payload)
 	s.log.Debug(fmt.Sprintf("created new process instance %s using process definition id %s, %s, v%d, tenant: %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
 	if !cCfg.NoWait {
+		if pi.Key == "" || pi.Key == unknownProcessInstanceKeyV87 {
+			pi.StartDate = time.Now().UTC().Format(time.RFC3339)
+			s.log.Info(fmt.Sprintf("process instance creation requested at %s (run not confirmed, as v8.7 returns no process-instance key) using process definition id %s, %s, v%d, tenant: %s", pi.StartDate, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+			return pi, nil
+		}
 		s.log.Info(fmt.Sprintf("waiting for process instance of %s with key %s to be started by workflow engine...", pi.ProcessDefinitionKey, pi.Key))
 		states := []d.State{d.StateActive}
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
-			return d.ProcessInstanceCreation{}, fmt.Errorf("waiting for started state failed for %s: %w", pi.Key, err)
+			return d.ProcessInstanceCreation{}, fmt.Errorf("wait for started state: %w", err)
 		}
 		pi.StartDate = created.StartDate
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
@@ -125,20 +131,11 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	oldKey, err := processInstanceKeyInt64(key)
+	_, err := processInstanceKeyInt64(key)
 	if err != nil {
 		return d.ProcessInstance{}, err
 	}
-	s.log.Debug(fmt.Sprintf("fetching process instance with key %d", oldKey))
-	resp, err := s.co.GetProcessInstanceByKeyWithResponse(ctx, oldKey)
-	if err != nil {
-		return d.ProcessInstance{}, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return d.ProcessInstance{}, err
-	}
-	return fromProcessInstanceResponse(*payload), nil
+	return d.ProcessInstance{}, fmt.Errorf("%w: process-instance direct lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
@@ -148,7 +145,7 @@ func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key st
 	}
 	resp, err := s.SearchForProcessInstances(ctx, filter, 1000, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("searching for children of process instance with key %s: %w", key, err)
+		return nil, fmt.Errorf("search child process instances: %w", err)
 	}
 	return resp, nil
 }
@@ -158,6 +155,9 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 	if items == nil {
 		return nil, nil
 	}
+	// Preserve the existing orphan-detection strategy: inspect candidate children
+	// and verify each parent through a follow-up lookup instead of broadening the
+	// initial search request with an approximation.
 	var result []d.ProcessInstance
 	for _, it := range items {
 		if it.ParentKey == "" {
@@ -174,24 +174,86 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 }
 
 func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	page, err := s.SearchForProcessInstancesPage(ctx, filter, d.ProcessInstancePageRequest{Size: size}, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
 	if hasDateFilterBounds(filter) {
-		return nil, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
+		return d.ProcessInstancePage{}, fmt.Errorf("%w: process-instance date filters require Camunda 8.8", d.ErrUnsupported)
 	}
-	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, size)
+	fetchSize := pickProcessInstanceSearchFetchSize(pageReq)
+	body, err := searchProcessInstancesRequest(s.cfg.App.Tenant, filter, fetchSize)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
 	resp, err := s.co.SearchProcessInstancesWithResponse(ctx, body)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return nil, err
+		return d.ProcessInstancePage{}, err
 	}
-	return toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse), nil
+	items := toolx.DerefSlicePtr(payload.Items, fromProcessInstanceResponse)
+	window, overflow := trimProcessInstancePageWindow(items, payload.Total, pageReq, fetchSize)
+	return d.ProcessInstancePage{
+		Items:         window,
+		Request:       pageReq,
+		OverflowState: overflow,
+	}, nil
+}
+
+func pickProcessInstanceSearchFetchSize(pageReq d.ProcessInstancePageRequest) int32 {
+	if pageReq.Size <= 0 {
+		return 0
+	}
+	fetchSize := pageReq.From + pageReq.Size
+	if fetchSize <= 0 {
+		return pageReq.Size
+	}
+	if fetchSize > consts.MaxPISearchSize {
+		return consts.MaxPISearchSize
+	}
+	return fetchSize
+}
+
+func trimProcessInstancePageWindow(items []d.ProcessInstance, total *int64, pageReq d.ProcessInstancePageRequest, fetchSize int32) ([]d.ProcessInstance, d.ProcessInstanceOverflowState) {
+	if pageReq.From < 0 {
+		pageReq.From = 0
+	}
+	start := int(pageReq.From)
+	if start >= len(items) {
+		return nil, pickProcessInstanceOverflowState(total, pageReq, 0, len(items), fetchSize)
+	}
+	end := start + int(pageReq.Size)
+	if end > len(items) {
+		end = len(items)
+	}
+	window := items[start:end]
+	return window, pickProcessInstanceOverflowState(total, pageReq, len(window), len(items), fetchSize)
+}
+
+func pickProcessInstanceOverflowState(total *int64, pageReq d.ProcessInstancePageRequest, windowCount int, fetchedCount int, fetchSize int32) d.ProcessInstanceOverflowState {
+	visibleThrough := int64(pageReq.From) + int64(windowCount)
+	if total != nil {
+		if *total > visibleThrough {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	if pageReq.From+pageReq.Size > consts.MaxPISearchSize {
+		return d.ProcessInstanceOverflowStateIndeterminate
+	}
+	if int32(fetchedCount) < fetchSize {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
+	return d.ProcessInstanceOverflowStateIndeterminate
 }
 
 func hasDateFilterBounds(filter d.ProcessInstanceFilter) bool {
@@ -223,12 +285,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Debug("child process, looking up root process instance in ancestry")
 			rootPIKey, _, _, erra := walker.Ancestry(ctx, s, key, opts...)
 			if erra != nil {
-				return d.CancelResponse{}, pis, fmt.Errorf("fetching ancestry for process instance with key %s: %w", key, erra)
+				return d.CancelResponse{}, pis, fmt.Errorf("cancel ancestry: %w", erra)
 			}
 			if cCfg.Force {
 				keys, _, family, err := walker.Descendants(ctx, s, rootPIKey, opts...)
 				if err != nil {
-					return d.CancelResponse{}, pis, fmt.Errorf("fetching descendants for root process instance with key %s: %w", rootPIKey, err)
+					return d.CancelResponse{}, pis, fmt.Errorf("cancel descendants: %w", err)
 				}
 				for i := range family {
 					pis = append(pis, family[i])
@@ -263,12 +325,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 	if !cCfg.NoWait {
 		keys, _, _, err := s.Family(ctx, key, opts...)
 		if err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("fetching family for process instance with key %s: %w", key, err)
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
 		}
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 		states := []d.State{d.StateCanceled, d.StateTerminated}
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
-			return d.CancelResponse{}, nil, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
 		}
 		s.log.Info(fmt.Sprintf("process instance with key %s was successfully (confirmed) cancelled", key))
 	} else {
@@ -284,21 +346,11 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 func (s *Service) GetProcessInstanceStateByKey(ctx context.Context, key string, opts ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("checking state of process instance with key %s", key))
-	oldKey, err := processInstanceKeyInt64(key)
+	_, err := processInstanceKeyInt64(key)
 	if err != nil {
 		return "", d.ProcessInstance{}, err
 	}
-	pi, err := s.co.GetProcessInstanceByKeyWithResponse(ctx, oldKey)
-	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
-	}
-	payload, err := common.RequirePayload(pi.HTTPResponse, pi.Body, pi.JSON200)
-	if err != nil {
-		return "", d.ProcessInstance{}, fmt.Errorf("fetching process instance with key %s: %w", key, err)
-	}
-	st := d.State(*payload.State)
-	s.log.Debug(fmt.Sprintf("process instance with key %s is in state %s", key, st))
-	return st, fromProcessInstanceResponse(*payload), nil
+	return "", d.ProcessInstance{}, fmt.Errorf("process instance state: %w", fmt.Errorf("%w: process-instance state lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported))
 }
 
 func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
@@ -341,12 +393,12 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Info(fmt.Sprintf("process instance with key %s not in one of terminated states; cancelling it first", key))
 			_, _, err = s.CancelProcessInstance(ctx, key, opts...)
 			if err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("error cancelling process instance with key %s: %w", key, err)
+				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 			states := []d.State{d.StateCanceled, d.StateTerminated}
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states); err != nil {
-				return d.DeleteResponse{}, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("retrying deletion of process instance with key %d", oldKey))
 			resp, err = s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
@@ -362,7 +414,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be deleted by workflow engine...", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
-			return d.DeleteResponse{}, fmt.Errorf("waiting for canceled state failed for %s: %w", key, err)
+			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
 		}
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
@@ -404,6 +456,8 @@ func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter
 	if err != nil {
 		return operatev87.SearchProcessInstancesJSONRequestBody{}, fmt.Errorf("parsing parent key %q to int64: %w", filter.ParentKey, err)
 	}
+	// Camunda 8.7 only supports the existing equality-style request fields here.
+	// Parent/incident presence semantics stay on the client-side fallback path.
 	bodyFilter := operatev87.ProcessInstance{
 		TenantId:          toolx.PtrIf(tenant, ""),
 		BpmnProcessId:     &filter.BpmnProcessId,

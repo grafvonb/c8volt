@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +27,7 @@ func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, s
 	items := pathItems(path, chain)
 	switch mode {
 	case RenderModeJSON:
-		cmd.Println(toolx.ToJSONString(items))
+		return renderJSONPayload(cmd, mode, items)
 	case RenderModeKeysOnly:
 		cmd.Println(strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
 	default: // RenderModeOneLine

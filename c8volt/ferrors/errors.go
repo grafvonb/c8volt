@@ -10,6 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 // Class is the bounded machine-facing classification for CLI failures.
@@ -97,6 +98,8 @@ func NormalizeLocal(err error) error {
 		return wrap(ErrLocalPrecondition, err)
 	case errors.Is(err, services.ErrUnknownAPIVersion):
 		return wrap(ErrUnsupported, err)
+	case errors.Is(err, toolx.ErrUnknownCamundaVersion):
+		return wrap(ErrUnsupported, err)
 	case errors.Is(err, context.Canceled),
 		errors.Is(err, ErrFailedFast):
 		return wrap(ErrLocalPrecondition, err)
@@ -105,7 +108,9 @@ func NormalizeLocal(err error) error {
 	}
 }
 
-// Normalize is the shared CLI normalization entry point used before rendering or exit-code resolution.
+// Normalize is the shared CLI normalization entry point used before rendering or
+// exit-code resolution. It classifies failures but intentionally preserves the
+// wrapped detail text; upstream wrappers own message deduplication.
 func Normalize(err error) error {
 	if err == nil {
 		return nil
@@ -121,7 +126,8 @@ func Normalize(err error) error {
 	return wrap(ErrInternal, err)
 }
 
-// WrapClass applies a shared CLI failure class without changing the wrapped error text.
+// WrapClass applies a shared CLI failure class without changing the wrapped
+// error text. It must not become a second message-composition layer.
 func WrapClass(classErr error, err error) error {
 	return wrap(classErr, err)
 }
@@ -180,6 +186,17 @@ func ResolveExitCode(noErrCodes bool, err error) int {
 		return exitcode.OK
 	}
 	return code
+}
+
+func Outcome(err error) string {
+	switch Classify(err) {
+	case "":
+		return ""
+	case ClassInvalidInput:
+		return "invalid"
+	default:
+		return "failed"
+	}
 }
 
 func HandleAndExitOK(log *slog.Logger, message string) {

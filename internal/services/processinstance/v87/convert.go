@@ -7,6 +7,11 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+const (
+	unknownProcessInstanceKeyV87   = "<unknown in v87>"
+	unknownProcessDefinitionKeyV87 = "<unknown in v87>"
+)
+
 func fromProcessInstanceResponse(r operatev87.ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
 		BpmnProcessId:             toolx.Deref(r.BpmnProcessId, ""),
@@ -35,9 +40,9 @@ func toProcessInstanceCreationInstruction(pi d.ProcessInstanceData) camundav87.P
 
 func fromPostProcessInstancesResponse(r camundav87.CreateProcessInstanceResult) d.ProcessInstanceCreation {
 	return d.ProcessInstanceCreation{
-		Key:                      "<unknown in v87>",
+		Key:                      unknownProcessInstanceKeyV87,
 		BpmnProcessId:            toolx.Deref(r.ProcessDefinitionId, ""),
-		ProcessDefinitionKey:     "<unknown in v87>",
+		ProcessDefinitionKey:     unknownProcessDefinitionKeyV87,
 		ProcessDefinitionVersion: toolx.Deref(r.ProcessDefinitionVersion, int32(0)),
 		TenantId:                 toolx.Deref(r.TenantId, ""),
 		Variables:                toolx.CopyMap(*r.Variables),

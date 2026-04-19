@@ -8,6 +8,14 @@ nav_exclude: true
 
 Delete process instance(s) by key or search filters, optionally cancelling first
 
+### Synopsis
+
+Delete process instance(s) by key or search filters, optionally cancelling first.
+
+By default c8volt validates the full affected tree, prompts before the destructive action, and waits until deletion is observed. Use --auto-confirm for unattended runs, and add --no-wait when accepted deletion should return immediately instead of waiting for the final result.
+
+Use `get process-instance` or `expect process-instance --state absent` after non-blocking deletes when you need explicit follow-up verification.
+
 ```
 c8volt delete process-instance [flags]
 ```
@@ -16,10 +24,14 @@ c8volt delete process-instance [flags]
 
 ```
   ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt delete pi --state completed --count 250
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
+  ./c8volt delete pi --bpmn-process-id order-process --state completed --count 200 --auto-confirm
   ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
+  ./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state absent
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
 ```
 
@@ -27,6 +39,7 @@ c8volt delete process-instance [flags]
 
 ```
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
+  -n, --count int32                 number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
@@ -53,6 +66,7 @@ c8volt delete process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
@@ -65,11 +79,11 @@ c8volt delete process-instance [flags]
       --no-err-codes               suppress error codes in error outputs
       --profile string             config active profile name to use (e.g. dev, prod)
   -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              default tenant ID
+      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
   -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt delete](c8volt_delete)	 - Delete resources
+* [c8volt delete](c8volt_delete)	 - Delete resources with explicit destructive confirmation
 

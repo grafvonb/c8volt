@@ -59,11 +59,24 @@ func (c *client) GetProcessDefinitionXML(ctx context.Context, key string, opts .
 }
 
 func (c *client) GetProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
-	pi, err := c.piApi.GetProcessInstance(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	return c.LookupProcessInstance(ctx, key, opts...)
+}
+
+func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error) {
+	pi, err := pisvc.LookupProcessInstance(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessInstance{}, ferr.FromDomain(err)
 	}
 	return fromDomainProcessInstance(pi), nil
+}
+
+func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
+	got, pi, err := pisvc.LookupProcessInstanceStateByKey(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	pgot, _ := ParseState(got.String())
+	if err != nil {
+		return StateReport{State: pgot}, ProcessInstance{}, ferr.FromDomain(err)
+	}
+	return StateReport{State: pgot, Status: got.String(), Key: pi.Key}, fromDomainProcessInstance(pi), nil
 }
 
 func (c *client) CreateProcessInstance(ctx context.Context, data ProcessInstanceData, opts ...options.FacadeOption) (ProcessInstance, error) {
@@ -87,11 +100,22 @@ func (c *client) CreateProcessInstances(ctx context.Context, datas []ProcessInst
 }
 
 func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error) {
-	pis, err := c.piApi.SearchForProcessInstances(ctx, toDomainProcessInstanceFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
+	page, err := c.SearchProcessInstancesPage(ctx, filter, ProcessInstancePageRequest{Size: size}, opts...)
 	if err != nil {
 		return ProcessInstances{}, ferr.FromDomain(err)
 	}
-	return fromDomainProcessInstances(pis), nil
+	return ProcessInstances{
+		Total: int32(len(page.Items)),
+		Items: page.Items,
+	}, nil
+}
+
+func (c *client) SearchProcessInstancesPage(ctx context.Context, filter ProcessInstanceFilter, page ProcessInstancePageRequest, opts ...options.FacadeOption) (ProcessInstancePage, error) {
+	pis, err := c.piApi.SearchForProcessInstancesPage(ctx, toDomainProcessInstanceFilter(filter), toDomainProcessInstancePageRequest(page), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessInstancePage{}, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstancePage(pis), nil
 }
 
 func (c *client) CancelProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (CancelReport, ProcessInstances, error) {
@@ -120,6 +144,8 @@ func (c *client) GetDirectChildrenOfProcessInstance(ctx context.Context, key str
 
 func (c *client) FilterProcessInstanceWithOrphanParent(ctx context.Context, items []ProcessInstance, opts ...options.FacadeOption) ([]ProcessInstance, error) {
 	in := toolx.MapSlice(items, toDomainProcessInstance)
+	// Orphan detection remains a follow-up lookup flow instead of becoming part
+	// of the initial process-instance search request.
 	out, err := c.piApi.FilterProcessInstanceWithOrphanParent(ctx, in, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return nil, ferr.FromDomain(err)

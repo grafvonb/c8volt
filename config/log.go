@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 
@@ -51,10 +52,15 @@ func (l *Log) Validate() error {
 }
 
 func (l *Log) NewLogger() *slog.Logger {
+	return l.NewLoggerWithWriter(nil)
+}
+
+func (l *Log) NewLoggerWithWriter(w io.Writer) *slog.Logger {
 	return logging.New(logging.LoggerConfig{
 		Level:           l.Level,
 		Format:          l.Format,
 		WithSource:      l.WithSource,
 		WithRequestBody: l.WithRequestBody,
+		Writer:          w,
 	})
 }

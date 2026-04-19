@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -18,9 +17,18 @@ var (
 
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
-	Short: "Delete a process definition(s)",
+	Short: "Delete process definition resources from Zeebe",
+	Long: "Delete process definition resources from Zeebe.\n\n" +
+		"By default c8volt prompts before the destructive step and, unless --allow-inconsistent is set, only " +
+		"prepares the definitions for later manual cleanup rather than forcing inconsistent Operate state. Use " +
+		"--auto-confirm for unattended runs, and add --no-wait when accepted deletion work should return before " +
+		"final completion is observed.\n\n" +
+		"Follow up with `get process-definition` to confirm what remains deployed, especially when a manual " +
+		"Operate cleanup step is still required.",
 	Example: `  ./c8volt delete pd --key 2251799813686017 --auto-confirm
   ./c8volt delete pd --bpmn-process-id order-process --latest --force
+  ./c8volt delete pd --bpmn-process-id order-process --latest --allow-inconsistent --auto-confirm --no-wait
+  ./c8volt get pd --bpmn-process-id order-process --latest --json
   ./c8volt get pd --bpmn-process-id order-process --latest --keys-only | ./c8volt delete pd - --auto-confirm`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -31,16 +39,19 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
 		if len(flagDeletePDKeys) == 0 && flagDeletePDBpmnProcessId == "" {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagDeletePDKeys, stdinKeys, log, cfg)
 
@@ -59,7 +70,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 				pds, err = cli.SearchProcessDefinitionsLatest(cmd.Context(), filter)
 			}
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("searching for process definitions to delete: %w", err))
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("searching for process definitions to delete: %w", err))
 			}
 			keys = make([]string, 0, len(pds.Items))
 			for _, pd := range pds.Items {
@@ -67,22 +78,24 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			}
 		}
 		if len(keys) == 0 {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
 		}
 
-		fmt.Println("WARNING: Camunda's API v8.8+ deletion process removes process definition resources (from Zeebe) only; historic/Operate data remain.")
-		fmt.Println("To avoid inconsistent data state c8volt cancels running instances (if any) to make definitions deletable, but final removal must be done manually in Operate.")
-		prompt := fmt.Sprintf("You are about to delete %d process definition(s)?", len(keys))
-		if !flagForce {
-			fmt.Println("If you want to delete resource(s) from Zeebe without purging Operate data, please use --allow-inconsistent to confirm.")
-			prompt = fmt.Sprintf("You are about to prepare %d process definition(s) for deletion in Operate?", len(keys))
+		fmt.Println("WARNING: This removes process-definition resources from Zeebe only. Operate history remains and must be cleaned up manually.")
+		prompt := fmt.Sprintf("Delete %d process definition(s) from Zeebe?", len(keys))
+		if !flagAllowInconsistent {
+			fmt.Println("Without --allow-inconsistent, c8volt prepares deletion only (for example, cancels active instances).")
+			prompt = fmt.Sprintf("Prepare %d process definition(s) for later manual deletion?", len(keys))
 		}
-		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		_, err = cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, collectOptions()...)
+		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, collectOptions()...)
 		if err != nil {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("deleting process definition(s): %w", err))
+		}
+		if err := renderCommandResult(cmd, reports); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete result: %w", err))
 		}
 	},
 }
@@ -104,4 +117,8 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
+
+	setCommandMutation(deleteProcessDefinitionCmd, CommandMutationStateChanging)
+	setContractSupport(deleteProcessDefinitionCmd, ContractSupportFull)
+	setAutomationSupport(deleteProcessDefinitionCmd, AutomationSupportFull, "supports unattended destructive confirmation")
 }
