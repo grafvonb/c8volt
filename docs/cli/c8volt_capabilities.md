@@ -11,9 +11,9 @@ Describe machine-readable CLI capabilities
 ### Synopsis
 
 Describe the machine-readable c8volt command surface for automation.
-Use this command to discover command paths, flags, output modes, mutation behavior, and contract support without scraping prose help.
+Use this command to discover command paths, flags, output modes, mutation behavior, contract support, and automation-mode support without scraping prose help.
 
-Prefer `c8volt capabilities --json` when driving the CLI from AI agents, scripts, or CI. The human-facing command taxonomy and help output remain unchanged; plain output summarizes the command surface for humans, while JSON is the repository-native discovery surface for automation.
+Prefer `c8volt capabilities --json` when driving the CLI from AI agents, scripts, or CI. The human-facing command taxonomy and help output remain unchanged; plain output summarizes the command surface for humans, while JSON is the repository-native discovery surface for automation, including whether each command currently supports `--automation` as the canonical non-interactive contract.
 
 ```
 c8volt capabilities [flags]
@@ -36,6 +36,7 @@ c8volt capabilities [flags]
 
 ```
   -y, --auto-confirm        auto-confirm prompts for non-interactive use
+      --automation          enable the canonical non-interactive contract for commands that explicitly support it
       --config string       path to config file
       --debug               enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json                output as JSON (where applicable)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/grafvonb/c8volt/config"
@@ -26,6 +27,7 @@ var (
 	flagVerbose           bool
 	flagDebug             bool
 	flagNoErrCodes        bool
+	flagCmdAutomation     bool
 	flagCmdAutoConfirm    bool
 	flagAllowInconsistent bool
 )
@@ -69,6 +71,8 @@ waiting for state transitions, walking process trees, cancelling safely, and del
 For machine discovery, use "c8volt capabilities --json". Human-oriented command families and
 plain-text usage remain the primary interactive surface; JSON and keys-only modes layer onto the
 same Cobra command tree for script-safe automation.
+Use --automation for the dedicated non-interactive execution contract when a command explicitly supports it.
+The same human-oriented flows remain available outside the explicit automation flag.
 
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
@@ -103,7 +107,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			}
 			return bootstrapLocalPrecondition(err)
 		}
-		ctx := cfg.ToContext(cmd.Context())
+		ctx := cfg.ToContextWithLogWriter(cmd.Context(), cmd.ErrOrStderr())
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
@@ -120,7 +124,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 				"auth.mode",
 			}
 			hasEnv := hasEnvConfigByKeys(configKeys)
-			if !hasEnv {
+			if !hasEnv && !bypassRootBootstrap(cmd) {
 				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
@@ -179,6 +183,7 @@ func Execute() {
 func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
+	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the canonical non-interactive contract for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
@@ -216,6 +221,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 
 	bindings.bindPFlag(v, "app.tenant", fs.Lookup("tenant"))
 	bindings.bindPFlag(v, "app.camunda_version", fs.Lookup("camunda-version"))
+	bindings.bindPFlag(v, "app.automation", fs.Lookup("automation"))
 	bindings.bindPFlag(v, "app.no_err_codes", fs.Lookup("no-err-codes"))
 	bindings.bindPFlag(v, "app.auto-confirm", fs.Lookup("auto-confirm"))
 	bindCommandLocalConfigFlags(v, bindings, fs)
@@ -263,6 +269,20 @@ func bindCommandLocalConfigFlags(v *viper.Viper, bindings *resolverBindings, fs 
 	v.SetDefault("app.backoff.initial_delay", defaultBackoffInitialDelay)
 	v.SetDefault("app.backoff.max_delay", defaultBackoffMaxDelay)
 	v.SetDefault("app.backoff.multiplier", defaultBackoffMultiplier)
+}
+
+func automationModeEnabled(cmd *cobra.Command) bool {
+	if cmd != nil {
+		if cfg, err := config.FromContext(cmd.Context()); err == nil && cfg != nil {
+			return cfg.App.Automation
+		}
+		if flag := cmd.Flags().Lookup("automation"); flag != nil {
+			if value, err := strconv.ParseBool(flag.Value.String()); err == nil {
+				return value
+			}
+		}
+	}
+	return flagCmdAutomation
 }
 
 func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*config.Config, error) {

@@ -23,6 +23,13 @@ const (
 	ContractSupportUnsupported ContractSupport = "unsupported"
 )
 
+type AutomationSupport string
+
+const (
+	AutomationSupportFull        AutomationSupport = "full"
+	AutomationSupportUnsupported AutomationSupport = "unsupported"
+)
+
 type Outcome string
 
 const (
@@ -39,14 +46,16 @@ type CapabilityDocument struct {
 }
 
 type CommandCapability struct {
-	Path            string               `json:"path"`
-	Aliases         []string             `json:"aliases,omitempty"`
-	Summary         string               `json:"summary"`
-	Mutation        CommandMutation      `json:"mutation"`
-	ContractSupport ContractSupport      `json:"contractSupport"`
-	OutputModes     []OutputModeContract `json:"outputModes"`
-	Flags           []FlagContract       `json:"flags,omitempty"`
-	Children        []CommandCapability  `json:"children,omitempty"`
+	Path              string               `json:"path"`
+	Aliases           []string             `json:"aliases,omitempty"`
+	Summary           string               `json:"summary"`
+	Mutation          CommandMutation      `json:"mutation"`
+	ContractSupport   ContractSupport      `json:"contractSupport"`
+	AutomationSupport AutomationSupport    `json:"automationSupport"`
+	AutomationNotes   string               `json:"automationNotes,omitempty"`
+	OutputModes       []OutputModeContract `json:"outputModes"`
+	Flags             []FlagContract       `json:"flags,omitempty"`
+	Children          []CommandCapability  `json:"children,omitempty"`
 }
 
 type FlagContract struct {
@@ -83,10 +92,12 @@ const (
 	capabilityDocumentCommand = "capabilities"
 	defaultContractVersion    = "v1"
 
-	commandMutationAnnotation = "machine-contract/mutation"
-	contractSupportAnnotation = "machine-contract/support"
-	outputModesAnnotation     = "machine-contract/output-modes"
-	contractVersionAnnotation = "machine-contract/version"
+	commandMutationAnnotation   = "machine-contract/mutation"
+	contractSupportAnnotation   = "machine-contract/support"
+	automationSupportAnnotation = "machine-contract/automation-support"
+	automationNotesAnnotation   = "machine-contract/automation-notes"
+	outputModesAnnotation       = "machine-contract/output-modes"
+	contractVersionAnnotation   = "machine-contract/version"
 )
 
 // setCapabilityDocumentVersion stores the discovery document version on the root command.
@@ -141,6 +152,35 @@ func contractSupportForCommand(cmd *cobra.Command) ContractSupport {
 		}
 	}
 	return ContractSupportUnsupported
+}
+
+// setAutomationSupport records whether a command explicitly supports the dedicated automation contract.
+func setAutomationSupport(cmd *cobra.Command, support AutomationSupport, notes string) {
+	annotations := ensureCommandAnnotations(cmd)
+	annotations[automationSupportAnnotation] = string(support)
+	if strings.TrimSpace(notes) == "" {
+		delete(annotations, automationNotesAnnotation)
+		return
+	}
+	annotations[automationNotesAnnotation] = strings.TrimSpace(notes)
+}
+
+// automationSupportForCommand resolves whether a command explicitly supports automation mode.
+func automationSupportForCommand(cmd *cobra.Command) AutomationSupport {
+	if cmd == nil {
+		return AutomationSupportUnsupported
+	}
+	if value := strings.TrimSpace(cmd.Annotations[automationSupportAnnotation]); value != "" {
+		return AutomationSupport(value)
+	}
+	return AutomationSupportUnsupported
+}
+
+func automationNotesForCommand(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	return strings.TrimSpace(cmd.Annotations[automationNotesAnnotation])
 }
 
 // setOutputModes stores explicit output-mode metadata for commands that need custom discovery reporting.
@@ -228,14 +268,16 @@ func commandCapabilityForCommand(cmd *cobra.Command) CommandCapability {
 	}
 
 	return CommandCapability{
-		Path:            commandPath(cmd),
-		Aliases:         slices.Clone(cmd.Aliases),
-		Summary:         strings.TrimSpace(cmd.Short),
-		Mutation:        commandMutationForCommand(cmd),
-		ContractSupport: contractSupportForCommand(cmd),
-		OutputModes:     outputModesForCommand(cmd),
-		Flags:           flagContractsForCommand(cmd),
-		Children:        children,
+		Path:              commandPath(cmd),
+		Aliases:           slices.Clone(cmd.Aliases),
+		Summary:           strings.TrimSpace(cmd.Short),
+		Mutation:          commandMutationForCommand(cmd),
+		ContractSupport:   contractSupportForCommand(cmd),
+		AutomationSupport: automationSupportForCommand(cmd),
+		AutomationNotes:   automationNotesForCommand(cmd),
+		OutputModes:       outputModesForCommand(cmd),
+		Flags:             flagContractsForCommand(cmd),
+		Children:          children,
 	}
 }
 

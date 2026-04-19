@@ -102,6 +102,7 @@
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`, existing helpers in `internal/services/common`, shared facades under `c8volt/...` (110-camunda-v89-support)
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing `c8volt/ferrors`, command helpers under `cmd/`, versioned services under `internal/services/...`, walker/waiter helpers under `internal/services/processinstance/` (112-error-context-dedup)
 - Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing `c8volt/ferrors`, existing JSON rendering helpers under `cmd/`, existing public models under `c8volt/process` and `c8volt/resource` (078-machine-cli-contracts)
+- Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, existing machine-contract helpers in `cmd/`, existing `c8volt/ferrors`, existing JSON render helpers under `cmd/`, existing public payload models under `c8volt/process` and `c8volt/resource` (079-non-interactive-automation-mode)
 
 ## Recent Changes
 - 058-review-and-refactor-internal-service-cluster-api-implementation: Added Go 1.26 + standard library, `github.com/spf13/cobra`, `github.com/spf13/viper`, `github.com/stretchr/testify`, generated Camunda clients under `internal/clients/camunda/...`

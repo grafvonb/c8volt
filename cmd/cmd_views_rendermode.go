@@ -44,6 +44,10 @@ func pickMode() RenderMode {
 	}
 }
 
+func machineReadableModeEnabled(mode RenderMode) bool {
+	return mode == RenderModeJSON
+}
+
 func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:

@@ -34,6 +34,7 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
 	require.Contains(t, output, "resource")
+	require.NotContains(t, output, "Use --automation for the canonical non-interactive contract on supported command paths")
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
@@ -75,11 +76,22 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
 	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
 	require.Equal(t, ContractSupportFull, runPI.ContractSupport)
+	require.Equal(t, AutomationSupportFull, runPI.AutomationSupport)
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
 		MachinePreferred: true,
 	})
+}
+
+func TestCapabilitiesCommand_AutomationJSONKeepsStdoutMachineReadable(t *testing.T) {
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--automation", "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(stdout), &doc))
+	require.Equal(t, "capabilities", doc.Command)
+	require.NotContains(t, stdout, "Machine-readable CLI capabilities")
+	require.Empty(t, stderr)
 }
 
 // Verifies `get resource --help` documents required id-based lookup usage.
@@ -1137,6 +1149,23 @@ func executeRootForTest(t *testing.T, args ...string) string {
 	require.NoError(t, err)
 
 	return buf.String()
+}
+
+func executeRootWithSeparateOutputsForTest(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(stderr)
+	root.SetArgs(args)
+
+	_, err := root.ExecuteC()
+	require.NoError(t, err)
+
+	return stdout.String(), stderr.String()
 }
 
 func executeRootExpectErrorForTest(t *testing.T, args ...string) (string, error) {

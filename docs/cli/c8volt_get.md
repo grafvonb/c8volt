@@ -29,6 +29,7 @@ c8volt get [flags]
 
 ```
   -y, --auto-confirm        auto-confirm prompts for non-interactive use
+      --automation          enable the canonical non-interactive contract for commands that explicitly support it
       --config string       path to config file
       --debug               enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json                output as JSON (where applicable)

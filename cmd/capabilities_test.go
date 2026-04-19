@@ -30,6 +30,8 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	}
 	require.Equal(t, "capabilities", capabilitiesCapability.Path)
 	require.Equal(t, ContractSupportLimited, capabilitiesCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capabilitiesCapability.AutomationSupport)
+	require.Equal(t, "canonical discovery command for automation support", capabilitiesCapability.AutomationNotes)
 	require.Equal(t, []OutputModeContract{
 		{Name: "json", Supported: true, MachinePreferred: true, Notes: "canonical discovery format"},
 		{Name: "one-line", Supported: true, Notes: "human-readable summary"},
@@ -38,6 +40,7 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Equal(t, "get", getCapability.Path)
 	require.Equal(t, ContractSupportLimited, getCapability.ContractSupport)
 	require.Equal(t, CommandMutationReadOnly, getCapability.Mutation)
+	require.Equal(t, AutomationSupportUnsupported, getCapability.AutomationSupport)
 
 	var processInstanceCapability CommandCapability
 	var runCapability CommandCapability
@@ -63,9 +66,12 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 		Supported: true,
 	})
 	require.Equal(t, ContractSupportFull, processInstanceCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, processInstanceCapability.AutomationSupport)
 	require.Equal(t, ContractSupportLimited, runCapability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, runCapability.AutomationSupport)
 	require.NotEmpty(t, runCapability.Children)
 	require.Equal(t, ContractSupportFull, runCapability.Children[0].ContractSupport)
+	require.Equal(t, AutomationSupportFull, runCapability.Children[0].AutomationSupport)
 	require.Contains(t, runCapability.Children[0].OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
@@ -91,6 +97,16 @@ func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, "walk", walkCapability.Path)
 	require.Equal(t, ContractSupportLimited, walkCapability.ContractSupport)
 	require.Equal(t, CommandMutationReadOnly, walkCapability.Mutation)
+	require.Equal(t, AutomationSupportUnsupported, walkCapability.AutomationSupport)
+}
+
+func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.T) {
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--automation", "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(stdout), &doc))
+	require.Equal(t, "capabilities", doc.Command)
+	require.Empty(t, stderr)
 }
 
 func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.T) {
@@ -98,16 +114,19 @@ func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.
 
 	require.Contains(t, output, "machine-readable c8volt command surface for automation")
 	require.Contains(t, output, "c8volt capabilities --json")
+	require.Contains(t, output, "canonical non-interactive contract")
 	require.Contains(t, output, "plain output summarizes the command surface for humans")
+	require.Contains(t, output, "supports `--automation`")
 }
 
 func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {
 	output := executeRootForTest(t, "capabilities")
 
 	require.Contains(t, output, "Machine-readable CLI capabilities")
-	require.Contains(t, output, "Use --json for the canonical automation contract.")
-	require.Contains(t, output, "- capabilities [read_only, limited] modes: json, one-line")
-	require.Contains(t, output, "- get [read_only, limited] modes: one-line, json, keys-only")
+	require.Contains(t, output, "Use --json for the canonical discovery document and inspect automationSupport for --automation readiness.")
+	require.Contains(t, output, "Use --automation as the canonical non-interactive flag on commands that report automation:full.")
+	require.Contains(t, output, "- capabilities [read_only, limited, automation:full] modes: json, one-line")
+	require.Contains(t, output, "- get [read_only, limited, automation:unsupported] modes: one-line, json, keys-only")
 	require.NotContains(t, output, "\"command\":\"capabilities\"")
 }
 

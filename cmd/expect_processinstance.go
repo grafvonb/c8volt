@@ -27,6 +27,9 @@ var expectProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
@@ -74,4 +77,5 @@ func init() {
 
 	setCommandMutation(expectProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(expectProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(expectProcessInstanceCmd, AutomationSupportUnsupported, "waiting semantics are not yet defined for automation mode")
 }

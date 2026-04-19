@@ -13,7 +13,7 @@ List or fetch process instances
 List process instances by search filters or fetch them by key.
 Default output stays human-oriented for operator workflows.
 
-When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
+When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
 
 ```
 c8volt get process-instance [flags]
@@ -26,6 +26,7 @@ c8volt get process-instance [flags]
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
+  ./c8volt --automation get pi --state active --count 250
   ./c8volt --json get pi --state active --count 250
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
@@ -69,6 +70,7 @@ c8volt get process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file

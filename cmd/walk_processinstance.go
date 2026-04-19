@@ -34,6 +34,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 
 		if flagViewAsTree && (!flagWalkPIModeFamily && flagWalkPIMode != walkPIModeFamily) {
 			flagWalkPIModeFamily = true
@@ -125,4 +128,5 @@ func init() {
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "tree and traversal output semantics are not yet defined for automation mode")
 }

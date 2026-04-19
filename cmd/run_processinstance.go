@@ -23,16 +23,21 @@ var runProcessInstanceCmd = &cobra.Command{
 	Short: "Start process instance(s) and confirm they are active",
 	Long: "Start process instance(s) and confirm they are active.\n\n" +
 		"Default output stays operator-oriented. Use --json when automation needs the shared result envelope, " +
+		"use --automation as the canonical non-interactive contract for supported machine callers, " +
 		"and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.",
 	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
+  ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
   ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
+		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--count and --workers must be positive integers"))
@@ -136,4 +141,5 @@ func init() {
 
 	setCommandMutation(runProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(runProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(runProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
 }

@@ -36,6 +36,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
@@ -98,7 +101,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
+		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		reports, err := cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
@@ -124,7 +127,7 @@ func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
+		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return processInstancePageActionResult{}, err
 		}
 	}
@@ -167,4 +170,5 @@ func init() {
 
 	setCommandMutation(cancelProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(cancelProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(cancelProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation and paged continuation")
 }

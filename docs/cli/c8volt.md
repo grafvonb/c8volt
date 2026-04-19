@@ -19,6 +19,8 @@ waiting for state transitions, walking process trees, cancelling safely, and del
 For machine discovery, use "c8volt capabilities --json". Human-oriented command families and
 plain-text usage remain the primary interactive surface; JSON and keys-only modes layer onto the
 same Cobra command tree for script-safe automation.
+Use --automation for the dedicated non-interactive execution contract when a command explicitly supports it.
+The same human-oriented flows remain available outside the explicit automation flag.
 
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
@@ -36,6 +38,7 @@ c8volt [flags]
 
 ```
   -y, --auto-confirm        auto-confirm prompts for non-interactive use
+      --automation          enable the canonical non-interactive contract for commands that explicitly support it
       --config string       path to config file
       --debug               enable debug logging, overwrites and is shorthand for --log-level=debug
   -h, --help                help for c8volt

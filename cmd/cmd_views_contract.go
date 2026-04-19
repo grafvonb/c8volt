@@ -32,7 +32,7 @@ func renderAcceptedResult[T any](cmd *cobra.Command, payload T) error {
 }
 
 func commandUsesSharedEnvelope(cmd *cobra.Command, mode RenderMode) bool {
-	return cmd != nil && mode == RenderModeJSON && contractSupportForCommand(cmd) == ContractSupportFull
+	return cmd != nil && machineReadableModeEnabled(mode) && contractSupportForCommand(cmd) == ContractSupportFull
 }
 
 func renderJSONPayload[T any](cmd *cobra.Command, mode RenderMode, payload T) error {

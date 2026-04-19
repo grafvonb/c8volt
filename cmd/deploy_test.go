@@ -193,6 +193,7 @@ func TestDeployProcessDefinitionCommand_V89NoWaitHelper(t *testing.T) {
 	root := Root()
 	root.SetArgs([]string{
 		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--automation",
 		"--json",
 		"deploy", "process-definition",
 		"--file", os.Getenv("C8VOLT_TEST_BPMN_PATH"),

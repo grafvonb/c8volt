@@ -13,6 +13,7 @@ type App struct {
 	Tenant                  string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
 	ProcessInstancePageSize int32                `mapstructure:"process_instance_page_size" json:"process_instance_page_size" yaml:"process_instance_page_size"`
 	Backoff                 BackoffConfig        `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
+	Automation              bool                 `mapstructure:"automation" json:"-" yaml:"-"`
 	NoErrCodes              bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`
 }
 

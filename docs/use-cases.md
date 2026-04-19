@@ -63,6 +63,15 @@ This matches searches like "deploy BPMN Camunda 8 CLI", "Camunda CLI deploy BPMN
 
 This is helpful when people search for "start process instance Camunda 8 CLI", "Camunda CLI run process instance", or "wait for process active Camunda".
 
+For unattended callers on supported command paths, the canonical contract is:
+
+```bash
+./c8volt capabilities --json
+./c8volt --automation --json run pi -b order-process
+```
+
+That keeps discovery machine-readable, preserves clean stdout for JSON results, and leaves the normal human workflow unchanged when `--automation` is absent.
+
 ### Cancel the right process instance
 
 ```bash
@@ -97,7 +106,7 @@ The main difference is outcome verification. `c8volt` is designed to wait, walk 
 
 ### Does c8volt work well in scripts and CI?
 
-Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`, `--auto-confirm`, `--workers`, `--quiet`, and `--no-wait` where appropriate. For machine discovery, use `c8volt capabilities --json`; for supported command families, `--json` returns the shared result envelope without changing the normal human-facing command structure.
+Yes. The CLI supports automation-friendly flags such as `--json`, `--keys-only`, `--auto-confirm`, `--workers`, `--quiet`, and `--no-wait` where appropriate. For machine discovery, use `c8volt capabilities --json`. For supported command families, use `--automation` as the canonical non-interactive opt-in and add `--json` when stdout must stay machine-readable. `--auto-confirm` remains available for human-operated bulk runs that should continue without repeated prompts.
 
 ## Where to go next
 

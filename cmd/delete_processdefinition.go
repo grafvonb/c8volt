@@ -30,6 +30,9 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
@@ -75,7 +78,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			fmt.Println("Without --allow-inconsistent, c8volt prepares deletion only (for example, cancels active instances).")
 			prompt = fmt.Sprintf("Prepare %d process definition(s) for later manual deletion?", len(keys))
 		}
-		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
+		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		reports, err := cli.DeleteProcessDefinitions(cmd.Context(), keys, flagWorkers, collectOptions()...)
@@ -108,4 +111,5 @@ func init() {
 
 	setCommandMutation(deleteProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deleteProcessDefinitionCmd, ContractSupportFull)
+	setAutomationSupport(deleteProcessDefinitionCmd, AutomationSupportFull, "supports unattended destructive confirmation")
 }

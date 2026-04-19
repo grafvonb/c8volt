@@ -35,6 +35,9 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if err := validatePISearchFlags(); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
@@ -94,7 +97,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbort(flagCmdAutoConfirm, prompt); err != nil {
+		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		reports, err := cli.DeleteProcessInstances(cmd.Context(), roots, flagWorkers, collectOptions()...)
@@ -120,7 +123,7 @@ func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 		if affectedCount > requestedCount {
 			prompt = fmt.Sprintf("You have requested to delete %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
-		if err := confirmCmdOrAbortFn(flagCmdAutoConfirm, prompt); err != nil {
+		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			return processInstancePageActionResult{}, err
 		}
 	}
@@ -161,4 +164,5 @@ func init() {
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(deleteProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(deleteProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation and paged continuation")
 }
