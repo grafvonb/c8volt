@@ -25,6 +25,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 	require.Contains(t, output, "capabilities")
 	require.Contains(t, output, "For machine discovery, use \"c8volt capabilities --json\"")
 	require.Contains(t, output, "Use --automation for the dedicated non-interactive execution contract")
+	require.Contains(t, output, "outside the explicit automation flag")
 	require.Contains(t, output, "--automation")
 }
 

@@ -12,7 +12,7 @@ Start process instance(s) and confirm they are active
 
 Start process instance(s) and confirm they are active.
 
-Default output stays operator-oriented. Use --json when automation needs the shared result envelope, and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.
+Default output stays operator-oriented. Use --json when automation needs the shared result envelope, use --automation as the canonical non-interactive contract for supported machine callers, and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.
 
 ```
 c8volt run process-instance [flags]
@@ -24,6 +24,7 @@ c8volt run process-instance [flags]
   ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
+  ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
   ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait
 ```
 
@@ -46,6 +47,7 @@ c8volt run process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file

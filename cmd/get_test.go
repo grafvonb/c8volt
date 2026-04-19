@@ -34,6 +34,7 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
 	require.Contains(t, output, "resource")
+	require.NotContains(t, output, "Use --automation for the canonical non-interactive contract on supported command paths")
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.

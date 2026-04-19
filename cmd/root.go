@@ -72,6 +72,7 @@ For machine discovery, use "c8volt capabilities --json". Human-oriented command 
 plain-text usage remain the primary interactive surface; JSON and keys-only modes layer onto the
 same Cobra command tree for script-safe automation.
 Use --automation for the dedicated non-interactive execution contract when a command explicitly supports it.
+The same human-oriented flows remain available outside the explicit automation flag.
 
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
@@ -182,7 +183,7 @@ func Execute() {
 func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
-	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the dedicated non-interactive automation contract for commands that explicitly support it")
+	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the canonical non-interactive contract for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")

@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-65-g9cdcc63-dirty`, commit `9cdcc63`, built `2026-04-19T04:18:22Z` | camunda: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-71-gf0a02c4-dirty`, commit `f0a02c4`, built `2026-04-19T05:20:05Z` | camunda: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -106,6 +106,16 @@ By default, `c8volt` waits until the process instance is actually active. If you
 ./c8volt run pi -b C88_SimpleUserTask_Process --no-wait
 ```
 
+For supported non-interactive callers, use the dedicated automation contract instead of composing ad hoc flag bundles:
+
+```bash
+./c8volt capabilities --json
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
+```
+
+`--automation` is the canonical opt-in for unattended execution on commands that report support. `--json` keeps stdout machine-readable, and `--no-wait` still means "accepted but not yet confirmed complete" rather than implied success.
+
 For batch execution:
 
 ```bash
@@ -156,6 +166,8 @@ Deletion in real environments often means cancel-first, then remove, then verify
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing in human-oriented modes unless `--auto-confirm` or `--json` is set. JSON mode auto-consumes remaining pages and returns one final aggregated result. Direct `--key` workflows still bypass paging and keep their existing behavior.
+
+For supported command paths, `--automation` is the stronger non-interactive contract: it tells `c8volt` to reject unsupported automation flows explicitly, to treat supported prompts as accepted, and to keep the human-oriented default behavior unchanged when the flag is absent.
 
 ## Precision Tools
 
@@ -573,8 +585,9 @@ The supporting read and deployment commands are still part of the core toolbox:
 
 - `--json` for structured output
 - `capabilities --json` as the canonical machine-readable discovery surface
+- `--automation` as the canonical non-interactive contract on supported commands
 - `--keys-only` for command chaining
-- `--auto-confirm` for non-interactive runs
+- `--auto-confirm` for human-operated bulk flows that should continue without repeated prompts
 - `--workers` for controlled concurrency
 - `--fail-fast` when one error should stop the next wave of work
 - `--backoff-*` retry controls for API-facing flows
@@ -586,10 +599,10 @@ Example:
 
 ```bash
 ./c8volt capabilities --json
-./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active --keys-only
+./c8volt --automation --json get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
 ```
 
-Use `capabilities --json` to discover command paths, flags, output modes, mutation type, and whether a command currently supports the full shared machine contract. For supported command families, `--json` returns the shared result envelope while the default command output and `--keys-only` behavior stay operator-friendly and pipeline-safe.
+Use `capabilities --json` to discover command paths, flags, output modes, mutation type, and whether a command currently supports the dedicated automation contract. For supported command families, combine `--automation` with `--json` when you need deterministic unattended execution and machine-readable stdout. Outside the explicit automation flag, the default command output and `--keys-only` behavior stay operator-friendly and pipeline-safe.
 
 And when you want to move from "query" to "bulk action" without leaving the shell:
 

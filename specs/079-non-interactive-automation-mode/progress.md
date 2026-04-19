@@ -9,6 +9,7 @@ Started: 2026-04-19 06:53:03
 - Shared interactive confirmation currently flows through `confirmCmdOrAbort` / `confirmCmdOrAbortFn` in `cmd/cmd_cli.go`; `--auto-confirm` is the only existing explicit non-interactive bypass and non-terminal stdin is also treated as implicit confirmation.
 - Shared JSON contract rendering is centralized in `cmd/cmd_views_contract.go`: `ContractSupportFull` plus JSON mode triggers the common result envelope, and state-changing commands switch from `succeeded` to `accepted` when `--no-wait` is set.
 - Search-based process-instance pagination lives in `cmd/get_processinstance.go` and is reused by `cancel`/`delete`; human modes prompt before continuing, while JSON mode currently auto-consumes pages and returns aggregated machine-readable output.
+- Generated CLI reference pages under `docs/cli/` are driven by live Cobra metadata via `make docs`, and README-facing homepage content is refreshed into `docs/index.md` through `make docs-content` rather than hand-edited.
 
 ---
 
@@ -113,4 +114,37 @@ Started: 2026-04-19 06:53:03
 - The repo already routed verbose process-instance paging diagnostics to `cmd.ErrOrStderr()`, so automation JSON isolation mainly needed regression coverage rather than a new logging channel.
 - Representative state-changing commands only become truthfully automation-ready when runtime gating and discovery annotations move together; enabling one without the other leaves the contract ambiguous.
 - The shared envelope logic can stay simple as long as JSON detection remains the single gate for machine-readable rendering and the command-specific automation tests verify stdout cleanliness.
+---
+
+## Iteration 5 - 2026-04-19 07:21 CEST
+**User Story**: User Story 3 - Preserve Human Workflows While Documenting the Automation Contract
+**Tasks Completed**:
+- [x] T016: added human-mode regression assertions proving root/get help and representative paged cancel/delete flows stay prompt-driven without `--automation`
+- [x] T017: added discovery/help-text regression coverage for the documented automation contract in `cmd/capabilities_test.go` and `cmd/root_test.go`
+- [x] T018: updated root and representative command help text for the automation contract in `cmd/root.go`, `cmd/capabilities.go`, `cmd/run_processinstance.go`, and `cmd/get_processinstance.go`
+- [x] T019: updated user-facing automation guidance in `README.md` and `docs/use-cases.md`
+- [x] T020: regenerated CLI reference docs under `docs/cli/` and synced `docs/index.md` from README-backed content
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/root.go
+- cmd/root_test.go
+- cmd/capabilities.go
+- cmd/capabilities_test.go
+- cmd/command_contract_test.go
+- cmd/get_processinstance.go
+- cmd/get_test.go
+- cmd/delete_test.go
+- cmd/cancel_test.go
+- cmd/run_processinstance.go
+- docs/use-cases.md
+- docs/index.md
+- docs/cli/
+- specs/079-non-interactive-automation-mode/progress.md
+- specs/079-non-interactive-automation-mode/tasks.md
+**Learnings**:
+- The finalized automation contract fits best as documentation layered on top of existing human-mode wording: root help anchors the contract globally, while representative commands only need concise command-local guidance about `--automation`, `--json`, and `--no-wait`.
+- Existing paging prompt regressions for `cancel` and `delete` already exercised the preserved human path, so this iteration mainly needed contract-specific assertions that those flows stay in `prompt` mode until callers opt into automation or `--auto-confirm`.
+- Regenerating docs after Cobra help changes also refreshed many root inherited-flag pages, which is expected because the root persistent flag descriptions flow through every generated command reference page.
 ---

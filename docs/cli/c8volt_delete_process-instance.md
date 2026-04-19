@@ -56,6 +56,7 @@ c8volt delete process-instance [flags]
 
 ```
   -y, --auto-confirm               auto-confirm prompts for non-interactive use
+      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
       --backoff-max-retries int    max retry attempts (0 = unlimited)
       --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
       --config string              path to config file
