@@ -140,10 +140,16 @@ CAMUNDA_V2_SPEC_DIR="$(dirname "$CAMUNDA_V2_WORKING_SPEC")"
 
 # v89
 ./generate-go-client.sh ./camunda-docs/api/administration-sm/administration-sm-openapi.yaml ../internal/clients/camunda/v89/administrationsm/client.gen.go administrationsm
-python3 ./mutations/mutate-fix-jobresult-discriminator.py "$CAMUNDA_V2_WORKING_SPEC"
-CAMUNDA_V2_JOBRESULT_FIXED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-jobresult-fixed.yaml"
-python3 ./mutations/mutate-fix-camunda-v2-operation-id-collisions.py "$CAMUNDA_V2_JOBRESULT_FIXED"
-CAMUNDA_V2_V89_READY="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-jobresult-fixed-opids-fixed.yaml"
+python3 ./mutations/mutate-search-query-schemas.py "$CAMUNDA_V2_WORKING_SPEC"
+CAMUNDA_V2_V89_SEARCH_QUERY_PATCHED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched.yaml"
+python3 ./mutations/mutate-search-result-schemas.py "$CAMUNDA_V2_V89_SEARCH_QUERY_PATCHED"
+CAMUNDA_V2_V89_SEARCH_RESULT_PATCHED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched.yaml"
+python3 ./mutations/mutate-fix-process-instance-filter-fields.py "$CAMUNDA_V2_V89_SEARCH_RESULT_PATCHED"
+CAMUNDA_V2_V89_PROCESS_INSTANCE_FIXED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed.yaml"
+python3 ./mutations/mutate-fix-jobresult-discriminator.py "$CAMUNDA_V2_V89_PROCESS_INSTANCE_FIXED"
+CAMUNDA_V2_V89_JOBRESULT_FIXED="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed-jobresult-fixed.yaml"
+python3 ./mutations/mutate-fix-camunda-v2-operation-id-collisions.py "$CAMUNDA_V2_V89_JOBRESULT_FIXED"
+CAMUNDA_V2_V89_READY="${CAMUNDA_V2_SPEC_DIR}/$(basename "${CAMUNDA_V2_WORKING_SPEC%.yaml}")-search-query-patched-search-result-patched-process-instance-filter-fields-fixed-jobresult-fixed-opids-fixed.yaml"
 ./generate-go-client.sh "$CAMUNDA_V2_V89_READY" ../internal/clients/camunda/v89/camunda/client.gen.go camunda
 
 python3 ./mutations/mutate-operation-ids.py ./camunda-docs/api/operate/operate-openapi.yaml
