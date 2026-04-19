@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -30,12 +33,38 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"Prefer --json where a command exposes structured output",
 		"automation:full",
 		"--automation",
+		"Examples:",
+		"./c8volt get --help",
+		"./c8volt capabilities --json",
+		"./c8volt --config ./config.yaml config show --validate",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"\ncompletion\n",
 		"__complete",
 		"__completeNoDesc",
 	)
+}
+
+func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	helpOutput := executeRootForTest(t, "--help")
+	markdown := renderMarkdownForCommand(t, root)
+
+	for _, anchor := range []string{
+		"c8volt <group> --help",
+		"c8volt capabilities --json",
+		"flag metadata, output modes, mutation behavior, and automation support",
+		"Prefer --json where a command exposes structured output",
+		"automation:full",
+	} {
+		require.Contains(t, helpOutput, anchor)
+		require.Contains(t, markdown, anchor)
+	}
 }
 
 func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing.T) {
@@ -94,4 +123,12 @@ func assertHelpOutputOmitsAll(t *testing.T, output string, substrings ...string)
 	for _, substring := range substrings {
 		require.NotContains(t, output, substring)
 	}
+}
+
+func renderMarkdownForCommand(t *testing.T, command *cobra.Command) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+	require.NoError(t, doc.GenMarkdown(command, &buf))
+	return buf.String()
 }

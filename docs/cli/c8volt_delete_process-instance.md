@@ -8,6 +8,14 @@ nav_exclude: true
 
 Delete process instance(s) by key or search filters, optionally cancelling first
 
+### Synopsis
+
+Delete process instance(s) by key or search filters, optionally cancelling first.
+
+By default c8volt validates the full affected tree, prompts before the destructive action, and waits until deletion is observed. Use --auto-confirm for unattended runs, and add --no-wait when accepted deletion should return immediately instead of waiting for the final result.
+
+Use `get process-instance` or `expect process-instance --state absent` after non-blocking deletes when you need explicit follow-up verification.
+
 ```
 c8volt delete process-instance [flags]
 ```
@@ -22,6 +30,8 @@ c8volt delete process-instance [flags]
   ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --bpmn-process-id order-process --state completed --count 200 --auto-confirm
   ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
+  ./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state absent
   ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
 ```
 
@@ -75,5 +85,5 @@ c8volt delete process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt delete](c8volt_delete)	 - Delete resources
+* [c8volt delete](c8volt_delete)	 - Delete resources with explicit destructive confirmation
 

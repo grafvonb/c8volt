@@ -155,3 +155,26 @@ Started: 2026-04-19 13:07:21
 - Completion regressions are part of the same surface area as help refreshes because Cobra shells render `Short` text directly in interactive suggestions.
 - `go test ./cmd -count=1` only became stable for process-instance helpers after re-scrubbing bound globals post-reset, which prevents slice-backed flags from injecting phantom `[]` keys into search-driven cancel/delete flows.
 ---
+
+## Iteration 6 - 2026-04-19 13:44:00 CEST
+**User Story**: US3 - Keep Generated Docs In Sync With Help Metadata
+**Tasks Completed**:
+- [x] T017: Add doc-parity regression coverage for public help anchors in `cmd/root_test.go` and `cmd/capabilities_test.go`
+- [x] T018: Update top-level workflow and discovery guidance in `README.md` and `docs/use-cases.md`
+- [x] T019: Regenerate the public CLI reference pages in `docs/cli` using the Makefile docs generation path
+- [x] T020: Sync README-derived documentation content in `docs/index.md` using the Makefile docs generation path
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/capabilities_test.go
+- cmd/root_test.go
+- docs/index.md
+- docs/use-cases.md
+- docs/cli/
+- specs/077-cli-help-discovery/progress.md
+- specs/077-cli-help-discovery/tasks.md
+**Learnings**:
+- Stable doc-parity regressions are cheapest when they render Cobra markdown in-process and pin a few shared discovery anchors instead of snapshotting full generated pages.
+- In this repository, `make docs-content` is the minimal Makefile entry point that both regenerates `docs/cli/` and syncs `docs/index.md` from `README.md`, so it is sufficient for markdown parity work without invoking the full docs site build.
+---

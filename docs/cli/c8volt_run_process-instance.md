@@ -12,7 +12,9 @@ Start process instance(s) and confirm they are active
 
 Start process instance(s) and confirm they are active.
 
-Default output stays operator-oriented. Use --json when automation needs the shared result envelope, use --automation as the canonical non-interactive contract for supported machine callers, and combine it with --no-wait when accepted-but-not-yet-confirmed work should return immediately.
+By default c8volt waits until the created instances can be confirmed as active before returning success. Use --no-wait when accepted-but-not-yet-confirmed work should return immediately, and follow up with `get process-instance`, `expect process-instance`, or `walk process-instance` when you need later verification.
+
+Default output stays operator-oriented. Use --json when another tool needs the shared result envelope, use --automation as the canonical non-interactive contract for supported machine callers, and combine it with --no-wait when accepted work should return immediately.
 
 ```
 c8volt run process-instance [flags]
@@ -26,6 +28,7 @@ c8volt run process-instance [flags]
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
   ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
   ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state active
 ```
 
 ### Options
@@ -66,5 +69,5 @@ c8volt run process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt run](c8volt_run)	 - Run resources
+* [c8volt run](c8volt_run)	 - Start state-changing work such as process instances
 

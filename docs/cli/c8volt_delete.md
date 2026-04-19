@@ -6,15 +6,27 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt delete
 
-Delete resources
+Delete resources with explicit destructive confirmation
 
 ### Synopsis
 
-Delete resources such as process instances.
-It is a root command and requires a subcommand to specify the resource type to delete.
+Delete resources with explicit destructive confirmation.
+
+Use this command family when work should be removed rather than merely inspected.
+Child commands explain whether c8volt prompts before deletion, whether cancellation or
+preparation happens first, how `--auto-confirm` enables unattended destructive
+flows, and when `--no-wait` returns accepted deletion instead of confirmed completion.
 
 ```
 c8volt delete [flags]
+```
+
+### Examples
+
+```
+  ./c8volt delete process-instance --help
+  ./c8volt delete process-definition --help
+  ./c8volt delete process-instance --state completed --count 200 --auto-confirm --no-wait
 ```
 
 ### Options
@@ -46,7 +58,7 @@ c8volt delete [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
-* [c8volt delete process-definition](c8volt_delete_process-definition)	 - Delete a process definition(s)
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
+* [c8volt delete process-definition](c8volt_delete_process-definition)	 - Delete process definition resources from Zeebe
 * [c8volt delete process-instance](c8volt_delete_process-instance)	 - Delete process instance(s) by key or search filters, optionally cancelling first
 

@@ -43,6 +43,24 @@ If someone is looking for a Camunda 8 CLI, a Camunda CLI for operators, a BPMN d
 - wait for the state you actually need
 - validate config and inspect cluster metadata
 
+## Discover Command Paths Quickly
+
+Start with the human-facing command tree when you are choosing an operator workflow:
+
+```bash
+./c8volt --help
+./c8volt get --help
+./c8volt run process-instance --help
+```
+
+When a script, CI job, or AI caller needs the public command inventory without scraping prose help, use the canonical discovery surface instead:
+
+```bash
+./c8volt capabilities --json
+```
+
+That JSON document reports public command paths, visible flags, output modes, mutation behavior, and whether a command supports the dedicated `--automation` contract. Prefer `--json` wherever a command already exposes structured output, and add `--automation` only on command paths whose capabilities entry reports `automation:full`.
+
 ## Camunda Version Support
 
 `c8volt` supports Camunda `8.7`, `8.8`, and `8.9` as runtime targets.

@@ -118,6 +118,29 @@ func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.
 	require.Contains(t, output, "plain output summarizes the public command surface for humans")
 	require.Contains(t, output, "supports `--automation`")
 	require.Contains(t, output, "Hidden shell-completion and internal helper commands stay out of this document")
+	require.Contains(t, output, "./c8volt capabilities")
+	require.Contains(t, output, "./c8volt capabilities --json")
+}
+
+func TestCapabilitiesHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	helpOutput := executeRootForTest(t, "capabilities", "--help")
+	markdown := renderMarkdownForCommand(t, capabilitiesCmd)
+
+	for _, anchor := range []string{
+		"machine-readable c8volt command surface for automation",
+		"c8volt capabilities --json",
+		"supports `--automation`",
+		"Hidden shell-completion and internal helper commands stay out of this document",
+	} {
+		require.Contains(t, helpOutput, anchor)
+		require.Contains(t, markdown, anchor)
+	}
 }
 
 func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {

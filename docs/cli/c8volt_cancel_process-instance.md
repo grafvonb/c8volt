@@ -8,6 +8,14 @@ nav_exclude: true
 
 Cancel process instance(s) by key or search filters and wait for completion
 
+### Synopsis
+
+Cancel process instance(s) by key or search filters and wait for completion.
+
+By default c8volt validates the affected root and descendant instances, asks for confirmation before the destructive action, and waits until cancellation is observed. Use --auto-confirm for unattended runs, and combine it with --no-wait when accepted cancellation should return immediately instead of waiting for the final state.
+
+After non-blocking cancellation, use `get process-instance` or `expect process-instance` to verify the eventual state of the affected instances.
+
 ```
 c8volt cancel process-instance [flags]
 ```
@@ -24,6 +32,8 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
+  ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
+  ./c8volt expect pi --key 2251799813711967 --state canceled --state terminated
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -
 ```
 
@@ -77,5 +87,5 @@ c8volt cancel process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel)	 - Cancel resources
+* [c8volt cancel](c8volt_cancel)	 - Cancel running work with explicit confirmation semantics
 

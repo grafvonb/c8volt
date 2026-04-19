@@ -87,13 +87,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Add doc-parity regression coverage for public help anchors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities_test.go
+- [x] T017 [P] [US3] Add doc-parity regression coverage for public help anchors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Update top-level workflow and discovery guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/use-cases.md
-- [ ] T019 [US3] Regenerate the public CLI reference pages in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
-- [ ] T020 [US3] Sync README-derived documentation content in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T018 [US3] Update top-level workflow and discovery guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/use-cases.md
+- [x] T019 [US3] Regenerate the public CLI reference pages in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T020 [US3] Sync README-derived documentation content in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 **Checkpoint**: Generated docs and top-level guidance should now match the refreshed Cobra metadata.
 

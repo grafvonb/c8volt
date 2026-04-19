@@ -6,15 +6,27 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt run
 
-Run resources
+Start state-changing work such as process instances
 
 ### Synopsis
 
-Run resources such as process instances.
-It is a root command and requires a subcommand to specify the resource type to run.
+Start state-changing work such as process instances.
+
+Use this command family when you want c8volt to create new work in Camunda. Choose
+`run process-instance` to start one or more instances. Child commands document
+whether they wait for confirmed creation by default, when `--no-wait` can return
+accepted work earlier, and how to pair the result with follow-up inspection commands.
 
 ```
 c8volt run [flags]
+```
+
+### Examples
+
+```
+  ./c8volt run process-instance --help
+  ./c8volt run process-instance --bpmn-process-id order-process
+  ./c8volt --automation --json run process-instance --bpmn-process-id order-process --no-wait
 ```
 
 ### Options
@@ -46,6 +58,6 @@ c8volt run [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - c8volt: Camunda 8 Operations CLI
+* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
 * [c8volt run process-instance](c8volt_run_process-instance)	 - Start process instance(s) and confirm they are active
 
