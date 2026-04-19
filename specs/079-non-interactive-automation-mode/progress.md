@@ -28,3 +28,27 @@ Started: 2026-04-19 06:53:03
 - `delete` and `cancel` both derive impact prompts from `DryRunCancelOrDeleteGetPIKeys` before execution, so automation-mode support can likely hook the shared confirmation seam without duplicating per-command prompt text.
 - Search-driven `get`, `cancel`, and `delete` already share paging state and aggregated rendering behavior, which reduces the surface area for implementing automation-mode continuation semantics later.
 ---
+
+## Iteration 2 - 2026-04-19 07:01 CEST
+**User Story**: Phase 2 Foundational
+**Tasks Completed**:
+- [x] T003: defined the root `--automation` flag, bound it through `app.automation`, and added a shared effective-mode helper in `cmd/root.go`
+- [x] T004: extended command capability metadata and the discovery surface with explicit automation support fields in `cmd/command_contract.go` and `cmd/capabilities.go`
+- [x] T005: added foundational regression coverage for root automation binding and discovery metadata in `cmd/root_test.go`, `cmd/capabilities_test.go`, and `cmd/command_contract_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/capabilities.go
+- cmd/capabilities_test.go
+- cmd/command_contract.go
+- cmd/command_contract_test.go
+- cmd/root.go
+- cmd/root_test.go
+- config/app.go
+- specs/079-non-interactive-automation-mode/progress.md
+- specs/079-non-interactive-automation-mode/tasks.md
+**Learnings**:
+- Root automation state fits the existing config-resolution pattern cleanly by binding `app.automation` alongside the other persistent `app.*` keys and reading the effective value back from config context when available.
+- Keeping `automationSupport` separate from `contractSupport` avoids falsely equating JSON-envelope support with automation readiness; unsupported remains the safe default until a command opts in explicitly.
+- `capabilities --json` is the right place to expose automation readiness first because it already serves as the machine-discovery surface and can start telling automation callers which command paths are not ready yet without changing runtime command behavior.
+---

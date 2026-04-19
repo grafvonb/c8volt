@@ -33,6 +33,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 	require.Equal(t, "get resource", capability.Path)
 	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
 	require.Contains(t, capability.Aliases, "r")
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "id",
@@ -41,6 +42,14 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 		Required:    true,
 		Repeated:    false,
 		Description: "resource id to fetch",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "automation",
+		Shorthand:   "",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "enable the dedicated non-interactive automation contract for commands that explicitly support it",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "json",
@@ -61,6 +70,7 @@ func TestCommandCapabilityForCommand_UsesExplicitUnsupportedOutputModes(t *testi
 	require.Equal(t, "run process-instance", capability.Path)
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
 		{Name: "json", Supported: true, MachinePreferred: true},
@@ -72,4 +82,16 @@ func TestCommandPath_TrimsRootName(t *testing.T) {
 	require.Equal(t, "", commandPath(Root()))
 	require.Equal(t, "version", commandPath(versionCmd))
 	require.Equal(t, "walk process-instance", commandPath(walkProcessInstanceCmd))
+}
+
+func TestCommandCapabilityForCommand_IncludesExplicitAutomationMetadata(t *testing.T) {
+	t.Parallel()
+
+	cmd := &cobra.Command{Use: "demo", Short: "Demo"}
+	setAutomationSupport(cmd, AutomationSupportFull, "safe for unattended execution")
+
+	capability := commandCapabilityForCommand(cmd)
+
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, "safe for unattended execution", capability.AutomationNotes)
 }
