@@ -66,7 +66,7 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 		Supported: true,
 	})
 	require.Equal(t, ContractSupportFull, processInstanceCapability.ContractSupport)
-	require.Equal(t, AutomationSupportUnsupported, processInstanceCapability.AutomationSupport)
+	require.Equal(t, AutomationSupportFull, processInstanceCapability.AutomationSupport)
 	require.Equal(t, ContractSupportLimited, runCapability.ContractSupport)
 	require.Equal(t, AutomationSupportUnsupported, runCapability.AutomationSupport)
 	require.NotEmpty(t, runCapability.Children)

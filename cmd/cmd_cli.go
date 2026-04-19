@@ -77,6 +77,29 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 
 var confirmCmdOrAbortFn = confirmCmdOrAbort
 
+func shouldImplicitlyConfirm(cmd *cobra.Command) bool {
+	return flagCmdAutoConfirm || automationModeEnabled(cmd)
+}
+
+func requireAutomationSupport(cmd *cobra.Command) error {
+	if !automationModeEnabled(cmd) {
+		return nil
+	}
+	if automationSupportForCommand(cmd) == AutomationSupportFull {
+		return nil
+	}
+
+	message := fmt.Sprintf("%s does not support --automation", commandPath(cmd))
+	if notes := automationNotesForCommand(cmd); notes != "" {
+		message = fmt.Sprintf("%s: %s", message, notes)
+	}
+
+	return ferrors.WrapClass(
+		ferrors.ErrUnsupported,
+		fmt.Errorf("%s; remove --automation or inspect `c8volt capabilities --json` for supported commands", message),
+	)
+}
+
 func mergeAndValidateKeys(baseKeys []string, stdinKeys []string, log *slog.Logger, cfg *config.Config) typex.Keys {
 	keys := append([]string{}, baseKeys...)
 

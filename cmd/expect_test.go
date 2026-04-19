@@ -58,6 +58,21 @@ func TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelope(t *testing.T)
 	require.Equal(t, "expect process-instance", got["command"])
 }
 
+func TestExpectProcessInstanceCommand_RejectsAutomationMode(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestExpectProcessInstanceCommand_RejectsAutomationModeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "expect process-instance does not support --automation")
+}
+
 // Helper-process entrypoint for invalid expect-state validation.
 func TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -78,6 +93,19 @@ func TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelopeHelper(t *test
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--key", "2251799813685255", "--state", "broken"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestExpectProcessInstanceCommand_RejectsAutomationModeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--automation", "expect", "process-instance", "--key", "2251799813685255", "--state", "completed"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

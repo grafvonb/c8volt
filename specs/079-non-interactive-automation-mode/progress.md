@@ -52,3 +52,35 @@ Started: 2026-04-19 06:53:03
 - Keeping `automationSupport` separate from `contractSupport` avoids falsely equating JSON-envelope support with automation readiness; unsupported remains the safe default until a command opts in explicitly.
 - `capabilities --json` is the right place to expose automation readiness first because it already serves as the machine-discovery surface and can start telling automation callers which command paths are not ready yet without changing runtime command behavior.
 ---
+
+## Iteration 3 - 2026-04-19 07:07 CEST
+**User Story**: User Story 1 - Run Commands Safely Without Prompts
+**Tasks Completed**:
+- [x] T006: added automation-mode regression coverage for supported confirmation bypass and unsupported-command rejection in `cmd/delete_test.go`, `cmd/cancel_test.go`, `cmd/expect_test.go`, and `cmd/walk_test.go`
+- [x] T007: added automation-mode paging continuation regression coverage in `cmd/get_processinstance_test.go`, `cmd/delete_test.go`, and `cmd/cancel_test.go`
+- [x] T008: implemented shared automation-mode support gating and implicit-confirm helpers in `cmd/cmd_cli.go` and `cmd/get_processinstance.go`
+- [x] T009: wired implicit automation confirmation into representative state-changing commands in `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processdefinition.go`
+- [x] T010: marked supported read flows and explicit unsupported observe flows for automation mode in `cmd/get_processinstance.go`, `cmd/expect_processinstance.go`, and `cmd/walk_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/capabilities_test.go
+- cmd/cmd_cli.go
+- cmd/delete_processdefinition.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- specs/079-non-interactive-automation-mode/progress.md
+- specs/079-non-interactive-automation-mode/tasks.md
+**Learnings**:
+- Runtime automation support can stay aligned with discovery metadata by reusing per-command `automationSupport` annotations as the single source of truth for explicit `--automation` rejection.
+- Supported automation flows can reuse the existing confirmation seam by passing one shared implicit-confirm helper into both destructive confirmation prompts and paged search continuation prompts.
+- Parent command discovery metadata can remain conservative while leaf commands opt into automation incrementally, which keeps `capabilities --json` truthful during staged rollout.
+---
