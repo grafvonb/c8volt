@@ -457,6 +457,35 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 	})
 }
 
+func TestService_FilterProcessInstanceWithOrphanParent_UsesFollowUpLookup(t *testing.T) {
+	ctx := context.Background()
+	lookupCalls := 0
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
+		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+			lookupCalls++
+			payload := marshalJSON(t, body)
+			assert.Contains(t, payload, `"processInstanceKey":"456"`)
+			return &camundav88.SearchProcessInstancesResponse{
+				Body:         []byte(`{"message":"not found"}`),
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusNotFound, "404 Not Found"),
+			}, nil
+		},
+		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+	}, newStrictOperateClient(t))
+
+	items, err := svc.FilterProcessInstanceWithOrphanParent(ctx, []d.ProcessInstance{
+		{Key: "123", ParentKey: "456"},
+		{Key: "124"},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "123", items[0].Key)
+	assert.Equal(t, 1, lookupCalls)
+}
+
 func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing.T) {
 	ctx := context.Background()
 

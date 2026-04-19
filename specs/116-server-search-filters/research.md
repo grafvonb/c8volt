@@ -44,6 +44,7 @@
 
 - **Decision**: Do not add request-side support for `--orphan-children-only`.
 - **Rationale**: The current behavior depends on fetching children and then checking each parent through `FilterProcessInstanceWithOrphanParent(...)`. That semantic requires verifying missing parents, not just filtering on one process-instance field in the initial search request.
+- **Verification note**: This feature should keep proving the boundary with tests that show the top-level search request stays broad while orphan detection still runs through follow-up parent lookups.
 - **Alternatives considered**:
   - Approximate orphan detection with parent presence alone: rejected because an orphan child still has a parent key; the missing parent is only discoverable through follow-up lookup logic.
   - Add a new multi-query server-side orphan detection flow in this feature: rejected because it would broaden scope beyond the issue’s request-side pushdown goal and would not produce a single authoritative search request.

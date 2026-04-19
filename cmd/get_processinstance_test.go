@@ -882,6 +882,92 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
 	})
 
+	t.Run("v87 fallback keeps final filtered results even when the request stays broad", func(t *testing.T) {
+		var requests []string
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant","parentKey":456,"incident":true},{"key":124,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant","incident":false}]}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--json",
+			"get", "process-instance",
+			"--children-only",
+			"--incidents-only",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+		require.NotContains(t, filter, "parentKey")
+		require.NotContains(t, filter, "hasIncident")
+		require.Contains(t, output, `"total": 1`)
+		require.Contains(t, output, `"key": "123"`)
+		require.NotContains(t, output, `"key": "124"`)
+	})
+
+	t.Run("orphan-child filtering stays on follow-up lookups for supported versions", func(t *testing.T) {
+		for _, version := range []string{"8.8", "8.9"} {
+			t.Run(version, func(t *testing.T) {
+				var requests []string
+				call := 0
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.Equal(t, http.MethodPost, r.Method)
+					require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+
+					body, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					requests = append(requests, string(body))
+
+					call++
+					w.Header().Set("Content-Type", "application/json")
+					if call == 1 {
+						_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","parentProcessInstanceKey":"456","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+						return
+					}
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"message":"not found"}`))
+				}))
+				t.Cleanup(srv.Close)
+
+				cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+
+				output := executeRootForProcessInstanceTest(t,
+					"--config", cfgPath,
+					"--tenant", "tenant",
+					"--json",
+					"get", "process-instance",
+					"--orphan-children-only",
+				)
+
+				filters := decodeCapturedPISearchRequests(t, requests)
+				require.Len(t, filters, 2)
+
+				topLevelFilter, ok := filters[0]["filter"].(map[string]any)
+				require.True(t, ok)
+				require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
+				require.NotContains(t, topLevelFilter, "processInstanceKey")
+
+				lookupFilter, ok := filters[1]["filter"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, "456", lookupFilter["processInstanceKey"])
+
+				require.Contains(t, output, `"total": 1`)
+				require.Contains(t, output, `"key": "123"`)
+			})
+		}
+	})
+
 	t.Run("supported filters keep paging summaries aligned with server-filtered pages", func(t *testing.T) {
 		for _, version := range []string{"8.8", "8.9"} {
 			t.Run(version, func(t *testing.T) {

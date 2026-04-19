@@ -535,6 +535,8 @@ func processPISearchPagesWithAction(
 
 func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.ProcessInstances, error) {
 	var err error
+	// Keep the local fallback path in place so versions without reliable
+	// request-side support still preserve the existing filter semantics.
 	if flagGetPIChildrenOnly {
 		pis = pis.FilterChildrenOnly()
 	}

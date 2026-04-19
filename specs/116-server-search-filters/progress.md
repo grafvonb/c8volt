@@ -10,6 +10,8 @@ Started: 2026-04-19 18:38:11
 - Version-specific request-shape assertions already live in `internal/services/processinstance/v87/service_test.go`, `v88/service_test.go`, and `v89/service_test.go`; command paging/request helpers live in `cmd/cmd_processinstance_test.go`.
 - Shared optional filter semantics should be represented as `*bool` fields so unset callers preserve current request shapes while later request builders can distinguish explicit `true` and `false` pushdown intent.
 - Supported parent-presence pushdown should continue to prefer explicit `ParentKey` equality when present and otherwise encode `HasParent` through the generated `parentProcessInstanceKey` `"$exists"` filter; incident presence remains a plain `hasIncident` boolean on `v8.8` and `v8.9`.
+- `v8.7` request construction should keep ignoring `HasParent` and `HasIncident`; fallback proof belongs in `internal/services/processinstance/v87/service_test.go` rather than command-local version branching.
+- `--orphan-children-only` stays on the follow-up lookup seam: command tests should show a broad top-level search plus per-parent lookup requests, while service tests can prove the lookup path with a mocked `404`.
 
 ---
 
@@ -86,4 +88,30 @@ Started: 2026-04-19 18:38:11
 - The existing command paging diagnostics already become accurate once supported filters narrow the fetched page server-side, so the user-visible fix is primarily request construction plus regression coverage rather than a prompt-format change.
 - `v8.8` can reuse shared `internal/services/common` filter builders for advanced parent-key existence filters, while `v8.9` needs the same logic in its local JSON-union helpers.
 - Keeping `applyPISearchResultFilters(...)` in place after adding request pushdown preserves behavior while supported versions effectively no-op those same filters against already narrowed pages.
+---
+## Iteration 4 - 2026-04-19 20:44 CEST
+**User Story**: User Story 2 - Preserve behavior on unsupported versions
+**Tasks Completed**:
+- [x] T015: Add `v8.7` service tests proving unsupported pushdown predicates stay out of the request shape
+- [x] T016: Add command regressions proving `v8.7` fallback still returns the correct final filtered results
+- [x] T017: Add cross-version regressions proving `--orphan-children-only` remains client-side
+- [x] T018: Preserve version-aware fallback behavior for unsupported pushdown semantics
+- [x] T019: Keep `v8.7` request construction limited to supported equality filters while documenting the fallback boundary
+- [x] T020: Keep orphan-child detection on the existing follow-up lookup path
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- specs/116-server-search-filters/progress.md
+- specs/116-server-search-filters/research.md
+- specs/116-server-search-filters/tasks.md
+**Learnings**:
+- `v8.7` already preserved the fallback behavior by omission; the missing work was regression proof plus making the request-boundary explicit in code and research notes.
+- Orphan-child filtering remains intentionally multi-step even on supported versions, so the right regression shape is one broad page fetch followed by parent lookups rather than another top-level request predicate.
+- Keeping `applyPISearchResultFilters(...)` active across versions lets supported pushdown and unsupported fallback share one command path without drifting semantics.
 ---

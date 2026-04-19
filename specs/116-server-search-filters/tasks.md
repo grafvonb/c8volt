@@ -69,15 +69,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Add `v8.7` service tests proving unsupported pushdown predicates stay out of the request shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
-- [ ] T016 [P] [US2] Add command regressions proving `v8.7` fallback still returns the correct final filtered results in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go
-- [ ] T017 [P] [US2] Add cross-version regressions proving `--orphan-children-only` remains client-side in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
+- [x] T015 [P] [US2] Add `v8.7` service tests proving unsupported pushdown predicates stay out of the request shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go
+- [x] T016 [P] [US2] Add command regressions proving `v8.7` fallback still returns the correct final filtered results in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go
+- [x] T017 [P] [US2] Add cross-version regressions proving `--orphan-children-only` remains client-side in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Preserve version-aware fallback behavior for unsupported pushdown semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/filter.go
-- [ ] T019 [US2] Keep `v8.7` request construction limited to supported equality filters while documenting the fallback boundary in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/research.md
-- [ ] T020 [US2] Keep orphan-child detection on the existing follow-up lookup path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go
+- [x] T018 [US2] Preserve version-aware fallback behavior for unsupported pushdown semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/filter.go
+- [x] T019 [US2] Keep `v8.7` request construction limited to supported equality filters while documenting the fallback boundary in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/116-server-search-filters/research.md
+- [x] T020 [US2] Keep orphan-child detection on the existing follow-up lookup path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go
 
 **Checkpoint**: User Story 2 is independently testable: unsupported versions and semantics preserve current results through client-side fallback, and `--orphan-children-only` still uses the follow-up lookup flow.
 
