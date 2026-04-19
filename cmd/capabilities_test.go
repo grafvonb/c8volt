@@ -115,16 +115,18 @@ func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.
 	require.Contains(t, output, "machine-readable c8volt command surface for automation")
 	require.Contains(t, output, "c8volt capabilities --json")
 	require.Contains(t, output, "canonical non-interactive contract")
-	require.Contains(t, output, "plain output summarizes the command surface for humans")
+	require.Contains(t, output, "plain output summarizes the public command surface for humans")
 	require.Contains(t, output, "supports `--automation`")
+	require.Contains(t, output, "Hidden shell-completion and internal helper commands stay out of this document")
 }
 
 func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {
 	output := executeRootForTest(t, "capabilities")
 
-	require.Contains(t, output, "Machine-readable CLI capabilities")
-	require.Contains(t, output, "Use --json for the canonical discovery document and inspect automationSupport for --automation readiness.")
-	require.Contains(t, output, "Use --automation as the canonical non-interactive flag on commands that report automation:full.")
+	require.Contains(t, output, "Machine-readable public CLI capabilities")
+	require.Contains(t, output, "Use --json for the canonical discovery document and inspect automationSupport for --automation readiness on each public command path.")
+	require.Contains(t, output, "Use --automation as the canonical non-interactive flag only on commands that report automation:full.")
+	require.Contains(t, output, "Hidden and shell-internal commands are intentionally excluded from this summary.")
 	require.Contains(t, output, "- capabilities [read_only, limited, automation:full] modes: json, one-line")
 	require.Contains(t, output, "- get [read_only, limited, automation:unsupported] modes: one-line, json, keys-only")
 	require.NotContains(t, output, "\"command\":\"capabilities\"")
