@@ -115,6 +115,16 @@ cleanup_tree() {
 cleanup_tree "$SOURCE_ROOT/.agents/skills" "$REPO_ROOT/.agents/skills"
 cleanup_tree "$SOURCE_ROOT/.specify/scripts" "$REPO_ROOT/.specify/scripts"
 cleanup_tree "$SOURCE_ROOT/.specify/templates" "$REPO_ROOT/.specify/templates"
+cleanup_tree "$SOURCE_ROOT/.specify/integrations" "$REPO_ROOT/.specify/integrations"
+
+for managed_metadata_file in \
+    .specify/init-options.json \
+    .specify/integration.json
+do
+    if [ ! -e "$SOURCE_ROOT/$managed_metadata_file" ]; then
+        delete_path "$REPO_ROOT/$managed_metadata_file"
+    fi
+done
 
 for managed_file in scripts/ralph/ralph.sh scripts/ralph/doctor.sh scripts/ralph/prompt.md; do
     if [ ! -e "$SOURCE_ROOT/$managed_file" ]; then
