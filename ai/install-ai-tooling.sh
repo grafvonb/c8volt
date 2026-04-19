@@ -55,6 +55,51 @@ latest_tag() {
         | head -n 1
 }
 
+validate_installed_artifacts() {
+    python3 - "$REPO_ROOT" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+repo_root = Path(sys.argv[1])
+skills_root = repo_root / ".agents" / "skills"
+extensions_root = repo_root / ".specify" / "extensions"
+pattern = re.compile(r"\.specify/extensions/([A-Za-z0-9._-]+)/([A-Za-z0-9._/\-]+)")
+missing: set[str] = set()
+
+if not skills_root.is_dir():
+    raise SystemExit(0)
+
+for skill_file in skills_root.glob("*/SKILL.md"):
+    try:
+        content = skill_file.read_text(encoding="utf-8")
+    except OSError:
+        continue
+
+    for match in pattern.finditer(content):
+        extension_id = match.group(1)
+        relative_path = match.group(2)
+        target_path = extensions_root / extension_id / relative_path
+        template_path = None
+
+        if target_path.suffix == ".yml":
+            template_path = target_path.with_name(target_path.name[:-4] + ".template.yml")
+
+        if target_path.exists():
+            continue
+        if template_path is not None and template_path.exists():
+            continue
+
+        missing.add(f".specify/extensions/{extension_id}/{relative_path}")
+
+if missing:
+    sys.stderr.write("Installed ai-tooling is missing extension artifacts referenced by skills:\n")
+    for item in sorted(missing):
+        sys.stderr.write(f"  - {item}\n")
+    raise SystemExit(1)
+PY
+}
+
 TAG="${1:-$(latest_tag "$RESOLVED_AI_TOOLING_REPO")}"
 if [ -z "$TAG" ]; then
     echo "Could not resolve an ai-tooling tag from $RESOLVED_AI_TOOLING_REPO" >&2
@@ -75,6 +120,7 @@ fi
 git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE_SOURCE" "$TMP_DIR"
 "$REPO_ROOT/ai/cleanup-ai-tooling-sync.sh" "$TMP_DIR"
 "$TMP_DIR/install/sync.sh" "$REPO_ROOT"
+validate_installed_artifacts
 
 printf '%s\n' "$TAG" > "$VERSION_MARKER_FILE"
 
