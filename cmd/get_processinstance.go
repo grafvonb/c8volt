@@ -331,6 +331,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	var collected process.ProcessInstances
 	incremental := shouldRenderPISearchPageIncrementally()
+	autoContinue := shouldAutoContinuePISearchPages()
 	processedTotal := 0
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
@@ -367,7 +368,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		}
 		processedTotal += len(filtered.Items)
 
-		summary := newPIProgressSummary(page, processedTotal, flagCmdAutoConfirm)
+		summary := newPIProgressSummary(page, processedTotal, autoContinue)
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
@@ -402,6 +403,12 @@ func shouldRenderPISearchPageIncrementally() bool {
 	}
 	mode := pickMode()
 	return mode == RenderModeOneLine || mode == RenderModeKeysOnly
+}
+
+// shouldAutoContinuePISearchPages reports whether paged process-instance search should
+// consume additional pages without interactive confirmation.
+func shouldAutoContinuePISearchPages() bool {
+	return flagCmdAutoConfirm || pickMode() == RenderModeJSON
 }
 
 func isCmdAborted(err error) bool {
