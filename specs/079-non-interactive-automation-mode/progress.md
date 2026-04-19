@@ -84,3 +84,33 @@ Started: 2026-04-19 06:53:03
 - Supported automation flows can reuse the existing confirmation seam by passing one shared implicit-confirm helper into both destructive confirmation prompts and paged search continuation prompts.
 - Parent command discovery metadata can remain conservative while leaf commands opt into automation incrementally, which keeps `capabilities --json` truthful during staged rollout.
 ---
+
+## Iteration 4 - 2026-04-19 09:41 CEST
+**User Story**: User Story 2 - Combine Automation Mode With Machine Output
+**Tasks Completed**:
+- [x] T011: added automation JSON regressions that keep capability discovery and paged process-instance output machine-readable on stdout while progress stays off stdout
+- [x] T012: extended representative `--no-wait` regressions to cover automation-mode accepted outcomes for run, deploy, delete, and cancel flows
+- [x] T013: factored shared machine-readable render-mode detection through the contract helpers
+- [x] T014: aligned discovery/read-flow tests with automation JSON behavior for capabilities and paged process-instance reads
+- [x] T015: enabled explicit automation support on representative state-changing run/deploy commands while preserving accepted-envelope behavior on `--no-wait`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/capabilities_test.go
+- cmd/cmd_views_contract.go
+- cmd/cmd_views_rendermode.go
+- cmd/delete_test.go
+- cmd/deploy_processdefinition.go
+- cmd/deploy_test.go
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- specs/079-non-interactive-automation-mode/progress.md
+- specs/079-non-interactive-automation-mode/tasks.md
+**Learnings**:
+- The repo already routed verbose process-instance paging diagnostics to `cmd.ErrOrStderr()`, so automation JSON isolation mainly needed regression coverage rather than a new logging channel.
+- Representative state-changing commands only become truthfully automation-ready when runtime gating and discovery annotations move together; enabling one without the other leaves the contract ambiguous.
+- The shared envelope logic can stay simple as long as JSON detection remains the single gate for machine-readable rendering and the command-specific automation tests verify stdout cleanliness.
+---

@@ -24,6 +24,9 @@ var deployProcessDefinitionCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if err := validateFiles(flagDeployPDFiles); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("validating files with process definition(s): %w", err))
 		}
@@ -74,4 +77,5 @@ func init() {
 
 	setCommandMutation(deployProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deployProcessDefinitionCmd, ContractSupportFull)
+	setAutomationSupport(deployProcessDefinitionCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
 }

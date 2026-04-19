@@ -34,6 +34,9 @@ var runProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, err)
 		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--count and --workers must be positive integers"))
 		}
@@ -136,4 +139,5 @@ func init() {
 
 	setCommandMutation(runProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(runProcessInstanceCmd, ContractSupportFull)
+	setAutomationSupport(runProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
 }

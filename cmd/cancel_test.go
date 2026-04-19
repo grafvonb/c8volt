@@ -674,6 +674,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--automation",
 		"--tenant", "tenant",
 		"--json",
 		"cancel", "process-instance",

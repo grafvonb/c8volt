@@ -61,7 +61,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 	})
 }
 
-func TestCommandCapabilityForCommand_UsesExplicitUnsupportedOutputModes(t *testing.T) {
+func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 
@@ -70,7 +70,7 @@ func TestCommandCapabilityForCommand_UsesExplicitUnsupportedOutputModes(t *testi
 	require.Equal(t, "run process-instance", capability.Path)
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
-	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
 	require.Equal(t, []OutputModeContract{
 		{Name: "one-line", Supported: true},
 		{Name: "json", Supported: true, MachinePreferred: true},

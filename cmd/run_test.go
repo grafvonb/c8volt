@@ -152,6 +152,7 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--automation",
 		"--json",
 		"run", "process-instance",
 		"--bpmn-process-id", "order-process",

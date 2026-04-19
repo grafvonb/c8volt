@@ -269,6 +269,7 @@ func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--automation",
 		"--json",
 		"delete", "process-instance",
 		"--key", "2251799813711967",
@@ -796,6 +797,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--automation",
 		"--tenant", "tenant",
 		"--json",
 		"delete", "process-instance",

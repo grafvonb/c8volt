@@ -71,7 +71,7 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Equal(t, AutomationSupportUnsupported, runCapability.AutomationSupport)
 	require.NotEmpty(t, runCapability.Children)
 	require.Equal(t, ContractSupportFull, runCapability.Children[0].ContractSupport)
-	require.Equal(t, AutomationSupportUnsupported, runCapability.Children[0].AutomationSupport)
+	require.Equal(t, AutomationSupportFull, runCapability.Children[0].AutomationSupport)
 	require.Contains(t, runCapability.Children[0].OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
@@ -98,6 +98,15 @@ func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, ContractSupportLimited, walkCapability.ContractSupport)
 	require.Equal(t, CommandMutationReadOnly, walkCapability.Mutation)
 	require.Equal(t, AutomationSupportUnsupported, walkCapability.AutomationSupport)
+}
+
+func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.T) {
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--automation", "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(stdout), &doc))
+	require.Equal(t, "capabilities", doc.Command)
+	require.Empty(t, stderr)
 }
 
 func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.T) {
