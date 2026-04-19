@@ -13,6 +13,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
+	output := executeRootForTest(t, "embed", "list", "--help")
+
+	require.Contains(t, output, "List embedded (virtual) files containing process definitions")
+	require.Contains(t, output, "Use this read-only command to discover which BPMN resources are packaged")
+	require.Contains(t, output, "./c8volt embed list --details")
+	require.Contains(t, output, "./c8volt --json embed list")
+}
+
+func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
+	output := executeRootForTest(t, "embed", "export", "--help")
+
+	require.Contains(t, output, "Export embedded (virtual) resources to local files")
+	require.Contains(t, output, "Choose `--all` to export the full embedded set")
+	require.Contains(t, output, "./c8volt embed export --all --out ./fixtures")
+	require.Contains(t, output, "quote patterns in the shell like zsh")
+}
+
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	var sawDeploy bool
 	var sawRun bool

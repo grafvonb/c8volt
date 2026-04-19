@@ -83,6 +83,10 @@ factories and facades, with the same repository command-family coverage on 8.9 t
 exists on 8.8.
 
 Refer to the documentation at https://c8volt.info for more information.`,
+	Example: `  ./c8volt get --help
+  ./c8volt run process-instance --help
+  ./c8volt capabilities --json
+  ./c8volt --config ./config.yaml config show --validate`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},

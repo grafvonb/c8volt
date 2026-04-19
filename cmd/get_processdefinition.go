@@ -25,8 +25,16 @@ var (
 var getProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "List or fetch deployed process definitions",
+	Long: `List or fetch deployed process definitions.
+
+Use this read-only command to inspect deployed BPMN models by key, BPMN process
+ID, version selectors, or the latest deployed version. Default output is aimed
+at human review; prefer ` + "`--json`" + ` when chaining the result into scripts or
+AI-assisted workflows. Use ` + "`--xml`" + ` only when you need the raw BPMN XML for a
+single definition selected by ` + "`--key`" + `.`,
 	Example: `  ./c8volt get pd --latest
   ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
+  ./c8volt get pd --key 2251799813686017 --json
   ./c8volt get pd --key 2251799813686017 --xml`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
@@ -112,6 +120,14 @@ func init() {
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
 	setContractSupport(getProcessDefinitionCmd, ContractSupportLimited)
+	setOutputModes(getProcessDefinitionCmd,
+		OutputModeContract{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+			Notes:            "preferred for automation when not using --xml",
+		},
+	)
 }
 
 func populatePDSearchFilterOpts() process.ProcessDefinitionFilter {

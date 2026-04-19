@@ -30,10 +30,14 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
-	require.Contains(t, output, "Get resources")
+	require.Contains(t, output, "Read cluster, process, and resource state without changing it")
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
 	require.Contains(t, output, "resource")
+	require.Contains(t, output, "choose a")
+	require.Contains(t, output, "prefer `--json` for automation")
+	require.Contains(t, output, "./c8volt get cluster --help")
+	require.Contains(t, output, "./c8volt get process-instance --json")
 	require.NotContains(t, output, "Use --automation for the canonical non-interactive contract on supported command paths")
 }
 
@@ -99,21 +103,25 @@ func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
 	require.Contains(t, output, "Get a single resource by id")
+	require.Contains(t, output, "Use this read-only command when you already know the resource id")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "Default output stays human-oriented")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
+	require.Contains(t, output, "--keys-only")
 }
 
 // Verifies `get cluster --help` exposes nested cluster resource commands.
 func TestGetClusterHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "--help")
 
-	require.Contains(t, output, "Get cluster resources")
+	require.Contains(t, output, "Inspect cluster-wide topology and license information")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt get cluster")
 	require.Contains(t, output, "license")
 	require.Contains(t, output, "topology")
+	require.Contains(t, output, "Prefer `--json` on the leaf commands")
+	require.Contains(t, output, "./c8volt get cluster license --json")
 }
 
 // Verifies `get cluster license --help` describes license retrieval usage.
@@ -121,7 +129,9 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
 	require.Contains(t, output, "Get the cluster license of the connected Camunda 8 cluster")
+	require.Contains(t, output, "Prefer `--json` when automation needs the raw license payload")
 	require.Contains(t, output, "c8volt get cluster license")
+	require.Contains(t, output, "./c8volt get cluster license --json")
 }
 
 // Verifies legacy `get cluster-topology --help` remains available with deprecation guidance.
@@ -129,7 +139,19 @@ func TestGetClusterTopologyLegacyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster-topology", "--help")
 
 	require.Contains(t, output, "Get the cluster topology of the connected Camunda 8 cluster")
+	require.Contains(t, output, "Prefer `--json` for automation")
 	require.Contains(t, output, "Deprecated but supported: use `c8volt get cluster topology`.")
+	require.Contains(t, output, "./c8volt get cluster topology --json")
+}
+
+func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
+	output := executeRootForTest(t, "get", "process-definition", "--help")
+
+	require.Contains(t, output, "List or fetch deployed process definitions")
+	require.Contains(t, output, "Use this read-only command to inspect deployed BPMN models")
+	require.Contains(t, output, "prefer `--json` when chaining the result into scripts")
+	require.Contains(t, output, "Use `--xml` only when you need the raw BPMN XML")
+	require.Contains(t, output, "./c8volt get pd --key 2251799813686017 --json")
 }
 
 // Verifies get commands consume env-overridden oauth2 scopes when authenticating against the configured API.

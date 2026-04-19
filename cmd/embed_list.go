@@ -18,7 +18,11 @@ var (
 var embedListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List embedded (virtual) files containing process definitions",
+	Long: "List embedded (virtual) files containing process definitions.\n\n" +
+		"Use this read-only command to discover which BPMN resources are packaged into the c8volt binary before exporting or deploying them. " +
+		"Prefer `--json` when another tool needs the file names programmatically, and add `--details` when you need the full embedded paths.",
 	Example: `  ./c8volt embed list
+  ./c8volt embed list --details
   ./c8volt --json embed list`,
 	Aliases: []string{"ls"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -51,4 +55,13 @@ var embedListCmd = &cobra.Command{
 func init() {
 	embedCmd.AddCommand(embedListCmd)
 	embedListCmd.Flags().BoolVar(&flagEmbedListDetails, "details", false, "show full embedded file paths")
+	setCommandMutation(embedListCmd, CommandMutationReadOnly)
+	setContractSupport(embedListCmd, ContractSupportLimited)
+	setOutputModes(embedListCmd,
+		OutputModeContract{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	)
 }
