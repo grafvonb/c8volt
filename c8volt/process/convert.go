@@ -127,6 +127,8 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
 		ParentKey:            x.ParentKey,
+		HasParent:            x.HasParent,
+		HasIncident:          x.HasIncident,
 	}
 }
 

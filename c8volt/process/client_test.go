@@ -40,6 +40,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 	t.Parallel()
 
 	ctx := context.Background()
+	hasParent := testBoolPtr(false)
+	hasIncident := testBoolPtr(true)
 	piAPI := stubProcessInstanceAPI{
 		searchForProcessInstances: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 			assert.Equal(t, int32(25), size)
@@ -52,6 +54,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 				EndDateBefore:        "2026-02-28",
 				State:                d.StateCompleted,
 				ParentKey:            "12345",
+				HasParent:            hasParent,
+				HasIncident:          hasIncident,
 			}, filter)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return []d.ProcessInstance{}, nil
@@ -68,6 +72,8 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 		EndDateBefore:        "2026-02-28",
 		State:                StateCompleted,
 		ParentKey:            "12345",
+		HasParent:            hasParent,
+		HasIncident:          hasIncident,
 	}, 25, options.WithVerbose())
 
 	require.NoError(t, err)
@@ -394,3 +400,7 @@ func (stubProcessInstanceAPI) WaitForProcessInstancesState(context.Context, type
 }
 
 var _ pisvc.API = stubProcessInstanceAPI{}
+
+func testBoolPtr(v bool) *bool {
+	return &v
+}

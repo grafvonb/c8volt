@@ -10,7 +10,7 @@
 
 ## Decision 2: Represent roots/children semantics as parent-presence, not overloaded parent-key equality
 
-- **Decision**: Model `--roots-only` and `--children-only` as a tri-state parent-presence filter separate from the existing explicit `ParentKey=<key>` equality filter.
+- **Decision**: Model `--roots-only` and `--children-only` as a tri-state `*bool` parent-presence filter separate from the existing explicit `ParentKey=<key>` equality filter.
 - **Rationale**: The current shared filter only has `ParentKey`, which means "exact parent key match." Roots/children semantics instead depend on whether the parent key exists at all, so reusing `ParentKey` would blur two distinct meanings and make request generation ambiguous.
 - **Alternatives considered**:
   - Treat roots as `ParentKey=""` and children as `ParentKey!= ""`: rejected because the shared filter type cannot currently express presence/absence rules distinctly from equality.
@@ -18,7 +18,7 @@
 
 ## Decision 3: Represent incidents semantics as explicit boolean presence on the shared filter
 
-- **Decision**: Add an explicit incident-presence field to the shared filter so `--incidents-only` and `--no-incidents-only` can flow directly into the request builders on supported versions.
+- **Decision**: Add an explicit optional `*bool` incident-presence field to the shared filter so `--incidents-only` and `--no-incidents-only` can flow directly into the request builders on supported versions.
 - **Rationale**: The public and domain process-instance models already expose `Incident bool` on returned items, and the `v88`/`v89` generated Camunda search filters expose `hasIncident`. A shared filter field keeps the CLI semantics aligned with the generated request surface.
 - **Alternatives considered**:
   - Leave incident filtering local everywhere: rejected because the generated `v88` and `v89` search APIs already support the same boolean filter server-side.
