@@ -73,11 +73,11 @@ func normalizeVersion(v int32) *int32 {
 	latest := int32(-1)
 	switch {
 	case v == -1:
-		return &latest
+		return new(latest)
 	case v > 0:
-		return &v
+		return new(v)
 	default:
-		return &latest
+		return new(latest)
 	}
 }
 

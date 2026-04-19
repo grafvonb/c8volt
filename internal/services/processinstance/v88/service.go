@@ -276,7 +276,7 @@ func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
 	}
-	return &t, nil
+	return new(t), nil
 }
 
 // parseInclusiveDateUpperBound parses a YYYY-MM-DD date into the end of that day in UTC.
@@ -290,7 +290,7 @@ func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
 		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
 	}
 	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
-	return &t, nil
+	return new(t), nil
 }
 
 func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {

@@ -542,8 +542,8 @@ func TestPopulatePISearchFilterOpts_TranslatesSupportedPresenceFlags(t *testing.
 
 	filter := populatePISearchFilterOpts()
 
-	require.Equal(t, testBoolPtr(true), filter.HasParent)
-	require.Equal(t, testBoolPtr(true), filter.HasIncident)
+	require.Equal(t, new(true), filter.HasParent)
+	require.Equal(t, new(true), filter.HasIncident)
 }
 
 func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.T) {
@@ -1187,10 +1187,6 @@ func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
 	require.NotNil(t, flag)
 	require.NoError(t, flag.Value.Set("1000"))
 	flag.Changed = false
-}
-
-func testBoolPtr(v bool) *bool {
-	return &v
 }
 
 func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {

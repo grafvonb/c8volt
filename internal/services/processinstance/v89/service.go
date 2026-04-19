@@ -200,16 +200,14 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		From:  &pageReq.From,
 		Limit: &pageReq.Size,
 	})
-	desc := camundav89.DESC
-	asc := camundav89.ASC
 	sort := []camundav89.ProcessInstanceSearchQuerySortRequest{
 		{
 			Field: camundav89.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionName,
-			Order: &desc,
+			Order: new(camundav89.DESC),
 		},
 		{
 			Field: camundav89.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionVersion,
-			Order: &asc,
+			Order: new(camundav89.ASC),
 		},
 	}
 	body := processInstanceSearchQuery{
@@ -271,7 +269,7 @@ func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
 	}
-	return &t, nil
+	return new(t), nil
 }
 
 func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
@@ -283,15 +281,14 @@ func parseInclusiveDateUpperBound(raw string) (*time.Time, error) {
 		return nil, fmt.Errorf("parse %q as YYYY-MM-DD: %w", raw, err)
 	}
 	t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
-	return &t, nil
+	return new(t), nil
 }
 
 func endDateExistsFilter(filter d.ProcessInstanceFilter) *bool {
 	if filter.EndDateAfter == "" && filter.EndDateBefore == "" {
 		return nil
 	}
-	exists := true
-	return &exists
+	return new(true)
 }
 
 func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {

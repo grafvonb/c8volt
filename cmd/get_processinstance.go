@@ -256,22 +256,18 @@ func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 		}
 	}
 	if flagGetPIChildrenOnly {
-		f.HasParent = boolPtr(true)
+		f.HasParent = new(true)
 	}
 	if flagGetPIRootsOnly {
-		f.HasParent = boolPtr(false)
+		f.HasParent = new(false)
 	}
 	if flagGetPIIncidentsOnly {
-		f.HasIncident = boolPtr(true)
+		f.HasIncident = new(true)
 	}
 	if flagGetPINoIncidentsOnly {
-		f.HasIncident = boolPtr(false)
+		f.HasIncident = new(false)
 	}
 	return f
-}
-
-func boolPtr(v bool) *bool {
-	return &v
 }
 
 func hasPISearchFilterFlags() bool {

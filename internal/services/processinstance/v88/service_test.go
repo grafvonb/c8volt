@@ -367,8 +367,8 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		}, newStrictOperateClient(t))
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			HasParent:   testBoolPtr(false),
-			HasIncident: testBoolPtr(false),
+			HasParent:   new(false),
+			HasIncident: new(false),
 		}, 25)
 
 		require.NoError(t, err)
@@ -921,19 +921,15 @@ func waitTestConfig() *config.Config {
 	return cfg
 }
 
-func testBoolPtr(v bool) *bool {
-	return &v
-}
-
 func makeProcessInstanceResult(key string, state string, parentKey string) *camundav88.ProcessInstanceResult {
 	startDate := time.Date(2026, time.March, 23, 18, 0, 0, 0, time.UTC)
 	item := &camundav88.ProcessInstanceResult{
 		HasIncident:                 false,
 		ProcessDefinitionId:         "demo",
 		ProcessDefinitionKey:        "9001",
-		ProcessDefinitionName:       ptr("demo"),
+		ProcessDefinitionName:       new("demo"),
 		ProcessDefinitionVersion:    3,
-		ProcessDefinitionVersionTag: ptr("stable"),
+		ProcessDefinitionVersionTag: new("stable"),
 		ProcessInstanceKey:          key,
 		StartDate:                   startDate,
 		State:                       camundav88.ProcessInstanceStateEnum(state),
@@ -947,10 +943,6 @@ func makeProcessInstanceResult(key string, state string, parentKey string) *camu
 
 func wrongStateMessage() string {
 	return "Process instances needs to be in one of the states [COMPLETED, CANCELED]"
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func marshalJSON(t *testing.T, v any) string {

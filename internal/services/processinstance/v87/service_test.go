@@ -340,8 +340,8 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		})
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			HasParent:   toolx.Ptr(true),
-			HasIncident: toolx.Ptr(true),
+			HasParent:   new(true),
+			HasIncident: new(true),
 		}, 25)
 
 		require.NoError(t, err)
@@ -477,12 +477,11 @@ func TestService_SearchForProcessInstancesPage_FallbackOverflowDetection(t *test
 					*makeProcessInstanceResponse(103, "ACTIVE", ""),
 					*makeProcessInstanceResponse(104, "ACTIVE", ""),
 				}
-				total := int64(5)
 				return &operatev87.SearchProcessInstancesResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
 					JSON200: &operatev87.ResultsProcessInstance{
 						Items: &items,
-						Total: &total,
+						Total: new(int64(5)),
 					},
 				}, nil
 			},

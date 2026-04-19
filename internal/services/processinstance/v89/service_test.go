@@ -220,8 +220,8 @@ func TestService_SearchAndLookup(t *testing.T) {
 		})
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			HasParent:   testBoolPtr(true),
-			HasIncident: testBoolPtr(true),
+			HasParent:   new(true),
+			HasIncident: new(true),
 		}, 25)
 
 		require.NoError(t, err)
@@ -464,19 +464,15 @@ func waitTestConfig() *config.Config {
 	return cfg
 }
 
-func testBoolPtr(v bool) *bool {
-	return &v
-}
-
 func makeProcessInstanceResult(key string, state string, parentKey string) camundav89.ProcessInstanceResult {
 	startDate := time.Date(2026, time.March, 23, 18, 0, 0, 0, time.UTC)
 	item := camundav89.ProcessInstanceResult{
 		HasIncident:                 false,
 		ProcessDefinitionId:         "demo",
 		ProcessDefinitionKey:        "9001",
-		ProcessDefinitionName:       ptr("demo"),
+		ProcessDefinitionName:       new("demo"),
 		ProcessDefinitionVersion:    3,
-		ProcessDefinitionVersionTag: ptr("stable"),
+		ProcessDefinitionVersionTag: new("stable"),
 		ProcessInstanceKey:          key,
 		StartDate:                   startDate,
 		State:                       camundav89.ProcessInstanceStateEnum(state),
@@ -486,10 +482,6 @@ func makeProcessInstanceResult(key string, state string, parentKey string) camun
 		item.ParentProcessInstanceKey = &parentKey
 	}
 	return item
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 func marshalJSON(t *testing.T, v any) string {

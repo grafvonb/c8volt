@@ -228,7 +228,7 @@ func TestService_Get(t *testing.T) {
 						ResourceName: "demo.bpmn",
 						TenantId:     "tenant-a",
 						Version:      7,
-						VersionTag:   testStringPtr("v1"),
+						VersionTag:   new("v1"),
 					},
 				}, nil
 			},
