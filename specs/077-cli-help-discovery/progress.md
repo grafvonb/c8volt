@@ -178,3 +178,22 @@ Started: 2026-04-19 13:07:21
 - Stable doc-parity regressions are cheapest when they render Cobra markdown in-process and pin a few shared discovery anchors instead of snapshotting full generated pages.
 - In this repository, `make docs-content` is the minimal Makefile entry point that both regenerates `docs/cli/` and syncs `docs/index.md` from `README.md`, so it is sufficient for markdown parity work without invoking the full docs site build.
 ---
+
+## Iteration 7 - 2026-04-19 13:47:49 CEST
+**User Story**: Final polish & cross-cutting concerns
+**Tasks Completed**:
+- [x] T021: Audit hidden/internal command exclusion and public coverage notes in `specs/077-cli-help-discovery/research.md` and `specs/077-cli-help-discovery/quickstart.md`
+- [x] T022: Run focused command-help validation for the refreshed public tree and record the verification flow in `specs/077-cli-help-discovery/quickstart.md`
+- [x] T023: Run repository-wide validation through the Makefile with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/077-cli-help-discovery/progress.md
+- specs/077-cli-help-discovery/quickstart.md
+- specs/077-cli-help-discovery/research.md
+- specs/077-cli-help-discovery/tasks.md
+**Learnings**:
+- The live `capabilities --json` audit reports 29 discoverable public command paths beneath the root; the full public help/docs surface is 30 command pages once `c8volt` itself is included.
+- `docs/cli/` currently mirrors that public surface exactly with 30 command pages plus `index.md`, and the duplicate cluster-topology spellings remain intentionally public.
+- Final validation is now green for both `go test ./cmd -count=1` and `make test`, so the feature’s final polish gate no longer depends on the earlier sandbox bind failures.
+---

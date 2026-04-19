@@ -103,9 +103,9 @@
 
 **Purpose**: Final verification, coverage audit, and repository-wide validation.
 
-- [ ] T021 [P] Audit hidden/internal command exclusion and public coverage notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/077-cli-help-discovery/research.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/077-cli-help-discovery/quickstart.md
-- [ ] T022 [P] Run focused command-help validation for the refreshed public tree and record the verification flow in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/077-cli-help-discovery/quickstart.md
-- [ ] T023 Run repository-wide validation through /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile with `make test`
+- [x] T021 [P] Audit hidden/internal command exclusion and public coverage notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/077-cli-help-discovery/research.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/077-cli-help-discovery/quickstart.md
+- [x] T022 [P] Run focused command-help validation for the refreshed public tree and record the verification flow in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/077-cli-help-discovery/quickstart.md
+- [x] T023 Run repository-wide validation through /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile with `make test`
 
 ---
 
