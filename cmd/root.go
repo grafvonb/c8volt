@@ -124,7 +124,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 				"auth.mode",
 			}
 			hasEnv := hasEnvConfigByKeys(configKeys)
-			if !hasEnv {
+			if !hasEnv && !bypassRootBootstrap(cmd) {
 				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
 			}
 		}
