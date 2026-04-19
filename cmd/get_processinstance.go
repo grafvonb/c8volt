@@ -46,10 +46,15 @@ var (
 var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
+	Long: "List process instances by search filters or fetch them by key.\n" +
+		"Default output stays human-oriented for operator workflows.\n\n" +
+		"When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. " +
+		"JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
+  ./c8volt --json get pi --state active --count 250
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
 		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed

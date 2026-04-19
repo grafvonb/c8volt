@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-61-g08dbf7f-dirty`, commit `08dbf7f`, built `2026-04-17T16:56:35Z` | camunda: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-65-g9cdcc63-dirty`, commit `9cdcc63`, built `2026-04-19T04:18:22Z` | camunda: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -155,7 +155,7 @@ Deletion in real environments often means cancel-first, then remove, then verify
 ./c8volt delete pi --state completed --count 250 --auto-confirm
 ```
 
-Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing unless `--auto-confirm` is set. Direct `--key` workflows still bypass paging and keep their existing behavior.
+Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing in human-oriented modes unless `--auto-confirm` or `--json` is set. JSON mode auto-consumes remaining pages and returns one final aggregated result. Direct `--key` workflows still bypass paging and keep their existing behavior.
 
 ## Precision Tools
 
@@ -356,7 +356,9 @@ app:
 - Default behavior stays at `1000` when this key is unset.
 - `--count` overrides the configured value for one command run.
 - `C8VOLT_APP_PROCESS_INSTANCE_PAGE_SIZE` provides the same setting through the environment.
-- `--auto-confirm` continues to the next page automatically; without it, the CLI prompts between pages.
+- `--auto-confirm` continues to the next page automatically.
+- `--json` also auto-consumes remaining pages for supported machine-readable flows and returns one aggregated result.
+- Without either flag, the CLI prompts between pages in human-oriented modes.
 - Direct `--key` usage for `cancel pi` and `delete pi` remains non-paged.
 
 ### Tenant support
