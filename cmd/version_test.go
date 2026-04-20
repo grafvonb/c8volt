@@ -32,7 +32,7 @@ func TestVersionCommand_DefaultOutputRemainsCompactPlainText(t *testing.T) {
 	output := executeRootForTest(t, "version")
 
 	require.Contains(t, output, "c8volt ")
-	require.Contains(t, output, "camunda: 8.7, 8.8, 8.9")
+	require.Contains(t, output, "Supported Camunda versions: 8.7, 8.8, 8.9")
 	require.NotContains(t, output, `"outcome"`)
 	require.NotContains(t, output, `"command"`)
 }
