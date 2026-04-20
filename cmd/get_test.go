@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -580,6 +581,59 @@ func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
 	require.Contains(t, output, "2251799813685255")
 	require.Contains(t, output, "<default> order-process v7/stable")
 	require.NotContains(t, output, "<definitions")
+}
+
+func TestGetProcessDefinitionLatest_UsesEffectiveTenantForSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+  "items": [
+    {
+      "processDefinitionId": "order-process",
+      "processDefinitionKey": "2251799813685255",
+      "tenantId": "tenant-a",
+      "version": 7,
+      "versionTag": "stable"
+    }
+  ],
+  "page": {
+    "totalItems": 1,
+    "hasMoreTotalItems": false
+  }
+}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  tenant: base-tenant
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output := executeRootForTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant-a",
+		"get", "process-definition",
+		"--latest",
+	)
+
+	body := decodeSingleRequestJSON(t, requests)
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok, "expected search request filter object")
+	require.Equal(t, "tenant-a", filter["tenantId"])
+	require.Equal(t, true, filter["isLatestVersion"])
+	require.Contains(t, output, "tenant-a order-process v7/stable")
+	require.NotContains(t, output, "base-tenant")
 }
 
 // Verifies `get resource --id` succeeds and renders default table output.

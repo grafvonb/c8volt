@@ -220,6 +220,7 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 		Run(func(args mock.Arguments) {
 			rawBody := args.String(2)
 			assert.True(t, strings.Contains(rawBody, `"isLatestVersion":true`))
+			assert.False(t, strings.Contains(rawBody, `"tenantId":"tenant-a"`))
 		}).
 		Return(resp, nil)
 
@@ -234,6 +235,33 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	require.Len(t, defs, 1)
 	require.NotNil(t, defs[0].Statistics)
 	assert.Equal(t, int64(2), defs[0].Statistics.Active)
+	m.AssertExpectations(t)
+}
+
+func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &camundav89.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant-a","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+	}
+
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
+		Run(func(args mock.Arguments) {
+			rawBody := args.String(2)
+			assert.True(t, strings.Contains(rawBody, `"tenantId":"tenant-a"`))
+		}).
+		Return(resp, nil)
+
+	cfg := testConfig()
+	cfg.App.Tenant = "tenant-a"
+	svc, err := v89.New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+	require.NoError(t, err)
+
+	_, err = svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25)
+	require.NoError(t, err)
 	m.AssertExpectations(t)
 }
 

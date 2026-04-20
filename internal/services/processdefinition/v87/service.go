@@ -73,7 +73,7 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 
-	body := searchProcessDefinitionsRequest(filter, size)
+	body := searchProcessDefinitionsRequest(common.EffectiveTenant(s.cfg), filter, size)
 	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Operate.BaseURL, "body", body)
 	resp, err := s.co.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {
@@ -161,10 +161,11 @@ func ensureStatsSupported(cCfg *services.CallCfg) error {
 	return nil
 }
 
-func searchProcessDefinitionsRequest(filter d.ProcessDefinitionFilter, size int32) operatev87.QueryProcessDefinition {
+func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) operatev87.QueryProcessDefinition {
 	return operatev87.QueryProcessDefinition{
 		Filter: &operatev87.ProcessDefinition{
 			BpmnProcessId: toolx.PtrIf(filter.BpmnProcessId, ""),
+			TenantId:      toolx.PtrIf(tenantID, ""),
 			Version:       toolx.PtrIfNonZero(filter.ProcessVersion),
 			VersionTag:    toolx.PtrIf(filter.ProcessVersionTag, ""),
 		},

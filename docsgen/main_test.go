@@ -21,7 +21,7 @@ func TestFormatDocsBuildInfoRelease(t *testing.T) {
 		"Generated from release `v2.1.0`",
 		"commit `abcdef123456`",
 		"built `2026-04-11T09:10:11Z`",
-		"camunda: 8.7, 8.8",
+		"Supported Camunda 8 versions: 8.7, 8.8",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected build info to contain %q, got %q", want, got)
@@ -43,7 +43,7 @@ func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 		"Generated from build `c8volt v2.1.0-8-gabcdef123456-dirty`",
 		"commit `abcdef123456`",
 		"built `2026-04-11T09:10:11Z`",
-		"camunda: 8.7, 8.8",
+		"Supported Camunda 8 versions: 8.7, 8.8",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected build info to contain %q, got %q", want, got)
