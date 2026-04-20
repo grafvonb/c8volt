@@ -169,6 +169,7 @@ func TestService_SearchProcessDefinitionsLatest_FallsBackToClientSideLatestSelec
 			require.NotNil(t, body.Size)
 			assert.Equal(t, int32(1000), *body.Size)
 			assert.Nil(t, body.Filter.BpmnProcessId)
+			assert.Nil(t, body.Filter.TenantId)
 			assert.Nil(t, body.Filter.Version)
 			assert.Nil(t, body.Filter.VersionTag)
 		}).
@@ -183,6 +184,36 @@ func TestService_SearchProcessDefinitionsLatest_FallsBackToClientSideLatestSelec
 	assert.Equal(t, "alpha", defs[0].BpmnProcessId)
 	assert.Equal(t, int32(3), defs[0].ProcessVersion)
 	assert.Equal(t, "beta", defs[1].BpmnProcessId)
+	m.AssertExpectations(t)
+}
+
+func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &operatev87.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/search", http.StatusOK, "200"),
+		JSON200: &operatev87.ResultsProcessDefinition{
+			Items: &[]operatev87.ProcessDefinition{makeProcessDefinition(1, "proc", 2)},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(operatev87.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.TenantId)
+			assert.Equal(t, "tenant-a", *body.Filter.TenantId)
+		}).
+		Return(resp, nil)
+
+	cfg := testConfig()
+	cfg.App.Tenant = "tenant-a"
+	svc, err := v87.New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+	require.NoError(t, err)
+
+	_, err = svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25)
+	require.NoError(t, err)
 	m.AssertExpectations(t)
 }
 

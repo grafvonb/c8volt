@@ -221,6 +221,7 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
 			require.NotNil(t, body.Filter.IsLatestVersion)
 			assert.True(t, *body.Filter.IsLatestVersion)
+			assert.Nil(t, body.Filter.TenantId)
 		}).
 		Return(resp, nil)
 
@@ -235,6 +236,36 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	require.Len(t, defs, 1)
 	require.NotNil(t, defs[0].Statistics)
 	assert.Equal(t, int64(2), defs[0].Statistics.Active)
+	m.AssertExpectations(t)
+}
+
+func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	resp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+		},
+	}
+
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			body := args.Get(1).(camundav88.SearchProcessDefinitionsJSONRequestBody)
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.TenantId)
+			assert.Equal(t, "tenant-a", *body.Filter.TenantId)
+		}).
+		Return(resp, nil)
+
+	cfg := testConfig()
+	cfg.App.Tenant = "tenant-a"
+	svc, err := v88.New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+	require.NoError(t, err)
+
+	_, err = svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25)
+	require.NoError(t, err)
 	m.AssertExpectations(t)
 }
 

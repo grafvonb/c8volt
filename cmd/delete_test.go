@@ -895,6 +895,42 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	require.Contains(t, string(output), "either --key or --bpmn-process-id must be provided")
 }
 
+func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		requests = append(requests, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  tenant: base-tenant
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	require.Contains(t, string(output), "no process definitions found to delete")
+
+	body := decodeSingleRequestJSON(t, requests)
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok, "expected search request filter object")
+	require.Equal(t, "tenant-a", filter["tenantId"])
+	require.Equal(t, true, filter["isLatestVersion"])
+}
+
 // Runs a delete helper subprocess expected to fail and returns combined output with the exit code.
 func executeDeleteProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
@@ -1100,6 +1136,18 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper(t *testing.
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-definition"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "delete", "process-definition", "--bpmn-process-id", "order-process", "--latest", "--allow-inconsistent", "--auto-confirm", "--no-wait"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

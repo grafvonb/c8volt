@@ -71,7 +71,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	body := searchProcessDefinitionsRequest(filter, size)
+	body := searchProcessDefinitionsRequest(common.EffectiveTenant(s.cfg), filter, size)
 	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
@@ -176,9 +176,10 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	return nil
 }
 
-func searchProcessDefinitionsRequest(filter d.ProcessDefinitionFilter, size int32) processDefinitionSearchQuery {
+func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) processDefinitionSearchQuery {
 	bodyFilter := &processDefinitionFilter{
 		ProcessDefinitionId: newStringEqFilterPtr(filter.BpmnProcessId),
+		TenantId:            toolx.PtrIf(tenantID, ""),
 		Version:             toolx.PtrIfNonZero(filter.ProcessVersion),
 		VersionTag:          toolx.PtrIf(filter.ProcessVersionTag, ""),
 		IsLatestVersion:     toolx.PtrIf(filter.IsLatestVersion, false),
@@ -213,6 +214,7 @@ type processDefinitionSearchQuery struct {
 
 type processDefinitionFilter struct {
 	ProcessDefinitionId *camundav89.StringFilterProperty `json:"processDefinitionId,omitempty"`
+	TenantId            *camundav89.TenantId             `json:"tenantId,omitempty"`
 	Version             *int32                           `json:"version,omitempty"`
 	VersionTag          *string                          `json:"versionTag,omitempty"`
 	IsLatestVersion     *bool                            `json:"isLatestVersion,omitempty"`
