@@ -61,7 +61,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 		}
 		attempts++
 		log.Debug(fmt.Sprintf("attempt #%d to fetch state for process instance %s", attempts, key))
-		got, pi, errInDelay := s.GetProcessInstanceStateByKey(ctx, key)
+		got, pi, errInDelay := s.GetProcessInstanceStateByKey(ctx, key, opts...)
 		if errInDelay == nil {
 			if stateIn(got, desired) {
 				if attempts == 1 {
@@ -76,7 +76,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			}
 			log.Info(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt #%d)", key, got, attempts))
 		} else if errInDelay != nil {
-			if errors.Is(errInDelay, d.ErrNotFound) || strings.Contains(errInDelay.Error(), "404") {
+			if isProcessInstanceAbsentErr(errInDelay) {
 				got = d.StateAbsent
 				if stateIn(got, desired) {
 					elapsed := time.Since(start)
@@ -108,6 +108,16 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			return d.StateResponse{Ok: false, State: d.StateUnknown, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", ctx.Err(), status)
 		}
 	}
+}
+
+func isProcessInstanceAbsentErr(err error) bool {
+	if errors.Is(err, d.ErrNotFound) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "404") ||
+		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "does not exist")
 }
 
 func stateIn(st d.State, set d.States) bool {

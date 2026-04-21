@@ -2,6 +2,7 @@ package v87
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -164,7 +165,7 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 			continue
 		}
 		_, err := s.GetProcessInstance(ctx, it.ParentKey, opts...)
-		if err != nil && strings.Contains(err.Error(), "404") {
+		if errors.Is(err, d.ErrNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found") {
 			result = append(result, it)
 		} else if err != nil {
 			return nil, err
@@ -386,9 +387,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	}
 
 	resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
-	if resp.StatusCode() == http.StatusBadRequest &&
-		resp.ApplicationproblemJSON400 != nil &&
-		*resp.ApplicationproblemJSON400.Message == wrongStateMessage400 {
+	if isDeleteWrongStateResponse(resp) {
 		if cCfg.Force {
 			s.log.Info(fmt.Sprintf("process instance with key %s not in one of terminated states; cancelling it first", key))
 			_, _, err = s.CancelProcessInstance(ctx, key, opts...)
@@ -397,7 +396,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			}
 			s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be cancelled by workflow engine...", key))
 			states := []d.State{d.StateCanceled, d.StateTerminated}
-			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states); err != nil {
+			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
 			s.log.Info(fmt.Sprintf("retrying deletion of process instance with key %d", oldKey))
@@ -410,15 +409,15 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	if err != nil {
 		return d.DeleteResponse{}, err
 	}
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.DeleteResponse{}, err
+	}
 	if !cCfg.NoWait {
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be deleted by workflow engine...", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
 		}
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.DeleteResponse{}, err
 	}
 	s.log.Info(fmt.Sprintf("process instance with key %s was successfully deleted", key))
 	return d.DeleteResponse{
@@ -449,6 +448,19 @@ func processInstanceKeyInt64(key string) (int64, error) {
 		return 0, fmt.Errorf("converting process instance key %q to int64: %w", key, err)
 	}
 	return oldKey, nil
+}
+
+func isDeleteWrongStateResponse(resp *operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse) bool {
+	if resp == nil || resp.StatusCode() != http.StatusBadRequest || resp.ApplicationproblemJSON400 == nil || resp.ApplicationproblemJSON400.Message == nil {
+		return false
+	}
+	msg := strings.ToLower(strings.TrimSpace(*resp.ApplicationproblemJSON400.Message))
+	if msg == strings.ToLower(wrongStateMessage400) {
+		return true
+	}
+	return strings.Contains(msg, "process") &&
+		strings.Contains(msg, "state") &&
+		(strings.Contains(msg, "completed") || strings.Contains(msg, "canceled") || strings.Contains(msg, "cancelled") || strings.Contains(msg, "terminated"))
 }
 
 func searchProcessInstancesRequest(tenant string, filter d.ProcessInstanceFilter, size int32) (operatev87.SearchProcessInstancesJSONRequestBody, error) {

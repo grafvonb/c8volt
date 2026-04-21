@@ -704,7 +704,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 				return &camundav88.GetProcessInstanceResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
-					JSON200:      makeProcessInstanceResult("123", "ACTIVE", ""),
+					JSON200:      makeProcessInstanceResult("123", "CANCELED", ""),
 				}, nil
 			},
 			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
@@ -730,6 +730,54 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, resp.Ok)
 		assert.Equal(t, http.StatusConflict, resp.StatusCode)
+	})
+
+	t.Run("ForceDeleteHandlesChangedWrongStateMessage", func(t *testing.T) {
+		deleteCalls := 0
+		cancelCalls := 0
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
+				return &camundav88.GetProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      makeProcessInstanceResult("123", "CANCELED", ""),
+				}, nil
+			},
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200:      &camundav88.ProcessInstanceSearchQueryResult{},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: func(ctx context.Context, key string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error) {
+				cancelCalls++
+				return &camundav88.CancelProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
+				}, nil
+			},
+		}, &mockOperateClient{
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev88.RequestEditorFn) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				deleteCalls++
+				if deleteCalls == 1 {
+					msg := "process instance must be in a terminated state"
+					return &operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+						HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+						ApplicationproblemJSON400: &operatev88.Error{Message: &msg},
+					}, nil
+				}
+				return &operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      &operatev88.ChangeStatus{},
+				}, nil
+			},
+		})
+
+		resp, err := svc.DeleteProcessInstance(ctx, "123", services.WithForce(), services.WithNoStateCheck(), services.WithNoWait())
+
+		require.NoError(t, err)
+		assert.True(t, resp.Ok)
+		assert.Equal(t, 2, deleteCalls)
+		assert.Equal(t, 1, cancelCalls)
 	})
 
 	t.Run("SuccessWaitsForAbsentState", func(t *testing.T) {

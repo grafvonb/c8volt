@@ -160,6 +160,29 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.True(t, got.Ok)
 		assert.Equal(t, d.StateAbsent, got.State)
 	})
+
+	t.Run("treats not-found text errors as absent", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				return d.StateUnknown, d.ProcessInstance{}, errors.New("process instance does not exist anymore")
+			},
+		}
+
+		got, _, err := WaitForProcessInstanceState(
+			context.Background(),
+			waiter,
+			testConfig(5*time.Millisecond, 3, 25*time.Millisecond),
+			testLogger(),
+			"missing",
+			d.States{d.StateAbsent},
+		)
+
+		require.NoError(t, err)
+		assert.True(t, got.Ok)
+		assert.Equal(t, d.StateAbsent, got.State)
+	})
 }
 
 func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duration) *config.Config {
