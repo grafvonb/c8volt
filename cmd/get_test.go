@@ -674,6 +674,25 @@ func TestOneLinePD_RendersSupportedZeroIncidentCount(t *testing.T) {
 	require.NotContains(t, got, "in:-")
 }
 
+func TestOneLinePD_OmitsUnsupportedIncidentCount(t *testing.T) {
+	got := oneLinePD(process.ProcessDefinition{
+		Key:            "2251799813685255",
+		TenantId:       "<default>",
+		BpmnProcessId:  "order-process",
+		ProcessVersion: 7,
+		Statistics: &process.ProcessDefinitionStatistics{
+			Active:                 4,
+			Completed:              9,
+			Canceled:               2,
+			Incidents:              7,
+			IncidentCountSupported: false,
+		},
+	})
+
+	require.Contains(t, got, "[ac:4 cp:9 cx:2]")
+	require.NotContains(t, got, " in:")
+}
+
 // Verifies `get resource --id` succeeds and renders default table output.
 func TestGetResourceCommand_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

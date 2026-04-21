@@ -11,6 +11,7 @@ Started: 2026-04-21 18:20:22
 - Existing regression coverage is already split by concern: versioned service tests for sourcing, facade tests for option/model passthrough, and command tests for visible rendering.
 - The shared process-definition stats seam can carry version capability through the model itself; `IncidentCountSupported` belongs beside `Incidents` in both domain and facade models so later rendering stays version-agnostic.
 - The `v88` and `v89` process-definition client interfaces are also reused in resource-service tests, so widening those interfaces requires keeping the resource test doubles compiling in the same iteration.
+- When a user-story behavior already exists in source but is not yet locked down in the feature checklist, the smallest repository-native completion step is to add focused service and renderer regressions before changing implementation.
 
 ---
 
@@ -86,4 +87,24 @@ Started: 2026-04-21 18:20:22
 - The exact supported-version contract is easier to satisfy by deduplicating active incident `ProcessInstanceKey` values per definition than by relying on the generated error-hash aggregation endpoints, which would still overcount across multiple distinct incident errors.
 - Renderer behavior can stay version-agnostic once the services set `IncidentCountSupported=true`; the command only needs to decide whether to append the `in:` segment, not which platform version it is talking to.
 - `make test` is a useful final gate here because the process-definition client interface is shared outside the story’s direct package, and widening it surfaced compile-only fallout in resource-service test doubles.
+---
+
+## Iteration 4 - 2026-04-21 18:39 CEST
+**User Story**: User Story 2 - Preserve Version-Specific Truthfulness
+**Tasks Completed**:
+- [x] T014: Add `v8.7` service tests proving incident-count support remains unavailable under `WithStat`
+- [x] T015: Add command rendering regressions proving unsupported versions omit `in:` entirely
+- [x] T016: Preserve the `v8.7` unsupported incident-count boundary
+- [x] T017: Update renderer behavior so unsupported stats omit `in:` without changing the other stat segments
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_test.go
+- internal/services/processdefinition/v87/service_test.go
+- specs/042-pd-incident-stats/tasks.md
+- specs/042-pd-incident-stats/progress.md
+**Learnings**:
+- `v8.7` already enforced the unsupported `WithStat` boundary in the versioned service, so the missing work in this slice was explicit regression coverage rather than new sourcing logic.
+- The renderer already honored `IncidentCountSupported=false`; a direct `oneLinePD(...)` regression is the lowest-cost guard against reintroducing `in:` on unsupported stats.
+- Running `make test` before the story commit is still worthwhile even for test-only iterations because the command and service packages share contracts with broader repository packages.
 ---

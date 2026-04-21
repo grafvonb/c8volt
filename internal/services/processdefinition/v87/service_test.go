@@ -187,6 +187,20 @@ func TestService_SearchProcessDefinitionsLatest_FallsBackToClientSideLatestSelec
 	m.AssertExpectations(t)
 }
 
+func TestService_SearchProcessDefinitionsLatest_WithStatRemainsUnsupported(t *testing.T) {
+	ctx := context.Background()
+	m := &mockProcessDefinitionClient{}
+
+	svc, err := v87.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v87.WithClientOperate(m))
+	require.NoError(t, err)
+
+	_, err = svc.SearchProcessDefinitionsLatest(ctx, domain.ProcessDefinitionFilter{}, services.WithStat())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not supported")
+	m.AssertExpectations(t)
+}
+
 func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
