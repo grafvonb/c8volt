@@ -344,6 +344,39 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.True(t, resp.Ok)
 		assert.Equal(t, 2, getCalls)
 	})
+
+	t.Run("DeleteRejectedByApiReturnsErrorBeforeWait", func(t *testing.T) {
+		getCalls := 0
+		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+				getCalls++
+				return &camundav89.GetProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+				}, nil
+			},
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: nil,
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteProcessInstanceResponse, error) {
+				return &camundav89.DeleteProcessInstanceResponse{
+					Body:         []byte(`{"message":"cannot delete active instance"}`),
+					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+				}, nil
+			},
+		})
+
+		_, err := svc.DeleteProcessInstance(ctx, "123")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrBadRequest)
+		assert.Equal(t, 1, getCalls)
+	})
 }
 
 func TestService_WithClientAndLoggerOptions(t *testing.T) {

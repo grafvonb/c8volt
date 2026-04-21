@@ -462,15 +462,15 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
 		}
 	}
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.DeleteResponse{}, err
+	}
 	if !cCfg.NoWait {
 		s.log.Info(fmt.Sprintf("waiting for process instance with key %s to be deleted by workflow engine...", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
 		}
-	}
-	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return d.DeleteResponse{}, err
 	}
 	s.log.Info(fmt.Sprintf("process instance with key %s was successfully deleted", key))
 	return d.DeleteResponse{
