@@ -92,13 +92,9 @@ profiles:
 func TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestRunProcessInstanceCommand_RejectsMutuallyExclusiveDefinitionFlagsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -137,13 +133,9 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestRunProcessInstanceCommand_ConflictUsesConflictExitCodeHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestRunProcessInstanceCommand_ConflictUsesConflictExitCodeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)

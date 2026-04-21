@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -37,10 +38,7 @@ func TestConfigShowHelp_ExplainsEffectiveConfigExamples(t *testing.T) {
 
 // Verifies config show surfaces invalid effective configuration through the shared failure model.
 func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfig(t *testing.T) {
-	cmd := exec.Command(os.Args[0], "-test.run=TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper")
-	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper", nil)
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -298,13 +296,9 @@ profiles:
       tenant: dev-tenant
 `)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModelHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModelHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)

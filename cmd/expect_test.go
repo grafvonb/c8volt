@@ -43,13 +43,9 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 func TestExpectProcessInstanceCommand_RejectsInvalidStates(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestExpectProcessInstanceCommand_RejectsInvalidStatesHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)

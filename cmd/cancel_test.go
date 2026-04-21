@@ -110,7 +110,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatchesHelper", cfgPath)
 
 	require.NoError(t, err)
-	require.Len(t, requests, 4)
+	require.Len(t, requests, 2)
 	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
@@ -120,13 +120,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-01-31T23:59:59.999999999Z")
 	requireCapturedPISearchDateExists(t, filter, "endDate")
 
-	for _, idx := range []int{1, 2} {
-		keyLookup := decodeCapturedPISearchRequest(t, requests[idx])
-		keyFilter := keyLookup["filter"].(map[string]any)
-		require.Equal(t, "2251799813711967", keyFilter["processInstanceKey"])
-	}
-
-	descendantSearch := decodeCapturedPISearchRequest(t, requests[3])
+	descendantSearch := decodeCapturedPISearchRequest(t, requests[1])
 	descFilter := descendantSearch["filter"].(map[string]any)
 	require.Equal(t, "2251799813711967", descFilter["parentProcessInstanceKey"])
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
@@ -173,7 +167,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatchesHelper", cfgPath)
 
 	require.NoError(t, err)
-	require.Len(t, requests, 4)
+	require.Len(t, requests, 2)
 	require.Equal(t, []string{"/v2/process-instances/2251799813711967/cancellation"}, cancelled.Snapshot())
 	filter := decodeCapturedPISearchFilter(t, requests[:1])
 
@@ -181,13 +175,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCa
 	require.Equal(t, "order-process", filter["processDefinitionId"])
 	requireCapturedPISearchDateBound(t, filter, "startDate", "$gte", "2026-03-11T00:00:00Z")
 
-	for _, idx := range []int{1, 2} {
-		keyLookup := decodeCapturedPISearchRequest(t, requests[idx])
-		keyFilter := keyLookup["filter"].(map[string]any)
-		require.Equal(t, "2251799813711967", keyFilter["processInstanceKey"])
-	}
-
-	descendantSearch := decodeCapturedPISearchRequest(t, requests[3])
+	descendantSearch := decodeCapturedPISearchRequest(t, requests[1])
 	descFilter := descendantSearch["filter"].(map[string]any)
 	require.Equal(t, "2251799813711967", descFilter["parentProcessInstanceKey"])
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
@@ -270,6 +258,13 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/101/cancellation" || r.URL.Path == "/v2/process-instances/102/cancellation" || r.URL.Path == "/v2/process-instances/103/cancellation"):
 			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -414,6 +409,13 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/201/cancellation" || r.URL.Path == "/v2/process-instances/202/cancellation" || r.URL.Path == "/v2/process-instances/203/cancellation"):
 			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -494,6 +496,13 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/301/cancellation" || r.URL.Path == "/v2/process-instances/302/cancellation" || r.URL.Path == "/v2/process-instances/303/cancellation"):
 			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -565,6 +574,13 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/211/cancellation" || r.URL.Path == "/v2/process-instances/212/cancellation"):
 			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -634,6 +650,13 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/221/cancellation" || r.URL.Path == "/v2/process-instances/222/cancellation"):
 			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -688,6 +711,9 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/301/cancellation":
 			cancelled.Append(r.URL.Path)
 			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/301":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"301","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -722,10 +748,11 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 
 func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/301", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[]}`))
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"title":"Not Found","status":404,"detail":"resource not found"}`))
 	}))
 	t.Cleanup(srv.Close)
 

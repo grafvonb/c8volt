@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -96,7 +95,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 	})
 
 	t.Run("SuccessWaitsForActiveState", func(t *testing.T) {
-		searchCalls := 0
+		getCalls := 0
 		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
 				return &camundav89.CreateProcessInstanceResponse{
@@ -110,18 +109,17 @@ func TestService_CreateProcessInstance(t *testing.T) {
 					},
 				}, nil
 			},
-			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
-				searchCalls++
-				payload := readBody(t, body)
-				assert.Contains(t, payload, `"processInstanceKey":"123"`)
-				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
-					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "ACTIVE", "")},
-					Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
-				}), nil
-			},
+			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
-			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+				getCalls++
+				assert.Equal(t, camundav89.ProcessInstanceKey("123"), key)
+				return &camundav89.GetProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+				}, nil
+			},
 		})
 
 		creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
@@ -130,7 +128,7 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		assert.Equal(t, "123", creation.Key)
 		assert.Equal(t, "2026-03-23T18:00:00Z", creation.StartDate)
 		assert.NotEmpty(t, creation.StartConfirmedAt)
-		assert.Equal(t, 1, searchCalls)
+		assert.Equal(t, 1, getCalls)
 	})
 }
 
@@ -176,21 +174,19 @@ func TestService_SearchAndLookup(t *testing.T) {
 		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
 	})
 
-	t.Run("GetProcessInstanceUsesTenantSafeSearch", func(t *testing.T) {
+	t.Run("GetProcessInstanceUsesGeneratedClient", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
-			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
-				payload := readBody(t, body)
-				assert.Contains(t, payload, `"tenantId":"tenant"`)
-				assert.Contains(t, payload, `"processInstanceKey":"123"`)
-				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
-					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "ACTIVE", "")},
-					Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
-				}), nil
-			},
+			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
-			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+				assert.Equal(t, camundav89.ProcessInstanceKey("123"), key)
+				return &camundav89.GetProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+				}, nil
+			},
 		})
 
 		pi, err := svc.GetProcessInstance(ctx, "123")
@@ -199,6 +195,26 @@ func TestService_SearchAndLookup(t *testing.T) {
 		assert.Equal(t, "123", pi.Key)
 		assert.Equal(t, d.StateActive, pi.State)
 		assert.Equal(t, "tenant", pi.TenantId)
+	})
+
+	t.Run("GetProcessInstanceTreatsNotFoundAsNotFound", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+				return &camundav89.GetProcessInstanceResponse{
+					Body:         []byte(`{"message":"not found"}`),
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusNotFound, "404 Not Found"),
+				}, nil
+			},
+		})
+
+		_, err := svc.GetProcessInstance(ctx, "123")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrNotFound)
 	})
 
 	t.Run("SearchPushesDownParentPresenceAndIncidentPresence", func(t *testing.T) {
@@ -262,14 +278,13 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		var deleted []string
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+				return &camundav89.GetProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+					JSON200:      new(makeProcessInstanceResult("123", "COMPLETED", "")),
+				}, nil
+			},
 			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
-				payload := readBody(t, body)
-				if strings.Contains(payload, `"processInstanceKey":"123"`) {
-					return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
-						Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "COMPLETED", "")},
-						Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
-					}), nil
-				}
 				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
 					Items: nil,
 					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
@@ -282,7 +297,6 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
 				}, nil
 			},
-			getProcessInstanceWithResponse: unexpectedGetProcessInstance(t),
 		})
 
 		resp, err := svc.DeleteProcessInstance(ctx, "123", services.WithNoWait())
@@ -294,24 +308,23 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 	})
 
 	t.Run("DeleteWaitsForAbsentState", func(t *testing.T) {
-		keySearchCalls := 0
+		getCalls := 0
 		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
-			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
-				payload := readBody(t, body)
-				if strings.Contains(payload, `"processInstanceKey":"123"`) {
-					keySearchCalls++
-					if keySearchCalls == 1 {
-						return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
-							Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "COMPLETED", "")},
-							Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
-						}), nil
-					}
-					return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
-						Items: nil,
-						Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
-					}), nil
+			getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+				getCalls++
+				if getCalls == 1 {
+					return &camundav89.GetProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+						JSON200:      new(makeProcessInstanceResult("123", "COMPLETED", "")),
+					}, nil
 				}
+				return &camundav89.GetProcessInstanceResponse{
+					Body:         []byte(`{"message":"not found"}`),
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusNotFound, "404 Not Found"),
+				}, nil
+			},
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
 				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
 					Items: nil,
 					Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
@@ -323,14 +336,13 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
 				}, nil
 			},
-			getProcessInstanceWithResponse: unexpectedGetProcessInstance(t),
 		})
 
 		resp, err := svc.DeleteProcessInstance(ctx, "123")
 
 		require.NoError(t, err)
 		assert.True(t, resp.Ok)
-		assert.Equal(t, 2, keySearchCalls)
+		assert.Equal(t, 2, getCalls)
 	})
 }
 
@@ -452,6 +464,7 @@ func testConfig() *config.Config {
 		},
 	}
 }
+
 
 func waitTestConfig() *config.Config {
 	cfg := testConfig()

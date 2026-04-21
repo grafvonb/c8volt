@@ -83,12 +83,18 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	require.Equal(t, true, meta["withAge"])
 }
 
-func TestGetProcessInstanceKeyLookup_UsesEffectiveTenantForSearchBackedLookup(t *testing.T) {
-	response := `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
+func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
+	response := `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`
 
 	t.Run("explicit flag tenant", func(t *testing.T) {
 		var requests []string
-		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+			requests = append(requests, r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(response))
+		}))
 		t.Cleanup(srv.Close)
 
 		cfgPath := writeRawTestConfig(t, `app:
@@ -107,15 +113,19 @@ apis:
 			"--key", "123",
 		)
 
-		filter := decodeCapturedPISearchFilter(t, requests)
-		require.Equal(t, "tenant-a", filter["tenantId"])
-		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Equal(t, []string{"/v2/process-instances/123"}, requests)
 		require.Contains(t, output, `"tenantId": "tenant-a"`)
 	})
 
 	t.Run("environment tenant", func(t *testing.T) {
 		var requests []string
-		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+			requests = append(requests, r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(response))
+		}))
 		t.Cleanup(srv.Close)
 
 		cfgPath := writeRawTestConfig(t, `app:
@@ -133,15 +143,19 @@ apis:
 			"--key", "123",
 		)
 
-		filter := decodeCapturedPISearchFilter(t, requests)
-		require.Equal(t, "tenant-a", filter["tenantId"])
-		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Equal(t, []string{"/v2/process-instances/123"}, requests)
 		require.Contains(t, output, `"tenantId": "tenant-a"`)
 	})
 
 	t.Run("profile tenant", func(t *testing.T) {
 		var requests []string
-		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+			requests = append(requests, r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(response))
+		}))
 		t.Cleanup(srv.Close)
 
 		cfgPath := writeRawTestConfig(t, `active_profile: base
@@ -168,15 +182,19 @@ profiles:
 			"--key", "123",
 		)
 
-		filter := decodeCapturedPISearchFilter(t, requests)
-		require.Equal(t, "tenant-a", filter["tenantId"])
-		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Equal(t, []string{"/v2/process-instances/123"}, requests)
 		require.Contains(t, output, `"tenantId": "tenant-a"`)
 	})
 
 	t.Run("base config tenant", func(t *testing.T) {
 		var requests []string
-		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, response)
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+			requests = append(requests, r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(response))
+		}))
 		t.Cleanup(srv.Close)
 
 		cfgPath := writeRawTestConfig(t, `app:
@@ -194,9 +212,7 @@ apis:
 			"--key", "123",
 		)
 
-		filter := decodeCapturedPISearchFilter(t, requests)
-		require.Equal(t, "tenant-a", filter["tenantId"])
-		require.Equal(t, "123", filter["processInstanceKey"])
+		require.Equal(t, []string{"/v2/process-instances/123"}, requests)
 		require.Contains(t, output, `"tenantId": "tenant-a"`)
 	})
 }
@@ -233,7 +249,13 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
-	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/2251799813711967", r.URL.Path)
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
@@ -245,8 +267,7 @@ func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T
 		"--key", "2251799813711967",
 	)
 
-	filter := decodeCapturedPISearchFilter(t, requests)
-	require.Equal(t, "2251799813711967", filter["processInstanceKey"])
+	require.Equal(t, []string{"/v2/process-instances/2251799813711967"}, requests)
 	require.Contains(t, output, `"key": "2251799813711967"`)
 }
 
@@ -919,22 +940,24 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 	t.Run("orphan-child filtering stays on follow-up lookups for supported versions", func(t *testing.T) {
 		for _, version := range []string{"8.8", "8.9"} {
 			t.Run(version, func(t *testing.T) {
-				var requests []string
+				var searchRequests []string
+				var getPaths []string
 				call := 0
 				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					require.Equal(t, http.MethodPost, r.Method)
-					require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-					body, err := io.ReadAll(r.Body)
-					require.NoError(t, err)
-					requests = append(requests, string(body))
-
 					call++
 					w.Header().Set("Content-Type", "application/json")
 					if call == 1 {
+						require.Equal(t, http.MethodPost, r.Method)
+						require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+						body, err := io.ReadAll(r.Body)
+						require.NoError(t, err)
+						searchRequests = append(searchRequests, string(body))
 						_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","parentProcessInstanceKey":"456","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 						return
 					}
+					require.Equal(t, http.MethodGet, r.Method)
+					require.Equal(t, "/v2/process-instances/456", r.URL.Path)
+					getPaths = append(getPaths, r.URL.Path)
 					w.WriteHeader(http.StatusNotFound)
 					_, _ = w.Write([]byte(`{"message":"not found"}`))
 				}))
@@ -950,17 +973,14 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 					"--orphan-children-only",
 				)
 
-				filters := decodeCapturedPISearchRequests(t, requests)
-				require.Len(t, filters, 2)
+				filters := decodeCapturedPISearchRequests(t, searchRequests)
+				require.Len(t, filters, 1)
 
 				topLevelFilter, ok := filters[0]["filter"].(map[string]any)
 				require.True(t, ok)
 				require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
 				require.NotContains(t, topLevelFilter, "processInstanceKey")
-
-				lookupFilter, ok := filters[1]["filter"].(map[string]any)
-				require.True(t, ok)
-				require.Equal(t, "456", lookupFilter["processInstanceKey"])
+				require.Equal(t, []string{"/v2/process-instances/456"}, getPaths)
 
 				require.Contains(t, output, `"total": 1`)
 				require.Contains(t, output, `"key": "123"`)

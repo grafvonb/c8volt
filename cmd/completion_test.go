@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"os"
-	"os/exec"
 	"testing"
 
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -81,13 +81,9 @@ func requireCompletionOutputStaysUserFacing(t *testing.T, output string) {
 // Verifies `completion zsh` emits description-bearing completion requests.
 func TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequests(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
-	cmd := exec.Command(os.Args[0], "-test.run=TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestCompletionCommand_ZshUsesDescriptionBearingCompletionRequestsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.NoError(t, err)
 
 	require.Contains(t, string(output), "__complete")
