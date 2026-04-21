@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- No active Speckit implementation plan has been recorded yet.
+- Active plan: `specs/042-pd-incident-stats/plan.md`
 <!-- SPECKIT END -->
