@@ -12,6 +12,7 @@ Started: 2026-04-21 18:20:22
 - The shared process-definition stats seam can carry version capability through the model itself; `IncidentCountSupported` belongs beside `Incidents` in both domain and facade models so later rendering stays version-agnostic.
 - The `v88` and `v89` process-definition client interfaces are also reused in resource-service tests, so widening those interfaces requires keeping the resource test doubles compiling in the same iteration.
 - When a user-story behavior already exists in source but is not yet locked down in the feature checklist, the smallest repository-native completion step is to add focused service and renderer regressions before changing implementation.
+- `make docs-content` regenerates both the command reference under `docs/cli/` and the docs homepage snapshot in `docs/index.md`, so README/help wording changes should expect both generated docs files to move together.
 
 ---
 
@@ -107,4 +108,28 @@ Started: 2026-04-21 18:20:22
 - `v8.7` already enforced the unsupported `WithStat` boundary in the versioned service, so the missing work in this slice was explicit regression coverage rather than new sourcing logic.
 - The renderer already honored `IncidentCountSupported=false`; a direct `oneLinePD(...)` regression is the lowest-cost guard against reintroducing `in:` on unsupported stats.
 - Running `make test` before the story commit is still worthwhile even for test-only iterations because the command and service packages share contracts with broader repository packages.
+---
+
+## Iteration 5 - 2026-04-21 18:45 CEST
+**User Story**: User Story 3 - Verify Version Coverage With Tests
+**Tasks Completed**:
+- [x] T018: Add shared facade/model coverage for unsupported incident-count passthrough in `c8volt/process/client_test.go`
+- [x] T019: Update command-layer rendering regressions to name the `8.8`, `8.9`, and `8.7` support boundary explicitly
+- [x] T020: Document `get process-definition --stat` incident-count semantics in command help and `README.md`
+- [x] T021: Regenerate the CLI reference with `make docs-content`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- c8volt/process/client_test.go
+- cmd/get_processdefinition.go
+- cmd/get_test.go
+- docs/cli/c8volt_get_process-definition.md
+- docs/index.md
+- specs/042-pd-incident-stats/tasks.md
+- specs/042-pd-incident-stats/progress.md
+**Learnings**:
+- The facade path always uses the shared `processdefinition.MaxResultSize` search wrapper, so facade regression tests should assert that constant rather than a story-local page size.
+- For this feature, the command-layer boundary is best locked down in `oneLinePD(...)` tests: supported versions differ only by `IncidentCountSupported`, not by renderer-side version checks.
+- Updating command help text is enough to carry the same behavior contract into generated CLI docs because `docs-content` pulls directly from Cobra help output and the README snapshot.
 ---

@@ -153,6 +153,9 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "Use this read-only command to inspect deployed BPMN models")
 	require.Contains(t, output, "prefer `--json` when chaining the result into scripts")
 	require.Contains(t, output, "Use `--xml` only when you need the raw BPMN XML")
+	require.Contains(t, output, "When `--stat` is enabled")
+	require.Contains(t, output, "Camunda `8.8`/`8.9` add `in:<count>`")
+	require.Contains(t, output, "`8.7` omits `in:`")
 	require.Contains(t, output, "./c8volt get pd --key 2251799813686017 --json")
 }
 
@@ -637,60 +640,64 @@ apis:
 	require.NotContains(t, output, "base-tenant")
 }
 
-func TestOneLinePD_RendersSupportedIncidentCount(t *testing.T) {
-	got := oneLinePD(process.ProcessDefinition{
-		Key:            "2251799813685255",
-		TenantId:       "<default>",
-		BpmnProcessId:  "order-process",
-		ProcessVersion: 7,
-		Statistics: &process.ProcessDefinitionStatistics{
-			Active:                 4,
-			Completed:              9,
-			Canceled:               2,
-			Incidents:              3,
-			IncidentCountSupported: true,
+func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		versionLabel      string
+		incidents         int64
+		supported         bool
+		expectedSegment   string
+		unexpectedSegment string
+	}{
+		{
+			name:              "v8.8 renders supported non-zero incident count",
+			versionLabel:      "8.8",
+			incidents:         3,
+			supported:         true,
+			expectedSegment:   "[ac:4 cp:9 cx:2 in:3]",
+			unexpectedSegment: "in:-",
 		},
-	})
-
-	require.Contains(t, got, "[ac:4 cp:9 cx:2 in:3]")
-}
-
-func TestOneLinePD_RendersSupportedZeroIncidentCount(t *testing.T) {
-	got := oneLinePD(process.ProcessDefinition{
-		Key:            "2251799813685255",
-		TenantId:       "<default>",
-		BpmnProcessId:  "order-process",
-		ProcessVersion: 7,
-		Statistics: &process.ProcessDefinitionStatistics{
-			Active:                 4,
-			Completed:              9,
-			Canceled:               2,
-			Incidents:              0,
-			IncidentCountSupported: true,
+		{
+			name:              "v8.9 renders supported zero incident count",
+			versionLabel:      "8.9",
+			incidents:         0,
+			supported:         true,
+			expectedSegment:   "[ac:4 cp:9 cx:2 in:0]",
+			unexpectedSegment: "in:-",
 		},
-	})
-
-	require.Contains(t, got, "[ac:4 cp:9 cx:2 in:0]")
-	require.NotContains(t, got, "in:-")
-}
-
-func TestOneLinePD_OmitsUnsupportedIncidentCount(t *testing.T) {
-	got := oneLinePD(process.ProcessDefinition{
-		Key:            "2251799813685255",
-		TenantId:       "<default>",
-		BpmnProcessId:  "order-process",
-		ProcessVersion: 7,
-		Statistics: &process.ProcessDefinitionStatistics{
-			Active:                 4,
-			Completed:              9,
-			Canceled:               2,
-			Incidents:              7,
-			IncidentCountSupported: false,
+		{
+			name:              "v8.7 omits unsupported incident count",
+			versionLabel:      "8.7",
+			incidents:         7,
+			supported:         false,
+			expectedSegment:   "[ac:4 cp:9 cx:2]",
+			unexpectedSegment: " in:",
 		},
-	})
+	}
 
-	require.Contains(t, got, "[ac:4 cp:9 cx:2]")
-	require.NotContains(t, got, " in:")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := oneLinePD(process.ProcessDefinition{
+				Key:               "2251799813685255",
+				TenantId:          "<default>",
+				BpmnProcessId:     "order-process",
+				ProcessVersion:    7,
+				ProcessVersionTag: "v" + tt.versionLabel,
+				Statistics: &process.ProcessDefinitionStatistics{
+					Active:                 4,
+					Completed:              9,
+					Canceled:               2,
+					Incidents:              tt.incidents,
+					IncidentCountSupported: tt.supported,
+				},
+			})
+
+			require.Contains(t, got, tt.expectedSegment)
+			require.NotContains(t, got, tt.unexpectedSegment)
+		})
+	}
 }
 
 // Verifies `get resource --id` succeeds and renders default table output.

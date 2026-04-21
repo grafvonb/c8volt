@@ -88,13 +88,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Add shared facade/model coverage for the refined process-definition statistics representation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
-- [ ] T019 [P] [US3] Add or update cross-version command regressions covering supported non-zero, supported zero, and unsupported omission in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
+- [x] T018 [P] [US3] Add shared facade/model coverage for the refined process-definition statistics representation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T019 [P] [US3] Add or update cross-version command regressions covering supported non-zero, supported zero, and unsupported omission in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Update user-facing command documentation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and the relevant command help text in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go
-- [ ] T021 [US3] Regenerate the CLI reference in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T020 [US3] Update user-facing command documentation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and the relevant command help text in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processdefinition.go
+- [x] T021 [US3] Regenerate the CLI reference in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 **Checkpoint**: User Story 3 is independently testable: regression coverage protects the version boundary and the docs reflect the shipped behavior.
 
