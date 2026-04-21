@@ -160,6 +160,20 @@ Task generation should break the work into dependency-ordered slices:
 - **Documentation Matches User Behavior**: Still passes. README and generated CLI docs are explicitly part of the design because the visible `--stat` contract changes.
 - **Small, Compatible, Repository-Native Changes**: Still passes. The work stays in the existing command renderer, facade model, and versioned processdefinition services.
 
+## Implementation Notes
+
+- The shipped model change is `IncidentCountSupported` alongside `Incidents` in the shared domain and public facade process-definition statistics types.
+- `internal/services/processdefinition/v88` and `v89` keep `ac`, `cp`, and `cx` on the existing process-definition statistics path and enrich `in:` from supported incident-bearing process-instance statistics.
+- `internal/services/processdefinition/v87` remains the unsupported boundary for incident counts; renderer behavior stays truthful by omitting `in:` when `IncidentCountSupported` is false.
+- `cmd/cmd_views_get.go` is the only visible rendering change: supported values render `in:<count>` including `in:0`, while unsupported stats keep the other segments and omit `in:`.
+- User-facing help text in `cmd/get_processdefinition.go`, `README.md`, and generated docs under `docs/cli/` were updated in the same feature slice to match the shipped behavior.
+
+## Verification Notes
+
+- Focused validation for this feature is `go test ./c8volt/process -count=1`, `go test ./internal/services/processdefinition/... -count=1`, and `go test ./cmd -count=1`.
+- Documentation validation is `make docs-content` to confirm generated CLI docs still match the command help text.
+- Final repository validation is `make test`; this remains the required pre-commit gate for the feature branch because the process-definition service contracts are reused outside the direct story packages.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |

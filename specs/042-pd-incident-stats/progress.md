@@ -13,6 +13,7 @@ Started: 2026-04-21 18:20:22
 - The `v88` and `v89` process-definition client interfaces are also reused in resource-service tests, so widening those interfaces requires keeping the resource test doubles compiling in the same iteration.
 - When a user-story behavior already exists in source but is not yet locked down in the feature checklist, the smallest repository-native completion step is to add focused service and renderer regressions before changing implementation.
 - `make docs-content` regenerates both the command reference under `docs/cli/` and the docs homepage snapshot in `docs/index.md`, so README/help wording changes should expect both generated docs files to move together.
+- `make docs-content` can still update `docs/index.md` even when command help text is unchanged because the generated homepage banner embeds the current build version, commit, and timestamp.
 
 ---
 
@@ -132,4 +133,24 @@ Started: 2026-04-21 18:20:22
 - The facade path always uses the shared `processdefinition.MaxResultSize` search wrapper, so facade regression tests should assert that constant rather than a story-local page size.
 - For this feature, the command-layer boundary is best locked down in `oneLinePD(...)` tests: supported versions differ only by `IncidentCountSupported`, not by renderer-side version checks.
 - Updating command help text is enough to carry the same behavior contract into generated CLI docs because `docs-content` pulls directly from Cobra help output and the README snapshot.
+---
+
+## Iteration 6 - 2026-04-21 18:48 CEST
+**User Story**: Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T022: Refresh implementation and verification notes in `plan.md` and `quickstart.md`
+- [x] T023: Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processdefinition/... -count=1`, and `go test ./cmd -count=1`
+- [x] T024: Run docs regeneration validation with `make docs-content`
+- [x] T025: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/042-pd-incident-stats/plan.md
+- specs/042-pd-incident-stats/progress.md
+- specs/042-pd-incident-stats/quickstart.md
+- specs/042-pd-incident-stats/tasks.md
+**Learnings**:
+- The Phase 6 closeout can stay documentation-only plus validation when the earlier story slices already shipped the behavior, as long as the spec artifacts capture the implemented seams and exact verification order.
+- `make test` remains the right final gate even for a polish-only iteration because the process-definition feature touches shared service contracts that broader packages compile against.
 ---

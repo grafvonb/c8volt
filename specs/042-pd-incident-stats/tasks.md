@@ -104,10 +104,10 @@
 
 **Purpose**: Finish validation, keep the feature artifacts aligned with the implemented behavior, and leave the repository ready for handoff or execution.
 
-- [ ] T022 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/042-pd-incident-stats/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/042-pd-incident-stats/quickstart.md
-- [ ] T023 Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processdefinition/... -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T024 Run docs regeneration validation with `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
-- [ ] T025 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T022 [P] Refresh implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/042-pd-incident-stats/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/042-pd-incident-stats/quickstart.md
+- [x] T023 Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processdefinition/... -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T024 Run docs regeneration validation with `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T025 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

@@ -1,6 +1,6 @@
 # Quickstart: Report Process Definition Incident Statistics
 
-## Planned Behavior
+## Implemented Behavior
 
 - `get process-definition --stat` keeps its existing command path and non-incident statistics fields.
 - On `v8.8` and `v8.9`, the output includes `in:<count>` where `<count>` is the number of process instances that currently have at least one active incident for that process definition.
@@ -29,7 +29,7 @@
 5. Confirm any shared process/facade model changes remain JSON-compatible and are covered by focused tests.
 6. Confirm README and generated CLI docs describe the visible behavior accurately.
 
-## Suggested Verification Commands
+## Validation Commands
 
 ```bash
 go test ./c8volt/process -count=1
@@ -39,7 +39,15 @@ make docs-content
 make test
 ```
 
-Run the focused suites first so model, service, and renderer failures are isolated before the full repository gate.
+Run the focused suites first so model, service, and renderer failures stay isolated before docs regeneration and the full repository gate.
+
+## Validation Order
+
+1. Run `go test ./c8volt/process -count=1` to confirm the shared facade/domain model still carries supported versus unsupported incident-count state correctly.
+2. Run `go test ./internal/services/processdefinition/... -count=1` to confirm the `v8.8`/`v8.9` supported enrichment path and the `v8.7` unsupported boundary.
+3. Run `go test ./cmd -count=1` to confirm visible rendering still shows `in:<count>` or omits `in:` as required.
+4. Run `make docs-content` to verify generated CLI docs remain aligned with the help text and README wording.
+5. Run `make test` as the final repository-wide gate before closing the feature.
 
 ## Manual Smoke Ideas
 
