@@ -664,8 +664,8 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 			versionLabel:      "8.9",
 			incidents:         0,
 			supported:         true,
-			expectedSegment:   "[ac:4 cp:9 cx:2 in:0]",
-			unexpectedSegment: "in:-",
+			expectedSegment:   "[ac:4 cp:9 cx:2 in:-]",
+			unexpectedSegment: "in:0",
 		},
 		{
 			name:              "v8.7 omits unsupported incident count",

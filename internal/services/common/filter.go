@@ -7,39 +7,39 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 )
 
-func NewStringEqFilterPtr(v string) *camundav88.StringFilterProperty {
+func NewStringEqFilterPtr(v string) (*camundav88.StringFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	return newFilterPtr(v, (*camundav88.StringFilterProperty).FromStringFilterProperty0)
 }
 
-func NewIntegerEqFilterPtr(v int32) *camundav88.IntegerFilterProperty {
+func NewIntegerEqFilterPtr(v int32) (*camundav88.IntegerFilterProperty, error) {
 	if v == 0 {
-		return nil
+		return nil, nil
 	}
 	return newFilterPtr(v, (*camundav88.IntegerFilterProperty).FromIntegerFilterProperty0)
 }
 
-func NewProcessInstanceKeyEqFilterPtr(v string) *camundav88.ProcessInstanceKeyFilterProperty {
+func NewProcessInstanceKeyEqFilterPtr(v string) (*camundav88.ProcessInstanceKeyFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	return newFilterPtr(v, (*camundav88.ProcessInstanceKeyFilterProperty).FromProcessInstanceKeyFilterProperty0)
 }
 
-func NewProcessInstanceKeyExistsFilterPtr(exists *bool) *camundav88.ProcessInstanceKeyFilterProperty {
+func NewProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav88.ProcessInstanceKeyFilterProperty, error) {
 	if exists == nil {
-		return nil
+		return nil, nil
 	}
 	return newFilterPtr(camundav88.AdvancedProcessInstanceKeyFilter{
 		Exists: exists,
 	}, (*camundav88.ProcessInstanceKeyFilterProperty).FromAdvancedProcessInstanceKeyFilter)
 }
 
-func NewProcessInstanceStateEqFilterPtr(v string) *camundav88.ProcessInstanceStateFilterProperty {
+func NewProcessInstanceStateEqFilterPtr(v string) (*camundav88.ProcessInstanceStateFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	return newFilterPtr(v, func(f *camundav88.ProcessInstanceStateFilterProperty, s string) error {
 		return f.FromProcessInstanceStateFilterProperty0(
@@ -50,9 +50,9 @@ func NewProcessInstanceStateEqFilterPtr(v string) *camundav88.ProcessInstanceSta
 
 // NewDateTimeRangeFilterPtr builds a datetime range filter from optional lower/upper bounds and exists flag.
 // Example: after=2026-01-01T00:00:00Z and before=2026-01-31T23:59:59.999999999Z sets Gte/Lte on the returned filter.
-func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav88.DateTimeFilterProperty {
+func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) (*camundav88.DateTimeFilterProperty, error) {
 	if after == nil && before == nil && exists == nil {
-		return nil
+		return nil, nil
 	}
 	return newFilterPtr(camundav88.AdvancedDateTimeFilter{
 		Gte:    after,
@@ -70,10 +70,10 @@ func ProcessInstanceFilterHasTenantSafeLookupFields(filter d.ProcessInstanceFilt
 		filter.State != ""
 }
 
-func newFilterPtr[T any, D any](v D, init func(*T, D) error) *T {
+func newFilterPtr[T any, D any](v D, init func(*T, D) error) (*T, error) {
 	var f T
 	if err := init(&f, v); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
