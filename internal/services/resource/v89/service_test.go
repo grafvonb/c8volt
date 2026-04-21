@@ -54,6 +54,22 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionWithResponse(ctx conte
 	return m.getProcessDefinitionWithResponse(ctx, key, reqEditors...)
 }
 
+func (m *mockProcessDefinitionClient) GetProcessDefinitionXMLWithResponse(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionXMLResponse, error) {
+	panic("unexpected GetProcessDefinitionXMLWithResponse call")
+}
+
+func (m *mockProcessDefinitionClient) SearchProcessDefinitionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessDefinitionsResponse, error) {
+	panic("unexpected SearchProcessDefinitionsWithBodyWithResponse call")
+}
+
+func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, key string, body camundav89.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionStatisticsResponse, error) {
+	panic("unexpected GetProcessDefinitionStatisticsWithResponse call")
+}
+
+func (m *mockProcessDefinitionClient) SearchIncidentsWithResponse(ctx context.Context, body camundav89.SearchIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+	panic("unexpected SearchIncidentsWithResponse call")
+}
+
 func TestService_Deploy(t *testing.T) {
 	ctx := context.Background()
 	tenantID := "tenant"

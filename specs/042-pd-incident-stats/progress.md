@@ -10,6 +10,7 @@ Started: 2026-04-21 18:20:22
 - The public `c8volt/process` facade mirrors `internal/domain` process-definition statistics almost 1:1, so model changes usually need matching domain, facade, and conversion updates together.
 - Existing regression coverage is already split by concern: versioned service tests for sourcing, facade tests for option/model passthrough, and command tests for visible rendering.
 - The shared process-definition stats seam can carry version capability through the model itself; `IncidentCountSupported` belongs beside `Incidents` in both domain and facade models so later rendering stays version-agnostic.
+- The `v88` and `v89` process-definition client interfaces are also reused in resource-service tests, so widening those interfaces requires keeping the resource test doubles compiling in the same iteration.
 
 ---
 
@@ -55,4 +56,34 @@ Started: 2026-04-21 18:20:22
 **Learnings**:
 - The smallest repository-native support seam is `Incidents` plus `IncidentCountSupported`; it preserves existing count fields while giving later service and renderer work an explicit unsupported state.
 - A single facade test on `GetProcessDefinition` is enough to prove `supported zero` survives domain-to-public conversion without forcing service behavior changes in this foundational slice.
+---
+
+## Iteration 3 - 2026-04-21 18:33 CEST
+**User Story**: User Story 1 - Show Correct Incident Counts
+**Tasks Completed**:
+- [x] T008: Add `v8.8` service tests proving `WithStat` uses incident-bearing process-instance count semantics
+- [x] T009: Add `v8.9` service tests proving `WithStat` uses incident-bearing process-instance count semantics
+- [x] T010: Add command rendering regressions for supported non-zero and supported zero incident counts
+- [x] T011: Implement supported-version incident-count enrichment in `v8.8`
+- [x] T012: Implement supported-version incident-count enrichment in `v8.9`
+- [x] T013: Update the process-definition renderer to show `in:<count>` and `in:0` on supported versions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/get_test.go
+- internal/services/processdefinition/v88/contract.go
+- internal/services/processdefinition/v88/service.go
+- internal/services/processdefinition/v88/service_test.go
+- internal/services/processdefinition/v89/contract.go
+- internal/services/processdefinition/v89/service.go
+- internal/services/processdefinition/v89/service_test.go
+- internal/services/resource/v88/service_test.go
+- internal/services/resource/v89/service_test.go
+- specs/042-pd-incident-stats/tasks.md
+- specs/042-pd-incident-stats/progress.md
+**Learnings**:
+- The exact supported-version contract is easier to satisfy by deduplicating active incident `ProcessInstanceKey` values per definition than by relying on the generated error-hash aggregation endpoints, which would still overcount across multiple distinct incident errors.
+- Renderer behavior can stay version-agnostic once the services set `IncidentCountSupported=true`; the command only needs to decide whether to append the `in:` segment, not which platform version it is talking to.
+- `make test` is a useful final gate here because the process-definition client interface is shared outside the story’s direct package, and widening it surfaced compile-only fallout in resource-service test doubles.
 ---

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -634,6 +635,43 @@ apis:
 	require.Equal(t, true, filter["isLatestVersion"])
 	require.Contains(t, output, "tenant-a order-process v7/stable")
 	require.NotContains(t, output, "base-tenant")
+}
+
+func TestOneLinePD_RendersSupportedIncidentCount(t *testing.T) {
+	got := oneLinePD(process.ProcessDefinition{
+		Key:            "2251799813685255",
+		TenantId:       "<default>",
+		BpmnProcessId:  "order-process",
+		ProcessVersion: 7,
+		Statistics: &process.ProcessDefinitionStatistics{
+			Active:                 4,
+			Completed:              9,
+			Canceled:               2,
+			Incidents:              3,
+			IncidentCountSupported: true,
+		},
+	})
+
+	require.Contains(t, got, "[ac:4 cp:9 cx:2 in:3]")
+}
+
+func TestOneLinePD_RendersSupportedZeroIncidentCount(t *testing.T) {
+	got := oneLinePD(process.ProcessDefinition{
+		Key:            "2251799813685255",
+		TenantId:       "<default>",
+		BpmnProcessId:  "order-process",
+		ProcessVersion: 7,
+		Statistics: &process.ProcessDefinitionStatistics{
+			Active:                 4,
+			Completed:              9,
+			Canceled:               2,
+			Incidents:              0,
+			IncidentCountSupported: true,
+		},
+	})
+
+	require.Contains(t, got, "[ac:4 cp:9 cx:2 in:0]")
+	require.NotContains(t, got, "in:-")
 }
 
 // Verifies `get resource --id` succeeds and renders default table output.

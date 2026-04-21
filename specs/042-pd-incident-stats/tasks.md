@@ -46,15 +46,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add `v8.8` service tests proving `WithStat` uses incident-bearing process-instance count semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
-- [ ] T009 [P] [US1] Add `v8.9` service tests proving `WithStat` uses incident-bearing process-instance count semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service_test.go
-- [ ] T010 [P] [US1] Add command rendering regressions for supported non-zero and supported zero incident counts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
+- [x] T008 [P] [US1] Add `v8.8` service tests proving `WithStat` uses incident-bearing process-instance count semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service_test.go
+- [x] T009 [P] [US1] Add `v8.9` service tests proving `WithStat` uses incident-bearing process-instance count semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service_test.go
+- [x] T010 [P] [US1] Add command rendering regressions for supported non-zero and supported zero incident counts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement supported-version incident-count enrichment in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/convert.go
-- [ ] T012 [US1] Implement supported-version incident-count enrichment in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/convert.go
-- [ ] T013 [US1] Update the process-definition renderer to show `in:<count>` and `in:0` on supported versions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go
+- [x] T011 [US1] Implement supported-version incident-count enrichment in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v88/convert.go
+- [x] T012 [US1] Implement supported-version incident-count enrichment in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processdefinition/v89/convert.go
+- [x] T013 [US1] Update the process-definition renderer to show `in:<count>` and `in:0` on supported versions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go
 
 **Checkpoint**: User Story 1 is independently testable: supported versions show the clarified incident-bearing process-instance count and preserve the other stats fields.
 
