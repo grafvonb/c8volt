@@ -569,9 +569,6 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav88.Proce
 	}
 }
 
-func ptr[T any](v T) *T {
-	return &v
-}
 
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)

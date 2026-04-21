@@ -12,6 +12,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -75,13 +76,9 @@ auth:
 `
 	require.NoError(t, os.WriteFile(cfgPath, []byte(content), 0o600))
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestExecute_ConfigValidationFailureUsesSharedFailureModelHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -94,13 +91,9 @@ auth:
 func TestExecute_V89RuntimeFailuresUseSharedFailureModel(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_V89RuntimeFailuresUseSharedFailureModelHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestExecute_V89RuntimeFailuresUseSharedFailureModelHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -135,14 +128,9 @@ apis:
 	require.NoError(t, os.WriteFile(defaultCfgPath, []byte(defaultCfg), 0o600))
 	require.NoError(t, os.WriteFile(explicitCfgPath, []byte(explicitCfg), 0o600))
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ConfigFlagOverridesDefaultSearchPathHelper")
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+explicitCfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocessInDir(t, "TestExecute_ConfigFlagOverridesDefaultSearchPathHelper", dir, map[string]string{
+		"C8VOLT_TEST_CONFIG": explicitCfgPath,
+	})
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "tenant: explicit-tenant")
 	require.NotContains(t, string(output), "tenant: default-tenant")

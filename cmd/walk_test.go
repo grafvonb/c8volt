@@ -90,29 +90,31 @@ func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		requests = append(requests, string(body))
-
-		var searchBody map[string]any
-		require.NoError(t, json.Unmarshal(body, &searchBody))
-		filter, _ := searchBody["filter"].(map[string]any)
-		key, _ := filter["processInstanceKey"].(string)
-		parentKey, _ := filter["parentProcessInstanceKey"].(string)
-
-		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case key == "2251799813685255":
-			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
-		case parentKey == "2251799813685255":
-			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685256","parentProcessInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
-		case parentKey == "2251799813685256":
-			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			var searchBody map[string]any
+			require.NoError(t, json.Unmarshal(body, &searchBody))
+			filter, _ := searchBody["filter"].(map[string]any)
+			parentKey, _ := filter["parentProcessInstanceKey"].(string)
+
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case parentKey == "2251799813685255":
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685256","parentProcessInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			case parentKey == "2251799813685256":
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
 		default:
-			t.Fatalf("unexpected search body: %s", string(body))
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -127,7 +129,7 @@ func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *
 		"--children",
 	)
 
-	require.Len(t, requests, 3)
+	require.Len(t, requests, 2)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &got))
 	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
@@ -141,29 +143,31 @@ func TestWalkProcessInstanceCommand_UsesEffectiveTenantForTraversalSearches(t *t
 	var requests []string
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		requests = append(requests, string(body))
-
-		var searchBody map[string]any
-		require.NoError(t, json.Unmarshal(body, &searchBody))
-		filter, _ := searchBody["filter"].(map[string]any)
-		key, _ := filter["processInstanceKey"].(string)
-		parentKey, _ := filter["parentProcessInstanceKey"].(string)
-
-		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case key == "2251799813685255":
-			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
-		case parentKey == "2251799813685255":
-			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685256","parentProcessInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
-		case parentKey == "2251799813685256":
-			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			var searchBody map[string]any
+			require.NoError(t, json.Unmarshal(body, &searchBody))
+			filter, _ := searchBody["filter"].(map[string]any)
+			parentKey, _ := filter["parentProcessInstanceKey"].(string)
+
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case parentKey == "2251799813685255":
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685256","parentProcessInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			case parentKey == "2251799813685256":
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
 		default:
-			t.Fatalf("unexpected search body: %s", string(body))
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -185,7 +189,7 @@ apis:
 		"--children",
 	)
 
-	require.Len(t, requests, 3)
+	require.Len(t, requests, 2)
 	for _, request := range requests {
 		body := decodeCapturedPISearchRequest(t, request)
 		filter, ok := body["filter"].(map[string]any)
@@ -200,13 +204,9 @@ apis:
 func TestWalkProcessInstanceCommand_RejectsInvalidMode(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestWalkProcessInstanceCommand_RejectsInvalidModeHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_RejectsInvalidModeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -218,10 +218,11 @@ func TestWalkProcessInstanceCommand_RejectsInvalidMode(t *testing.T) {
 
 func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"title":"Not Found","status":404,"detail":"resource not found"}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -246,10 +247,16 @@ func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 
 func TestWalkProcessInstanceCommand_DefaultOutputRemainsHumanReadable(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"2251799813685255","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 	}))
 	t.Cleanup(srv.Close)
 

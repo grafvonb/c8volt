@@ -379,13 +379,9 @@ func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfig(t, srv.URL)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterLicenseNestedCommand_FailureHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetClusterLicenseNestedCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -405,13 +401,9 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfig(t, srv.URL)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterTopologyNestedCommand_FailureHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetClusterTopologyNestedCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -483,13 +475,9 @@ func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfig(t, srv.URL)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterTopologyLegacyCommand_FailureHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetClusterTopologyLegacyCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -510,13 +498,9 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfig(t, srv.URL)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetClusterLicenseNestedCommand_MalformedResponseHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetClusterLicenseNestedCommand_MalformedResponseHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -792,13 +776,9 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_FailureHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -846,13 +826,9 @@ func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t 
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExitHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExitHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.NoError(t, err)
 	require.Contains(t, string(output), "resource not found")
 	require.Contains(t, string(output), "get resource")
@@ -883,7 +859,13 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 
 func TestGetProcessInstanceKeyLookup_WrongTenantLooksLikeNotFound(t *testing.T) {
 	var requests []string
-	srv := newProcessInstanceSearchCaptureServer(t, &requests)
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+		requests = append(requests, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"not found"}`))
+	}))
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeRawTestConfig(t, `app:
@@ -902,8 +884,8 @@ apis:
 	require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
 	require.Len(t, requests, 1)
 	require.Contains(t, string(output), "resource not found")
-	require.Contains(t, string(output), "get process instances")
-	require.NotContains(t, string(output), "error fetching 1 process instances")
+	require.Contains(t, string(output), "get process instance")
+	require.NotContains(t, string(output), "error fetching process instance")
 }
 
 func TestGetProcessInstanceKeyLookup_V87ReportsUnsupported(t *testing.T) {
@@ -925,17 +907,32 @@ apis:
 	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
 }
 
+func TestGetProcessInstanceOrphanChildrenOnly_V87ReportsUnsupported(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.7
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "--orphan-children-only is not supported in Camunda 8.7")
+}
+
 // Verifies whitespace-only `--id` failures exit through invalid-args handling.
 func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExitHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -958,13 +955,9 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_MalformedResponseHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_MalformedResponseHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -986,13 +979,9 @@ func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCodeHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCodeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -1007,13 +996,9 @@ func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
 func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetProcessDefinitionXMLCommand_RequiresKeyHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessDefinitionXMLCommand_RequiresKeyHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -1026,13 +1011,9 @@ func TestGetProcessDefinitionXMLCommand_RequiresKey(t *testing.T) {
 func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlagsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -1054,13 +1035,9 @@ func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetProcessDefinitionXMLCommand_FailureHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessDefinitionXMLCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -1271,6 +1248,19 @@ func TestGetProcessInstanceKeyLookupUnsupportedV87Helper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for unsupported v8.7 orphan-child process-instance filtering coverage.
+func TestGetProcessInstanceOrphanChildrenOnlyUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--orphan-children-only"}
 
 	Execute()
 }

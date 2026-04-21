@@ -10,6 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -93,6 +94,11 @@ var getProcessInstanceCmd = &cobra.Command{
 		keys := mergeAndValidateKeys(flagGetPIKeys, stdinKeys, log, cfg)
 		ukeys := keys.Unique()
 		lk := len(ukeys)
+		if lk == 0 {
+			if err := validatePISearchVersionSupport(cfg); err != nil {
+				fail(err)
+			}
+		}
 
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		var pis process.ProcessInstances
@@ -673,6 +679,17 @@ func validatePISearchFlags() error {
 	}
 	if flagGetPIIncidentsOnly && flagGetPINoIncidentsOnly {
 		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
+	}
+	return nil
+}
+
+func validatePISearchVersionSupport(cfg *config.Config) error {
+	if cfg == nil {
+		return nil
+	}
+	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
+		return ferrors.WrapClass(ferrors.ErrUnsupported,
+			fmt.Errorf("--orphan-children-only is not supported in Camunda 8.7 because orphan-parent follow-up lookup is not tenant-safe"))
 	}
 	return nil
 }

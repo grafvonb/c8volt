@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/config"
@@ -109,16 +109,16 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 
 func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("performing tenant-safe lookup for process instance with key %s", key))
-	items, err := s.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{Key: key}, 2, opts...)
+	s.log.Debug(fmt.Sprintf("fetching process instance with key %s using generated camunda client", key))
+	resp, err := s.cc.GetProcessInstanceWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
 	}
-	pi, err := common.RequireSingleProcessInstance(items, key)
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
 		return d.ProcessInstance{}, fmt.Errorf("get process instance: %w", err)
 	}
-	return pi, nil
+	return fromProcessInstanceResult(*payload), nil
 }
 
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
@@ -141,7 +141,7 @@ func (s *Service) FilterProcessInstanceWithOrphanParent(ctx context.Context, ite
 			continue
 		}
 		_, err := s.GetProcessInstance(ctx, it.ParentKey, opts...)
-		if err != nil && strings.Contains(err.Error(), "404") {
+		if errors.Is(err, d.ErrNotFound) {
 			result = append(result, it)
 		} else if err != nil {
 			return nil, err

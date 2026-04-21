@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,14 +22,10 @@ apis:
     base_url: http://127.0.0.1:1
 `)
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ExplicitEmptyAuthModeDoesNotFallBackToLowerPrecedenceHelper")
-	cmd.Env = append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"C8VOLT_TEST_CONFIG="+cfgPath,
-		"C8VOLT_AUTH_MODE=",
-	)
-
-	output, err := cmd.CombinedOutput()
+	output, err := testx.RunCmdSubprocess(t, "TestExecute_ExplicitEmptyAuthModeDoesNotFallBackToLowerPrecedenceHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_AUTH_MODE":   "",
+	})
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
