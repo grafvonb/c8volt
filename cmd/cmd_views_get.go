@@ -131,12 +131,16 @@ func oneLinePD(it process.ProcessDefinition) string {
 	)
 	if it.Statistics != nil {
 		stats := it.Statistics
-		return fmt.Sprintf("%s [ac:%s cp:%s cx:%s in:%s]",
+		incidentTag := ""
+		if stats.IncidentCountSupported {
+			incidentTag = fmt.Sprintf(" in:%s", zeroAsMinus(stats.Incidents))
+		}
+		return fmt.Sprintf("%s [ac:%s cp:%s cx:%s%s]",
 			core,
 			zeroAsMinus(stats.Active),
 			zeroAsMinus(stats.Completed),
 			zeroAsMinus(stats.Canceled),
-			zeroAsMinus(stats.Incidents),
+			incidentTag,
 		)
 	}
 	return core

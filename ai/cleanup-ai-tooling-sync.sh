@@ -112,12 +112,57 @@ cleanup_tree() {
     fi
 }
 
+cleanup_child_dirs_only() {
+    local source_dir="$1"
+    local target_dir="$2"
+
+    if [ ! -d "$target_dir" ]; then
+        return
+    fi
+
+    if [ ! -d "$source_dir" ]; then
+        delete_path "$target_dir"
+        return
+    fi
+
+    local target_entry
+    for target_entry in "$target_dir"/*; do
+        if [ "$target_entry" = "$target_dir/*" ]; then
+            break
+        fi
+
+        local name
+        name="$(basename "$target_entry")"
+
+        if [ ! -d "$target_entry" ]; then
+            delete_path "$target_entry"
+            continue
+        fi
+
+        if [ ! -d "$source_dir/$name" ]; then
+            delete_path "$target_entry"
+            continue
+        fi
+
+        cleanup_tree "$source_dir/$name" "$target_entry"
+    done
+
+    if [ "$DRY_RUN" -eq 0 ]; then
+        find "$target_dir" -depth -type d -empty -delete
+    fi
+}
+
 cleanup_tree "$SOURCE_ROOT/.agents/skills" "$REPO_ROOT/.agents/skills"
+cleanup_child_dirs_only "$SOURCE_ROOT/extensions" "$REPO_ROOT/extensions"
+cleanup_child_dirs_only "$SOURCE_ROOT/presets" "$REPO_ROOT/presets"
 cleanup_tree "$SOURCE_ROOT/.specify/scripts" "$REPO_ROOT/.specify/scripts"
 cleanup_tree "$SOURCE_ROOT/.specify/templates" "$REPO_ROOT/.specify/templates"
 cleanup_tree "$SOURCE_ROOT/.specify/integrations" "$REPO_ROOT/.specify/integrations"
+cleanup_tree "$SOURCE_ROOT/.specify/presets" "$REPO_ROOT/.specify/presets"
 
 for managed_metadata_file in \
+    .specify/extension-catalogs.yml \
+    .specify/extensions.yml \
     .specify/init-options.json \
     .specify/integration.json
 do

@@ -55,6 +55,14 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse
 	return args.Get(0).(*camundav88.GetProcessDefinitionStatisticsResponse), args.Error(1)
 }
 
+func (m *mockProcessDefinitionClient) SearchIncidentsWithResponse(ctx context.Context, body camundav88.SearchIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+	args := m.Called(ctx, body)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav88.SearchIncidentsResponse), args.Error(1)
+}
+
 func TestService_SearchProcessDefinitions(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("search failed")
@@ -127,11 +135,23 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
 				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+				m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).Return(&camundav88.SearchIncidentsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/incidents/search", http.StatusOK, "200"),
+					JSON200: &camundav88.IncidentSearchQueryResult{
+						Items: []camundav88.IncidentResult{
+							{ProcessInstanceKey: "pi-1"},
+							{ProcessInstanceKey: "pi-1"},
+							{ProcessInstanceKey: "pi-2"},
+						},
+					},
+				}, nil)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
 				require.NotNil(t, defs[0].Statistics)
 				assert.Equal(t, int64(1), defs[0].Statistics.Active)
+				assert.Equal(t, int64(2), defs[0].Statistics.Incidents)
+				assert.True(t, defs[0].Statistics.IncidentCountSupported)
 			},
 		},
 		{
@@ -227,6 +247,10 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 
 	m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).
 		Return(statsResp, nil)
+	m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).Return(&camundav88.SearchIncidentsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/incidents/search", http.StatusOK, "200"),
+		JSON200:      &camundav88.IncidentSearchQueryResult{},
+	}, nil)
 
 	svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
 	require.NoError(t, err)
@@ -236,6 +260,8 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	require.Len(t, defs, 1)
 	require.NotNil(t, defs[0].Statistics)
 	assert.Equal(t, int64(2), defs[0].Statistics.Active)
+	assert.Zero(t, defs[0].Statistics.Incidents)
+	assert.True(t, defs[0].Statistics.IncidentCountSupported)
 	m.AssertExpectations(t)
 }
 
@@ -329,11 +355,17 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
 				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+				m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).Return(&camundav88.SearchIncidentsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/incidents/search", http.StatusOK, "200"),
+					JSON200:      &camundav88.IncidentSearchQueryResult{},
+				}, nil)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
 				require.NotNil(t, pd.Statistics)
 				assert.Equal(t, int64(5), pd.Statistics.Completed)
+				assert.Zero(t, pd.Statistics.Incidents)
+				assert.True(t, pd.Statistics.IncidentCountSupported)
 			},
 		},
 		{

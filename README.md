@@ -283,6 +283,7 @@ That split is intentional: `c8volt` does not fake tenant safety by doing an unsa
 ```
 
 When you need more than "list everything," `c8volt` can pull the sharp edges too: the latest deployed definition, raw BPMN XML for one exact definition, definition statistics, and single resources by id.
+For `get pd --stat`, `ac`, `cp`, and `cx` keep their existing meaning across supported versions; Camunda `8.8` and `8.9` add `in:<count>` for the number of process instances with at least one active incident, while `8.7` omits `in:` entirely instead of guessing.
 
 ### Find the exact process instances you want
 
@@ -628,6 +629,8 @@ The supporting read and deployment commands are still part of the core toolbox:
 ./c8volt config show
 ./c8volt version
 ```
+
+On `get pd --stat`, supported `8.8` and `8.9` environments print `in:0` or `in:<count>` for incident-bearing process instances; `8.7` keeps the other stats fields but omits `in:` because that incident count is not available reliably.
 
 ## Good in Pipelines
 

@@ -106,3 +106,6 @@ scripts/ralph/*
 !scripts/ralph/archive/
 !scripts/ralph/archive/**
 !scripts/ralph/prd.json
+
+# AI temporary or backup files
+AGENTS.md.ai-tooling-backup-*

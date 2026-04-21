@@ -16,7 +16,11 @@ Use this read-only command to inspect deployed BPMN models by key, BPMN process
 ID, version selectors, or the latest deployed version. Default output is aimed
 at human review; prefer `--json` when chaining the result into scripts or
 AI-assisted workflows. Use `--xml` only when you need the raw BPMN XML for a
-single definition selected by `--key`.
+single definition selected by `--key`. When `--stat` is enabled,
+`ac`, `cp`, and `cx` keep their existing meaning across
+supported versions; Camunda `8.8`/`8.9` add `in:<count>`
+for incident-bearing process instances, while `8.7` omits `in:`
+entirely because that count is not available reliably there.
 
 ```
 c8volt get process-definition [flags]
@@ -40,7 +44,7 @@ c8volt get process-definition [flags]
       --latest                   fetch the latest version(s) of the given BPMN process(s)
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
-      --stat                     include process definition statistics
+      --stat                     include process definition statistics; 8.8/8.9 add incident-bearing instance counts, 8.7 omits in:
       --xml                      output the selected process definition as raw XML (requires --key and no other filters)
 ```
 
