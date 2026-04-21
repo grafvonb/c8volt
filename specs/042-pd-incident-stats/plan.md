@@ -114,6 +114,7 @@ Design artifacts are captured in:
 
 - Keep `SearchProcessDefinitions`, `SearchProcessDefinitionsLatest`, and `GetProcessDefinition` as the only command-facing service entry points; supported-version enrichment stays internal to the versioned services when `WithStat` is enabled.
 - Introduce the smallest shared process-definition statistics representation that can express both a supported incident-bearing process-instance count and the unsupported case where `in:` must be omitted entirely.
+- Use an `IncidentCountSupported` flag alongside the existing `Incidents` counter so supported zero and unsupported omission can flow through shared models without version checks in `cmd/`.
 - On `v8.8` and `v8.9`, source `in:` from incident-bearing process-instance statistics grouped by definition rather than from the legacy element-stat `Incidents` total alone.
 - On `v8.7`, preserve the current “stats unsupported for this incident dimension” behavior by omitting `in:` while leaving the other `--stat` fields unchanged.
 - Update `oneLinePD(...)` so supported zero counts render as `in:0`, supported non-zero counts render numerically, and unsupported counts omit the segment entirely without disturbing the other stat segments.

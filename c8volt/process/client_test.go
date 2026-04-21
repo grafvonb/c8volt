@@ -36,6 +36,38 @@ func TestClient_GetProcessDefinitionXML(t *testing.T) {
 	assert.Equal(t, "<definitions id=\"order-process\"/>", xml)
 }
 
+func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+			cfg := services.ApplyCallOptions(opts)
+			assert.Equal(t, "2251799813685255", key)
+			assert.True(t, cfg.WithStat)
+			return d.ProcessDefinition{
+				Key: "2251799813685255",
+				Statistics: &d.ProcessDefinitionStatistics{
+					Active:                 7,
+					Canceled:               3,
+					Completed:              11,
+					Incidents:              0,
+					IncidentCountSupported: true,
+				},
+			}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	pd, err := cli.GetProcessDefinition(ctx, "2251799813685255", options.WithStat())
+
+	require.NoError(t, err)
+	require.NotNil(t, pd.Statistics)
+	assert.Equal(t, int64(7), pd.Statistics.Active)
+	assert.Equal(t, int64(0), pd.Statistics.Incidents)
+	assert.True(t, pd.Statistics.IncidentCountSupported)
+}
+
 func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T) {
 	t.Parallel()
 
@@ -321,6 +353,7 @@ func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *t
 }
 
 type stubProcessDefinitionAPI struct {
+	getProcessDefinition    func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
 	getProcessDefinitionXML func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
 
@@ -332,8 +365,11 @@ func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(context.Contex
 	panic("unexpected call")
 }
 
-func (s *stubProcessDefinitionAPI) GetProcessDefinition(context.Context, string, ...services.CallOption) (d.ProcessDefinition, error) {
-	panic("unexpected call")
+func (s *stubProcessDefinitionAPI) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+	if s.getProcessDefinition == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessDefinition(ctx, key, opts...)
 }
 
 func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, key string, opts ...services.CallOption) (string, error) {

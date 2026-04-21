@@ -34,7 +34,7 @@
 
 ## Decision 5: The shared process-definition statistics model needs a supported-vs-unsupported distinction
 
-- **Decision**: Extend the shared/domain process-definition statistics representation just enough to distinguish “incident count is supported and equals zero” from “incident count is unsupported and should not render.”
+- **Decision**: Extend the shared/domain process-definition statistics representation with `IncidentCountSupported bool` so it can distinguish “incident count is supported and equals zero” from “incident count is unsupported and should not render.”
 - **Rationale**: Today the renderer shows `in:` whenever `Statistics != nil`, and `zeroAsMinus(...)` turns `0` into `-`. That means the existing `Incidents int64` field alone cannot express either `in:0` on supported versions or omission on unsupported versions without additional state.
 - **Alternatives considered**:
   - Keep `Incidents int64` as-is and special-case version in the renderer: rejected because the renderer should not need to know API version; support should flow from the enriched model.

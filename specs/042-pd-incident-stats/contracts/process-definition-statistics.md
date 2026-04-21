@@ -18,6 +18,11 @@ The command remains read-only and keeps the existing selectors and output modes.
 | Supported zero | Render `in:0` |
 | Unsupported versions | Omit `in:` entirely |
 
+The shared process-definition statistics model records this boundary with:
+
+- `Incidents`: the numeric incident-bearing process-instance count
+- `IncidentCountSupported`: `true` when `Incidents` is authoritative for rendering, `false` when `in:` must be omitted
+
 Raw incident totals are not a valid implementation of this contract.
 
 ## Version Contract

@@ -22,6 +22,7 @@
   - `Canceled`
   - `Completed`
   - `Incidents`
+  - `IncidentCountSupported`
 - **Planned refinement**:
   - Preserve `Active`, `Canceled`, and `Completed` as the existing element-stat counts.
   - Refine the incident-related attribute so the model can express both:
@@ -31,13 +32,14 @@
   - Supported versions must count each affected process instance at most once.
   - Unsupported versions must not fabricate a zero or placeholder count.
   - The model must let the renderer distinguish `supported zero` from `unsupported`.
+  - `IncidentCountSupported=false` means `Incidents` is not renderable as `in:`, even if the other statistics fields are present.
 
 ## Incident Statistics Support State
 
 - **Purpose**: Captures whether the active version can supply the clarified `in:` value.
 - **States**:
-  - `Supported`: the model carries a verified incident-bearing process-instance count and the renderer must show `in:<count>`.
-  - `Unsupported`: the model indicates that incident count support is unavailable and the renderer must omit `in:`.
+  - `Supported`: `IncidentCountSupported=true`, the model carries a verified incident-bearing process-instance count, and the renderer must show `in:<count>`.
+  - `Unsupported`: `IncidentCountSupported=false`, incident count support is unavailable, and the renderer must omit `in:`.
 - **Current mapping**:
   - `v8.8`: `Supported`
   - `v8.9`: `Supported`

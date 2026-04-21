@@ -13,7 +13,7 @@
 - Start in the existing versioned services under `internal/services/processdefinition/`; keep endpoint selection and aggregation there rather than pushing version branching into `cmd/`.
 - Reuse the current `GetProcessDefinitionStatistics` enrichment for `ac`, `cp`, and `cx`.
 - Source supported-version `in:` from the newer incident/process-instance statistics endpoint(s) exposed by the generated `v8.8` and `v8.9` clients.
-- Adjust the shared/domain process-definition statistics model only as much as needed to represent “supported zero” versus “unsupported.”
+- Adjust the shared/domain process-definition statistics model only as much as needed to represent “supported zero” versus “unsupported,” using `IncidentCountSupported` plus the existing `Incidents` count.
 - Update `oneLinePD(...)` in `cmd/cmd_views_get.go` so it can:
   - keep `ac`, `cp`, and `cx` on their current formatting path
   - show `in:0` when supported
