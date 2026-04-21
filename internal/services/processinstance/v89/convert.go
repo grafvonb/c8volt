@@ -143,66 +143,66 @@ func decodeSearchProcessInstancesResponse(body []byte, page *camundav89.ProcessI
 	return result, nil
 }
 
-func newStringEqFilterPtr(v string) *camundav89.StringFilterProperty {
+func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.StringFilterProperty
 	if err := f.FromStringFilterProperty0(v); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
 
-func newIntegerEqFilterPtr(v int32) *camundav89.IntegerFilterProperty {
+func newIntegerEqFilterPtr(v int32) (*camundav89.IntegerFilterProperty, error) {
 	if v == 0 {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.IntegerFilterProperty
 	if err := f.FromIntegerFilterProperty0(v); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
 
-func newProcessInstanceKeyEqFilterPtr(v string) *camundav89.ProcessInstanceKeyFilterProperty {
+func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.ProcessInstanceKeyFilterProperty
 	if err := f.FromProcessInstanceKeyFilterProperty0(v); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
 
-func newProcessInstanceKeyExistsFilterPtr(exists *bool) *camundav89.ProcessInstanceKeyFilterProperty {
+func newProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
 	if exists == nil {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.ProcessInstanceKeyFilterProperty
 	if err := f.FromAdvancedProcessInstanceKeyFilter(camundav89.AdvancedProcessInstanceKeyFilter{
 		Exists: exists,
 	}); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
 
-func newProcessInstanceStateEqFilterPtr(v string) *camundav89.ProcessInstanceStateFilterProperty {
+func newProcessInstanceStateEqFilterPtr(v string) (*camundav89.ProcessInstanceStateFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.ProcessInstanceStateFilterProperty
 	if err := f.FromProcessInstanceStateFilterProperty0(camundav89.ProcessInstanceStateEnum(v)); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
 
-func newDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav89.DateTimeFilterProperty {
+func newDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) (*camundav89.DateTimeFilterProperty, error) {
 	if after == nil && before == nil && exists == nil {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.DateTimeFilterProperty
 	if err := f.FromAdvancedDateTimeFilter(camundav89.AdvancedDateTimeFilter{
@@ -210,9 +210,9 @@ func newDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) *camundav
 		Lte:    before,
 		Exists: exists,
 	}); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
 }
 
 func valueOrEmpty[T ~string](v *T) T {

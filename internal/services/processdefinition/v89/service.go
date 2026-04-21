@@ -71,7 +71,10 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	body := searchProcessDefinitionsRequest(common.EffectiveTenant(s.cfg), filter, size)
+	body, err := searchProcessDefinitionsRequest(common.EffectiveTenant(s.cfg), filter, size)
+	if err != nil {
+		return nil, fmt.Errorf("building process definition search request: %w", err)
+	}
 	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
@@ -172,13 +175,50 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	} else {
 		ret = d.ProcessDefinitionStatistics{}
 	}
+	ret.Incidents, err = s.countIncidentBearingProcessInstances(ctx, pd.Key)
+	if err != nil {
+		return err
+	}
+	ret.IncidentCountSupported = true
 	pd.Statistics = &ret
 	return nil
 }
 
-func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) processDefinitionSearchQuery {
+func (s *Service) countIncidentBearingProcessInstances(ctx context.Context, processDefinitionKey string) (int64, error) {
+	const pageSize int32 = 1000
+
+	seen := map[string]struct{}{}
+	for offset := int32(0); ; offset += pageSize {
+		req, err := searchIncidentsRequest(common.EffectiveTenant(s.cfg), processDefinitionKey, offset, pageSize)
+		if err != nil {
+			return 0, fmt.Errorf("building incident search request: %w", err)
+		}
+		resp, err := s.cc.SearchIncidentsWithResponse(ctx, req)
+		if err != nil {
+			return 0, err
+		}
+		if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+			return 0, err
+		}
+		if resp.JSON200 == nil {
+			return 0, nil
+		}
+		for _, item := range resp.JSON200.Items {
+			seen[string(item.ProcessInstanceKey)] = struct{}{}
+		}
+		if len(resp.JSON200.Items) < int(pageSize) {
+			return int64(len(seen)), nil
+		}
+	}
+}
+
+func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) (processDefinitionSearchQuery, error) {
+	processDefinitionIDFilter, err := newStringEqFilterPtr(filter.BpmnProcessId)
+	if err != nil {
+		return processDefinitionSearchQuery{}, err
+	}
 	bodyFilter := &processDefinitionFilter{
-		ProcessDefinitionId: newStringEqFilterPtr(filter.BpmnProcessId),
+		ProcessDefinitionId: processDefinitionIDFilter,
 		TenantId:            toolx.PtrIf(tenantID, ""),
 		Version:             toolx.PtrIfNonZero(filter.ProcessVersion),
 		VersionTag:          toolx.PtrIf(filter.ProcessVersionTag, ""),
@@ -203,7 +243,7 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		Filter: bodyFilter,
 		Page:   &page,
 		Sort:   &sort,
-	}
+	}, nil
 }
 
 type processDefinitionSearchQuery struct {
@@ -237,13 +277,63 @@ func decodeSearchProcessDefinitionsResponse(body []byte, page *camundav89.Proces
 	return result, nil
 }
 
-func newStringEqFilterPtr(v string) *camundav89.StringFilterProperty {
+func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	if v == "" {
-		return nil
+		return nil, nil
 	}
 	var f camundav89.StringFilterProperty
 	if err := f.FromStringFilterProperty0(v); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return &f
+	return new(f), nil
+}
+
+func searchIncidentsRequest(tenantID, processDefinitionKey string, offset, size int32) (camundav89.SearchIncidentsJSONRequestBody, error) {
+	page := camundav89.SearchQueryPageRequest{}
+	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
+		From:  &offset,
+		Limit: &size,
+	})
+
+	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(processDefinitionKey)
+	if err != nil {
+		return camundav89.SearchIncidentsJSONRequestBody{}, err
+	}
+	stateFilter, err := newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
+	if err != nil {
+		return camundav89.SearchIncidentsJSONRequestBody{}, err
+	}
+	tenantFilter, err := newStringEqFilterPtr(tenantID)
+	if err != nil {
+		return camundav89.SearchIncidentsJSONRequestBody{}, err
+	}
+	filter := &camundav89.IncidentFilter{
+		ProcessDefinitionKey: processDefinitionKeyFilter,
+		State:                stateFilter,
+		TenantId:             tenantFilter,
+	}
+
+	return camundav89.SearchIncidentsJSONRequestBody{
+		Filter: filter,
+		Page:   &page,
+	}, nil
+}
+
+func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinitionKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ProcessDefinitionKeyFilterProperty
+	if err := f.FromProcessDefinitionKeyFilterProperty0(camundav89.ProcessDefinitionKey(v)); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newIncidentStateEqFilterPtr(v camundav89.IncidentStateEnum) (*camundav89.IncidentStateFilterProperty, error) {
+	var f camundav89.IncidentStateFilterProperty
+	if err := f.FromIncidentStateFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
 }

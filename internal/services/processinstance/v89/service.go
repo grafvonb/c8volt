@@ -178,18 +178,54 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
+	tenantFilter, err := newStringEqFilterPtr(s.cfg.App.Tenant)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building tenant filter: %w", err)
+	}
+	processInstanceKeyFilter, err := newProcessInstanceKeyEqFilterPtr(filter.Key)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-instance-key filter: %w", err)
+	}
+	processDefinitionIDFilter, err := newStringEqFilterPtr(filter.BpmnProcessId)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-id filter: %w", err)
+	}
+	processDefinitionVersionFilter, err := newIntegerEqFilterPtr(filter.ProcessVersion)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version filter: %w", err)
+	}
+	processDefinitionVersionTagFilter, err := newStringEqFilterPtr(filter.ProcessVersionTag)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version-tag filter: %w", err)
+	}
+	startDateFilter, err := newDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building start-date filter: %w", err)
+	}
+	endDateFilter, err := newDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExistsFilter(filter))
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
+	}
+	stateFilter, err := newProcessInstanceStateEqFilterPtr(string(filter.State))
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building state filter: %w", err)
+	}
+	parentProcessInstanceKeyFilter, err := newParentProcessInstanceKeyFilter(filter)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building parent-process-instance-key filter: %w", err)
+	}
 
 	bodyFilter := &processInstanceFilter{
-		TenantId:                    newStringEqFilterPtr(s.cfg.App.Tenant),
-		ProcessInstanceKey:          newProcessInstanceKeyEqFilterPtr(filter.Key),
-		ProcessDefinitionId:         newStringEqFilterPtr(filter.BpmnProcessId),
-		ProcessDefinitionVersion:    newIntegerEqFilterPtr(filter.ProcessVersion),
-		ProcessDefinitionVersionTag: newStringEqFilterPtr(filter.ProcessVersionTag),
-		StartDate:                   newDateTimeRangeFilterPtr(startDateAfter, startDateBefore, nil),
-		EndDate:                     newDateTimeRangeFilterPtr(endDateAfter, endDateBefore, endDateExistsFilter(filter)),
-		State:                       newProcessInstanceStateEqFilterPtr(string(filter.State)),
+		TenantId:                    tenantFilter,
+		ProcessInstanceKey:          processInstanceKeyFilter,
+		ProcessDefinitionId:         processDefinitionIDFilter,
+		ProcessDefinitionVersion:    processDefinitionVersionFilter,
+		ProcessDefinitionVersionTag: processDefinitionVersionTagFilter,
+		StartDate:                   startDateFilter,
+		EndDate:                     endDateFilter,
+		State:                       stateFilter,
 		HasIncident:                 filter.HasIncident,
-		ParentProcessInstanceKey:    newParentProcessInstanceKeyFilter(filter),
+		ParentProcessInstanceKey:    parentProcessInstanceKeyFilter,
 	}
 	if bodyFilter.isEmpty() {
 		bodyFilter = nil
@@ -240,7 +276,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	}, nil
 }
 
-func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) *camundav89.ProcessInstanceKeyFilterProperty {
+func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
 	if filter.ParentKey != "" {
 		return newProcessInstanceKeyEqFilterPtr(filter.ParentKey)
 	}

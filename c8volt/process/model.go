@@ -11,10 +11,11 @@ type ProcessDefinition struct {
 }
 
 type ProcessDefinitionStatistics struct {
-	Active    int64 `json:"active"`
-	Canceled  int64 `json:"canceled"`
-	Completed int64 `json:"completed"`
-	Incidents int64 `json:"incidents"`
+	Active                 int64 `json:"active"`
+	Canceled               int64 `json:"canceled"`
+	Completed              int64 `json:"completed"`
+	Incidents              int64 `json:"incidents"`
+	IncidentCountSupported bool  `json:"incidentCountSupported,omitempty"`
 }
 
 type ProcessDefinitions struct {

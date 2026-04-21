@@ -21,6 +21,7 @@ type GenProcessDefinitionClientCamunda interface {
 	GetProcessDefinitionXMLWithResponse(ctx context.Context, processDefinitionKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionXMLResponse, error)
 	SearchProcessDefinitionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessDefinitionsResponse, error)
 	GetProcessDefinitionStatisticsWithResponse(ctx context.Context, processDefinitionKey string, body camundav89.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionStatisticsResponse, error)
+	SearchIncidentsWithResponse(ctx context.Context, body camundav89.SearchIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error)
 }
 
 var _ GenProcessDefinitionClientCamunda = (*camundav89.ClientWithResponses)(nil)

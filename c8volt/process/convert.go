@@ -19,10 +19,11 @@ func fromDomainProcessDefinition(x d.ProcessDefinition) ProcessDefinition {
 
 func fromProcessDefinitionStatistics(r d.ProcessDefinitionStatistics) ProcessDefinitionStatistics {
 	return ProcessDefinitionStatistics{
-		Active:    r.Active,
-		Canceled:  r.Canceled,
-		Completed: r.Completed,
-		Incidents: r.Incidents,
+		Active:                 r.Active,
+		Canceled:               r.Canceled,
+		Completed:              r.Completed,
+		Incidents:              r.Incidents,
+		IncidentCountSupported: r.IncidentCountSupported,
 	}
 }
 
