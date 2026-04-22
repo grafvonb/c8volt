@@ -213,7 +213,18 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Items:         window,
 		Request:       pageReq,
 		OverflowState: overflow,
+		ReportedTotal: newProcessInstanceReportedTotal(payload.Total),
 	}, nil
+}
+
+func newProcessInstanceReportedTotal(total *int64) *d.ProcessInstanceReportedTotal {
+	if total == nil {
+		return nil
+	}
+	return &d.ProcessInstanceReportedTotal{
+		Count: *total,
+		Kind:  d.ProcessInstanceReportedTotalKindExact,
+	}
 }
 
 func pickProcessInstanceSearchFetchSize(pageReq d.ProcessInstancePageRequest) int32 {

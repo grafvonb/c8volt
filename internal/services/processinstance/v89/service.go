@@ -274,6 +274,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Items:         toolx.MapSlice(result.Items, fromProcessInstanceResult),
 		Request:       pageReq,
 		OverflowState: pickProcessInstanceOverflowState(result.Page, pageReq, len(result.Items)),
+		ReportedTotal: pickProcessInstanceReportedTotal(result.Page, len(result.Items)),
 	}, nil
 }
 
@@ -296,6 +297,20 @@ func pickProcessInstanceOverflowState(page camundav89.SearchQueryPageResponse, r
 		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	return d.ProcessInstanceOverflowStateNoMore
+}
+
+func pickProcessInstanceReportedTotal(page camundav89.SearchQueryPageResponse, itemCount int) *d.ProcessInstanceReportedTotal {
+	if page.TotalItems == 0 && itemCount > 0 {
+		return nil
+	}
+	kind := d.ProcessInstanceReportedTotalKindExact
+	if page.HasMoreTotalItems {
+		kind = d.ProcessInstanceReportedTotalKindLowerBound
+	}
+	return &d.ProcessInstanceReportedTotal{
+		Count: page.TotalItems,
+		Kind:  kind,
+	}
 }
 
 func parseInclusiveDateLowerBound(raw string) (*time.Time, error) {

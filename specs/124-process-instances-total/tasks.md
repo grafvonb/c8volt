@@ -46,14 +46,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add command regressions for numeric-only `--total` output and zero-match behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T009 [P] [US1] Add shared page-metadata conversion coverage for count-only output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T008 [P] [US1] Add command regressions for numeric-only `--total` output and zero-match behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T009 [P] [US1] Add shared page-metadata conversion coverage for count-only output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add the `--total` flag and search-mode count-only command path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T011 [US1] Populate reported-total metadata from `v87`, `v88`, and `v89` search page responses in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go
-- [ ] T012 [US1] Keep non-`--total` detail rendering unchanged while short-circuiting count-only output before the existing list renderer in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T010 [US1] Add the `--total` flag and search-mode count-only command path in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T011 [US1] Populate reported-total metadata from `v87`, `v88`, and `v89` search page responses in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service.go
+- [x] T012 [US1] Keep non-`--total` detail rendering unchanged while short-circuiting count-only output before the existing list renderer in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_get.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
 
 **Checkpoint**: User Story 1 is independently testable: `--total` returns only a numeric count, including `0`, without changing default detail rendering.
 

@@ -30,6 +30,7 @@ var (
 	flagGetPIEndAfterDays         int
 	flagGetPIEndBeforeDays        int
 	flagGetPIWithAge              bool
+	flagGetPITotal                bool
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -109,6 +110,9 @@ var getProcessInstanceCmd = &cobra.Command{
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
+			if flagGetPITotal {
+				fail(mutuallyExclusiveFlagsf("--total cannot be combined with --key"))
+			}
 			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal/preflight flows.
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
@@ -127,6 +131,16 @@ var getProcessInstanceCmd = &cobra.Command{
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
+			if flagGetPITotal {
+				total, err := searchProcessInstancesTotal(cmd, cli, cfg, filter)
+				if err != nil {
+					fail(fmt.Errorf("get process instances total: %w", err))
+				}
+				if err := processInstanceTotalView(cmd, total); err != nil {
+					fail(fmt.Errorf("render process instance total: %w", err))
+				}
+				return
+			}
 			var renderedIncrementally bool
 			pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
 			if err != nil {
@@ -152,6 +166,7 @@ func init() {
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -428,6 +443,38 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	}
 }
 
+func searchProcessInstancesTotal(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (int64, error) {
+	pageReq := newPISearchPageRequest(cmd, cfg, 0)
+	total := int64(0)
+
+	for {
+		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
+		if err != nil {
+			return 0, err
+		}
+
+		if canUsePIReportedTotal() && page.ReportedTotal != nil {
+			return page.ReportedTotal.Count, nil
+		}
+
+		filtered, err := applyPISearchResultFilters(cmd, cli, process.ProcessInstances{
+			Total: int32(len(page.Items)),
+			Items: page.Items,
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		total += int64(len(filtered.Items))
+		printPISearchProgress(cmd, newPIProgressSummary(page, int(total), true))
+
+		if len(page.Items) == 0 || page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
+			return total, nil
+		}
+		pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
+	}
+}
+
 func shouldRenderPISearchPageIncrementally(cmd *cobra.Command) bool {
 	if flagCmdAutoConfirm {
 		return false
@@ -561,6 +608,10 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 		pis = pis.FilterByHavingIncidents(false)
 	}
 	return pis, nil
+}
+
+func canUsePIReportedTotal() bool {
+	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
 }
 
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {

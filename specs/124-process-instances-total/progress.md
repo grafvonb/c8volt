@@ -1,5 +1,6 @@
 ## Codebase Patterns
 
+- `get process-instance --total` stays command-local: `cmd/get_processinstance.go` should ask `SearchProcessInstancesPage` for the first page, trust `ReportedTotal` only when no command-local post-filtering is active, and otherwise keep counting through the existing paged search seam instead of widening the shared render-mode contract.
 - `cmd/get_processinstance.go` owns process-instance search validation, keyed-vs-search branching, pagination orchestration, and the final handoff to `listProcessInstancesView`, so command-specific output changes belong there before shared render helpers are widened.
 - `cmd/cmd_views_get.go` keeps process-instance detail rendering mode-agnostic through `listOrJSON`, with `--with-age` as a narrow JSON/one-line decoration; count-only output should short-circuit before this renderer to avoid creating a new global render mode.
 - Shared process-instance page models in `internal/domain/processinstance.go` and `c8volt/process/model.go` now expose optional `ReportedTotal{Count, Kind}` metadata alongside `Request`, `Items`, and `OverflowState`, and `c8volt/process/convert.go` mirrors that seam directly so command code can stay version-agnostic once services populate it.
@@ -49,4 +50,29 @@
 - The smallest stable seam is an optional `ReportedTotal` pointer on `ProcessInstancePage`; it lets future command logic distinguish unavailable totals from zero-match totals without adding a separate availability flag.
 - `c8volt/process/client_test.go` is sufficient to lock the public conversion contract for reported totals before versioned services start populating the new metadata.
 - The shared model can absorb exact-vs-lower-bound semantics now without changing existing service paging behavior, which keeps the foundational work unit isolated from the first user story.
+---
+## Iteration 3 - 2026-04-22 22:28:04 CEST
+**User Story**: User Story 1 - Return Count Only
+**Tasks Completed**:
+- [x] T008: Add command regressions for numeric-only `--total` output and zero-match behavior
+- [x] T009: Add shared page-metadata conversion coverage for count-only output
+- [x] T010: Add the `--total` flag and search-mode count-only command path
+- [x] T011: Populate reported-total metadata from `v87`, `v88`, and `v89` search page responses
+- [x] T012: Keep non-`--total` detail rendering unchanged while short-circuiting count-only output before the existing list renderer
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- cmd/cmd_views_get.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v88/service.go
+- internal/services/processinstance/v89/service.go
+- specs/124-process-instances-total/progress.md
+- specs/124-process-instances-total/tasks.md
+**Learnings**:
+- Count-only output can stay out of the shared render-mode model by adding a small command-local `processInstanceTotalView` and returning before `listProcessInstancesView`.
+- `ReportedTotal` is enough to skip extra paging on the first page for normal `--total` searches, while command-local fallback counting remains necessary when post-search filtering could change the visible total.
+- The existing focused package tests already cover the safest validation boundary for this story: `./cmd`, `./c8volt/process`, and `./internal/services/processinstance/...`.
 ---

@@ -244,6 +244,41 @@ func TestClient_SearchProcessInstancesPage_LeavesReportedTotalNilWhenUnavailable
 	require.Len(t, page.Items, 1)
 }
 
+func TestClient_SearchProcessInstancesPage_MapsLowerBoundReportedTotal(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
+			assert.Equal(t, d.ProcessInstancePageRequest{From: 100, Size: 25}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				ReportedTotal: &d.ProcessInstanceReportedTotal{
+					Count: 10000,
+					Kind:  d.ProcessInstanceReportedTotalKindLowerBound,
+				},
+				Items: []d.ProcessInstance{
+					{Key: "2251799813711967", BpmnProcessId: "order-process"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
+		BpmnProcessId: "order-process",
+	}, ProcessInstancePageRequest{From: 100, Size: 25}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.NotNil(t, page.ReportedTotal)
+	assert.Equal(t, int64(10000), page.ReportedTotal.Count)
+	assert.Equal(t, ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	require.Len(t, page.Items, 1)
+}
+
 func TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter(t *testing.T) {
 	t.Parallel()
 

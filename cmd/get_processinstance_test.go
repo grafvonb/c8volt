@@ -85,6 +85,61 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	require.Equal(t, true, meta["withAge"])
 }
 
+func TestGetProcessInstanceTotalOutput(t *testing.T) {
+	t.Run("reported total prints only the numeric count without fetching later pages", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		promptCalls := 0
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			promptCalls++
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"get", "process-instance",
+			"--count", "2",
+			"--total",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 1)
+		require.Zero(t, promptCalls)
+		require.Equal(t, "3\n", stdout)
+		require.Empty(t, stderr)
+	})
+
+	t.Run("zero matches still print zero only", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"get", "process-instance",
+			"--total",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 1)
+		require.Equal(t, "0\n", stdout)
+		require.Empty(t, stderr)
+	})
+}
+
 func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
 	response := `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`
 
@@ -1181,6 +1236,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIEndAfterDays = -1
 	flagGetPIEndBeforeDays = -1
 	flagGetPIWithAge = false
+	flagGetPITotal = false
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize
