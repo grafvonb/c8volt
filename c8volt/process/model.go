@@ -73,10 +73,23 @@ const (
 	ProcessInstanceOverflowStateIndeterminate ProcessInstanceOverflowState = "indeterminate"
 )
 
+type ProcessInstanceReportedTotalKind string
+
+const (
+	ProcessInstanceReportedTotalKindExact      ProcessInstanceReportedTotalKind = "exact"
+	ProcessInstanceReportedTotalKindLowerBound ProcessInstanceReportedTotalKind = "lower_bound"
+)
+
+type ProcessInstanceReportedTotal struct {
+	Count int64                            `json:"count,omitempty"`
+	Kind  ProcessInstanceReportedTotalKind `json:"kind,omitempty"`
+}
+
 type ProcessInstancePage struct {
-	Request       ProcessInstancePageRequest   `json:"request,omitempty"`
-	OverflowState ProcessInstanceOverflowState `json:"overflowState,omitempty"`
-	Items         []ProcessInstance            `json:"items,omitempty"`
+	Request       ProcessInstancePageRequest    `json:"request,omitempty"`
+	OverflowState ProcessInstanceOverflowState  `json:"overflowState,omitempty"`
+	ReportedTotal *ProcessInstanceReportedTotal `json:"reportedTotal,omitempty"`
+	Items         []ProcessInstance             `json:"items,omitempty"`
 }
 
 type ProcessInstanceFilter struct {

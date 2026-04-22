@@ -24,8 +24,10 @@ The shared process-instance page model must carry enough metadata for the comman
 
 | Metadata | Contract |
 |--------|----------|
-| Reported total value | Numeric total returned by the backend when available |
-| Exact vs lower-bound state | Indicates whether the reported total is authoritative or capped |
+| `ReportedTotal=nil` | No trustworthy backend total is available |
+| `ReportedTotal.Count` | Numeric total returned by the backend when available |
+| `ReportedTotal.Kind=exact` | The reported total is authoritative |
+| `ReportedTotal.Kind=lower_bound` | The reported total is capped and must remain a lower bound |
 | Overflow state | Continues to drive paging behavior independently of the reported total |
 
 `OverflowState` alone is not sufficient to satisfy the `--total` contract.

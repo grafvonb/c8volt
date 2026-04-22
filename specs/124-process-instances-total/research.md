@@ -26,7 +26,7 @@
 
 ## Decision 4: Carry backend-reported totals through the shared page model instead of teaching `cmd/` about version-specific response shapes
 
-- **Decision**: Extend shared domain/public process-instance page models with reported-total metadata and whether that total is an exact count or a lower bound.
+- **Decision**: Extend shared domain/public process-instance page models with an optional `ReportedTotal{Count, Kind}` value where `Kind` is either `exact` or `lower_bound`, and absence means no trustworthy backend total is available.
 - **Rationale**: `internal/services/processinstance/v88/service.go` and `v89/service.go` already see `totalItems` and `hasMoreTotalItems`, while `v87/service.go` has access to the Operate payload total pointer. Today that information is reduced to `OverflowState` before reaching `cmd/`. A small shared metadata seam lets the command stay version-agnostic.
 - **Alternatives considered**:
   - Compute count-only behavior separately in each versioned service with a new command-specific API: rejected because it would add parallel service entry points for one display concern.
@@ -55,6 +55,13 @@
 - **Alternatives considered**:
   - Update only README: rejected because generated CLI docs would become stale.
   - Hand-edit `docs/cli/c8volt_get_process-instance.md`: rejected because the repository already has a documented generation path.
+
+## Finalized Reported-Total Vocabulary
+
+- `ReportedTotal=nil`: no trustworthy backend-reported total is available, so later command logic must use a fallback instead of pretending the total is exact.
+- `ReportedTotal.Count`: the numeric backend-reported total value for the current search.
+- `ReportedTotal.Kind=exact`: the backend reports an authoritative total for the current search.
+- `ReportedTotal.Kind=lower_bound`: the backend reports a capped numeric total that must be preserved unchanged in `--total` mode.
 
 ## Existing Technical Signals
 

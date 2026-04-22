@@ -80,7 +80,15 @@ func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage 
 			Size: x.Request.Size,
 		},
 		OverflowState: ProcessInstanceOverflowState(x.OverflowState),
+		ReportedTotal: toolx.MapPtr(x.ReportedTotal, fromDomainProcessInstanceReportedTotal),
 		Items:         toolx.MapSlice(x.Items, fromDomainProcessInstance),
+	}
+}
+
+func fromDomainProcessInstanceReportedTotal(x d.ProcessInstanceReportedTotal) ProcessInstanceReportedTotal {
+	return ProcessInstanceReportedTotal{
+		Count: x.Count,
+		Kind:  ProcessInstanceReportedTotalKind(x.Kind),
 	}
 }
 

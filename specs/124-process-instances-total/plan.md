@@ -105,6 +105,7 @@ Design artifacts are captured in:
 - Keep `--total` limited to search/list workflows; direct `--key` lookups remain on the strict single-resource path and should reject `--total`.
 - Treat `--total` as mutually exclusive with detail-oriented output modifiers such as `--json`, `--keys-only`, and `--with-age` so the command can keep the spec’s numeric-only contract without weakening the shared output-mode model.
 - Extend the shared domain/public page model with reported-total metadata so `v8.8` and `v8.9` can pass through `totalItems` plus capped/lower-bound state, and `v8.7` can surface the best available total signal from its current response payload.
+- Normalize the shared page metadata as an optional `ReportedTotal{Count, Kind}` value on `ProcessInstancePage`; absence means unavailable, `Kind=exact` is authoritative, and `Kind=lower_bound` preserves capped totals without reinterpretation.
 - Keep count-only logic centralized in the existing `get pi` command/search flow, using backend-reported totals when available and preserving the clarified lower-bound contract instead of forcing recounts.
 - Update README and regenerate `docs/cli/c8volt_get_process-instance.md` through `make docs-content`.
 
@@ -115,6 +116,7 @@ Design artifacts are captured in:
 | Search/list invocation with `--total` | Print only the numeric count result |
 | Search/list invocation with zero matches | Print `0` only |
 | Backend total is capped lower bound | Print the backend-reported numeric lower bound unchanged |
+| Backend total metadata is unavailable | Fall back through the existing search path without inventing detail output |
 | Direct `--key` lookup with `--total` | Reject as invalid flag combination |
 | `--total` with `--json` | Reject as invalid flag combination |
 | `--total` with `--keys-only` | Reject as invalid flag combination |

@@ -13,6 +13,7 @@
 - Add the flag and validation in `cmd/get_processinstance.go`.
 - Keep default detail rendering in `cmd/cmd_views_get.go` unchanged; implement count-only output as a narrow branch before the existing list renderer.
 - Extend shared page models under `internal/domain/processinstance.go` and `c8volt/process/model.go` plus conversions so count-only mode can use backend-reported totals without version-specific command logic.
+- Represent backend totals as optional `ReportedTotal{Count, Kind}` page metadata, where `Kind` is `exact` or `lower_bound` and omission means no trustworthy total is available.
 - Update `internal/services/processinstance/v87`, `v88`, and `v89` to populate the new reported-total metadata.
 - Update `README.md` and regenerate CLI docs with `make docs-content`.
 

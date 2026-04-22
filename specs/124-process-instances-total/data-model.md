@@ -19,10 +19,11 @@
   - `Items`
   - `OverflowState`
 - **Planned additions**:
-  - `ReportedTotal` as the backend-reported numeric total for the current search when available
-  - `ReportedTotalKind` or equivalent lower-bound/exact indicator so capped totals can be distinguished from exact totals
+  - `ReportedTotal` as an optional metadata record with `Count` and `Kind`
 - **Invariants**:
   - `ReportedTotal` should be version-agnostic at the command boundary even if each service version derives it differently.
+  - `ReportedTotal=nil` means no trustworthy backend total is available for the current page.
+  - `ReportedTotal.Kind` must be `Exact` or `LowerBound`; the unavailable state is represented by `ReportedTotal=nil`.
   - `OverflowState` remains the paging-control signal; it is not sufficient by itself for `--total`.
   - `ReportedTotal` may be a lower bound and must not be silently promoted to an exact total.
 
@@ -30,9 +31,9 @@
 
 - **Purpose**: Normalizes how count-only mode interprets backend totals across `v8.7`, `v8.8`, and `v8.9`.
 - **States**:
-  - `Exact`: the reported total is authoritative for the current search
-  - `LowerBound`: the reported total is useful but the backend marked it as capped
-  - `Unavailable`: no trustworthy backend-reported total is available
+  - `Exact`: `ReportedTotal.Kind=Exact`, so the reported total is authoritative for the current search
+  - `LowerBound`: `ReportedTotal.Kind=LowerBound`, so the reported total is useful but the backend marked it as capped
+  - `Unavailable`: `ReportedTotal=nil`, so no trustworthy backend-reported total is available
 - **Behavioral rules**:
   - `--total` prints the numeric total for both `Exact` and `LowerBound`.
   - `LowerBound` must preserve the reported numeric value unchanged.
