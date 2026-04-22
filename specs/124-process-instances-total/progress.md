@@ -8,6 +8,8 @@
 - Existing regression anchors are already close to the needed feature seams: `cmd/get_processinstance_test.go` covers command help and search request behavior, `cmd/cmd_processinstance_test.go` provides reusable process-instance search fixtures, `c8volt/process/client_test.go` covers cross-version page conversion, and versioned service tests assert paging metadata behavior around `OverflowState` and capped totals.
 - `ReportedTotal=nil` is the shared unavailable signal, while `ReportedTotal.Kind` uses `exact` and `lower_bound`; that keeps absence distinct from a real numeric zero total and avoids inventing a third enum state in the model.
 - The command contract should keep `--total` as a visible flag while discovery output modes stay limited to shared render choices (`one-line`, `json`, `keys-only`); the count-only branch remains command-local rather than a new render mode.
+- `cmd/get_processinstance.go` remains the single source for help synopsis/examples and visible flag descriptions, and the capabilities document reflects that same flag description verbatim, so help-text regressions should cover both command help and capability metadata.
+- `make docs-content` intentionally regenerates `docs/cli/*` and syncs `docs/index.md` from `README.md`, so README changes that affect user-facing docs should expect both files to move together in the same iteration.
 
 ---
 ## Iteration 1 - 2026-04-22 22:15:51 CEST
@@ -100,4 +102,25 @@
 - Validation for `--total` belongs in `validatePISearchFlags()` for render-related conflicts, while the `--key` conflict stays on the keyed lookup branch because only that branch knows whether search mode was bypassed.
 - Default one-line output should continue to flow through `listProcessInstancesView`; the safest regression is to prove reported-total metadata does not collapse normal output into count-only mode.
 - Capability metadata already models `--total` correctly as a flag, so the key regression is preventing it from being treated as a new shared output mode.
+---
+## Iteration 5 - 2026-04-22 22:38:00 CEST
+**User Story**: User Story 3 - Understand the New Flag Quickly
+**Tasks Completed**:
+- [x] T017: Add or update command-help regressions for the new `--total` flag text
+- [x] T018: Update user-facing command documentation and examples for `--total`
+- [x] T019: Regenerate CLI reference output with `make docs-content`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- specs/124-process-instances-total/progress.md
+- specs/124-process-instances-total/tasks.md
+**Learnings**:
+- Help discoverability for `--total` needs to stay aligned across Cobra help text, capabilities metadata, README examples, and generated CLI docs to avoid conflicting automation guidance.
+- `make docs-content` is the repository-native regeneration path for this story because it refreshes the command reference and the README-backed docs homepage together.
 ---

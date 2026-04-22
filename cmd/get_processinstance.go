@@ -50,10 +50,12 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
 		"Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.\n" +
+		"Use --total on search/list invocations when automation only needs the numeric count of matching process instances; if the backend reports a capped total, the command returns that lower-bound number unchanged.\n" +
 		"Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.\n\n" +
 		"When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. " +
 		"Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.",
 	Example: `  ./c8volt get pi --state active
+  ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
@@ -166,7 +168,7 @@ func init() {
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances")
+	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals stay lower bounds")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")

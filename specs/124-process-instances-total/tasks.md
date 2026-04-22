@@ -87,12 +87,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Add or update command-help regressions for the new `--total` flag text in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T017 [P] [US3] Add or update command-help regressions for the new `--total` flag text in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Update user-facing command documentation and examples for `--total` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T019 [US3] Regenerate CLI reference output with `make docs-content` so /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md matches the new flag behavior
+- [x] T018 [US3] Update user-facing command documentation and examples for `--total` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T019 [US3] Regenerate CLI reference output with `make docs-content` so /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md matches the new flag behavior
 
 **Checkpoint**: User Story 3 is independently testable: help text and docs clearly explain `--total` and do not conflict with shipped behavior.
 
