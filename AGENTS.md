@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: `specs/129-orphan-parent-warning/plan.md`
+- Active plan: `specs/124-process-instances-total/plan.md`
 <!-- SPECKIT END -->
