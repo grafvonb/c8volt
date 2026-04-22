@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,18 +10,41 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeCommandActivitySink struct {
+	mu      sync.Mutex
+	started int
+	stopped int
+	msgs    []string
+}
+
+func (s *fakeCommandActivitySink) StartActivity(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.started++
+	s.msgs = append(s.msgs, msg)
+}
+
+func (s *fakeCommandActivitySink) StopActivity() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopped++
+}
 
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
@@ -183,6 +207,43 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 			require.Contains(t, output, tt.want)
 		})
 	}
+}
+
+func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.T) {
+	prevOrphanOnly := flagGetPIOrphanChildrenOnly
+	t.Cleanup(func() {
+		flagGetPIOrphanChildrenOnly = prevOrphanOnly
+	})
+	flagGetPIOrphanChildrenOnly = true
+
+	sink := &fakeCommandActivitySink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+	cliFilterCalls := 0
+	cli := stubProcessAPI{filterOrphanParent: func(ctx context.Context, items []process.ProcessInstance, opts ...options.FacadeOption) ([]process.ProcessInstance, error) {
+		cliFilterCalls++
+		return items[:1], nil
+	}}
+
+	pis := process.ProcessInstances{
+		Total: 2,
+		Items: []process.ProcessInstance{
+			{Key: "123", ParentKey: "456"},
+			{Key: "124", ParentKey: "457"},
+		},
+	}
+
+	got, err := applyPISearchResultFilters(cmd, cli, pis)
+	require.NoError(t, err)
+	require.Equal(t, 1, cliFilterCalls)
+	require.Len(t, got.Items, 1)
+	require.EqualValues(t, 1, got.Total)
+
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	require.Equal(t, 1, sink.started)
+	require.Equal(t, 1, sink.stopped)
+	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, sink.msgs)
 }
 
 func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {

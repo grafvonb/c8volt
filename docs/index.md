@@ -70,6 +70,7 @@ The important part is not just that `8.9` parses as a version value. The reposit
 - `--automation` is the canonical non-interactive opt-in on supported command paths
 - supported commands can expose a shared machine-readable result envelope
 - automation mode keeps machine-readable results on stdout and pushes logs/progress away from stdout
+- transient terminal indicators stay human-only by default; automation and quiet mode suppress them, and `--no-indicator` disables them explicitly
 - unsupported automation paths fail explicitly instead of silently falling back to interactive behavior
 
 This matters if you are wiring `c8volt` into:

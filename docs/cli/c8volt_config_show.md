@@ -60,6 +60,7 @@ C8VOLT_AUTH_MODE=oauth2 ./c8volt --config ./config.yaml config show --validate
       --log-level string    log level (debug, info, warn, error) (default "info")
       --log-with-source     include source file and line number in logs
       --no-err-codes        suppress error codes in error outputs
+      --no-indicator        disable transient terminal activity indicators
       --profile string      config active profile name to use (e.g. dev, prod)
   -q, --quiet               suppress all output, except errors, overrides --log-level
       --tenant string       tenant ID for tenant-aware command flows (overrides env, profile, and base config)

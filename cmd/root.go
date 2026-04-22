@@ -27,6 +27,7 @@ var (
 	flagQuiet             bool
 	flagVerbose           bool
 	flagDebug             bool
+	flagNoIndicator       bool
 	flagNoErrCodes        bool
 	flagCmdAutomation     bool
 	flagCmdAutoConfirm    bool
@@ -118,7 +119,9 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			}
 			return bootstrapLocalPrecondition(err)
 		}
-		ctx := cfg.ToContextWithLogWriter(cmd.Context(), cmd.ErrOrStderr())
+		activityWriter := logging.NewActivityWriterEnabled(cmd.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
@@ -158,7 +161,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
 		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
 
-		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar())
+		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar(), httpc.WithActivitySink(activityWriter))
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
 		}
@@ -211,6 +214,7 @@ func init() {
 	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the canonical non-interactive contract for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
+	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
 	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable), can be used for piping to other commands")
@@ -308,6 +312,19 @@ func automationModeEnabled(cmd *cobra.Command) bool {
 		}
 	}
 	return flagCmdAutomation
+}
+
+func indicatorEnabled(cmd *cobra.Command, cfg *config.Config) bool {
+	if flagNoIndicator || flagQuiet {
+		return false
+	}
+	if cfg != nil {
+		if strings.EqualFold(cfg.Log.Format, "json") {
+			return false
+		}
+		return !cfg.App.Automation
+	}
+	return !automationModeEnabled(cmd)
 }
 
 func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*config.Config, error) {

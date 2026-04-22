@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -597,7 +598,9 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 		pis = pis.FilterRootsOnly()
 	}
 	if flagGetPIOrphanChildrenOnly {
+		stopActivity := startCommandActivity(cmd, fmt.Sprintf("checking orphan parents for %d process instance(s)", len(pis.Items)))
 		pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items, collectOptions()...)
+		stopActivity()
 		if err != nil {
 			return process.ProcessInstances{}, fmt.Errorf("error filtering orphan children: %w", err)
 		}
@@ -614,6 +617,18 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 
 func canUsePIReportedTotal() bool {
 	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
+}
+
+func startCommandActivity(cmd *cobra.Command, msg string) func() {
+	if cmd == nil {
+		return func() {}
+	}
+	activity := logging.ActivityFromContext(cmd.Context())
+	if activity == nil {
+		return func() {}
+	}
+	activity.StartActivity(msg)
+	return activity.StopActivity
 }
 
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {

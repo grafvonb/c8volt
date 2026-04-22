@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 var (
@@ -18,9 +19,10 @@ var (
 )
 
 type Service struct {
-	c   *http.Client
-	cfg *config.Config
-	log *slog.Logger
+	c        *http.Client
+	cfg      *config.Config
+	log      *slog.Logger
+	activity logging.ActivitySink
 }
 
 type Option func(*Service)
@@ -50,6 +52,15 @@ func WithAuthEditor(ed authenticator.RequestEditor) Option {
 	return func(s *Service) { s.InstallAuthEditor(ed) }
 }
 
+func WithActivitySink(activity logging.ActivitySink) Option {
+	return func(s *Service) {
+		s.activity = activity
+		if lt := unwrapLogTransport(s.c.Transport); lt != nil {
+			lt.Activity = activity
+		}
+	}
+}
+
 func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("cfg is nil")
@@ -58,8 +69,9 @@ func New(cfg *config.Config, log *slog.Logger, opts ...Option) (*Service, error)
 	if err != nil {
 		return nil, err
 	}
-	httpClient := &http.Client{Timeout: d, Transport: &LogTransport{Log: log, WithBody: cfg.Log.WithRequestBody}}
+	httpClient := &http.Client{Timeout: d}
 	s := &Service{c: httpClient, cfg: cfg, log: log}
+	s.c.Transport = &LogTransport{Log: log, WithBody: cfg.Log.WithRequestBody}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -84,6 +96,17 @@ func (s *Service) InstallCookieJar() error {
 
 func (s *Service) InstallAuthEditor(ed authenticator.RequestEditor) {
 	s.c.Transport = &AuthTransport{base: s.c.Transport, Editor: ed}
+}
+
+func unwrapLogTransport(rt http.RoundTripper) *LogTransport {
+	switch t := rt.(type) {
+	case *LogTransport:
+		return t
+	case *AuthTransport:
+		return unwrapLogTransport(t.base)
+	default:
+		return nil
+	}
 }
 
 type ctxKey struct{}

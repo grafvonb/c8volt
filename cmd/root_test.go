@@ -133,6 +133,51 @@ func TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists(t *
 	require.NotContains(t, got, "config.example.yaml")
 }
 
+func TestIndicatorEnabled_DefaultsToHumanInteractiveMode(t *testing.T) {
+	prevNoIndicator := flagNoIndicator
+	prevQuiet := flagQuiet
+	prevAutomation := flagCmdAutomation
+	t.Cleanup(func() {
+		flagNoIndicator = prevNoIndicator
+		flagQuiet = prevQuiet
+		flagCmdAutomation = prevAutomation
+	})
+
+	flagNoIndicator = false
+	flagQuiet = false
+	flagCmdAutomation = false
+
+	require.True(t, indicatorEnabled(nil, nil))
+}
+
+func TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	require.NoError(t, root.PersistentFlags().Set("quiet", "true"))
+	require.False(t, indicatorEnabled(root, nil))
+
+	resetCommandTreeFlags(root)
+	require.NoError(t, root.PersistentFlags().Set("no-indicator", "true"))
+	require.False(t, indicatorEnabled(root, nil))
+
+	resetCommandTreeFlags(root)
+	cfg := config.New()
+	cfg.App.Automation = true
+	root.SetContext(cfg.ToContext(context.Background()))
+	require.False(t, indicatorEnabled(root, cfg))
+}
+
+func TestIndicatorEnabled_DisabledForJSONLogFormat(t *testing.T) {
+	cfg := config.New()
+	cfg.Log.Format = "json"
+
+	require.False(t, indicatorEnabled(nil, cfg))
+}
+
 func assertCommandHelpOutput(t *testing.T, args []string, contains []string, omits []string) string {
 	t.Helper()
 
