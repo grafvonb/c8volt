@@ -8,6 +8,10 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+type legacyDryRunTraversalOnly interface {
+	LegacyDryRunTraversalOnly() bool
+}
+
 func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (roots types.Keys, collected types.Keys, err error) {
 	plan, err := c.DryRunCancelOrDeletePlan(ctx, keys, opts...)
 	if err != nil {
@@ -17,6 +21,10 @@ func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.K
 }
 
 func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+	if legacyOnly, ok := c.piApi.(legacyDryRunTraversalOnly); ok && legacyOnly.LegacyDryRunTraversalOnly() {
+		return c.dryRunCancelOrDeletePlanLegacy(ctx, keys, opts...)
+	}
+
 	var roots types.Keys
 	var collected types.Keys
 	var ancestryResults []TraversalResult
@@ -62,5 +70,33 @@ func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, 
 		MissingAncestors: uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),
 		Warning:          warning,
 		Outcome:          outcome,
+	}, nil
+}
+
+func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+	var roots types.Keys
+	var collected types.Keys
+
+	for _, key := range keys {
+		rootKey, _, _, err := c.Ancestry(ctx, key, opts...)
+		if err != nil {
+			return DryRunPIKeyExpansion{}, err
+		}
+		roots = append(roots, rootKey)
+	}
+	roots = roots.Unique()
+
+	for _, root := range roots {
+		desc, _, _, err := c.Descendants(ctx, root, opts...)
+		if err != nil {
+			return DryRunPIKeyExpansion{}, err
+		}
+		collected = append(collected, desc...)
+	}
+
+	return DryRunPIKeyExpansion{
+		Roots:     roots,
+		Collected: collected.Unique(),
+		Outcome:   TraversalOutcomeComplete,
 	}, nil
 }

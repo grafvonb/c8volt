@@ -46,15 +46,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add shared walker regression tests for partial ancestry, partial family traversal, and fully unresolved failure behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go
-- [ ] T009 [P] [US1] Add version-aware traversal regression coverage for `v87`, `v88`, and `v89` services in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
-- [ ] T010 [P] [US1] Add command rendering regressions for partial parent/family/tree output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go
+- [x] T008 [P] [US1] Add shared walker regression tests for partial ancestry, partial family traversal, and fully unresolved failure behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker_test.go
+- [x] T009 [P] [US1] Add version-aware traversal regression coverage for `v87`, `v88`, and `v89` services in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
+- [x] T010 [P] [US1] Add command rendering regressions for partial parent/family/tree output in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement shared partial ancestry and family result handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go
-- [ ] T012 [US1] Thread the new traversal result contract through the process facade in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/walker.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go
-- [ ] T013 [US1] Render partial walk output and warnings for parent/family/tree modes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_processinstance.go and related view helpers under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
+- [x] T011 [US1] Implement shared partial ancestry and family result handling in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/walker/walker.go
+- [x] T012 [US1] Thread the new traversal result contract through the process facade in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/walker.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go
+- [x] T013 [US1] Render partial walk output and warnings for parent/family/tree modes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_processinstance.go and related view helpers under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
 
 **Checkpoint**: User Story 1 is independently testable: walk commands no longer fail hard on orphan parents when resolved traversal data exists.
 

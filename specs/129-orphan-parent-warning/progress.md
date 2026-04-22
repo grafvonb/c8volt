@@ -10,6 +10,7 @@ Started: 2026-04-22 11:13:42
 - Supported Camunda versions are selected in `internal/services/processinstance/factory.go`, and `v87`, `v88`, and `v89` all delegate traversal methods through the shared walker while keeping version-specific direct lookup behavior local to each service.
 - Shared process-instance traversal contracts need a leaf package when both the parent `processinstance` package and versioned services consume them; `internal/services/processinstance/traversal` keeps result types and builders reusable without import cycles.
 - Backward-compatible facade upgrades follow the existing pattern of adding structured result methods beside legacy tuple methods first, then switching command callers story by story once the shared contract is validated.
+- Story-scoped behavior changes that would otherwise leak into later destructive flows should stay behind version- or caller-specific adapters first; `v87` now uses a traversal-only search adapter for walk results while dry-run expansion remains on the legacy path until the preflight story is implemented.
 
 ---
 
@@ -68,4 +69,34 @@ Started: 2026-04-22 11:13:42
 - The tuple-based ancestry API already carries enough orphan boundary information to seed a structured result seam once the walker preserves the partial path on orphan errors.
 - A leaf `traversal` package is the repository-native way to share result contracts between `processinstance` and `v87`/`v88`/`v89` without reintroducing package cycles.
 - `DryRunCancelOrDeleteGetPIKeys` can stay source-compatible while the new `DryRunCancelOrDeletePlan` carries missing-ancestor metadata for later command adoption.
+---
+
+---
+## Iteration 3 - 2026-04-22 11:39 CEST
+**User Story**: US1 - Inspect Partial Trees Safely
+**Tasks Completed**:
+- [x] T008: Add shared walker regression tests for partial ancestry, partial family traversal, and fully unresolved failure behavior
+- [x] T009: Add version-aware traversal regression coverage for `v87`, `v88`, and `v89` services
+- [x] T010: Add command rendering regressions for partial parent/family/tree output
+- [x] T011: Implement shared partial ancestry and family result handling
+- [x] T012: Thread the new traversal result contract through the process facade
+- [x] T013: Render partial walk output and warnings for parent/family/tree modes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/dryrun.go
+- cmd/cmd_views_walk.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/walker/walker_test.go
+- specs/129-orphan-parent-warning/tasks.md
+- specs/129-orphan-parent-warning/progress.md
+**Learnings**:
+- `walk process-instance` can adopt the structured traversal contract without changing the default human-readable list/tree views by wrapping the existing renderers and appending warnings only when the result is partial.
+- Camunda `8.7` needs a traversal-only adapter that resolves process instances through tenant-safe search for result-based walk flows, while dry-run preflight must stay on the legacy path until US2 lands.
+- The broader command suite is the right guardrail for story-scoped traversal work because `cancel` and `delete` still share process-instance expansion seams that must not change early.
 ---

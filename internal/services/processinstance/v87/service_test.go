@@ -743,6 +743,53 @@ func TestService_WithClientAndLoggerOptions(t *testing.T) {
 	require.Equal(t, logger, svc.Logger())
 }
 
+func TestService_TraversalResults(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("AncestryResultUsesTenantSafeLookupForPartialParentChains", func(t *testing.T) {
+		searchCalls := 0
+		svc := newTestService(t, testConfig(), newStrictCamundaClient(t), &mockOperateClient{
+			getProcessInstanceByKeyWithResponse: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error) {
+				t.Fatalf("unexpected direct get call")
+				return nil, nil
+			},
+			searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
+				require.NotNil(t, body.Filter)
+				require.NotNil(t, body.Size)
+				assert.Equal(t, int32(2), *body.Size)
+				searchCalls++
+				if searchCalls == 1 {
+					items := []operatev87.ProcessInstance{*makeProcessInstanceResponse(123, "ACTIVE", "999")}
+					return &operatev87.SearchProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+						JSON200:      &operatev87.ResultsProcessInstance{Items: &items},
+					}, nil
+				}
+				return &operatev87.SearchProcessInstancesResponse{
+					Body:         []byte(`{"items":[]}`),
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://operate.local/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200:      &operatev87.ResultsProcessInstance{},
+				}, nil
+			},
+			deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
+				t.Fatalf("unexpected delete call")
+				return nil, nil
+			},
+		})
+
+		result, err := svc.AncestryResult(ctx, "123")
+
+		require.NoError(t, err)
+		assert.Equal(t, "123", result.RootKey)
+		assert.Equal(t, []string{"123"}, result.Keys)
+		assert.Equal(t, "one or more parent process instances were not found", result.Warning)
+		assert.Equal(t, "partial", string(result.Outcome))
+		require.Len(t, result.MissingAncestors, 1)
+		assert.Equal(t, "999", result.MissingAncestors[0].Key)
+		assert.Equal(t, 2, searchCalls)
+	})
+}
+
 func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamundaClient, operateClient *mockOperateClient) *v87.Service {
 	t.Helper()
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
@@ -52,44 +53,61 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 
 		type walker struct {
-			fetch func() (KeysPath, Chain, error)
-			view  func(*cobra.Command, KeysPath, Chain) error
+			fetch func() (process.TraversalResult, error)
+			view  func(*cobra.Command, process.TraversalResult) error
 		}
-		var familyEdges map[string][]string
 
 		walkers := map[string]walker{
 			walkPIModeParent: {
-				fetch: func() (KeysPath, Chain, error) {
-					_, path, chain, err := cli.Ancestry(cmd.Context(), flagWalkPIKey, collectOptions()...)
-					return path, chain, err
+				fetch: func() (process.TraversalResult, error) {
+					return cli.AncestryResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
 				},
-				view: ancestorsView,
+				view: func(cmd *cobra.Command, result process.TraversalResult) error {
+					if pickMode() == RenderModeJSON {
+						return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
+					}
+					if err := ancestorsView(cmd, result.Keys, result.Chain); err != nil {
+						return err
+					}
+					printTraversalWarning(cmd, result)
+					return nil
+				},
 			},
 			walkPIModeChildren: {
-				fetch: func() (KeysPath, Chain, error) {
-					path, _, chain, err := cli.Descendants(cmd.Context(), flagWalkPIKey, collectOptions()...)
-					return path, chain, err
+				fetch: func() (process.TraversalResult, error) {
+					return cli.DescendantsResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
 				},
-				view: descendantsView,
+				view: func(cmd *cobra.Command, result process.TraversalResult) error {
+					if pickMode() == RenderModeJSON {
+						return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
+					}
+					return descendantsView(cmd, result.Keys, result.Chain)
+				},
 			},
 			walkPIModeFamily: {
-				fetch: func() (KeysPath, Chain, error) {
-					path, edges, chain, err := cli.Family(cmd.Context(), flagWalkPIKey, collectOptions()...)
-					if err == nil {
-						familyEdges = edges
-					}
-					return path, chain, err
+				fetch: func() (process.TraversalResult, error) {
+					return cli.FamilyResult(cmd.Context(), flagWalkPIKey, collectOptions()...)
 				},
-				view: func(cmd *cobra.Command, path KeysPath, chain Chain) error {
+				view: func(cmd *cobra.Command, result process.TraversalResult) error {
+					if pickMode() == RenderModeJSON {
+						return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
+					}
 					mode := pickMode()
 					if mode == RenderModeTree {
-						if len(path) == 0 {
+						if len(result.Keys) == 0 {
 							return nil
 						}
-						rootKey := path[0]
-						return renderFamilyTree(cmd, rootKey, familyEdges, chain, flagWalkPIKey)
+						if err := renderFamilyTree(cmd, result.RootKey, result.Edges, result.Chain, flagWalkPIKey); err != nil {
+							return err
+						}
+						printTraversalWarning(cmd, result)
+						return nil
 					}
-					return familyView(cmd, path, chain)
+					if err := familyView(cmd, result.Keys, result.Chain); err != nil {
+						return err
+					}
+					printTraversalWarning(cmd, result)
+					return nil
 				},
 			},
 		}
@@ -105,11 +123,11 @@ var walkProcessInstanceCmd = &cobra.Command{
 		if !ok {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
 		}
-		path, chain, err := w.fetch()
+		result, err := w.fetch()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if err := w.view(cmd, path, chain); err != nil {
+		if err := w.view(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 	},

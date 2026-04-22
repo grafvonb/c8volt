@@ -33,10 +33,15 @@ type Service struct {
 	log *slog.Logger
 }
 
+type traversalAdapter struct {
+	*Service
+}
+
 func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
 func (s *Service) ClientOperate() GenProcessInstanceClientOperate { return s.co }
 func (s *Service) Config() *config.Config                         { return s.cfg }
 func (s *Service) Logger() *slog.Logger                           { return s.log }
+func (s *Service) LegacyDryRunTraversalOnly() bool                { return true }
 
 type Option func(*Service)
 
@@ -444,15 +449,35 @@ func (s *Service) Family(ctx context.Context, startKey string, opts ...services.
 }
 
 func (s *Service) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
-	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
+	return pitraversal.BuildAncestryResult(ctx, traversalAdapter{s}, startKey, opts...)
 }
 
 func (s *Service) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
-	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
+	return pitraversal.BuildDescendantsResult(ctx, traversalAdapter{s}, rootKey, opts...)
 }
 
 func (s *Service) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
-	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
+	return pitraversal.BuildFamilyResult(ctx, traversalAdapter{s}, startKey, opts...)
+}
+
+func (a traversalAdapter) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
+	items, err := a.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{Key: key}, 2, opts...)
+	if err != nil {
+		return d.ProcessInstance{}, err
+	}
+	return common.RequireSingleProcessInstance(items, key)
+}
+
+func (a traversalAdapter) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (rootKey string, path []string, chain map[string]d.ProcessInstance, err error) {
+	return walker.Ancestry(ctx, a, startKey, opts...)
+}
+
+func (a traversalAdapter) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) (desc []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
+	return walker.Descendants(ctx, a, rootKey, opts...)
+}
+
+func (a traversalAdapter) Family(ctx context.Context, startKey string, opts ...services.CallOption) (fam []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
+	return walker.Family(ctx, a, startKey, opts...)
 }
 
 func processInstanceKeyInt64(key string) (int64, error) {

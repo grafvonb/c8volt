@@ -7,6 +7,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,6 +15,11 @@ import (
 type stubPIWalker struct {
 	getProcessInstance               func(ctx context.Context, key string) (d.ProcessInstance, error)
 	getDirectChildrenProcessInstance func(ctx context.Context, key string) ([]d.ProcessInstance, error)
+	searchProcessInstances           func(ctx context.Context, filter d.ProcessInstanceFilter, size int32) ([]d.ProcessInstance, error)
+}
+
+type stubTraversalAPI struct {
+	stubPIWalker
 }
 
 func (s stubPIWalker) GetProcessInstance(ctx context.Context, key string, _ ...services.CallOption) (d.ProcessInstance, error) {
@@ -22,6 +28,25 @@ func (s stubPIWalker) GetProcessInstance(ctx context.Context, key string, _ ...s
 
 func (s stubPIWalker) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstance, error) {
 	return s.getDirectChildrenProcessInstance(ctx, key)
+}
+
+func (s stubPIWalker) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+	if s.searchProcessInstances == nil {
+		return nil, d.ErrUnsupported
+	}
+	return s.searchProcessInstances(ctx, filter, size)
+}
+
+func (s stubTraversalAPI) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+	return Ancestry(ctx, s.stubPIWalker, startKey, opts...)
+}
+
+func (s stubTraversalAPI) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	return Descendants(ctx, s.stubPIWalker, rootKey, opts...)
+}
+
+func (s stubTraversalAPI) Family(ctx context.Context, startKey string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	return Family(ctx, s.stubPIWalker, startKey, opts...)
 }
 
 func TestAncestry(t *testing.T) {
@@ -215,6 +240,94 @@ func TestFamily(t *testing.T) {
 		assert.NotContains(t, err.Error(), "family ancestry")
 		assert.True(t, strings.HasPrefix(err.Error(), "family:"))
 		assert.NotContains(t, err.Error(), "ancestry fetch")
+	})
+}
+
+func TestTraversalResults(t *testing.T) {
+	t.Run("ancestry result returns partial warning when parent is missing", func(t *testing.T) {
+		t.Parallel()
+
+		w := stubPIWalker{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				if key == "child" {
+					return d.ProcessInstance{Key: "child", ParentKey: "missing"}, nil
+				}
+				return d.ProcessInstance{}, d.ErrNotFound
+			},
+			getDirectChildrenProcessInstance: func(ctx context.Context, key string) ([]d.ProcessInstance, error) {
+				t.Fatalf("unexpected GetDirectChildrenOfProcessInstance call")
+				return nil, nil
+			},
+		}
+
+		result, err := pitraversal.BuildAncestryResult(context.Background(), stubTraversalAPI{stubPIWalker: w}, "child")
+
+		require.NoError(t, err)
+		assert.Equal(t, pitraversal.OutcomePartial, result.Outcome)
+		assert.Equal(t, "child", result.RootKey)
+		assert.Equal(t, []string{"child"}, result.Keys)
+		assert.Equal(t, "one or more parent process instances were not found", result.Warning)
+		require.Len(t, result.MissingAncestors, 1)
+		assert.Equal(t, pitraversal.MissingAncestor{Key: "missing", StartKey: "child"}, result.MissingAncestors[0])
+	})
+
+	t.Run("family result keeps resolved descendants when ancestry is partial", func(t *testing.T) {
+		t.Parallel()
+
+		items := map[string]d.ProcessInstance{
+			"child":      {Key: "child", ParentKey: "missing"},
+			"grandchild": {Key: "grandchild", ParentKey: "child"},
+		}
+
+		w := stubPIWalker{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				it, ok := items[key]
+				if !ok {
+					return d.ProcessInstance{}, d.ErrNotFound
+				}
+				return it, nil
+			},
+			getDirectChildrenProcessInstance: func(ctx context.Context, key string) ([]d.ProcessInstance, error) {
+				switch key {
+				case "child":
+					return []d.ProcessInstance{items["grandchild"]}, nil
+				case "grandchild":
+					return nil, nil
+				default:
+					return nil, d.ErrNotFound
+				}
+			},
+		}
+
+		result, err := pitraversal.BuildFamilyResult(context.Background(), stubTraversalAPI{stubPIWalker: w}, "child")
+
+		require.NoError(t, err)
+		assert.Equal(t, pitraversal.OutcomePartial, result.Outcome)
+		assert.Equal(t, "child", result.RootKey)
+		assert.Equal(t, []string{"child", "grandchild"}, result.Keys)
+		assert.Equal(t, []string{"grandchild"}, result.Edges["child"])
+		assert.Nil(t, result.Edges["grandchild"])
+		require.Len(t, result.MissingAncestors, 1)
+		assert.Equal(t, pitraversal.MissingAncestor{Key: "missing", StartKey: "child"}, result.MissingAncestors[0])
+	})
+
+	t.Run("family result fails when nothing can be resolved", func(t *testing.T) {
+		t.Parallel()
+
+		w := stubPIWalker{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				return d.ProcessInstance{}, d.ErrNotFound
+			},
+			getDirectChildrenProcessInstance: func(ctx context.Context, key string) ([]d.ProcessInstance, error) {
+				t.Fatalf("unexpected GetDirectChildrenOfProcessInstance call")
+				return nil, nil
+			},
+		}
+
+		_, err := pitraversal.BuildFamilyResult(context.Background(), stubTraversalAPI{stubPIWalker: w}, "missing")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrNotFound)
 	})
 }
 
