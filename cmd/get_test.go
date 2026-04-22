@@ -83,10 +83,27 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
 	require.Equal(t, ContractSupportFull, runPI.ContractSupport)
 	require.Equal(t, AutomationSupportFull, runPI.AutomationSupport)
+	require.Contains(t, getPI.Flags, FlagContract{
+		Name:        "total",
+		Shorthand:   "",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return only the numeric total of matching process instances; capped backend totals stay lower bounds",
+	})
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
 		MachinePreferred: true,
+	})
+	require.Contains(t, getPI.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.NotContains(t, getPI.OutputModes, OutputModeContract{
+		Name:      "total",
+		Supported: true,
 	})
 }
 
@@ -886,6 +903,8 @@ apis:
 	require.Contains(t, string(output), "resource not found")
 	require.Contains(t, string(output), "get process instance")
 	require.NotContains(t, string(output), "error fetching process instance")
+	require.NotContains(t, string(output), "missing ancestor keys")
+	require.NotContains(t, string(output), "parent process instances were not found")
 }
 
 func TestGetProcessInstanceKeyLookup_V87ReportsUnsupported(t *testing.T) {

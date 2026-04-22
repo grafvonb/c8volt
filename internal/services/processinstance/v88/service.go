@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
 	"github.com/grafvonb/c8volt/toolx"
@@ -279,6 +280,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Items:         toolx.MapSlice(payload.Items, fromProcessInstanceResult),
 		Request:       pageReq,
 		OverflowState: pickProcessInstanceOverflowState(payload.Page, pageReq, len(payload.Items)),
+		ReportedTotal: pickProcessInstanceReportedTotal(payload.Page, len(payload.Items)),
 	}, nil
 }
 
@@ -301,6 +303,20 @@ func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, r
 		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	return d.ProcessInstanceOverflowStateNoMore
+}
+
+func pickProcessInstanceReportedTotal(page camundav88.SearchQueryPageResponse, itemCount int) *d.ProcessInstanceReportedTotal {
+	if page.TotalItems == 0 && itemCount > 0 {
+		return nil
+	}
+	kind := d.ProcessInstanceReportedTotalKindExact
+	if page.HasMoreTotalItems {
+		kind = d.ProcessInstanceReportedTotalKindLowerBound
+	}
+	return &d.ProcessInstanceReportedTotal{
+		Count: page.TotalItems,
+		Kind:  kind,
+	}
 }
 
 // parseInclusiveDateLowerBound parses a YYYY-MM-DD date into the start of that day in UTC.
@@ -541,4 +557,16 @@ func (s *Service) Descendants(ctx context.Context, rootKey string, opts ...servi
 
 func (s *Service) Family(ctx context.Context, startKey string, opts ...services.CallOption) (fam []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
 	return walker.Family(ctx, s, startKey, opts...)
+}
+
+func (s *Service) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
+}
+
+func (s *Service) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
+}
+
+func (s *Service) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
 }

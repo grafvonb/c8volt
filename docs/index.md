@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-110-gcc7ec72-dirty`, commit `cc7ec72`, built `2026-04-21T16:47:58Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-128-gc6f4a83-dirty`, commit `c6f4a83`, built `2026-04-22T20:37:32Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -89,6 +89,7 @@ This matters if you are wiring `c8volt` into:
 - delete process-instance families thoroughly
 - wait for the state you actually need
 - page through large process-instance result sets safely
+- return only the numeric process-instance match count with `get pi --total`
 - validate config and inspect cluster metadata
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
@@ -189,6 +190,8 @@ For batch execution:
 
 This is where `c8volt` becomes an operations tool instead of just a resource browser: it helps you see the structure that explains why a cancellation or deletion may behave the way it does.
 
+If an ancestor is missing but the remaining tree is still actionable, traversal and preflight flows keep the resolved family data and warn about the missing ancestor boundary. Direct single-resource paths stay strict: `get pi --key ...` still returns the normal not-found error when the requested process instance itself is gone, and waiter-based absent/deleted confirmation semantics are unchanged.
+
 ### 4. Cancel the thing that actually needs cancelling
 
 Camunda may reject a direct cancellation of a child instance when the real action must happen at the root.
@@ -218,12 +221,15 @@ Deletion in real environments often means cancel-first, then remove, then verify
 
 ```bash
 ./c8volt get pi --state active
+./c8volt get pi --state active --total
 ./c8volt get pi --state active --count 250
 ./c8volt cancel pi --state active --count 250
 ./c8volt delete pi --state completed --count 250 --auto-confirm
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing in human-oriented modes unless `--auto-confirm` or `--json` is set. JSON mode auto-consumes remaining pages and returns one final aggregated result. Direct `--key` workflows still bypass paging and keep their existing behavior.
+
+When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If the backend exposes that total as a capped value, `c8volt` returns the lower-bound number unchanged instead of inventing an exact recount.
 
 For supported command paths, `--automation` is the stronger non-interactive contract: it tells `c8volt` to reject unsupported automation flows explicitly, to treat supported prompts as accepted, and to keep the human-oriented default behavior unchanged when the flag is absent.
 

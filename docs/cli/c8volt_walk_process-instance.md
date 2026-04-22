@@ -12,7 +12,7 @@ Inspect the parent/child tree of process instances
 
 Inspect the parent/child tree of process instances.
 
-Use this read-only command after state-changing flows when you need to verify ancestor, child, or full-family relationships before cancelling, deleting, or confirming downstream effects. Choose --parent for ancestry, --children for descendants, and --family when you need the combined view or ASCII tree rendering.
+Use this read-only command after state-changing flows when you need to verify ancestor, child, or full-family relationships before cancelling, deleting, or confirming downstream effects. Choose --parent for ancestry, --children for descendants, and --family when you need the combined view or ASCII tree rendering. When an ancestor is missing but reachable family data still exists, walk returns the resolved partial tree plus a warning instead of weakening the strict keyed-lookup behavior used by single-resource commands.
 
 Human-readable list and tree output remain the default. Use --json when another tool needs the shared result envelope around the returned traversal payload. `--automation` remains unsupported because traversal output semantics are still human-first.
 

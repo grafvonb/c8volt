@@ -2,27 +2,116 @@ package process
 
 import (
 	"context"
+	"fmt"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/internal/services"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+type legacyDryRunTraversalOnly interface {
+	LegacyDryRunTraversalOnly() bool
+}
+
 func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (roots types.Keys, collected types.Keys, err error) {
+	plan, err := c.DryRunCancelOrDeletePlan(ctx, keys, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return plan.Roots, plan.Collected, nil
+}
+
+func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+	if legacyOnly, ok := c.piApi.(legacyDryRunTraversalOnly); ok && legacyOnly.LegacyDryRunTraversalOnly() {
+		return c.dryRunCancelOrDeletePlanLegacy(ctx, keys, opts...)
+	}
+
+	var roots types.Keys
+	var collected types.Keys
+	var ancestryResults []TraversalResult
 	for _, key := range keys {
-		root, _, _, err := c.Ancestry(ctx, key, opts...)
+		result, err := c.AncestryResult(ctx, key, opts...)
 		if err != nil {
-			return nil, nil, ferr.FromDomain(err)
+			return DryRunPIKeyExpansion{}, ferr.FromDomain(err)
 		}
-		roots = append(roots, root)
+		ancestryResults = append(ancestryResults, result)
+		if result.RootKey != "" {
+			roots = append(roots, result.RootKey)
+		}
 	}
 	roots = roots.Unique()
+
+	var descendantResults []TraversalResult
 	for _, root := range roots {
-		fam, _, _, err := c.Descendants(ctx, root, opts...)
+		result, err := c.DescendantsResult(ctx, root, opts...)
 		if err != nil {
-			return nil, nil, ferr.FromDomain(err)
+			return DryRunPIKeyExpansion{}, ferr.FromDomain(err)
 		}
-		collected = append(collected, fam...)
+		descendantResults = append(descendantResults, result)
+		collected = append(collected, result.Keys...)
 	}
-	return roots, collected.Unique(), nil
+
+	ancestryWarning, ancestryMissing, ancestryOutcome := mapDryRunTraversalWarning(ancestryResults)
+	descendantsWarning, descendantsMissing, descendantsOutcome := mapDryRunTraversalWarning(descendantResults)
+
+	warning := ancestryWarning
+	if warning == "" {
+		warning = descendantsWarning
+	}
+	outcome := ancestryOutcome
+	if outcome == TraversalOutcomeComplete {
+		outcome = descendantsOutcome
+	} else if descendantsOutcome == TraversalOutcomePartial {
+		outcome = TraversalOutcomePartial
+	}
+
+	plan := DryRunPIKeyExpansion{
+		Roots:            roots,
+		Collected:        collected.Unique(),
+		MissingAncestors: uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),
+		Warning:          warning,
+		Outcome:          outcome,
+	}
+
+	return plan, validateDryRunPIKeyExpansion(plan)
+}
+
+func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+	var roots types.Keys
+	var collected types.Keys
+
+	for _, key := range keys {
+		rootKey, _, _, err := c.Ancestry(ctx, key, opts...)
+		if err != nil {
+			return DryRunPIKeyExpansion{}, err
+		}
+		roots = append(roots, rootKey)
+	}
+	roots = roots.Unique()
+
+	for _, root := range roots {
+		desc, _, _, err := c.Descendants(ctx, root, opts...)
+		if err != nil {
+			return DryRunPIKeyExpansion{}, err
+		}
+		collected = append(collected, desc...)
+	}
+
+	return DryRunPIKeyExpansion{
+		Roots:     roots,
+		Collected: collected.Unique(),
+		Outcome:   TraversalOutcomeComplete,
+	}, nil
+}
+
+func validateDryRunPIKeyExpansion(plan DryRunPIKeyExpansion) error {
+	if plan.HasActionableResults() {
+		return nil
+	}
+	if plan.Outcome != TraversalOutcomeUnresolved {
+		return nil
+	}
+
+	return fmt.Errorf("%w: no process instances resolved during dependency expansion", services.ErrOrphanedInstance)
 }

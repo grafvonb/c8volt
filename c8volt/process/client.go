@@ -178,3 +178,47 @@ func MapStateResponsesToReports(in d.StateResponses) StateReports {
 	}
 	return out
 }
+
+func mapDryRunTraversalWarning(results []TraversalResult) (warning string, missing []MissingAncestor, outcome TraversalOutcome) {
+	outcome = TraversalOutcomeComplete
+	for _, result := range results {
+		if len(result.MissingAncestors) > 0 {
+			missing = append(missing, result.MissingAncestors...)
+		}
+		if result.Warning != "" && warning == "" {
+			warning = result.Warning
+		}
+		switch result.Outcome {
+		case TraversalOutcomeUnresolved:
+			if outcome == TraversalOutcomeComplete {
+				outcome = TraversalOutcomeUnresolved
+			}
+		case TraversalOutcomePartial:
+			outcome = TraversalOutcomePartial
+		}
+	}
+	if len(missing) > 0 && warning == "" {
+		warning = "one or more parent process instances were not found"
+	}
+	if len(missing) == 0 {
+		return warning, nil, outcome
+	}
+	return warning, uniqueMissingAncestors(missing), outcome
+}
+
+func uniqueMissingAncestors(items []MissingAncestor) []MissingAncestor {
+	if len(items) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(items))
+	out := make([]MissingAncestor, 0, len(items))
+	for _, item := range items {
+		key := item.StartKey + ":" + item.Key
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, item)
+	}
+	return out
+}

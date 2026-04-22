@@ -12,6 +12,8 @@ List or fetch process instances
 
 List process instances by search filters or fetch them by key.
 Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.
+Use --total on search/list invocations when automation only needs the numeric count of matching process instances; if the backend reports a capped total, the command returns that lower-bound number unchanged.
+Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.
 
 When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
 
@@ -23,6 +25,7 @@ c8volt get process-instance [flags]
 
 ```
   ./c8volt get pi --state active
+  ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
@@ -63,6 +66,7 @@ c8volt get process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled (default "all")
+      --total                       return only the numeric total of matching process instances; capped backend totals stay lower bounds
       --with-age                    include process instance age in one-line output and JSON meta
   -w, --workers int                 maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```

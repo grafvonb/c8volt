@@ -39,7 +39,7 @@ func Ancestry(ctx context.Context, s PIWalker, startKey string, opts ...services
 		it, getErr := s.GetProcessInstance(ctx, cur, opts...)
 		if getErr != nil {
 			if cur != startKey && errors.Is(getErr, d.ErrNotFound) {
-				return cur, nil, chain, fmt.Errorf("%w: non-existing parent %s of starting key %s", services.ErrOrphanedInstance, cur, startKey)
+				return cur, path, chain, fmt.Errorf("%w: non-existing parent %s of starting key %s", services.ErrOrphanedInstance, cur, startKey)
 			}
 			return "", nil, chain, fmt.Errorf("ancestry: %w", getErr)
 		}
