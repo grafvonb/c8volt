@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-110-gcc7ec72-dirty`, commit `cc7ec72`, built `2026-04-21T16:47:58Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-119-g2466cf3-dirty`, commit `2466cf3`, built `2026-04-22T10:00:25Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -188,6 +188,8 @@ For batch execution:
 ```
 
 This is where `c8volt` becomes an operations tool instead of just a resource browser: it helps you see the structure that explains why a cancellation or deletion may behave the way it does.
+
+If an ancestor is missing but the remaining tree is still actionable, traversal and preflight flows keep the resolved family data and warn about the missing ancestor boundary. Direct single-resource paths stay strict: `get pi --key ...` still returns the normal not-found error when the requested process instance itself is gone, and waiter-based absent/deleted confirmation semantics are unchanged.
 
 ### 4. Cancel the thing that actually needs cancelling
 

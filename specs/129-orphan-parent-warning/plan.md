@@ -166,6 +166,8 @@ Task generation should break the work into dependency-ordered slices:
   - `go test ./cmd -count=1`
 - Repository validation remains `make test`, which is required before implementation is complete.
 - If docs change, regenerate CLI markdown with `make docs-content` so `README.md` and `docs/cli/` stay aligned.
+- Validation was completed on 2026-04-22 with all four commands above passing on the feature branch.
+- CLI markdown was regenerated with `make docs-content` after the operator-facing help text changed for the strict lookup vs traversal warning guidance.
 
 ## Complexity Tracking
 

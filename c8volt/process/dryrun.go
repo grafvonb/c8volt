@@ -2,9 +2,11 @@ package process
 
 import (
 	"context"
+	"fmt"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/internal/services"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
@@ -64,13 +66,15 @@ func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, 
 		outcome = TraversalOutcomePartial
 	}
 
-	return DryRunPIKeyExpansion{
+	plan := DryRunPIKeyExpansion{
 		Roots:            roots,
 		Collected:        collected.Unique(),
 		MissingAncestors: uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),
 		Warning:          warning,
 		Outcome:          outcome,
-	}, nil
+	}
+
+	return plan, validateDryRunPIKeyExpansion(plan)
 }
 
 func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
@@ -99,4 +103,15 @@ func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.
 		Collected: collected.Unique(),
 		Outcome:   TraversalOutcomeComplete,
 	}, nil
+}
+
+func validateDryRunPIKeyExpansion(plan DryRunPIKeyExpansion) error {
+	if plan.HasActionableResults() {
+		return nil
+	}
+	if plan.Outcome != TraversalOutcomeUnresolved {
+		return nil
+	}
+
+	return fmt.Errorf("%w: no process instances resolved during dependency expansion", services.ErrOrphanedInstance)
 }

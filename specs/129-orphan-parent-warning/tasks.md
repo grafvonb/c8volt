@@ -107,10 +107,10 @@
 
 **Purpose**: Finish validation, keep planning artifacts synchronized, and leave the feature ready for implementation handoff or execution.
 
-- [ ] T025 [P] Refresh final implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/quickstart.md
-- [ ] T026 Run focused validation with `go test ./internal/services/processinstance/... -count=1`, `go test ./c8volt/process -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T027 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
-- [ ] T028 [P] Regenerate affected CLI docs with `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt if README or help output changed
+- [x] T025 [P] Refresh final implementation and verification notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/plan.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/quickstart.md
+- [x] T026 Run focused validation with `go test ./internal/services/processinstance/... -count=1`, `go test ./c8volt/process -count=1`, and `go test ./cmd -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T027 Run repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T028 [P] Regenerate affected CLI docs with `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt if README or help output changed
 
 ---
 

@@ -27,7 +27,7 @@
 6. Confirm waiter absent/deleted behavior remains unchanged.
 7. Confirm regression coverage exercises `v87`, `v88`, and `v89` traversal behavior.
 
-## Suggested Verification Commands
+## Completed Verification Commands
 
 ```bash
 go test ./internal/services/processinstance/... -count=1
@@ -36,7 +36,7 @@ go test ./cmd -count=1
 make test
 ```
 
-Run the focused suites first to isolate traversal/preflight regressions, then run `make test` as the repository gate required by project policy.
+All four commands passed on 2026-04-22. `make docs-content` also ran afterward to refresh `docs/cli/` for the updated operator-facing help text.
 
 ## Manual Smoke Ideas
 

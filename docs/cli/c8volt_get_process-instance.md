@@ -12,6 +12,7 @@ List or fetch process instances
 
 List process instances by search filters or fetch them by key.
 Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.
+Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.
 
 When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
 

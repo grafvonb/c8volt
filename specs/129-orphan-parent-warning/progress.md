@@ -13,6 +13,7 @@ Started: 2026-04-22 11:13:42
 - Story-scoped behavior changes that would otherwise leak into later destructive flows should stay behind version- or caller-specific adapters first; `v87` now uses a traversal-only search adapter for walk results while dry-run expansion remains on the legacy path until the preflight story is implemented.
 - Destructive preflight flows should consume `DryRunCancelOrDeletePlan` and print orphan warnings on stderr or logs, which keeps JSON stdout/report payloads stable while still surfacing missing ancestor keys to operators.
 - Strict single-resource seams should document their contract where they live: `cmd/get_processinstance.go`, `internal/services/common/response.go`, and `internal/services/processinstance/waiter/waiter.go` are the canonical places to state that not-found stays strict outside traversal/preflight flows.
+- CLI markdown under `docs/cli/` is generated from the current Cobra help text via `make docs-content`, so README/help wording changes should be regenerated in the same polish pass instead of hand-editing derived docs.
 
 ---
 
@@ -42,7 +43,7 @@ Started: 2026-04-22 11:13:42
 - [x] T006: Update the feature data model and quickstart guidance for the finalized traversal result contract
 - [x] T007: Add foundational facade and helper seams for structured partial traversal handling
 **Tasks Remaining in Story**: None - story complete
-**Commit**: Recorded in Git history for this iteration
+**Commit**: No commit - sandbox blocked git index writes
 **Files Changed**:
 - c8volt/process/api.go
 - c8volt/process/client.go
@@ -165,4 +166,28 @@ Started: 2026-04-22 11:13:42
 - Direct `get process-instance --key` coverage is best anchored in subprocess-based command tests plus service-level not-found assertions, because the command error path exits the process rather than returning a plain Go error in-process.
 - The waiter’s absent/deleted contract is still intentionally narrower than traversal behavior: `ErrNotFound` only becomes `ABSENT` when the desired state set explicitly allows it.
 - The broader `go test ./cmd -count=1` suite is currently blocked in this sandbox by an unrelated IPv6 `httptest` listener panic, so US3 validation relied on targeted `cmd` tests around `get` and `walk` plus the full `internal/services/processinstance/...` suite.
+---
+
+---
+## Iteration 6 - 2026-04-22 12:01 CEST
+**User Story**: Final polish
+**Tasks Completed**:
+- [x] T025: Refresh final implementation and verification notes
+- [x] T026: Run focused validation with `go test ./internal/services/processinstance/... -count=1`, `go test ./c8volt/process -count=1`, and `go test ./cmd -count=1`
+- [x] T027: Run repository validation with `make test`
+- [x] T028: Regenerate affected CLI docs with `make docs-content`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: No commit - pre-existing staged and unstaged feature changes would be swept into a Phase 6-only commit
+**Files Changed**:
+- docs/cli/c8volt.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- specs/129-orphan-parent-warning/plan.md
+- specs/129-orphan-parent-warning/progress.md
+- specs/129-orphan-parent-warning/quickstart.md
+- specs/129-orphan-parent-warning/tasks.md
+**Learnings**:
+- The full repository gate now passes in this environment; the earlier `go test ./cmd -count=1` IPv6 listener failure did not reproduce on 2026-04-22 during the final polish run.
+- Phase 6 is documentation- and validation-heavy, but the commit step still needs an isolated index because the worktree currently includes pre-existing staged and unstaged feature edits outside the polish files.
 ---

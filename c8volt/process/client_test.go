@@ -489,6 +489,30 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	assert.NotEmpty(t, got.Warning)
 }
 
+func TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			assert.Equal(t, "c1", startKey)
+			return pitraversal.Result{
+				Mode:             pitraversal.ModeAncestry,
+				StartKey:         "c1",
+				MissingAncestors: []pitraversal.MissingAncestor{{Key: "missing", StartKey: "c1"}},
+				Warning:          "one or more parent process instances were not found",
+				Outcome:          pitraversal.OutcomeUnresolved,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	_, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no process instances resolved during dependency expansion")
+}
+
 type stubProcessDefinitionAPI struct {
 	searchProcessDefinitions func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	getProcessDefinition     func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
