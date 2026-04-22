@@ -134,9 +134,98 @@ func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *
 	require.NoError(t, json.Unmarshal([]byte(output), &got))
 	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
 	require.Equal(t, "walk process-instance", got["command"])
-	payload, ok := got["payload"].([]any)
+	payload, ok := got["payload"].(map[string]any)
 	require.True(t, ok)
-	require.Len(t, payload, 2)
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 2)
+	require.Equal(t, "complete", payload["outcome"])
+}
+
+func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetadata(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"123","parentProcessInstanceKey":"999","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/124":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processInstanceKey":"124","parentProcessInstanceKey":"123","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/999":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"title":"Not Found","status":404,"detail":"resource not found"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"124","parentProcessInstanceKey":"123","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	t.Run("parent list stays successful with warning", func(t *testing.T) {
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"walk", "process-instance",
+			"--key", "123",
+			"--parent",
+		)
+
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "warning: one or more parent process instances were not found")
+		require.Contains(t, output, "missing ancestor keys: 999")
+	})
+
+	t.Run("family tree renders resolved nodes with warning", func(t *testing.T) {
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"walk", "process-instance",
+			"--key", "123",
+			"--family",
+			"--tree",
+		)
+
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "124")
+		require.Contains(t, output, "warning: one or more parent process instances were not found")
+		require.Contains(t, output, "missing ancestor keys: 999")
+	})
+
+	t.Run("json output exposes partial traversal metadata", func(t *testing.T) {
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"walk", "process-instance",
+			"--key", "123",
+			"--family",
+		)
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &got))
+		require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+		payload, ok := got["payload"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "partial", payload["outcome"])
+		require.Equal(t, "one or more parent process instances were not found", payload["warning"])
+		missing, ok := payload["missingAncestors"].([]any)
+		require.True(t, ok)
+		require.Len(t, missing, 1)
+		items, ok := payload["items"].([]any)
+		require.True(t, ok)
+		require.Len(t, items, 2)
+	})
 }
 
 func TestWalkProcessInstanceCommand_UsesEffectiveTenantForTraversalSearches(t *testing.T) {
@@ -243,6 +332,8 @@ func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	require.Less(t, strings.Index(string(output), "ancestry"), strings.Index(string(output), "get process instance"))
 	require.NotContains(t, string(output), "fetching process instance with key")
 	require.NotContains(t, string(output), "get 2251799813685255")
+	require.NotContains(t, string(output), "missing ancestor keys")
+	require.NotContains(t, string(output), "parent process instances were not found")
 }
 
 func TestWalkProcessInstanceCommand_DefaultOutputRemainsHumanReadable(t *testing.T) {

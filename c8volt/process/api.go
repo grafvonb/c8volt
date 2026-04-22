@@ -7,6 +7,55 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+type TraversalOutcome string
+
+const (
+	TraversalOutcomeComplete   TraversalOutcome = "complete"
+	TraversalOutcomePartial    TraversalOutcome = "partial"
+	TraversalOutcomeUnresolved TraversalOutcome = "unresolved"
+)
+
+type TraversalMode string
+
+const (
+	TraversalModeAncestry    TraversalMode = "ancestry"
+	TraversalModeDescendants TraversalMode = "descendants"
+	TraversalModeFamily      TraversalMode = "family"
+)
+
+type MissingAncestor struct {
+	Key      string
+	StartKey string
+}
+
+type TraversalResult struct {
+	Mode             TraversalMode
+	StartKey         string
+	RootKey          string
+	Keys             []string
+	Edges            map[string][]string
+	Chain            map[string]ProcessInstance
+	MissingAncestors []MissingAncestor
+	Warning          string
+	Outcome          TraversalOutcome
+}
+
+func (r TraversalResult) HasActionableResults() bool {
+	return len(r.Keys) > 0 || len(r.Chain) > 0
+}
+
+type DryRunPIKeyExpansion struct {
+	Roots            types.Keys
+	Collected        types.Keys
+	MissingAncestors []MissingAncestor
+	Warning          string
+	Outcome          TraversalOutcome
+}
+
+func (r DryRunPIKeyExpansion) HasActionableResults() bool {
+	return len(r.Roots) > 0 || len(r.Collected) > 0
+}
+
 type API interface {
 	SearchProcessDefinitions(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error)
 	SearchProcessDefinitionsLatest(ctx context.Context, filter ProcessDefinitionFilter, opts ...options.FacadeOption) (ProcessDefinitions, error)
@@ -34,6 +83,7 @@ type API interface {
 	WaitForProcessInstancesState(ctx context.Context, keys types.Keys, desired States, wantedWorkers int, opts ...options.FacadeOption) (StateReports, error)
 
 	DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (types.Keys, types.Keys, error)
+	DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error)
 }
 
 var _ API = (*client)(nil)

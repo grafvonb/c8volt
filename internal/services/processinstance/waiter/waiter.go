@@ -77,6 +77,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 			log.Info(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt #%d)", key, got, attempts))
 		} else if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
+				// Only waiter-driven absent/deleted confirmation maps not-found into ABSENT; direct lookups stay strict.
 				got = d.StateAbsent
 				if stateIn(got, desired) {
 					elapsed := time.Since(start)

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +14,12 @@ import (
 	"testing"
 	"time"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/typex"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -367,6 +373,91 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 	require.Empty(t, cancelled.Snapshot())
 	require.Contains(t, output, "unsupported capability")
 	require.Contains(t, output, "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
+}
+
+func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	var prompt string
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:            typex.Keys{"2251799813711967"},
+				Collected:        typex.Keys{"2251799813711967", "2251799813711968"},
+				MissingAncestors: []process.MissingAncestor{{Key: "2251799813711999", StartKey: "2251799813711967"}},
+				Warning:          "one or more parent process instances were not found",
+				Outcome:          process.TraversalOutcomePartial,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
+			require.Zero(t, wantedWorkers)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
+		},
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"2251799813711967"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 2, Roots: 1}, got.Impact)
+	require.Len(t, got.Reports, 1)
+	require.Contains(t, prompt, "requested to cancel 1 process instance(s)")
+	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be canceled")
+	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+}
+
+func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:            typex.Keys{"2251799813711967"},
+				Collected:        typex.Keys{"2251799813711967"},
+				MissingAncestors: []process.MissingAncestor{{Key: "2251799813711999", StartKey: "2251799813711967"}},
+				Warning:          "one or more parent process instances were not found",
+				Outcome:          process.TraversalOutcomePartial,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
+			require.Zero(t, wantedWorkers)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
+		},
+	}
+
+	got, err := cancelProcessInstancePage(cmd, cli, typex.Keys{"2251799813711967"}, false)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 1, Roots: 1}, got.Impact)
+	require.Len(t, got.Reports, 1)
+	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {

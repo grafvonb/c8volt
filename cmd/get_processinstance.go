@@ -48,7 +48,8 @@ var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
-		"Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.\n\n" +
+		"Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.\n" +
+		"Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.\n\n" +
 		"When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. " +
 		"Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.",
 	Example: `  ./c8volt get pi --state active
@@ -108,6 +109,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
+			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal/preflight flows.
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
 			}

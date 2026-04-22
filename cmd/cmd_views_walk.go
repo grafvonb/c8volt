@@ -11,6 +11,17 @@ import (
 type Chain map[string]process.ProcessInstance
 type KeysPath []string
 
+type walkTraversalPayload struct {
+	Mode             process.TraversalMode     `json:"mode"`
+	Outcome          process.TraversalOutcome  `json:"outcome"`
+	RootKey          string                    `json:"rootKey,omitempty"`
+	Keys             []string                  `json:"keys,omitempty"`
+	Edges            map[string][]string       `json:"edges,omitempty"`
+	Items            []process.ProcessInstance `json:"items,omitempty"`
+	MissingAncestors []process.MissingAncestor `json:"missingAncestors,omitempty"`
+	Warning          string                    `json:"warning,omitempty"`
+}
+
 func ancestorsView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ← \n")
 }
@@ -52,6 +63,40 @@ func mapItems[T any, R any](in []T, f func(T) R) []R {
 		out[i] = f(in[i])
 	}
 	return out
+}
+
+func traversalPayload(result process.TraversalResult) walkTraversalPayload {
+	return walkTraversalPayload{
+		Mode:             result.Mode,
+		Outcome:          result.Outcome,
+		RootKey:          result.RootKey,
+		Keys:             append([]string(nil), result.Keys...),
+		Edges:            result.Edges,
+		Items:            pathItems(result.Keys, result.Chain),
+		MissingAncestors: append([]process.MissingAncestor(nil), result.MissingAncestors...),
+		Warning:          result.Warning,
+	}
+}
+
+func printTraversalWarning(cmd *cobra.Command, result process.TraversalResult) {
+	if result.Warning == "" && len(result.MissingAncestors) == 0 {
+		return
+	}
+
+	warning := result.Warning
+	if warning == "" {
+		warning = "one or more parent process instances were not found"
+	}
+	cmd.Printf("warning: %s\n", warning)
+
+	if len(result.MissingAncestors) == 0 {
+		return
+	}
+	keys := make([]string, 0, len(result.MissingAncestors))
+	for _, item := range result.MissingAncestors {
+		keys = append(keys, item.Key)
+	}
+	cmd.Printf("missing ancestor keys: %s\n", strings.Join(keys, ", "))
 }
 
 // renderFamilyTree prints descendants as an ASCII tree starting from rootKey.

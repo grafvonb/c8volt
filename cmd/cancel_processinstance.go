@@ -101,35 +101,29 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to cancel")))
 		}
-		roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
+		result, err := cancelProcessInstancesWithPlan(cmd, cli, keys, true)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("cancel validation: %w", err))
-		}
-		affectedCount, rootCount, requestedCount := len(collected), len(roots), len(keys)
-		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
-		if affectedCount > requestedCount {
-			prompt = fmt.Sprintf("You have requested to cancel %d process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be canceled. Do you want to proceed?", requestedCount, affectedCount, rootCount)
-		}
-		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		reports, err := cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
+		payload := process.CancelReports{Items: make([]process.CancelReport, len(result.Reports))}
+		for i, report := range result.Reports {
+			payload.Items[i] = process.CancelReport(report)
 		}
-		if err := renderCommandResult(cmd, reports); err != nil {
+		if err := renderCommandResult(cmd, payload); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cancel result: %w", err))
 		}
+		return
 	},
 }
 
-func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
-	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(context.Background(), keys, collectOptions()...)
+func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
+	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, collectOptions()...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("cancel validation: %w", err)
 	}
-	impact := processInstancePageImpact{Requested: len(keys), Affected: len(collected), Roots: len(roots)}
+	printDryRunExpansionWarning(cmd, plan)
 
+	impact := processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)}
 	if firstPage {
 		affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
 		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
@@ -153,6 +147,10 @@ func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 		result.Reports[i] = process.Reporter(report)
 	}
 	return result, nil
+}
+
+func cancelProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
+	return cancelProcessInstancesWithPlan(cmd, cli, keys, firstPage)
 }
 
 func init() {

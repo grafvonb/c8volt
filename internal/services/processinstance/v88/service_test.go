@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -214,6 +215,7 @@ func TestService_GetProcessInstance(t *testing.T) {
 		assert.ErrorIs(t, err, d.ErrNotFound)
 		assert.Contains(t, err.Error(), "get process instance")
 		assert.NotContains(t, err.Error(), "fetching process instance with key 123")
+		assert.NotContains(t, err.Error(), "parent process instances were not found")
 	})
 }
 
@@ -761,7 +763,7 @@ func TestService_DeleteProcessInstance(t *testing.T) {
 				if deleteCalls == 1 {
 					msg := "process instance must be in a terminated state"
 					return &operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse{
-						HTTPResponse: newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
+						HTTPResponse:              newHTTPResponse(http.MethodDelete, "https://operate.local/process-instances/123", http.StatusBadRequest, "400 Bad Request"),
 						ApplicationproblemJSON400: &operatev88.Error{Message: &msg},
 					}, nil
 				}
@@ -862,6 +864,72 @@ func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamunda
 	)
 	require.NoError(t, err)
 	return svc
+}
+
+func TestService_TraversalResults(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("FamilyResultReturnsPartialTreeWhenParentIsMissing", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
+				switch key {
+				case "123":
+					return &camundav88.GetProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+						JSON200:      makeProcessInstanceResult("123", "ACTIVE", "999"),
+					}, nil
+				case "124":
+					return &camundav88.GetProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/124", http.StatusOK, "200 OK"),
+						JSON200:      makeProcessInstanceResult("124", "ACTIVE", "123"),
+					}, nil
+				case "999":
+					return &camundav88.GetProcessInstanceResponse{
+						Body:         []byte(`{"message":"not found"}`),
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/999", http.StatusNotFound, "404 Not Found"),
+					}, nil
+				default:
+					t.Fatalf("unexpected key: %s", key)
+					return nil, nil
+				}
+			},
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				payload := marshalJSON(t, body)
+				switch {
+				case strings.Contains(payload, `"parentProcessInstanceKey":"123"`):
+					return &camundav88.SearchProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+						JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+							Items: []camundav88.ProcessInstanceResult{*makeProcessInstanceResult("124", "ACTIVE", "123")},
+						},
+					}, nil
+				case strings.Contains(payload, `"parentProcessInstanceKey":"124"`):
+					return &camundav88.SearchProcessInstancesResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+						JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+							Items: []camundav88.ProcessInstanceResult{},
+						},
+					}, nil
+				default:
+					t.Fatalf("unexpected search payload: %s", payload)
+					return nil, nil
+				}
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		result, err := svc.FamilyResult(ctx, "123")
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"123", "124"}, result.Keys)
+		assert.Equal(t, "123", result.RootKey)
+		assert.Equal(t, "one or more parent process instances were not found", result.Warning)
+		assert.Equal(t, "partial", string(result.Outcome))
+		require.Len(t, result.MissingAncestors, 1)
+		assert.Equal(t, "999", result.MissingAncestors[0].Key)
+		assert.Equal(t, []string{"124"}, result.Edges["123"])
+	})
 }
 
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
