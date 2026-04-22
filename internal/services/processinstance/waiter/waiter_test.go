@@ -78,6 +78,34 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.Equal(t, d.ProcessInstance{}, pi)
 	})
 
+	t.Run("keeps not found strict when absent is not desired", func(t *testing.T) {
+		t.Parallel()
+
+		attempts := 0
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				attempts++
+				return d.StateUnknown, d.ProcessInstance{}, d.ErrNotFound
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceState(
+			context.Background(),
+			waiter,
+			testConfig(time.Millisecond, 2, 25*time.Millisecond),
+			testLogger(),
+			"missing",
+			d.States{d.StateCompleted},
+		)
+
+		require.Error(t, err)
+		assert.Equal(t, 2, attempts)
+		assert.False(t, got.Ok)
+		assert.Equal(t, d.StateUnknown, got.State)
+		assert.Contains(t, got.Status, "exceeded max_retries (2)")
+		assert.Equal(t, d.ProcessInstance{}, pi)
+	})
+
 	t.Run("stops when max retries are exceeded", func(t *testing.T) {
 		t.Parallel()
 

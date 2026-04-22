@@ -31,5 +31,6 @@ func RequireSingleProcessInstance(items []d.ProcessInstance, key string) (d.Proc
 }
 
 func ProcessInstanceNotFound(key string) error {
+	// Single-resource helpers intentionally keep not-found strict; traversal callers carry partial metadata separately.
 	return fmt.Errorf("%w: process instance %s", d.ErrNotFound, key)
 }

@@ -216,6 +216,7 @@ func TestService_SearchAndLookup(t *testing.T) {
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrNotFound)
+		assert.NotContains(t, err.Error(), "parent process instances were not found")
 	})
 
 	t.Run("SearchPushesDownParentPresenceAndIncidentPresence", func(t *testing.T) {

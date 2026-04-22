@@ -68,15 +68,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Add dry-run expansion regressions for resolved roots, collected keys, and missing ancestors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
-- [ ] T015 [P] [US2] Add command preflight regressions for keyed and paged cancel/delete orphan-child scenarios in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
-- [ ] T016 [P] [US2] Add indirect cleanup regression coverage for process-resource expansion paths in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client_test.go or the closest existing resource regression seam under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/
+- [x] T014 [P] [US2] Add dry-run expansion regressions for resolved roots, collected keys, and missing ancestors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client_test.go
+- [x] T015 [P] [US2] Add command preflight regressions for keyed and paged cancel/delete orphan-child scenarios in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T016 [P] [US2] Add indirect cleanup regression coverage for process-resource expansion paths in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client_test.go or the closest existing resource regression seam under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Update dependency-expansion dry-run behavior to return actionable roots/collected keys plus missing ancestors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/dryrun.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go
-- [ ] T018 [US2] Consume the shared preflight warning contract in cancel/delete keyed and paged flows in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
-- [ ] T019 [US2] Align indirect process-definition cleanup with the same preflight contract in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client.go and related callers under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
+- [x] T017 [US2] Update dependency-expansion dry-run behavior to return actionable roots/collected keys plus missing ancestors in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/dryrun.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/client.go
+- [x] T018 [US2] Consume the shared preflight warning contract in cancel/delete keyed and paged flows in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T019 [US2] Align indirect process-definition cleanup with the same preflight contract in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/resource/client.go and related callers under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
 
 **Checkpoint**: User Story 2 is independently testable: destructive preflight stays actionable for orphan children without hiding unresolved ancestor boundaries.
 
@@ -90,14 +90,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] Add strict direct-lookup non-regression coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
-- [ ] T021 [P] [US3] Add waiter non-regression coverage for absent/deleted semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go
-- [ ] T022 [P] [US3] Add command-level non-regression coverage for strict lookup vs traversal behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go
+- [x] T020 [P] [US3] Add strict direct-lookup non-regression coverage in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v87/service_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v88/service_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/v89/service_test.go
+- [x] T021 [P] [US3] Add waiter non-regression coverage for absent/deleted semantics in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter_test.go
+- [x] T022 [P] [US3] Add command-level non-regression coverage for strict lookup vs traversal behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/walk_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Keep direct lookup/state-check and waiter boundaries isolated from traversal changes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/common/response.go
-- [ ] T024 [US3] Refresh operator-facing wording only where traversal/preflight output changes while preserving strict single-resource guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go, and generated CLI help sources under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
+- [x] T023 [US3] Keep direct lookup/state-check and waiter boundaries isolated from traversal changes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/waiter/waiter.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/common/response.go
+- [x] T024 [US3] Refresh operator-facing wording only where traversal/preflight output changes while preserving strict single-resource guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go, and generated CLI help sources under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
 
 **Checkpoint**: User Story 3 is independently testable: the new traversal behavior is in place without weakening direct lookup or waiter contracts.
 

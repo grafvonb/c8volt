@@ -11,6 +11,8 @@ Started: 2026-04-22 11:13:42
 - Shared process-instance traversal contracts need a leaf package when both the parent `processinstance` package and versioned services consume them; `internal/services/processinstance/traversal` keeps result types and builders reusable without import cycles.
 - Backward-compatible facade upgrades follow the existing pattern of adding structured result methods beside legacy tuple methods first, then switching command callers story by story once the shared contract is validated.
 - Story-scoped behavior changes that would otherwise leak into later destructive flows should stay behind version- or caller-specific adapters first; `v87` now uses a traversal-only search adapter for walk results while dry-run expansion remains on the legacy path until the preflight story is implemented.
+- Destructive preflight flows should consume `DryRunCancelOrDeletePlan` and print orphan warnings on stderr or logs, which keeps JSON stdout/report payloads stable while still surfacing missing ancestor keys to operators.
+- Strict single-resource seams should document their contract where they live: `cmd/get_processinstance.go`, `internal/services/common/response.go`, and `internal/services/processinstance/waiter/waiter.go` are the canonical places to state that not-found stays strict outside traversal/preflight flows.
 
 ---
 
@@ -21,7 +23,7 @@ Started: 2026-04-22 11:13:42
 - [x] T002: Confirm current strict lookup and waiter boundaries in get-process-instance, waiter, and common response helpers
 - [x] T003: Confirm shared version support and traversal delegation across the process-instance factory and `v87`/`v88`/`v89` services
 **Tasks Remaining in Story**: None - story complete
-**Commit**: Recorded in Git history for this iteration
+**Commit**: No commit - sandbox blocked git index writes
 **Files Changed**:
 - specs/129-orphan-parent-warning/tasks.md
 - specs/129-orphan-parent-warning/progress.md
@@ -99,4 +101,68 @@ Started: 2026-04-22 11:13:42
 - `walk process-instance` can adopt the structured traversal contract without changing the default human-readable list/tree views by wrapping the existing renderers and appending warnings only when the result is partial.
 - Camunda `8.7` needs a traversal-only adapter that resolves process instances through tenant-safe search for result-based walk flows, while dry-run preflight must stay on the legacy path until US2 lands.
 - The broader command suite is the right guardrail for story-scoped traversal work because `cancel` and `delete` still share process-instance expansion seams that must not change early.
+---
+
+---
+## Iteration 4 - 2026-04-22 11:49 CEST
+**User Story**: US2 - Keep Orphan Children Actionable
+**Tasks Completed**:
+- [x] T014: Add dry-run expansion regressions for resolved roots, collected keys, and missing ancestors
+- [x] T015: Add command preflight regressions for keyed and paged cancel/delete orphan-child scenarios
+- [x] T016: Add indirect cleanup regression coverage for process-resource expansion paths
+- [x] T017: Update dependency-expansion dry-run behavior to return actionable roots/collected keys plus missing ancestors
+- [x] T018: Consume the shared preflight warning contract in cancel/delete keyed and paged flows
+- [x] T019: Align indirect process-definition cleanup with the same preflight contract
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- c8volt/process/dryrun.go
+- c8volt/resource/client.go
+- c8volt/resource/client_test.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/cmd_views_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/process_api_stub_test.go
+- specs/129-orphan-parent-warning/tasks.md
+- specs/129-orphan-parent-warning/progress.md
+**Learnings**:
+- `DryRunCancelOrDeletePlan` is the right mutation-preflight seam for US2 because it can now reject fully unresolved expansions while still carrying partial roots, collected keys, and missing ancestor metadata for callers that remain actionable.
+- Cancel/delete command warnings belong on stderr via Cobra’s error writer so preflight warnings stay visible in interactive use without corrupting JSON report payloads on stdout.
+- Process-definition cleanup should consume the same structured plan as direct cancel/delete flows and act on resolved roots only, while logging the partial boundary when missing ancestors remain.
+---
+
+---
+## Iteration 5 - 2026-04-22 11:57 CEST
+**User Story**: US3 - Preserve Strict Single-Resource Semantics
+**Tasks Completed**:
+- [x] T020: Add strict direct-lookup non-regression coverage
+- [x] T021: Add waiter non-regression coverage for absent/deleted semantics
+- [x] T022: Add command-level non-regression coverage for strict lookup vs traversal behavior
+- [x] T023: Keep direct lookup/state-check and waiter boundaries isolated from traversal changes
+- [x] T024: Refresh operator-facing wording while preserving strict single-resource guidance
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- cmd/root.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- internal/services/common/response.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/waiter/waiter.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/129-orphan-parent-warning/progress.md
+- specs/129-orphan-parent-warning/tasks.md
+**Learnings**:
+- Direct `get process-instance --key` coverage is best anchored in subprocess-based command tests plus service-level not-found assertions, because the command error path exits the process rather than returning a plain Go error in-process.
+- The waiter’s absent/deleted contract is still intentionally narrower than traversal behavior: `ErrNotFound` only becomes `ABSENT` when the desired state set explicitly allows it.
+- The broader `go test ./cmd -count=1` suite is currently blocked in this sandbox by an unrelated IPv6 `httptest` listener panic, so US3 validation relied on targeted `cmd` tests around `get` and `walk` plus the full `internal/services/processinstance/...` suite.
 ---

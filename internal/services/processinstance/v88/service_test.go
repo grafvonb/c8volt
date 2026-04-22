@@ -215,6 +215,7 @@ func TestService_GetProcessInstance(t *testing.T) {
 		assert.ErrorIs(t, err, d.ErrNotFound)
 		assert.Contains(t, err.Error(), "get process instance")
 		assert.NotContains(t, err.Error(), "fetching process instance with key 123")
+		assert.NotContains(t, err.Error(), "parent process instances were not found")
 	})
 }
 

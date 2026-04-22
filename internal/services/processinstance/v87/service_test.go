@@ -213,6 +213,7 @@ func TestService_GetProcessInstance(t *testing.T) {
 				if errors.Is(tt.expectedError, d.ErrUnsupported) {
 					assert.Contains(t, err.Error(), "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
 				}
+				assert.NotContains(t, err.Error(), "parent process instances were not found")
 				return
 			}
 

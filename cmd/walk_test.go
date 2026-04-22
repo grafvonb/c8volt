@@ -332,6 +332,8 @@ func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	require.Less(t, strings.Index(string(output), "ancestry"), strings.Index(string(output), "get process instance"))
 	require.NotContains(t, string(output), "fetching process instance with key")
 	require.NotContains(t, string(output), "get 2251799813685255")
+	require.NotContains(t, string(output), "missing ancestor keys")
+	require.NotContains(t, string(output), "parent process instances were not found")
 }
 
 func TestWalkProcessInstanceCommand_DefaultOutputRemainsHumanReadable(t *testing.T) {

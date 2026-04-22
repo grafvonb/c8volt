@@ -76,6 +76,10 @@ the same public Cobra tree for script-safe automation on supported commands.
 Prefer --json where a command exposes structured output, and use --automation only when that command's
 capabilities entry reports automation:full for the canonical non-interactive contract.
 
+Strict single-resource lookups keep their normal not-found behavior. The newer orphan-parent warning
+contract is limited to traversal and dependency-expansion flows such as walk, cancel, and delete when
+actionable process-instance data was still resolved.
+
 Tenant-aware process-instance flows use one effective tenant context per command execution.
 Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
 is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned service
