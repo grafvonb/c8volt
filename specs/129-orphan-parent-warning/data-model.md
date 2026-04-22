@@ -4,6 +4,7 @@
 
 - **Purpose**: Represents the full outcome of an ancestry, descendants, or family traversal after the feature changes orphan-parent handling from an error-only contract to a partial-result contract.
 - **Key fields**:
+  - Shared result type: `TraversalResult`
   - Traversal mode: `Ancestry`, `Descendants`, or `Family`
   - Resolved keys in traversal order
   - Resolved chain of process-instance records keyed by process-instance key
@@ -55,6 +56,7 @@
 
 - **Purpose**: Represents the dry-run dependency expansion used before cancel/delete and indirect process-definition cleanup.
 - **Key attributes**:
+  - Shared result type: `DryRunPIKeyExpansion`
   - Requested keys
   - Resolved root keys
   - Resolved collected family keys

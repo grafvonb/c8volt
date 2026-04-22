@@ -111,6 +111,7 @@ Design artifacts are captured in:
 - [contracts/orphan-parent-traversal.md](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/129-orphan-parent-warning/contracts/orphan-parent-traversal.md)
 
 - Replace the current orphan-parent error-only walker outcome with a shared partial-result structure that retains resolved keys, resolved chain/edges, and machine-readable missing ancestor keys.
+- Introduce shared `TraversalResult`/`DryRunPIKeyExpansion` API seams so callers can adopt the partial-result contract incrementally without breaking the current tuple-based traversal methods in one step.
 - Keep the shared traversal contract version-neutral: `v87`, `v88`, and `v89` all delegate ancestry/family traversal through the same walker, so the warning/partial-result semantics should not fork by version unless a version-specific test proves an adapter need.
 - Make success/failure boundaries explicit: affected traversal and preflight flows succeed with warnings only when at least one actionable result was resolved, and they fail normally when nothing was resolved.
 - Preserve strict direct lookup and waiter semantics by confining the new contract to traversal and dependency-expansion callers rather than altering `GetProcessInstance` or the waiter's absent/deleted logic.

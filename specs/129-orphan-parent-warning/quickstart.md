@@ -12,7 +12,7 @@
 ## Implementation Notes
 
 - Start in `internal/services/processinstance/walker/walker.go` and `walker_test.go`; that is the source of the current hard-failure behavior and the best place to introduce the new structured traversal result.
-- Keep facade integration in `c8volt/process/dryrun.go` thin: it should consume the richer traversal result and expose actionable roots/collected keys plus missing ancestors, not invent new traversal rules.
+- Keep facade integration in `c8volt/process/dryrun.go` thin: it should consume `TraversalResult` values and expose actionable roots/collected keys plus missing ancestors through `DryRunPIKeyExpansion`, not invent new traversal rules.
 - Keep command updates focused on rendering and user-facing warnings in `cmd/walk_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`.
 - Preserve direct key/state/wait strictness by not widening the feature into `GetProcessInstance`, `GetProcessInstanceStateByKey`, or waiter absent/deleted success semantics.
 - If operator-visible command output changes, update `README.md` and regenerate `docs/cli/` with `make docs-content`.

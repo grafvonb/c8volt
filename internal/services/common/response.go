@@ -22,10 +22,14 @@ func RequirePayload[T any](httpResp *http.Response, body []byte, payload *T) (*T
 func RequireSingleProcessInstance(items []d.ProcessInstance, key string) (d.ProcessInstance, error) {
 	switch len(items) {
 	case 0:
-		return d.ProcessInstance{}, fmt.Errorf("%w: process instance %s", d.ErrNotFound, key)
+		return d.ProcessInstance{}, ProcessInstanceNotFound(key)
 	case 1:
 		return items[0], nil
 	default:
 		return d.ProcessInstance{}, fmt.Errorf("%w: process-instance lookup for key %s returned %d matches", d.ErrMalformedResponse, key, len(items))
 	}
+}
+
+func ProcessInstanceNotFound(key string) error {
+	return fmt.Errorf("%w: process instance %s", d.ErrNotFound, key)
 }

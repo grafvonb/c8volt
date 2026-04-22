@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
 	"github.com/grafvonb/c8volt/toolx"
@@ -541,4 +542,16 @@ func (s *Service) Descendants(ctx context.Context, rootKey string, opts ...servi
 
 func (s *Service) Family(ctx context.Context, startKey string, opts ...services.CallOption) (fam []string, edges map[string][]string, chain map[string]d.ProcessInstance, err error) {
 	return walker.Family(ctx, s, startKey, opts...)
+}
+
+func (s *Service) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
+}
+
+func (s *Service) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
+}
+
+func (s *Service) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
 }

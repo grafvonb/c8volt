@@ -3,6 +3,7 @@
 ## Decision 1: Make the shared walker return structured partial results instead of only an orphan error
 
 - **Decision**: Refactor the shared traversal contract around `internal/services/processinstance/walker/walker.go` so a missing non-start parent yields structured partial ancestry/family data plus machine-readable missing ancestor keys rather than only `services.ErrOrphanedInstance`.
+- **Implementation seam**: add `TraversalResult` and facade `DryRunPIKeyExpansion` types first, then migrate command callers from legacy tuple returns to the structured contract story by story.
 - **Rationale**: The current walker already accumulates `chain` state before returning the orphan error, so the repository-native way to unlock partial rendering and preflight continuation is to preserve and expose that accumulated state instead of re-running or reconstructing traversal higher up.
 - **Alternatives considered**:
   - Catch `ErrOrphanedInstance` only in commands and reconstruct partial output there: rejected because `cancel`, `delete`, and indirect cleanup preflight would each need to duplicate traversal recovery rules.

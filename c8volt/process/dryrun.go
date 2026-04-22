@@ -9,20 +9,58 @@ import (
 )
 
 func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (roots types.Keys, collected types.Keys, err error) {
+	plan, err := c.DryRunCancelOrDeletePlan(ctx, keys, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return plan.Roots, plan.Collected, nil
+}
+
+func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+	var roots types.Keys
+	var collected types.Keys
+	var ancestryResults []TraversalResult
 	for _, key := range keys {
-		root, _, _, err := c.Ancestry(ctx, key, opts...)
+		result, err := c.AncestryResult(ctx, key, opts...)
 		if err != nil {
-			return nil, nil, ferr.FromDomain(err)
+			return DryRunPIKeyExpansion{}, ferr.FromDomain(err)
 		}
-		roots = append(roots, root)
+		ancestryResults = append(ancestryResults, result)
+		if result.RootKey != "" {
+			roots = append(roots, result.RootKey)
+		}
 	}
 	roots = roots.Unique()
+
+	var descendantResults []TraversalResult
 	for _, root := range roots {
-		fam, _, _, err := c.Descendants(ctx, root, opts...)
+		result, err := c.DescendantsResult(ctx, root, opts...)
 		if err != nil {
-			return nil, nil, ferr.FromDomain(err)
+			return DryRunPIKeyExpansion{}, ferr.FromDomain(err)
 		}
-		collected = append(collected, fam...)
+		descendantResults = append(descendantResults, result)
+		collected = append(collected, result.Keys...)
 	}
-	return roots, collected.Unique(), nil
+
+	ancestryWarning, ancestryMissing, ancestryOutcome := mapDryRunTraversalWarning(ancestryResults)
+	descendantsWarning, descendantsMissing, descendantsOutcome := mapDryRunTraversalWarning(descendantResults)
+
+	warning := ancestryWarning
+	if warning == "" {
+		warning = descendantsWarning
+	}
+	outcome := ancestryOutcome
+	if outcome == TraversalOutcomeComplete {
+		outcome = descendantsOutcome
+	} else if descendantsOutcome == TraversalOutcomePartial {
+		outcome = TraversalOutcomePartial
+	}
+
+	return DryRunPIKeyExpansion{
+		Roots:            roots,
+		Collected:        collected.Unique(),
+		MissingAncestors: uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),
+		Warning:          warning,
+		Outcome:          outcome,
+	}, nil
 }

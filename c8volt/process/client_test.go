@@ -10,6 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -389,6 +390,105 @@ func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *t
 	assert.Equal(t, typex.Keys{"r1", "c1", "c2", "r2", "c3"}, collected)
 }
 
+func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			assert.Equal(t, "child", startKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: "child",
+				RootKey:  "child",
+				Keys:     []string{"child"},
+				Chain: map[string]d.ProcessInstance{
+					"child": {Key: "child", ParentKey: "missing"},
+				},
+				MissingAncestors: []pitraversal.MissingAncestor{{Key: "missing", StartKey: "child"}},
+				Warning:          "one or more parent process instances were not found",
+				Outcome:          pitraversal.OutcomePartial,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.AncestryResult(ctx, "child")
+
+	require.NoError(t, err)
+	assert.Equal(t, TraversalModeAncestry, got.Mode)
+	assert.Equal(t, "child", got.StartKey)
+	assert.Equal(t, "child", got.RootKey)
+	assert.Equal(t, []string{"child"}, got.Keys)
+	assert.Equal(t, "missing", got.MissingAncestors[0].Key)
+	assert.Equal(t, "child", got.Chain["child"].Key)
+	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
+}
+
+func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			switch startKey {
+			case "c1":
+				return pitraversal.Result{
+					Mode:             pitraversal.ModeAncestry,
+					StartKey:         "c1",
+					RootKey:          "r1",
+					Keys:             []string{"c1", "r1"},
+					MissingAncestors: []pitraversal.MissingAncestor{{Key: "missing", StartKey: "c1"}},
+					Warning:          "one or more parent process instances were not found",
+					Outcome:          pitraversal.OutcomePartial,
+				}, nil
+			case "c2":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "c2",
+					RootKey:  "r2",
+					Keys:     []string{"c2", "r2"},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected key %q", startKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			switch rootKey {
+			case "r1":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "r1",
+					Keys:    []string{"r1", "c1"},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "r2":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "r2",
+					Keys:    []string{"r2", "c2"},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected root %q", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"})
+
+	require.NoError(t, err)
+	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
+	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
+	assert.Equal(t, []MissingAncestor{{Key: "missing", StartKey: "c1"}}, got.MissingAncestors)
+	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
+	assert.NotEmpty(t, got.Warning)
+}
+
 type stubProcessDefinitionAPI struct {
 	searchProcessDefinitions func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	getProcessDefinition     func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
@@ -427,6 +527,9 @@ type stubProcessInstanceAPI struct {
 	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	ancestry                      func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
 	descendants                   func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+	ancestryResult                func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	descendantsResult             func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	familyResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 }
 
 func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
@@ -501,6 +604,33 @@ func (s stubProcessInstanceAPI) Descendants(ctx context.Context, rootKey string,
 
 func (stubProcessInstanceAPI) Family(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
 	panic("unexpected call")
+}
+
+func (s stubProcessInstanceAPI) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	if s.ancestryResult != nil {
+		return s.ancestryResult(ctx, startKey, opts...)
+	}
+	if s.ancestry == nil {
+		panic("unexpected call")
+	}
+	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
+}
+
+func (s stubProcessInstanceAPI) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	if s.descendantsResult != nil {
+		return s.descendantsResult(ctx, rootKey, opts...)
+	}
+	if s.descendants == nil {
+		panic("unexpected call")
+	}
+	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
+}
+
+func (s stubProcessInstanceAPI) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	if s.familyResult != nil {
+		return s.familyResult(ctx, startKey, opts...)
+	}
+	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
 }
 
 func (stubProcessInstanceAPI) GetProcessInstances(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error) {

@@ -90,7 +90,7 @@ func TestAncestry(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, services.ErrOrphanedInstance)
 		assert.Equal(t, "missing", rootKey)
-		assert.Nil(t, path)
+		assert.Equal(t, []string{"child"}, path)
 		assert.Equal(t, d.ProcessInstance{Key: "child", ParentKey: "missing"}, chain["child"])
 	})
 

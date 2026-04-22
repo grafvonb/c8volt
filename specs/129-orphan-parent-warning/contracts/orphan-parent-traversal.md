@@ -12,6 +12,8 @@ Affected traversal and dependency-expansion flows must use one shared outcome co
 
 The contract must not require each command to rediscover orphan handling independently.
 
+The shared implementation seam may expose the contract through result objects such as `TraversalResult` and `DryRunPIKeyExpansion`, as long as legacy tuple-based callers can be migrated incrementally without changing the contract itself.
+
 ## Machine-Readable Warning Contract
 
 Every affected traversal/preflight flow must expose the same structured warning semantics:
