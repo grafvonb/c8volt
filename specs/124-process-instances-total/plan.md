@@ -147,3 +147,17 @@ Task generation should break the work into dependency-ordered slices:
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | None | N/A | N/A |
+
+## Implementation Status
+
+- Shared reported-total page metadata is implemented across the public/domain process-instance page models and versioned `v87`, `v88`, and `v89` search services.
+- `get process-instance --total` is implemented as a command-local count-only branch that preserves default non-`--total` rendering behavior.
+- Validation rejects incompatible `--total` combinations with `--key`, `--json`, `--keys-only`, and `--with-age`.
+- README help text and generated CLI docs now describe `--total` consistently for operators and automation users.
+
+## Verification Record
+
+- Passed `go test ./c8volt/process -count=1`
+- Passed `go test ./internal/services/processinstance/... -count=1`
+- Passed `go test ./cmd -count=1`
+- Passed `make test`

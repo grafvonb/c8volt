@@ -124,3 +124,20 @@
 - Help discoverability for `--total` needs to stay aligned across Cobra help text, capabilities metadata, README examples, and generated CLI docs to avoid conflicting automation guidance.
 - `make docs-content` is the repository-native regeneration path for this story because it refreshes the command reference and the README-backed docs homepage together.
 ---
+## Iteration 6 - 2026-04-22 22:53:00 CEST
+**User Story**: Phase 6: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T020: Refresh final implementation and verification notes
+- [x] T021: Run focused validation with `go test ./c8volt/process -count=1`, `go test ./internal/services/processinstance/... -count=1`, and `go test ./cmd -count=1`
+- [x] T022: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Not yet recorded in Git history for this iteration
+**Files Changed**:
+- specs/124-process-instances-total/plan.md
+- specs/124-process-instances-total/progress.md
+- specs/124-process-instances-total/quickstart.md
+- specs/124-process-instances-total/tasks.md
+**Learnings**:
+- The focused feature suites were already clean, and the full repository gate (`make test`) also passed, so the feature is ready by the task-plan definition.
+- The remaining open work after Ralph stopped was validation bookkeeping rather than implementation risk.
+---

@@ -38,6 +38,17 @@ make test
 
 Run the focused model/service/command suites first, then regenerate docs, then finish with the full repository gate.
 
+## Verification Record
+
+The following commands passed on 2026-04-22:
+
+```bash
+go test ./c8volt/process -count=1
+go test ./internal/services/processinstance/... -count=1
+go test ./cmd -count=1
+make test
+```
+
 ## Manual Smoke Ideas
 
 ```bash
