@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: `specs/042-pd-incident-stats/plan.md`
+- Active plan: `specs/129-orphan-parent-warning/plan.md`
 <!-- SPECKIT END -->
