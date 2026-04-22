@@ -214,3 +214,26 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 	}
 	return sizes
 }
+
+func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+	)
+
+	pages := decodeCapturedPISearchPages(t, requests)
+	require.Len(t, pages, 1)
+	require.Contains(t, stdout, "123")
+	require.Contains(t, stdout, "found: 1")
+	require.NotEqual(t, "1\n", stdout)
+	require.Empty(t, stderr)
+}

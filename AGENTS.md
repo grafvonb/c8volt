@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: `specs/129-orphan-parent-warning/plan.md`
+- No active Speckit implementation plan has been recorded yet.
 <!-- SPECKIT END -->

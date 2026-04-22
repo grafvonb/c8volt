@@ -17,6 +17,11 @@ func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error
 	return itemView(cmd, item, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }
 
+func processInstanceTotalView(cmd *cobra.Command, total int64) error {
+	_, err := fmt.Fprintln(cmd.OutOrStdout(), total)
+	return err
+}
+
 func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
 	if pickMode() == RenderModeJSON && flagGetPIWithAge {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))

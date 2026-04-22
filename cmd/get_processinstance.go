@@ -30,6 +30,7 @@ var (
 	flagGetPIEndAfterDays         int
 	flagGetPIEndBeforeDays        int
 	flagGetPIWithAge              bool
+	flagGetPITotal                bool
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
@@ -49,10 +50,12 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
 		"Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.\n" +
+		"Use --total on search/list invocations when automation only needs the numeric count of matching process instances; if the backend reports a capped total, the command returns that lower-bound number unchanged.\n" +
 		"Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.\n\n" +
 		"When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. " +
 		"Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.",
 	Example: `  ./c8volt get pi --state active
+  ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
@@ -109,6 +112,9 @@ var getProcessInstanceCmd = &cobra.Command{
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
+			if flagGetPITotal {
+				fail(mutuallyExclusiveFlagsf("--total cannot be combined with --key"))
+			}
 			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal/preflight flows.
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
@@ -127,6 +133,16 @@ var getProcessInstanceCmd = &cobra.Command{
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
+			if flagGetPITotal {
+				total, err := searchProcessInstancesTotal(cmd, cli, cfg, filter)
+				if err != nil {
+					fail(fmt.Errorf("get process instances total: %w", err))
+				}
+				if err := processInstanceTotalView(cmd, total); err != nil {
+					fail(fmt.Errorf("render process instance total: %w", err))
+				}
+				return
+			}
 			var renderedIncrementally bool
 			pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
 			if err != nil {
@@ -152,6 +168,7 @@ func init() {
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals stay lower bounds")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -428,6 +445,38 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	}
 }
 
+func searchProcessInstancesTotal(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (int64, error) {
+	pageReq := newPISearchPageRequest(cmd, cfg, 0)
+	total := int64(0)
+
+	for {
+		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
+		if err != nil {
+			return 0, err
+		}
+
+		if canUsePIReportedTotal() && page.ReportedTotal != nil {
+			return page.ReportedTotal.Count, nil
+		}
+
+		filtered, err := applyPISearchResultFilters(cmd, cli, process.ProcessInstances{
+			Total: int32(len(page.Items)),
+			Items: page.Items,
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		total += int64(len(filtered.Items))
+		printPISearchProgress(cmd, newPIProgressSummary(page, int(total), true))
+
+		if len(page.Items) == 0 || page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
+			return total, nil
+		}
+		pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
+	}
+}
+
 func shouldRenderPISearchPageIncrementally(cmd *cobra.Command) bool {
 	if flagCmdAutoConfirm {
 		return false
@@ -563,6 +612,10 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 	return pis, nil
 }
 
+func canUsePIReportedTotal() bool {
+	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
+}
+
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {
 	if cmd == nil || !flagVerbose || pickMode() != RenderModeOneLine {
 		return
@@ -625,6 +678,16 @@ func validatePISearchFlags() error {
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		if _, ok := process.ParseState(flagGetPIState); !ok {
 			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
+		}
+	}
+	if flagGetPITotal {
+		switch {
+		case flagViewAsJson:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
+		case flagViewKeysOnly:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
+		case flagGetPIWithAge:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-age")
 		}
 	}
 	if flagGetPIProcessDefinitionKey != "" &&

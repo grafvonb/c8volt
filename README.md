@@ -80,6 +80,7 @@ This matters if you are wiring `c8volt` into:
 - delete process-instance families thoroughly
 - wait for the state you actually need
 - page through large process-instance result sets safely
+- return only the numeric process-instance match count with `get pi --total`
 - validate config and inspect cluster metadata
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
@@ -211,12 +212,15 @@ Deletion in real environments often means cancel-first, then remove, then verify
 
 ```bash
 ./c8volt get pi --state active
+./c8volt get pi --state active --total
 ./c8volt get pi --state active --count 250
 ./c8volt cancel pi --state active --count 250
 ./c8volt delete pi --state completed --count 250 --auto-confirm
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` now work page by page instead of silently stopping at the first `1000` matches. They report the page size used, the current-page count, the cumulative processed count, and whether another page remains. When more matches exist, the commands prompt before continuing in human-oriented modes unless `--auto-confirm` or `--json` is set. JSON mode auto-consumes remaining pages and returns one final aggregated result. Direct `--key` workflows still bypass paging and keep their existing behavior.
+
+When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If the backend exposes that total as a capped value, `c8volt` returns the lower-bound number unchanged instead of inventing an exact recount.
 
 For supported command paths, `--automation` is the stronger non-interactive contract: it tells `c8volt` to reject unsupported automation flows explicitly, to treat supported prompts as accepted, and to keep the human-oriented default behavior unchanged when the flag is absent.
 

@@ -45,10 +45,23 @@ const (
 	ProcessInstanceOverflowStateIndeterminate ProcessInstanceOverflowState = "indeterminate"
 )
 
+type ProcessInstanceReportedTotalKind string
+
+const (
+	ProcessInstanceReportedTotalKindExact      ProcessInstanceReportedTotalKind = "exact"
+	ProcessInstanceReportedTotalKindLowerBound ProcessInstanceReportedTotalKind = "lower_bound"
+)
+
+type ProcessInstanceReportedTotal struct {
+	Count int64
+	Kind  ProcessInstanceReportedTotalKind
+}
+
 type ProcessInstancePage struct {
 	Items         []ProcessInstance
 	Request       ProcessInstancePageRequest
 	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *ProcessInstanceReportedTotal
 }
 
 type CancelResponse struct {

@@ -496,6 +496,9 @@ func TestService_SearchForProcessInstancesPage_FallbackOverflowDetection(t *test
 
 		require.NoError(t, err)
 		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 5, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
 		require.Len(t, page.Items, 2)
 		assert.Equal(t, "103", page.Items[0].Key)
 		assert.Equal(t, "104", page.Items[1].Key)
@@ -531,6 +534,7 @@ func TestService_SearchForProcessInstancesPage_FallbackOverflowDetection(t *test
 
 		require.NoError(t, err)
 		assert.Equal(t, d.ProcessInstanceOverflowStateIndeterminate, page.OverflowState)
+		assert.Nil(t, page.ReportedTotal)
 		require.Len(t, page.Items, 2)
 	})
 }
