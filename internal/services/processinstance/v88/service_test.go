@@ -505,6 +505,9 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 
 		require.NoError(t, err)
 		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 3, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
 		require.Len(t, page.Items, 2)
 	})
 
@@ -533,6 +536,9 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 
 		require.NoError(t, err)
 		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 2, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
 		require.Len(t, page.Items, 2)
 	})
 
@@ -562,6 +568,9 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 
 		require.NoError(t, err)
 		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 2, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
 		require.Len(t, page.Items, 2)
 	})
 }

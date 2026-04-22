@@ -83,10 +83,27 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 	require.Equal(t, ContractSupportFull, getPI.ContractSupport)
 	require.Equal(t, ContractSupportFull, runPI.ContractSupport)
 	require.Equal(t, AutomationSupportFull, runPI.AutomationSupport)
+	require.Contains(t, getPI.Flags, FlagContract{
+		Name:        "total",
+		Shorthand:   "",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return only the numeric total of matching process instances",
+	})
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
 		MachinePreferred: true,
+	})
+	require.Contains(t, getPI.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.NotContains(t, getPI.OutputModes, OutputModeContract{
+		Name:      "total",
+		Supported: true,
 	})
 }
 

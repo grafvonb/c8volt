@@ -7,6 +7,7 @@
 - Versioned search services already see backend total signals: `v87` trims Operate results with an optional `payload.Total`, while `v88` and `v89` compute overflow from `Page.TotalItems` and `HasMoreTotalItems`; the command layer currently loses that data because services only return `OverflowState`.
 - Existing regression anchors are already close to the needed feature seams: `cmd/get_processinstance_test.go` covers command help and search request behavior, `cmd/cmd_processinstance_test.go` provides reusable process-instance search fixtures, `c8volt/process/client_test.go` covers cross-version page conversion, and versioned service tests assert paging metadata behavior around `OverflowState` and capped totals.
 - `ReportedTotal=nil` is the shared unavailable signal, while `ReportedTotal.Kind` uses `exact` and `lower_bound`; that keeps absence distinct from a real numeric zero total and avoids inventing a third enum state in the model.
+- The command contract should keep `--total` as a visible flag while discovery output modes stay limited to shared render choices (`one-line`, `json`, `keys-only`); the count-only branch remains command-local rather than a new render mode.
 
 ---
 ## Iteration 1 - 2026-04-22 22:15:51 CEST
@@ -75,4 +76,28 @@
 - Count-only output can stay out of the shared render-mode model by adding a small command-local `processInstanceTotalView` and returning before `listProcessInstancesView`.
 - `ReportedTotal` is enough to skip extra paging on the first page for normal `--total` searches, while command-local fallback counting remains necessary when post-search filtering could change the visible total.
 - The existing focused package tests already cover the safest validation boundary for this story: `./cmd`, `./c8volt/process`, and `./internal/services/processinstance/...`.
+---
+## Iteration 4 - 2026-04-22 22:34:23 CEST
+**User Story**: User Story 2 - Preserve Existing List Behavior
+**Tasks Completed**:
+- [x] T013: Add command regressions for invalid `--total` combinations and preserved default output behavior
+- [x] T014: Add service-level regressions proving reported-total metadata stays consistent without changing non-`--total` page behavior
+- [x] T015: Enforce `--total` validation rules for `--key`, `--json`, `--keys-only`, and `--with-age`
+- [x] T016: Keep command contract and output-mode metadata coherent for the new flag without introducing a new global render mode
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_processinstance_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/get_test.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/service_test.go
+- specs/124-process-instances-total/progress.md
+- specs/124-process-instances-total/tasks.md
+**Learnings**:
+- Validation for `--total` belongs in `validatePISearchFlags()` for render-related conflicts, while the `--key` conflict stays on the keyed lookup branch because only that branch knows whether search mode was bypassed.
+- Default one-line output should continue to flow through `listProcessInstancesView`; the safest regression is to prove reported-total metadata does not collapse normal output into count-only mode.
+- Capability metadata already models `--total` correctly as a flag, so the key regression is preventing it from being treated as a new shared output mode.
 ---

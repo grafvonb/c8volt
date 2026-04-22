@@ -173,6 +173,9 @@ func TestService_SearchAndLookup(t *testing.T) {
 		assert.Equal(t, "123", page.Items[0].Key)
 		assert.Equal(t, "456", page.Items[0].ParentKey)
 		assert.Equal(t, d.ProcessInstanceOverflowStateHasMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 2, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
 	})
 
 	t.Run("GetProcessInstanceUsesGeneratedClient", func(t *testing.T) {

@@ -678,6 +678,16 @@ func validatePISearchFlags() error {
 			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
 		}
 	}
+	if flagGetPITotal {
+		switch {
+		case flagViewAsJson:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
+		case flagViewKeysOnly:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
+		case flagGetPIWithAge:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-age")
+		}
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||

@@ -140,6 +140,47 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 	})
 }
 
+func TestGetProcessInstanceTotalValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "key lookup stays on the strict single-resource path",
+			helper: "TestGetProcessInstanceTotalWithKeyHelper",
+			want:   "--total cannot be combined with --key",
+		},
+		{
+			name:   "json output is rejected",
+			helper: "TestGetProcessInstanceTotalWithJSONHelper",
+			want:   "--total cannot be combined with --json",
+		},
+		{
+			name:   "keys-only output is rejected",
+			helper: "TestGetProcessInstanceTotalWithKeysOnlyHelper",
+			want:   "--total cannot be combined with --keys-only",
+		},
+		{
+			name:   "with-age output is rejected",
+			helper: "TestGetProcessInstanceTotalWithAgeHelper",
+			want:   "--total cannot be combined with --with-age",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
 func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
 	response := `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`
 
@@ -1328,6 +1369,62 @@ func TestGetProcessInstanceInvalidRelativeDayRangeHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--start-date-older-days", "30", "--start-date-newer-days", "7"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --total with --key validation.
+func TestGetProcessInstanceTotalWithKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--total"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --total with --json validation.
+func TestGetProcessInstanceTotalWithJSONHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--json", "--total"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --total with --keys-only validation.
+func TestGetProcessInstanceTotalWithKeysOnlyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--keys-only", "--total"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --total with --with-age validation.
+func TestGetProcessInstanceTotalWithAgeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-age", "--total"}
 
 	Execute()
 }
