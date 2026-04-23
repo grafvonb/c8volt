@@ -602,7 +602,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 
 // Verifies paged delete search auto-continues without continuation prompts when --auto-confirm is set.
 func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var deleted safeSlice[string]
 	searchPage := 0
 
@@ -611,7 +611,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -674,7 +674,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"--count", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 2, pages[1]["from"])
@@ -689,7 +689,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 }
 
 func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var deleted safeSlice[string]
 	searchPage := 0
 
@@ -698,7 +698,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -761,7 +761,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		"--count", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 2, pages[1]["from"])
@@ -777,7 +777,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 
 // Verifies paged delete reports a partial-completion summary when continuation is aborted.
 func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -785,7 +785,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -842,7 +842,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		"--count", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
 	require.ElementsMatch(t, []string{
 		"/v1/process-instances/511",
@@ -854,7 +854,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 
 // Verifies paged delete emits a warning-stop summary when overflow state is indeterminate.
 func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -862,7 +862,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -912,7 +912,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		"--count", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
 	require.ElementsMatch(t, []string{
 		"/v1/process-instances/521",
@@ -924,7 +924,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 
 // Verifies direct --key deletion bypasses top-level search pagination logic.
 func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var deleted safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -932,7 +932,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
 			w.Header().Set("Content-Type", "application/json")
@@ -971,7 +971,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		"--count", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Empty(t, pages)
 	require.Equal(t, []string{"/v1/process-instances/601"}, deleted.Snapshot())
 	var got map[string]any

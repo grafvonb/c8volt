@@ -33,7 +33,7 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
   ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
-  ./c8volt expect pi --key 2251799813711967 --state canceled --state terminated
+  ./c8volt expect pi --key 2251799813711967 --state canceled
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -
 ```
 
@@ -59,7 +59,7 @@ c8volt cancel process-instance [flags]
       --start-date-before string    only include process instances with start date <= YYYY-MM-DD
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
-  -s, --state string                state to filter process instances: all, active, completed, canceled (default "all")
+  -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --with-age                    include process instance age in one-line output and JSON meta
   -w, --workers int                 maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
