@@ -166,6 +166,11 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	} else {
 		ret = d.ProcessDefinitionStatistics{}
 	}
+	active, err := s.countActiveProcessInstancesForProcessDefinition(ctx, *pd)
+	if err != nil {
+		return err
+	}
+	ret.Active = active
 	incidents, err := s.countActiveIncidentsForProcessDefinition(ctx, *pd)
 	if err != nil {
 		return err
@@ -174,6 +179,27 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	ret.IncidentCountSupported = true
 	pd.Statistics = &ret
 	return nil
+}
+
+func (s *Service) countActiveProcessInstancesForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
+	if pd.Key == "" {
+		return 0, nil
+	}
+	req, err := searchActiveProcessInstancesRequest(common.EffectiveTenant(s.cfg), pd.Key)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, req)
+	if err != nil {
+		return 0, err
+	}
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return 0, err
+	}
+	if resp.JSON200 == nil {
+		return 0, d.ErrMalformedResponse
+	}
+	return resp.JSON200.Page.TotalItems, nil
 }
 
 func (s *Service) countActiveIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
@@ -236,6 +262,36 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		Filter: bodyFilter,
 		Page:   &page,
 		Sort:   &sort,
+	}, nil
+}
+
+func searchActiveProcessInstancesRequest(tenantID, processDefinitionKey string) (camundav88.SearchProcessInstancesJSONRequestBody, error) {
+	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(processDefinitionKey)
+	if err != nil {
+		return camundav88.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	stateFilter, err := common.NewProcessInstanceStateEqFilterPtr(string(camundav88.ProcessInstanceStateEnumACTIVE))
+	if err != nil {
+		return camundav88.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	tenantIDFilter, err := common.NewStringEqFilterPtr(tenantID)
+	if err != nil {
+		return camundav88.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	var from int32
+	var limit int32 = 1
+	page := camundav88.SearchQueryPageRequest{}
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
+		From:  &from,
+		Limit: &limit,
+	})
+	return camundav88.SearchProcessInstancesJSONRequestBody{
+		Filter: &camundav88.ProcessInstanceFilter{
+			ProcessDefinitionKey: processDefinitionKeyFilter,
+			State:                stateFilter,
+			TenantId:             tenantIDFilter,
+		},
+		Page: &page,
 	}, nil
 }
 
