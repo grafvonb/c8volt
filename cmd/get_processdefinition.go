@@ -32,12 +32,11 @@ ID, version selectors, or the latest deployed version. Default output is aimed
 at human review; prefer ` + "`--json`" + ` when chaining the result into scripts or
 AI-assisted workflows. Use ` + "`--xml`" + ` only when you need the raw BPMN XML for a
 single definition selected by ` + "`--key`" + `. When ` + "`--stat`" + ` is enabled,
-Camunda ` + "`8.8`" + ` reports process-definition element statistics and omits the
-` + "`in:`" + ` field because incident-bearing process-instance counts are not available
-from its native process-definition statistics endpoint. Camunda ` + "`8.9`" + ` enriches
-` + "`ac`" + ` and ` + "`in:<count>`" + ` from native process-instance statistics for the
-exact process definition version; ` + "`cp`" + ` and ` + "`cx`" + ` keep their existing
-process-definition statistics meaning.
+Camunda ` + "`8.8`" + ` reports process-definition element statistics and adds
+` + "`in:<count>`" + ` from active incidents for the exact process definition version.
+Camunda ` + "`8.9`" + ` enriches ` + "`ac`" + ` and ` + "`in:<count>`" + ` from native
+process-instance statistics for the exact process definition version; ` + "`cp`" + `
+and ` + "`cx`" + ` keep their existing process-definition statistics meaning.
 Camunda ` + "`8.7`" + ` rejects statistics because the generated client surface does
 not provide the same native statistics endpoints.`,
 	Example: `  ./c8volt get pd --latest
@@ -123,7 +122,7 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.9 adds active/incident instance stats, 8.7 unsupported")
+	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)

@@ -172,8 +172,10 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	require.Contains(t, output, "Use `--xml` only when you need the raw BPMN XML")
 	require.Contains(t, output, "When `--stat` is enabled")
 	require.Contains(t, output, "Camunda `8.8` reports process-definition element statistics")
+	require.Contains(t, output, "`in:<count>` from active incidents")
 	require.Contains(t, output, "Camunda `8.9` enriches")
-	require.Contains(t, output, "`in:<count>` from native process-instance statistics")
+	require.Contains(t, output, "`in:<count>` from native")
+	require.Contains(t, output, "process-instance statistics")
 	require.Contains(t, output, "Camunda `8.7` rejects statistics")
 	require.Contains(t, output, "./c8volt get pd --key 2251799813686017 --json")
 }

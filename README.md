@@ -289,7 +289,7 @@ That split is intentional: `c8volt` does not fake tenant safety by doing an unsa
 ```
 
 When you need more than "list everything," `c8volt` can pull the sharp edges too: the latest deployed definition, raw BPMN XML for one exact definition, definition statistics, and single resources by id.
-For `get pd --stat`, Camunda `8.8` reports the native process-definition element statistics available from its documented endpoint and omits `in:` because incident-bearing process-instance counts are not exposed there. Camunda `8.9` enriches `ac` and `in:<count>` from native process-instance statistics for the exact process definition version; `cp` and `cx` keep their existing process-definition statistics meaning. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
+For `get pd --stat`, Camunda `8.8` reports the native process-definition element statistics available from its documented endpoint and adds `in:<count>` from active incidents for the exact process definition version. Camunda `8.9` enriches `ac` and `in:<count>` from native process-instance statistics for the exact process definition version; `cp` and `cx` keep their existing process-definition statistics meaning. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
 
 ### Find the exact process instances you want
 
@@ -636,7 +636,7 @@ The supporting read and deployment commands are still part of the core toolbox:
 ./c8volt version
 ```
 
-On `get pd --stat`, `8.8` prints the statistics returned by its process-definition element-statistics endpoint and omits `in:`. `8.9` prints `ac:<count>` for active process instances on the exact definition version plus `in:0` or `in:<count>` for incident-bearing active process instances. `8.7` rejects `--stat` because that native statistics source is not available.
+On `get pd --stat`, `8.8` prints the statistics returned by its process-definition element-statistics endpoint plus `in:0` or `in:<count>` from active incidents on the exact definition version. `8.9` prints `ac:<count>` for active process instances on the exact definition version plus `in:0` or `in:<count>` for incident-bearing active process instances. `8.7` rejects `--stat` because that native statistics source is not available.
 
 ## Good in Pipelines
 
