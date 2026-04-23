@@ -90,6 +90,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           description: An internal error occurred while processing the request.
+      x-added-in-version: '8.9'
   /audit-logs/{auditLogKey}:
     get:
       x-eventually-consistent: true
@@ -124,6 +125,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /authentication/me:
     get:
       x-eventually-consistent: false
@@ -147,6 +149,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /authorizations:
     post:
       x-eventually-consistent: false
@@ -184,6 +187,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /authorizations/search:
     post:
       x-eventually-consistent: true
@@ -212,6 +216,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /authorizations/{authorizationKey}:
     put:
       x-eventually-consistent: false
@@ -248,6 +253,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     get:
       x-eventually-consistent: true
       tags:
@@ -281,6 +287,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -310,6 +317,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /batch-operation-items/search:
     post:
       x-eventually-consistent: true
@@ -339,6 +347,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /batch-operations/search:
     post:
       x-eventually-consistent: true
@@ -368,6 +377,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /batch-operations/{batchOperationKey}:
     get:
       x-eventually-consistent: true
@@ -404,6 +414,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /batch-operations/{batchOperationKey}/cancellation:
     post:
       x-eventually-consistent: false
@@ -441,6 +452,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /batch-operations/{batchOperationKey}/resumption:
     post:
       x-eventually-consistent: false
@@ -480,6 +492,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /batch-operations/{batchOperationKey}/suspension:
     post:
       x-eventually-consistent: false
@@ -519,6 +532,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /clock:
     put:
       x-eventually-consistent: false
@@ -548,6 +562,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /clock/reset:
     post:
       x-eventually-consistent: false
@@ -569,6 +584,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /cluster-variables/global:
     post:
       operationId: createGlobalClusterVariable
@@ -598,6 +614,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /cluster-variables/global/{name}:
     get:
       operationId: getGlobalClusterVariable
@@ -634,6 +651,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
     put:
       operationId: updateGlobalClusterVariable
       x-eventually-consistent: false
@@ -677,6 +695,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
     delete:
       operationId: deleteGlobalClusterVariable
       x-eventually-consistent: false
@@ -708,6 +727,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /cluster-variables/search:
     post:
       tags:
@@ -743,6 +763,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /cluster-variables/tenants/{tenantId}:
     post:
       operationId: createTenantClusterVariable
@@ -777,8 +798,15 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The tenant with the given ID was not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /cluster-variables/tenants/{tenantId}/{name}:
     get:
       operationId: getTenantClusterVariable
@@ -821,6 +849,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
     put:
       operationId: updateTenantClusterVariable
       x-eventually-consistent: false
@@ -870,6 +899,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
     delete:
       operationId: deleteTenantClusterVariable
       x-eventually-consistent: false
@@ -907,6 +937,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /conditionals/evaluation:
     post:
       x-eventually-consistent: false
@@ -971,6 +1002,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
   /correlated-message-subscriptions/search:
     post:
       x-eventually-consistent: true
@@ -1000,6 +1032,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /decision-definitions/evaluation:
     post:
       x-eventually-consistent: false
@@ -1048,6 +1081,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /decision-definitions/search:
     post:
       x-eventually-consistent: true
@@ -1077,6 +1111,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /decision-definitions/{decisionDefinitionKey}:
     get:
       x-eventually-consistent: true
@@ -1114,6 +1149,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /decision-definitions/{decisionDefinitionKey}/xml:
     get:
       x-eventually-consistent: true
@@ -1151,6 +1187,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /decision-instances/search:
     post:
       x-eventually-consistent: true
@@ -1180,6 +1217,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /decision-instances/{decisionEvaluationInstanceKey}:
     get:
       x-eventually-consistent: true
@@ -1217,6 +1255,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /decision-instances/{decisionEvaluationKey}/deletion:
     post:
       x-eventually-consistent: false
@@ -1255,6 +1294,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
   /decision-instances/deletion:
     post:
       x-eventually-consistent: false
@@ -1291,6 +1331,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /decision-requirements/search:
     post:
       x-eventually-consistent: true
@@ -1320,6 +1361,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /decision-requirements/{decisionRequirementsKey}:
     get:
       x-eventually-consistent: true
@@ -1357,6 +1399,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /decision-requirements/{decisionRequirementsKey}/xml:
     get:
       x-eventually-consistent: true
@@ -1394,6 +1437,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /deployments:
     post:
       x-eventually-consistent: false
@@ -1434,6 +1478,7 @@ paths:
           $ref: '#/components/responses/InvalidData'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /documents:
     post:
       x-eventually-consistent: false
@@ -1488,6 +1533,7 @@ paths:
           $ref: '#/components/responses/InvalidData'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+      x-added-in-version: '8.6'
   /documents/batch:
     post:
       x-eventually-consistent: false
@@ -1565,6 +1611,7 @@ paths:
           $ref: '#/components/responses/InvalidData'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+      x-added-in-version: '8.7'
   /documents/{documentId}:
     get:
       x-eventually-consistent: false
@@ -1612,6 +1659,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
     delete:
       x-eventually-consistent: false
       tags:
@@ -1646,6 +1694,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /documents/{documentId}/links:
     post:
       x-eventually-consistent: false
@@ -1692,6 +1741,7 @@ paths:
                 $ref: '#/components/schemas/DocumentLink'
         '400':
           $ref: '#/components/responses/InvalidData'
+      x-added-in-version: '8.7'
   /element-instances/ad-hoc-activities/{adHocSubProcessInstanceKey}/activation:
     post:
       x-eventually-consistent: false
@@ -1735,6 +1785,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /element-instances/search:
     post:
       x-eventually-consistent: true
@@ -1764,6 +1815,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /element-instances/{elementInstanceKey}:
     get:
       x-eventually-consistent: true
@@ -1802,6 +1854,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /element-instances/{elementInstanceKey}/incidents/search:
     post:
       x-eventually-consistent: true
@@ -1851,6 +1904,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /element-instances/{elementInstanceKey}/variables:
     put:
       x-eventually-consistent: false
@@ -1892,6 +1946,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeoutTaskListenerBlocking'
+      x-added-in-version: '8.6'
   /expression/evaluation:
     post:
       operationId: evaluateExpression
@@ -1921,6 +1976,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /global-task-listeners:
     post:
       x-eventually-consistent: false
@@ -1958,6 +2014,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
   /global-task-listeners/{id}:
     get:
       x-eventually-consistent: true
@@ -1992,6 +2049,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
     put:
       x-eventually-consistent: false
       tags:
@@ -2035,6 +2093,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
     delete:
       x-eventually-consistent: false
       tags:
@@ -2068,6 +2127,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
   /global-task-listeners/search:
     post:
       x-eventually-consistent: true
@@ -2096,6 +2156,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /groups:
     post:
       x-eventually-consistent: false
@@ -2126,6 +2187,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /groups/search:
     post:
       x-eventually-consistent: true
@@ -2155,6 +2217,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /groups/{groupId}:
     get:
       x-eventually-consistent: true
@@ -2189,6 +2252,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
     put:
       x-eventually-consistent: false
       tags:
@@ -2230,6 +2294,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -2259,6 +2324,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /groups/{groupId}/clients/search:
     post:
       x-eventually-consistent: true
@@ -2301,6 +2367,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /groups/{groupId}/clients/{clientId}:
     put:
       x-eventually-consistent: false
@@ -2347,6 +2414,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -2386,6 +2454,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /groups/{groupId}/mapping-rules/search:
     post:
       x-eventually-consistent: true
@@ -2428,6 +2497,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /groups/{groupId}/mapping-rules/{mappingRuleId}:
     put:
       x-eventually-consistent: false
@@ -2472,6 +2542,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -2509,6 +2580,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /groups/{groupId}/roles/search:
     post:
       x-eventually-consistent: true
@@ -2551,6 +2623,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /groups/{groupId}/users/search:
     post:
       x-eventually-consistent: true
@@ -2593,6 +2666,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /groups/{groupId}/users/{username}:
     put:
       x-eventually-consistent: false
@@ -2639,6 +2713,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -2678,6 +2753,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /incidents/search:
     post:
       x-eventually-consistent: true
@@ -2708,6 +2784,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /incidents/{incidentKey}:
     get:
       x-eventually-consistent: true
@@ -2745,6 +2822,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /incidents/{incidentKey}/resolution:
     post:
       x-eventually-consistent: false
@@ -2791,6 +2869,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /incidents/statistics/process-instances-by-definition:
     post:
       x-eventually-consistent: true
@@ -2825,6 +2904,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /incidents/statistics/process-instances-by-error:
     post:
       x-eventually-consistent: true
@@ -2858,6 +2938,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /jobs/activation:
     post:
       x-eventually-consistent: false
@@ -2888,6 +2969,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /jobs/search:
     post:
       x-eventually-consistent: true
@@ -2917,6 +2999,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /jobs/{jobKey}:
     patch:
       x-eventually-consistent: false
@@ -2960,6 +3043,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /jobs/{jobKey}/completion:
     post:
       x-eventually-consistent: false
@@ -3004,6 +3088,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /jobs/{jobKey}/error:
     post:
       x-eventually-consistent: false
@@ -3049,6 +3134,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /jobs/{jobKey}/failure:
     post:
       x-eventually-consistent: false
@@ -3094,6 +3180,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /jobs/statistics/global:
     get:
       x-eventually-consistent: true
@@ -3102,7 +3189,7 @@ paths:
       operationId: getGlobalJobStatistics
       summary: Global job statistics
       description: |
-        Returns global aggregated counts for jobs. Optionally filter by the creation time window and/or jobType.
+        Returns global aggregated counts for jobs. Filter by the creation time window (required) and optionally by jobType.
       parameters:
         - name: from
           in: query
@@ -3144,6 +3231,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /jobs/statistics/by-types:
     post:
       x-eventually-consistent: true
@@ -3174,6 +3262,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /jobs/statistics/by-workers:
     post:
       x-eventually-consistent: true
@@ -3204,6 +3293,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /jobs/statistics/time-series:
     post:
       x-eventually-consistent: true
@@ -3236,6 +3326,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /jobs/statistics/errors:
     post:
       x-eventually-consistent: true
@@ -3266,6 +3357,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /license:
     get:
       x-eventually-consistent: false
@@ -3283,6 +3375,7 @@ paths:
                 $ref: '#/components/schemas/LicenseResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /mapping-rules:
     post:
       x-eventually-consistent: false
@@ -3322,6 +3415,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /mapping-rules/search:
     post:
       x-eventually-consistent: true
@@ -3351,6 +3445,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /mapping-rules/{mappingRuleId}:
     put:
       x-eventually-consistent: false
@@ -3399,6 +3494,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -3429,6 +3525,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     get:
       x-eventually-consistent: true
       tags:
@@ -3461,6 +3558,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /message-subscriptions/search:
     post:
       x-eventually-consistent: true
@@ -3490,6 +3588,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /messages/correlation:
     post:
       x-eventually-consistent: false
@@ -3529,6 +3628,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /messages/publication:
     post:
       x-eventually-consistent: false
@@ -3561,6 +3661,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /process-definitions/search:
     post:
       x-eventually-consistent: true
@@ -3590,6 +3691,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-definitions/statistics/message-subscriptions:
     post:
       x-eventually-consistent: true
@@ -3620,6 +3722,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /process-definitions/statistics/process-instances:
     post:
       x-eventually-consistent: true
@@ -3650,6 +3753,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /process-definitions/{processDefinitionKey}:
     get:
       x-eventually-consistent: true
@@ -3688,6 +3792,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-definitions/{processDefinitionKey}/form:
     get:
       x-eventually-consistent: true
@@ -3728,6 +3833,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-definitions/{processDefinitionKey}/statistics/element-instances:
     post:
       x-eventually-consistent: true
@@ -3764,6 +3870,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-definitions/{processDefinitionKey}/xml:
     get:
       x-eventually-consistent: true
@@ -3809,6 +3916,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-definitions/statistics/process-instances-by-version:
     post:
       x-eventually-consistent: true
@@ -3840,6 +3948,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /process-instances:
     post:
       x-eventually-consistent: false
@@ -3905,6 +4014,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+      x-added-in-version: '8.6'
   /process-instances/cancellation:
     post:
       x-eventually-consistent: false
@@ -3943,6 +4053,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/deletion:
     post:
       x-eventually-consistent: false
@@ -3980,6 +4091,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /process-instances/incident-resolution:
     post:
       x-eventually-consistent: false
@@ -4018,6 +4130,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/migration:
     post:
       x-eventually-consistent: false
@@ -4056,6 +4169,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/modification:
     post:
       x-eventually-consistent: false
@@ -4096,6 +4210,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/search:
     post:
       x-eventually-consistent: true
@@ -4125,6 +4240,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /process-instances/{processInstanceKey}:
     get:
       x-eventually-consistent: true
@@ -4161,6 +4277,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/{processInstanceKey}/call-hierarchy:
     get:
       x-eventually-consistent: true
@@ -4199,6 +4316,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/{processInstanceKey}/cancellation:
     post:
       x-eventually-consistent: false
@@ -4238,6 +4356,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeoutTaskListenerBlocking'
+      x-added-in-version: '8.6'
   /process-instances/{processInstanceKey}/deletion:
     post:
       x-eventually-consistent: false
@@ -4282,6 +4401,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
   /process-instances/{processInstanceKey}/incident-resolution:
     post:
       x-eventually-consistent: false
@@ -4318,6 +4438,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.9'
   /process-instances/{processInstanceKey}/incidents/search:
     post:
       x-eventually-consistent: true
@@ -4366,6 +4487,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/{processInstanceKey}/migration:
     post:
       x-eventually-consistent: false
@@ -4416,6 +4538,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /process-instances/{processInstanceKey}/modification:
     post:
       x-eventually-consistent: false
@@ -4458,6 +4581,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /process-instances/{processInstanceKey}/sequence-flows:
     get:
       x-eventually-consistent: true
@@ -4488,6 +4612,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /process-instances/{processInstanceKey}/statistics/element-instances:
     get:
       x-eventually-consistent: true
@@ -4518,6 +4643,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /resources/{resourceKey}:
     get:
       x-eventually-consistent: false
@@ -4552,6 +4678,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.7'
   /resources/{resourceKey}/content:
     get:
       x-eventually-consistent: false
@@ -4586,6 +4713,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.7'
   /resources/{resourceKey}/deletion:
     post:
       x-eventually-consistent: false
@@ -4642,6 +4770,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /roles:
     post:
       x-eventually-consistent: false
@@ -4672,6 +4801,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /roles/search:
     post:
       x-eventually-consistent: true
@@ -4701,6 +4831,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /roles/{roleId}:
     get:
       x-eventually-consistent: true
@@ -4735,6 +4866,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
     put:
       x-eventually-consistent: false
       tags:
@@ -4776,6 +4908,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -4805,6 +4938,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /roles/{roleId}/clients/search:
     post:
       x-eventually-consistent: true
@@ -4847,6 +4981,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /roles/{roleId}/clients/{clientId}:
     put:
       x-eventually-consistent: false
@@ -4891,6 +5026,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -4928,6 +5064,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /roles/{roleId}/groups/search:
     post:
       x-eventually-consistent: true
@@ -4970,6 +5107,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /roles/{roleId}/groups/{groupId}:
     put:
       x-eventually-consistent: false
@@ -5014,6 +5152,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5051,6 +5190,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /roles/{roleId}/mapping-rules/search:
     post:
       x-eventually-consistent: true
@@ -5093,6 +5233,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /roles/{roleId}/mapping-rules/{mappingRuleId}:
     put:
       x-eventually-consistent: false
@@ -5137,6 +5278,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5174,6 +5316,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /roles/{roleId}/users/search:
     post:
       x-eventually-consistent: true
@@ -5216,6 +5359,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /roles/{roleId}/users/{username}:
     put:
       x-eventually-consistent: false
@@ -5260,6 +5404,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5297,6 +5442,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /setup/user:
     post:
       x-eventually-consistent: false
@@ -5326,6 +5472,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /signals/broadcast:
     post:
       x-eventually-consistent: false
@@ -5359,6 +5506,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.6'
   /status:
     get:
       x-eventually-consistent: false
@@ -5372,6 +5520,7 @@ paths:
           description: The cluster is UP and has at least one partition with a healthy leader.
         '503':
           description: The cluster is DOWN and does not have any partition with a healthy leader.
+      x-added-in-version: '8.8'
   /system/usage-metrics:
     get:
       x-eventually-consistent: true
@@ -5448,6 +5597,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /system/configuration:
     get:
       tags:
@@ -5482,6 +5632,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /tenants:
     post:
       x-eventually-consistent: false
@@ -5519,6 +5670,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /tenants/search:
     post:
       x-eventually-consistent: true
@@ -5554,6 +5706,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}:
     get:
       x-eventually-consistent: true
@@ -5590,6 +5743,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
     put:
       x-eventually-consistent: false
       tags:
@@ -5631,6 +5785,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5662,6 +5817,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/clients/search:
     post:
       x-eventually-consistent: true
@@ -5690,6 +5846,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantClientSearchResult'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/clients/{clientId}:
     put:
       x-eventually-consistent: false
@@ -5730,6 +5887,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5769,6 +5927,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/groups/search:
     post:
       x-eventually-consistent: true
@@ -5797,6 +5956,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantGroupSearchResult'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/groups/{groupId}:
     put:
       x-eventually-consistent: false
@@ -5837,6 +5997,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5876,6 +6037,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/mapping-rules/search:
     post:
       x-eventually-consistent: true
@@ -5904,6 +6066,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantMappingRuleSearchResult'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/mapping-rules/{mappingRuleId}:
     put:
       x-eventually-consistent: false
@@ -5942,6 +6105,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -5979,6 +6143,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/roles/search:
     post:
       x-eventually-consistent: true
@@ -6007,6 +6172,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantRoleSearchResult'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/roles/{roleId}:
     put:
       x-eventually-consistent: false
@@ -6047,6 +6213,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -6087,6 +6254,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/users/search:
     post:
       x-eventually-consistent: true
@@ -6115,6 +6283,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TenantUserSearchResult'
+      x-added-in-version: '8.8'
   /tenants/{tenantId}/users/{username}:
     put:
       x-eventually-consistent: false
@@ -6153,6 +6322,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -6192,6 +6362,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /topology:
     get:
       x-eventually-consistent: false
@@ -6211,6 +6382,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.5'
   /users:
     post:
       x-eventually-consistent: false
@@ -6248,6 +6420,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /users/search:
     post:
       x-eventually-consistent: true
@@ -6276,6 +6449,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /users/{username}:
     get:
       x-eventually-consistent: true
@@ -6310,6 +6484,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
     put:
       x-eventually-consistent: false
       tags:
@@ -6351,6 +6526,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
     delete:
       x-eventually-consistent: false
       tags:
@@ -6380,6 +6556,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+      x-added-in-version: '8.8'
   /user-tasks/search:
     post:
       x-eventually-consistent: true
@@ -6409,6 +6586,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.6'
   /user-tasks/{userTaskKey}:
     get:
       x-eventually-consistent: true
@@ -6445,6 +6623,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
     patch:
       x-eventually-consistent: false
       tags:
@@ -6490,6 +6669,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeoutTaskListenerBlocking'
+      x-added-in-version: '8.5'
   /user-tasks/{userTaskKey}/assignee:
     delete:
       x-eventually-consistent: false
@@ -6530,6 +6710,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeoutTaskListenerBlocking'
+      x-added-in-version: '8.5'
   /user-tasks/{userTaskKey}/assignment:
     post:
       x-eventually-consistent: false
@@ -6576,6 +6757,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeoutTaskListenerBlocking'
+      x-added-in-version: '8.5'
   /user-tasks/{userTaskKey}/audit-logs/search:
     post:
       x-eventually-consistent: true
@@ -6608,6 +6790,7 @@ paths:
           $ref: '#/components/responses/InvalidData'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.9'
   /user-tasks/{userTaskKey}/completion:
     post:
       x-eventually-consistent: false
@@ -6654,6 +6837,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeoutTaskListenerBlocking'
+      x-added-in-version: '8.5'
   /user-tasks/{userTaskKey}/effective-variables/search:
     post:
       x-eventually-consistent: true
@@ -6698,6 +6882,7 @@ paths:
           $ref: '#/components/responses/InvalidData'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /user-tasks/{userTaskKey}/form:
     get:
       x-eventually-consistent: true
@@ -6738,6 +6923,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /user-tasks/{userTaskKey}/variables/search:
     post:
       x-eventually-consistent: true
@@ -6783,6 +6969,7 @@ paths:
           $ref: '#/components/responses/InvalidData'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /variables/search:
     post:
       x-eventually-consistent: true
@@ -6828,6 +7015,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
   /variables/{variableKey}:
     get:
       x-eventually-consistent: true
@@ -6869,6 +7057,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
+      x-added-in-version: '8.8'
 components:
   securitySchemes:
     BearerAuth:
@@ -8384,7 +8573,6 @@ components:
           description: The username of the user.
           allOf:
             - $ref: '#/components/schemas/Username'
-          nullable: true
         displayName:
           description: The display name of the user.
           type: string
@@ -12252,7 +12440,6 @@ components:
       enum:
         - PROVIDED
         - ASSIGNED
-      default: PROVIDED
     JobActivationRequest:
       type: object
       additionalProperties: false

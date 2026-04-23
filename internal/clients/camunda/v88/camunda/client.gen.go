@@ -2585,7 +2585,7 @@ type CamundaUserResult struct {
 	Tenants []TenantResult `json:"tenants"`
 
 	// Username The username of the user.
-	Username *Username `json:"username"`
+	Username Username `json:"username"`
 }
 
 // CancelProcessInstanceRequest defines model for CancelProcessInstanceRequest.
@@ -25194,6 +25194,7 @@ type CreateTenantClusterVariableResponse struct {
 	ApplicationproblemJSON400 *InvalidData
 	ApplicationproblemJSON401 *Unauthorized
 	ApplicationproblemJSON403 *Forbidden
+	ApplicationproblemJSON404 *ProblemDetail
 	ApplicationproblemJSON500 *InternalServerError
 }
 
@@ -32981,6 +32982,13 @@ func ParseCreateTenantClusterVariableResponse(rsp *http.Response) (*CreateTenant
 			return nil, err
 		}
 		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ProblemDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerError
