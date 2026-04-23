@@ -34,7 +34,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
   ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
   ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
   ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
-  ./c8volt expect pi --key 2251799813711967 --state canceled --state terminated
+  ./c8volt expect pi --key 2251799813711967 --state canceled
   ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -173,7 +173,7 @@ func init() {
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 
 	setCommandMutation(cancelProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(cancelProcessInstanceCmd, ContractSupportFull)

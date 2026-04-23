@@ -146,46 +146,38 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
 	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
-	stats, err := s.cc.GetProcessDefinitionStatisticsWithResponse(ctx, pd.Key, camundav88.GetProcessDefinitionStatisticsJSONRequestBody{
-		Filter: &camundav88.ProcessDefinitionStatisticsFilter{},
-	})
+	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav88.ProcessInstanceStateEnumACTIVE)
 	if err != nil {
 		return err
 	}
-	if err = httpc.HttpStatusErr(stats.HTTPResponse, stats.Body); err != nil {
-		return err
-	}
-	if stats.JSON200 == nil {
-		s.log.Warn(fmt.Sprintf("no process definition stats found for key %s", pd.Key))
-		return nil
-	}
-	items := stats.JSON200.Items
-	var ret d.ProcessDefinitionStatistics
-	if len(items) > 0 {
-		ret = fromProcessElementStatisticsResult(items[len(items)-1])
-	} else {
-		ret = d.ProcessDefinitionStatistics{}
-	}
-	active, err := s.countActiveProcessInstancesForProcessDefinition(ctx, *pd)
+	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav88.ProcessInstanceStateEnumCOMPLETED)
 	if err != nil {
 		return err
 	}
-	ret.Active = active
+	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav88.ProcessInstanceStateEnum(d.StateTerminated))
+	if err != nil {
+		return err
+	}
 	incidents, err := s.countActiveIncidentsForProcessDefinition(ctx, *pd)
 	if err != nil {
 		return err
 	}
-	ret.Incidents = incidents
+	ret := d.ProcessDefinitionStatistics{
+		Active:    active,
+		Completed: completed,
+		Canceled:  canceled,
+		Incidents: incidents,
+	}
 	ret.IncidentCountSupported = true
 	pd.Statistics = &ret
 	return nil
 }
 
-func (s *Service) countActiveProcessInstancesForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
+func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, state camundav88.ProcessInstanceStateEnum) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
 	}
-	req, err := searchActiveProcessInstancesRequest(common.EffectiveTenant(s.cfg), pd.Key)
+	req, err := searchProcessInstancesForDefinitionStateRequest(common.EffectiveTenant(s.cfg), pd.Key, state)
 	if err != nil {
 		return 0, err
 	}
@@ -265,12 +257,12 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 	}, nil
 }
 
-func searchActiveProcessInstancesRequest(tenantID, processDefinitionKey string) (camundav88.SearchProcessInstancesJSONRequestBody, error) {
+func searchProcessInstancesForDefinitionStateRequest(tenantID, processDefinitionKey string, state camundav88.ProcessInstanceStateEnum) (camundav88.SearchProcessInstancesJSONRequestBody, error) {
 	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(processDefinitionKey)
 	if err != nil {
 		return camundav88.SearchProcessInstancesJSONRequestBody{}, err
 	}
-	stateFilter, err := common.NewProcessInstanceStateEqFilterPtr(string(camundav88.ProcessInstanceStateEnumACTIVE))
+	stateFilter, err := common.NewProcessInstanceStateEqFilterPtr(string(state))
 	if err != nil {
 		return camundav88.SearchProcessInstancesJSONRequestBody{}, err
 	}
