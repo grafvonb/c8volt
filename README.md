@@ -290,7 +290,7 @@ That split is intentional: `c8volt` does not fake tenant safety by doing an unsa
 ```
 
 When you need more than "list everything," `c8volt` can pull the sharp edges too: the latest deployed definition, raw BPMN XML for one exact definition, definition statistics, and single resources by id.
-For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process definition version: `ac:<count>` for active, `cp:<count>` for completed, and `cx:<count>` for canceled. `in:<count>` reports raw active incidents for that same version. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
+For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `in:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
 
 ### Find the exact process instances you want
 
@@ -637,7 +637,7 @@ The supporting read and deployment commands are still part of the core toolbox:
 ./c8volt version
 ```
 
-On `get pd --stat`, `8.8` and `8.9` print process-instance counts on the exact definition version: `ac:<count>` for active, `cp:<count>` for completed, and `cx:<count>` for canceled, plus `in:0` or `in:<count>` for raw active incidents on that same version. `8.7` rejects `--stat` because that native statistics source is not available.
+On `get pd --stat`, `8.8` and `8.9` print process-instance counts on the exact definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `in:0` or `in:<count>` for process instances having at least one incident. `8.7` rejects `--stat` because that native statistics source is not available.
 
 ## Good in Pipelines
 

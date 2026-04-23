@@ -167,7 +167,7 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	if err != nil {
 		return err
 	}
-	incidents, err := s.countActiveIncidentsForProcessDefinition(ctx, *pd)
+	incidents, err := s.countProcessInstancesWithIncidentsForProcessDefinition(ctx, *pd)
 	if err != nil {
 		return err
 	}
@@ -182,33 +182,29 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	return nil
 }
 
-func (s *Service) countActiveIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
+func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
 	}
-
-	const pageSize int32 = 1000
-	var total int64
-	for offset := int32(0); ; offset += pageSize {
-		req, err := searchActiveIncidentsRequest(common.EffectiveTenant(s.cfg), pd.Key, offset, pageSize)
-		if err != nil {
-			return 0, err
-		}
-		resp, err := s.cc.SearchIncidentsWithResponse(ctx, req)
-		if err != nil {
-			return 0, err
-		}
-		if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-			return 0, err
-		}
-		if resp.JSON200 == nil {
-			return 0, d.ErrMalformedResponse
-		}
-		total += int64(len(resp.JSON200.Items))
-		if len(resp.JSON200.Items) < int(pageSize) {
-			return total, nil
-		}
+	req, err := searchProcessInstancesForDefinitionIncidentRequest(common.EffectiveTenant(s.cfg), pd.Key)
+	if err != nil {
+		return 0, err
 	}
+	bodyJSON, err := json.Marshal(req)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := s.cc.SearchProcessInstancesWithBodyWithResponse(ctx, "application/json", bytes.NewReader(bodyJSON))
+	if err != nil {
+		return 0, err
+	}
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return 0, err
+	}
+	if resp.JSON200 == nil {
+		return 0, d.ErrMalformedResponse
+	}
+	return resp.JSON200.Page.TotalItems, nil
 }
 
 func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, state camundav89.ProcessInstanceStateEnum) (int64, error) {
@@ -270,29 +266,28 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 	}, nil
 }
 
-func searchActiveIncidentsRequest(tenantID, processDefinitionKey string, offset, size int32) (camundav89.SearchIncidentsJSONRequestBody, error) {
+func searchProcessInstancesForDefinitionIncidentRequest(tenantID, processDefinitionKey string) (camundav89.SearchProcessInstancesJSONRequestBody, error) {
 	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(processDefinitionKey)
 	if err != nil {
-		return camundav89.SearchIncidentsJSONRequestBody{}, err
-	}
-	stateFilter, err := newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
-	if err != nil {
-		return camundav89.SearchIncidentsJSONRequestBody{}, err
+		return camundav89.SearchProcessInstancesJSONRequestBody{}, err
 	}
 	tenantIDFilter, err := newStringEqFilterPtr(tenantID)
 	if err != nil {
-		return camundav89.SearchIncidentsJSONRequestBody{}, err
+		return camundav89.SearchProcessInstancesJSONRequestBody{}, err
 	}
+	hasIncident := true
+	var from int32
+	var limit int32 = 1
 	page := camundav89.SearchQueryPageRequest{}
 	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
-		From:  &offset,
-		Limit: &size,
+		From:  &from,
+		Limit: &limit,
 	})
-	return camundav89.SearchIncidentsJSONRequestBody{
-		Filter: &camundav89.IncidentFilter{
+	return camundav89.SearchProcessInstancesJSONRequestBody{
+		Filter: &camundav89.ProcessInstanceFilter{
 			ProcessDefinitionKey: processDefinitionKeyFilter,
-			State:                stateFilter,
 			TenantId:             tenantIDFilter,
+			HasIncident:          &hasIncident,
 		},
 		Page: &page,
 	}, nil
@@ -376,14 +371,6 @@ func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinition
 	}
 	var filter camundav89.ProcessDefinitionKeyFilterProperty
 	if err := filter.FromProcessDefinitionKeyFilterProperty0(camundav89.ProcessDefinitionKey(v)); err != nil {
-		return nil, err
-	}
-	return &filter, nil
-}
-
-func newIncidentStateEqFilterPtr(v camundav89.IncidentStateEnum) (*camundav89.IncidentStateFilterProperty, error) {
-	var filter camundav89.IncidentStateFilterProperty
-	if err := filter.FromIncidentStateFilterProperty0(v); err != nil {
 		return nil, err
 	}
 	return &filter, nil
