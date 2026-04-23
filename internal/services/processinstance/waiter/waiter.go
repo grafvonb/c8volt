@@ -123,9 +123,20 @@ func isProcessInstanceAbsentErr(err error) bool {
 
 func stateIn(st d.State, set d.States) bool {
 	for _, x := range set {
-		if st.EqualsIgnoreCase(x) {
+		if statesEquivalent(st, x) {
 			return true
 		}
 	}
 	return false
+}
+
+func statesEquivalent(left, right d.State) bool {
+	if left.EqualsIgnoreCase(right) {
+		return true
+	}
+	return isCanceledLike(left) && isCanceledLike(right)
+}
+
+func isCanceledLike(state d.State) bool {
+	return state.In(d.StateCanceled, d.StateTerminated)
 }

@@ -167,7 +167,7 @@ func init() {
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
-	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(deleteProcessInstanceCmd, ContractSupportFull)

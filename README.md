@@ -235,10 +235,11 @@ Use `expect` when a script or operator workflow needs a concrete state transitio
 ```bash
 ./c8volt expect pi --key 2251799813685255 --state active
 ./c8volt expect pi --key 2251799813685255 --state completed --state absent
+./c8volt expect pi --key 2251799813711967 --state canceled
 ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
 ```
 
-`expect` is where `c8volt` becomes a strong automation partner instead of just a command runner: it can wait for `active`, `completed`, `canceled`, `terminated`, or `absent` and it works naturally with piped keys for bulk verification flows.
+`expect` is where `c8volt` becomes a strong automation partner instead of just a command runner: it can wait for `active`, `completed`, `canceled`, `terminated`, or `absent` and it works naturally with piped keys for bulk verification flows. For cancellation semantics, `canceled` is the user-facing intent. On Camunda `8.8` and `8.9`, that canceled outcome may be reported by the backend as `terminated`, and `c8volt` treats those two wait targets as equivalent.
 
 ### Inspect the environment before acting
 
@@ -289,7 +290,7 @@ That split is intentional: `c8volt` does not fake tenant safety by doing an unsa
 ```
 
 When you need more than "list everything," `c8volt` can pull the sharp edges too: the latest deployed definition, raw BPMN XML for one exact definition, definition statistics, and single resources by id.
-For `get pd --stat`, Camunda `8.8` and `8.9` report `ac:<count>` as active process instances for the exact process definition version and `in:<count>` as raw active incidents for that same version. `cp` and `cx` keep their existing process-definition element-statistics meaning. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
+For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process definition version: `ac:<count>` for active, `cp:<count>` for completed, and `cx:<count>` for canceled. `in:<count>` reports raw active incidents for that same version. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
 
 ### Find the exact process instances you want
 
@@ -636,7 +637,7 @@ The supporting read and deployment commands are still part of the core toolbox:
 ./c8volt version
 ```
 
-On `get pd --stat`, `8.8` and `8.9` print `ac:<count>` for active process instances on the exact definition version plus `in:0` or `in:<count>` for raw active incidents on that same version. `cp` and `cx` keep the process-definition element-statistics meaning exposed by Camunda. `8.7` rejects `--stat` because that native statistics source is not available.
+On `get pd --stat`, `8.8` and `8.9` print process-instance counts on the exact definition version: `ac:<count>` for active, `cp:<count>` for completed, and `cx:<count>` for canceled, plus `in:0` or `in:<count>` for raw active incidents on that same version. `8.7` rejects `--stat` because that native statistics source is not available.
 
 ## Good in Pipelines
 

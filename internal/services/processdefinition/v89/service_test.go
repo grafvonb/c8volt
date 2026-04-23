@@ -2,6 +2,7 @@ package v89_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -52,20 +53,16 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionXMLWithResponse(ctx co
 	return args.Get(0).(*camundav89.GetProcessDefinitionXMLResponse), args.Error(1)
 }
 
-func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse(ctx context.Context, key string, body camundav89.GetProcessDefinitionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionStatisticsResponse, error) {
-	args := m.Called(ctx, key)
+func (m *mockProcessDefinitionClient) SearchProcessInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+	rawBody, err := io.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	args := m.Called(ctx, contentType, string(rawBody))
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*camundav89.GetProcessDefinitionStatisticsResponse), args.Error(1)
-}
-
-func (m *mockProcessDefinitionClient) GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, body camundav89.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
-	args := m.Called(ctx, body)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*camundav89.GetProcessDefinitionInstanceVersionStatisticsResponse), args.Error(1)
+	return args.Get(0).(*camundav89.SearchProcessInstancesResponse), args.Error(1)
 }
 
 func (m *mockProcessDefinitionClient) SearchIncidentsWithResponse(ctx context.Context, body camundav89.SearchIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
@@ -138,33 +135,10 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 					Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
 					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
 				}
-				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-					JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
-						Items: []camundav89.ProcessElementStatisticsResult{{Active: 1}},
-					},
-				}
 				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
-				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
-				m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-					Return(makeProcessDefinitionInstanceVersionStatisticsResponse(
-						camundav89.ProcessDefinitionInstanceVersionStatisticsResult{
-							ProcessDefinitionId:                 "other",
-							ProcessDefinitionKey:                "999",
-							ProcessDefinitionVersion:            1,
-							TenantId:                            "tenant",
-							ActiveInstancesWithIncidentCount:    100,
-							ActiveInstancesWithoutIncidentCount: 200,
-						},
-						camundav89.ProcessDefinitionInstanceVersionStatisticsResult{
-							ProcessDefinitionId:                 "proc",
-							ProcessDefinitionKey:                "123",
-							ProcessDefinitionVersion:            2,
-							TenantId:                            "tenant",
-							ActiveInstancesWithIncidentCount:    2,
-							ActiveInstancesWithoutIncidentCount: 8,
-						},
-					), nil)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 10)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumCOMPLETED, 20)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 30)
 				m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).
 					Run(func(args mock.Arguments) {
 						body := args.Get(1).(camundav89.SearchIncidentsJSONRequestBody)
@@ -176,6 +150,8 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
 				require.NotNil(t, defs[0].Statistics)
 				assert.Equal(t, int64(10), defs[0].Statistics.Active)
+				assert.Equal(t, int64(20), defs[0].Statistics.Completed)
+				assert.Equal(t, int64(30), defs[0].Statistics.Canceled)
 				assert.Equal(t, int64(4), defs[0].Statistics.Incidents)
 				assert.True(t, defs[0].Statistics.IncidentCountSupported)
 			},
@@ -189,30 +165,26 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
 				}
 				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
-				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return((*camundav89.GetProcessDefinitionStatisticsResponse)(nil), mockErr)
+				m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return((*camundav89.SearchProcessInstancesResponse)(nil), mockErr)
 			},
 			opts:          []services.CallOption{services.WithStat()},
 			expectedError: mockErr,
 		},
 		{
-			name: "Stats missing payload is tolerated",
+			name: "Stats missing payload fails",
 			setupMock: func(m *mockProcessDefinitionClient) {
 				resp := &camundav89.SearchProcessDefinitionsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
 					Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
 					JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
 				}
-				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-				}
 				m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
-				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+				m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(&camundav89.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-instances/search", http.StatusOK, "200"),
+				}, nil)
 			},
-			opts: []services.CallOption{services.WithStat()},
-			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
-				require.Len(t, defs, 1)
-				assert.Nil(t, defs[0].Statistics)
-			},
+			opts:          []services.CallOption{services.WithStat()},
+			expectedError: domain.ErrMalformedResponse,
 		},
 	}
 
@@ -252,13 +224,6 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
 	}
 
-	statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-		JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
-			Items: []camundav89.ProcessElementStatisticsResult{{Active: 2}},
-		},
-	}
-
 	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
 		Run(func(args mock.Arguments) {
 			rawBody := args.String(2)
@@ -266,18 +231,9 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 			assert.False(t, strings.Contains(rawBody, `"tenantId":"tenant-a"`))
 		}).
 		Return(resp, nil)
-
-	m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).
-		Return(statsResp, nil)
-	m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-		Return(makeProcessDefinitionInstanceVersionStatisticsResponse(camundav89.ProcessDefinitionInstanceVersionStatisticsResult{
-			ProcessDefinitionId:                 "proc",
-			ProcessDefinitionKey:                "123",
-			ProcessDefinitionVersion:            1,
-			TenantId:                            "tenant",
-			ActiveInstancesWithIncidentCount:    0,
-			ActiveInstancesWithoutIncidentCount: 3,
-		}), nil)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 3)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumCOMPLETED, 4)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 5)
 	m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).
 		Return(makeSearchIncidentsResponse(0), nil)
 
@@ -289,6 +245,8 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	require.Len(t, defs, 1)
 	require.NotNil(t, defs[0].Statistics)
 	assert.Equal(t, int64(3), defs[0].Statistics.Active)
+	assert.Equal(t, int64(4), defs[0].Statistics.Completed)
+	assert.Equal(t, int64(5), defs[0].Statistics.Canceled)
 	assert.Zero(t, defs[0].Statistics.Incidents)
 	assert.True(t, defs[0].Statistics.IncidentCountSupported)
 	m.AssertExpectations(t)
@@ -303,24 +261,10 @@ func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhen
 		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant-a","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
 		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
 	}
-	statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-		JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
-			Items: []camundav89.ProcessElementStatisticsResult{{Active: 2}},
-		},
-	}
-
 	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
-	m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
-	m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-		Return(makeProcessDefinitionInstanceVersionStatisticsResponse(camundav89.ProcessDefinitionInstanceVersionStatisticsResult{
-			ProcessDefinitionId:                 "proc",
-			ProcessDefinitionKey:                "123",
-			ProcessDefinitionVersion:            2,
-			TenantId:                            "tenant-a",
-			ActiveInstancesWithIncidentCount:    1,
-			ActiveInstancesWithoutIncidentCount: 4,
-		}), nil)
+	mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav89.ProcessInstanceStateEnumACTIVE, 5)
+	mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav89.ProcessInstanceStateEnumCOMPLETED, 6)
+	mockProcessInstanceStateCount(m, t, "123", "tenant-a", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 7)
 	m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			body := args.Get(1).(camundav89.SearchIncidentsJSONRequestBody)
@@ -351,24 +295,10 @@ func TestService_SearchProcessDefinitions_CountsIncidentPages(t *testing.T) {
 		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
 		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
 	}
-	statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-		JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
-			Items: []camundav89.ProcessElementStatisticsResult{{Active: 2}},
-		},
-	}
-
 	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
-	m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
-	m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-		Return(makeProcessDefinitionInstanceVersionStatisticsResponse(camundav89.ProcessDefinitionInstanceVersionStatisticsResult{
-			ProcessDefinitionId:                 "proc",
-			ProcessDefinitionKey:                "123",
-			ProcessDefinitionVersion:            2,
-			TenantId:                            "tenant",
-			ActiveInstancesWithIncidentCount:    1,
-			ActiveInstancesWithoutIncidentCount: 4,
-		}), nil)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 5)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumCOMPLETED, 6)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 7)
 	m.On("SearchIncidentsWithResponse", mock.Anything, mock.MatchedBy(func(body camundav89.SearchIncidentsJSONRequestBody) bool {
 		return offsetFromIncidentSearch(t, body) == 0
 	})).Return(makeSearchIncidentsResponse(1000), nil).Once()
@@ -467,23 +397,10 @@ func TestService_GetProcessDefinition(t *testing.T) {
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
 					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
-				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-					JSON200: &camundav89.ProcessDefinitionElementStatisticsQueryResult{
-						Items: []camundav89.ProcessElementStatisticsResult{{Completed: 5}},
-					},
-				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
-				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
-				m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-					Return(makeProcessDefinitionInstanceVersionStatisticsResponse(camundav89.ProcessDefinitionInstanceVersionStatisticsResult{
-						ProcessDefinitionId:                 "proc",
-						ProcessDefinitionKey:                "123",
-						ProcessDefinitionVersion:            2,
-						TenantId:                            "tenant",
-						ActiveInstancesWithIncidentCount:    1,
-						ActiveInstancesWithoutIncidentCount: 4,
-					}), nil)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 5)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumCOMPLETED, 15)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 25)
 				m.On("SearchIncidentsWithResponse", mock.Anything, mock.Anything).
 					Run(func(args mock.Arguments) {
 						body := args.Get(1).(camundav89.SearchIncidentsJSONRequestBody)
@@ -495,7 +412,8 @@ func TestService_GetProcessDefinition(t *testing.T) {
 			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
 				require.NotNil(t, pd.Statistics)
 				assert.Equal(t, int64(5), pd.Statistics.Active)
-				assert.Equal(t, int64(5), pd.Statistics.Completed)
+				assert.Equal(t, int64(15), pd.Statistics.Completed)
+				assert.Equal(t, int64(25), pd.Statistics.Canceled)
 				assert.Equal(t, int64(9), pd.Statistics.Incidents)
 				assert.True(t, pd.Statistics.IncidentCountSupported)
 			},
@@ -508,28 +426,25 @@ func TestService_GetProcessDefinition(t *testing.T) {
 					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
-				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return((*camundav89.GetProcessDefinitionStatisticsResponse)(nil), mockErr)
+				m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return((*camundav89.SearchProcessInstancesResponse)(nil), mockErr)
 			},
 			opts:          []services.CallOption{services.WithStat()},
 			expectedError: mockErr,
 		},
 		{
-			name: "Stats missing payload is tolerated",
+			name: "Stats missing payload fails",
 			setupMock: func(m *mockProcessDefinitionClient) {
 				resp := &camundav89.GetProcessDefinitionResponse{
 					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/v2/process-definitions/123", http.StatusOK, "200"),
 					JSON200:      new(makeProcessDefinitionResult("proc", "123", 2)),
 				}
-				statsResp := &camundav89.GetProcessDefinitionStatisticsResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
-				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
-				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
+				m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(&camundav89.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-instances/search", http.StatusOK, "200"),
+				}, nil)
 			},
-			opts: []services.CallOption{services.WithStat()},
-			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
-				assert.Nil(t, pd.Statistics)
-			},
+			opts:          []services.CallOption{services.WithStat()},
+			expectedError: domain.ErrMalformedResponse,
 		},
 	}
 
@@ -704,15 +619,6 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav89.Proce
 	}
 }
 
-func makeProcessDefinitionInstanceVersionStatisticsResponse(items ...camundav89.ProcessDefinitionInstanceVersionStatisticsResult) *camundav89.GetProcessDefinitionInstanceVersionStatisticsResponse {
-	return &camundav89.GetProcessDefinitionInstanceVersionStatisticsResponse{
-		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/statistics/versions", http.StatusOK, "200"),
-		JSON200: &camundav89.ProcessDefinitionInstanceVersionStatisticsQueryResult{
-			Items: items,
-		},
-	}
-}
-
 func makeSearchIncidentsResponse(count int) *camundav89.SearchIncidentsResponse {
 	return &camundav89.SearchIncidentsResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/incidents/search", http.StatusOK, "200"),
@@ -720,6 +626,59 @@ func makeSearchIncidentsResponse(count int) *camundav89.SearchIncidentsResponse 
 			Items: make([]camundav89.IncidentResult, count),
 		},
 	}
+}
+
+func makeSearchProcessInstancesResponse(total int64) *camundav89.SearchProcessInstancesResponse {
+	return &camundav89.SearchProcessInstancesResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-instances/search", http.StatusOK, "200"),
+		JSON200: &camundav89.ProcessInstanceSearchQueryResult{
+			Page: camundav89.SearchQueryPageResponse{
+				TotalItems: total,
+			},
+		},
+	}
+}
+
+func mockProcessInstanceStateCount(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, state camundav89.ProcessInstanceStateEnum, total int64) {
+	m.On("SearchProcessInstancesWithBodyWithResponse", mock.Anything, "application/json", mock.MatchedBy(func(raw string) bool {
+		return processInstanceSearchMatches(raw, processDefinitionKey, tenantID, state)
+	})).Return(makeSearchProcessInstancesResponse(total), nil).Once()
+}
+
+func processInstanceSearchMatches(raw string, processDefinitionKey, tenantID string, expectedState camundav89.ProcessInstanceStateEnum) bool {
+	var body camundav89.SearchProcessInstancesJSONRequestBody
+	err := json.Unmarshal([]byte(raw), &body)
+	if err != nil || body.Filter == nil || body.Filter.ProcessDefinitionKey == nil || body.Filter.State == nil || body.Page == nil {
+		return false
+	}
+	pdKey, err := body.Filter.ProcessDefinitionKey.AsProcessDefinitionKeyFilterProperty0()
+	if err != nil || string(pdKey) != processDefinitionKey {
+		return false
+	}
+	state, err := body.Filter.State.AsProcessInstanceStateFilterProperty0()
+	if err != nil || state != expectedState {
+		return false
+	}
+
+	if tenantID == "" {
+		if body.Filter.TenantId != nil {
+			return false
+		}
+	} else {
+		if body.Filter.TenantId == nil {
+			return false
+		}
+		actualTenant, err := body.Filter.TenantId.AsStringFilterProperty0()
+		if err != nil || actualTenant != tenantID {
+			return false
+		}
+	}
+
+	page, err := body.Page.AsOffsetPagination()
+	if err != nil || page.From == nil || page.Limit == nil {
+		return false
+	}
+	return *page.From == 0 && *page.Limit == 1
 }
 
 func assertIncidentSearchFilter(t *testing.T, body camundav89.SearchIncidentsJSONRequestBody, processDefinitionKey, tenantID string) {

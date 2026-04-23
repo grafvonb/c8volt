@@ -155,70 +155,31 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
 	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
-	stats, err := s.cc.GetProcessDefinitionStatisticsWithResponse(ctx, pd.Key, camundav89.GetProcessDefinitionStatisticsJSONRequestBody{
-		Filter: &camundav89.ProcessDefinitionStatisticsFilter{},
-	})
+	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav89.ProcessInstanceStateEnumACTIVE)
 	if err != nil {
 		return err
 	}
-	if err = httpc.HttpStatusErr(stats.HTTPResponse, stats.Body); err != nil {
-		return err
-	}
-	if stats.JSON200 == nil {
-		s.log.Warn(fmt.Sprintf("no process definition stats found for key %s", pd.Key))
-		return nil
-	}
-	items := stats.JSON200.Items
-	var ret d.ProcessDefinitionStatistics
-	if len(items) > 0 {
-		ret = fromProcessElementStatisticsResult(items[len(items)-1])
-	} else {
-		ret = d.ProcessDefinitionStatistics{}
-	}
-	instanceStats, err := s.retrieveProcessDefinitionInstanceVersionStats(ctx, *pd)
+	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav89.ProcessInstanceStateEnumCOMPLETED)
 	if err != nil {
 		return err
 	}
-	ret.Active = instanceStats.Active
+	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav89.ProcessInstanceStateEnum(d.StateTerminated))
+	if err != nil {
+		return err
+	}
 	incidents, err := s.countActiveIncidentsForProcessDefinition(ctx, *pd)
 	if err != nil {
 		return err
 	}
-	ret.Incidents = incidents
+	ret := d.ProcessDefinitionStatistics{
+		Active:    active,
+		Completed: completed,
+		Canceled:  canceled,
+		Incidents: incidents,
+	}
 	ret.IncidentCountSupported = true
 	pd.Statistics = &ret
 	return nil
-}
-
-func (s *Service) retrieveProcessDefinitionInstanceVersionStats(ctx context.Context, pd d.ProcessDefinition) (d.ProcessDefinitionStatistics, error) {
-	const pageSize int32 = 1000
-
-	for offset := int32(0); ; offset += pageSize {
-		req := processDefinitionInstanceVersionStatisticsRequest(common.EffectiveTenant(s.cfg), pd.BpmnProcessId, offset, pageSize)
-		resp, err := s.cc.GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx, req)
-		if err != nil {
-			return d.ProcessDefinitionStatistics{}, err
-		}
-		if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-			return d.ProcessDefinitionStatistics{}, err
-		}
-		if resp.JSON200 == nil {
-			return d.ProcessDefinitionStatistics{}, d.ErrMalformedResponse
-		}
-		for _, item := range resp.JSON200.Items {
-			if string(item.ProcessDefinitionKey) != pd.Key {
-				continue
-			}
-			activeWithIncident := item.ActiveInstancesWithIncidentCount
-			return d.ProcessDefinitionStatistics{
-				Active:    activeWithIncident + item.ActiveInstancesWithoutIncidentCount,
-				Incidents: activeWithIncident,
-			}, nil
-		}
-		if !resp.JSON200.Page.HasMoreTotalItems || len(resp.JSON200.Items) < int(pageSize) {
-			return d.ProcessDefinitionStatistics{}, nil
-		}
-	}
 }
 
 func (s *Service) countActiveIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
@@ -248,6 +209,31 @@ func (s *Service) countActiveIncidentsForProcessDefinition(ctx context.Context, 
 			return total, nil
 		}
 	}
+}
+
+func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, state camundav89.ProcessInstanceStateEnum) (int64, error) {
+	if pd.Key == "" {
+		return 0, nil
+	}
+	req, err := searchProcessInstancesForDefinitionStateRequest(common.EffectiveTenant(s.cfg), pd.Key, state)
+	if err != nil {
+		return 0, err
+	}
+	bodyJSON, err := json.Marshal(req)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := s.cc.SearchProcessInstancesWithBodyWithResponse(ctx, "application/json", bytes.NewReader(bodyJSON))
+	if err != nil {
+		return 0, err
+	}
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return 0, err
+	}
+	if resp.JSON200 == nil {
+		return 0, d.ErrMalformedResponse
+	}
+	return resp.JSON200.Page.TotalItems, nil
 }
 
 func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) (processDefinitionSearchQuery, error) {
@@ -304,6 +290,36 @@ func searchActiveIncidentsRequest(tenantID, processDefinitionKey string, offset,
 	})
 	return camundav89.SearchIncidentsJSONRequestBody{
 		Filter: &camundav89.IncidentFilter{
+			ProcessDefinitionKey: processDefinitionKeyFilter,
+			State:                stateFilter,
+			TenantId:             tenantIDFilter,
+		},
+		Page: &page,
+	}, nil
+}
+
+func searchProcessInstancesForDefinitionStateRequest(tenantID, processDefinitionKey string, state camundav89.ProcessInstanceStateEnum) (camundav89.SearchProcessInstancesJSONRequestBody, error) {
+	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(processDefinitionKey)
+	if err != nil {
+		return camundav89.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	stateFilter, err := newProcessInstanceStateEqFilterPtr(state)
+	if err != nil {
+		return camundav89.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	tenantIDFilter, err := newStringEqFilterPtr(tenantID)
+	if err != nil {
+		return camundav89.SearchProcessInstancesJSONRequestBody{}, err
+	}
+	var from int32
+	var limit int32 = 1
+	page := camundav89.SearchQueryPageRequest{}
+	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
+		From:  &from,
+		Limit: &limit,
+	})
+	return camundav89.SearchProcessInstancesJSONRequestBody{
+		Filter: &camundav89.ProcessInstanceFilter{
 			ProcessDefinitionKey: processDefinitionKeyFilter,
 			State:                stateFilter,
 			TenantId:             tenantIDFilter,
@@ -373,20 +389,10 @@ func newIncidentStateEqFilterPtr(v camundav89.IncidentStateEnum) (*camundav89.In
 	return &filter, nil
 }
 
-func processDefinitionInstanceVersionStatisticsRequest(tenantID, bpmnProcessID string, offset, size int32) camundav89.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody {
-	var tenantIDFilter *camundav89.TenantId
-	if tenantID != "" {
-		v := camundav89.TenantId(tenantID)
-		tenantIDFilter = &v
+func newProcessInstanceStateEqFilterPtr(v camundav89.ProcessInstanceStateEnum) (*camundav89.ProcessInstanceStateFilterProperty, error) {
+	var filter camundav89.ProcessInstanceStateFilterProperty
+	if err := filter.FromProcessInstanceStateFilterProperty0(v); err != nil {
+		return nil, err
 	}
-	return camundav89.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody{
-		Filter: camundav89.ProcessDefinitionInstanceVersionStatisticsFilter{
-			ProcessDefinitionId: camundav89.ProcessDefinitionId(bpmnProcessID),
-			TenantId:            tenantIDFilter,
-		},
-		Page: &camundav89.OffsetPagination{
-			From:  &offset,
-			Limit: &size,
-		},
-	}
+	return &filter, nil
 }

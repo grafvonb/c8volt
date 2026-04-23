@@ -178,6 +178,32 @@ func TestService_SearchAndLookup(t *testing.T) {
 		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
 	})
 
+	t.Run("MapsCanceledSearchStateToTerminated", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				payload := readBody(t, body)
+				assert.Contains(t, payload, `"state":"TERMINATED"`)
+				assert.NotContains(t, payload, `"state":"CANCELED"`)
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("123", "CANCELED", "")},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{
+			State: d.StateCanceled,
+		}, d.ProcessInstancePageRequest{From: 0, Size: 25})
+
+		require.NoError(t, err)
+		require.Len(t, page.Items, 1)
+		assert.Equal(t, d.StateCanceled, page.Items[0].State)
+	})
+
 	t.Run("GetProcessInstanceUsesGeneratedClient", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),

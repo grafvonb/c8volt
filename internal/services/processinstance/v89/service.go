@@ -207,7 +207,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building end-date filter: %w", err)
 	}
-	stateFilter, err := newProcessInstanceStateEqFilterPtr(string(filter.State))
+	stateFilter, err := newProcessInstanceStateEqFilterPtr(string(normalizeSearchState(filter.State)))
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building state filter: %w", err)
 	}
@@ -283,6 +283,13 @@ func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) (*camunda
 		return newProcessInstanceKeyEqFilterPtr(filter.ParentKey)
 	}
 	return newProcessInstanceKeyExistsFilterPtr(filter.HasParent)
+}
+
+func normalizeSearchState(state d.State) d.State {
+	if state == d.StateCanceled {
+		return d.StateTerminated
+	}
+	return state
 }
 
 func pickProcessInstanceOverflowState(page camundav89.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {

@@ -53,6 +53,56 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateActive}, pi)
 	})
 
+	t.Run("treats terminated as matching desired canceled", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				return d.StateTerminated, d.ProcessInstance{Key: key, State: d.StateTerminated}, nil
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceState(
+			context.Background(),
+			waiter,
+			testConfig(5*time.Millisecond, 3, 25*time.Millisecond),
+			testLogger(),
+			"123",
+			d.States{d.StateCanceled},
+		)
+
+		require.NoError(t, err)
+		assert.True(t, got.Ok)
+		assert.Equal(t, d.StateTerminated, got.State)
+		assert.Contains(t, got.Status, "already in one of the desired state(s)")
+		assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateTerminated}, pi)
+	})
+
+	t.Run("treats canceled as matching desired terminated", func(t *testing.T) {
+		t.Parallel()
+
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				return d.StateCanceled, d.ProcessInstance{Key: key, State: d.StateCanceled}, nil
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceState(
+			context.Background(),
+			waiter,
+			testConfig(5*time.Millisecond, 3, 25*time.Millisecond),
+			testLogger(),
+			"123",
+			d.States{d.StateTerminated},
+		)
+
+		require.NoError(t, err)
+		assert.True(t, got.Ok)
+		assert.Equal(t, d.StateCanceled, got.State)
+		assert.Contains(t, got.Status, "already in one of the desired state(s)")
+		assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateCanceled}, pi)
+	})
+
 	t.Run("treats not found as absent when absent is desired", func(t *testing.T) {
 		t.Parallel()
 
@@ -92,7 +142,7 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		got, pi, err := WaitForProcessInstanceState(
 			context.Background(),
 			waiter,
-			testConfig(time.Millisecond, 2, 25*time.Millisecond),
+			testConfig(time.Millisecond, 2, 100*time.Millisecond),
 			testLogger(),
 			"missing",
 			d.States{d.StateCompleted},
@@ -120,7 +170,7 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		got, pi, err := WaitForProcessInstanceState(
 			context.Background(),
 			waiter,
-			testConfig(time.Millisecond, 2, 25*time.Millisecond),
+			testConfig(time.Millisecond, 2, 100*time.Millisecond),
 			testLogger(),
 			"123",
 			d.States{d.StateCompleted},
