@@ -55,14 +55,6 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse
 	return args.Get(0).(*camundav88.GetProcessDefinitionStatisticsResponse), args.Error(1)
 }
 
-func (m *mockProcessDefinitionClient) GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, body camundav88.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
-	args := m.Called(ctx, body)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*camundav88.GetProcessDefinitionInstanceVersionStatisticsResponse), args.Error(1)
-}
-
 func TestService_SearchProcessDefinitions(t *testing.T) {
 	ctx := context.Background()
 	mockErr := errors.New("search failed")
@@ -130,37 +122,20 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-						Items: []camundav88.ProcessElementStatisticsResult{{Active: 1}},
+						Items: []camundav88.ProcessElementStatisticsResult{{Active: 1, Completed: 2, Canceled: 3, Incidents: 4}},
 					},
 				}
 				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
 				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
-				m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-					Return(makeProcessDefinitionInstanceVersionStatisticsResponse(
-						camundav88.ProcessDefinitionInstanceVersionStatisticsResult{
-							ProcessDefinitionId:                 "other",
-							ProcessDefinitionKey:                "999",
-							ProcessDefinitionVersion:            1,
-							TenantId:                            "tenant",
-							ActiveInstancesWithIncidentCount:    100,
-							ActiveInstancesWithoutIncidentCount: 200,
-						},
-						camundav88.ProcessDefinitionInstanceVersionStatisticsResult{
-							ProcessDefinitionId:                 "proc",
-							ProcessDefinitionKey:                "123",
-							ProcessDefinitionVersion:            2,
-							TenantId:                            "tenant",
-							ActiveInstancesWithIncidentCount:    2,
-							ActiveInstancesWithoutIncidentCount: 8,
-						},
-					), nil)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
 				require.NotNil(t, defs[0].Statistics)
-				assert.Equal(t, int64(10), defs[0].Statistics.Active)
-				assert.Equal(t, int64(2), defs[0].Statistics.Incidents)
-				assert.True(t, defs[0].Statistics.IncidentCountSupported)
+				assert.Equal(t, int64(1), defs[0].Statistics.Active)
+				assert.Equal(t, int64(2), defs[0].Statistics.Completed)
+				assert.Equal(t, int64(3), defs[0].Statistics.Canceled)
+				assert.Equal(t, int64(4), defs[0].Statistics.Incidents)
+				assert.False(t, defs[0].Statistics.IncidentCountSupported)
 			},
 		},
 		{
@@ -256,15 +231,6 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 
 	m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).
 		Return(statsResp, nil)
-	m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-		Return(makeProcessDefinitionInstanceVersionStatisticsResponse(camundav88.ProcessDefinitionInstanceVersionStatisticsResult{
-			ProcessDefinitionId:                 "proc",
-			ProcessDefinitionKey:                "123",
-			ProcessDefinitionVersion:            1,
-			TenantId:                            "tenant",
-			ActiveInstancesWithIncidentCount:    0,
-			ActiveInstancesWithoutIncidentCount: 3,
-		}), nil)
 
 	svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
 	require.NoError(t, err)
@@ -273,9 +239,9 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, defs, 1)
 	require.NotNil(t, defs[0].Statistics)
-	assert.Equal(t, int64(3), defs[0].Statistics.Active)
+	assert.Equal(t, int64(2), defs[0].Statistics.Active)
 	assert.Zero(t, defs[0].Statistics.Incidents)
-	assert.True(t, defs[0].Statistics.IncidentCountSupported)
+	assert.False(t, defs[0].Statistics.IncidentCountSupported)
 	m.AssertExpectations(t)
 }
 
@@ -364,28 +330,20 @@ func TestService_GetProcessDefinition(t *testing.T) {
 				statsResp := &camundav88.GetProcessDefinitionStatisticsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/123/statistics", http.StatusOK, "200"),
 					JSON200: &camundav88.ProcessDefinitionElementStatisticsQueryResult{
-						Items: []camundav88.ProcessElementStatisticsResult{{Completed: 5}},
+						Items: []camundav88.ProcessElementStatisticsResult{{Active: 5, Completed: 6, Canceled: 7, Incidents: 8}},
 					},
 				}
 				m.On("GetProcessDefinitionWithResponse", mock.Anything, "123").Return(resp, nil)
 				m.On("GetProcessDefinitionStatisticsWithResponse", mock.Anything, "123", mock.Anything).Return(statsResp, nil)
-				m.On("GetProcessDefinitionInstanceVersionStatisticsWithResponse", mock.Anything, mock.Anything).
-					Return(makeProcessDefinitionInstanceVersionStatisticsResponse(camundav88.ProcessDefinitionInstanceVersionStatisticsResult{
-						ProcessDefinitionId:                 "proc",
-						ProcessDefinitionKey:                "123",
-						ProcessDefinitionVersion:            2,
-						TenantId:                            "tenant",
-						ActiveInstancesWithIncidentCount:    1,
-						ActiveInstancesWithoutIncidentCount: 4,
-					}), nil)
 			},
 			opts: []services.CallOption{services.WithStat()},
 			assertResult: func(t *testing.T, pd domain.ProcessDefinition) {
 				require.NotNil(t, pd.Statistics)
 				assert.Equal(t, int64(5), pd.Statistics.Active)
-				assert.Equal(t, int64(5), pd.Statistics.Completed)
-				assert.Equal(t, int64(1), pd.Statistics.Incidents)
-				assert.True(t, pd.Statistics.IncidentCountSupported)
+				assert.Equal(t, int64(6), pd.Statistics.Completed)
+				assert.Equal(t, int64(7), pd.Statistics.Canceled)
+				assert.Equal(t, int64(8), pd.Statistics.Incidents)
+				assert.False(t, pd.Statistics.IncidentCountSupported)
 			},
 		},
 		{
@@ -586,15 +544,6 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav88.Proce
 		Version:              version,
 		TenantId:             "tenant",
 		VersionTag:           new("tag"),
-	}
-}
-
-func makeProcessDefinitionInstanceVersionStatisticsResponse(items ...camundav88.ProcessDefinitionInstanceVersionStatisticsResult) *camundav88.GetProcessDefinitionInstanceVersionStatisticsResponse {
-	return &camundav88.GetProcessDefinitionInstanceVersionStatisticsResponse{
-		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions/statistics/versions", http.StatusOK, "200"),
-		JSON200: &camundav88.ProcessDefinitionInstanceVersionStatisticsQueryResult{
-			Items: items,
-		},
 	}
 }
 

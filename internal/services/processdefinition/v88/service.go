@@ -166,46 +166,8 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	} else {
 		ret = d.ProcessDefinitionStatistics{}
 	}
-	instanceStats, err := s.retrieveProcessDefinitionInstanceVersionStats(ctx, *pd)
-	if err != nil {
-		return err
-	}
-	ret.Active = instanceStats.Active
-	ret.Incidents = instanceStats.Incidents
-	ret.IncidentCountSupported = true
 	pd.Statistics = &ret
 	return nil
-}
-
-func (s *Service) retrieveProcessDefinitionInstanceVersionStats(ctx context.Context, pd d.ProcessDefinition) (d.ProcessDefinitionStatistics, error) {
-	const pageSize int32 = 1000
-
-	for offset := int32(0); ; offset += pageSize {
-		req := processDefinitionInstanceVersionStatisticsRequest(common.EffectiveTenant(s.cfg), pd.BpmnProcessId, offset, pageSize)
-		resp, err := s.cc.GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx, req)
-		if err != nil {
-			return d.ProcessDefinitionStatistics{}, err
-		}
-		if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-			return d.ProcessDefinitionStatistics{}, err
-		}
-		if resp.JSON200 == nil {
-			return d.ProcessDefinitionStatistics{}, d.ErrMalformedResponse
-		}
-		for _, item := range resp.JSON200.Items {
-			if string(item.ProcessDefinitionKey) != pd.Key {
-				continue
-			}
-			activeWithIncident := item.ActiveInstancesWithIncidentCount
-			return d.ProcessDefinitionStatistics{
-				Active:    activeWithIncident + item.ActiveInstancesWithoutIncidentCount,
-				Incidents: activeWithIncident,
-			}, nil
-		}
-		if !resp.JSON200.Page.HasMoreTotalItems || len(resp.JSON200.Items) < int(pageSize) {
-			return d.ProcessDefinitionStatistics{}, nil
-		}
-	}
 }
 
 func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) (camundav88.SearchProcessDefinitionsJSONRequestBody, error) {
@@ -240,22 +202,4 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		Page:   &page,
 		Sort:   &sort,
 	}, nil
-}
-
-func processDefinitionInstanceVersionStatisticsRequest(tenantID, bpmnProcessID string, offset, size int32) camundav88.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody {
-	var tenantIDFilter *camundav88.TenantId
-	if tenantID != "" {
-		v := camundav88.TenantId(tenantID)
-		tenantIDFilter = &v
-	}
-	return camundav88.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody{
-		Filter: camundav88.ProcessDefinitionInstanceVersionStatisticsFilter{
-			ProcessDefinitionId: camundav88.ProcessDefinitionId(bpmnProcessID),
-			TenantId:            tenantIDFilter,
-		},
-		Page: &camundav88.OffsetPagination{
-			From:  &offset,
-			Limit: &size,
-		},
-	}
 }
