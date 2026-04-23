@@ -17,10 +17,12 @@ ID, version selectors, or the latest deployed version. Default output is aimed
 at human review; prefer `--json` when chaining the result into scripts or
 AI-assisted workflows. Use `--xml` only when you need the raw BPMN XML for a
 single definition selected by `--key`. When `--stat` is enabled,
-`ac`, `cp`, and `cx` keep their existing meaning across
-supported versions; Camunda `8.8`/`8.9` add `in:<count>`
-for incident-bearing process instances, while `8.7` omits `in:`
-entirely because that count is not available reliably there.
+Camunda `8.8`/`8.9` report `ac` from native active
+process-instance statistics for the exact process definition version and add
+`in:<count>` for active process instances with incidents; `cp`
+and `cx` keep their existing process-definition statistics meaning.
+Camunda `8.7` rejects statistics because the generated client surface does
+not provide the same native statistics endpoints.
 
 ```
 c8volt get process-definition [flags]
@@ -44,7 +46,7 @@ c8volt get process-definition [flags]
       --latest                   fetch the latest version(s) of the given BPMN process(s)
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
-      --stat                     include process definition statistics; 8.8/8.9 add incident-bearing instance counts, 8.7 omits in:
+      --stat                     include process definition statistics; 8.8/8.9 use native active/incident instance stats, 8.7 unsupported
       --xml                      output the selected process definition as raw XML (requires --key and no other filters)
 ```
 
@@ -72,4 +74,3 @@ c8volt get process-definition [flags]
 ### SEE ALSO
 
 * [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
-

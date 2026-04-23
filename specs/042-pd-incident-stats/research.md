@@ -8,12 +8,12 @@
   - Keep using raw incident totals from process-definition element statistics: rejected because one process instance can have multiple active incidents, which would overcount relative to the clarified contract.
   - Keep the meaning ambiguous and document it loosely: rejected because that would weaken tests and leave the renderer contract unstable.
 
-## Decision 2: Keep `ac`, `cp`, and `cx` on the existing process-definition statistics endpoint
+## Decision 2: Source `ac` from native process-definition instance-version statistics
 
-- **Decision**: Continue sourcing active, completed, and canceled counts from the existing `GetProcessDefinitionStatistics` response in `v8.8` and `v8.9`, and only replace the source for `in:`.
-- **Rationale**: The current versioned services already enrich `Statistics` from `ProcessDefinitionElementStatisticsQueryResult`, and the issue only reports the incident count as wrong. Reusing the existing source for the other fields keeps the implementation small and avoids unnecessary churn.
+- **Decision**: Source `ac` from `GetProcessDefinitionInstanceVersionStatistics` in `v8.8` and `v8.9`, matching the exact process definition key, while keeping `cp` and `cx` on the existing `GetProcessDefinitionStatistics` response.
+- **Rationale**: `ProcessDefinitionElementStatisticsQueryResult.Active` is element-level state, not active process-instance count, so it can show `0` for a definition with many active process instances. The generated `v8.8` and `v8.9` clients expose `ActiveInstancesWithIncidentCount` and `ActiveInstancesWithoutIncidentCount` per process-definition version, which together provide the intended active process-instance count without enumerating instances.
 - **Alternatives considered**:
-  - Replace the whole stats pipeline with only the newer process-instance statistics endpoints: rejected because that would broaden the change without a need for the other fields.
+  - Count active instances through process-instance search: rejected because native generated-client statistics are available and avoid ad hoc counting.
   - Stop showing `ac`, `cp`, and `cx` on unsupported paths to simplify consistency: rejected because the issue explicitly asks to preserve the other fields.
 
 ## Decision 3: Use incident statistics grouped by definition on `v8.8` and `v8.9`
