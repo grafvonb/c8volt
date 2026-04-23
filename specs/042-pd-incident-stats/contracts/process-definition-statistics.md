@@ -29,9 +29,9 @@ Raw incident totals are not a valid implementation of this contract.
 
 | Version | `ac/cp/cx` | `in:` behavior |
 |--------|-------------|----------------|
-| `v8.7` | Preserve existing available stats behavior | Omit `in:` entirely |
-| `v8.8` | Preserve existing available stats behavior | Render incident-bearing process-instance count |
-| `v8.9` | Preserve existing available stats behavior | Render incident-bearing process-instance count |
+| `v8.7` | Reject `--stat`; no equivalent native generated-client statistics endpoint is available | Omit `in:` entirely |
+| `v8.8` | Source `ac` from native process-definition instance-version statistics; preserve existing `cp/cx` behavior | Render incident-bearing active process-instance count from the same native statistics |
+| `v8.9` | Source `ac` from native process-definition instance-version statistics; preserve existing `cp/cx` behavior | Render incident-bearing active process-instance count from the same native statistics |
 
 The feature is incomplete if `v8.7` still shows `in:` or if `v8.8`/`v8.9` still show `in:-` for supported stats.
 
@@ -39,9 +39,9 @@ The feature is incomplete if `v8.7` still shows `in:` or if `v8.8`/`v8.9` still 
 
 | Version | Planned stats source rule |
 |--------|----------------------------|
-| `v8.7` | Keep current unsupported boundary; do not synthesize a derived incident count through a new side architecture |
-| `v8.8` | Keep `ac/cp/cx` from existing process-definition stats enrichment and source `in:` from newer incident/process-instance statistics by definition |
-| `v8.9` | Keep `ac/cp/cx` from existing process-definition stats enrichment and source `in:` from newer incident/process-instance statistics by definition |
+| `v8.7` | Keep current unsupported boundary; do not synthesize counts through process-instance enumeration |
+| `v8.8` | Keep `cp/cx` from existing process-definition stats enrichment and source `ac/in` from native process-definition instance-version statistics by exact definition key |
+| `v8.9` | Keep `cp/cx` from existing process-definition stats enrichment and source `ac/in` from native process-definition instance-version statistics by exact definition key |
 
 ## Rendering Contract
 
@@ -52,6 +52,7 @@ When `Statistics` is not requested:
 When `Statistics` is requested on supported versions:
 
 - bracketed stats remain in the existing order
+- `ac:` is the active process-instance count for the exact definition version
 - `in:` is present
 - `in:0` is allowed and must not collapse to `-`
 

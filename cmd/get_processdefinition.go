@@ -32,10 +32,13 @@ ID, version selectors, or the latest deployed version. Default output is aimed
 at human review; prefer ` + "`--json`" + ` when chaining the result into scripts or
 AI-assisted workflows. Use ` + "`--xml`" + ` only when you need the raw BPMN XML for a
 single definition selected by ` + "`--key`" + `. When ` + "`--stat`" + ` is enabled,
-` + "`ac`" + `, ` + "`cp`" + `, and ` + "`cx`" + ` keep their existing meaning across
-supported versions; Camunda ` + "`8.8`" + `/` + "`8.9`" + ` add ` + "`in:<count>`" + `
-for incident-bearing process instances, while ` + "`8.7`" + ` omits ` + "`in:`" + `
-entirely because that count is not available reliably there.`,
+Camunda ` + "`8.8`" + ` reports process-definition element statistics and adds
+` + "`in:<count>`" + ` from active incidents for the exact process definition version.
+Camunda ` + "`8.9`" + ` enriches ` + "`ac`" + ` and ` + "`in:<count>`" + ` from native
+process-instance statistics for the exact process definition version; ` + "`cp`" + `
+and ` + "`cx`" + ` keep their existing process-definition statistics meaning.
+Camunda ` + "`8.7`" + ` rejects statistics because the generated client surface does
+not provide the same native statistics endpoints.`,
 	Example: `  ./c8volt get pd --latest
   ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
   ./c8volt get pd --key 2251799813686017 --json
@@ -119,7 +122,7 @@ func init() {
 	fs.BoolVar(&flagGetPDLatest, "latest", false, "fetch the latest version(s) of the given BPMN process(s)")
 	fs.Int32Var(&flagGetPDProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPDProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 add incident-bearing instance counts, 8.7 omits in:")
+	fs.BoolVar(&flagGetPDWithStat, "stat", false, "include process definition statistics; 8.8/8.9 include incident counts, 8.7 unsupported")
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)

@@ -23,6 +23,7 @@ paths:
           $ref: 'common-responses.yaml#/components/responses/Forbidden'
         "500":
           $ref: 'common-responses.yaml#/components/responses/InternalServerError'
+      x-added-in-version: "8.8"
 
 ## Schema definitions
 
@@ -46,7 +47,6 @@ components:
           description: The username of the user.
           allOf:
             - $ref: "identifiers.yaml#/components/schemas/Username"
-          nullable: true
         displayName:
           description: The display name of the user.
           type: string

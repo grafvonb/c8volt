@@ -66,8 +66,8 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionStatisticsWithResponse
 	panic("unexpected GetProcessDefinitionStatisticsWithResponse call")
 }
 
-func (m *mockProcessDefinitionClient) SearchIncidentsWithResponse(ctx context.Context, body camundav89.SearchIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
-	panic("unexpected SearchIncidentsWithResponse call")
+func (m *mockProcessDefinitionClient) GetProcessDefinitionInstanceVersionStatisticsWithResponse(ctx context.Context, body camundav89.GetProcessDefinitionInstanceVersionStatisticsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionInstanceVersionStatisticsResponse, error) {
+	panic("unexpected GetProcessDefinitionInstanceVersionStatisticsWithResponse call")
 }
 
 func TestService_Deploy(t *testing.T) {
