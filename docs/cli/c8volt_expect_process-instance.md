@@ -12,7 +12,7 @@ Expect a process instance(s) to reach a certain state from list of states
 
 Wait for process instance(s) to reach one of the requested states.
 
-Use this read-only command after `run`, `cancel`, or `delete` when the operation returned before the final state was visible, or when you need an explicit post-action assertion. The command waits until each keyed process instance reaches one of the requested states or fails with a shared error model.
+Use this read-only command after `run`, `cancel`, or `delete` when the operation returned before the final state was visible, or when you need an explicit post-action assertion. The command waits until each keyed process instance reaches one of the requested states or fails with a shared error model. For cancellation waits, `canceled` is the user-facing intent state; on Camunda `8.8` and `8.9`, that same outcome may be surfaced by the backend as `terminated`, and `c8volt` treats them as equivalent.
 
 Default output stays human-oriented. Use --json when another tool needs the final wait report. `--automation` remains unsupported because the broader waiting contract is not yet defined there.
 
@@ -25,6 +25,7 @@ c8volt expect process-instance [flags]
 ```
   ./c8volt expect pi --key 2251799813685255 --state active
   ./c8volt expect pi --key 2251799813685255 --state completed --state absent
+  ./c8volt expect pi --key 2251799813711967 --state canceled
   ./c8volt run pi --bpmn-process-id order-process --no-wait --json
   ./c8volt expect pi --key 2251799813711967 --state active
   ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
@@ -37,7 +38,7 @@ c8volt expect process-instance [flags]
   -h, --help              help for process-instance
   -k, --key strings       process instance key(s) to expect a state for
       --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
-  -s, --state strings     state of a process instance; valid values are: [active, completed, canceled, terminated, absent]
+  -s, --state strings     state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated
   -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 
