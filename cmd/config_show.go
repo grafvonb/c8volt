@@ -43,6 +43,9 @@ an explicit flag or environment winner.`,
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML: %w", err))
 			}
 			cmd.Println(yCfg)
+			for _, warning := range cfg.Warnings() {
+				cmd.PrintErrf("warning: %s\n", warning)
+			}
 			if flagShowConfigValidate {
 				err = cfg.Validate()
 				if err != nil {

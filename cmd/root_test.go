@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
@@ -98,6 +100,37 @@ func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {
 	root.SetContext(cfg.ToContext(context.Background()))
 
 	require.True(t, automationModeEnabled(root))
+}
+
+func TestMissingConfigHint_PrefersLocalExampleConfigWhenPresent(t *testing.T) {
+	prevWD, err := os.Getwd()
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.example.yaml"), []byte("apis: {}\n"), 0o600))
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		_ = os.Chdir(prevWD)
+	})
+
+	got := missingConfigHint()
+	require.Contains(t, got, `found "config.example.yaml" in the current directory`)
+	require.Contains(t, got, "config show --validate")
+}
+
+func TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists(t *testing.T) {
+	prevWD, err := os.Getwd()
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		_ = os.Chdir(prevWD)
+	})
+
+	got := missingConfigHint()
+	require.Contains(t, got, "config show --template")
+	require.NotContains(t, got, "config.example.yaml")
 }
 
 func assertCommandHelpOutput(t *testing.T, args []string, contains []string, omits []string) string {

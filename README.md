@@ -377,15 +377,24 @@ Download [Camunda 8 Run](https://downloads.camunda.cloud/release/camunda/c8run),
 For local `c8run`, a minimal `config.yaml` for `c8volt` looks like this:
 
 ```yaml
+app:
+  camunda_version: "8.9"
 apis:
-  version: "89"
   camunda_api:
-    base_url: "http://localhost:8080/v2"
+    base_url: "http://localhost:8080"
 auth:
   mode: none
 log:
   level: info
 ```
+
+For the normal case, set only `apis.camunda_api.base_url`. `c8volt` derives:
+
+- Camunda API as `.../v2`
+- Operate API as `.../v1`
+- Tasklist API as `.../v1`
+
+If you already include `/v2` or `/v1` in the URL, `c8volt` keeps the effective result stable. If it detects duplicated or mixed endings such as `/v1/v1` or `/v2/v1`, it corrects them and warns you.
 
 Common config locations:
 
@@ -464,10 +473,11 @@ This makes it practical to keep one base config while switching tenant context e
 This is the smallest setup and works well for local `c8run` or unsecured development environments:
 
 ```yaml
+app:
+  camunda_version: "8.9"
 apis:
-  version: "89"
   camunda_api:
-    base_url: "http://localhost:8080/v2"
+    base_url: "http://localhost:8080"
 auth:
   mode: none
 log:
@@ -479,9 +489,11 @@ log:
 Use this when the cluster API is the main entry point and one token is enough for the operations you run:
 
 ```yaml
+app:
+  camunda_version: "8.9"
 apis:
   camunda_api:
-    base_url: "https://camunda.example.com/v2"
+    base_url: "https://camunda.example.com"
 auth:
   mode: oauth2
   oauth2:
@@ -506,6 +518,8 @@ app:
 Use this when your identity provider or platform setup requires scopes for specific APIs:
 
 ```yaml
+app:
+  camunda_version: "8.9"
 apis:
   camunda_api:
     base_url: "https://camunda.example.com"
@@ -537,6 +551,9 @@ Use profiles when the same operator needs to switch between environments without
 ```yaml
 active_profile: local
 
+app:
+  camunda_version: "8.9"
+
 auth:
   oauth2:
     client_secret: "${set via env}"
@@ -547,7 +564,7 @@ profiles:
       tenant: ""
     apis:
       camunda_api:
-        base_url: "http://localhost:8080/v2"
+        base_url: "http://localhost:8080"
     auth:
       mode: none
 
@@ -576,8 +593,8 @@ Switch profiles with:
 
 ### Recommended workflow for OAuth setups
 
-1. Generate a starting point with `./c8volt config show --template`.
-2. Fill in `apis.camunda_api.base_url`, `auth.mode`, and the OAuth credentials.
+1. Start with the `config.example.yaml` included in the release archive, or generate one with `./c8volt config show --template`.
+2. Fill in `app.camunda_version`, `apis.camunda_api.base_url`, `auth.mode`, and the OAuth credentials.
 3. If you usually operate in a specific tenant, set `app.tenant`.
 4. Keep `client_secret` out of the YAML file when possible and inject it through environment variables.
 5. Run `./c8volt config show --validate`.
@@ -601,6 +618,14 @@ Download the appropriate archive from [c8volt Releases](https://github.com/grafv
 
 ```bash
 ./c8volt version
+```
+
+Each release archive also includes a ready-to-edit `config.example.yaml` starter file next to the binary. This avoids overwriting any existing local `config.yaml` when you unpack a newer release archive.
+
+For most setups, copy or edit `config.example.yaml` into your local `config.yaml`, set `app.camunda_version`, `apis.camunda_api.base_url`, and your auth settings, then run:
+
+```bash
+./c8volt --config ./config.yaml config show --validate
 ```
 
 Release archives are the main installation path for local operator machines, CI runners, and ephemeral environments. The project is especially useful when you want a portable Camunda 8 CLI binary for Linux or macOS that can deploy BPMN, inspect workflow state, and automate process-instance operations from shell scripts.

@@ -11,9 +11,9 @@ const (
 	CamundaApiKeyConst      = "camunda_api"
 	CamundaApiVersionConst  = "v2"
 	OperateApiKeyConst      = "operate_api"
-	OperateApiVersionConst  = "" // v1 by default from client side
+	OperateApiVersionConst  = "v1"
 	TasklistApiKeyConst     = "tasklist_api"
-	TasklistApiVersionConst = "" // v1 by default from client side
+	TasklistApiVersionConst = "v1"
 )
 
 type APIs struct {
@@ -21,6 +21,7 @@ type APIs struct {
 	Operate           API  `mapstructure:"operate_api" json:"operate_api" yaml:"operate_api"`
 	Tasklist          API  `mapstructure:"tasklist_api" json:"tasklist_api" yaml:"tasklist_api"`
 	VersioningDisable bool `mapstructure:"versioning_disable" json:"versioning_disable" yaml:"versioning_disable"`
+	warnings          []string
 }
 
 type API struct {
@@ -32,70 +33,54 @@ type API struct {
 
 func (a *APIs) Normalize() error {
 	var errs []error
-	if a.Camunda.Key == "" {
-		a.Camunda.Key = CamundaApiKeyConst
-	}
-	if a.Camunda.Version == "" {
-		a.Camunda.Version = CamundaApiVersionConst
-	}
-	if a.Operate.Key == "" {
-		a.Operate.Key = OperateApiKeyConst
-	}
-	if a.Operate.Version == "" {
-		a.Operate.Version = OperateApiVersionConst
-	}
-	if a.Tasklist.Key == "" {
-		a.Tasklist.Key = TasklistApiKeyConst
-	}
-	if a.Tasklist.Version == "" {
-		a.Tasklist.Version = TasklistApiVersionConst
-	}
-	if a.Operate.BaseURL == "" {
-		a.Operate.BaseURL = a.Camunda.BaseURL
-	}
-	if a.Tasklist.BaseURL == "" {
-		a.Tasklist.BaseURL = a.Camunda.BaseURL
-	}
-	if !a.VersioningDisable {
-		a.Camunda.BaseURL = withAPIVersion(a.Camunda.BaseURL, a.Camunda.Version)
-		a.Operate.BaseURL = withAPIVersion(a.Operate.BaseURL, a.Operate.Version)
-		a.Tasklist.BaseURL = withAPIVersion(a.Tasklist.BaseURL, a.Tasklist.Version)
-	}
+	normalizeAPIs(a, func(string) bool { return false })
 	return errors.Join(errs...)
 }
 
 func (a *APIs) normalizeWithConfiguredKeys(isConfigured func(string) bool) error {
 	var errs []error
+	normalizeAPIs(a, isConfigured)
+	return errors.Join(errs...)
+}
+
+func normalizeAPIs(a *APIs, isConfigured func(string) bool) {
+	if isConfigured == nil {
+		isConfigured = func(string) bool { return false }
+	}
+	a.warnings = nil
 	if a.Camunda.Key == "" && !isConfigured("apis.camunda_api.key") {
 		a.Camunda.Key = CamundaApiKeyConst
 	}
+	camundaBaseConfigured := a.Camunda.BaseURL != "" || isConfigured("apis.camunda_api.base_url")
 	if a.Camunda.Version == "" && !isConfigured("apis.camunda_api.version") {
 		a.Camunda.Version = CamundaApiVersionConst
 	}
 	if a.Operate.Key == "" && !isConfigured("apis.operate_api.key") {
 		a.Operate.Key = OperateApiKeyConst
 	}
+	operateBaseConfigured := a.Operate.BaseURL != "" || isConfigured("apis.operate_api.base_url")
 	if a.Operate.Version == "" && !isConfigured("apis.operate_api.version") {
 		a.Operate.Version = OperateApiVersionConst
 	}
 	if a.Tasklist.Key == "" && !isConfigured("apis.tasklist_api.key") {
 		a.Tasklist.Key = TasklistApiKeyConst
 	}
+	tasklistBaseConfigured := a.Tasklist.BaseURL != "" || isConfigured("apis.tasklist_api.base_url")
 	if a.Tasklist.Version == "" && !isConfigured("apis.tasklist_api.version") {
 		a.Tasklist.Version = TasklistApiVersionConst
 	}
+	camundaRoot := withoutAPIVersion(a.Camunda.BaseURL)
 	if a.Operate.BaseURL == "" && !isConfigured("apis.operate_api.base_url") {
-		a.Operate.BaseURL = a.Camunda.BaseURL
+		a.Operate.BaseURL = camundaRoot
 	}
 	if a.Tasklist.BaseURL == "" && !isConfigured("apis.tasklist_api.base_url") {
-		a.Tasklist.BaseURL = a.Camunda.BaseURL
+		a.Tasklist.BaseURL = camundaRoot
 	}
 	if !a.VersioningDisable {
-		a.Camunda.BaseURL = withAPIVersion(a.Camunda.BaseURL, a.Camunda.Version)
-		a.Operate.BaseURL = withAPIVersion(a.Operate.BaseURL, a.Operate.Version)
-		a.Tasklist.BaseURL = withAPIVersion(a.Tasklist.BaseURL, a.Tasklist.Version)
+		a.Camunda.BaseURL = a.normalizeBaseURL("apis.camunda_api.base_url", a.Camunda.BaseURL, a.Camunda.Version, camundaBaseConfigured)
+		a.Operate.BaseURL = a.normalizeBaseURL("apis.operate_api.base_url", a.Operate.BaseURL, a.Operate.Version, operateBaseConfigured)
+		a.Tasklist.BaseURL = a.normalizeBaseURL("apis.tasklist_api.base_url", a.Tasklist.BaseURL, a.Tasklist.Version, tasklistBaseConfigured)
 	}
-	return errors.Join(errs...)
 }
 
 func (a *APIs) Validate(scopes Scopes) error {
@@ -134,4 +119,84 @@ func withAPIVersion(base, want string) string {
 		return prefix + want
 	}
 	return base + want
+}
+
+func withoutAPIVersion(base string) string {
+	base = strings.TrimRight(base, "/")
+	i := strings.LastIndex(base, "/")
+	last := base
+	prefix := ""
+	if i >= 0 {
+		prefix = base[:i]
+		last = base[i+1:]
+	}
+	if verRx.MatchString(last) {
+		return prefix
+	}
+	return base
+}
+
+func (a *APIs) Warnings() []string {
+	if len(a.warnings) == 0 {
+		return nil
+	}
+	out := make([]string, len(a.warnings))
+	copy(out, a.warnings)
+	return out
+}
+
+func (a *APIs) normalizeBaseURL(key, base, want string, explicit bool) string {
+	want = strings.ToLower(strings.TrimSpace(want))
+	if strings.TrimSpace(base) == "" || want == "" {
+		return strings.TrimRight(base, "/")
+	}
+
+	base = strings.TrimRight(base, "/")
+	root, chain := trailingVersionChain(base)
+	normalized := withAPIVersion(root, want)
+
+	if explicit && shouldWarnForVersionCorrection(chain, want, base, normalized) {
+		a.warnings = append(a.warnings, formatVersionCorrectionWarning(key, base, normalized, chain, want))
+	}
+	return normalized
+}
+
+func trailingVersionChain(base string) (string, []string) {
+	base = strings.TrimRight(base, "/")
+	if base == "" {
+		return "", nil
+	}
+	parts := strings.Split(base, "/")
+	var chain []string
+	i := len(parts) - 1
+	for i >= 0 && verRx.MatchString(parts[i]) {
+		chain = append([]string{strings.ToLower(parts[i])}, chain...)
+		i--
+	}
+	if len(chain) == 0 {
+		return base, nil
+	}
+	root := strings.Join(parts[:i+1], "/")
+	return root, chain
+}
+
+func shouldWarnForVersionCorrection(chain []string, want, original, normalized string) bool {
+	if len(chain) == 0 {
+		return false
+	}
+	if len(chain) == 1 && chain[0] == want && original == normalized {
+		return false
+	}
+	return true
+}
+
+func formatVersionCorrectionWarning(key, original, normalized string, chain []string, want string) string {
+	reason := "replaced trailing API version suffix"
+	switch {
+	case len(chain) > 1:
+		reason = "collapsed duplicated or mixed trailing API version suffixes"
+	case len(chain) == 1 && chain[0] != want:
+		reason = "replaced trailing API version suffix"
+	}
+	return fmt.Sprintf("%s: %s; corrected %q to %q (expected final API version %q)", key, reason, original, normalized, want)
 }

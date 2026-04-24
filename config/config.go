@@ -387,6 +387,13 @@ func FromContext(ctx context.Context) (*Config, error) {
 	return c, nil
 }
 
+func (c *Config) Warnings() []string {
+	if c == nil {
+		return nil
+	}
+	return c.APIs.Warnings()
+}
+
 func (c *Config) ToSanitizedYAML() (string, error) {
 	return c.toYaml(yamlExportOptions{
 		template: false,
