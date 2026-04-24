@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -135,12 +136,15 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			}
 			hasEnv := hasEnvConfigByKeys(configKeys)
 			if !hasEnv && !bypassRootBootstrap(cmd) {
-				log.Warn("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file")
+				log.Warn(missingConfigHint())
 			}
 		}
 		if bypassRootBootstrap(cmd) {
 			cmd.SetContext(ctx)
 			return nil
+		}
+		for _, warning := range cfg.Warnings() {
+			log.Warn(warning)
 		}
 
 		if err = cfg.Validate(); err != nil {
@@ -177,6 +181,17 @@ Refer to the documentation at https://c8volt.info for more information.`,
 	},
 	SilenceUsage:  false,
 	SilenceErrors: false,
+}
+
+func missingConfigHint() string {
+	const exampleName = "config.example.yaml"
+	if wd, err := os.Getwd(); err == nil {
+		examplePath := filepath.Join(wd, exampleName)
+		if info, statErr := os.Stat(examplePath); statErr == nil && !info.IsDir() {
+			return fmt.Sprintf("no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; found %q in the current directory, copy or edit it into a local config.yaml and run 'c8volt --config ./config.yaml config show --validate'", exampleName)
+		}
+	}
+	return "no configuration found (environment variables, or config file); c8volt cannot run properly without configuration; run 'c8volt config show --template' and use the output to create a config.yaml file"
 }
 
 func Execute() {

@@ -818,7 +818,7 @@ func NewGetFormRequest(server string, formId string, params *GetFormParams) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/forms/%s", pathParam0)
+	operationPath := fmt.Sprintf("/forms/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -890,7 +890,7 @@ func NewSearchTasksRequestWithBody(server string, contentType string, body io.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/search")
+	operationPath := fmt.Sprintf("/tasks/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -926,7 +926,7 @@ func NewGetTaskByIdRequest(server string, taskId string) (*http.Request, error) 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/%s", pathParam0)
+	operationPath := fmt.Sprintf("/tasks/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -971,7 +971,7 @@ func NewAssignTaskRequestWithBody(server string, taskId string, contentType stri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/%s/assign", pathParam0)
+	operationPath := fmt.Sprintf("/tasks/%s/assign", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1018,7 +1018,7 @@ func NewCompleteTaskRequestWithBody(server string, taskId string, contentType st
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/%s/complete", pathParam0)
+	operationPath := fmt.Sprintf("/tasks/%s/complete", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1054,7 +1054,7 @@ func NewUnassignTaskRequest(server string, taskId string) (*http.Request, error)
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/%s/unassign", pathParam0)
+	operationPath := fmt.Sprintf("/tasks/%s/unassign", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1099,7 +1099,7 @@ func NewSaveDraftTaskVariablesRequestWithBody(server string, taskId string, cont
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/%s/variables", pathParam0)
+	operationPath := fmt.Sprintf("/tasks/%s/variables", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1146,7 +1146,7 @@ func NewSearchTaskVariablesRequestWithBody(server string, taskId string, content
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/tasks/%s/variables/search", pathParam0)
+	operationPath := fmt.Sprintf("/tasks/%s/variables/search", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1182,7 +1182,7 @@ func NewGetVariableByIdRequest(server string, variableId string) (*http.Request,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/variables/%s", pathParam0)
+	operationPath := fmt.Sprintf("/variables/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}

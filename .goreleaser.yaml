@@ -43,6 +43,11 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    files:
+      - src: README.md
+      - src: LICENSE
+      - src: config/templates/config.example.yaml
+        dst: config.example.yaml
 
 checksum:
   name_template: "checksums.txt"

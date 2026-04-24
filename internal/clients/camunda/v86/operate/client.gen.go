@@ -967,7 +967,7 @@ func NewSearch7RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/decision-definitions/search")
+	operationPath := fmt.Sprintf("/decision-definitions/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1003,7 +1003,7 @@ func NewByKey6Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/decision-definitions/%s", pathParam0)
+	operationPath := fmt.Sprintf("/decision-definitions/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1041,7 +1041,7 @@ func NewSearch6RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/decision-instances/search")
+	operationPath := fmt.Sprintf("/decision-instances/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1077,7 +1077,7 @@ func NewByIdRequest(server string, id string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/decision-instances/%s", pathParam0)
+	operationPath := fmt.Sprintf("/decision-instances/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1115,7 +1115,7 @@ func NewSearch5RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/drd/search")
+	operationPath := fmt.Sprintf("/drd/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1151,7 +1151,7 @@ func NewByKey5Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/drd/%s", pathParam0)
+	operationPath := fmt.Sprintf("/drd/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1185,7 +1185,7 @@ func NewXmlByKey1Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/drd/%s/xml", pathParam0)
+	operationPath := fmt.Sprintf("/drd/%s/xml", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1223,7 +1223,7 @@ func NewSearch4RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/flownode-instances/search")
+	operationPath := fmt.Sprintf("/flownode-instances/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1259,7 +1259,7 @@ func NewByKey4Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/flownode-instances/%s", pathParam0)
+	operationPath := fmt.Sprintf("/flownode-instances/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1297,7 +1297,7 @@ func NewSearch3RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/incidents/search")
+	operationPath := fmt.Sprintf("/incidents/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1333,7 +1333,7 @@ func NewByKey3Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/incidents/%s", pathParam0)
+	operationPath := fmt.Sprintf("/incidents/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1371,7 +1371,7 @@ func NewSearch2RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-definitions/search")
+	operationPath := fmt.Sprintf("/process-definitions/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1407,7 +1407,7 @@ func NewByKey2Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-definitions/%s", pathParam0)
+	operationPath := fmt.Sprintf("/process-definitions/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1441,7 +1441,7 @@ func NewXmlByKeyRequest(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-definitions/%s/xml", pathParam0)
+	operationPath := fmt.Sprintf("/process-definitions/%s/xml", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1479,7 +1479,7 @@ func NewSearch1RequestWithBody(server string, contentType string, body io.Reader
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-instances/search")
+	operationPath := fmt.Sprintf("/process-instances/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1515,7 +1515,7 @@ func NewDeleteRequest(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-instances/%s", pathParam0)
+	operationPath := fmt.Sprintf("/process-instances/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1549,7 +1549,7 @@ func NewByKey1Request(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-instances/%s", pathParam0)
+	operationPath := fmt.Sprintf("/process-instances/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1583,7 +1583,7 @@ func NewSequenceFlowsByKeyRequest(server string, key int64) (*http.Request, erro
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-instances/%s/sequence-flows", pathParam0)
+	operationPath := fmt.Sprintf("/process-instances/%s/sequence-flows", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1617,7 +1617,7 @@ func NewGetStatisticsRequest(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/process-instances/%s/statistics", pathParam0)
+	operationPath := fmt.Sprintf("/process-instances/%s/statistics", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1655,7 +1655,7 @@ func NewSearchRequestWithBody(server string, contentType string, body io.Reader)
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/variables/search")
+	operationPath := fmt.Sprintf("/variables/search")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1691,7 +1691,7 @@ func NewByKeyRequest(server string, key int64) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/v1/variables/%s", pathParam0)
+	operationPath := fmt.Sprintf("/variables/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
