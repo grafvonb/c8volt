@@ -676,7 +676,8 @@ On `get pd --stat`, `8.8` and `8.9` print process-instance counts on the exact d
 - `--auto-confirm` for human-operated bulk flows that should continue without repeated prompts
 - `--workers` for controlled concurrency
 - `--fail-fast` when one error should stop the next wave of work
-- `--backoff-*` retry controls for API-facing flows
+- `--timeout` for per-invocation HTTP request timeout control
+- `app.backoff` config for retry tuning on API-facing flows
 - `--quiet` and `--verbose` for different execution contexts
 - `--profile` and `--config` for environment switching without shell gymnastics
 - stable operational error handling and exit behavior

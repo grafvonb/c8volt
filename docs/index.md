@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.1.3-dirty`, commit `c7a74d7`, built `2026-04-23T20:29:26Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-144-g8bd33be-dirty`, commit `8bd33be`, built `2026-04-25T07:28:20Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -685,7 +685,8 @@ On `get pd --stat`, `8.8` and `8.9` print process-instance counts on the exact d
 - `--auto-confirm` for human-operated bulk flows that should continue without repeated prompts
 - `--workers` for controlled concurrency
 - `--fail-fast` when one error should stop the next wave of work
-- `--backoff-*` retry controls for API-facing flows
+- `--timeout` for per-invocation HTTP request timeout control
+- `app.backoff` config for retry tuning on API-facing flows
 - `--quiet` and `--verbose` for different execution contexts
 - `--profile` and `--config` for environment switching without shell gymnastics
 - stable operational error handling and exit behavior

@@ -32,6 +32,7 @@ var (
 	flagCmdAutomation     bool
 	flagCmdAutoConfirm    bool
 	flagAllowInconsistent bool
+	flagHTTPTimeout       = "30s"
 )
 
 func Root() *cobra.Command { return rootCmd }
@@ -221,6 +222,7 @@ func init() {
 
 	pf.String("config", "", "path to config file")
 	pf.String("profile", "", "config active profile name to use (e.g. dev, prod)")
+	pf.Var(toolx.NewDurationStringValue("30s", &flagHTTPTimeout), "timeout", "HTTP request timeout")
 
 	pf.String("log-level", "info", "log level (debug, info, warn, error)")
 	pf.String("log-format", "plain", "log format (json, plain, text)")
@@ -231,6 +233,9 @@ func init() {
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
+	_ = rootCmd.PersistentFlags().MarkHidden("log-format")
+	_ = rootCmd.PersistentFlags().MarkHidden("log-with-source")
+	_ = rootCmd.PersistentFlags().MarkHidden("no-err-codes")
 
 	setCapabilityDocumentVersion(rootCmd, defaultContractVersion)
 	setCommandMutation(rootCmd, CommandMutationReadOnly)
@@ -243,6 +248,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 
 	bindings.bindPFlag(v, "config", fs.Lookup("config"))
 	bindings.bindPFlag(v, "active_profile", fs.Lookup("profile"))
+	bindings.bindPFlag(v, "http.timeout", fs.Lookup("timeout"))
 
 	bindings.bindPFlag(v, "log.level", fs.Lookup("log-level"))
 	bindings.bindPFlag(v, "log.format", fs.Lookup("log-format"))
@@ -259,6 +265,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	v.SetDefault("log.format", "plain")
 	v.SetDefault("log.with_source", false)
 	v.SetDefault("log.with_request_body", false)
+	v.SetDefault("http.timeout", "30s")
 	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
 
 	v.SetEnvPrefix("c8volt")

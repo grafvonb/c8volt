@@ -96,6 +96,46 @@ func TestProcessInstanceHelp_PreservesLocalBeforeGlobalFlagUX(t *testing.T) {
 	require.NotEqual(t, -1, globalJSONFlag)
 }
 
+// TestProcessInstanceHelp_ExposesCompactGlobalFlags keeps the visible inherited flag surface focused
+// on common command-line controls while advanced tuning remains available through config or hidden
+// compatibility flags.
+func TestProcessInstanceHelp_ExposesCompactGlobalFlags(t *testing.T) {
+	output := executeRootForTest(t, "get", "process-instance", "--help")
+
+	assertHelpOutputContainsAll(t, output,
+		"--auto-confirm",
+		"--automation",
+		"--config",
+		"--debug",
+		"--json",
+		"--keys-only",
+		"--log-level",
+		"--no-indicator",
+		"--profile",
+		"--quiet",
+		"--tenant",
+		"--timeout",
+		"--verbose",
+	)
+	assertHelpOutputOmitsAll(t, output,
+		"--backoff-max-retries",
+		"--backoff-timeout",
+		"--log-format",
+		"--log-with-source",
+		"--no-err-codes",
+	)
+}
+
+func TestTimeoutFlag_RejectsInvalidDuration(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+	})
+
+	require.Error(t, root.PersistentFlags().Set("timeout", "eventually"))
+}
+
 // TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment verifies that automation mode can be
 // configured through environment variables, not only through CLI flags.
 func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing.T) {
