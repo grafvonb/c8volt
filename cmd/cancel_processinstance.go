@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -106,6 +105,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		if flagDryRun {
+			return
+		}
 		payload := process.CancelReports{Items: make([]process.CancelReport, len(result.Reports))}
 		for i, report := range result.Reports {
 			payload.Items[i] = process.CancelReport(report)
@@ -118,13 +120,23 @@ var cancelProcessInstanceCmd = &cobra.Command{
 }
 
 func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
-	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, collectOptions()...)
+	planned, err := planProcessInstanceDryRunPreview(cli, "cancel", keys)
 	if err != nil {
-		return processInstancePageActionResult{}, fmt.Errorf("cancel validation: %w", err)
+		return processInstancePageActionResult{}, err
+	}
+	plan := planned.Plan
+	if flagDryRun {
+		if err := renderProcessInstanceDryRunPreview(cmd, planned.Preview); err != nil {
+			return processInstancePageActionResult{}, fmt.Errorf("render cancel dry-run result: %w", err)
+		}
+		return processInstancePageActionResult{
+			Impact:        planned.Impact,
+			DryRunPreview: &planned.Preview,
+		}, nil
 	}
 	printDryRunExpansionWarning(cmd, plan)
 
-	impact := processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)}
+	impact := planned.Impact
 	if firstPage {
 		affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
 		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
@@ -142,8 +154,9 @@ func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
 	}
 	result := processInstancePageActionResult{
-		Impact:  impact,
-		Reports: make([]process.Reporter, len(reports.Items)),
+		Impact:        impact,
+		Reports:       make([]process.Reporter, len(reports.Items)),
+		DryRunPreview: &planned.Preview,
 	}
 	for i, report := range reports.Items {
 		result.Reports[i] = process.Reporter(report)
@@ -162,7 +175,7 @@ func init() {
 	fs := cancelProcessInstanceCmd.Flags()
 	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
-	// fs.BoolVar(&flagDryRun, "dry-run", false, "perform a dry-run; show which process instances would be canceled without actually cancelling them")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview which process instances would be canceled without submitting cancellation")
 
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")

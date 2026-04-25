@@ -245,8 +245,9 @@ type processInstancePageImpact struct {
 }
 
 type processInstancePageActionResult struct {
-	Impact  processInstancePageImpact
-	Reports []process.Reporter
+	Impact        processInstancePageImpact
+	Reports       []process.Reporter
+	DryRunPreview *processInstanceDryRunPreview
 }
 
 func registerPISharedDateRangeFlags(fs *pflag.FlagSet) {

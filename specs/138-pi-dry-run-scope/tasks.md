@@ -30,13 +30,13 @@
 
 **CRITICAL**: No user story implementation should bypass this shared seam.
 
-- [ ] T005 Define the shared process-instance dry-run preview payload and aggregate payload in cmd/cmd_views_processinstance_dryrun.go
-- [ ] T006 Implement human-readable dry-run rendering in cmd/cmd_views_processinstance_dryrun.go with requested count, root count, affected count, scope completeness, warnings, missing ancestors, and no-mutation text
-- [ ] T007 Implement structured dry-run rendering support in cmd/cmd_views_processinstance_dryrun.go using the repository's existing renderCommandResult conventions
-- [ ] T008 Refactor cancelProcessInstancesWithPlan in cmd/cancel_processinstance.go to compute a shared plan result that can be rendered or executed without duplicating dependency expansion
-- [ ] T009 Refactor deleteProcessInstancesWithPlan in cmd/delete_processinstance.go to compute a shared plan result that can be rendered or executed without duplicating dependency expansion
-- [ ] T010 [P] Add focused unit coverage for dry-run preview payload mapping in cmd/cancel_test.go
-- [ ] T011 [P] Add focused unit coverage for dry-run preview payload mapping in cmd/delete_test.go
+- [x] T005 Define the shared process-instance dry-run preview payload and aggregate payload in cmd/cmd_views_processinstance_dryrun.go
+- [x] T006 Implement human-readable dry-run rendering in cmd/cmd_views_processinstance_dryrun.go with requested count, root count, affected count, scope completeness, warnings, missing ancestors, and no-mutation text
+- [x] T007 Implement structured dry-run rendering support in cmd/cmd_views_processinstance_dryrun.go using the repository's existing renderCommandResult conventions
+- [x] T008 Refactor cancelProcessInstancesWithPlan in cmd/cancel_processinstance.go to compute a shared plan result that can be rendered or executed without duplicating dependency expansion
+- [x] T009 Refactor deleteProcessInstancesWithPlan in cmd/delete_processinstance.go to compute a shared plan result that can be rendered or executed without duplicating dependency expansion
+- [x] T010 [P] Add focused unit coverage for dry-run preview payload mapping in cmd/cancel_test.go
+- [x] T011 [P] Add focused unit coverage for dry-run preview payload mapping in cmd/delete_test.go
 
 **Checkpoint**: Shared dry-run payload and preflight seam are ready.
 
@@ -50,18 +50,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add keyed cancel dry-run test for child-to-root escalation in cmd/cancel_test.go
-- [ ] T013 [P] [US1] Add keyed cancel dry-run test for full-family scope and zero mutation calls in cmd/cancel_test.go
-- [ ] T014 [P] [US1] Add keyed delete dry-run test for child-to-root escalation in cmd/delete_test.go
-- [ ] T015 [P] [US1] Add keyed delete dry-run test for full-family scope and zero mutation calls in cmd/delete_test.go
+- [x] T012 [P] [US1] Add keyed cancel dry-run test for child-to-root escalation in cmd/cancel_test.go
+- [x] T013 [P] [US1] Add keyed cancel dry-run test for full-family scope and zero mutation calls in cmd/cancel_test.go
+- [x] T014 [P] [US1] Add keyed delete dry-run test for child-to-root escalation in cmd/delete_test.go
+- [x] T015 [P] [US1] Add keyed delete dry-run test for full-family scope and zero mutation calls in cmd/delete_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Register `--dry-run` on cancel process-instance in cmd/cancel_processinstance.go
-- [ ] T017 [US1] Render and return keyed cancel dry-run previews before confirmation or CancelProcessInstances in cmd/cancel_processinstance.go
-- [ ] T018 [US1] Register `--dry-run` on delete process-instance in cmd/delete_processinstance.go
-- [ ] T019 [US1] Render and return keyed delete dry-run previews before confirmation, force-cancel, DeleteProcessInstances, or wait behavior in cmd/delete_processinstance.go
-- [ ] T020 [US1] Run focused keyed dry-run validation for cmd/cancel_test.go and cmd/delete_test.go using specs/138-pi-dry-run-scope/quickstart.md
+- [x] T016 [US1] Register `--dry-run` on cancel process-instance in cmd/cancel_processinstance.go
+- [x] T017 [US1] Render and return keyed cancel dry-run previews before confirmation or CancelProcessInstances in cmd/cancel_processinstance.go
+- [x] T018 [US1] Register `--dry-run` on delete process-instance in cmd/delete_processinstance.go
+- [x] T019 [US1] Render and return keyed delete dry-run previews before confirmation, force-cancel, DeleteProcessInstances, or wait behavior in cmd/delete_processinstance.go
+- [x] T020 [US1] Run focused keyed dry-run validation for cmd/cancel_test.go and cmd/delete_test.go using specs/138-pi-dry-run-scope/quickstart.md
 
 **Checkpoint**: Keyed cancel/delete dry run is fully functional and independently testable.
 

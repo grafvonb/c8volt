@@ -65,6 +65,111 @@ func requireCancelDryRunPreviewPayload(t *testing.T, payload map[string]any, wan
 	require.Equal(t, false, payload["mutationSubmitted"])
 }
 
+func TestCancelProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
+	want := newCancelDryRunPreviewFixture()
+	preview := newProcessInstanceDryRunPreview("cancel", want.RequestedKeys, process.DryRunPIKeyExpansion{
+		Roots:            want.ResolvedRoots,
+		Collected:        want.AffectedFamilyKeys,
+		MissingAncestors: want.MissingAncestors,
+		Warning:          want.Warning,
+		Outcome:          want.TraversalOutcome,
+	})
+
+	var payload map[string]any
+	b, err := json.Marshal(preview)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(b, &payload))
+
+	requireCancelDryRunPreviewPayload(t, payload, want)
+}
+
+func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt during cancel dry run")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-1"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "child-1"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-1"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 2, Roots: 1}, got.Impact)
+	require.Empty(t, got.Reports)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
+	require.Equal(t, typex.Keys{"root-1", "child-1"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
+	require.Contains(t, buf.String(), "dry run: cancel process-instance")
+	require.Contains(t, buf.String(), "requested keys: child-1")
+	require.Contains(t, buf.String(), "resolved root keys: root-1")
+	require.Contains(t, buf.String(), "affected family keys: root-1, child-1")
+	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+}
+
+func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt during cancel dry run")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"root-1"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "child-1", "child-2"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"root-1"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 3, Roots: 1}, got.Impact)
+	require.Empty(t, got.Reports)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
+	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
+	require.Contains(t, buf.String(), "affected process instances: 3")
+	require.Contains(t, buf.String(), "scope: complete")
+	require.Contains(t, buf.String(), "affected family keys: root-1, child-1, child-2")
+	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+}
+
 func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "27s")
 
