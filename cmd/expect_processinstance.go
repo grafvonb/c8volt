@@ -22,7 +22,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 		"each keyed process instance reaches one of the requested states or fails with a shared error model. " +
 		"For cancellation waits, `canceled` is the user-facing intent state; on Camunda `8.8` and `8.9`, " +
 		"that same outcome may be surfaced by the backend as `terminated`, and `c8volt` treats them as equivalent.\n\n" +
-		"Default output stays human-oriented. Use --json when another tool needs the final wait report. " +
+		"Default output stays human-oriented and uses transient activity indicators instead of repeated per-key polling lines; " +
+		"use --verbose when you need detailed checked keys, states, and retry attempts. Use --json when another tool needs the final wait report. " +
 		"`--automation` remains unsupported because the broader waiting contract is not yet defined there.",
 	Example: `  ./c8volt expect pi --key 2251799813685255 --state active
   ./c8volt expect pi --key 2251799813685255 --state completed --state absent

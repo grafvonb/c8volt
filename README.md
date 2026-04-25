@@ -62,6 +62,7 @@ The important part is not just that `8.9` parses as a version value. The reposit
 - supported commands can expose a shared machine-readable result envelope
 - automation mode keeps machine-readable results on stdout and pushes logs/progress away from stdout
 - transient terminal indicators stay human-only by default; automation and quiet mode suppress them, and `--no-indicator` disables them explicitly
+- long-running human flows use those transient indicators for bulk process-instance work, waiter confirmation, orphan-parent checks, deployment confirmation, and process-definition cleanup; `--verbose` keeps detailed polling keys, states, and ancestor-key diagnostics available without flooding default output
 - unsupported automation paths fail explicitly instead of silently falling back to interactive behavior
 
 This matters if you are wiring `c8volt` into:
@@ -182,7 +183,7 @@ For batch execution:
 
 This is where `c8volt` becomes an operations tool instead of just a resource browser: it helps you see the structure that explains why a cancellation or deletion may behave the way it does.
 
-If an ancestor is missing but the remaining tree is still actionable, traversal and preflight flows keep the resolved family data and warn about the missing ancestor boundary. Direct single-resource paths stay strict: `get pi --key ...` still returns the normal not-found error when the requested process instance itself is gone, and waiter-based absent/deleted confirmation semantics are unchanged.
+If an ancestor is missing but the remaining tree is still actionable, traversal and preflight flows keep the resolved family data and warn about the missing ancestor boundary. Human text output reports the number of missing ancestor keys by default and lists the keys only with `--verbose`; structured result payloads keep the machine-readable metadata. Direct single-resource paths stay strict: `get pi --key ...` still returns the normal not-found error when the requested process instance itself is gone, and waiter-based absent/deleted confirmation semantics are unchanged.
 
 ### 4. Cancel the thing that actually needs cancelling
 
@@ -240,7 +241,7 @@ Use `expect` when a script or operator workflow needs a concrete state transitio
 ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
 ```
 
-`expect` is where `c8volt` becomes a strong automation partner instead of just a command runner: it can wait for `active`, `completed`, `canceled`, `terminated`, or `absent` and it works naturally with piped keys for bulk verification flows. For cancellation semantics, `canceled` is the user-facing intent. On Camunda `8.8` and `8.9`, that canceled outcome may be reported by the backend as `terminated`, and `c8volt` treats those two wait targets as equivalent.
+`expect` is where `c8volt` becomes a strong automation partner instead of just a command runner: it can wait for `active`, `completed`, `canceled`, `terminated`, or `absent` and it works naturally with piped keys for bulk verification flows. Interactive waits use transient activity indicators instead of repeated per-instance polling lines; add `--verbose` when you need each checked key, state, and retry attempt. For cancellation semantics, `canceled` is the user-facing intent. On Camunda `8.8` and `8.9`, that canceled outcome may be reported by the backend as `terminated`, and `c8volt` treats those two wait targets as equivalent.
 
 ### Inspect the environment before acting
 

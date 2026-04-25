@@ -14,7 +14,7 @@ Wait for process instance(s) to reach one of the requested states.
 
 Use this read-only command after `run`, `cancel`, or `delete` when the operation returned before the final state was visible, or when you need an explicit post-action assertion. The command waits until each keyed process instance reaches one of the requested states or fails with a shared error model. For cancellation waits, `canceled` is the user-facing intent state; on Camunda `8.8` and `8.9`, that same outcome may be surfaced by the backend as `terminated`, and `c8volt` treats them as equivalent.
 
-Default output stays human-oriented. Use --json when another tool needs the final wait report. `--automation` remains unsupported because the broader waiting contract is not yet defined there.
+Default output stays human-oriented and uses transient activity indicators instead of repeated per-key polling lines; use --verbose when you need detailed checked keys, states, and retry attempts. Use --json when another tool needs the final wait report. `--automation` remains unsupported because the broader waiting contract is not yet defined there.
 
 ```
 c8volt expect process-instance [flags]
