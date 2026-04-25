@@ -28,6 +28,43 @@ import (
 
 const cancelDeleteRelativeDayNow = "2026-04-10T12:00:00Z"
 
+type cancelDryRunPreviewFixture struct {
+	RequestedKeys      typex.Keys
+	ResolvedRoots      typex.Keys
+	AffectedFamilyKeys typex.Keys
+	TraversalOutcome   process.TraversalOutcome
+	Warning            string
+	MissingAncestors   []process.MissingAncestor
+}
+
+func newCancelDryRunPreviewFixture() cancelDryRunPreviewFixture {
+	return cancelDryRunPreviewFixture{
+		RequestedKeys:      typex.Keys{"2251799813711967"},
+		ResolvedRoots:      typex.Keys{"2251799813711900"},
+		AffectedFamilyKeys: typex.Keys{"2251799813711900", "2251799813711967"},
+		TraversalOutcome:   process.TraversalOutcomePartial,
+		Warning:            "one or more parent process instances were not found",
+		MissingAncestors:   []process.MissingAncestor{{Key: "2251799813711999", StartKey: "2251799813711967"}},
+	}
+}
+
+func requireCancelDryRunPreviewPayload(t *testing.T, payload map[string]any, want cancelDryRunPreviewFixture) {
+	t.Helper()
+
+	require.Equal(t, "cancel", payload["operation"])
+	requireDryRunPreviewStringSlice(t, payload, "requestedKeys", want.RequestedKeys)
+	requireDryRunPreviewStringSlice(t, payload, "resolvedRoots", want.ResolvedRoots)
+	requireDryRunPreviewStringSlice(t, payload, "affectedFamilyKeys", want.AffectedFamilyKeys)
+	require.Equal(t, float64(len(want.RequestedKeys)), payload["requestedCount"])
+	require.Equal(t, float64(len(want.ResolvedRoots)), payload["resolvedRootCount"])
+	require.Equal(t, float64(len(want.AffectedFamilyKeys)), payload["affectedCount"])
+	require.Equal(t, string(want.TraversalOutcome), payload["traversalOutcome"])
+	require.Equal(t, want.TraversalOutcome == process.TraversalOutcomeComplete, payload["scopeComplete"])
+	require.Equal(t, want.Warning, payload["warning"])
+	requireDryRunPreviewMissingAncestors(t, payload, want.MissingAncestors)
+	require.Equal(t, false, payload["mutationSubmitted"])
+}
+
 func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "27s")
 

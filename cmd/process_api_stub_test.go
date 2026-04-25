@@ -5,10 +5,12 @@ package cmd
 
 import (
 	"context"
+	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	types "github.com/grafvonb/c8volt/typex"
+	"github.com/stretchr/testify/require"
 )
 
 type stubProcessAPI struct {
@@ -16,6 +18,56 @@ type stubProcessAPI struct {
 	cancelProcessInstances   func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
 	deleteProcessInstances   func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
 	filterOrphanParent       func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
+}
+
+func dryRunCancelMutationGuard(t *testing.T) func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error) {
+	t.Helper()
+	return func(_ context.Context, keys types.Keys, _ int, _ ...options.FacadeOption) (process.CancelReports, error) {
+		t.Fatalf("unexpected cancel mutation during dry-run test for keys %v", keys)
+		return process.CancelReports{}, nil
+	}
+}
+
+func dryRunDeleteMutationGuard(t *testing.T) func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error) {
+	t.Helper()
+	return func(_ context.Context, keys types.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+		t.Fatalf("unexpected delete mutation during dry-run test for keys %v", keys)
+		return process.DeleteReports{}, nil
+	}
+}
+
+func requireDryRunPreviewStringSlice(t *testing.T, payload map[string]any, field string, want types.Keys) {
+	t.Helper()
+
+	gotRaw, ok := payload[field]
+	require.Truef(t, ok, "expected dry-run preview field %q", field)
+	gotItems, ok := gotRaw.([]any)
+	require.Truef(t, ok, "expected dry-run preview field %q to be a JSON array", field)
+
+	got := make([]string, len(gotItems))
+	for i, item := range gotItems {
+		value, ok := item.(string)
+		require.Truef(t, ok, "expected dry-run preview field %q item %d to be a string", field, i)
+		got[i] = value
+	}
+	require.Equal(t, []string(want), got)
+}
+
+func requireDryRunPreviewMissingAncestors(t *testing.T, payload map[string]any, want []process.MissingAncestor) {
+	t.Helper()
+
+	gotRaw, ok := payload["missingAncestors"]
+	require.True(t, ok, "expected dry-run preview field missingAncestors")
+	gotItems, ok := gotRaw.([]any)
+	require.True(t, ok, "expected dry-run preview field missingAncestors to be a JSON array")
+	require.Len(t, gotItems, len(want))
+
+	for i, item := range gotItems {
+		got, ok := item.(map[string]any)
+		require.Truef(t, ok, "expected missingAncestors item %d to be a JSON object", i)
+		require.Equal(t, want[i].Key, got["key"])
+		require.Equal(t, want[i].StartKey, got["startKey"])
+	}
 }
 
 func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {

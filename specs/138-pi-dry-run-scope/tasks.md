@@ -17,10 +17,10 @@
 
 **Purpose**: Establish the dry-run contract and shared test support before story work begins.
 
-- [ ] T001 Review the dry-run scope contract in specs/138-pi-dry-run-scope/contracts/process-instance-dry-run.md against current helpers in c8volt/process/dryrun.go and cmd/cancel_processinstance.go
-- [ ] T002 [P] Extend dry-run mutation guard support in cmd/process_api_stub_test.go so unexpected cancel/delete calls fail in dry-run command tests
-- [ ] T003 [P] Add shared dry-run preview test fixtures or assertions in cmd/cancel_test.go for requested keys, roots, affected keys, traversal outcome, warnings, and mutationSubmitted=false
-- [ ] T004 [P] Add shared dry-run preview test fixtures or assertions in cmd/delete_test.go for requested keys, roots, affected keys, traversal outcome, warnings, and mutationSubmitted=false
+- [x] T001 Review the dry-run scope contract in specs/138-pi-dry-run-scope/contracts/process-instance-dry-run.md against current helpers in c8volt/process/dryrun.go and cmd/cancel_processinstance.go
+- [x] T002 [P] Extend dry-run mutation guard support in cmd/process_api_stub_test.go so unexpected cancel/delete calls fail in dry-run command tests
+- [x] T003 [P] Add shared dry-run preview test fixtures or assertions in cmd/cancel_test.go for requested keys, roots, affected keys, traversal outcome, warnings, and mutationSubmitted=false
+- [x] T004 [P] Add shared dry-run preview test fixtures or assertions in cmd/delete_test.go for requested keys, roots, affected keys, traversal outcome, warnings, and mutationSubmitted=false
 
 ---
 
