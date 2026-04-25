@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/140-pi-limit-batch-size/plan.md`
+- Active implementation plan: `specs/138-pi-dry-run-scope/plan.md`
 <!-- SPECKIT END -->
