@@ -24,6 +24,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --batch-size 250
+  ./c8volt delete pi --state completed --batch-size 250 --limit 25
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id C88_SimpleUserTask_Process --state completed --batch-size 200 --auto-confirm

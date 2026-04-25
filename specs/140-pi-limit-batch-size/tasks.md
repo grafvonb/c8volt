@@ -68,13 +68,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Add `get process-instance` tests for `--batch-size`, `-n`, and combined `--batch-size --limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T015 [P] [US2] Add search-based cancel/delete tests for combined `--batch-size --limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T014 [P] [US2] Add `get process-instance` tests for `--batch-size`, `-n`, and combined `--batch-size --limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T015 [P] [US2] Add search-based cancel/delete tests for combined `--batch-size --limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Update page-size resolution to use `--batch-size` flag change detection and preserve shared config/default behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T017 [US2] Update examples and worker help text to use batch-size terminology in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T016 [US2] Update page-size resolution to use `--batch-size` flag change detection and preserve shared config/default behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T017 [US2] Update examples and worker help text to use batch-size terminology in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
 
 **Checkpoint**: User Story 2 proves the renamed page-size flag is independent from the total limit.
 

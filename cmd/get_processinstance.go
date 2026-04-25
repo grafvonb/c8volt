@@ -58,6 +58,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --batch-size 250
+  ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --state active --auto-confirm
   ./c8volt --json get pi --state active --batch-size 250
   ./c8volt get pi --key 2251799813711967 --json

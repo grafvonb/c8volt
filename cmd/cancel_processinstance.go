@@ -24,6 +24,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --force
   ./c8volt cancel pi --state active --batch-size 250
+  ./c8volt cancel pi --state active --batch-size 250 --limit 25
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
   ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --batch-size 200 --auto-confirm

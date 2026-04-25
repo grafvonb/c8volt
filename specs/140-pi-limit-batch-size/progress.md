@@ -5,6 +5,7 @@ Started: 2026-04-25 15:48:48
 
 ## Codebase Patterns
 
+- Process-instance search request page size is asserted through the captured request page `limit` field; combined `--batch-size --limit` tests should use a batch size larger than the limit to prove per-page size and total cap remain independent.
 - Shared process-instance search paging lives in `cmd/get_processinstance.go`; `flagGetPISize`, `resolvePISearchSize`, `newPISearchPageRequest`, `searchProcessInstancesWithPaging`, and `processPISearchPagesWithAction` are the main seams for batch-size and total-limit behavior.
 - Process-instance flag validation should accept the current `*cobra.Command` when it needs `Flags().Changed(...)`; referencing package-level command variables from shared validation creates Go initialization cycles.
 - Removed process-instance flags should use `useInvalidInputFlagErrors` on the affected leaf commands so Cobra parse failures map to the repository invalid-input exit model.
@@ -83,4 +84,29 @@ Started: 2026-04-25 15:48:48
 - `go test ./cmd -run 'Test(GetProcessInstancePagingFlow|CancelProcessInstanceCommand_SearchPagingLimitFlow|DeleteProcessInstanceCommand_SearchPagingLimitFlow)$' -count=1 -v` passed with cross-page limit coverage for get/cancel/delete.
 - `go test ./cmd -count=1` passed after applying the shared limit-reached continuation state.
 - Destructive search tests still observe one confirmation call under `--auto-confirm` because the first-page destructive confirmation function is invoked with implicit confirmation; continuation prompting remains skipped when the limit is reached.
+---
+
+---
+## Iteration 4 - 2026-04-25 17:35:44 CEST
+**User Story**: User Story 2 - Distinguish Batch Size From Total Limit
+**Tasks Completed**:
+- [x] T014: Add `get process-instance` tests for `--batch-size`, `-n`, and combined `--batch-size --limit`
+- [x] T015: Add search-based cancel/delete tests for combined `--batch-size --limit`
+- [x] T016: Update page-size resolution to use `--batch-size` flag change detection and preserve shared config/default behavior
+- [x] T017: Update examples and worker help text to use batch-size terminology
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- specs/140-pi-limit-batch-size/tasks.md
+- specs/140-pi-limit-batch-size/progress.md
+**Learnings**:
+- `go test ./cmd -run 'Test(GetProcessInstancePagingFlow|CancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow|DeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow|ResolvePISearchSize)$' -count=1` passed.
+- `go test ./cmd -count=1` passed.
+- The existing page-size resolver already keys off `Flags().Changed("batch-size")`; this iteration added focused behavior coverage and command examples showing `--batch-size` and `--limit` together.
 ---
