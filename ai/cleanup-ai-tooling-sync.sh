@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 #
-# Removes stale ai-tooling-managed files from this repository before a sync.
+# Purpose:
+#   Remove stale ai-tooling-managed files from a target repository before sync.
 #
-# Usage examples:
-#   ./ai/cleanup-ai-tooling-sync.sh
-#   ./ai/cleanup-ai-tooling-sync.sh --dry-run
-#   AI_TOOLING_REPO=/path/to/local/ai-tooling ./ai/cleanup-ai-tooling-sync.sh
-#   ./ai/cleanup-ai-tooling-sync.sh /path/to/local/ai-tooling
+# Usage:
+#   ./ai/cleanup-ai-tooling-sync.sh [--dry-run] [ai-tooling-repo]
+#   AI_TOOLING_TARGET_REPO=/path/to/consumer ./ai/cleanup-ai-tooling-sync.sh /path/to/local/ai-tooling
+#
+# Parameters:
+#   --dry-run          Print removals without deleting files.
+#   ai-tooling-repo   Optional source checkout to compare against. Defaults to
+#                     AI_TOOLING_REPO or ../../ai-tooling relative to target.
+#
+# Environment:
+#   AI_TOOLING_REPO          Source checkout used when ai-tooling-repo is not
+#                            passed.
+#   AI_TOOLING_TARGET_REPO   Repository to clean. Defaults to the parent of
+#                            this script's ai/ directory.
 
 set -euo pipefail
 
@@ -43,7 +53,11 @@ if [ $# -gt 1 ]; then
 fi
 
 SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
+if [ -n "${AI_TOOLING_TARGET_REPO:-}" ]; then
+    REPO_ROOT="$(CDPATH="" cd "$AI_TOOLING_TARGET_REPO" && pwd)"
+else
+    REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
+fi
 DEFAULT_LOCAL_AI_TOOLING_REPO="$(CDPATH="" cd "$REPO_ROOT/../.." && pwd)/ai-tooling"
 
 if [ -n "${AI_TOOLING_REPO:-}" ]; then
@@ -154,17 +168,21 @@ cleanup_child_dirs_only() {
 
 cleanup_tree "$SOURCE_ROOT/.agents/skills" "$REPO_ROOT/.agents/skills"
 cleanup_child_dirs_only "$SOURCE_ROOT/extensions" "$REPO_ROOT/extensions"
+cleanup_child_dirs_only "$SOURCE_ROOT/integrations" "$REPO_ROOT/integrations"
 cleanup_child_dirs_only "$SOURCE_ROOT/presets" "$REPO_ROOT/presets"
+cleanup_child_dirs_only "$SOURCE_ROOT/workflows" "$REPO_ROOT/workflows"
 cleanup_tree "$SOURCE_ROOT/.specify/scripts" "$REPO_ROOT/.specify/scripts"
 cleanup_tree "$SOURCE_ROOT/.specify/templates" "$REPO_ROOT/.specify/templates"
 cleanup_tree "$SOURCE_ROOT/.specify/integrations" "$REPO_ROOT/.specify/integrations"
 cleanup_tree "$SOURCE_ROOT/.specify/presets" "$REPO_ROOT/.specify/presets"
+cleanup_tree "$SOURCE_ROOT/.specify/workflows" "$REPO_ROOT/.specify/workflows"
 
 for managed_metadata_file in \
     .specify/extension-catalogs.yml \
     .specify/extensions.yml \
     .specify/init-options.json \
-    .specify/integration.json
+    .specify/integration.json \
+    .specify/workflow-catalogs.yml
 do
     if [ ! -e "$SOURCE_ROOT/$managed_metadata_file" ]; then
         delete_path "$REPO_ROOT/$managed_metadata_file"

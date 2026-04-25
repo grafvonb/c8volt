@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 #
-# Appends a repository-local AGENTS addendum after ai-tooling syncs.
+# Purpose:
+#   Compose repository-local AGENTS guidance after ai-tooling syncs.
+#
+# Usage:
+#   ./ai/compose-agents-md.sh [target-repo]
+#
+# Parameters:
+#   target-repo  Optional repository root containing AGENTS.md and
+#                AGENTS.local.md. Defaults to the current directory.
+#
+# Notes:
+#   If AGENTS.local.md is absent, the script exits without changing anything.
+#   Existing generated local guidance between the REPO-LOCAL-AGENTS markers is
+#   replaced so repeated runs stay idempotent.
 
 set -euo pipefail
 
