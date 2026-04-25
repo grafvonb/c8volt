@@ -1,6 +1,7 @@
 package v89_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -16,6 +17,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v89 "github.com/grafvonb/c8volt/internal/services/processinstance/v89"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -407,6 +409,56 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrBadRequest)
 		assert.Equal(t, 1, getCalls)
+	})
+
+	t.Run("DeleteWrongStateLogsOnlyWhenVerbose", func(t *testing.T) {
+		runDeleteWrongStateLogTest := func(t *testing.T, verbose bool) string {
+			t.Helper()
+			var logBuf bytes.Buffer
+			svc, err := v89.New(
+				testConfig(),
+				&http.Client{},
+				slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)),
+				v89.WithClientCamunda(&mockCamundaClient{
+					createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+					getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+						return &camundav89.GetProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+							JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+						}, nil
+					},
+					searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+						return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+							Items: nil,
+							Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+						}), nil
+					},
+					cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+					deleteProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteProcessInstanceResponse, error) {
+						return &camundav89.DeleteProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/process-instances/123", http.StatusConflict, "409 Conflict"),
+						}, nil
+					},
+				}),
+			)
+			require.NoError(t, err)
+
+			var opts []services.CallOption
+			if verbose {
+				opts = append(opts, services.WithVerbose())
+			}
+			resp, err := svc.DeleteProcessInstance(context.Background(), "123", opts...)
+
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusConflict, resp.StatusCode)
+			return logBuf.String()
+		}
+
+		quietLog := runDeleteWrongStateLogTest(t, false)
+		verboseLog := runDeleteWrongStateLogTest(t, true)
+
+		assert.NotContains(t, quietLog, "cannot delete, process instance 123 is not in one of terminated states")
+		assert.Contains(t, verboseLog, "cannot delete, process instance 123 is not in one of terminated states")
 	})
 }
 

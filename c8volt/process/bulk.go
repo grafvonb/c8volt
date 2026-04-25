@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -85,6 +86,13 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	}
 	if !cCfg.NoWait {
 		t, oks, noks := r.Totals()
+		if hasStatusCode(r.Items, http.StatusConflict) {
+			affected := cCfg.AffectedProcessInstanceCount
+			if affected < t {
+				affected = t
+			}
+			c.log.Info(fmt.Sprintf("cannot delete expanded process-instance scope of %d process instance(s): one or more affected process instances are not in a terminated state; use --force flag to cancel and then delete them", affected))
+		}
 		if cCfg.AffectedProcessInstanceCount > t {
 			c.log.Info(fmt.Sprintf("deleting %d process instance(s) completed via %d root request(s): %d root request(s) succeeded, %d failed", cCfg.AffectedProcessInstanceCount, t, oks, noks))
 		} else {
@@ -92,6 +100,15 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 		}
 	}
 	return r, err
+}
+
+func hasStatusCode(items []DeleteReport, statusCode int) bool {
+	for _, item := range items {
+		if item.StatusCode == statusCode {
+			return true
+		}
+	}
+	return false
 }
 
 // WaitForProcessInstancesState waits for each unique key to reach one of the desired states.

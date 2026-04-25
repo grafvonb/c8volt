@@ -682,6 +682,27 @@ func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	assert.NotContains(t, logBuf.String(), "deleting 1 process instances completed")
 }
 
+func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScope(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	piAPI := stubProcessInstanceAPI{
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			assert.Equal(t, "root-1", key)
+			return d.DeleteResponse{StatusCode: 409, Status: "409 Conflict"}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
+
+	reports, err := cli.DeleteProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
+
+	require.NoError(t, err)
+	require.Len(t, reports.Items, 1)
+	assert.Contains(t, logBuf.String(), "cannot delete expanded process-instance scope of 4 process instance(s): one or more affected process instances are not in a terminated state; use --force flag to cancel and then delete them")
+	assert.Contains(t, logBuf.String(), "deleting 4 process instance(s) completed via 1 root request(s): 0 root request(s) succeeded, 1 failed")
+}
+
 type stubProcessDefinitionAPI struct {
 	searchProcessDefinitions func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	getProcessDefinition     func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)

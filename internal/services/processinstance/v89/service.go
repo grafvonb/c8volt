@@ -20,6 +20,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 type Service struct {
@@ -481,7 +482,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 				return d.DeleteResponse{}, err
 			}
 		} else {
-			s.log.Info(fmt.Sprintf("cannot delete, process instance %s is not in one of terminated states; use --force flag to cancel and then delete the process instance", key))
+			logging.InfoIfVerbose(fmt.Sprintf("cannot delete, process instance %s is not in one of terminated states; use --force flag to cancel and then delete the process instance", key), s.log, cCfg.Verbose)
 			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
 		}
 	}
