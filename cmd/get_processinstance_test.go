@@ -57,6 +57,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
 	require.Contains(t, output, "capped backend totals stay lower bounds")
 	require.Contains(t, output, "--auto-confirm")
+	require.NotContains(t, output, "--count")
 }
 
 // Verifies search-mode get process-instance sends the expected filter and pagination request shape.

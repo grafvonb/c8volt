@@ -48,7 +48,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Use --auto-confirm for unattended destructive runs",
 		"verify later with `get pi` or `expect pi`",
 		"./c8volt expect pi --key <process-instance-key> --state canceled",
-	}, nil)
+	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 }
 

@@ -88,13 +88,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Add explicit help/parse regression coverage proving `--count` is absent or rejected on affected command paths in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
-- [ ] T019 [P] [US3] Add regression coverage confirming `--total` with `--limit` is rejected as mutually exclusive in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T018 [P] [US3] Add explicit help/parse regression coverage proving `--count` is absent or rejected on affected command paths in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T019 [P] [US3] Add regression coverage confirming `--total` with `--limit` is rejected as mutually exclusive in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Ensure `--limit` validation is search-mode-only and rejects `--total` combinations in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T021 [US3] Align standard invalid-argument handling for removed and invalid flags without adding `--count` aliases in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T020 [US3] Ensure `--limit` validation is search-mode-only and rejects `--total` combinations in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T021 [US3] Align standard invalid-argument handling for removed and invalid flags without adding `--count` aliases in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
 
 **Checkpoint**: User Story 3 makes invalid and legacy usage behavior explicit and tested.
 

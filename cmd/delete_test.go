@@ -49,7 +49,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Use --auto-confirm for unattended destructive runs",
 		"`expect pi --state absent`",
 		"./c8volt delete pi --state completed --batch-size 200 --auto-confirm --no-wait",
-	}, nil)
+	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{

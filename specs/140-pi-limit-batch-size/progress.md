@@ -5,6 +5,7 @@ Started: 2026-04-25 15:48:48
 
 ## Codebase Patterns
 
+- Help-output omission checks can use `assertCommandHelpOutput(..., omits)` for command help tests, while get process-instance help tests currently use `executeRootForProcessInstanceTest` with direct `require.NotContains` assertions.
 - Process-instance search request page size is asserted through the captured request page `limit` field; combined `--batch-size --limit` tests should use a batch size larger than the limit to prove per-page size and total cap remain independent.
 - Shared process-instance search paging lives in `cmd/get_processinstance.go`; `flagGetPISize`, `resolvePISearchSize`, `newPISearchPageRequest`, `searchProcessInstancesWithPaging`, and `processPISearchPagesWithAction` are the main seams for batch-size and total-limit behavior.
 - Process-instance flag validation should accept the current `*cobra.Command` when it needs `Flags().Changed(...)`; referencing package-level command variables from shared validation creates Go initialization cycles.
@@ -109,4 +110,27 @@ Started: 2026-04-25 15:48:48
 - `go test ./cmd -run 'Test(GetProcessInstancePagingFlow|CancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow|DeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow|ResolvePISearchSize)$' -count=1` passed.
 - `go test ./cmd -count=1` passed.
 - The existing page-size resolver already keys off `Flags().Changed("batch-size")`; this iteration added focused behavior coverage and command examples showing `--batch-size` and `--limit` together.
+---
+
+---
+## Iteration 5 - 2026-04-25 17:39:53 CEST
+**User Story**: User Story 3 - Reject Ambiguous or Invalid Flag Combinations
+**Tasks Completed**:
+- [x] T018: Add explicit help/parse regression coverage proving `--count` is absent or rejected on affected command paths
+- [x] T019: Add regression coverage confirming `--total` with `--limit` is rejected as mutually exclusive
+- [x] T020: Ensure `--limit` validation is search-mode-only and rejects `--total` combinations
+- [x] T021: Align standard invalid-argument handling for removed and invalid flags without adding `--count` aliases
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/140-pi-limit-batch-size/tasks.md
+- specs/140-pi-limit-batch-size/progress.md
+**Learnings**:
+- `go test ./cmd -run 'Test(GetProcessInstanceHelp_DocumentsPagingAndAutomationSurface|CancelHelp_DocumentsConfirmationAndNoWaitSemantics|DeleteHelp_DocumentsDestructiveConfirmationPaths|GetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags|CancelProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags|DeleteProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags)$' -count=1` passed.
+- `go test ./cmd -count=1` passed.
+- Existing validation in `validatePISearchFlags` already rejects `--total --limit`, while keyed-mode validation rejects `--key --limit` before command execution.
+- The affected process-instance leaf commands already use `useInvalidInputFlagErrors`, so removed `--count` parse failures stay on the repository invalid-input path without aliases.
 ---
