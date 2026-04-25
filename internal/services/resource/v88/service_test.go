@@ -247,6 +247,44 @@ func TestService_Deploy(t *testing.T) {
 	}
 }
 
+func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
+	ctx := context.Background()
+	resourceName := "demo.bpmn"
+	resourceData := []byte("<xml>demo</xml>")
+	cfg := testConfigWithTenant(t, "")
+	svc, err := New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
+			assertMultipartDeploymentRequest(t, contentType, body, config.DefaultTenant, resourceName, resourceData)
+			return &camundav88.CreateDeploymentResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/deployments", http.StatusOK, "200 OK"),
+				JSON200: &camundav88.DeploymentResult{
+					DeploymentKey: "deployment-1",
+					TenantId:      config.DefaultTenant,
+				},
+			}, nil
+		},
+		deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+		getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+	}, &mockProcessDefinitionClient{
+		getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
+			t.Fatalf("unexpected confirmation poll")
+			return nil, nil
+		},
+	}))
+	require.NoError(t, err)
+
+	deployment, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, services.WithNoWait())
+
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultTenant, deployment.TenantId)
+}
+
 // TestService_Delete documents the explicit allow-inconsistent gate around
 // resource deletion. The skip case is important because the public facade may
 // dry-run or cancel process instances before allowing this destructive call.

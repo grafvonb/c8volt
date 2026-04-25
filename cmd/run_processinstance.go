@@ -54,6 +54,7 @@ var runProcessInstanceCmd = &cobra.Command{
 		}
 		var datas []process.ProcessInstanceData
 		var contextForErr string
+		tenantID := cfg.App.TargetTenant()
 		switch {
 		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
@@ -68,7 +69,7 @@ var runProcessInstanceCmd = &cobra.Command{
 				datas = append(datas, process.ProcessInstanceData{
 					ProcessDefinitionSpecificId: pdID,
 					Variables:                   vars,
-					TenantId:                    cfg.App.Tenant,
+					TenantId:                    tenantID,
 				})
 			}
 			contextForErr = fmt.Sprintf("process definition ID(s) %v", flagRunPIProcessDefinitionKey)
@@ -84,7 +85,7 @@ var runProcessInstanceCmd = &cobra.Command{
 					BpmnProcessId:            bpmnID,
 					ProcessDefinitionVersion: flagRunPIProcessDefinitionVersion, // 0 = latest
 					Variables:                vars,
-					TenantId:                 cfg.App.Tenant,
+					TenantId:                 tenantID,
 				})
 			}
 			contextForErr = fmt.Sprintf("BPMN process ID(s) %v", flagRunPIProcessDefinitionBpmnProcessIds)

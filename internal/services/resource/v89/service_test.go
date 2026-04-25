@@ -166,6 +166,42 @@ func TestService_Deploy(t *testing.T) {
 	})
 }
 
+func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
+	ctx := context.Background()
+	resourceName := "demo.bpmn"
+	resourceData := []byte("<xml>demo</xml>")
+	svc := newTestService(t, "", &mockResourceClient{
+		createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
+			assertMultipartDeploymentRequest(t, contentType, body, config.DefaultTenant, resourceName, resourceData)
+			return &camundav89.CreateDeploymentResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/deployments", http.StatusOK, "200 OK"),
+				JSON200: &camundav89.DeploymentResult{
+					DeploymentKey: "deployment-1",
+					TenantId:      config.DefaultTenant,
+				},
+			}, nil
+		},
+		deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+		getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+	}, &mockProcessDefinitionClient{
+		getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error) {
+			t.Fatalf("unexpected confirmation poll")
+			return nil, nil
+		},
+	})
+
+	deployment, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, services.WithNoWait())
+
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultTenant, deployment.TenantId)
+}
+
 // TestService_Delete documents the allow-inconsistent guard around v8.9
 // resource deletion, preserving the same destructive-operation safety contract
 // as older supported Camunda versions.

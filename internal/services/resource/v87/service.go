@@ -112,7 +112,7 @@ func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.
 // units are multipart "resources" parts; v8.7 is treated as strongly consistent after a 200 OK response.
 func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
 	_ = services.ApplyCallOptions(opts)
-	tenantId, vtenantId := s.cfg.App.Tenant, s.cfg.App.ViewTenant()
+	tenantId, vtenantId := s.cfg.App.TargetTenant(), s.cfg.App.ViewTenant()
 
 	contentType, body, err := common.BuildDeploymentBody(tenantId, units)
 	if err != nil {

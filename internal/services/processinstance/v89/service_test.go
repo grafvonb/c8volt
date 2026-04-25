@@ -97,6 +97,37 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		assert.NotEmpty(t, creation.StartDate)
 	})
 
+	t.Run("DefaultsEmptyTenantToDefaultTenant", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.App.Tenant = ""
+		svc := newTestService(t, cfg, &mockCamundaClient{
+			createProcessInstanceWithResponse: func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
+				payload := marshalJSON(t, body)
+				assert.Contains(t, payload, `"processDefinitionId":"demo"`)
+				assert.Contains(t, payload, `"tenantId":"\u003cdefault\u003e"`)
+				return &camundav89.CreateProcessInstanceResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.CreateProcessInstanceResult{
+						ProcessDefinitionId:      "demo",
+						ProcessDefinitionKey:     "proc-key",
+						ProcessDefinitionVersion: 7,
+						ProcessInstanceKey:       "123",
+						TenantId:                 config.DefaultTenant,
+					},
+				}, nil
+			},
+			searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo"}, services.WithNoWait())
+
+		require.NoError(t, err)
+		assert.Equal(t, config.DefaultTenant, creation.TenantId)
+	})
+
 	t.Run("SuccessWaitsForActiveState", func(t *testing.T) {
 		getCalls := 0
 		svc := newTestService(t, waitTestConfig(), &mockCamundaClient{

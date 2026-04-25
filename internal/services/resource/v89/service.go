@@ -96,7 +96,7 @@ func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.
 
 func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	tenantID, vtenantID := s.cfg.App.Tenant, s.cfg.App.ViewTenant()
+	tenantID, vtenantID := s.cfg.App.TargetTenant(), s.cfg.App.ViewTenant()
 
 	contentType, body, err := common.BuildDeploymentBody(tenantID, units)
 	if err != nil {

@@ -61,7 +61,7 @@ var deployProcessDefinitionCmd = &cobra.Command{
 
 		if flagDeployPDWithRun {
 			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
-			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, res, cfg.App.Tenant)
+			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, res, cfg.App.TargetTenant())
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}

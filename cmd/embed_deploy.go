@@ -87,7 +87,7 @@ var embedDeployCmd = &cobra.Command{
 
 		if flagEmbedDeployWithRun {
 			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
-			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, units, cfg.App.Tenant)
+			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, units, cfg.App.TargetTenant())
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}

@@ -96,6 +96,9 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
 	cCfg := services.ApplyCallOptions(opts)
+	if data.TenantId == "" {
+		data.TenantId = s.cfg.App.TargetTenant()
+	}
 	s.log.Debug(fmt.Sprintf("creating new process instance with process definition id %s", data.ProcessDefinitionSpecificId))
 	body, err := toProcessInstanceCreationInstruction(data)
 	if err != nil {

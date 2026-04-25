@@ -171,6 +171,36 @@ func TestService_CreateProcessInstance(t *testing.T) {
 	}
 }
 
+func TestService_CreateProcessInstance_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
+	ctx := context.Background()
+	cfg := testConfig()
+	cfg.App.Tenant = ""
+	svc := newTestService(t, cfg, &mockCamundaClient{
+		postProcessInstancesWithResponse: func(ctx context.Context, body camundav87.PostProcessInstancesJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesResponse, error) {
+			require.NotNil(t, body.TenantId)
+			assert.Equal(t, config.DefaultTenant, *body.TenantId)
+			return &camundav87.PostProcessInstancesResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+				JSON200: &camundav87.CreateProcessInstanceResult{
+					ProcessDefinitionId:      new("demo"),
+					ProcessDefinitionVersion: new(int32(7)),
+					TenantId:                 new(config.DefaultTenant),
+					Variables:                &map[string]interface{}{},
+				},
+			}, nil
+		},
+		postProcessInstancesProcessInstanceKeyCancellationWithResponse: func(ctx context.Context, processInstanceKey string, body camundav87.PostProcessInstancesProcessInstanceKeyCancellationJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostProcessInstancesProcessInstanceKeyCancellationResponse, error) {
+			t.Fatalf("unexpected cancellation call")
+			return nil, nil
+		},
+	}, newStrictOperateClient(t))
+
+	creation, err := svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo"}, services.WithNoWait())
+
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultTenant, creation.TenantId)
+}
+
 func TestService_GetProcessInstance(t *testing.T) {
 	ctx := context.Background()
 
