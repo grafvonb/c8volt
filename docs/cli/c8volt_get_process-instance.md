@@ -27,9 +27,10 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active
   ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
-  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --batch-size 250
+  ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --state active --auto-confirm
-  ./c8volt --json get pi --state active --count 250
+  ./c8volt --json get pi --state active --batch-size 250
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
@@ -41,9 +42,9 @@ c8volt get process-instance [flags]
 ### Options
 
 ```
+  -n, --batch-size int32            number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
       --children-only               show only child process instances, meaning instances that have a parent key set
-  -n, --count int32                 number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
@@ -52,6 +53,7 @@ c8volt get process-instance [flags]
   -h, --help                        help for process-instance
       --incidents-only              show only process instances that have incidents
   -k, --key strings                 process instance key(s) to fetch
+  -l, --limit int32                 maximum number of matching process instances to return or process across all pages
       --no-incidents-only           show only process instances that have no incidents
       --no-worker-limit             disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --orphan-children-only        show only child instances where parent key is set but the parent process instance does not exist (anymore)
@@ -67,7 +69,7 @@ c8volt get process-instance [flags]
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                       return only the numeric total of matching process instances; capped backend totals stay lower bounds
       --with-age                    include process instance age in one-line output and JSON meta
-  -w, --workers int                 maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands

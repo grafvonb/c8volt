@@ -24,7 +24,7 @@ c8volt delete [flags]
 
 ```
   ./c8volt delete pi --key 2251799813711967 --force
-  ./c8volt delete pi --state completed --count 200 --auto-confirm
+  ./c8volt delete pi --state completed --batch-size 200 --auto-confirm
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm
 ```
 

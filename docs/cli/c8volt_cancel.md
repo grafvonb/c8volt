@@ -25,7 +25,7 @@ c8volt cancel [flags]
 ```
   ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --count 200 --auto-confirm
+  ./c8volt cancel pi --state active --batch-size 200 --auto-confirm
 ```
 
 ### Options

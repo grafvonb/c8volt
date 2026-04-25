@@ -57,6 +57,11 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
 	require.Contains(t, output, "capped backend totals stay lower bounds")
 	require.Contains(t, output, "--auto-confirm")
+	require.Contains(t, output, "--batch-size int32")
+	require.Contains(t, output, "number of process instances to fetch per page")
+	require.Contains(t, output, "--limit int32")
+	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
+	require.NotContains(t, output, "--count")
 }
 
 // Verifies search-mode get process-instance sends the expected filter and pagination request shape.
@@ -72,7 +77,7 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 		"--json",
 		"get", "process-instance",
 		"--state", "active",
-		"--count", "5",
+		"--batch-size", "5",
 	)
 
 	filter := decodeCapturedPISearchFilter(t, requests)
@@ -132,7 +137,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 			"--config", cfgPath,
 			"--tenant", "tenant",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 			"--total",
 		)
 
@@ -202,6 +207,51 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 
 			require.Equal(t, exitcode.InvalidArgs, code)
 			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "removed count flag is rejected",
+			helper: "TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper",
+			want:   "unknown flag: --count",
+		},
+		{
+			name:   "non-positive limit is rejected",
+			helper: "TestGetProcessInstanceCommand_RejectsInvalidLimitHelper",
+			want:   "--limit must be positive integer",
+		},
+		{
+			name:   "limit cannot be combined with key",
+			helper: "TestGetProcessInstanceCommand_RejectsLimitWithKeyHelper",
+			want:   "--limit cannot be combined with --key",
+		},
+		{
+			name:   "limit cannot be combined with total",
+			helper: "TestGetProcessInstanceCommand_RejectsLimitWithTotalHelper",
+			want:   "--total cannot be combined with --limit",
+		},
+		{
+			name:   "invalid batch size is rejected",
+			helper: "TestGetProcessInstanceCommand_RejectsInvalidBatchSizeHelper",
+			want:   "invalid value for --batch-size",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
 			require.Contains(t, output, tt.want)
 		})
 	}
@@ -755,19 +805,19 @@ func TestResolvePISearchSize(t *testing.T) {
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	cmd := getProcessInstanceCmd
-	resetPISearchCountFlag(t, cmd)
+	resetPISearchBatchSizeFlag(t, cmd)
 
-	t.Run("uses shared config default when count flag is unchanged", func(t *testing.T) {
-		resetPISearchCountFlag(t, cmd)
+	t.Run("uses shared config default when batch-size flag is unchanged", func(t *testing.T) {
+		resetPISearchBatchSizeFlag(t, cmd)
 		cfg := &config.Config{}
 		cfg.App.ProcessInstancePageSize = 250
 
 		require.Equal(t, int32(250), resolvePISearchSize(cmd, cfg))
 	})
 
-	t.Run("uses count override when the flag is changed", func(t *testing.T) {
-		resetPISearchCountFlag(t, cmd)
-		require.NoError(t, cmd.Flags().Set("count", "125"))
+	t.Run("uses batch-size override when the flag is changed", func(t *testing.T) {
+		resetPISearchBatchSizeFlag(t, cmd)
+		require.NoError(t, cmd.Flags().Set("batch-size", "125"))
 		cfg := &config.Config{}
 		cfg.App.ProcessInstancePageSize = 250
 
@@ -776,7 +826,7 @@ func TestResolvePISearchSize(t *testing.T) {
 
 	t.Run("falls back to repository default for invalid config values", func(t *testing.T) {
 		resetProcessInstanceCommandGlobals()
-		resetPISearchCountFlag(t, cmd)
+		resetPISearchBatchSizeFlag(t, cmd)
 		cfg := &config.Config{}
 		cfg.App.ProcessInstancePageSize = 0
 
@@ -785,6 +835,48 @@ func TestResolvePISearchSize(t *testing.T) {
 }
 
 func TestGetProcessInstancePagingFlow(t *testing.T) {
+	t.Run("limit truncates results across pages and stops without continuation prompt", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":5,"hasMoreTotalItems":true}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"126","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":5,"hasMoreTotalItems":true}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		promptCalls := 0
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			promptCalls++
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"--auto-confirm",
+			"get", "process-instance",
+			"--state", "active",
+			"--batch-size", "2",
+			"--limit", "3",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 2)
+		require.EqualValues(t, 2, pages[0]["limit"])
+		require.EqualValues(t, 0, pages[0]["from"])
+		require.EqualValues(t, 2, pages[1]["from"])
+		require.Zero(t, promptCalls)
+		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: yes, next step: limit-reached")
+		require.Contains(t, output, "detail: stopped after reaching limit of 3 process instance(s)")
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "124")
+		require.Contains(t, output, "125")
+		require.NotContains(t, output, "126")
+	})
+
 	t.Run("uses shared config default and prompts before the next page", func(t *testing.T) {
 		var requests []string
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
@@ -823,7 +915,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Contains(t, output, "125")
 	})
 
-	t.Run("count override and auto-confirm fetch every page without prompt", func(t *testing.T) {
+	t.Run("batch-size override and auto-confirm fetch every page without prompt", func(t *testing.T) {
 		var requests []string
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
 			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
@@ -846,7 +938,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--verbose",
 			"--auto-confirm",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -857,6 +949,69 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.Zero(t, promptCalls)
 		require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
 		require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+	})
+
+	t.Run("short n controls per-page batch size", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"get", "process-instance",
+			"--state", "active",
+			"-n", "4",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 1)
+		require.EqualValues(t, 4, pages[0]["limit"])
+		require.Contains(t, output, "page size: 4, current page: 1, total so far: 1, more matches: no, next step: complete")
+		require.Contains(t, output, "123")
+	})
+
+	t.Run("batch-size and limit remain independent when limit is smaller", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"126","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":6,"hasMoreTotalItems":true}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		promptCalls := 0
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			promptCalls++
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--verbose",
+			"--auto-confirm",
+			"get", "process-instance",
+			"--state", "active",
+			"--batch-size", "4",
+			"--limit", "2",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 1)
+		require.EqualValues(t, 4, pages[0]["limit"])
+		require.Zero(t, promptCalls)
+		require.Contains(t, output, "page size: 4, current page: 2, total so far: 2, more matches: yes, next step: limit-reached")
+		require.Contains(t, output, "123")
+		require.Contains(t, output, "124")
+		require.NotContains(t, output, "125")
+		require.NotContains(t, output, "126")
 	})
 
 	t.Run("json mode fetches every page without prompt", func(t *testing.T) {
@@ -881,7 +1036,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--tenant", "tenant",
 			"--json",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -920,7 +1075,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--verbose",
 			"--automation",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -960,7 +1115,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--automation",
 			"--json",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -996,7 +1151,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--automation",
 			"--json",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -1029,7 +1184,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--tenant", "tenant",
 			"--verbose",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -1055,7 +1210,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 			"--tenant", "tenant",
 			"--verbose",
 			"get", "process-instance",
-			"--count", "2",
+			"--batch-size", "2",
 		)
 
 		pages := decodeCapturedPISearchPages(t, requests)
@@ -1175,7 +1330,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 					"get", "process-instance",
 					"--children-only",
 					"--incidents-only",
-					"--count", "2",
+					"--batch-size", "2",
 				)
 
 				pages := decodeCapturedPISearchPages(t, requests)
@@ -1344,6 +1499,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize
+	flagGetPILimit = 0
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
@@ -1362,10 +1518,10 @@ func resetProcessInstanceCommandGlobals() {
 	confirmCmdOrAbortFn = confirmCmdOrAbort
 }
 
-func resetPISearchCountFlag(t *testing.T, cmd *cobra.Command) {
+func resetPISearchBatchSizeFlag(t *testing.T, cmd *cobra.Command) {
 	t.Helper()
 
-	flag := cmd.Flags().Lookup("count")
+	flag := cmd.Flags().Lookup("batch-size")
 	require.NotNil(t, flag)
 	require.NoError(t, flag.Value.Set("1000"))
 	flag.Changed = false
@@ -1392,6 +1548,66 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	return string(output), exitErr.ExitCode()
+}
+
+func TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--count", "2"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--limit", "0"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--limit", "1"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_RejectsLimitWithTotalHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--total", "--limit", "10"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_RejectsInvalidBatchSizeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--batch-size", "0"}
+
+	Execute()
 }
 
 // Helper-process entrypoint for negative relative-day validation.

@@ -35,6 +35,7 @@ var (
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
+	flagGetPILimit                int32
 )
 
 // command options
@@ -56,9 +57,10 @@ var getProcessInstanceCmd = &cobra.Command{
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
-  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --batch-size 250
+  ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --state active --auto-confirm
-  ./c8volt --json get pi --state active --count 250
+  ./c8volt --json get pi --state active --batch-size 250
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
@@ -84,7 +86,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			fail(invalidFlagValuef("--workers must be positive integer"))
 		}
-		if err := validatePISearchFlags(); err != nil {
+		if err := validatePISearchFlags(cmd); err != nil {
 			fail(err)
 		}
 		filterFlagsSet := hasPISearchFilterFlags()
@@ -108,6 +110,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
+				fail(err)
+			}
+			if err := validatePIKeyedModeLimit(lk); err != nil {
 				fail(err)
 			}
 			if flagGetPITotal {
@@ -158,6 +163,7 @@ var getProcessInstanceCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getProcessInstanceCmd)
+	useInvalidInputFlagErrors(getProcessInstanceCmd)
 
 	fs := getProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
@@ -165,7 +171,8 @@ func init() {
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals stay lower bounds")
 
 	// filtering options
@@ -180,7 +187,7 @@ func init() {
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
@@ -201,6 +208,7 @@ const (
 	processInstanceContinuationCompleted       processInstanceContinuationState = "completed"
 	processInstanceContinuationPartialComplete processInstanceContinuationState = "partial_complete"
 	processInstanceContinuationWarningStop     processInstanceContinuationState = "warning_stop"
+	processInstanceContinuationLimitReached    processInstanceContinuationState = "limit_reached"
 )
 
 // processInstanceProgressSummary describes the current pagination state for user-facing progress output.
@@ -333,7 +341,7 @@ func pickPISearchSize() int32 {
 }
 
 func resolvePISearchSize(cmd *cobra.Command, cfg *config.Config) int32 {
-	if cmd != nil && cmd.Flags().Changed("count") {
+	if cmd != nil && cmd.Flags().Changed("batch-size") {
 		return pickPISearchSize()
 	}
 	if cfg != nil && cfg.App.ProcessInstancePageSize > 0 && cfg.App.ProcessInstancePageSize <= consts.MaxPISearchSize {
@@ -364,13 +372,40 @@ func pickPIContinuationState(overflow process.ProcessInstanceOverflowState, auto
 }
 
 func newPIProgressSummary(page process.ProcessInstancePage, cumulative int, autoConfirm bool) processInstanceProgressSummary {
+	continuationState := pickPIContinuationState(page.OverflowState, autoConfirm)
+	if isPILimitReached(cumulative) {
+		continuationState = processInstanceContinuationLimitReached
+	}
 	return processInstanceProgressSummary{
 		PageSize:          page.Request.Size,
 		CurrentPageCount:  len(page.Items),
 		CumulativeCount:   cumulative,
 		OverflowState:     page.OverflowState,
-		ContinuationState: pickPIContinuationState(page.OverflowState, autoConfirm),
+		ContinuationState: continuationState,
 	}
+}
+
+func isPILimitReached(cumulative int) bool {
+	return flagGetPILimit > 0 && cumulative >= int(flagGetPILimit)
+}
+
+func limitPIItems(items []process.ProcessInstance, cumulative int) []process.ProcessInstance {
+	if flagGetPILimit <= 0 {
+		return items
+	}
+	remaining := int(flagGetPILimit) - cumulative
+	if remaining <= 0 {
+		return nil
+	}
+	if len(items) > remaining {
+		return items[:remaining]
+	}
+	return items
+}
+
+func limitPIPageItems(page process.ProcessInstancePage, cumulative int) process.ProcessInstancePage {
+	page.Items = limitPIItems(page.Items, cumulative)
+	return page
 }
 
 func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (process.ProcessInstances, bool, error) {
@@ -402,6 +437,8 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		if err != nil {
 			return process.ProcessInstances{}, false, err
 		}
+		filtered.Items = limitPIItems(filtered.Items, processedTotal)
+		filtered.Total = int32(len(filtered.Items))
 		if incremental {
 			for _, item := range filtered.Items {
 				if err := processInstanceView(cmd, item); err != nil {
@@ -414,11 +451,13 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		}
 		processedTotal += len(filtered.Items)
 
-		summary := newPIProgressSummary(page, processedTotal, autoContinue)
+		summaryPage := page
+		summaryPage.Items = filtered.Items
+		summary := newPIProgressSummary(summaryPage, processedTotal, autoContinue)
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
-		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return printFoundAndReturn()
 		case processInstanceContinuationAutoContinue:
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
@@ -530,12 +569,13 @@ func processPISearchPagesWithAction(
 			return reports, nil
 		}
 
-		result, err := processPage(page, firstPage)
+		limitedPage := limitPIPageItems(page, cumulative)
+		result, err := processPage(limitedPage, firstPage)
 		if err != nil {
 			if !firstPage && isCmdAborted(err) {
 				printPISearchProgress(cmd, processInstanceProgressSummary{
 					PageSize:          page.Request.Size,
-					CurrentPageCount:  len(page.Items),
+					CurrentPageCount:  len(limitedPage.Items),
 					CumulativeCount:   cumulative,
 					OverflowState:     page.OverflowState,
 					ContinuationState: processInstanceContinuationPartialComplete,
@@ -547,17 +587,17 @@ func processPISearchPagesWithAction(
 
 		impact := result.Impact
 		reports = append(reports, result.Reports...)
-		cumulative += len(page.Items)
+		cumulative += len(limitedPage.Items)
 		if impact.Affected > 0 {
 			cumulativeAffected += impact.Affected
 		} else {
-			cumulativeAffected += len(page.Items)
+			cumulativeAffected += len(limitedPage.Items)
 		}
-		summary := newPIProgressSummary(page, cumulative, shouldImplicitlyConfirm(cmd))
+		summary := newPIProgressSummary(limitedPage, cumulative, shouldImplicitlyConfirm(cmd))
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
-		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return reports, nil
 		case processInstanceContinuationAutoContinue:
 			firstPage = false
@@ -661,6 +701,8 @@ func describePIContinuationState(state processInstanceContinuationState) string 
 		return "partial-complete"
 	case processInstanceContinuationWarningStop:
 		return "warning-stop"
+	case processInstanceContinuationLimitReached:
+		return "limit-reached"
 	default:
 		return "complete"
 	}
@@ -676,12 +718,24 @@ func describePIProgressDetail(summary processInstanceProgressSummary) string {
 		return fmt.Sprintf("detail: stopped after %d processed process instance(s); remaining matches were left untouched", summary.CumulativeCount)
 	case processInstanceContinuationWarningStop:
 		return fmt.Sprintf("warning: stopped after %d processed process instance(s) because more matching process instances may remain", summary.CumulativeCount)
+	case processInstanceContinuationLimitReached:
+		return fmt.Sprintf("detail: stopped after reaching limit of %d process instance(s)", flagGetPILimit)
 	default:
 		return "detail: no additional matching process instances remain"
 	}
 }
 
-func validatePISearchFlags() error {
+func validatePISearchFlags(cmds ...*cobra.Command) error {
+	var cmd *cobra.Command
+	if len(cmds) > 0 {
+		cmd = cmds[0]
+	}
+	if flagGetPISize <= 0 || flagGetPISize > consts.MaxPISearchSize {
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPISize, consts.MaxPISearchSize)
+	}
+	if flagGetPILimit < 0 || (flagGetPILimit == 0 && isPILimitFlagChanged(cmd)) {
+		return invalidFlagValuef("--limit must be positive integer")
+	}
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		if _, ok := process.ParseState(flagGetPIState); !ok {
 			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
@@ -689,6 +743,8 @@ func validatePISearchFlags() error {
 	}
 	if flagGetPITotal {
 		switch {
+		case flagGetPILimit > 0:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --limit")
 		case flagViewAsJson:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
 		case flagViewKeysOnly:
@@ -753,6 +809,23 @@ func validatePISearchFlags() error {
 		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
 	}
 	return nil
+}
+
+func isPILimitFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("limit")
+}
+
+func validatePIKeyedModeLimit(keyCount int) error {
+	if keyCount > 0 && flagGetPILimit > 0 {
+		return mutuallyExclusiveFlagsf("--limit cannot be combined with --key")
+	}
+	return nil
+}
+
+func useInvalidInputFlagErrors(cmd *cobra.Command) {
+	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return invalidInputError(err)
+	})
 }
 
 func validatePISearchVersionSupport(cfg *config.Config) error {

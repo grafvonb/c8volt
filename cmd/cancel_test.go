@@ -38,7 +38,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Cancel running process instances",
 		"--auto-confirm",
 		"waits for the observed cancellation",
-		"./c8volt cancel pi --state active --count 200 --auto-confirm",
+		"./c8volt cancel pi --state active --batch-size 200 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -47,9 +47,14 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Use --force when a selected child must be escalated",
 		"Use --auto-confirm for unattended destructive runs",
 		"verify later with `get pi` or `expect pi`",
+		"number of process instances to process per page",
+		"maximum number of matching process instances to process across all pages",
 		"./c8volt expect pi --key <process-instance-key> --state canceled",
-	}, nil)
+		"./c8volt cancel pi --state active --batch-size 250 --limit 25",
+	}, []string{"--count"})
 	require.Contains(t, output, "--force")
+	require.Contains(t, output, "--batch-size int32")
+	require.Contains(t, output, "--limit int32")
 }
 
 // Verifies search-mode cancellation builds the expected date-filtered search request and no-ops cleanly on empty matches.
@@ -293,7 +298,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -534,7 +539,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -549,6 +554,171 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	}, cancelled.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
+}
+
+func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
+	var requests []string
+	var cancelled safeSlice[string]
+	searchPage := 0
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if key, ok := filter["processInstanceKey"]; ok && key != nil {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}]}`, key.(string))))
+					return
+				}
+				if _, ok := filter["parentProcessInstanceKey"]; ok {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			switch searchPage {
+			case 0:
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"201","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"processInstanceKey":"202","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":5,"hasMoreTotalItems":true}}`))
+			case 1:
+				_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"203","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"processInstanceKey":"204","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":5,"hasMoreTotalItems":true}}`))
+			default:
+				t.Fatalf("unexpected top-level search request %d", searchPage)
+			}
+			searchPage++
+		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/201/cancellation" || r.URL.Path == "/v2/process-instances/202/cancellation" || r.URL.Path == "/v2/process-instances/203/cancellation"):
+			cancelled.Append(r.URL.Path)
+			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	promptCalls := 0
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		promptCalls++
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"--auto-confirm",
+		"cancel", "process-instance",
+		"--state", "active",
+		"--no-wait",
+		"--batch-size", "2",
+		"--limit", "3",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Len(t, pages, 2)
+	require.EqualValues(t, 2, pages[0]["limit"])
+	require.EqualValues(t, 2, pages[1]["from"])
+	require.Equal(t, 1, promptCalls)
+	require.ElementsMatch(t, []string{
+		"/v2/process-instances/201/cancellation",
+		"/v2/process-instances/202/cancellation",
+		"/v2/process-instances/203/cancellation",
+	}, cancelled.Snapshot())
+	require.NotContains(t, strings.Join(cancelled.Snapshot(), "\n"), "204")
+	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: yes, next step: limit-reached")
+}
+
+func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
+	var requests []string
+	var cancelled safeSlice[string]
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests = append(requests, string(body))
+
+			searchBody := decodeCapturedPISearchRequest(t, string(body))
+			filter, _ := searchBody["filter"].(map[string]any)
+			if filter != nil {
+				if key, ok := filter["processInstanceKey"]; ok && key != nil {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}]}`, key.(string))))
+					return
+				}
+				if _, ok := filter["parentProcessInstanceKey"]; ok {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"items":[]}`))
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"processInstanceKey":"401","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"processInstanceKey":"402","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"processInstanceKey":"403","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"processInstanceKey":"404","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":6,"hasMoreTotalItems":true}}`))
+		case r.Method == http.MethodPost && (r.URL.Path == "/v2/process-instances/401/cancellation" || r.URL.Path == "/v2/process-instances/402/cancellation"):
+			cancelled.Append(r.URL.Path)
+			w.WriteHeader(http.StatusAccepted)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			if strings.Contains(key, "/") {
+				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	promptCalls := 0
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		promptCalls++
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--verbose",
+		"--auto-confirm",
+		"cancel", "process-instance",
+		"--state", "active",
+		"--no-wait",
+		"--batch-size", "4",
+		"--limit", "2",
+	)
+
+	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	require.Len(t, pages, 1)
+	require.EqualValues(t, 4, pages[0]["limit"])
+	require.Equal(t, 1, promptCalls)
+	require.ElementsMatch(t, []string{
+		"/v2/process-instances/401/cancellation",
+		"/v2/process-instances/402/cancellation",
+	}, cancelled.Snapshot())
+	require.NotContains(t, strings.Join(cancelled.Snapshot(), "\n"), "403")
+	require.Contains(t, output, "page size: 4, current page: 2, total so far: 2, more matches: yes, next step: limit-reached")
 }
 
 func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
@@ -621,7 +791,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -701,7 +871,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -770,7 +940,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -828,7 +998,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		"cancel", "process-instance",
 		"--key", "301",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -922,6 +1092,41 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndRelativeDayFilters(t *testing
 	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+func TestCancelProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "removed count flag is rejected",
+			helper: "TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper",
+			want:   "unknown flag: --count",
+		},
+		{
+			name:   "non-positive limit is rejected",
+			helper: "TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper",
+			want:   "--limit must be positive integer",
+		},
+		{
+			name:   "limit cannot be combined with key",
+			helper: "TestCancelProcessInstanceCommand_RejectsLimitWithKeyHelper",
+			want:   "--limit cannot be combined with --key",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeCancelProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
 // Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
 func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
@@ -972,6 +1177,45 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return out, nil
 }
 
+func TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--count", "2"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--limit", "-1"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--key", "123", "--limit", "1"}
+
+	Execute()
+}
+
 // Helper-process entrypoint for the search scaffold failure test.
 func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -994,7 +1238,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "cancel", "process-instance", "--state", "active", "--no-wait", "--count", "2"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "2"}
 
 	Execute()
 }

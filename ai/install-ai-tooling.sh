@@ -1,26 +1,73 @@
 #!/usr/bin/env bash
 #
-# Installs a private ai-tooling version into this repository.
+# Purpose:
+#   Install a private ai-tooling version into a target repository.
 #
-# Usage examples:
-#   ./ai/install-ai-tooling.sh
-#   ./ai/install-ai-tooling.sh v0.2.0
+# Usage:
+#   ./ai/install-ai-tooling.sh [--force] [tag]
 #   AI_TOOLING_REPO=/path/to/local/ai-tooling ./ai/install-ai-tooling.sh
+#   AI_TOOLING_TARGET_REPO=/path/to/consumer AI_TOOLING_REPO=/path/to/ai-tooling ./ai/install-ai-tooling.sh
 #   AI_TOOLING_REPO=git@github.com:your-org/private-ai-tooling.git ./ai/install-ai-tooling.sh
 #
-# This script only runs on a clean git worktree. After a successful install,
-# it records the installed ai-tooling tag in ai/installed-ai-tooling-version,
-# writes a tracked install manifest, and commits that metadata automatically.
+# Parameters:
+#   --force  Allow overwriting locally drifted ai-tooling-managed files.
+#   tag      Optional ai-tooling tag or branch to install. If omitted, the
+#            latest tag from AI_TOOLING_REPO is used.
+#
+# Environment:
+#   AI_TOOLING_REPO          Local ai-tooling checkout or remote git URL.
+#                            Defaults to ../../ai-tooling relative to the
+#                            target repository.
+#   AI_TOOLING_TARGET_REPO   Repository to install into. Defaults to the parent
+#                            of this script's ai/ directory.
+#   AI_TOOLING_ALLOW_DRIFT   Set to 1 to behave like --force.
+#
+# Notes:
+#   The target repository must have a clean git worktree. After a successful
+#   install, this script records the installed tag, writes an install manifest,
+#   validates copied assets, and commits the resulting changes automatically.
 
 set -euo pipefail
 
-if [ $# -gt 1 ]; then
-    echo "Usage: $0 [tag]" >&2
-    exit 1
+FORCE_INSTALL=0
+TAG_ARG=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --force)
+            FORCE_INSTALL=1
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--force] [tag]" >&2
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            echo "Usage: $0 [--force] [tag]" >&2
+            exit 1
+            ;;
+        *)
+            if [ -n "$TAG_ARG" ]; then
+                echo "Usage: $0 [--force] [tag]" >&2
+                exit 1
+            fi
+            TAG_ARG="$1"
+            shift
+            ;;
+    esac
+done
+
+if [ "${AI_TOOLING_ALLOW_DRIFT:-0}" = "1" ]; then
+    FORCE_INSTALL=1
 fi
 
 SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
+if [ -n "${AI_TOOLING_TARGET_REPO:-}" ]; then
+    REPO_ROOT="$(CDPATH="" cd "$AI_TOOLING_TARGET_REPO" && pwd)"
+else
+    REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
+fi
 DEFAULT_LOCAL_AI_TOOLING_REPO="$(CDPATH="" cd "$REPO_ROOT/../.." && pwd)/ai-tooling"
 VERSION_MARKER_FILE="$REPO_ROOT/ai/installed-ai-tooling-version"
 MANIFEST_FILE="$REPO_ROOT/ai/installed-ai-tooling-manifest.txt"
@@ -113,13 +160,16 @@ write_install_manifest() {
     append_file_if_present "$REPO_ROOT/.specify/extensions.yml" "$list_file"
     append_file_if_present "$REPO_ROOT/.specify/extension-catalogs.yml" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/.specify/integrations" "$list_file"
+    append_tree_files_if_present "$REPO_ROOT/.specify/workflows" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/.specify/scripts" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/.specify/templates" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/.specify/presets" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/.specify/extensions" "$list_file"
     append_file_if_present "$REPO_ROOT/.specify/memory/constitution.md" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/extensions" "$list_file"
+    append_tree_files_if_present "$REPO_ROOT/integrations" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/presets" "$list_file"
+    append_tree_files_if_present "$REPO_ROOT/workflows" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/ai" "$list_file"
     append_file_if_present "$REPO_ROOT/scripts/ralph/ralph.sh" "$list_file"
     append_file_if_present "$REPO_ROOT/scripts/ralph/doctor.sh" "$list_file"
@@ -140,6 +190,54 @@ write_install_manifest() {
             printf '%s %s\n' "$relative_path" "$(hash_file "$REPO_ROOT/$relative_path")"
         done < "$sorted_file"
     } > "$MANIFEST_FILE"
+}
+
+check_installed_manifest_drift() {
+    local drift_file="$1"
+    local relative_path=""
+    local expected_hash=""
+    local current_hash=""
+
+    : > "$drift_file"
+
+    if [ ! -f "$MANIFEST_FILE" ]; then
+        return 0
+    fi
+
+    while read -r relative_path expected_hash; do
+        case "$relative_path" in
+            ""|\#*|tag=*|source=*|commit=*|synced_at_utc=*)
+                continue
+                ;;
+        esac
+
+        if [ -z "${expected_hash:-}" ]; then
+            continue
+        fi
+
+        if [ ! -f "$REPO_ROOT/$relative_path" ]; then
+            printf 'missing %s\n' "$relative_path" >> "$drift_file"
+            continue
+        fi
+
+        current_hash="$(hash_file "$REPO_ROOT/$relative_path")"
+        if [ "$current_hash" != "$expected_hash" ]; then
+            printf 'modified %s\n' "$relative_path" >> "$drift_file"
+        fi
+    done < "$MANIFEST_FILE"
+
+    if [ -s "$drift_file" ]; then
+        if [ "$FORCE_INSTALL" -eq 1 ]; then
+            echo "Warning: overwriting locally drifted ai-tooling-managed files:" >&2
+            sed 's/^/  - /' "$drift_file" >&2
+            return 0
+        fi
+
+        echo "Refusing to install ai-tooling because managed files drifted locally:" >&2
+        sed 's/^/  - /' "$drift_file" >&2
+        echo "Move reusable changes into ai-tooling, or rerun with --force / AI_TOOLING_ALLOW_DRIFT=1 to overwrite." >&2
+        exit 1
+    fi
 }
 
 validate_installed_artifacts() {
@@ -187,7 +285,7 @@ if missing:
 PY
 }
 
-TAG="${1:-$(latest_tag "$RESOLVED_AI_TOOLING_REPO")}"
+TAG="${TAG_ARG:-$(latest_tag "$RESOLVED_AI_TOOLING_REPO")}"
 if [ -z "$TAG" ]; then
     echo "Could not resolve an ai-tooling tag from $RESOLVED_AI_TOOLING_REPO" >&2
     exit 1
@@ -205,7 +303,8 @@ if [ -d "$RESOLVED_AI_TOOLING_REPO/.git" ]; then
 fi
 
 git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE_SOURCE" "$TMP_DIR"
-"$REPO_ROOT/ai/cleanup-ai-tooling-sync.sh" "$TMP_DIR"
+check_installed_manifest_drift "$TMP_DIR/install-manifest-drift.txt"
+AI_TOOLING_TARGET_REPO="$REPO_ROOT" "$TMP_DIR/ai/cleanup-ai-tooling-sync.sh" "$TMP_DIR"
 "$TMP_DIR/install/sync.sh" "$REPO_ROOT"
 validate_installed_artifacts
 

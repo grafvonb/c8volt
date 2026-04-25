@@ -23,11 +23,12 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		"By default c8volt validates the affected tree, prompts before deletion, and waits until deletion is observed. Use --force when active instances should be cancelled before deletion.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
-  ./c8volt delete pi --state completed --count 250
+  ./c8volt delete pi --state completed --batch-size 250
+  ./c8volt delete pi --state completed --batch-size 250 --limit 25
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
-  ./c8volt delete pi --bpmn-process-id C88_SimpleUserTask_Process --state completed --count 200 --auto-confirm
-  ./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait
+  ./c8volt delete pi --bpmn-process-id C88_SimpleUserTask_Process --state completed --batch-size 200 --auto-confirm
+  ./c8volt delete pi --state completed --batch-size 200 --auto-confirm --no-wait
   ./c8volt expect pi --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -41,7 +42,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if err := validatePISearchFlags(); err != nil {
+		if err := validatePISearchFlags(cmd); err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 
@@ -51,6 +52,9 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		}
 		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg)
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validatePIKeyedModeLimit(len(keys)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		searched := false
@@ -147,6 +151,7 @@ func deleteProcessInstancePage(cmd *cobra.Command, cli process.API, keys types.K
 
 func init() {
 	deleteCmd.AddCommand(deleteProcessInstanceCmd)
+	useInvalidInputFlagErrors(deleteProcessInstanceCmd)
 
 	fs := deleteProcessInstanceCmd.Flags()
 	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed")
@@ -154,7 +159,7 @@ func init() {
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
@@ -162,7 +167,8 @@ func init() {
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to process across all pages")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)
