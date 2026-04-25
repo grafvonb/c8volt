@@ -1,14 +1,10 @@
 package v88
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
@@ -104,7 +100,7 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 	cCfg := services.ApplyCallOptions(opts)
 	tenantId, vtenantId := s.cfg.App.Tenant, s.cfg.App.ViewTenant()
 
-	contentType, body, err := buildDeploymentBody(tenantId, units)
+	contentType, body, err := common.BuildDeploymentBody(tenantId, units)
 	if err != nil {
 		return d.Deployment{}, err
 	}
@@ -137,81 +133,20 @@ func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav
 	return nil
 }
 
+// processDefinitionDeployPoller adapts a v8.8 deployment response into the shared visibility poller.
+// It waits only for deployed process definitions; deployments containing only other resource types complete immediately.
 func (s *Service) processDefinitionDeployPoller(dr camundav88.DeploymentResult) func(ctx context.Context) (poller.JobPollStatus, error) {
-	keys := make([]string, 0, len(dr.Deployments))
-	for _, dep := range dr.Deployments {
+	keys := resourcepayload.DeploymentProcessDefinitionKeys(dr.Deployments, func(dep camundav88.DeploymentMetadataResult) string {
 		if dep.ProcessDefinition == nil {
-			continue
+			return ""
 		}
-		k := dep.ProcessDefinition.ProcessDefinitionKey
-		if k == "" {
-			continue
+		return dep.ProcessDefinition.ProcessDefinitionKey
+	})
+	return resourcepayload.NewProcessDefinitionVisibilityPoller(keys, func(ctx context.Context, key string) (*http.Response, error) {
+		resp, err := s.pdc.GetProcessDefinitionWithResponse(ctx, key)
+		if resp == nil {
+			return nil, err
 		}
-		keys = append(keys, k)
-	}
-
-	return func(ctx context.Context) (poller.JobPollStatus, error) {
-		if len(keys) == 0 {
-			return poller.JobPollStatus{
-				Success: true,
-				Message: "no process definitions in deployment; nothing to wait for",
-			}, nil
-		}
-		missing := make([]string, 0)
-		for _, k := range keys {
-			resp, err := s.pdc.GetProcessDefinitionWithResponse(ctx, k)
-			if err != nil {
-				if errors.Is(err, d.ErrNotFound) {
-					missing = append(missing, k)
-					continue
-				}
-				return poller.JobPollStatus{}, fmt.Errorf("get process definition %q: %w", k, err)
-			}
-			if resp == nil || resp.HTTPResponse == nil {
-				return poller.JobPollStatus{}, fmt.Errorf("get process definition %q: empty response", k)
-			}
-			if resp.HTTPResponse.StatusCode == http.StatusNotFound {
-				missing = append(missing, k)
-				continue
-			}
-			if resp.HTTPResponse.StatusCode != http.StatusOK {
-				return poller.JobPollStatus{}, fmt.Errorf("get process definition %q: unexpected status %d", k, resp.HTTPResponse.StatusCode)
-			}
-		}
-		if len(missing) > 0 {
-			return poller.JobPollStatus{
-				Success: false,
-				Message: fmt.Sprintf("process definitions not visible yet, waiting: %v", missing),
-			}, nil
-		}
-		return poller.JobPollStatus{
-			Success: true,
-			Message: fmt.Sprintf("process definitions visible: %v", keys),
-		}, nil
-	}
-}
-
-func buildDeploymentBody(tenantId string, units []d.DeploymentUnitData) (string, *bytes.Reader, error) {
-	var buf bytes.Buffer
-	w := multipart.NewWriter(&buf)
-	if tenantId != "" {
-		if err := w.WriteField("tenantId", tenantId); err != nil {
-			return "", nil, err
-		}
-	}
-	for _, u := range units {
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition", `form-data; name="resources"; filename="`+u.Name+`"`)
-		part, err := w.CreatePart(h)
-		if err != nil {
-			return "", nil, err
-		}
-		if _, err = part.Write(u.Data); err != nil {
-			return "", nil, err
-		}
-	}
-	if err := w.Close(); err != nil {
-		return "", nil, err
-	}
-	return w.FormDataContentType(), bytes.NewReader(buf.Bytes()), nil
+		return resp.HTTPResponse, err
+	})
 }

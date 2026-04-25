@@ -13,6 +13,8 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+// CreateNProcessInstances starts n process instances from the same data using a bounded worker pool.
+// wantedWorkers is capped by the repository worker policy unless WithNoWorkerLimit is present in opts.
 func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstanceData, n int, wantedWorkers int, opts ...options.FacadeOption) ([]ProcessInstance, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 
@@ -31,6 +33,8 @@ func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstan
 	return pics, err
 }
 
+// CancelProcessInstances cancels the unique process-instance keys with bounded parallelism.
+// wantedWorkers is the requested concurrency; duplicate keys are removed before work is scheduled.
 func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (CancelReports, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()
@@ -52,6 +56,8 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wa
 	return r, err
 }
 
+// DeleteProcessInstances deletes the unique process-instance keys with bounded parallelism.
+// opts may enable fail-fast or remove the normal worker cap.
 func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()
@@ -72,6 +78,8 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	return r, err
 }
 
+// WaitForProcessInstancesState waits for each unique key to reach one of the desired states.
+// desired is mapped to the internal domain state set before the versioned service performs polling.
 func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Keys, desired States, wantedWorkers int, opts ...options.FacadeOption) (StateReports, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()
@@ -87,6 +95,8 @@ func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Ke
 	return srs, nil
 }
 
+// GetProcessInstances fetches unique process-instance keys using the internal service bulk lookup path.
+// wantedWorkers is forwarded to the service so version-specific implementations can choose their concurrency strategy.
 func (c *client) GetProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstances, error) {
 	_ = options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()

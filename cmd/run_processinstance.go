@@ -46,7 +46,7 @@ var runProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("count") && flagRunPICount < 1 || cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--count and --workers must be positive integers"))
 		}
-		var vars map[string]interface{}
+		var vars map[string]any
 		if flagRunPIVars != "" {
 			if err := json.Unmarshal([]byte(flagRunPIVars), &vars); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("parsing --vars JSON: %v", err))

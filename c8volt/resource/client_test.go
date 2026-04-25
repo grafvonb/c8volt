@@ -17,6 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestClient_GetResource verifies facade-to-service option mapping and domain
+// resource conversion. The facade should not expose generated Camunda response
+// shapes to callers.
 func TestClient_GetResource(t *testing.T) {
 	t.Parallel()
 
@@ -51,6 +54,8 @@ func TestClient_GetResource(t *testing.T) {
 	}, got)
 }
 
+// TestClient_GetResource_MapsDomainErrors ensures domain lookup failures are
+// normalized into facade errors so commands can share one exit-code model.
 func TestClient_GetResource_MapsDomainErrors(t *testing.T) {
 	t.Parallel()
 
@@ -67,6 +72,10 @@ func TestClient_GetResource_MapsDomainErrors(t *testing.T) {
 	assert.ErrorIs(t, err, ferr.ErrNotFound)
 }
 
+// TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan covers the safety
+// preflight before deleting a process definition resource. Active instances are
+// expanded to roots through the structured traversal plan, and only roots are
+// canceled before the resource delete proceeds.
 func TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan(t *testing.T) {
 	t.Parallel()
 
@@ -119,6 +128,8 @@ func (s *stubResourceAPI) Deploy(context.Context, []d.DeploymentUnitData, ...ser
 	panic("unexpected call")
 }
 
+// Delete delegates to the per-test callback and panics if a test did not expect
+// the resource deletion endpoint.
 func (s *stubResourceAPI) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error {
 	if s.delete == nil {
 		panic("unexpected call")
@@ -126,6 +137,8 @@ func (s *stubResourceAPI) Delete(ctx context.Context, resourceKey string, opts .
 	return s.delete(ctx, resourceKey, opts...)
 }
 
+// Get delegates to the per-test callback and panics when an unrelated resource
+// lookup path is exercised.
 func (s *stubResourceAPI) Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error) {
 	if s.get == nil {
 		panic("unexpected call")
@@ -181,6 +194,8 @@ func (stubProcessAPI) SearchProcessInstancesPage(context.Context, process.Proces
 	panic("unexpected call")
 }
 
+// SearchProcessInstances delegates to the per-test callback used by process
+// definition deletion to discover active process instances.
 func (s stubProcessAPI) SearchProcessInstances(ctx context.Context, filter process.ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (process.ProcessInstances, error) {
 	if s.searchProcessInstances == nil {
 		panic("unexpected call")
@@ -240,6 +255,8 @@ func (stubProcessAPI) CreateNProcessInstances(context.Context, process.ProcessIn
 	panic("unexpected call")
 }
 
+// CancelProcessInstances delegates to the per-test callback and records the
+// root keys chosen after dry-run expansion.
 func (s stubProcessAPI) CancelProcessInstances(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
 	if s.cancelProcessInstances == nil {
 		panic("unexpected call")

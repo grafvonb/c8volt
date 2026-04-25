@@ -14,6 +14,8 @@ type legacyDryRunTraversalOnly interface {
 	LegacyDryRunTraversalOnly() bool
 }
 
+// DryRunCancelOrDeleteGetPIKeys returns the root keys and all collected descendant keys that would be affected.
+// keys are the user-selected process-instance keys; opts controls traversal verbosity and behavior through facade options.
 func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (roots types.Keys, collected types.Keys, err error) {
 	plan, err := c.DryRunCancelOrDeletePlan(ctx, keys, opts...)
 	if err != nil {
@@ -22,6 +24,8 @@ func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.K
 	return plan.Roots, plan.Collected, nil
 }
 
+// DryRunCancelOrDeletePlan expands selected process-instance keys into the cancellation/deletion dependency plan.
+// keys may contain children; the returned plan reports unique roots, descendants, partial traversal warnings, and missing ancestors.
 func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
 	if legacyOnly, ok := c.piApi.(legacyDryRunTraversalOnly); ok && legacyOnly.LegacyDryRunTraversalOnly() {
 		return c.dryRunCancelOrDeletePlanLegacy(ctx, keys, opts...)
@@ -77,6 +81,8 @@ func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, 
 	return plan, validateDryRunPIKeyExpansion(plan)
 }
 
+// dryRunCancelOrDeletePlanLegacy preserves the older traversal contract for services that cannot report structured partial results.
+// It treats successful ancestry and descendant calls as a complete plan and leaves missing-ancestor details unavailable.
 func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
 	var roots types.Keys
 	var collected types.Keys
@@ -105,6 +111,7 @@ func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.
 	}, nil
 }
 
+// validateDryRunPIKeyExpansion rejects unresolved dry-run plans that found no actionable process instances.
 func validateDryRunPIKeyExpansion(plan DryRunPIKeyExpansion) error {
 	if plan.HasActionableResults() {
 		return nil

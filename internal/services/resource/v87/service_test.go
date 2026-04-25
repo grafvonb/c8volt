@@ -18,6 +18,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newTestService wires the v8.7 resource service with a narrow mock client.
+// It keeps each test focused on the version-specific endpoint contract instead
+// of repeating logger, HTTP client, and config setup.
 func newTestService(t *testing.T, client *mockResourceClient) *Service {
 	t.Helper()
 
@@ -44,6 +47,9 @@ func (m *mockResourceClient) GetResourcesResourceKeyWithResponse(ctx context.Con
 	return m.getResourcesResourceKeyWithResponseFunc(ctx, resourceKey, reqEditors...)
 }
 
+// TestService_Deploy covers the v8.7 deployment response shape.
+// v8.7 does not return the richer deployment metadata used by later versions,
+// so successful deployments intentionally expose an unknown deployment key.
 func TestService_Deploy(t *testing.T) {
 	ctx := context.Background()
 	tenantID := "tenant"
@@ -124,6 +130,9 @@ func TestService_Deploy(t *testing.T) {
 	}
 }
 
+// TestService_Delete documents the guarded delete behavior for resources.
+// The Camunda delete endpoint is only called when allow-inconsistent is set,
+// because deleting a resource can leave process definitions in a risky state.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
 
@@ -199,6 +208,9 @@ func TestService_Delete(t *testing.T) {
 	})
 }
 
+// TestService_Get verifies v8.7 resource payload normalization.
+// It also treats HTTP 200 responses without meaningful JSON payloads as
+// malformed, which prevents empty generated structs from looking successful.
 func TestService_Get(t *testing.T) {
 	ctx := context.Background()
 
@@ -304,6 +316,9 @@ func TestService_Get(t *testing.T) {
 	}
 }
 
+// assertMultipartDeploymentRequest checks the exact multipart contract sent to
+// Camunda: tenantId is a form field, resources carries the file bytes, and the
+// resource part keeps the original filename for BPMN deployment diagnostics.
 func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.Reader, tenantID string, resourceName string, resourceData []byte) {
 	t.Helper()
 
@@ -332,6 +347,8 @@ func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.
 	assert.Equal(t, resourceName, filenames["resources"])
 }
 
+// newHTTPResponse builds the minimum response metadata required by status
+// normalization helpers, including method and URL for error messages.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -347,6 +364,8 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 	}
 }
 
+// testStringPtr mirrors nullable fields in generated v8.7 response types.
 func testStringPtr(v string) *string { return &v }
 
+// testInt32Ptr mirrors nullable numeric fields in generated v8.7 response types.
 func testInt32Ptr(v int32) *int32 { return &v }

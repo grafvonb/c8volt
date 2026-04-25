@@ -132,10 +132,12 @@ func WrapClass(classErr error, err error) error {
 	return wrap(classErr, err)
 }
 
+// FromDomain normalizes domain/service errors without applying local CLI error classification.
 func FromDomain(err error) error {
 	return NormalizeDomain(err)
 }
 
+// Classify returns the machine-facing failure class after full normalization.
 func Classify(err error) Class {
 	switch normalized := Normalize(err); {
 	case normalized == nil:
@@ -161,6 +163,7 @@ func Classify(err error) Class {
 	}
 }
 
+// ExitCode maps a normalized or raw error to the process exit code used by CLI entry points.
 func ExitCode(err error) int {
 	switch Classify(err) {
 	case "":
@@ -180,6 +183,8 @@ func ExitCode(err error) int {
 	}
 }
 
+// ResolveExitCode applies the --no-err-codes behavior after deriving the standard exit code.
+// noErrCodes forces success for failures so shell callers can opt out of non-zero exits while still receiving error output.
 func ResolveExitCode(noErrCodes bool, err error) int {
 	code := ExitCode(err)
 	if err != nil && noErrCodes {
@@ -188,6 +193,7 @@ func ResolveExitCode(noErrCodes bool, err error) int {
 	return code
 }
 
+// Outcome returns the compact result label used in machine-readable error envelopes.
 func Outcome(err error) string {
 	switch Classify(err) {
 	case "":
@@ -199,11 +205,14 @@ func Outcome(err error) string {
 	}
 }
 
+// HandleAndExitOK logs a success message and terminates the process with the OK exit code.
 func HandleAndExitOK(log *slog.Logger, message string) {
 	log.Info(message)
 	os.Exit(exitcode.OK)
 }
 
+// HandleAndExit normalizes, logs, and exits for CLI entry points.
+// noErrCodes mirrors --no-err-codes and can turn a failure into an OK process status.
 func HandleAndExit(log *slog.Logger, noErrCodes bool, err error) {
 	if err == nil {
 		os.Exit(exitcode.OK)
@@ -214,6 +223,7 @@ func HandleAndExit(log *slog.Logger, noErrCodes bool, err error) {
 	os.Exit(ResolveExitCode(noErrCodes, err))
 }
 
+// isNormalized reports whether err already carries one of the shared facade error sentinels.
 func isNormalized(err error) bool {
 	return errors.Is(err, ErrInvalidInput) ||
 		errors.Is(err, ErrLocalPrecondition) ||
@@ -226,6 +236,7 @@ func isNormalized(err error) bool {
 		errors.Is(err, ErrInternal)
 }
 
+// wrap attaches a failure-class sentinel while preserving the original error text exactly once.
 func wrap(classErr error, err error) error {
 	if err == nil || errors.Is(err, classErr) {
 		return err

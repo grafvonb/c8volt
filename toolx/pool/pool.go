@@ -65,7 +65,7 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 
 produce:
 	// Feed job indices until either fail-fast trips or the context is canceled.
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if failFast && sawErr.Load() {
 			break produce
 		}

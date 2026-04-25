@@ -20,6 +20,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newTestService wires the v8.9 resource service with separate resource and
+// process definition mocks, making the deployment confirmation dependency
+// explicit in each test.
 func newTestService(t *testing.T, tenantID string, client *mockResourceClient, processClient *mockProcessDefinitionClient) *Service {
 	t.Helper()
 
@@ -70,6 +73,9 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionInstanceVersionStatist
 	panic("unexpected GetProcessDefinitionInstanceVersionStatisticsWithResponse call")
 }
 
+// TestService_Deploy verifies the v8.9 deployment flow.
+// v8.9 defaults to confirmation polling, while no-wait is still expected to
+// stop before polling when malformed deployment payloads are detected.
 func TestService_Deploy(t *testing.T) {
 	ctx := context.Background()
 	tenantID := "tenant"
@@ -160,6 +166,9 @@ func TestService_Deploy(t *testing.T) {
 	})
 }
 
+// TestService_Delete documents the allow-inconsistent guard around v8.9
+// resource deletion, preserving the same destructive-operation safety contract
+// as older supported Camunda versions.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
 
@@ -221,6 +230,9 @@ func TestService_Delete(t *testing.T) {
 	})
 }
 
+// TestService_Get verifies v8.9 resource mapping and decoded-empty protection.
+// A non-nil generated JSON200 value is not sufficient; required identity fields
+// must be present before a resource is considered successfully loaded.
 func TestService_Get(t *testing.T) {
 	ctx := context.Background()
 
@@ -299,6 +311,8 @@ func TestService_Get(t *testing.T) {
 	})
 }
 
+// TestService_ProcessDefinitionDeployPoller covers the happy confirmation path
+// for v8.9 deployments, where all returned process definition keys are visible.
 func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 	ctx := context.Background()
 
@@ -346,6 +360,9 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 	})
 }
 
+// assertMultipartDeploymentRequest checks the exact multipart contract sent to
+// Camunda: tenantId is sent as a field, resources carries the BPMN bytes, and
+// the uploaded part keeps the caller's filename.
 func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.Reader, tenantID string, resourceName string, resourceData []byte) {
 	t.Helper()
 
@@ -374,6 +391,8 @@ func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.
 	assert.Equal(t, resourceName, filenames["resources"])
 }
 
+// newHTTPResponse builds the minimum response metadata required by status
+// normalization helpers, including method and URL for useful error text.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -389,6 +408,8 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 	}
 }
 
+// testConfigWithTenant supplies the effective tenant used by deployment request
+// bodies and tenant-aware service behavior.
 func testConfigWithTenant(t *testing.T, tenantID string) *config.Config {
 	t.Helper()
 
@@ -397,4 +418,5 @@ func testConfigWithTenant(t *testing.T, tenantID string) *config.Config {
 	return cfg
 }
 
+// testStringPtr mirrors nullable fields in generated v8.9 response types.
 func testStringPtr(v string) *string { return &v }

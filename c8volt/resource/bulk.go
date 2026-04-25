@@ -11,6 +11,8 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
+// DeleteProcessDefinitions deletes or preflights deletion for unique process-definition keys in parallel.
+// wantedWorkers controls the requested worker count; without AllowInconsistent, the underlying single delete path remains a safe preparation step.
 func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()

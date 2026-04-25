@@ -1,6 +1,7 @@
 package typex
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/grafvonb/c8volt/toolx"
@@ -9,12 +10,7 @@ import (
 type Keys []string
 
 func (k Keys) Contains(key string) bool {
-	for _, v := range k {
-		if v == key {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(k, key)
 }
 
 func (k Keys) String() string {

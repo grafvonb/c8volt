@@ -16,6 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestClient_GetProcessDefinitionXML verifies facade option translation for
+// XML retrieval. The key and call options must pass through unchanged because
+// the service layer owns the Camunda-specific request details.
 func TestClient_GetProcessDefinitionXML(t *testing.T) {
 	t.Parallel()
 
@@ -37,6 +40,9 @@ func TestClient_GetProcessDefinitionXML(t *testing.T) {
 	assert.Equal(t, "<definitions id=\"order-process\"/>", xml)
 }
 
+// TestClient_GetProcessDefinition_MapsIncidentCountSupportState protects the
+// distinction between an incident count of zero and a version where incident
+// counts are actually supported.
 func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T) {
 	t.Parallel()
 
@@ -69,6 +75,9 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 	assert.True(t, pd.Statistics.IncidentCountSupported)
 }
 
+// TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBoundary
+// keeps the public model from implying that zero incidents were measured when a
+// Camunda version cannot provide incident-count statistics.
 func TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBoundary(t *testing.T) {
 	t.Parallel()
 
@@ -106,6 +115,9 @@ func TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBounda
 	assert.False(t, items.Items[0].Statistics.IncidentCountSupported)
 }
 
+// TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter verifies that
+// facade filters, presence booleans, and verbose options reach the domain layer
+// without losing exact date-bound strings.
 func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T) {
 	t.Parallel()
 
@@ -149,6 +161,10 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 	require.NoError(t, err)
 }
 
+// TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanonicalDateFields
+// documents that relative-day CLI handling happens before this facade call.
+// Once dates arrive here they are canonical absolute strings and must not be
+// recomputed or interpreted again.
 func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanonicalDateFields(t *testing.T) {
 	t.Parallel()
 
@@ -178,6 +194,9 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 	require.NoError(t, err)
 }
 
+// TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
+// contract: request echoing, overflow state, reported total kind, and item
+// mapping all need to survive the facade boundary.
 func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	t.Parallel()
 
@@ -216,6 +235,9 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	assert.Equal(t, "2251799813711967", page.Items[0].Key)
 }
 
+// TestClient_SearchProcessInstancesPage_LeavesReportedTotalNilWhenUnavailable
+// preserves the "unknown total" state. Nil is meaningful here and must not be
+// converted into a misleading zero total.
 func TestClient_SearchProcessInstancesPage_LeavesReportedTotalNilWhenUnavailable(t *testing.T) {
 	t.Parallel()
 
@@ -244,6 +266,9 @@ func TestClient_SearchProcessInstancesPage_LeavesReportedTotalNilWhenUnavailable
 	require.Len(t, page.Items, 1)
 }
 
+// TestClient_SearchProcessInstancesPage_MapsLowerBoundReportedTotal protects
+// Camunda's lower-bound total semantics, where large result sets report "at
+// least this many" rather than an exact count.
 func TestClient_SearchProcessInstancesPage_MapsLowerBoundReportedTotal(t *testing.T) {
 	t.Parallel()
 
@@ -279,6 +304,10 @@ func TestClient_SearchProcessInstancesPage_MapsLowerBoundReportedTotal(t *testin
 	require.Len(t, page.Items, 1)
 }
 
+// TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter
+// verifies pointer-backed booleans for has-parent and has-incident filters.
+// Pointer identity matters because nil means "unspecified" while false means
+// an explicit negative filter.
 func TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter(t *testing.T) {
 	t.Parallel()
 
@@ -314,6 +343,9 @@ func TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter(t *
 	require.Len(t, page.Items, 1)
 }
 
+// TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates
+// ensures overflow state remains a cross-version domain signal instead of being
+// flattened by the facade into item-count heuristics.
 func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t *testing.T) {
 	t.Parallel()
 
@@ -342,6 +374,9 @@ func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t
 	require.Len(t, page.Items, 1)
 }
 
+// TestClient_SearchProcessInstances_UsesPagedSearchWrapper documents the legacy
+// list facade over the newer paged service call. Total is derived from returned
+// items here, while page metadata remains available through the page API.
 func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	t.Parallel()
 
@@ -374,6 +409,9 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 	assert.Equal(t, "2251799813711968", items.Items[1].Key)
 }
 
+// TestClient_LookupProcessInstance_UsesSearchBackedLookup protects the lookup
+// strategy for versions where direct key retrieval is implemented through a
+// tenant-aware search filter.
 func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
 	t.Parallel()
 
@@ -398,6 +436,9 @@ func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
 	assert.Equal(t, "tenant-a", pi.TenantId)
 }
 
+// TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState verifies the
+// public state report created from a search-backed lookup, including the stable
+// uppercase status string used by command output.
 func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing.T) {
 	t.Parallel()
 
@@ -423,6 +464,9 @@ func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing
 	assert.Equal(t, StateCompleted, pi.State)
 }
 
+// TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected covers
+// the legacy dry-run expansion contract. Multiple selected children can share a
+// root, so roots and collected keys must keep deterministic first-seen order.
 func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *testing.T) {
 	t.Parallel()
 
@@ -460,6 +504,9 @@ func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *t
 	assert.Equal(t, typex.Keys{"r1", "c1", "c2", "r2", "c3"}, collected)
 }
 
+// TestClient_AncestryResult_MapsStructuredTraversalContract verifies the newer
+// structured traversal model, including partial outcomes and missing-ancestor
+// metadata used by automation and warning output.
 func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
 	t.Parallel()
 
@@ -495,6 +542,9 @@ func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
 	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
 }
 
+// TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion exercises the
+// full cancellation/deletion preflight: selected children resolve to roots,
+// descendants expand per root, and partial ancestry warnings are preserved.
 func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T) {
 	t.Parallel()
 
@@ -559,6 +609,9 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	assert.NotEmpty(t, got.Warning)
 }
 
+// TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve keeps
+// unresolved ancestry from silently producing an empty successful plan. That
+// protects destructive commands from proceeding when nothing can be targeted.
 func TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve(t *testing.T) {
 	t.Parallel()
 
@@ -589,6 +642,8 @@ type stubProcessDefinitionAPI struct {
 	getProcessDefinitionXML  func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
 
+// SearchProcessDefinitions delegates to the per-test callback and panics when a
+// test did not authorize this service method.
 func (s *stubProcessDefinitionAPI) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	if s.searchProcessDefinitions == nil {
 		panic("unexpected call")
@@ -600,6 +655,8 @@ func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(context.Contex
 	panic("unexpected call")
 }
 
+// GetProcessDefinition delegates to the per-test callback and panics on
+// unexpected lookups to keep facade tests narrowly scoped.
 func (s *stubProcessDefinitionAPI) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
 	if s.getProcessDefinition == nil {
 		panic("unexpected call")
@@ -607,6 +664,8 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinition(ctx context.Context, key
 	return s.getProcessDefinition(ctx, key, opts...)
 }
 
+// GetProcessDefinitionXML delegates to the per-test callback for XML-specific
+// facade assertions.
 func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, key string, opts ...services.CallOption) (string, error) {
 	if s.getProcessDefinitionXML == nil {
 		panic("unexpected call")
@@ -642,6 +701,8 @@ func (stubProcessInstanceAPI) FilterProcessInstanceWithOrphanParent(context.Cont
 	panic("unexpected call")
 }
 
+// SearchForProcessInstances delegates to the per-test callback and panics when
+// a test accidentally takes the legacy list path.
 func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	if s.searchForProcessInstances == nil {
 		panic("unexpected call")
@@ -649,6 +710,9 @@ func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, f
 	return s.searchForProcessInstances(ctx, filter, size, opts...)
 }
 
+// SearchForProcessInstancesPage delegates to an explicit page callback when a
+// test provides one, otherwise it adapts the legacy list callback for older
+// facade tests that only care about returned items.
 func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	if s.searchForProcessInstancesPage != nil {
 		return s.searchForProcessInstancesPage(ctx, filter, page, opts...)
@@ -682,6 +746,7 @@ func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, strin
 	panic("unexpected call")
 }
 
+// Ancestry delegates the legacy traversal tuple used by older dry-run helpers.
 func (s stubProcessInstanceAPI) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
 	if s.ancestry == nil {
 		panic("unexpected call")
@@ -689,6 +754,8 @@ func (s stubProcessInstanceAPI) Ancestry(ctx context.Context, startKey string, o
 	return s.ancestry(ctx, startKey, opts...)
 }
 
+// Descendants delegates the legacy traversal tuple used to expand a resolved
+// root into actionable process instance keys.
 func (s stubProcessInstanceAPI) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
 	if s.descendants == nil {
 		panic("unexpected call")
@@ -700,6 +767,8 @@ func (stubProcessInstanceAPI) Family(context.Context, string, ...services.CallOp
 	panic("unexpected call")
 }
 
+// AncestryResult delegates structured traversal when supplied, or builds it
+// from the legacy tuple callback to keep migration tests compact.
 func (s stubProcessInstanceAPI) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
 	if s.ancestryResult != nil {
 		return s.ancestryResult(ctx, startKey, opts...)
@@ -710,6 +779,8 @@ func (s stubProcessInstanceAPI) AncestryResult(ctx context.Context, startKey str
 	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
 }
 
+// DescendantsResult delegates structured traversal when supplied, or builds it
+// from the legacy tuple callback for tests that cover compatibility behavior.
 func (s stubProcessInstanceAPI) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
 	if s.descendantsResult != nil {
 		return s.descendantsResult(ctx, rootKey, opts...)
@@ -720,6 +791,8 @@ func (s stubProcessInstanceAPI) DescendantsResult(ctx context.Context, rootKey s
 	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
 }
 
+// FamilyResult delegates a structured family traversal when supplied, otherwise
+// composes one from the legacy ancestry and descendants callbacks.
 func (s stubProcessInstanceAPI) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
 	if s.familyResult != nil {
 		return s.familyResult(ctx, startKey, opts...)

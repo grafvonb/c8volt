@@ -2,15 +2,34 @@ package foptions
 
 import "github.com/grafvonb/c8volt/internal/services"
 
-func WithNoStateCheck() FacadeOption      { return func(c *FacadeCfg) { c.NoStateCheck = true } }
-func WithForce() FacadeOption             { return func(c *FacadeCfg) { c.Force = true } }
-func WithNoWait() FacadeOption            { return func(c *FacadeCfg) { c.NoWait = true } }
-func WithRun() FacadeOption               { return func(c *FacadeCfg) { c.Run = true } }
-func WithFailFast() FacadeOption          { return func(c *FacadeCfg) { c.FailFast = true } }
-func WithVerbose() FacadeOption           { return func(c *FacadeCfg) { c.Verbose = true } }
-func WithStat() FacadeOption              { return func(c *FacadeCfg) { c.Stat = true } }
-func WithDryRun() FacadeOption            { return func(c *FacadeCfg) { c.DryRun = true } }
-func WithNoWorkerLimit() FacadeOption     { return func(c *FacadeCfg) { c.NoWorkerLimit = true } }
+// WithNoStateCheck disables facade-level state validation before a state-changing operation.
+func WithNoStateCheck() FacadeOption { return func(c *FacadeCfg) { c.NoStateCheck = true } }
+
+// WithForce allows facade operations to perform prerequisite actions such as cancelling active instances before deletion.
+func WithForce() FacadeOption { return func(c *FacadeCfg) { c.Force = true } }
+
+// WithNoWait asks operations to return after submission instead of waiting for confirmation.
+func WithNoWait() FacadeOption { return func(c *FacadeCfg) { c.NoWait = true } }
+
+// WithRun asks deploy-style flows to start process instances after successful deployment.
+func WithRun() FacadeOption { return func(c *FacadeCfg) { c.Run = true } }
+
+// WithFailFast cancels remaining bulk work after the first scheduled item fails.
+func WithFailFast() FacadeOption { return func(c *FacadeCfg) { c.FailFast = true } }
+
+// WithVerbose enables progress-oriented logging and diagnostics in facade calls.
+func WithVerbose() FacadeOption { return func(c *FacadeCfg) { c.Verbose = true } }
+
+// WithStat requests optional statistics where the selected Camunda version supports them.
+func WithStat() FacadeOption { return func(c *FacadeCfg) { c.Stat = true } }
+
+// WithDryRun requests dependency expansion or validation without applying the state-changing action.
+func WithDryRun() FacadeOption { return func(c *FacadeCfg) { c.DryRun = true } }
+
+// WithNoWorkerLimit disables the default cap that keeps requested workers within the runtime worker policy.
+func WithNoWorkerLimit() FacadeOption { return func(c *FacadeCfg) { c.NoWorkerLimit = true } }
+
+// WithAllowInconsistent opts into eventually consistent or destructive API operations that are otherwise guarded.
 func WithAllowInconsistent() FacadeOption { return func(c *FacadeCfg) { c.AllowInconsistent = true } }
 
 type FacadeOption func(*FacadeCfg)
@@ -28,6 +47,8 @@ type FacadeCfg struct {
 	AllowInconsistent bool
 }
 
+// ApplyFacadeOptions folds facade options into a new configuration value.
+// opts are applied in order, so later options can extend the same mutable config during construction.
 func ApplyFacadeOptions(opts []FacadeOption) *FacadeCfg {
 	c := &FacadeCfg{}
 	for _, o := range opts {
@@ -36,6 +57,8 @@ func ApplyFacadeOptions(opts []FacadeOption) *FacadeCfg {
 	return c
 }
 
+// MapFacadeOptionsToCallOptions translates public facade options to internal service call options.
+// This is the boundary that keeps the exported facade independent from internal service configuration types.
 func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	c := ApplyFacadeOptions(opts)
 	var out []services.CallOption

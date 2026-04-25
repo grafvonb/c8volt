@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
@@ -14,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand protects the root help text as a UX contract.
+// The command groups must stay discoverable for humans, while shell-completion plumbing remains hidden.
 func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 	output := executeRootForTest(t, "--help")
 
@@ -47,6 +50,8 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 	)
 }
 
+// TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors keeps CLI help and generated docs aligned on
+// automation/discovery guidance, so users do not see different onboarding advice in different surfaces.
 func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -69,6 +74,30 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 	}
 }
 
+// TestProcessInstanceHelp_PreservesLocalBeforeGlobalFlagUX guards an intentional Cobra UX detail:
+// command-local flags, including locally repeated/derived flags such as --pd-key, must appear before
+// inherited global flags like --config and --json.
+func TestProcessInstanceHelp_PreservesLocalBeforeGlobalFlagUX(t *testing.T) {
+	output := executeRootForTest(t, "get", "process-instance", "--help")
+
+	flags := strings.Index(output, "\nFlags:\n")
+	globalFlags := strings.Index(output, "\nGlobal Flags:\n")
+	require.NotEqual(t, -1, flags)
+	require.NotEqual(t, -1, globalFlags)
+	require.Less(t, flags, globalFlags)
+
+	localFlag := strings.Index(output[flags:globalFlags], "--bpmn-process-id")
+	derivedLocalFlag := strings.Index(output[flags:globalFlags], "--pd-key")
+	globalConfigFlag := strings.Index(output[globalFlags:], "--config")
+	globalJSONFlag := strings.Index(output[globalFlags:], "--json")
+	require.NotEqual(t, -1, localFlag)
+	require.NotEqual(t, -1, derivedLocalFlag)
+	require.NotEqual(t, -1, globalConfigFlag)
+	require.NotEqual(t, -1, globalJSONFlag)
+}
+
+// TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment verifies that automation mode can be
+// configured through environment variables, not only through CLI flags.
 func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing.T) {
 	t.Setenv("C8VOLT_APP_AUTOMATION", "true")
 
@@ -87,6 +116,8 @@ func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing
 	require.True(t, cfg.App.Automation)
 }
 
+// TestAutomationModeEnabled_PrefersResolvedConfigContext ensures runtime decisions read the resolved
+// config placed on the command context, even when the raw persistent flag value says otherwise.
 func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -102,6 +133,8 @@ func TestAutomationModeEnabled_PrefersResolvedConfigContext(t *testing.T) {
 	require.True(t, automationModeEnabled(root))
 }
 
+// TestMissingConfigHint_PrefersLocalExampleConfigWhenPresent keeps the bootstrap error helpful for new
+// users by pointing at a nearby config.example.yaml when one exists.
 func TestMissingConfigHint_PrefersLocalExampleConfigWhenPresent(t *testing.T) {
 	prevWD, err := os.Getwd()
 	require.NoError(t, err)
@@ -118,6 +151,8 @@ func TestMissingConfigHint_PrefersLocalExampleConfigWhenPresent(t *testing.T) {
 	require.Contains(t, got, "config show --validate")
 }
 
+// TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists covers the no-local-example path,
+// where the best recovery hint is to generate a template with config show --template.
 func TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists(t *testing.T) {
 	prevWD, err := os.Getwd()
 	require.NoError(t, err)
@@ -133,6 +168,8 @@ func TestMissingConfigHint_FallsBackToTemplateAdviceWhenNoLocalExampleExists(t *
 	require.NotContains(t, got, "config.example.yaml")
 }
 
+// TestIndicatorEnabled_DefaultsToHumanInteractiveMode verifies the activity indicator remains enabled for
+// normal interactive usage unless a mode explicitly disables transient output.
 func TestIndicatorEnabled_DefaultsToHumanInteractiveMode(t *testing.T) {
 	prevNoIndicator := flagNoIndicator
 	prevQuiet := flagQuiet
@@ -150,6 +187,8 @@ func TestIndicatorEnabled_DefaultsToHumanInteractiveMode(t *testing.T) {
 	require.True(t, indicatorEnabled(nil, nil))
 }
 
+// TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator checks every non-interactive or quiet path
+// that must suppress transient activity output to avoid corrupting machine-readable streams.
 func TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -171,6 +210,8 @@ func TestIndicatorEnabled_DisabledByQuietAutomationAndNoIndicator(t *testing.T) 
 	require.False(t, indicatorEnabled(root, cfg))
 }
 
+// TestIndicatorEnabled_DisabledForJSONLogFormat ensures JSON logs are never mixed with terminal activity
+// indicators, because both write to the same user-visible stream.
 func TestIndicatorEnabled_DisabledForJSONLogFormat(t *testing.T) {
 	cfg := config.New()
 	cfg.Log.Format = "json"

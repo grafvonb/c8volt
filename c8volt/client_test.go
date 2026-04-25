@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNew_V89WiresSupportedRuntime ensures the top-level client factory wires
+// every facade for the newest supported runtime. The calls intentionally fail
+// against localhost, but reaching those methods proves the v8.9 services were
+// constructed instead of rejected as unsupported.
 func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	t.Parallel()
 
