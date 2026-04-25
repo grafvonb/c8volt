@@ -398,17 +398,17 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
 			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
 			return process.DryRunPIKeyExpansion{
-				Roots:            typex.Keys{"2251799813711967"},
-				Collected:        typex.Keys{"2251799813711967", "2251799813711968"},
+				Roots:            typex.Keys{"2251799813711900"},
+				Collected:        typex.Keys{"2251799813711900", "2251799813711967"},
 				MissingAncestors: []process.MissingAncestor{{Key: "2251799813711999", StartKey: "2251799813711967"}},
 				Warning:          "one or more parent process instances were not found",
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
 		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
-			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
+			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
-			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
+			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
 

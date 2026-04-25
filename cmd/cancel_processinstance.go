@@ -135,7 +135,7 @@ func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 		}
 	}
 
-	reports, err := cli.CancelProcessInstances(cmd.Context(), keys, flagWorkers, collectOptions()...)
+	reports, err := cli.CancelProcessInstances(cmd.Context(), plan.Roots, flagWorkers, collectOptions()...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
 	}
