@@ -46,15 +46,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add `get process-instance` multi-page `--limit` tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T009 [P] [US1] Add search-based `cancel process-instance` multi-page `--limit` tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
-- [ ] T010 [P] [US1] Add search-based `delete process-instance` multi-page `--limit` tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T008 [P] [US1] Add `get process-instance` multi-page `--limit` tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T009 [P] [US1] Add search-based `cancel process-instance` multi-page `--limit` tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go
+- [x] T010 [P] [US1] Add search-based `delete process-instance` multi-page `--limit` tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Add remaining-limit calculation and page truncation helpers in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T012 [US1] Apply limited page results to `get process-instance` aggregation and incremental rendering in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T013 [US1] Apply limited page keys to search-based cancel/delete page actions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
+- [x] T011 [US1] Add remaining-limit calculation and page truncation helpers in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T012 [US1] Apply limited page results to `get process-instance` aggregation and incremental rendering in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T013 [US1] Apply limited page keys to search-based cancel/delete page actions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_processinstance.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_processinstance.go
 
 **Checkpoint**: User Story 1 is independently functional and testable as the MVP slice.
 

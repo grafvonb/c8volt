@@ -207,6 +207,7 @@ const (
 	processInstanceContinuationCompleted       processInstanceContinuationState = "completed"
 	processInstanceContinuationPartialComplete processInstanceContinuationState = "partial_complete"
 	processInstanceContinuationWarningStop     processInstanceContinuationState = "warning_stop"
+	processInstanceContinuationLimitReached    processInstanceContinuationState = "limit_reached"
 )
 
 // processInstanceProgressSummary describes the current pagination state for user-facing progress output.
@@ -370,13 +371,40 @@ func pickPIContinuationState(overflow process.ProcessInstanceOverflowState, auto
 }
 
 func newPIProgressSummary(page process.ProcessInstancePage, cumulative int, autoConfirm bool) processInstanceProgressSummary {
+	continuationState := pickPIContinuationState(page.OverflowState, autoConfirm)
+	if isPILimitReached(cumulative) {
+		continuationState = processInstanceContinuationLimitReached
+	}
 	return processInstanceProgressSummary{
 		PageSize:          page.Request.Size,
 		CurrentPageCount:  len(page.Items),
 		CumulativeCount:   cumulative,
 		OverflowState:     page.OverflowState,
-		ContinuationState: pickPIContinuationState(page.OverflowState, autoConfirm),
+		ContinuationState: continuationState,
 	}
+}
+
+func isPILimitReached(cumulative int) bool {
+	return flagGetPILimit > 0 && cumulative >= int(flagGetPILimit)
+}
+
+func limitPIItems(items []process.ProcessInstance, cumulative int) []process.ProcessInstance {
+	if flagGetPILimit <= 0 {
+		return items
+	}
+	remaining := int(flagGetPILimit) - cumulative
+	if remaining <= 0 {
+		return nil
+	}
+	if len(items) > remaining {
+		return items[:remaining]
+	}
+	return items
+}
+
+func limitPIPageItems(page process.ProcessInstancePage, cumulative int) process.ProcessInstancePage {
+	page.Items = limitPIItems(page.Items, cumulative)
+	return page
 }
 
 func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (process.ProcessInstances, bool, error) {
@@ -408,6 +436,8 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		if err != nil {
 			return process.ProcessInstances{}, false, err
 		}
+		filtered.Items = limitPIItems(filtered.Items, processedTotal)
+		filtered.Total = int32(len(filtered.Items))
 		if incremental {
 			for _, item := range filtered.Items {
 				if err := processInstanceView(cmd, item); err != nil {
@@ -420,11 +450,13 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		}
 		processedTotal += len(filtered.Items)
 
-		summary := newPIProgressSummary(page, processedTotal, autoContinue)
+		summaryPage := page
+		summaryPage.Items = filtered.Items
+		summary := newPIProgressSummary(summaryPage, processedTotal, autoContinue)
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
-		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return printFoundAndReturn()
 		case processInstanceContinuationAutoContinue:
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
@@ -536,12 +568,13 @@ func processPISearchPagesWithAction(
 			return reports, nil
 		}
 
-		result, err := processPage(page, firstPage)
+		limitedPage := limitPIPageItems(page, cumulative)
+		result, err := processPage(limitedPage, firstPage)
 		if err != nil {
 			if !firstPage && isCmdAborted(err) {
 				printPISearchProgress(cmd, processInstanceProgressSummary{
 					PageSize:          page.Request.Size,
-					CurrentPageCount:  len(page.Items),
+					CurrentPageCount:  len(limitedPage.Items),
 					CumulativeCount:   cumulative,
 					OverflowState:     page.OverflowState,
 					ContinuationState: processInstanceContinuationPartialComplete,
@@ -553,17 +586,17 @@ func processPISearchPagesWithAction(
 
 		impact := result.Impact
 		reports = append(reports, result.Reports...)
-		cumulative += len(page.Items)
+		cumulative += len(limitedPage.Items)
 		if impact.Affected > 0 {
 			cumulativeAffected += impact.Affected
 		} else {
-			cumulativeAffected += len(page.Items)
+			cumulativeAffected += len(limitedPage.Items)
 		}
-		summary := newPIProgressSummary(page, cumulative, shouldImplicitlyConfirm(cmd))
+		summary := newPIProgressSummary(limitedPage, cumulative, shouldImplicitlyConfirm(cmd))
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
-		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop:
+		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
 			return reports, nil
 		case processInstanceContinuationAutoContinue:
 			firstPage = false
@@ -667,6 +700,8 @@ func describePIContinuationState(state processInstanceContinuationState) string 
 		return "partial-complete"
 	case processInstanceContinuationWarningStop:
 		return "warning-stop"
+	case processInstanceContinuationLimitReached:
+		return "limit-reached"
 	default:
 		return "complete"
 	}
@@ -682,6 +717,8 @@ func describePIProgressDetail(summary processInstanceProgressSummary) string {
 		return fmt.Sprintf("detail: stopped after %d processed process instance(s); remaining matches were left untouched", summary.CumulativeCount)
 	case processInstanceContinuationWarningStop:
 		return fmt.Sprintf("warning: stopped after %d processed process instance(s) because more matching process instances may remain", summary.CumulativeCount)
+	case processInstanceContinuationLimitReached:
+		return fmt.Sprintf("detail: stopped after reaching limit of %d process instance(s)", flagGetPILimit)
 	default:
 		return "detail: no additional matching process instances remain"
 	}
