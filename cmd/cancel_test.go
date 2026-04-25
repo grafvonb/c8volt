@@ -405,9 +405,10 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
-		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
+			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
@@ -444,9 +445,10 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testi
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
-		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
 			require.Zero(t, wantedWorkers)
+			require.Equal(t, 1, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
 		},
 	}

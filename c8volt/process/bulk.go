@@ -41,7 +41,11 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wa
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoIfVerbose(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	if cCfg.AffectedProcessInstanceCount > lk {
+		logging.InfoIfVerbose(fmt.Sprintf("cancelling process instances requested for %d affected instance(s) across %d root key(s) using %d worker(s)", cCfg.AffectedProcessInstanceCount, lk, nw), c.log, cCfg.Verbose)
+	} else {
+		logging.InfoIfVerbose(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	}
 	rs, err := pool.ExecuteSlice[string, CancelReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (CancelReport, error) {
 		cr, _, cerr := c.CancelProcessInstance(ctx, key, opts...)
 		return cr, cerr
@@ -51,7 +55,11 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wa
 	}
 	if !cCfg.NoWait {
 		t, oks, noks := r.Totals()
-		c.log.Info(fmt.Sprintf("cancelling %d process instance(s) completed: %d succeeded or already cancelled/terminated, %d failed", t, oks, noks))
+		if cCfg.AffectedProcessInstanceCount > t {
+			c.log.Info(fmt.Sprintf("cancelling %d process instance(s) completed via %d root request(s): %d root request(s) succeeded or already cancelled/terminated, %d failed", cCfg.AffectedProcessInstanceCount, t, oks, noks))
+		} else {
+			c.log.Info(fmt.Sprintf("cancelling %d process instance(s) completed: %d succeeded or already cancelled/terminated, %d failed", t, oks, noks))
+		}
 	}
 	return r, err
 }
@@ -64,7 +72,11 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoIfVerbose(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	if cCfg.AffectedProcessInstanceCount > lk {
+		logging.InfoIfVerbose(fmt.Sprintf("deleting process instances requested for %d affected instance(s) across %d root key(s) using %d worker(s)", cCfg.AffectedProcessInstanceCount, lk, nw), c.log, cCfg.Verbose)
+	} else {
+		logging.InfoIfVerbose(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	}
 	rs, err := pool.ExecuteSlice[string, DeleteReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessInstance(ctx, key, opts...)
 	})
@@ -73,7 +85,11 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	}
 	if !cCfg.NoWait {
 		t, oks, noks := r.Totals()
-		c.log.Info(fmt.Sprintf("deleting %d process instances completed: %d succeeded, %d failed", t, oks, noks))
+		if cCfg.AffectedProcessInstanceCount > t {
+			c.log.Info(fmt.Sprintf("deleting %d process instance(s) completed via %d root request(s): %d root request(s) succeeded, %d failed", cCfg.AffectedProcessInstanceCount, t, oks, noks))
+		} else {
+			c.log.Info(fmt.Sprintf("deleting %d process instances completed: %d succeeded, %d failed", t, oks, noks))
+		}
 	}
 	return r, err
 }

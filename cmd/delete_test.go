@@ -351,9 +351,10 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
-		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
+			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
@@ -390,9 +391,10 @@ func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testi
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
-		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
+			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
 			return process.DeleteReports{Items: []process.DeleteReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}

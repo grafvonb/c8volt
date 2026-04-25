@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	types "github.com/grafvonb/c8volt/typex"
@@ -131,7 +132,8 @@ func deleteProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 		}
 	}
 
-	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, collectOptions()...)
+	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	reports, err := cli.DeleteProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("delete process instances: %w", err)
 	}

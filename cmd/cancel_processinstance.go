@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	types "github.com/grafvonb/c8volt/typex"
@@ -135,7 +136,8 @@ func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 		}
 	}
 
-	reports, err := cli.CancelProcessInstances(cmd.Context(), plan.Roots, flagWorkers, collectOptions()...)
+	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	reports, err := cli.CancelProcessInstances(cmd.Context(), plan.Roots, flagWorkers, opts...)
 	if err != nil {
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
 	}

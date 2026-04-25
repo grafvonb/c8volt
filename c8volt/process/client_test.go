@@ -1,6 +1,7 @@
 package process
 
 import (
+	"bytes"
 	"context"
 	"log/slog"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -636,6 +638,50 @@ func TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve(t *
 	assert.Contains(t, err.Error(), "no process instances resolved during dependency expansion")
 }
 
+func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	piAPI := stubProcessInstanceAPI{
+		cancelProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			assert.Equal(t, "root-1", key)
+			return d.CancelResponse{Ok: true, StatusCode: 202, Status: "202 Accepted"}, nil, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
+
+	reports, err := cli.CancelProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4), options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, reports.Items, 1)
+	assert.Contains(t, logBuf.String(), "cancelling process instances requested for 4 affected instance(s) across 1 root key(s)")
+	assert.Contains(t, logBuf.String(), "cancelling 4 process instance(s) completed via 1 root request(s): 1 root request(s) succeeded or already cancelled/terminated, 0 failed")
+	assert.NotContains(t, logBuf.String(), "cancelling 1 process instance(s) completed")
+}
+
+func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	piAPI := stubProcessInstanceAPI{
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			assert.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
+
+	reports, err := cli.DeleteProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4), options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, reports.Items, 1)
+	assert.Contains(t, logBuf.String(), "deleting process instances requested for 4 affected instance(s) across 1 root key(s)")
+	assert.Contains(t, logBuf.String(), "deleting 4 process instance(s) completed via 1 root request(s): 1 root request(s) succeeded, 0 failed")
+	assert.NotContains(t, logBuf.String(), "deleting 1 process instances completed")
+}
+
 type stubProcessDefinitionAPI struct {
 	searchProcessDefinitions func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
 	getProcessDefinition     func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
@@ -680,6 +726,8 @@ type stubProcessInstanceAPI struct {
 	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	ancestry                      func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
 	descendants                   func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+	cancelProcessInstance         func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	deleteProcessInstance         func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
 	ancestryResult                func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult             func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	familyResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
@@ -730,12 +778,18 @@ func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Contex
 	}, nil
 }
 
-func (stubProcessInstanceAPI) CancelProcessInstance(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+	if s.cancelProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.cancelProcessInstance(ctx, key, opts...)
 }
 
-func (stubProcessInstanceAPI) DeleteProcessInstance(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
-	panic("unexpected call")
+func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	if s.deleteProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.deleteProcessInstance(ctx, key, opts...)
 }
 
 func (stubProcessInstanceAPI) GetProcessInstanceStateByKey(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
