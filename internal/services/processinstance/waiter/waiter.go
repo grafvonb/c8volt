@@ -12,6 +12,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/toolx/pool"
 	"github.com/grafvonb/c8volt/typex"
 )
@@ -26,6 +27,8 @@ func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.C
 	ukeys := keys.Unique()
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d process instance(s) to reach desired state(s)", lk))
+	defer stopActivity()
 
 	rs, err := pool.ExecuteSlice[string, d.StateResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.StateResponse, error) {
 		sr, _, werr := WaitForProcessInstanceState(ctx, s, cfg, log, key, desired, opts...)
@@ -38,7 +41,9 @@ func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.C
 }
 
 func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
-	_ = services.ApplyCallOptions(opts)
+	cCfg := services.ApplyCallOptions(opts)
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for process instance %s to reach desired state(s)", key))
+	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
 	if backoff.Timeout > 0 {
@@ -74,7 +79,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 				log.Debug(status)
 				return d.StateResponse{Ok: true, State: got, Status: status}, pi, nil
 			}
-			log.Info(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt #%d)", key, got, attempts))
+			logging.InfoIfVerbose(fmt.Sprintf("process instance %s currently in state %s; waiting... (attempt #%d)", key, got, attempts), log, cCfg.Verbose)
 		} else if errInDelay != nil {
 			if isProcessInstanceAbsentErr(errInDelay) {
 				// Only waiter-driven absent/deleted confirmation maps not-found into ABSENT; direct lookups stay strict.
@@ -85,7 +90,7 @@ func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Co
 					log.Debug(status)
 					return d.StateResponse{Ok: true, State: got, Status: status}, d.ProcessInstance{}, nil
 				}
-				log.Info(fmt.Sprintf("process instance %s is absent (not found); waiting... (attempt #%d)", key, attempts))
+				logging.InfoIfVerbose(fmt.Sprintf("process instance %s is absent (not found); waiting... (attempt #%d)", key, attempts), log, cCfg.Verbose)
 			} else {
 				elapsed := time.Since(start)
 				status := fmt.Sprintf("stopped waiting for process instance %s after %d attempts in %s due to error", key, attempts, elapsed)

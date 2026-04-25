@@ -40,11 +40,10 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Long: "Print version information.\n\n" +
-		"Use this read-only command to confirm the running c8volt build and supported Camunda versions before troubleshooting or automation setup.\n" +
-		"Default output stays compact for human use. Prefer --json when automation needs the shared result envelope and version metadata fields.",
+		"Use this command to confirm the running c8volt build and supported Camunda versions before troubleshooting or setup.\n" +
+		"Default output is compact. Use --json when another tool needs version metadata.",
 	Example: `  ./c8volt version
-  ./c8volt version --json
-  ./c8volt version | head -n 1`,
+  ./c8volt version --json`,
 	Run: func(cmd *cobra.Command, args []string) {
 		info := CurrentBuildInfo()
 		if flagViewAsJson {

@@ -22,6 +22,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 const wrongStateMessage400 = "Process instances needs to be in one of the states [COMPLETED, CANCELED]"
@@ -102,6 +103,9 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
 	cCfg := services.ApplyCallOptions(opts)
+	if data.TenantId == "" {
+		data.TenantId = s.cfg.App.TargetTenant()
+	}
 	s.log.Debug(fmt.Sprintf("creating new process instance with process definition id %s", data.ProcessDefinitionSpecificId))
 	body := toProcessInstanceCreationInstruction(data)
 	resp, err := s.cc.PostProcessInstancesWithResponse(ctx, body)
@@ -320,7 +324,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
 					}, pis, nil
 				}
-				s.log.Info(fmt.Sprintf("force flag is set, cancelling %d process instances with keys %v", len(keys), keys))
+				logging.InfoOrVerbose(
+					fmt.Sprintf("force flag is set, cancelling %d process instances", len(keys)),
+					fmt.Sprintf("force flag is set, cancelling %d process instances with keys %v", len(keys), keys),
+					s.log,
+					cCfg.Verbose,
+				)
 				return s.CancelProcessInstance(ctx, rootPIKey, opts...)
 			} else {
 				s.log.Info(fmt.Sprintf("cannot cancel: process instance with key %s is a child of root %s; use --force to cancel the root and its child instances", key, rootPIKey))
@@ -419,7 +428,7 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 			s.log.Info(fmt.Sprintf("retrying deletion of process instance with key %d", oldKey))
 			resp, err = s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
 		} else {
-			s.log.Info(fmt.Sprintf("cannot delete, process instance %s is not in one of terminated states; use --force flag to cancel and then delete the process instance", key))
+			logging.InfoIfVerbose(fmt.Sprintf("cannot delete, process instance %s is not in one of terminated states; use --force flag to cancel and then delete the process instance", key), s.log, cCfg.Verbose)
 			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
 		}
 	}

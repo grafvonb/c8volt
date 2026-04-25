@@ -16,16 +16,13 @@ var deployProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Deploy BPMN process definition files",
 	Long: "Deploy BPMN process definition files and report the deployed definitions.\n\n" +
-		"By default c8volt waits until the deployment is confirmed before returning success. Use --no-wait " +
-		"when accepted deployment work should return immediately, then verify the resulting definitions with " +
-		"`get process-definition`, or start a follow-up instance with --run when a smoke test should happen right away.\n\n" +
-		"Default output stays operator-oriented. Use --json for the shared result envelope and pair it with " +
-		"--automation on supported non-interactive paths.",
-	Example: `  ./c8volt deploy pd --file ./order-process.bpmn
-  ./c8volt deploy pd --file ./order-process.bpmn --run
-  ./c8volt --automation --json deploy pd --file ./order-process.bpmn --no-wait
-  ./c8volt get pd --bpmn-process-id order-process --latest --json
-  ./c8volt deploy pd --file - < ./order-process.bpmn`,
+		"By default c8volt waits until deployment is confirmed before returning success. Use --run when you want to start one process instance for each deployed definition as a smoke test.\n\n" +
+		"Use --no-wait when accepted deployment work is enough for the current step, then verify later with `get pd`.",
+	Example: `  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --no-wait
+  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -61,7 +58,7 @@ var deployProcessDefinitionCmd = &cobra.Command{
 
 		if flagDeployPDWithRun {
 			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
-			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, res, cfg.App.Tenant)
+			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, res, cfg.App.TargetTenant())
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}

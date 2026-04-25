@@ -9,12 +9,14 @@ import (
 	"net/http/httputil"
 
 	"github.com/grafvonb/c8volt/internal/services/auth/authenticator"
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 type LogTransport struct {
 	base     http.RoundTripper
 	WithBody bool
 	Log      *slog.Logger
+	Activity logging.ActivitySink
 }
 
 func (t *LogTransport) rt() http.RoundTripper {
@@ -28,6 +30,10 @@ func (t *LogTransport) rt() http.RoundTripper {
 }
 
 func (t *LogTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.Activity != nil {
+		t.Activity.StartActivity(fmt.Sprintf("waiting for %s %s", req.Method, req.URL.Host))
+		defer t.Activity.StopActivity()
+	}
 	if t.WithBody {
 		// clone body to avoid consuming it
 		var bodyCopy []byte

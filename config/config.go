@@ -73,11 +73,14 @@ type Profile struct {
 
 // BindConfigEnvVars binds all config fields to their environment variables using mapstructure tags
 func BindConfigEnvVars(v *viper.Viper) {
-	BindAllEnvVars(v, "C8VOLT_", reflect.TypeOf(Config{}), nil)
+	BindAllEnvVars(v, "C8VOLT_", reflect.TypeFor[Config](), nil)
 }
 
-func BindConfigEnvVarsForProfile(v *viper.Viper, cfg *Config) {
-	BindAllEnvVars(v, "C8VOLT_", reflect.TypeOf(*cfg), nil)
+// BindConfigEnvVarsForProfile binds the same environment keys as BindConfigEnvVars while preserving the historical
+// profile-aware call signature. The profile config argument is intentionally unused because environment binding depends
+// on the Config type shape, not on a specific value.
+func BindConfigEnvVarsForProfile(v *viper.Viper, _ *Config) {
+	BindAllEnvVars(v, "C8VOLT_", reflect.TypeFor[Config](), nil)
 }
 
 // BindAllEnvVars recursively binds all config fields to their environment variables using mapstructure tags

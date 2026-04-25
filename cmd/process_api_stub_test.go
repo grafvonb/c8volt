@@ -12,6 +12,7 @@ type stubProcessAPI struct {
 	dryRunCancelOrDeletePlan func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
 	cancelProcessInstances   func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
 	deleteProcessInstances   func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
+	filterOrphanParent       func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
 }
 
 func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
@@ -70,8 +71,11 @@ func (stubProcessAPI) GetDirectChildrenOfProcessInstance(context.Context, string
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) FilterProcessInstanceWithOrphanParent(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) FilterProcessInstanceWithOrphanParent(ctx context.Context, items []process.ProcessInstance, opts ...options.FacadeOption) ([]process.ProcessInstance, error) {
+	if s.filterOrphanParent == nil {
+		panic("unexpected call")
+	}
+	return s.filterOrphanParent(ctx, items, opts...)
 }
 
 func (stubProcessAPI) WaitForProcessInstanceState(context.Context, string, process.States, ...options.FacadeOption) (process.StateReport, process.ProcessInstance, error) {

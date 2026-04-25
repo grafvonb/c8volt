@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"os"
 	"time"
+
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 const (
@@ -32,6 +35,14 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 	}
 	startedAt := time.Now()
 	log.Debug(fmt.Sprintf("waiting for completion started with timeout %s", timeout.String()))
+	var activity logging.ActivitySink
+	if !noProgress {
+		activity = logging.ActivityFromContext(ctx)
+		if activity != nil {
+			activity.StartActivity("waiting for completion")
+			defer activity.StopActivity()
+		}
+	}
 
 	deadline := time.Now().Add(timeout)
 	delay := defaultInitialDelay
@@ -39,8 +50,8 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 	for {
 		duration := time.Since(startedAt)
 		attempt++
-		if !noProgress {
-			fmt.Print(".")
+		if !noProgress && activity == nil {
+			fmt.Fprint(os.Stderr, ".")
 		}
 		log.Debug(fmt.Sprintf("waiting for completion loop: %d attempt(s), already running since %s for %s", attempt, startedAt.String(), duration.String()))
 
@@ -60,8 +71,8 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 
 		if status.Success {
 			duration = time.Since(startedAt)
-			if !noProgress {
-				fmt.Printf("completed after: %s\n", duration.String())
+			if !noProgress && activity == nil {
+				fmt.Fprintf(os.Stderr, "completed after: %s\n", duration.String())
 			}
 			log.Debug(fmt.Sprintf("waiting for completion completed successfully after %d attempts in %s", attempt, duration.String()))
 			return nil

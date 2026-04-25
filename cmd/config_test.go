@@ -20,8 +20,8 @@ import (
 func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
 	output := executeRootForTest(t, "config", "--help")
 
-	require.Contains(t, output, "Manage application configuration")
-	require.Contains(t, output, "inspect the effective configuration")
+	require.Contains(t, output, "Inspect and validate c8volt configuration")
+	require.Contains(t, output, "effective settings c8volt will use")
 	require.Contains(t, output, "`config show`")
 	require.Contains(t, output, "./c8volt config show")
 	require.Contains(t, output, "./c8volt config show --template")
@@ -52,6 +52,7 @@ func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfig(t *te
 func TestRetrieveAndNormalizeConfig_RootPersistentFlagsOverrideEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_ACTIVE_PROFILE", "dev")
 	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
+	t.Setenv("C8VOLT_HTTP_TIMEOUT", "18s")
 
 	cfgPath := writeRawTestConfig(t, `active_profile: base
 app:
@@ -61,6 +62,8 @@ auth:
 apis:
   camunda_api:
     base_url: http://base.example.test
+http:
+  timeout: 30s
 profiles:
   dev:
     app:
@@ -68,12 +71,16 @@ profiles:
     apis:
       camunda_api:
         base_url: http://dev.example.test
+    http:
+      timeout: 9s
   prod:
     app:
       tenant: profile-prod
     apis:
       camunda_api:
         base_url: http://prod.example.test
+    http:
+      timeout: 7s
 `)
 
 	root := Root()
@@ -84,6 +91,7 @@ profiles:
 	require.NoError(t, root.PersistentFlags().Set("config", cfgPath))
 	require.NoError(t, root.PersistentFlags().Set("profile", "prod"))
 	require.NoError(t, root.PersistentFlags().Set("tenant", "flag-tenant"))
+	require.NoError(t, root.PersistentFlags().Set("timeout", "45s"))
 
 	v := viper.New()
 	bindings, err := initViper(v, root)
@@ -94,6 +102,7 @@ profiles:
 
 	require.Equal(t, "prod", cfg.ActiveProfile)
 	require.Equal(t, "flag-tenant", cfg.App.Tenant)
+	require.Equal(t, "45s", cfg.HTTP.Timeout)
 	require.Equal(t, "http://prod.example.test/v2", cfg.APIs.Camunda.BaseURL)
 }
 

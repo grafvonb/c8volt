@@ -1,20 +1,21 @@
 package toolx
 
 import (
+	"maps"
 	"strconv"
 
 	"github.com/oapi-codegen/nullable"
 )
 
 // Ptr returns a pointer to a copy of v (for value -> *T).
-func Ptr[T any](v T) *T { return &v }
+func Ptr[T any](v T) *T { return new(v) }
 
 // PtrIfNonZero returns a pointer to v if v != 0, otherwise nil.
 func PtrIfNonZero[T ~int | ~int32 | ~int64](v T) *T {
 	if v == 0 {
 		return nil
 	}
-	return &v
+	return new(v)
 }
 
 // PtrIf returns a pointer to v if v != zero, otherwise nil.
@@ -27,7 +28,7 @@ func PtrIf[T comparable](v, zero T) *T {
 	if v == zero {
 		return nil
 	}
-	return &v
+	return new(v)
 }
 
 // MapSlice maps []S -> []D using f.
@@ -212,7 +213,7 @@ func StringToInt64Ptr(s string) (*int64, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &v, nil
+	return new(v), nil
 }
 
 func StringToInt32Ptr(s string) (*int32, error) {
@@ -235,7 +236,7 @@ func StringPtrToInt64Ptr(p *string) (*int64, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &v, nil
+	return new(v), nil
 }
 
 // Int64ToString converts int64 → string.
@@ -281,9 +282,7 @@ func CopyMap[K comparable, V any](in map[K]V) map[K]V {
 		return nil
 	}
 	out := make(map[K]V, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 

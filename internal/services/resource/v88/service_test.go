@@ -20,6 +20,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newTestService wires the v8.8 resource service with resource and process
+// definition mocks. v8.8 deployment confirmation needs both clients, so tests
+// pass them separately to make accidental cross-endpoint calls visible.
 func newTestService(t *testing.T, tenantID string, client *mockResourceClient, processClient *mockProcessDefinitionClient) *Service {
 	t.Helper()
 
@@ -78,6 +81,10 @@ func (m *mockProcessDefinitionClient) GetProcessDefinitionInstanceVersionStatist
 	panic("unexpected GetProcessDefinitionInstanceVersionStatisticsWithResponse call")
 }
 
+// TestService_Deploy verifies the v8.8 deployment flow across both modes.
+// With no-wait the deployment response is returned immediately; without it the
+// service confirms that returned process definition keys are visible before
+// reporting success.
 func TestService_Deploy(t *testing.T) {
 	ctx := context.Background()
 	tenantID := "tenant"
@@ -240,6 +247,47 @@ func TestService_Deploy(t *testing.T) {
 	}
 }
 
+func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
+	ctx := context.Background()
+	resourceName := "demo.bpmn"
+	resourceData := []byte("<xml>demo</xml>")
+	cfg := testConfigWithTenant(t, "")
+	svc, err := New(cfg, &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithClient(&mockResourceClient{
+		createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateDeploymentResponse, error) {
+			assertMultipartDeploymentRequest(t, contentType, body, config.DefaultTenant, resourceName, resourceData)
+			return &camundav88.CreateDeploymentResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/deployments", http.StatusOK, "200 OK"),
+				JSON200: &camundav88.DeploymentResult{
+					DeploymentKey: "deployment-1",
+					TenantId:      config.DefaultTenant,
+				},
+			}, nil
+		},
+		deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav88.DeleteResourceOpJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.DeleteResourceOpResponse, error) {
+			t.Fatalf("unexpected delete call")
+			return nil, nil
+		},
+		getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetResourceResponse, error) {
+			t.Fatalf("unexpected get call")
+			return nil, nil
+		},
+	}, &mockProcessDefinitionClient{
+		getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessDefinitionResponse, error) {
+			t.Fatalf("unexpected confirmation poll")
+			return nil, nil
+		},
+	}))
+	require.NoError(t, err)
+
+	deployment, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}}, services.WithNoWait())
+
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultTenant, deployment.TenantId)
+}
+
+// TestService_Delete documents the explicit allow-inconsistent gate around
+// resource deletion. The skip case is important because the public facade may
+// dry-run or cancel process instances before allowing this destructive call.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
 
@@ -330,6 +378,9 @@ func TestService_Delete(t *testing.T) {
 	})
 }
 
+// TestService_Get verifies v8.8 resource mapping and malformed-success guards.
+// Generated clients can decode an empty JSON object into a non-nil struct, so
+// the test protects the extra semantic validation that key fields must exist.
 func TestService_Get(t *testing.T) {
 	ctx := context.Background()
 
@@ -440,6 +491,9 @@ func TestService_Get(t *testing.T) {
 	}
 }
 
+// TestService_ProcessDefinitionDeployPoller captures the wait semantics after
+// deployment. A missing process definition means "not visible yet" and should
+// keep polling, while unexpected upstream statuses are surfaced as hard errors.
 func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 	ctx := context.Background()
 
@@ -565,6 +619,9 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 	})
 }
 
+// assertMultipartDeploymentRequest checks the exact multipart contract sent to
+// Camunda: tenantId is a form field, resources carries the BPMN bytes, and the
+// resource part keeps the caller's filename.
 func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.Reader, tenantID string, resourceName string, resourceData []byte) {
 	t.Helper()
 
@@ -593,6 +650,8 @@ func assertMultipartDeploymentRequest(t *testing.T, contentType string, body io.
 	assert.Equal(t, resourceName, filenames["resources"])
 }
 
+// newHTTPResponse builds the minimum response metadata required by status
+// normalization helpers, including method and URL for useful error text.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -608,6 +667,8 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 	}
 }
 
+// testConfigWithTenant supplies the effective tenant used in deployment bodies
+// and tenant-aware service behavior.
 func testConfigWithTenant(t *testing.T, tenantID string) *config.Config {
 	t.Helper()
 
@@ -616,6 +677,8 @@ func testConfigWithTenant(t *testing.T, tenantID string) *config.Config {
 	return cfg
 }
 
+// testStringPtr mirrors nullable fields in generated v8.8 response types.
 func testStringPtr(v string) *string { return &v }
 
+// testInt32Ptr mirrors nullable numeric fields in generated v8.8 response types.
 func testInt32Ptr(v int32) *int32 { return &v }

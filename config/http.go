@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type HTTP struct {
@@ -13,6 +14,13 @@ type HTTP struct {
 func (h *HTTP) Validate() error {
 	if strings.TrimSpace(h.Timeout) == "" {
 		return fmt.Errorf("http.timeout: timeout must not be empty")
+	}
+	d, err := time.ParseDuration(h.Timeout)
+	if err != nil {
+		return fmt.Errorf("http.timeout: invalid duration: %w", err)
+	}
+	if d <= 0 {
+		return fmt.Errorf("http.timeout: timeout must be a positive duration")
 	}
 	return nil
 }

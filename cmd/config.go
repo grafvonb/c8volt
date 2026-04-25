@@ -6,16 +6,16 @@ import (
 
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Manage application configuration",
-	Long: `Manage application configuration.
+	Short: "Inspect and validate c8volt configuration",
+	Long: `Inspect and validate c8volt configuration.
 
-Use this command family to inspect the effective configuration, validate the values a
-command would run with, or generate a copy-pasteable template config file. Choose
-` + "`config show`" + ` when you need to understand how flags, environment variables,
-profiles, and base config resolve into one effective command context.`,
+Use ` + "`config show`" + ` to see the effective settings c8volt will use after flags,
+environment variables, profiles, config files, and defaults are resolved. Generate a
+template first when setting up a new environment.`,
 	Example: `  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile prod config show --validate
-  ./c8volt config show --template`,
+  ./c8volt config show --template
+  ./c8volt --config ./config.yaml config show --validate
+  ./c8volt --profile prod config show`,
 	Aliases: []string{"cfg"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

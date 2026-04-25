@@ -22,10 +22,9 @@ var (
 
 var embedExportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.",
-	Long: "Export embedded (virtual) resources to local files.\n\n" +
-		"Use this command when you want to copy BPMN assets out of the c8volt binary for inspection, editing, or later deployment. " +
-		"Choose `--all` to export the full embedded set or repeat `--file` with exact names or quoted globs to export a narrower slice.",
+	Short: "Export bundled BPMN fixtures to local files",
+	Long: "Export bundled BPMN fixtures to local files.\n\n" +
+		"Use this command when you want to inspect or edit the packaged BPMN assets. Choose `--all` for the full set, or repeat `--file` with exact names or quoted globs for a narrower export.",
 	Example: `  ./c8volt embed export --all --out ./fixtures
   ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
   ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures`,

@@ -1,15 +1,13 @@
 app:
   # Supported values: 8.7, 8.8, 8.9
   camunda_version: "8.9"
-
   # Optional default tenant for tenant-aware commands
   tenant: ""
-
 auth:
   # Use "none" for local c8run or unsecured development clusters.
   # Use "oauth2" for Camunda SaaS or protected self-managed clusters.
+  # Use "cookie" for session cookie-based authentication.
   mode: "none"
-
   oauth2:
     token_url: "https://login.example.com/oauth/token"
     client_id: "c8volt"
@@ -18,23 +16,23 @@ auth:
       camunda_api: "camunda-api.read"
       operate_api: "operate-api.read"
       tasklist_api: "tasklist-api.read"
-
+  cookie:
+    base_url: "https://identity.example.com"
+    username: "demo"
+    password: ""
 http:
   timeout: "30s"
-
 apis:
   # Easiest start:
   # Set only camunda_api.base_url and let c8volt derive the default
   # Camunda v2 and Operate/Tasklist v1 endpoints automatically.
   camunda_api:
     base_url: "http://localhost:8080"
-
   # Optional explicit overrides.
   # Leave these unset unless your environment exposes different roots.
   # operate_api:
   #   base_url: "https://operate.example.com"
   # tasklist_api:
   #   base_url: "https://tasklist.example.com"
-
 log:
   level: "info"

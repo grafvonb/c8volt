@@ -21,6 +21,8 @@ type ServiceDeps struct {
 	Logger     *slog.Logger
 }
 
+// PrepareServiceDeps validates the common constructor inputs shared by versioned services.
+// cfg must include a Camunda base URL; nil httpClient and log are replaced with default implementations.
 func PrepareServiceDeps(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (ServiceDeps, error) {
 	if cfg == nil {
 		return ServiceDeps{}, ErrNilConfig
@@ -37,6 +39,8 @@ func PrepareServiceDeps(cfg *config.Config, httpClient *http.Client, log *slog.L
 	return ServiceDeps{Config: cfg, HTTPClient: httpClient, Logger: log}, nil
 }
 
+// EffectiveTenant returns the configured tenant or an empty string for nil configs.
+// It is used by request builders where an empty tenant means "do not add a tenant filter".
 func EffectiveTenant(cfg *config.Config) string {
 	if cfg == nil {
 		return ""
@@ -44,7 +48,9 @@ func EffectiveTenant(cfg *config.Config) string {
 	return cfg.App.Tenant
 }
 
-func EnsureLoggerAndClients(logger *slog.Logger, clients ...interface{}) (*slog.Logger, error) {
+// EnsureLoggerAndClients validates service dependencies after constructor options have been applied.
+// logger is defaulted when nil; at least one non-nil generated client must be supplied.
+func EnsureLoggerAndClients(logger *slog.Logger, clients ...any) (*slog.Logger, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}

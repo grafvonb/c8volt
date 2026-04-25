@@ -64,6 +64,7 @@ func LookupProcessInstanceStateByKey(ctx context.Context, api TenantSafeLookupSe
 // processinstance service surface while the internals are refactored.
 var _ API = (*v87.Service)(nil)
 var _ API = (*v88.Service)(nil)
+var _ API = (*v89.Service)(nil)
 var _ API = (v87.API)(nil)
 var _ API = (v88.API)(nil)
 var _ API = (v89.API)(nil)

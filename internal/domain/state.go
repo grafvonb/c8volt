@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -23,12 +24,7 @@ func (s State) EqualsIgnoreCase(other State) bool {
 }
 
 func (s State) In(states ...State) bool {
-	for _, st := range states {
-		if s.EqualsIgnoreCase(st) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(states, s.EqualsIgnoreCase)
 }
 
 func (s State) IsTerminal() bool {

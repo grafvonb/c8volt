@@ -11,6 +11,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -49,23 +50,20 @@ var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
-		"Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.\n" +
-		"Use --total on search/list invocations when automation only needs the numeric count of matching process instances; if the backend reports a capped total, the command returns that lower-bound number unchanged.\n" +
-		"Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.\n\n" +
-		"When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. " +
-		"Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.",
+		"Use this command to inspect workflow instances by key, process-definition selectors, state, or date filters.\n\n" +
+		"Use --total when you only need the numeric count of matching process instances. Direct --key lookups stay strict: if the requested process instance is missing, c8volt returns the normal not-found error.\n\n" +
+		"When search results span multiple pages, human-oriented output prompts before continuing unless --auto-confirm or --json is set. JSON mode consumes remaining pages and returns one aggregated result.",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
-  ./c8volt --automation get pi --state active --count 250
   ./c8volt --json get pi --state active --count 250
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
+  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
-		  ./c8volt get pi --end-date-newer-days 14 --state completed
+  ./c8volt get pi --end-date-newer-days 14 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -597,7 +595,9 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 		pis = pis.FilterRootsOnly()
 	}
 	if flagGetPIOrphanChildrenOnly {
+		stopActivity := startCommandActivity(cmd, fmt.Sprintf("checking orphan parents for %d process instance(s)", len(pis.Items)))
 		pis.Items, err = cli.FilterProcessInstanceWithOrphanParent(cmd.Context(), pis.Items, collectOptions()...)
+		stopActivity()
 		if err != nil {
 			return process.ProcessInstances{}, fmt.Errorf("error filtering orphan children: %w", err)
 		}
@@ -614,6 +614,13 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 
 func canUsePIReportedTotal() bool {
 	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
+}
+
+func startCommandActivity(cmd *cobra.Command, msg string) func() {
+	if cmd == nil {
+		return func() {}
+	}
+	return logging.StartActivity(cmd.Context(), msg)
 }
 
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {

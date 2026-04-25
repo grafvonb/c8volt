@@ -39,6 +39,9 @@ func ensureSynchronizedWriter(w io.Writer) io.Writer {
 	if w == nil {
 		return nil
 	}
+	if _, ok := w.(concurrentWriter); ok {
+		return w
+	}
 	if _, ok := w.(*synchronizedWriter); ok {
 		return w
 	}

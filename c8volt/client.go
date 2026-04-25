@@ -20,10 +20,20 @@ import (
 
 type Option func(*cfg)
 
-func WithConfig(c *config.Config) Option   { return func(x *cfg) { x.cfg = c } }
-func WithHTTPClient(h *http.Client) Option { return func(x *cfg) { x.http = h } }
-func WithLogger(l *slog.Logger) Option     { return func(x *cfg) { x.log = l } }
+// WithConfig supplies the resolved c8volt configuration used to choose service versions and base URLs.
+// A nil config is allowed and falls back to an empty Config, which the internal services may reject if required fields are absent.
+func WithConfig(c *config.Config) Option { return func(x *cfg) { x.cfg = c } }
 
+// WithHTTPClient supplies the HTTP client shared by all internal services.
+// A nil client falls back to a default client with a 30 second timeout.
+func WithHTTPClient(h *http.Client) Option { return func(x *cfg) { x.http = h } }
+
+// WithLogger supplies the logger shared by facade and internal services.
+// A nil logger falls back to slog.Default.
+func WithLogger(l *slog.Logger) Option { return func(x *cfg) { x.log = l } }
+
+// New wires the public facade over version-specific internal services.
+// Options provide config, HTTP transport, and logging; service factories still validate required configuration such as base URLs.
 func New(opts ...Option) (API, error) {
 	c := cfg{
 		http: &http.Client{Timeout: 30 * time.Second},

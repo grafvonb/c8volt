@@ -6,16 +6,14 @@ import (
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Start state-changing work such as process instances",
-	Long: `Start state-changing work such as process instances.
+	Short: "Start process instances",
+	Long: `Start process instances.
 
-Use this command family when you want c8volt to create new work in Camunda. Choose
-` + "`run process-instance`" + ` to start one or more instances. Child commands document
-whether they wait for confirmed creation by default, when ` + "`--no-wait`" + ` can return
-accepted work earlier, and how to pair the result with follow-up inspection commands.`,
-	Example: `  ./c8volt run process-instance --help
-  ./c8volt run process-instance --bpmn-process-id order-process
-  ./c8volt --automation --json run process-instance --bpmn-process-id order-process --no-wait`,
+Use this command family when you want to create new workflow work in Camunda.
+The process-instance command waits for confirmed activation by default.`,
+	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
+  ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b C88_SimpleUserTask_Process --no-wait`,
 	Aliases: []string{"r"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

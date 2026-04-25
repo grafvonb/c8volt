@@ -6,15 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt run process-instance
 
-Start process instance(s) and confirm they are active
+Start process instances and confirm activation
 
 ### Synopsis
 
-Start process instance(s) and confirm they are active.
+Start process instances and confirm activation.
 
-By default c8volt waits until the created instances can be confirmed as active before returning success. Use --no-wait when accepted-but-not-yet-confirmed work should return immediately, and follow up with `get process-instance`, `expect process-instance`, or `walk process-instance` when you need later verification.
+Run by BPMN process ID for the latest version, or by process definition key for an exact definition. By default c8volt waits until the created instances can be confirmed as active.
 
-Default output stays operator-oriented. Use --json when another tool needs the shared result envelope, use --automation as the canonical non-interactive contract for supported machine callers, and combine it with --no-wait when accepted work should return immediately.
+Use --no-wait when accepted-but-not-yet-confirmed work is enough for the current step, then verify later with `get pi`, `expect pi`, or `walk pi`.
 
 ```
 c8volt run process-instance [flags]
@@ -26,9 +26,8 @@ c8volt run process-instance [flags]
   ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
-  ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
   ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait
-  ./c8volt expect pi --key 2251799813711967 --state active
+  ./c8volt expect pi --key <process-instance-key> --state active
 ```
 
 ### Options
@@ -49,25 +48,22 @@ c8volt run process-instance [flags]
 ### Options inherited from parent commands
 
 ```
-  -y, --auto-confirm               auto-confirm prompts for non-interactive use
-      --automation                 enable the canonical non-interactive contract for commands that explicitly support it
-      --backoff-max-retries int    max retry attempts (0 = unlimited)
-      --backoff-timeout duration   overall timeout for the retry loop (default 2m0s)
-      --config string              path to config file
-      --debug                      enable debug logging, overwrites and is shorthand for --log-level=debug
-  -j, --json                       output as JSON (where applicable)
-      --keys-only                  output as keys only (where applicable), can be used for piping to other commands
-      --log-format string          log format (json, plain, text) (default "plain")
-      --log-level string           log level (debug, info, warn, error) (default "info")
-      --log-with-source            include source file and line number in logs
-      --no-err-codes               suppress error codes in error outputs
-      --profile string             config active profile name to use (e.g. dev, prod)
-  -q, --quiet                      suppress all output, except errors, overrides --log-level
-      --tenant string              tenant ID for tenant-aware command flows (overrides env, profile, and base config)
-  -v, --verbose                    adds additional verbosity to the output, e.g. for progress indication
+  -y, --auto-confirm       auto-confirm prompts for non-interactive use
+      --automation         enable non-interactive mode for commands that explicitly support it
+      --config string      path to config file
+      --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
+  -j, --json               output as JSON (where applicable)
+      --keys-only          output as keys only (where applicable), can be used for piping to other commands
+      --log-level string   log level (debug, info, warn, error) (default "info")
+      --no-indicator       disable transient terminal activity indicators
+      --profile string     config active profile name to use (e.g. dev, prod)
+  -q, --quiet              suppress all output, except errors, overrides --log-level
+      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --timeout duration   HTTP request timeout (default 30s)
+  -v, --verbose            adds additional verbosity to the output, e.g. for progress indication
 ```
 
 ### SEE ALSO
 
-* [c8volt run](c8volt_run)	 - Start state-changing work such as process instances
+* [c8volt run](c8volt_run)	 - Start process instances
 

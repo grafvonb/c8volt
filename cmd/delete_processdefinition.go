@@ -17,19 +17,15 @@ var (
 
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
-	Short: "Delete process definition resources from Zeebe",
+	Short: "Delete process definition resources",
 	Long: "Delete process definition resources from Zeebe.\n\n" +
-		"By default c8volt prompts before the destructive step and, unless --allow-inconsistent is set, only " +
-		"prepares the definitions for later manual cleanup rather than forcing inconsistent Operate state. Use " +
-		"--auto-confirm for unattended runs, and add --no-wait when accepted deletion work should return before " +
-		"final completion is observed.\n\n" +
-		"Follow up with `get process-definition` to confirm what remains deployed, especially when a manual " +
-		"Operate cleanup step is still required.",
-	Example: `  ./c8volt delete pd --key 2251799813686017 --auto-confirm
-  ./c8volt delete pd --bpmn-process-id order-process --latest --force
-  ./c8volt delete pd --bpmn-process-id order-process --latest --allow-inconsistent --auto-confirm --no-wait
-  ./c8volt get pd --bpmn-process-id order-process --latest --json
-  ./c8volt get pd --bpmn-process-id order-process --latest --keys-only | ./c8volt delete pd - --auto-confirm`,
+		"By default c8volt prompts before the destructive step. Without --allow-inconsistent, it prepares definitions for later manual cleanup instead of forcing inconsistent Operate state.\n\n" +
+		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion work is enough for the current step, then verify later with `get pd`.",
+	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
+  ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --force
+  ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --allow-inconsistent --auto-confirm --no-wait
+  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json
+  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --allow-inconsistent --auto-confirm --no-wait -`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -45,18 +41,17 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
-		if len(flagDeletePDKeys) == 0 && flagDeletePDBpmnProcessId == "" {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either --key or --bpmn-process-id must be provided to delete process definition(s)"))
-		}
-
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		keys := mergeAndValidateKeys(flagDeletePDKeys, stdinKeys, log, cfg)
+		if len(keys) == 0 && flagDeletePDBpmnProcessId == "" {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either --key, stdin keys, or --bpmn-process-id must be provided to delete process definition(s)"))
+		}
 
 		switch {
-		case len(flagDeletePDKeys) > 0:
+		case len(keys) > 0:
 		default:
 			filter := process.ProcessDefinitionFilter{
 				BpmnProcessId:     flagDeletePDBpmnProcessId,

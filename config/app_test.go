@@ -76,6 +76,23 @@ func TestAppNormalize_DoesNotForceDefaultTenantForV89AuditOnlyConfig(t *testing.
 	require.Empty(t, app.Tenant)
 }
 
+func TestAppTargetTenant_DefaultsEmptyTenant(t *testing.T) {
+	t.Parallel()
+
+	app := &App{}
+
+	require.Equal(t, DefaultTenant, app.TargetTenant())
+	require.Empty(t, app.Tenant)
+}
+
+func TestAppTargetTenant_PreservesConfiguredTenant(t *testing.T) {
+	t.Parallel()
+
+	app := &App{Tenant: "tenant-a"}
+
+	require.Equal(t, "tenant-a", app.TargetTenant())
+}
+
 func TestAppNormalize_PreservesExplicitTenantForV87(t *testing.T) {
 	t.Parallel()
 

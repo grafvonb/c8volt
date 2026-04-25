@@ -35,19 +35,19 @@ func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 
 func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"cancel"}, []string{
-		"Cancel running work with explicit confirmation semantics",
+		"Cancel running process instances",
 		"--auto-confirm",
-		"--no-wait",
-		"./c8volt cancel process-instance --state active --count 200 --auto-confirm --no-wait",
+		"waits for the observed cancellation",
+		"./c8volt cancel pi --state active --count 200 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{
 		"validates the affected root and descendant instances",
-		"asks for confirmation before the destructive action",
-		"Use --auto-confirm for unattended runs",
-		"`get process-instance` or `expect process-instance`",
-		"./c8volt expect pi --key 2251799813711967 --state canceled",
+		"Use --force when a selected child must be escalated",
+		"Use --auto-confirm for unattended destructive runs",
+		"verify later with `get pi` or `expect pi`",
+		"./c8volt expect pi --key <process-instance-key> --state canceled",
 	}, nil)
 	require.Contains(t, output, "--force")
 }
@@ -398,17 +398,18 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
 			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
 			return process.DryRunPIKeyExpansion{
-				Roots:            typex.Keys{"2251799813711967"},
-				Collected:        typex.Keys{"2251799813711967", "2251799813711968"},
+				Roots:            typex.Keys{"2251799813711900"},
+				Collected:        typex.Keys{"2251799813711900", "2251799813711967"},
 				MissingAncestors: []process.MissingAncestor{{Key: "2251799813711999", StartKey: "2251799813711967"}},
 				Warning:          "one or more parent process instances were not found",
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
-		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
-			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			require.Equal(t, typex.Keys{"2251799813711900"}, keys)
 			require.Zero(t, wantedWorkers)
-			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
+			require.Equal(t, 2, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711900", Ok: true}}}, nil
 		},
 	}
 
@@ -420,13 +421,15 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.Contains(t, prompt, "requested to cancel 1 process instance(s)")
 	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be canceled")
 	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
-	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
+	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
 func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	flagCmdAutoConfirm = true
+	flagVerbose = true
 
 	cmd := &cobra.Command{}
 	buf := &bytes.Buffer{}
@@ -444,9 +447,10 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testi
 				Outcome:          process.TraversalOutcomePartial,
 			}, nil
 		},
-		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.CancelReports, error) {
 			require.Equal(t, typex.Keys{"2251799813711967"}, keys)
 			require.Zero(t, wantedWorkers)
+			require.Equal(t, 1, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "2251799813711967", Ok: true}}}, nil
 		},
 	}

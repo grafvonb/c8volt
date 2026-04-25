@@ -13,7 +13,7 @@ type ProcessInstance struct {
 	StartDate                 string
 	State                     State
 	TenantId                  string
-	Variables                 map[string]interface{}
+	Variables                 map[string]any
 }
 
 type ProcessInstanceFilter struct {
@@ -90,17 +90,17 @@ type ProcessInstanceData struct {
 	BpmnProcessId               string // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string // ProcessDefinitionKey in API
 	ProcessDefinitionVersion    int32
-	Variables                   map[string]interface{}
+	Variables                   map[string]any
 	TenantId                    string
 }
 
 type ProcessInstanceCreation struct {
-	Key                      string                 `json:"key,omitempty"`
-	BpmnProcessId            string                 `json:"bpmnProcessId,omitempty"`        // ProcessDefinitionId in API
-	ProcessDefinitionKey     string                 `json:"processDefinitionKey,omitempty"` // ProcessDefinitionKey in API
-	ProcessDefinitionVersion int32                  `json:"processDefinitionVersion,omitempty"`
-	TenantId                 string                 `json:"tenantId,omitempty"`
-	Variables                map[string]interface{} `json:"variables,omitempty"`
-	StartDate                string                 `json:"startDate,omitempty"`
-	StartConfirmedAt         string                 `json:"startConfirmedAt,omitempty"`
+	Key                      string         `json:"key,omitempty"`
+	BpmnProcessId            string         `json:"bpmnProcessId,omitempty"`        // ProcessDefinitionId in API
+	ProcessDefinitionKey     string         `json:"processDefinitionKey,omitempty"` // ProcessDefinitionKey in API
+	ProcessDefinitionVersion int32          `json:"processDefinitionVersion,omitempty"`
+	TenantId                 string         `json:"tenantId,omitempty"`
+	Variables                map[string]any `json:"variables,omitempty"`
+	StartDate                string         `json:"startDate,omitempty"`
+	StartConfirmedAt         string         `json:"startConfirmedAt,omitempty"`
 }

@@ -451,6 +451,12 @@ apis:
 	require.ErrorContains(t, cfg.Validate(), "timeout must be a positive duration")
 }
 
+func TestHTTPValidate_RejectsInvalidAndNonPositiveTimeouts(t *testing.T) {
+	require.ErrorContains(t, (&HTTP{Timeout: "eventually"}).Validate(), "invalid duration")
+	require.ErrorContains(t, (&HTTP{Timeout: "0s"}).Validate(), "timeout must be a positive duration")
+	require.NoError(t, (&HTTP{Timeout: "30s"}).Validate())
+}
+
 func TestResolveEffectiveConfig_UnknownProfileReturnsSentinel(t *testing.T) {
 	v := viper.New()
 	v.SetConfigType("yaml")

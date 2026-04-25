@@ -24,6 +24,8 @@ func addBackoffFlagsAndBindings(cmd *cobra.Command) {
 
 	fs.Duration("backoff-timeout", defaultBackoffTimeout, "overall timeout for the retry loop")
 	fs.Int("backoff-max-retries", defaultBackoffMaxRetries, "max retry attempts (0 = unlimited)")
+	_ = fs.MarkHidden("backoff-timeout")
+	_ = fs.MarkHidden("backoff-max-retries")
 }
 
 //nolint:unused

@@ -245,19 +245,41 @@ func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinition
 		IsLatestVersion:     toolx.PtrIf(filter.IsLatestVersion, false),
 	}
 	page := camundav89.SearchQueryPageRequest{}
-	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
-		From:  new(int32),
-		Limit: &size,
-	})
-	sort := []camundav89.ProcessDefinitionSearchQuerySortRequest{
-		{
-			Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldVersion,
-			Order: new(camundav89.DESC),
-		},
-		{
-			Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldName,
-			Order: new(camundav89.ASC),
-		},
+	sort := []camundav89.ProcessDefinitionSearchQuerySortRequest{}
+	if filter.IsLatestVersion {
+		after := camundav89.EndCursor("")
+		_ = page.FromCursorForwardPagination(camundav89.CursorForwardPagination{
+			After: after,
+			Limit: &size,
+		})
+		asc := camundav89.ASC
+		sort = append(sort,
+			camundav89.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldProcessDefinitionId,
+				Order: &asc,
+			},
+			camundav89.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldTenantId,
+				Order: &asc,
+			},
+		)
+	} else {
+		_ = page.FromOffsetPagination(camundav89.OffsetPagination{
+			From:  new(int32),
+			Limit: &size,
+		})
+		desc := camundav89.DESC
+		asc := camundav89.ASC
+		sort = append(sort,
+			camundav89.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldVersion,
+				Order: &desc,
+			},
+			camundav89.ProcessDefinitionSearchQuerySortRequest{
+				Field: camundav89.ProcessDefinitionSearchQuerySortRequestFieldName,
+				Order: &asc,
+			},
+		)
 	}
 	return processDefinitionSearchQuery{
 		Filter: bodyFilter,

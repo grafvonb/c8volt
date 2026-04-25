@@ -6,16 +6,15 @@ import (
 
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "Delete resources with explicit destructive confirmation",
-	Long: `Delete resources with explicit destructive confirmation.
+	Short: "Delete process instances or definitions",
+	Long: `Delete process instances or process definitions.
 
-Use this command family when work should be removed rather than merely inspected.
-Child commands explain whether c8volt prompts before deletion, whether cancellation or
-preparation happens first, how ` + "`--auto-confirm`" + ` enables unattended destructive
-flows, and when ` + "`--no-wait`" + ` returns accepted deletion instead of confirmed completion.`,
-	Example: `  ./c8volt delete process-instance --help
-  ./c8volt delete process-definition --help
-  ./c8volt delete process-instance --state completed --count 200 --auto-confirm --no-wait`,
+Use this command family when workflow data should be removed. Leaf commands explain
+what c8volt validates first, when confirmation is required, and which follow-up
+command confirms the result.`,
+	Example: `  ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt delete pi --state completed --count 200 --auto-confirm
+  ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm`,
 	Aliases: []string{"d", "del", "remove", "rm"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

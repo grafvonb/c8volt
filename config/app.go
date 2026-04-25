@@ -26,6 +26,16 @@ func (a *App) ViewTenant() string {
 	return a.Tenant
 }
 
+// TargetTenant returns the concrete tenant to use for commands that create
+// tenant-owned data. Read/search commands should keep using Tenant directly so
+// an empty tenant can still mean "all visible tenants".
+func (a *App) TargetTenant() string {
+	if a.Tenant == "" {
+		return DefaultTenant
+	}
+	return a.Tenant
+}
+
 func (a *App) Normalize() error {
 	var errs []error
 	if err := a.normalizeCamundaVersion(nil); err != nil {

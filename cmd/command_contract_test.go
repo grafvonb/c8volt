@@ -49,7 +49,7 @@ func TestCommandCapabilityForCommand_IncludesInheritedAndRequiredFlags(t *testin
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "enable the canonical non-interactive contract for commands that explicitly support it",
+		Description: "enable non-interactive mode for commands that explicitly support it",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "json",

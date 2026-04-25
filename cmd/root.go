@@ -27,10 +27,12 @@ var (
 	flagQuiet             bool
 	flagVerbose           bool
 	flagDebug             bool
+	flagNoIndicator       bool
 	flagNoErrCodes        bool
 	flagCmdAutomation     bool
 	flagCmdAutoConfirm    bool
 	flagAllowInconsistent bool
+	flagHTTPTimeout       = "30s"
 )
 
 func Root() *cobra.Command { return rootCmd }
@@ -62,36 +64,23 @@ func (r *resolverBindings) hasHigherPrecedenceSource(key string) bool {
 
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
-	Short: "Operate Camunda 8 with guided help and script-safe output modes",
+	Short: "Operate Camunda 8 workflows from the command line",
 	Long: `c8volt: Camunda 8 Operations CLI.
 
-Built for Camunda 8 operators and developers who need confirmation, not guesses.
-c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
-waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
+c8volt helps operators deploy BPMN models, start process instances, inspect workflow state,
+wait for state changes, walk process trees, cancel safely, and delete thoroughly.
+It supports Camunda 8.7, 8.8, and 8.9.
 
-Start with "c8volt <group> --help" when choosing an operator workflow, or use
-"c8volt capabilities --json" when a script, CI job, or AI caller needs the public command inventory,
-flag metadata, output modes, mutation behavior, and automation support without scraping prose help.
-Human-oriented command families remain the primary interactive surface; JSON and keys-only modes layer onto
-the same public Cobra tree for script-safe automation on supported commands.
-Prefer --json where a command exposes structured output, and use --automation only when that command's
-capabilities entry reports automation:full for the canonical non-interactive contract.
-
-Strict single-resource lookups keep their normal not-found behavior. The newer orphan-parent warning
-contract is limited to traversal and dependency-expansion flows such as walk, cancel, and delete when
-actionable process-instance data was still resolved.
-
-Tenant-aware process-instance flows use one effective tenant context per command execution.
-Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
-is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned service
-factories and facades, with the same repository command-family coverage on 8.9 that already
-exists on 8.8.
-
-Refer to the documentation at https://c8volt.info for more information.`,
-	Example: `  ./c8volt get --help
-  ./c8volt run process-instance --help
+For a first connection, start with config validation and a cluster check. For day-to-day work,
+open the command group you need and follow the leaf command examples. Use capabilities only
+when a script, CI job, or agent needs the machine-readable command contract.`,
+	Example: `  ./c8volt config show --template
+  ./c8volt --config ./config.yaml config show --validate
+  ./c8volt get cluster topology
+  ./c8volt embed deploy --all --run
+  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt capabilities --json
-  ./c8volt --config ./config.yaml config show --validate`,
+  ./c8volt get --help`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},
@@ -118,7 +107,9 @@ Refer to the documentation at https://c8volt.info for more information.`,
 			}
 			return bootstrapLocalPrecondition(err)
 		}
-		ctx := cfg.ToContextWithLogWriter(cmd.Context(), cmd.ErrOrStderr())
+		activityWriter := logging.NewActivityWriterEnabled(cmd.ErrOrStderr(), indicatorEnabled(cmd, cfg))
+		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
+		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
@@ -158,7 +149,7 @@ Refer to the documentation at https://c8volt.info for more information.`,
 		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
 		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
 
-		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar())
+		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar(), httpc.WithActivitySink(activityWriter))
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
 		}
@@ -208,15 +199,17 @@ func Execute() {
 func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
-	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the canonical non-interactive contract for commands that explicitly support it")
+	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable non-interactive mode for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
+	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")
 	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
 	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable), can be used for piping to other commands")
 
 	pf.String("config", "", "path to config file")
 	pf.String("profile", "", "config active profile name to use (e.g. dev, prod)")
+	pf.Var(toolx.NewDurationStringValue("30s", &flagHTTPTimeout), "timeout", "HTTP request timeout")
 
 	pf.String("log-level", "info", "log level (debug, info, warn, error)")
 	pf.String("log-format", "plain", "log format (json, plain, text)")
@@ -227,6 +220,9 @@ func init() {
 
 	pf.String("camunda-version", string(toolx.CurrentCamundaVersion), fmt.Sprintf("Camunda version (%s) expected. Causes usage of specific API versions.", toolx.SupportedCamundaVersionsString()))
 	_ = rootCmd.PersistentFlags().MarkHidden("camunda-version") // not used currently
+	_ = rootCmd.PersistentFlags().MarkHidden("log-format")
+	_ = rootCmd.PersistentFlags().MarkHidden("log-with-source")
+	_ = rootCmd.PersistentFlags().MarkHidden("no-err-codes")
 
 	setCapabilityDocumentVersion(rootCmd, defaultContractVersion)
 	setCommandMutation(rootCmd, CommandMutationReadOnly)
@@ -239,6 +235,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 
 	bindings.bindPFlag(v, "config", fs.Lookup("config"))
 	bindings.bindPFlag(v, "active_profile", fs.Lookup("profile"))
+	bindings.bindPFlag(v, "http.timeout", fs.Lookup("timeout"))
 
 	bindings.bindPFlag(v, "log.level", fs.Lookup("log-level"))
 	bindings.bindPFlag(v, "log.format", fs.Lookup("log-format"))
@@ -255,6 +252,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	v.SetDefault("log.format", "plain")
 	v.SetDefault("log.with_source", false)
 	v.SetDefault("log.with_request_body", false)
+	v.SetDefault("http.timeout", "30s")
 	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
 
 	v.SetEnvPrefix("c8volt")
@@ -308,6 +306,19 @@ func automationModeEnabled(cmd *cobra.Command) bool {
 		}
 	}
 	return flagCmdAutomation
+}
+
+func indicatorEnabled(cmd *cobra.Command, cfg *config.Config) bool {
+	if flagNoIndicator || flagQuiet {
+		return false
+	}
+	if cfg != nil {
+		if strings.EqualFold(cfg.Log.Format, "json") {
+			return false
+		}
+		return !cfg.App.Automation
+	}
+	return !automationModeEnabled(cmd)
 }
 
 func retrieveAndNormalizeConfig(v *viper.Viper, bindings *resolverBindings) (*config.Config, error) {
