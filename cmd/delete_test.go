@@ -48,9 +48,14 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Use --force when active instances should be cancelled",
 		"Use --auto-confirm for unattended destructive runs",
 		"`expect pi --state absent`",
+		"number of process instances to process per page",
+		"maximum number of matching process instances to process across all pages",
+		"./c8volt delete pi --state completed --batch-size 250 --limit 25",
 		"./c8volt delete pi --state completed --batch-size 200 --auto-confirm --no-wait",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
+	require.Contains(t, output, "--batch-size int32")
+	require.Contains(t, output, "--limit int32")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Zeebe",

@@ -5,6 +5,7 @@ Started: 2026-04-25 15:48:48
 
 ## Codebase Patterns
 
+- `make docs-content` regenerates leaf CLI pages, affected parent command pages, and `docs/index.md` from Cobra metadata plus README content; keep README and command help as source inputs instead of hand-editing generated docs.
 - Help-output omission checks can use `assertCommandHelpOutput(..., omits)` for command help tests, while get process-instance help tests currently use `executeRootForProcessInstanceTest` with direct `require.NotContains` assertions.
 - Process-instance search request page size is asserted through the captured request page `limit` field; combined `--batch-size --limit` tests should use a batch size larger than the limit to prove per-page size and total cap remain independent.
 - Shared process-instance search paging lives in `cmd/get_processinstance.go`; `flagGetPISize`, `resolvePISearchSize`, `newPISearchPageRequest`, `searchProcessInstancesWithPaging`, and `processPISearchPagesWithAction` are the main seams for batch-size and total-limit behavior.
@@ -17,7 +18,6 @@ Started: 2026-04-25 15:48:48
 - Total `--limit` enforcement belongs after local process-instance filters and before rendering or destructive page actions; progress summaries should count the limited page subset, not the raw backend page.
 - The limit-reached stop condition is represented as its own process-instance continuation state so paging can stop without prompting while verbose progress remains distinct from no-more-matches and warning stops.
 
----
 ## Iteration 1 - 2026-04-25 16:57:33 CEST
 **User Story**: Phase 1 Setup (Shared Infrastructure)
 **Tasks Completed**:
@@ -133,4 +133,34 @@ Started: 2026-04-25 15:48:48
 - `go test ./cmd -count=1` passed.
 - Existing validation in `validatePISearchFlags` already rejects `--total --limit`, while keyed-mode validation rejects `--key --limit` before command execution.
 - The affected process-instance leaf commands already use `useInvalidInputFlagErrors`, so removed `--count` parse failures stay on the repository invalid-input path without aliases.
+---
+
+---
+## Iteration 6 - 2026-04-25 17:44:51 CEST
+**User Story**: User Story 4 - Discover the New Semantics in Help and Docs
+**Tasks Completed**:
+- [x] T022: Add or update help-output assertions for batch-size and limit descriptions
+- [x] T023: Update README process-instance paging examples and explanation
+- [x] T024: Regenerate generated CLI docs with `make docs-content`
+- [x] T025: Verify generated docs for affected commands
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- cmd/get_processinstance_test.go
+- docs/cli/c8volt_cancel.md
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- specs/140-pi-limit-batch-size/tasks.md
+- specs/140-pi-limit-batch-size/progress.md
+**Learnings**:
+- `go test ./cmd -run 'Test(GetProcessInstanceHelp_DocumentsPagingAndAutomationSurface|CancelHelp_DocumentsConfirmationAndNoWaitSemantics|DeleteHelp_DocumentsDestructiveConfirmationPaths)$' -count=1` passed.
+- `make docs-content` passed and refreshed both affected process-instance leaf docs and parent command/docs index pages.
+- `rg -n -- '--count' docs/cli/c8volt_get_process-instance.md docs/cli/c8volt_cancel_process-instance.md docs/cli/c8volt_delete_process-instance.md README.md` returned no matches, while generated pages include the expected `--batch-size` and `--limit` flag descriptions.
+- `go test ./cmd -count=1` passed.
 ---

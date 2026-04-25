@@ -57,6 +57,10 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
 	require.Contains(t, output, "capped backend totals stay lower bounds")
 	require.Contains(t, output, "--auto-confirm")
+	require.Contains(t, output, "--batch-size int32")
+	require.Contains(t, output, "number of process instances to fetch per page")
+	require.Contains(t, output, "--limit int32")
+	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.NotContains(t, output, "--count")
 }
 

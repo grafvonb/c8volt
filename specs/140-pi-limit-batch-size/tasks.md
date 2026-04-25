@@ -108,13 +108,13 @@
 
 ### Tests for User Story 4
 
-- [ ] T022 [P] [US4] Add or update help-output assertions for batch-size and limit descriptions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
+- [x] T022 [P] [US4] Add or update help-output assertions for batch-size and limit descriptions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cancel_test.go, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/delete_test.go
 
 ### Implementation for User Story 4
 
-- [ ] T023 [US4] Update README process-instance paging examples and explanation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
-- [ ] T024 [US4] Regenerate generated CLI docs with `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
-- [ ] T025 [US4] Verify generated docs for affected commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md
+- [x] T023 [US4] Update README process-instance paging examples and explanation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
+- [x] T024 [US4] Regenerate generated CLI docs with `make docs-content` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T025 [US4] Verify generated docs for affected commands in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_cancel_process-instance.md, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_delete_process-instance.md
 
 **Checkpoint**: User Story 4 makes the new public behavior discoverable and synchronized.
 

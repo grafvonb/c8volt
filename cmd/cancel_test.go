@@ -47,9 +47,14 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Use --force when a selected child must be escalated",
 		"Use --auto-confirm for unattended destructive runs",
 		"verify later with `get pi` or `expect pi`",
+		"number of process instances to process per page",
+		"maximum number of matching process instances to process across all pages",
 		"./c8volt expect pi --key <process-instance-key> --state canceled",
+		"./c8volt cancel pi --state active --batch-size 250 --limit 25",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
+	require.Contains(t, output, "--batch-size int32")
+	require.Contains(t, output, "--limit int32")
 }
 
 // Verifies search-mode cancellation builds the expected date-filtered search request and no-ops cleanly on empty matches.
