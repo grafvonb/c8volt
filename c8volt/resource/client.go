@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -64,7 +65,7 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("delete process definition cancellation validation: %w", err)
 				}
 				if plan.Warning != "" || len(plan.MissingAncestors) > 0 {
-					c.log.Warn(fmt.Sprintf("process definition %s cancellation preflight is partial: %s (missing ancestor keys: %v)", key, plan.Warning, plan.MissingAncestors))
+					c.log.Warn(formatPartialCancellationPreflightWarning(key, plan, cCfg.Verbose))
 				}
 				c.log.Debug(fmt.Sprintf("found %d process instance(s) to cancel (requested %d, root %d) for process definition %s", len(plan.Collected), len(keys), len(plan.Roots), key))
 				_, err = c.papi.CancelProcessInstances(ctx, plan.Roots, len(plan.Roots), opts...)
@@ -90,6 +91,28 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 		*/
 	}
 	return DeleteReport{Key: key, Ok: true}, nil
+}
+
+func formatPartialCancellationPreflightWarning(key string, plan process.DryRunPIKeyExpansion, verbose bool) string {
+	warning := plan.Warning
+	if warning == "" {
+		warning = "one or more parent process instances were not found"
+	}
+	if len(plan.MissingAncestors) == 0 {
+		return fmt.Sprintf("process definition %s cancellation preflight is partial: %s", key, warning)
+	}
+	if verbose {
+		return fmt.Sprintf("process definition %s cancellation preflight is partial: %s (missing ancestor keys: %s)", key, warning, strings.Join(processMissingAncestorKeys(plan.MissingAncestors), ", "))
+	}
+	return fmt.Sprintf("process definition %s cancellation preflight is partial: %s (%d missing ancestor key(s); use --verbose to list keys)", key, warning, len(plan.MissingAncestors))
+}
+
+func processMissingAncestorKeys(items []process.MissingAncestor) []string {
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
+		keys = append(keys, item.Key)
+	}
+	return keys
 }
 
 //nolint:unused

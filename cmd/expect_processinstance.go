@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +59,12 @@ var expectProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to watch")))
 		}
 		if !commandUsesSharedEnvelope(cmd, pickMode()) {
-			log.Info(fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states))
+			logging.InfoOrVerbose(
+				fmt.Sprintf("waiting for %d process instance(s) to reach one of %d desired state(s)", len(keys), len(states)),
+				fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states),
+				log,
+				flagVerbose,
+			)
 		}
 		reports, err := cli.WaitForProcessInstancesState(cmd.Context(), keys, states, flagWorkers, collectOptions()...)
 		if err != nil {
@@ -68,7 +74,12 @@ var expectProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render expect result: %w", err))
 		}
 		if !commandUsesSharedEnvelope(cmd, pickMode()) {
-			log.Info(fmt.Sprintf("%d process instance(s) [%s] reached desired state(s) [%s]", len(keys), keys, states))
+			logging.InfoOrVerbose(
+				fmt.Sprintf("%d process instance(s) reached desired state(s)", len(keys)),
+				fmt.Sprintf("%d process instance(s) [%s] reached desired state(s) [%s]", len(keys), keys, states),
+				log,
+				flagVerbose,
+			)
 		}
 	},
 }

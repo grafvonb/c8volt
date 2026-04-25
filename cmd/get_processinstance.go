@@ -623,12 +623,7 @@ func startCommandActivity(cmd *cobra.Command, msg string) func() {
 	if cmd == nil {
 		return func() {}
 	}
-	activity := logging.ActivityFromContext(cmd.Context())
-	if activity == nil {
-		return func() {}
-	}
-	activity.StartActivity(msg)
-	return activity.StopActivity
+	return logging.StartActivity(cmd.Context(), msg)
 }
 
 func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSummary) {

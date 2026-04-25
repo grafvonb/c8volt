@@ -21,9 +21,21 @@ func printDryRunExpansionWarning(cmd *cobra.Command, plan process.DryRunPIKeyExp
 	if len(plan.MissingAncestors) == 0 {
 		return
 	}
-	keys := make([]string, 0, len(plan.MissingAncestors))
-	for _, item := range plan.MissingAncestors {
+	printMissingAncestorKeyWarning(cmd.PrintErrf, missingAncestorKeys(plan.MissingAncestors))
+}
+
+func missingAncestorKeys(items []process.MissingAncestor) []string {
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
 		keys = append(keys, item.Key)
 	}
-	cmd.PrintErrf("missing ancestor keys: %s\n", strings.Join(keys, ", "))
+	return keys
+}
+
+func printMissingAncestorKeyWarning(print func(string, ...interface{}), keys []string) {
+	if flagVerbose {
+		print("missing ancestor keys: %s\n", strings.Join(keys, ", "))
+		return
+	}
+	print("missing ancestor keys: %d (use --verbose to list keys)\n", len(keys))
 }

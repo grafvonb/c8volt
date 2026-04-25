@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"testing"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -12,10 +13,31 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeActivitySink struct {
+	mu      sync.Mutex
+	started int
+	stopped int
+	msgs    []string
+}
+
+func (s *fakeActivitySink) StartActivity(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.started++
+	s.msgs = append(s.msgs, msg)
+}
+
+func (s *fakeActivitySink) StopActivity() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopped++
+}
 
 // TestClient_GetResource verifies facade-to-service option mapping and domain
 // resource conversion. The facade should not expose generated Camunda response
@@ -117,6 +139,50 @@ func TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, report.Ok)
 	assert.Equal(t, typex.Keys{"root-1"}, canceledKeys)
+}
+
+func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {
+	t.Parallel()
+
+	plan := process.DryRunPIKeyExpansion{
+		MissingAncestors: []process.MissingAncestor{
+			{Key: "missing-1", StartKey: "child-1"},
+			{Key: "missing-2", StartKey: "child-2"},
+		},
+		Warning: "one or more parent process instances were not found",
+	}
+
+	quiet := formatPartialCancellationPreflightWarning("pd-1", plan, false)
+	verbose := formatPartialCancellationPreflightWarning("pd-1", plan, true)
+
+	assert.Contains(t, quiet, "2 missing ancestor key(s)")
+	assert.Contains(t, quiet, "use --verbose to list keys")
+	assert.NotContains(t, quiet, "missing-1")
+	assert.NotContains(t, quiet, "missing-2")
+	assert.Contains(t, verbose, "missing ancestor keys: missing-1, missing-2")
+}
+
+func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
+	t.Parallel()
+
+	sink := &fakeActivitySink{}
+	ctx := logging.ToActivityContext(context.Background(), sink)
+	api := &stubResourceAPI{
+		delete: func(_ context.Context, _ string, _ ...services.CallOption) error {
+			return nil
+		},
+	}
+	cli := New(api, nil, slog.Default())
+
+	reports, err := cli.DeleteProcessDefinitions(ctx, typex.Keys{"pd-1", "pd-2"}, 1, options.WithNoStateCheck(), options.WithAllowInconsistent())
+
+	require.NoError(t, err)
+	require.Len(t, reports.Items, 2)
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	assert.Equal(t, 1, sink.started)
+	assert.Equal(t, 1, sink.stopped)
+	assert.Equal(t, []string{"deleting 2 process definition(s)"}, sink.msgs)
 }
 
 type stubResourceAPI struct {

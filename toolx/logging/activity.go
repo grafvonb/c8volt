@@ -71,6 +71,15 @@ func ActivityFromContext(ctx context.Context) ActivitySink {
 	return activity
 }
 
+func StartActivity(ctx context.Context, msg string) func() {
+	activity := ActivityFromContext(ctx)
+	if activity == nil {
+		return func() {}
+	}
+	activity.StartActivity(msg)
+	return activity.StopActivity
+}
+
 func newActivityWriter(w io.Writer, enabled bool) *activityWriter {
 	return &activityWriter{
 		w:        w,

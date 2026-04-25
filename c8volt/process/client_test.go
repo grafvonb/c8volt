@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"sync"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -17,6 +18,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeActivitySink struct {
+	mu      sync.Mutex
+	started int
+	stopped int
+	msgs    []string
+}
+
+func (s *fakeActivitySink) StartActivity(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.started++
+	s.msgs = append(s.msgs, msg)
+}
+
+func (s *fakeActivitySink) StopActivity() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopped++
+}
 
 // TestClient_GetProcessDefinitionXML verifies facade option translation for
 // XML retrieval. The key and call options must pass through unchanged because
@@ -658,6 +679,29 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	assert.Contains(t, logBuf.String(), "cancelling process instances requested for 4 affected instance(s) across 1 root key(s)")
 	assert.Contains(t, logBuf.String(), "cancelling 4 process instance(s) completed via 1 root request(s): 1 root request(s) succeeded or already cancelled/terminated, 0 failed")
 	assert.NotContains(t, logBuf.String(), "cancelling 1 process instance(s) completed")
+}
+
+func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
+	t.Parallel()
+
+	sink := &fakeActivitySink{}
+	ctx := logging.ToActivityContext(context.Background(), sink)
+	piAPI := stubProcessInstanceAPI{
+		cancelProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			assert.Equal(t, "root-1", key)
+			return d.CancelResponse{Ok: true, StatusCode: 202, Status: "202 Accepted"}, nil, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+
+	_, err := cli.CancelProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
+
+	require.NoError(t, err)
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	assert.Equal(t, 1, sink.started)
+	assert.Equal(t, 1, sink.stopped)
+	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, sink.msgs)
 }
 
 func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {

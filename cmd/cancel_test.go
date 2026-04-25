@@ -421,13 +421,15 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.Contains(t, prompt, "requested to cancel 1 process instance(s)")
 	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be canceled")
 	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
-	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
+	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
 func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	flagCmdAutoConfirm = true
+	flagVerbose = true
 
 	cmd := &cobra.Command{}
 	buf := &bytes.Buffer{}

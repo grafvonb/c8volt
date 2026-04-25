@@ -92,11 +92,7 @@ func printTraversalWarning(cmd *cobra.Command, result process.TraversalResult) {
 	if len(result.MissingAncestors) == 0 {
 		return
 	}
-	keys := make([]string, 0, len(result.MissingAncestors))
-	for _, item := range result.MissingAncestors {
-		keys = append(keys, item.Key)
-	}
-	cmd.Printf("missing ancestor keys: %s\n", strings.Join(keys, ", "))
+	printMissingAncestorKeyWarning(cmd.Printf, missingAncestorKeys(result.MissingAncestors))
 }
 
 // renderFamilyTree prints descendants as an ASCII tree starting from rootKey.

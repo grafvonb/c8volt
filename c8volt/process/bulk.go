@@ -21,6 +21,8 @@ func (c *client) CreateNProcessInstances(ctx context.Context, data ProcessInstan
 
 	nw := toolx.DetermineNoOfWorkers(n, wantedWorkers, cCfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("creating %d process instances using %d workers", n, nw), c.log, cCfg.Verbose)
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("creating %d process instance(s)", n))
+	defer stopActivity()
 	pics, err := pool.ExecuteNTimes[ProcessInstance](ctx, n, nw, cCfg.FailFast, func(ctx context.Context, _ int) (ProcessInstance, error) {
 		pic, err := c.piApi.CreateProcessInstance(ctx, toProcessInstanceData(data), options.MapFacadeOptionsToCallOptions(opts)...)
 		if err != nil {
@@ -47,6 +49,8 @@ func (c *client) CancelProcessInstances(ctx context.Context, keys types.Keys, wa
 	} else {
 		logging.InfoIfVerbose(fmt.Sprintf("cancelling process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
 	}
+	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("cancelling", lk, cCfg.AffectedProcessInstanceCount))
+	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, CancelReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (CancelReport, error) {
 		cr, _, cerr := c.CancelProcessInstance(ctx, key, opts...)
 		return cr, cerr
@@ -78,6 +82,8 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	} else {
 		logging.InfoIfVerbose(fmt.Sprintf("deleting process instances requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
 	}
+	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("deleting", lk, cCfg.AffectedProcessInstanceCount))
+	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, DeleteReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessInstance(ctx, key, opts...)
 	})
@@ -111,6 +117,13 @@ func hasStatusCode(items []DeleteReport, statusCode int) bool {
 	return false
 }
 
+func processInstanceBulkActivity(verb string, rootCount int, affectedCount int) string {
+	if affectedCount > rootCount {
+		return fmt.Sprintf("%s %d process instance(s) via %d root request(s)", verb, affectedCount, rootCount)
+	}
+	return fmt.Sprintf("%s %d process instance(s)", verb, rootCount)
+}
+
 // WaitForProcessInstancesState waits for each unique key to reach one of the desired states.
 // desired is mapped to the internal domain state set before the versioned service performs polling.
 func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Keys, desired States, wantedWorkers int, opts ...options.FacadeOption) (StateReports, error) {
@@ -131,8 +144,9 @@ func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Ke
 // GetProcessInstances fetches unique process-instance keys using the internal service bulk lookup path.
 // wantedWorkers is forwarded to the service so version-specific implementations can choose their concurrency strategy.
 func (c *client) GetProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstances, error) {
-	_ = options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("getting %d process instance(s)", len(ukeys)))
+	defer stopActivity()
 	pis, err := c.piApi.GetProcessInstances(ctx, ukeys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return ProcessInstances{}, ferr.FromDomain(err)

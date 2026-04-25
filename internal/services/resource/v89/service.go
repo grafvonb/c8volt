@@ -13,6 +13,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/toolx/poller"
 )
 
@@ -123,6 +124,8 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 
 func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav89.DeploymentResult, vtenantID string) error {
 	s.log.Info(fmt.Sprintf("waiting for %d deployment(s) confirmation...", len(dr.Deployments)))
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d deployment(s) confirmation", len(dr.Deployments)))
+	defer stopActivity()
 	poll := s.processDefinitionDeployPoller(dr)
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)

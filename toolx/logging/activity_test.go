@@ -2,11 +2,39 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+type fakeActivitySink struct {
+	started int
+	stopped int
+	msgs    []string
+}
+
+func (s *fakeActivitySink) StartActivity(msg string) {
+	s.started++
+	s.msgs = append(s.msgs, msg)
+}
+
+func (s *fakeActivitySink) StopActivity() {
+	s.stopped++
+}
+
+func TestStartActivity_UsesContextSink(t *testing.T) {
+	t.Parallel()
+
+	sink := &fakeActivitySink{}
+	stop := StartActivity(ToActivityContext(context.Background(), sink), "working")
+	stop()
+
+	require.Equal(t, 1, sink.started)
+	require.Equal(t, 1, sink.stopped)
+	require.Equal(t, []string{"working"}, sink.msgs)
+}
 
 func TestActivityWriter_ClearsIndicatorBeforeNormalOutput(t *testing.T) {
 	t.Parallel()

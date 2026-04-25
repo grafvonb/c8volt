@@ -1,19 +1,43 @@
 package waiter
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeWaitActivitySink struct {
+	mu      sync.Mutex
+	started int
+	stopped int
+	msgs    []string
+}
+
+func (s *fakeWaitActivitySink) StartActivity(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.started++
+	s.msgs = append(s.msgs, msg)
+}
+
+func (s *fakeWaitActivitySink) StopActivity() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopped++
+}
 
 type stubPIWaiter struct {
 	getStateByKey func(ctx context.Context, key string) (d.State, d.ProcessInstance, error)
@@ -261,6 +285,101 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		assert.True(t, got.Ok)
 		assert.Equal(t, d.StateAbsent, got.State)
 	})
+
+	t.Run("only logs polling attempts when verbose", func(t *testing.T) {
+		t.Parallel()
+
+		run := func(t *testing.T, opts ...services.CallOption) string {
+			t.Helper()
+
+			attempts := 0
+			waiter := stubPIWaiter{
+				getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+					attempts++
+					if attempts == 1 {
+						return d.StateActive, d.ProcessInstance{Key: key, State: d.StateActive}, nil
+					}
+					return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			logger := slog.New(slog.NewTextHandler(buf, nil))
+			got, _, err := WaitForProcessInstanceState(
+				context.Background(),
+				waiter,
+				testConfig(time.Nanosecond, 3, 25*time.Millisecond),
+				logger,
+				"123",
+				d.States{d.StateCompleted},
+				opts...,
+			)
+
+			require.NoError(t, err)
+			assert.True(t, got.Ok)
+			return buf.String()
+		}
+
+		quietLog := run(t)
+		verboseLog := run(t, services.WithVerbose())
+
+		assert.NotContains(t, quietLog, "process instance 123 currently in state ACTIVE")
+		assert.Contains(t, verboseLog, "process instance 123 currently in state ACTIVE")
+	})
+
+	t.Run("uses command activity while waiting for a single instance", func(t *testing.T) {
+		t.Parallel()
+
+		sink := &fakeWaitActivitySink{}
+		waiter := stubPIWaiter{
+			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+				return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+			},
+		}
+
+		_, _, err := WaitForProcessInstanceState(
+			logging.ToActivityContext(context.Background(), sink),
+			waiter,
+			testConfig(time.Nanosecond, 3, 25*time.Millisecond),
+			testLogger(),
+			"123",
+			d.States{d.StateCompleted},
+		)
+
+		require.NoError(t, err)
+		sink.mu.Lock()
+		defer sink.mu.Unlock()
+		assert.Equal(t, 1, sink.started)
+		assert.Equal(t, 1, sink.stopped)
+		assert.Equal(t, []string{"waiting for process instance 123 to reach desired state(s)"}, sink.msgs)
+	})
+}
+
+func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T) {
+	t.Parallel()
+
+	sink := &fakeWaitActivitySink{}
+	waiter := stubPIWaiter{
+		getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
+			return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
+		},
+	}
+
+	_, err := WaitForProcessInstancesState(
+		logging.ToActivityContext(context.Background(), sink),
+		waiter,
+		testConfig(time.Nanosecond, 3, 25*time.Millisecond),
+		testLogger(),
+		typex.Keys{"123", "124"},
+		d.States{d.StateCompleted},
+		1,
+	)
+
+	require.NoError(t, err)
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	assert.Equal(t, sink.started, sink.stopped)
+	assert.Contains(t, sink.msgs, "waiting for 2 process instance(s) to reach desired state(s)")
 }
 
 func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duration) *config.Config {

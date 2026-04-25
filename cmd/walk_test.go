@@ -185,12 +185,14 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "warning: one or more parent process instances were not found")
-		require.Contains(t, output, "missing ancestor keys: 999")
+		require.Contains(t, output, "missing ancestor keys: 1 (use --verbose to list keys)")
+		require.NotContains(t, output, "missing ancestor keys: 999")
 	})
 
 	t.Run("family tree renders resolved nodes with warning", func(t *testing.T) {
 		output := executeRootForProcessInstanceTest(t,
 			"--config", cfgPath,
+			"--verbose",
 			"walk", "process-instance",
 			"--key", "123",
 			"--family",
