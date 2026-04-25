@@ -400,7 +400,12 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 						Status:     fmt.Sprintf("dry-run: would cancel %d process instances with keys %v", len(keys), keys),
 					}, pis, nil
 				}
-				s.log.Info(fmt.Sprintf("force flag is set, cancelling %d process instances with keys %v", len(keys), keys))
+				logging.InfoOrVerbose(
+					fmt.Sprintf("force flag is set, cancelling %d process instances", len(keys)),
+					fmt.Sprintf("force flag is set, cancelling %d process instances with keys %v", len(keys), keys),
+					s.log,
+					cCfg.Verbose,
+				)
 				return s.CancelProcessInstance(ctx, rootPIKey, opts...)
 			} else {
 				s.log.Info(fmt.Sprintf("cannot cancel: process instance with key %s is a child of root %s; use --force to cancel the root and its child instances", key, rootPIKey))

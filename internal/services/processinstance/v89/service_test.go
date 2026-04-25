@@ -307,6 +307,73 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.Empty(t, items)
 	})
 
+	t.Run("ForceCancelLogsKeyListOnlyWhenVerbose", func(t *testing.T) {
+		runForceCancelLogTest := func(t *testing.T, verbose bool) string {
+			t.Helper()
+			var logBuf bytes.Buffer
+			svc, err := v89.New(
+				testConfig(),
+				&http.Client{},
+				slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)),
+				v89.WithClientCamunda(&mockCamundaClient{
+					createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+					getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+						parentKey := ""
+						if key == camundav89.ProcessInstanceKey("124") {
+							parentKey = "123"
+						}
+						return &camundav89.GetProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/"+string(key), http.StatusOK, "200 OK"),
+							JSON200:      new(makeProcessInstanceResult(string(key), "ACTIVE", parentKey)),
+						}, nil
+					},
+					searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+						payload := readBody(t, body)
+						switch {
+						case strings.Contains(payload, `"parentProcessInstanceKey":"123"`):
+							return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+								Items: []camundav89.ProcessInstanceResult{makeProcessInstanceResult("124", "ACTIVE", "123")},
+								Page:  camundav89.SearchQueryPageResponse{TotalItems: 1},
+							}), nil
+						case strings.Contains(payload, `"parentProcessInstanceKey":"124"`):
+							return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+								Items: []camundav89.ProcessInstanceResult{},
+								Page:  camundav89.SearchQueryPageResponse{TotalItems: 0},
+							}), nil
+						default:
+							t.Fatalf("unexpected search payload: %s", payload)
+							return nil, nil
+						}
+					},
+					cancelProcessInstanceWithResponse: func(ctx context.Context, key string, body camundav89.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CancelProcessInstanceResponse, error) {
+						assert.Equal(t, "123", key)
+						return &camundav89.CancelProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
+						}, nil
+					},
+					deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+				}),
+			)
+			require.NoError(t, err)
+
+			opts := []services.CallOption{services.WithForce(), services.WithNoWait()}
+			if verbose {
+				opts = append(opts, services.WithVerbose())
+			}
+			_, _, err = svc.CancelProcessInstance(context.Background(), "124", opts...)
+
+			require.NoError(t, err)
+			return logBuf.String()
+		}
+
+		quietLog := runForceCancelLogTest(t, false)
+		verboseLog := runForceCancelLogTest(t, true)
+
+		assert.Contains(t, quietLog, "force flag is set, cancelling 2 process instances")
+		assert.NotContains(t, quietLog, "with keys [123 124]")
+		assert.Contains(t, verboseLog, "force flag is set, cancelling 2 process instances with keys [123 124]")
+	})
+
 	t.Run("DeleteNoWait", func(t *testing.T) {
 		var deleted []string
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
