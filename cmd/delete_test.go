@@ -48,7 +48,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Use --force when active instances should be cancelled",
 		"Use --auto-confirm for unattended destructive runs",
 		"`expect pi --state absent`",
-		"./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait",
+		"./c8volt delete pi --state completed --batch-size 200 --auto-confirm --no-wait",
 	}, nil)
 	require.Contains(t, output, "--force")
 
@@ -127,6 +127,41 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndRelativeDayFilters(t *testing
 	require.Equal(t, exitcode.InvalidArgs, code)
 	require.Contains(t, output, "invalid input")
 	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
+}
+
+func TestDeleteProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "removed count flag is rejected",
+			helper: "TestDeleteProcessInstanceCommand_RejectsRemovedCountFlagHelper",
+			want:   "unknown flag: --count",
+		},
+		{
+			name:   "non-positive limit is rejected",
+			helper: "TestDeleteProcessInstanceCommand_RejectsInvalidLimitHelper",
+			want:   "--limit must be positive integer",
+		},
+		{
+			name:   "limit cannot be combined with key",
+			helper: "TestDeleteProcessInstanceCommand_RejectsLimitWithKeyHelper",
+			want:   "--limit cannot be combined with --key",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeDeleteProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, tt.want)
+		})
+	}
 }
 
 // Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
@@ -517,7 +552,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -675,7 +710,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -762,7 +797,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -843,7 +878,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -913,7 +948,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		"delete", "process-instance",
 		"--state", "completed",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -972,7 +1007,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		"delete", "process-instance",
 		"--key", "601",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -1104,6 +1139,45 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return out, nil
 }
 
+func TestDeleteProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--count", "2"}
+
+	Execute()
+}
+
+func TestDeleteProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--limit", "0"}
+
+	Execute()
+}
+
+func TestDeleteProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--key", "123", "--limit", "1"}
+
+	Execute()
+}
+
 // Helper-process entrypoint for the search scaffold failure test.
 func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -1126,7 +1200,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "delete", "process-instance", "--state", "completed", "--no-wait", "--count", "2"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "delete", "process-instance", "--state", "completed", "--no-wait", "--batch-size", "2"}
 
 	Execute()
 }

@@ -35,6 +35,7 @@ var (
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
+	flagGetPILimit                int32
 )
 
 // command options
@@ -56,9 +57,9 @@ var getProcessInstanceCmd = &cobra.Command{
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --state active --total
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
-  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
+  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --batch-size 250
   ./c8volt get pi --state active --auto-confirm
-  ./c8volt --json get pi --state active --count 250
+  ./c8volt --json get pi --state active --batch-size 250
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
@@ -84,7 +85,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			fail(invalidFlagValuef("--workers must be positive integer"))
 		}
-		if err := validatePISearchFlags(); err != nil {
+		if err := validatePISearchFlags(cmd); err != nil {
 			fail(err)
 		}
 		filterFlagsSet := hasPISearchFilterFlags()
@@ -108,6 +109,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
+				fail(err)
+			}
+			if err := validatePIKeyedModeLimit(lk); err != nil {
 				fail(err)
 			}
 			if flagGetPITotal {
@@ -158,6 +162,7 @@ var getProcessInstanceCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getProcessInstanceCmd)
+	useInvalidInputFlagErrors(getProcessInstanceCmd)
 
 	fs := getProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
@@ -165,7 +170,8 @@ func init() {
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
 	registerPISharedRenderFlags(fs)
-	fs.Int32VarP(&flagGetPISize, "count", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals stay lower bounds")
 
 	// filtering options
@@ -180,7 +186,7 @@ func init() {
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
@@ -333,7 +339,7 @@ func pickPISearchSize() int32 {
 }
 
 func resolvePISearchSize(cmd *cobra.Command, cfg *config.Config) int32 {
-	if cmd != nil && cmd.Flags().Changed("count") {
+	if cmd != nil && cmd.Flags().Changed("batch-size") {
 		return pickPISearchSize()
 	}
 	if cfg != nil && cfg.App.ProcessInstancePageSize > 0 && cfg.App.ProcessInstancePageSize <= consts.MaxPISearchSize {
@@ -681,7 +687,17 @@ func describePIProgressDetail(summary processInstanceProgressSummary) string {
 	}
 }
 
-func validatePISearchFlags() error {
+func validatePISearchFlags(cmds ...*cobra.Command) error {
+	var cmd *cobra.Command
+	if len(cmds) > 0 {
+		cmd = cmds[0]
+	}
+	if flagGetPISize <= 0 || flagGetPISize > consts.MaxPISearchSize {
+		return invalidFlagValuef("invalid value for --batch-size: %d, expected positive integer up to %d", flagGetPISize, consts.MaxPISearchSize)
+	}
+	if flagGetPILimit < 0 || (flagGetPILimit == 0 && isPILimitFlagChanged(cmd)) {
+		return invalidFlagValuef("--limit must be positive integer")
+	}
 	if flagGetPIState != "" && flagGetPIState != "all" {
 		if _, ok := process.ParseState(flagGetPIState); !ok {
 			return invalidFlagValuef("invalid value for --state: %q, valid values are: %s", flagGetPIState, process.ValidStateStrings())
@@ -689,6 +705,8 @@ func validatePISearchFlags() error {
 	}
 	if flagGetPITotal {
 		switch {
+		case flagGetPILimit > 0:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --limit")
 		case flagViewAsJson:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
 		case flagViewKeysOnly:
@@ -753,6 +771,23 @@ func validatePISearchFlags() error {
 		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
 	}
 	return nil
+}
+
+func isPILimitFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("limit")
+}
+
+func validatePIKeyedModeLimit(keyCount int) error {
+	if keyCount > 0 && flagGetPILimit > 0 {
+		return mutuallyExclusiveFlagsf("--limit cannot be combined with --key")
+	}
+	return nil
+}
+
+func useInvalidInputFlagErrors(cmd *cobra.Command) {
+	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return invalidInputError(err)
+	})
 }
 
 func validatePISearchVersionSupport(cfg *config.Config) error {

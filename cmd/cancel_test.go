@@ -38,7 +38,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Cancel running process instances",
 		"--auto-confirm",
 		"waits for the observed cancellation",
-		"./c8volt cancel pi --state active --count 200 --auto-confirm",
+		"./c8volt cancel pi --state active --batch-size 200 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -293,7 +293,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
@@ -534,7 +534,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -621,7 +621,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -701,7 +701,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -770,7 +770,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		"cancel", "process-instance",
 		"--state", "active",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -828,7 +828,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		"cancel", "process-instance",
 		"--key", "301",
 		"--no-wait",
-		"--count", "2",
+		"--batch-size", "2",
 	)
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests)
@@ -922,6 +922,41 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndRelativeDayFilters(t *testing
 	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+func TestCancelProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "removed count flag is rejected",
+			helper: "TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper",
+			want:   "unknown flag: --count",
+		},
+		{
+			name:   "non-positive limit is rejected",
+			helper: "TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper",
+			want:   "--limit must be positive integer",
+		},
+		{
+			name:   "limit cannot be combined with key",
+			helper: "TestCancelProcessInstanceCommand_RejectsLimitWithKeyHelper",
+			want:   "--limit cannot be combined with --key",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeCancelProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
 // Verifies process-instance date filters are rejected for Camunda 8.7 where the capability is unsupported.
 func TestCancelProcessInstanceCommand_RejectsDateFiltersOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
@@ -972,6 +1007,45 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return out, nil
 }
 
+func TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--count", "2"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--state", "active", "--limit", "-1"}
+
+	Execute()
+}
+
+func TestCancelProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "cancel", "process-instance", "--key", "123", "--limit", "1"}
+
+	Execute()
+}
+
 // Helper-process entrypoint for the search scaffold failure test.
 func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -994,7 +1068,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "cancel", "process-instance", "--state", "active", "--no-wait", "--count", "2"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "--verbose", "cancel", "process-instance", "--state", "active", "--no-wait", "--batch-size", "2"}
 
 	Execute()
 }
