@@ -17,9 +17,9 @@
 
 **Purpose**: Establish the shared flag contract and test seams used by all stories.
 
-- [ ] T001 Review existing process-instance paging helpers and identify shared limit insertion points in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T002 [P] Review command test helpers for multi-page process-instance fixtures in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go
-- [ ] T003 [P] Review affected docs references for `--count`, `--batch-size`, and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/
+- [x] T001 Review existing process-instance paging helpers and identify shared limit insertion points in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T002 [P] Review command test helpers for multi-page process-instance fixtures in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_processinstance_test.go
+- [x] T003 [P] Review affected docs references for `--count`, `--batch-size`, and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/
 
 ---
 
