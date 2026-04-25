@@ -6,16 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt config
 
-Manage application configuration
+Inspect and validate c8volt configuration
 
 ### Synopsis
 
-Manage application configuration.
+Inspect and validate c8volt configuration.
 
-Use this command family to inspect the effective configuration, validate the values a
-command would run with, or generate a copy-pasteable template config file. Choose
-`config show` when you need to understand how flags, environment variables,
-profiles, and base config resolve into one effective command context.
+Use `config show` to see the effective settings c8volt will use after flags,
+environment variables, profiles, config files, and defaults are resolved. Generate a
+template first when setting up a new environment.
 
 ```
 c8volt config [flags]
@@ -25,8 +24,9 @@ c8volt config [flags]
 
 ```
   ./c8volt config show
-  ./c8volt --config ./config.yaml --profile prod config show --validate
   ./c8volt config show --template
+  ./c8volt --config ./config.yaml config show --validate
+  ./c8volt --profile prod config show
 ```
 
 ### Options
@@ -39,7 +39,7 @@ c8volt config [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -55,6 +55,6 @@ c8volt config [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
+* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 * [c8volt config show](c8volt_config_show)	 - Show effective configuration
 

@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-152-g09bc1a3-dirty`, commit `09bc1a3`, built `2026-04-25T10:45:38Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-153-g47ff522-dirty`, commit `47ff522`, built `2026-04-25T12:27:36Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -17,7 +17,7 @@ has_toc: true
 >
 > If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you.
 
-`c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results without scraping human help text.
+`c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results.
 
 ## Fast Start
 
@@ -100,7 +100,7 @@ Many CLIs stop at "request accepted." `c8volt` is shaped around the next questio
 - Did the process instance actually reach `ACTIVE`?
 - Did the cancellation hit the root that really matters?
 - Did deletion remove the whole family, not just one visible node?
-- Can a script or agent discover the right command path without scraping prose help?
+- Can a script or agent discover the right command path without parsing help text?
 - Can unattended execution fail explicitly instead of hanging on prompts or mixing logs into stdout?
 
 That is the gap `c8volt` closes.
@@ -175,7 +175,7 @@ With `--force`, `c8volt` escalates from the selected child to the root process i
 ```bash
 ./c8volt delete pi --key 2251799813711967 --force
 ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
-./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm
+./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
 Deletion in real environments often means cancel-first, then remove, then verify. `c8volt` is built for that operational sequence.
@@ -183,10 +183,10 @@ Deletion in real environments often means cancel-first, then remove, then verify
 ### Wait For A Known State
 
 ```bash
-./c8volt expect pi --key 2251799813685255 --state active
-./c8volt expect pi --key 2251799813685255 --state completed --state absent
-./c8volt expect pi --key 2251799813711967 --state canceled
-./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
+./c8volt expect pi --key <process-instance-key> --state active
+./c8volt expect pi --key <process-instance-key> --state completed --state absent
+./c8volt expect pi --key <process-instance-key> --state canceled
+./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
 ```
 
 `expect` waits for `active`, `completed`, `canceled`, `terminated`, or `absent`, and works naturally with piped keys for bulk verification flows.
@@ -208,9 +208,9 @@ When a script only needs the count of matching process instances, `./c8volt get 
 ### Pull Exact Artifacts
 
 ```bash
-./c8volt get pd --key 2251799813686017 --xml
-./c8volt get pd --bpmn-process-id order-process --latest --stat
-./c8volt get resource --id resource-id-123
+./c8volt get pd --key <process-definition-key> --xml
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --stat
+./c8volt get resource --id <resource-key>
 ```
 
 For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process-definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `in:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
@@ -269,8 +269,8 @@ app:
 ```
 
 ```bash
-./c8volt --tenant tenant-a run pi -b order-process
-./c8volt --tenant tenant-a deploy pd --file ./order-process.bpmn
+./c8volt --tenant tenant-a run pi -b C88_SimpleUserTask_Process
+./c8volt --tenant tenant-a embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
 ./c8volt --tenant tenant-a get pd --latest
 ```
 
@@ -367,7 +367,7 @@ Useful pipeline controls:
 
 - `--json` for structured output
 - `--keys-only` for command chaining
-- `--automation` for the canonical non-interactive contract on supported commands
+- `--automation` for non-interactive mode on supported commands
 - `--auto-confirm` for bulk flows that should continue without repeated prompts
 - `--workers` for controlled concurrency
 - `--fail-fast` when one error should stop the next wave of work
@@ -378,8 +378,8 @@ Useful pipeline controls:
 Examples:
 
 ```bash
-./c8volt get pi --state active --keys-only | ./c8volt cancel pi -
-./c8volt get pd --bpmn-process-id order-process --latest --keys-only | ./c8volt delete pd - --auto-confirm
+./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --allow-inconsistent --auto-confirm --no-wait -
 ```
 
 ## Command Map
@@ -417,16 +417,16 @@ c8volt
 ## Everyday Commands
 
 ```bash
-./c8volt deploy pd --file ./order-process.bpmn
-./c8volt deploy pd --file ./order-process.bpmn --run
-./c8volt --tenant tenant-a deploy pd --file ./order-process.bpmn
-./c8volt get pd --bpmn-process-id order-process --latest
-./c8volt get pd --bpmn-process-id order-process --latest --stat
-./c8volt run pi -b order-process --vars '{"customerId":"1234"}'
+./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
+./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
+./c8volt --tenant tenant-a embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --stat
+./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
 ./c8volt get cluster topology
-./c8volt get resource --id resource-id-123
+./c8volt get resource --id <resource-key>
 ./c8volt config show
 ./c8volt version
 ```

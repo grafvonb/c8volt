@@ -66,8 +66,8 @@ That output keeps hidden/internal commands out of scope, reports which command p
 ### Deploy BPMN from the CLI
 
 ```bash
-./c8volt deploy pd --file ./order-process.bpmn
-./c8volt get pd --bpmn-process-id order-process --latest
+./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
 ```
 
 This matches searches like "deploy BPMN Camunda 8 CLI", "Camunda CLI deploy BPMN", or "Camunda 8 deploy process definition command line".
@@ -75,8 +75,8 @@ This matches searches like "deploy BPMN Camunda 8 CLI", "Camunda CLI deploy BPMN
 ### Run and verify a Camunda 8 process instance
 
 ```bash
-./c8volt run pi -b order-process
-./c8volt expect pi --key 2251799813685255 --state active
+./c8volt run pi -b C88_SimpleUserTask_Process
+./c8volt expect pi --key <process-instance-key> --state active
 ```
 
 This is helpful when people search for "start process instance Camunda 8 CLI", "Camunda CLI run process instance", or "wait for process active Camunda".
@@ -85,7 +85,7 @@ For unattended callers on supported command paths, the canonical contract is:
 
 ```bash
 ./c8volt capabilities --json
-./c8volt --automation --json run pi -b order-process
+./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
 ```
 
 That keeps discovery machine-readable, preserves clean stdout for JSON results, and leaves the normal human workflow unchanged when `--automation` is absent.

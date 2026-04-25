@@ -35,19 +35,19 @@ func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 
 func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"cancel"}, []string{
-		"Cancel running work with explicit confirmation semantics",
+		"Cancel running process instances",
 		"--auto-confirm",
-		"--no-wait",
-		"./c8volt cancel process-instance --state active --count 200 --auto-confirm --no-wait",
+		"waits for the observed cancellation",
+		"./c8volt cancel pi --state active --count 200 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"cancel", "process-instance"}, []string{
 		"validates the affected root and descendant instances",
-		"asks for confirmation before the destructive action",
-		"Use --auto-confirm for unattended runs",
-		"`get process-instance` or `expect process-instance`",
-		"./c8volt expect pi --key 2251799813711967 --state canceled",
+		"Use --force when a selected child must be escalated",
+		"Use --auto-confirm for unattended destructive runs",
+		"verify later with `get pi` or `expect pi`",
+		"./c8volt expect pi --key <process-instance-key> --state canceled",
 	}, nil)
 	require.Contains(t, output, "--force")
 }

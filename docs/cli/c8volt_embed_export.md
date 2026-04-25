@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt embed export
 
-Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.
+Export bundled BPMN fixtures to local files
 
 ### Synopsis
 
-Export embedded (virtual) resources to local files.
+Export bundled BPMN fixtures to local files.
 
-Use this command when you want to copy BPMN assets out of the c8volt binary for inspection, editing, or later deployment. Choose `--all` to export the full embedded set or repeat `--file` with exact names or quoted globs to export a narrower slice.
+Use this command when you want to inspect or edit the packaged BPMN assets. Choose `--all` for the full set, or repeat `--file` with exact names or quoted globs for a narrower export.
 
 ```
 c8volt embed export [flags]
@@ -40,7 +40,7 @@ c8volt embed export [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -56,5 +56,5 @@ c8volt embed export [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
+* [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
 

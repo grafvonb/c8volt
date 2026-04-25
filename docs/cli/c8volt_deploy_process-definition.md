@@ -12,9 +12,9 @@ Deploy BPMN process definition files
 
 Deploy BPMN process definition files and report the deployed definitions.
 
-By default c8volt waits until the deployment is confirmed before returning success. Use --no-wait when accepted deployment work should return immediately, then verify the resulting definitions with `get process-definition`, or start a follow-up instance with --run when a smoke test should happen right away.
+By default c8volt waits until deployment is confirmed before returning success. Use --run when you want to start one process instance for each deployed definition as a smoke test.
 
-Default output stays operator-oriented. Use --json for the shared result envelope and pair it with --automation on supported non-interactive paths.
+Use --no-wait when accepted deployment work is enough for the current step, then verify later with `get pd`.
 
 ```
 c8volt deploy process-definition [flags]
@@ -23,11 +23,11 @@ c8volt deploy process-definition [flags]
 ### Examples
 
 ```
-  ./c8volt deploy pd --file ./order-process.bpmn
-  ./c8volt deploy pd --file ./order-process.bpmn --run
-  ./c8volt --automation --json deploy pd --file ./order-process.bpmn --no-wait
-  ./c8volt get pd --bpmn-process-id order-process --latest --json
-  ./c8volt deploy pd --file - < ./order-process.bpmn
+  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --no-wait
+  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json
 ```
 
 ### Options
@@ -43,7 +43,7 @@ c8volt deploy process-definition [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -59,5 +59,5 @@ c8volt deploy process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt deploy](c8volt_deploy)	 - Deploy state-changing resources such as BPMN definitions
+* [c8volt deploy](c8volt_deploy)	 - Deploy BPMN resources to Camunda
 

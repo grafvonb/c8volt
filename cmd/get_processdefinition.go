@@ -27,20 +27,18 @@ var getProcessDefinitionCmd = &cobra.Command{
 	Short: "List or fetch deployed process definitions",
 	Long: `List or fetch deployed process definitions.
 
-Use this read-only command to inspect deployed BPMN models by key, BPMN process
-ID, version selectors, or the latest deployed version. Default output is aimed
-at human review; prefer ` + "`--json`" + ` when chaining the result into scripts or
-AI-assisted workflows. Use ` + "`--xml`" + ` only when you need the raw BPMN XML for a
-single definition selected by ` + "`--key`" + `. When ` + "`--stat`" + ` is enabled,
-Camunda ` + "`8.8`" + ` and ` + "`8.9`" + ` report process-instance counts for the exact
-process definition version: ` + "`ac:<count>`" + ` active, ` + "`cp:<count>`" + ` completed,
-` + "`cx:<count>`" + ` canceled, and ` + "`in:<count>`" + ` process instances having at least
-one incident. Camunda ` + "`8.7`" + ` rejects statistics because the generated client surface
-does not provide the same native statistics endpoints.`,
+Use this command to inspect deployed BPMN models by key, BPMN process ID,
+version selectors, or latest deployed version. Use ` + "`--xml`" + ` only with ` + "`--key`" + `
+when you need the raw BPMN XML for one definition.
+
+With ` + "`--stat`" + ` on Camunda ` + "`8.8`" + ` or ` + "`8.9`" + `, c8volt prints exact-version counts
+as ` + "`ac:<count>`" + ` active, ` + "`cp:<count>`" + ` completed, ` + "`cx:<count>`" + ` canceled, and
+` + "`in:<count>`" + ` instances with incidents. Camunda ` + "`8.7`" + ` does not support this
+native statistics endpoint.`,
 	Example: `  ./c8volt get pd --latest
   ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
-  ./c8volt get pd --key 2251799813686017 --json
-  ./c8volt get pd --key 2251799813686017 --xml`,
+  ./c8volt get pd --key <process-definition-key> --json
+  ./c8volt get pd --key <process-definition-key> --xml`,
 	Aliases: []string{"pd", "pds"},
 	Run:     runGetProcessDefinition,
 }

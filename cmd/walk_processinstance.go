@@ -24,19 +24,11 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
-		"Use this read-only command after state-changing flows when you need to verify ancestor, child, or full-family " +
-		"relationships before cancelling, deleting, or confirming downstream effects. Choose --parent for ancestry, " +
-		"--children for descendants, and --family when you need the combined view or ASCII tree rendering. When an " +
-		"ancestor is missing but reachable family data still exists, walk returns the resolved partial tree plus a warning " +
-		"instead of weakening the strict keyed-lookup behavior used by single-resource commands.\n\n" +
-		"Human-readable list and tree output remain the default. Use --json when another tool needs the shared result " +
-		"envelope around the returned traversal payload. `--automation` remains unsupported because traversal output " +
-		"semantics are still human-first.",
+		"Use this command when you need to understand ancestry or descendants before cancelling, deleting, or checking downstream effects. Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.\n\n" +
+		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt walk pi --key 2251799813711977 --parent
-  ./c8volt cancel pi --key 2251799813711967 --no-wait --auto-confirm
-  ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt --json walk pi --key 2251799813711967 --children`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -155,5 +147,5 @@ func init() {
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "tree and traversal output semantics are not yet defined for automation mode")
+	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "automation mode is not supported for traversal commands")
 }

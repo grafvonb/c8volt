@@ -32,15 +32,14 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
-	require.Contains(t, output, "Read cluster, process, and resource state without changing it")
+	require.Contains(t, output, "Inspect cluster, process, and resource state")
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
 	require.Contains(t, output, "resource")
-	require.Contains(t, output, "choose a")
-	require.Contains(t, output, "prefer `--json` for automation")
-	require.Contains(t, output, "./c8volt get cluster --help")
-	require.Contains(t, output, "./c8volt get process-instance --json")
-	require.NotContains(t, output, "Use --automation for the canonical non-interactive contract on supported command paths")
+	require.Contains(t, output, "look before acting")
+	require.Contains(t, output, "./c8volt get cluster topology")
+	require.Contains(t, output, "./c8volt get pi --state active")
+	require.NotContains(t, output, "canonical non-interactive contract")
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
@@ -48,7 +47,7 @@ func TestRootHelp_V89SupportMessaging(t *testing.T) {
 	output := executeRootForTest(t, "--help")
 
 	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
-	require.Contains(t, output, "same repository command-family coverage on 8.9 that already")
+	require.Contains(t, output, "Camunda 8.7, 8.8, and 8.9")
 	require.Contains(t, output, "capabilities")
 	require.NotContains(t, output, "version 8.9 is recognized by config normalization")
 	require.NotContains(t, output, "does not yet have a process-instance service implementation")
@@ -122,9 +121,8 @@ func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
 	require.Contains(t, output, "Get a single resource by id")
-	require.Contains(t, output, "Use this read-only command when you already know the resource id")
+	require.Contains(t, output, "when you already know the resource id")
 	require.Contains(t, output, "c8volt get resource")
-	require.Contains(t, output, "Default output stays human-oriented")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
 	require.Contains(t, output, "--keys-only")
@@ -139,16 +137,16 @@ func TestGetClusterHelp(t *testing.T) {
 	require.Contains(t, output, "c8volt get cluster")
 	require.Contains(t, output, "license")
 	require.Contains(t, output, "topology")
-	require.Contains(t, output, "Prefer `--json` on the leaf commands")
-	require.Contains(t, output, "./c8volt get cluster license --json")
+	require.Contains(t, output, "brokers, partitions, and gateway details")
+	require.Contains(t, output, "./c8volt get cluster license")
 }
 
 // Verifies `get cluster license --help` describes license retrieval usage.
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
-	require.Contains(t, output, "Get the cluster license of the connected Camunda 8 cluster")
-	require.Contains(t, output, "Prefer `--json` when automation needs the raw license payload")
+	require.Contains(t, output, "Show connected cluster license")
+	require.Contains(t, output, "license payload returned by the configured Camunda cluster")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
 }
@@ -157,9 +155,8 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 func TestGetClusterTopologyLegacyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster-topology", "--help")
 
-	require.Contains(t, output, "Get the cluster topology of the connected Camunda 8 cluster")
-	require.Contains(t, output, "Prefer `--json` for automation")
-	require.Contains(t, output, "Deprecated but supported: use `c8volt get cluster topology`.")
+	require.Contains(t, output, "Show connected cluster topology")
+	require.Contains(t, output, "Prefer `c8volt get cluster topology` for new usage.")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
 }
 
@@ -167,16 +164,13 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-definition", "--help")
 
 	require.Contains(t, output, "List or fetch deployed process definitions")
-	require.Contains(t, output, "Use this read-only command to inspect deployed BPMN models")
-	require.Contains(t, output, "prefer `--json` when chaining the result into scripts")
-	require.Contains(t, output, "Use `--xml` only when you need the raw BPMN XML")
-	require.Contains(t, output, "When `--stat` is enabled")
-	require.Contains(t, output, "Camunda `8.8` and `8.9` report process-instance counts")
+	require.Contains(t, output, "Use this command to inspect deployed BPMN models")
+	require.Contains(t, output, "Use `--xml` only with `--key`")
+	require.Contains(t, output, "With `--stat` on Camunda `8.8` or `8.9`")
 	require.Contains(t, output, "`in:<count>`")
-	require.Contains(t, output, "process instances having at least")
-	require.Contains(t, output, "one incident")
-	require.Contains(t, output, "Camunda `8.7` rejects statistics")
-	require.Contains(t, output, "./c8volt get pd --key 2251799813686017 --json")
+	require.Contains(t, output, "instances with incidents")
+	require.Contains(t, output, "Camunda `8.7` does not support")
+	require.Contains(t, output, "./c8volt get pd --key <process-definition-key> --json")
 }
 
 // Verifies get commands consume env-overridden oauth2 scopes when authenticating against the configured API.

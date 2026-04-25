@@ -35,29 +35,29 @@ func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 
 func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
-		"Delete resources with explicit destructive confirmation",
+		"Delete process instances or process definitions",
 		"--auto-confirm",
-		"--no-wait",
-		"./c8volt delete process-definition --help",
+		"which follow-up",
+		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
-		"validates the full affected tree",
-		"prompts before the destructive action",
-		"Use --auto-confirm for unattended runs",
-		"`expect process-instance --state absent`",
+		"validates the affected tree",
+		"Use --force when active instances should be cancelled",
+		"Use --auto-confirm for unattended destructive runs",
+		"`expect pi --state absent`",
 		"./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait",
 	}, nil)
 	require.Contains(t, output, "--force")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
 		"Delete process definition resources from Zeebe",
-		"unless --allow-inconsistent is set, only prepares the definitions for later manual cleanup",
-		"--auto-confirm for unattended runs",
-		"`get process-definition`",
-		"./c8volt delete pd --bpmn-process-id order-process --latest --allow-inconsistent --auto-confirm --no-wait",
+		"Without --allow-inconsistent",
+		"Use --auto-confirm for unattended destructive runs",
+		"`get pd`",
+		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --allow-inconsistent --auto-confirm --no-wait",
 	}, nil)
 	require.Contains(t, output, "--allow-inconsistent")
 }
@@ -1024,7 +1024,18 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "invalid input")
-	require.Contains(t, string(output), "either --key or --bpmn-process-id must be provided")
+	require.Contains(t, string(output), "either --key, stdin keys, or --bpmn-process-id must be provided")
+}
+
+func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.NoError(t, err, string(output))
+	require.NotContains(t, string(output), "either --key")
+	require.Contains(t, string(output), "preparation for deleting")
 }
 
 func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant(t *testing.T) {
@@ -1268,6 +1279,32 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper(t *testing.
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-definition"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	oldStdin := os.Stdin
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	_, _ = w.WriteString("2251799813692357\n")
+	_ = w.Close()
+	os.Stdin = r
+	defer func() {
+		os.Stdin = oldStdin
+		_ = r.Close()
+	}()
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-definition", "--auto-confirm", "--no-state-check", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

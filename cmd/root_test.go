@@ -32,14 +32,14 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"embed",
 		"version",
 		"capabilities",
-		"c8volt <group> --help",
+		"config validation and a cluster check",
+		"follow the leaf command examples",
 		"c8volt capabilities --json",
-		"flag metadata, output modes, mutation behavior, and automation support",
-		"Prefer --json where a command exposes structured output",
-		"automation:full",
+		"Camunda 8.7, 8.8, and 8.9",
 		"--automation",
 		"Examples:",
-		"./c8volt get --help",
+		"./c8volt config show --template",
+		"./c8volt get cluster topology",
 		"./c8volt capabilities --json",
 		"./c8volt --config ./config.yaml config show --validate",
 	)
@@ -63,11 +63,10 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 	markdown := renderMarkdownForCommand(t, root)
 
 	for _, anchor := range []string{
-		"c8volt <group> --help",
+		"config validation and a cluster check",
+		"follow the leaf command examples",
 		"c8volt capabilities --json",
-		"flag metadata, output modes, mutation behavior, and automation support",
-		"Prefer --json where a command exposes structured output",
-		"automation:full",
+		"Camunda 8.7, 8.8, and 8.9",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)

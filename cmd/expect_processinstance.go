@@ -15,22 +15,14 @@ var (
 
 var expectProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Expect a process instance(s) to reach a certain state from list of states",
-	Long: "Wait for process instance(s) to reach one of the requested states.\n\n" +
-		"Use this read-only command after `run`, `cancel`, or `delete` when the operation returned before the " +
-		"final state was visible, or when you need an explicit post-action assertion. The command waits until " +
-		"each keyed process instance reaches one of the requested states or fails with a shared error model. " +
-		"For cancellation waits, `canceled` is the user-facing intent state; on Camunda `8.8` and `8.9`, " +
-		"that same outcome may be surfaced by the backend as `terminated`, and `c8volt` treats them as equivalent.\n\n" +
-		"Default output stays human-oriented and uses transient activity indicators instead of repeated per-key polling lines; " +
-		"use --verbose when you need detailed checked keys, states, and retry attempts. Use --json when another tool needs the final wait report. " +
-		"`--automation` remains unsupported because the broader waiting contract is not yet defined there.",
-	Example: `  ./c8volt expect pi --key 2251799813685255 --state active
-  ./c8volt expect pi --key 2251799813685255 --state completed --state absent
-  ./c8volt expect pi --key 2251799813711967 --state canceled
-  ./c8volt run pi --bpmn-process-id order-process --no-wait --json
-  ./c8volt expect pi --key 2251799813711967 --state active
-  ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated`,
+	Short: "Wait for process instances to reach states",
+	Long: "Wait for process instances to reach one of the requested states.\n\n" +
+		"Use this command after `run`, `cancel`, or `delete` when the previous command returned before the final state was visible, or when you need an explicit post-action assertion.\n\n" +
+		"For cancellation waits, `canceled` is the user-facing intent state. On Camunda `8.8` and `8.9`, the backend may report the same outcome as `terminated`; c8volt treats both as a match.",
+	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --state completed --state absent
+  ./c8volt expect pi --key <process-instance-key> --state canceled
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -90,7 +82,6 @@ func init() {
 
 	fs := expectProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to expect a state for")
-	_ = expectProcessInstanceCmd.MarkFlagRequired("key")
 	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated")
 	_ = expectProcessInstanceCmd.MarkFlagRequired("state")
 
@@ -100,5 +91,5 @@ func init() {
 
 	setCommandMutation(expectProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(expectProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(expectProcessInstanceCmd, AutomationSupportUnsupported, "waiting semantics are not yet defined for automation mode")
+	setAutomationSupport(expectProcessInstanceCmd, AutomationSupportUnsupported, "automation mode is not supported for wait commands")
 }

@@ -13,7 +13,7 @@ Get a resource by id
 Get a single resource by id.
 It requires --id to select exactly one resource and renders the standard single-resource view.
 
-Use this read-only command when you already know the resource id and need the stored metadata or payload reference. Default output stays human-oriented. Use --json for the shared machine-readable result envelope or --keys-only when chaining ids into other commands.
+Use this command when you already know the resource id and need the stored metadata or payload reference.
 
 ```
 c8volt get resource [flags]
@@ -22,9 +22,9 @@ c8volt get resource [flags]
 ### Examples
 
 ```
-  ./c8volt get resource --id resource-id-123
-  ./c8volt --json get resource --id resource-id-123
-  ./c8volt --keys-only get resource --id resource-id-123
+  ./c8volt get resource --id <resource-key>
+  ./c8volt --json get resource --id <resource-key>
+  ./c8volt --keys-only get resource --id <resource-key>
 ```
 
 ### Options
@@ -38,7 +38,7 @@ c8volt get resource [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -54,5 +54,5 @@ c8volt get resource [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, and resource state
 

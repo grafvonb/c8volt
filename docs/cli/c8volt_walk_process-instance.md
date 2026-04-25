@@ -12,9 +12,9 @@ Inspect the parent/child tree of process instances
 
 Inspect the parent/child tree of process instances.
 
-Use this read-only command after state-changing flows when you need to verify ancestor, child, or full-family relationships before cancelling, deleting, or confirming downstream effects. Choose --parent for ancestry, --children for descendants, and --family when you need the combined view or ASCII tree rendering. When an ancestor is missing but reachable family data still exists, walk returns the resolved partial tree plus a warning instead of weakening the strict keyed-lookup behavior used by single-resource commands.
+Use this command when you need to understand ancestry or descendants before cancelling, deleting, or checking downstream effects. Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.
 
-Human-readable list and tree output remain the default. Use --json when another tool needs the shared result envelope around the returned traversal payload. `--automation` remains unsupported because traversal output semantics are still human-first.
+When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
 
 ```
 c8volt walk process-instance [flags]
@@ -26,8 +26,6 @@ c8volt walk process-instance [flags]
   ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt walk pi --key 2251799813711977 --parent
-  ./c8volt cancel pi --key 2251799813711967 --no-wait --auto-confirm
-  ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt --json walk pi --key 2251799813711967 --children
 ```
 
@@ -47,7 +45,7 @@ c8volt walk process-instance [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -63,5 +61,5 @@ c8volt walk process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt walk](c8volt_walk)	 - Inspect parent and child relationships for verification follow-up
+* [c8volt walk](c8volt_walk)	 - Inspect process-instance relationships
 

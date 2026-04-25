@@ -6,15 +6,14 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt expect
 
-Wait for verification targets to reach the expected state
+Wait for process instances to reach a state
 
 ### Synopsis
 
-Wait for verification targets to reach the expected state.
+Wait for process instances to reach a state.
 
-Use this read-only command family after a state-changing operation when success depends
-on a later observed state. Child commands document the wait contract, the acceptable
-target states, and which output modes are safe for follow-up verification.
+Use this command family after run, cancel, or delete when success depends on an
+observed process-instance state rather than an accepted request.
 
 ```
 c8volt expect [flags]
@@ -23,9 +22,9 @@ c8volt expect [flags]
 ### Examples
 
 ```
-  ./c8volt expect process-instance --help
-  ./c8volt expect process-instance --key 2251799813711967 --state active
-  ./c8volt expect process-instance --key 2251799813711967 --state absent
+  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --state absent
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
 ```
 
 ### Options
@@ -38,7 +37,7 @@ c8volt expect [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -54,6 +53,6 @@ c8volt expect [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
-* [c8volt expect process-instance](c8volt_expect_process-instance)	 - Expect a process instance(s) to reach a certain state from list of states
+* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
+* [c8volt expect process-instance](c8volt_expect_process-instance)	 - Wait for process instances to reach states
 

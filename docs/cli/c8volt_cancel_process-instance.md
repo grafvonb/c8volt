@@ -6,15 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt cancel process-instance
 
-Cancel process instance(s) by key or search filters and wait for completion
+Cancel process instances by key or filters
 
 ### Synopsis
 
-Cancel process instance(s) by key or search filters and wait for completion.
+Cancel process instances by key or search filters.
 
-By default c8volt validates the affected root and descendant instances, asks for confirmation before the destructive action, and waits until cancellation is observed. Use --auto-confirm for unattended runs, and combine it with --no-wait when accepted cancellation should return immediately instead of waiting for the final state.
+By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
-After non-blocking cancellation, use `get process-instance` or `expect process-instance` to verify the eventual state of the affected instances.
+Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted cancellation is enough for the current step, then verify later with `get pi` or `expect pi`.
 
 ```
 c8volt cancel process-instance [flags]
@@ -23,18 +23,15 @@ c8volt cancel process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt cancel pi --key 2251799813711967
-  ./c8volt cancel pi --key 2251799813711977 --force
+  ./c8volt cancel pi --key <process-instance-key>
+  ./c8volt cancel pi --key <process-instance-key> --force
   ./c8volt cancel pi --state active --count 250
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
-  ./c8volt cancel pi --bpmn-process-id order-process --state active --count 200 --auto-confirm
-  ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
-  ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
+  ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --count 200 --auto-confirm
   ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
-  ./c8volt expect pi --key 2251799813711967 --state canceled
-  ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -
+  ./c8volt expect pi --key <process-instance-key> --state canceled
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
 ```
 
 ### Options
@@ -68,7 +65,7 @@ c8volt cancel process-instance [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -84,5 +81,5 @@ c8volt cancel process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt cancel](c8volt_cancel)	 - Cancel running work with explicit confirmation semantics
+* [c8volt cancel](c8volt_cancel)	 - Cancel running process instances
 

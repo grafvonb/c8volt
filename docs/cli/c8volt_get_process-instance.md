@@ -11,11 +11,11 @@ List or fetch process instances
 ### Synopsis
 
 List process instances by search filters or fetch them by key.
-Use this read-only command to inspect live or completed workflow instances by key, process-definition selectors, state, or date filters. Default output stays human-oriented for operator workflows.
-Use --total on search/list invocations when automation only needs the numeric count of matching process instances; if the backend reports a capped total, the command returns that lower-bound number unchanged.
-Direct --key lookups stay on the strict single-resource path: if the requested process instance is missing, the command returns the normal not-found error. Orphan-parent warning behavior is limited to traversal and dependency-expansion flows such as walk, cancel, and delete.
+Use this command to inspect workflow instances by key, process-definition selectors, state, or date filters.
 
-When search results span multiple pages, human-oriented modes prompt before continuing unless --auto-confirm is set. Use --automation as the canonical non-interactive contract for supported paging flows; JSON mode auto-consumes remaining pages and returns one aggregated machine-readable result.
+Use --total when you only need the numeric count of matching process instances. Direct --key lookups stay strict: if the requested process instance is missing, c8volt returns the normal not-found error.
+
+When search results span multiple pages, human-oriented output prompts before continuing unless --auto-confirm or --json is set. JSON mode consumes remaining pages and returns one aggregated result.
 
 ```
 c8volt get process-instance [flags]
@@ -29,13 +29,12 @@ c8volt get process-instance [flags]
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
   ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --count 250
   ./c8volt get pi --state active --auto-confirm
-  ./c8volt --automation get pi --state active --count 250
   ./c8volt --json get pi --state active --count 250
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-		  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
+  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
   ./c8volt get pi --end-date-before 2026-03-31 --state completed
-		  ./c8volt get pi --end-date-newer-days 14 --state completed
+  ./c8volt get pi --end-date-newer-days 14 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977
 ```
 
@@ -75,7 +74,7 @@ c8volt get process-instance [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -91,5 +90,5 @@ c8volt get process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, and resource state
 

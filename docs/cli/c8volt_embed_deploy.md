@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt embed deploy
 
-Deploy bundled BPMN fixtures for quick testing
+Deploy bundled BPMN fixtures
 
 ### Synopsis
 
-Deploy bundled BPMN fixtures for quick testing.
+Deploy bundled BPMN fixtures.
 
-Use this command when the BPMN asset you want to deploy is already embedded in the c8volt binary. By default c8volt waits for the deployment to be confirmed before returning. Use --no-wait when the accepted deployment is enough for the current step, and combine --run when the fixture should be smoke-tested immediately after deployment.
+Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. By default c8volt waits for deployment confirmation. Add `--run` when you want one process instance started after deployment.
 
 ```
 c8volt embed deploy [flags]
@@ -23,7 +23,7 @@ c8volt embed deploy [flags]
 ```
   ./c8volt embed list
   ./c8volt embed deploy --all
-  ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTask_Process.bpmn
+  ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
   ./c8volt embed deploy --all --run
 ```
 
@@ -41,7 +41,7 @@ c8volt embed deploy [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -57,5 +57,5 @@ c8volt embed deploy [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
+* [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
 

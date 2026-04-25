@@ -32,11 +32,11 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "")
 
-	require.Contains(t, output, "get\tRead cluster, process, and resource state without changing it\n")
-	require.Contains(t, output, "embed\tInspect, export, or deploy embedded BPMN resources\n")
-	require.Contains(t, output, "walk\tInspect parent and child relationships for verification follow-up\n")
-	require.Contains(t, output, "run\tStart state-changing work such as process instances\n")
-	require.Contains(t, output, "deploy\tDeploy state-changing resources such as BPMN definitions\n")
+	require.Contains(t, output, "get\tInspect cluster, process, and resource state\n")
+	require.Contains(t, output, "embed\tUse bundled BPMN fixtures\n")
+	require.Contains(t, output, "walk\tInspect process-instance relationships\n")
+	require.Contains(t, output, "run\tStart process instances\n")
+	require.Contains(t, output, "deploy\tDeploy BPMN resources to Camunda\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
@@ -44,7 +44,7 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "g")
 
-	require.Contains(t, output, "get\tRead cluster, process, and resource state without changing it\n")
+	require.Contains(t, output, "get\tInspect cluster, process, and resource state\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 

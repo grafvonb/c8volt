@@ -64,40 +64,23 @@ func (r *resolverBindings) hasHigherPrecedenceSource(key string) bool {
 
 var rootCmd = &cobra.Command{
 	Use:   "c8volt",
-	Short: "Operate Camunda 8 with guided help and script-safe output modes",
+	Short: "Operate Camunda 8 workflows from the command line",
 	Long: `c8volt: Camunda 8 Operations CLI.
 
-Built for Camunda 8 operators and developers who need confirmation, not guesses.
-c8volt focuses on operational workflows such as deploying BPMN models, starting process instances,
-waiting for state transitions, walking process trees, cancelling safely, and deleting thoroughly.
+c8volt helps operators deploy BPMN models, start process instances, inspect workflow state,
+wait for state changes, walk process trees, cancel safely, and delete thoroughly.
+It supports Camunda 8.7, 8.8, and 8.9.
 
-Start with "c8volt <group> --help" when choosing an operator workflow, or use
-"c8volt capabilities --json" when a script, CI job, or AI caller needs the public command inventory,
-flag metadata, output modes, mutation behavior, and automation support without scraping prose help.
-Human-oriented command families remain the primary interactive surface; JSON and keys-only modes layer onto
-the same public Cobra tree for script-safe automation on supported commands.
-Prefer --json where a command exposes structured output, and use --automation only when that command's
-capabilities entry reports automation:full for the canonical non-interactive contract.
-
-Strict single-resource lookups keep their normal not-found behavior. The newer orphan-parent warning
-contract is limited to traversal and dependency-expansion flows such as walk, cancel, and delete when
-actionable process-instance data was still resolved.
-
-Tenant-aware process-instance flows use one effective tenant context per command execution.
-Supported wrong-tenant lookups resolve as not found. Current process-instance runtime support
-is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned service
-factories and facades, with the same repository command-family coverage on 8.9 that already
-exists on 8.8.
-
-Commands that create tenant-owned data, such as deploy and run, target <default> when the
-effective tenant is empty. Read/search commands preserve an empty tenant as an unscoped
-visible-tenants query unless --tenant is provided.
-
-Refer to the documentation at https://c8volt.info for more information.`,
-	Example: `  ./c8volt get --help
-  ./c8volt run process-instance --help
+For a first connection, start with config validation and a cluster check. For day-to-day work,
+open the command group you need and follow the leaf command examples. Use capabilities only
+when a script, CI job, or agent needs the machine-readable command contract.`,
+	Example: `  ./c8volt config show --template
+  ./c8volt --config ./config.yaml config show --validate
+  ./c8volt get cluster topology
+  ./c8volt embed deploy --all --run
+  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt capabilities --json
-  ./c8volt --config ./config.yaml config show --validate`,
+  ./c8volt get --help`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},
@@ -216,7 +199,7 @@ func Execute() {
 func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
-	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable the canonical non-interactive contract for commands that explicitly support it")
+	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable non-interactive mode for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
 	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
 	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")

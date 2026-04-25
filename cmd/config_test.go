@@ -20,8 +20,8 @@ import (
 func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
 	output := executeRootForTest(t, "config", "--help")
 
-	require.Contains(t, output, "Manage application configuration")
-	require.Contains(t, output, "inspect the effective configuration")
+	require.Contains(t, output, "Inspect and validate c8volt configuration")
+	require.Contains(t, output, "effective settings c8volt will use")
 	require.Contains(t, output, "`config show`")
 	require.Contains(t, output, "./c8volt config show")
 	require.Contains(t, output, "./c8volt config show --template")

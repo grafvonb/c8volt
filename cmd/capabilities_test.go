@@ -31,9 +31,9 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Equal(t, "capabilities", capabilitiesCapability.Path)
 	require.Equal(t, ContractSupportLimited, capabilitiesCapability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capabilitiesCapability.AutomationSupport)
-	require.Equal(t, "canonical discovery command for automation support", capabilitiesCapability.AutomationNotes)
+	require.Equal(t, "discovery command for automation support", capabilitiesCapability.AutomationNotes)
 	require.Equal(t, []OutputModeContract{
-		{Name: "json", Supported: true, MachinePreferred: true, Notes: "canonical discovery format"},
+		{Name: "json", Supported: true, MachinePreferred: true, Notes: "full discovery format"},
 		{Name: "one-line", Supported: true, Notes: "human-readable summary"},
 	}, capabilitiesCapability.OutputModes)
 
@@ -112,12 +112,10 @@ func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.
 func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.T) {
 	output := executeRootForTest(t, "capabilities", "--help")
 
-	require.Contains(t, output, "machine-readable c8volt command surface for automation")
+	require.Contains(t, output, "public c8volt command contract for scripts")
 	require.Contains(t, output, "c8volt capabilities --json")
-	require.Contains(t, output, "canonical non-interactive contract")
-	require.Contains(t, output, "plain output summarizes the public command surface for humans")
-	require.Contains(t, output, "supports `--automation`")
-	require.Contains(t, output, "Hidden shell-completion and internal helper commands stay out of this document")
+	require.Contains(t, output, "command paths, flags, output modes")
+	require.Contains(t, output, "Human help stays focused on usage")
 	require.Contains(t, output, "./c8volt capabilities")
 	require.Contains(t, output, "./c8volt capabilities --json")
 }
@@ -133,10 +131,10 @@ func TestCapabilitiesHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T)
 	markdown := renderMarkdownForCommand(t, capabilitiesCmd)
 
 	for _, anchor := range []string{
-		"machine-readable c8volt command surface for automation",
+		"public c8volt command contract for scripts",
 		"c8volt capabilities --json",
-		"supports `--automation`",
-		"Hidden shell-completion and internal helper commands stay out of this document",
+		"command paths, flags, output modes",
+		"Human help stays focused on usage",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)
@@ -147,9 +145,8 @@ func TestCapabilitiesCommand_DefaultOutputUsesHumanSummary(t *testing.T) {
 	output := executeRootForTest(t, "capabilities")
 
 	require.Contains(t, output, "Machine-readable public CLI capabilities")
-	require.Contains(t, output, "Use --json for the canonical discovery document and inspect automationSupport for --automation readiness on each public command path.")
-	require.Contains(t, output, "Use --automation as the canonical non-interactive flag only on commands that report automation:full.")
-	require.Contains(t, output, "Hidden and shell-internal commands are intentionally excluded from this summary.")
+	require.Contains(t, output, "Use --json for the full discovery document. Inspect automationSupport before using --automation.")
+	require.Contains(t, output, "Hidden and shell-internal commands are excluded.")
 	require.Contains(t, output, "- capabilities [read_only, limited, automation:full] modes: json, one-line")
 	require.Contains(t, output, "- get [read_only, limited, automation:unsupported] modes: one-line, json, keys-only")
 	require.NotContains(t, output, "\"command\":\"capabilities\"")

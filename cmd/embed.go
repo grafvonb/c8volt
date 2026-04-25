@@ -6,16 +6,15 @@ import (
 
 var embedCmd = &cobra.Command{
 	Use:   "embed",
-	Short: "Inspect, export, or deploy embedded BPMN resources",
-	Long: `Inspect, export, or deploy embedded BPMN resources.
+	Short: "Use bundled BPMN fixtures",
+	Long: `Use bundled BPMN fixtures.
 
-Use this command family when the workflow starts from BPMN assets already embedded in
-the c8volt binary. Choose ` + "`embed list`" + ` to discover packaged resources,
-` + "`embed export`" + ` to write them to disk, and ` + "`embed deploy`" + ` when you want
-to deploy an embedded process definition to Camunda.`,
+Choose ` + "`embed list`" + ` to see what ships in the binary, ` + "`embed deploy`" + ` to
+create a runnable test environment quickly, or ` + "`embed export`" + ` when you want to
+inspect or edit the files locally.`,
 	Example: `  ./c8volt embed list
-  ./c8volt embed export --name invoice.bpmn --output-dir ./tmp
-  ./c8volt embed deploy --name invoice.bpmn`,
+  ./c8volt embed deploy --all --run
+  ./c8volt embed export --all --out ./fixtures`,
 	Aliases: []string{"em", "emb"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

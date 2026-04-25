@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster license
 
-Get the cluster license of the connected Camunda 8 cluster
+Show connected cluster license
 
 ### Synopsis
 
-Get the cluster license of the connected Camunda 8 cluster.
+Show connected cluster license.
 
-This read-only command requires a configured Camunda 8 connection. Prefer `--json` when automation needs the raw license payload instead of the default rendered output.
+This command prints the license payload returned by the configured Camunda cluster.
 
 ```
 c8volt get cluster license [flags]
@@ -35,7 +35,7 @@ c8volt get cluster license [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)

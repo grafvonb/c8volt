@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster-topology
 
-Get the cluster topology of the connected Camunda 8 cluster
+Show connected cluster topology
 
 ### Synopsis
 
-Get the cluster topology of the connected Camunda 8 cluster.
+Show connected cluster topology.
 
-This read-only command reports brokers, partitions, and gateway metadata for the connected cluster. Prefer `--json` for automation. Deprecated but supported: use `c8volt get cluster topology`.
+This legacy command reports brokers, partitions, and gateway metadata. Prefer `c8volt get cluster topology` for new usage.
 
 ```
 c8volt get cluster-topology [flags]
@@ -35,7 +35,7 @@ c8volt get cluster-topology [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -51,5 +51,5 @@ c8volt get cluster-topology [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Read cluster, process, and resource state without changing it
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, and resource state
 

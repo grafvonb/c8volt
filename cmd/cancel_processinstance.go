@@ -17,26 +17,19 @@ var (
 
 var cancelProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Cancel process instance(s) by key or search filters and wait for completion",
-	Long: "Cancel process instance(s) by key or search filters and wait for completion.\n\n" +
-		"By default c8volt validates the affected root and descendant instances, asks for confirmation before " +
-		"the destructive action, and waits until cancellation is observed. Use --auto-confirm for unattended " +
-		"runs, and combine it with --no-wait when accepted cancellation should return immediately instead of " +
-		"waiting for the final state.\n\n" +
-		"After non-blocking cancellation, use `get process-instance` or `expect process-instance` to verify the " +
-		"eventual state of the affected instances.",
-	Example: `  ./c8volt cancel pi --key 2251799813711967
-  ./c8volt cancel pi --key 2251799813711977 --force
+	Short: "Cancel process instances by key or filters",
+	Long: "Cancel process instances by key or search filters.\n\n" +
+		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
+		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted cancellation is enough for the current step, then verify later with `get pi` or `expect pi`.",
+	Example: `  ./c8volt cancel pi --key <process-instance-key>
+  ./c8volt cancel pi --key <process-instance-key> --force
   ./c8volt cancel pi --state active --count 250
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
-  ./c8volt cancel pi --bpmn-process-id order-process --state active --count 200 --auto-confirm
-  ./c8volt cancel pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt cancel pi --bpmn-process-id order-process --start-date-older-days 14 --state active
-  ./c8volt cancel pi --end-date-after 2026-01-01 --end-date-before 2026-01-31 --state completed
+  ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --count 200 --auto-confirm
   ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
-  ./c8volt expect pi --key 2251799813711967 --state canceled
-  ./c8volt get pi --state active --bpmn-process-id C88_SimpleUserTask_Process --keys-only | ./c8volt cancel pi -`,
+  ./c8volt expect pi --key <process-instance-key> --state canceled
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

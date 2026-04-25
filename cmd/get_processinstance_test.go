@@ -49,12 +49,10 @@ func (s *fakeCommandActivitySink) StopActivity() {
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Use this read-only command to inspect live or completed workflow instances")
-	require.Contains(t, output, "Use --total on search/list invocations when automation only needs the numeric count")
-	require.Contains(t, output, "capped total, the command returns that lower-bound number unchanged")
-	require.Contains(t, output, "Direct --key lookups stay on the strict single-resource path")
-	require.Contains(t, output, "Orphan-parent warning behavior is limited to traversal and dependency-expansion flows")
-	require.Contains(t, output, "Use --automation as the canonical non-interactive contract")
+	require.Contains(t, output, "Use this command to inspect workflow instances")
+	require.Contains(t, output, "Use --total when you only need the numeric count")
+	require.Contains(t, output, "Direct --key lookups stay strict")
+	require.Contains(t, output, "JSON mode consumes remaining pages")
 	require.Contains(t, output, "./c8volt get pi --state active --total")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
 	require.Contains(t, output, "capped backend totals stay lower bounds")

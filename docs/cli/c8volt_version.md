@@ -12,8 +12,8 @@ Print version information
 
 Print version information.
 
-Use this read-only command to confirm the running c8volt build and supported Camunda versions before troubleshooting or automation setup.
-Default output stays compact for human use. Prefer --json when automation needs the shared result envelope and version metadata fields.
+Use this command to confirm the running c8volt build and supported Camunda versions before troubleshooting or setup.
+Default output is compact. Use --json when another tool needs version metadata.
 
 ```
 c8volt version [flags]
@@ -24,7 +24,6 @@ c8volt version [flags]
 ```
   ./c8volt version
   ./c8volt version --json
-  ./c8volt version | head -n 1
 ```
 
 ### Options
@@ -37,7 +36,7 @@ c8volt version [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -53,5 +52,5 @@ c8volt version [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
+* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 

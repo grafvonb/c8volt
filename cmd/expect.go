@@ -6,15 +6,14 @@ import (
 
 var expectCmd = &cobra.Command{
 	Use:   "expect",
-	Short: "Wait for verification targets to reach the expected state",
-	Long: `Wait for verification targets to reach the expected state.
+	Short: "Wait for process instances to reach a state",
+	Long: `Wait for process instances to reach a state.
 
-Use this read-only command family after a state-changing operation when success depends
-on a later observed state. Child commands document the wait contract, the acceptable
-target states, and which output modes are safe for follow-up verification.`,
-	Example: `  ./c8volt expect process-instance --help
-  ./c8volt expect process-instance --key 2251799813711967 --state active
-  ./c8volt expect process-instance --key 2251799813711967 --state absent`,
+Use this command family after run, cancel, or delete when success depends on an
+observed process-instance state rather than an accepted request.`,
+	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --state absent
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -`,
 	Aliases: []string{"e", "exp"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

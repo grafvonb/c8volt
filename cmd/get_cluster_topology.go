@@ -10,10 +10,9 @@ import (
 
 var getClusterTopologyCmd = &cobra.Command{
 	Use:   "cluster-topology",
-	Short: "Get the cluster topology of the connected Camunda 8 cluster",
-	Long: "Get the cluster topology of the connected Camunda 8 cluster.\n\n" +
-		"This read-only command reports brokers, partitions, and gateway metadata for the connected cluster. " +
-		"Prefer `--json` for automation. Deprecated but supported: use `c8volt get cluster topology`.",
+	Short: "Show connected cluster topology",
+	Long: "Show connected cluster topology.\n\n" +
+		"This legacy command reports brokers, partitions, and gateway metadata. Prefer `c8volt get cluster topology` for new usage.",
 	Example: `  ./c8volt get cluster-topology
   ./c8volt get cluster topology --json`,
 	Aliases: []string{"ct", "cluster-info", "ci"},
@@ -22,10 +21,9 @@ var getClusterTopologyCmd = &cobra.Command{
 
 var getClusterTopologyNestedCmd = &cobra.Command{
 	Use:   "topology",
-	Short: "Get the cluster topology of the connected Camunda 8 cluster",
-	Long: "Get the cluster topology of the connected Camunda 8 cluster.\n\n" +
-		"This read-only command reports brokers, partitions, and gateway metadata for the connected cluster. " +
-		"Prefer `--json` for automation and machine-readable follow-up checks.",
+	Short: "Show connected cluster topology",
+	Long: "Show connected cluster topology.\n\n" +
+		"This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster.",
 	Example: `  ./c8volt get cluster topology
   ./c8volt get cluster topology --json`,
 	Run: runGetClusterTopology,

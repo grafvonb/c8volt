@@ -216,6 +216,12 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 			rawBody := args.String(2)
 			assert.True(t, strings.Contains(rawBody, `"isLatestVersion":true`))
 			assert.False(t, strings.Contains(rawBody, `"tenantId":"tenant-a"`))
+			assert.True(t, strings.Contains(rawBody, `"after":""`))
+			assert.True(t, strings.Contains(rawBody, `"field":"processDefinitionId"`))
+			assert.True(t, strings.Contains(rawBody, `"field":"tenantId"`))
+			assert.False(t, strings.Contains(rawBody, `"field":"version"`))
+			assert.False(t, strings.Contains(rawBody, `"field":"name"`))
+			assert.False(t, strings.Contains(rawBody, `"from"`))
 		}).
 		Return(resp, nil)
 	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 3)

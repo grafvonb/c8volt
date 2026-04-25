@@ -10,11 +10,9 @@ import (
 
 var capabilitiesCmd = &cobra.Command{
 	Use:   "capabilities",
-	Short: "Describe the public CLI contract for automation and discovery",
-	Long: "Describe the machine-readable c8volt command surface for automation.\n" +
-		"Use this command to discover public command paths, visible flags, output modes, mutation behavior, contract support, and automation-mode support without scraping prose help.\n\n" +
-		"Prefer `c8volt capabilities --json` when driving the CLI from AI agents, scripts, or CI. " +
-		"The human-facing command taxonomy and help output remain unchanged; plain output summarizes the public command surface for humans, while JSON is the repository-native discovery surface for automation, including whether each command currently supports `--automation` as the canonical non-interactive contract. Hidden shell-completion and internal helper commands stay out of this document.",
+	Short: "Describe commands for scripts and agents",
+	Long: "Describe the public c8volt command contract for scripts, CI jobs, and agents.\n\n" +
+		"Use `c8volt capabilities --json` when another program needs command paths, flags, output modes, mutation behavior, contract support, or automation-mode support. Human help stays focused on usage; capabilities is the machine-readable inventory.",
 	Example: `  ./c8volt capabilities
   ./c8volt capabilities --json`,
 	Args: cobra.NoArgs,
@@ -30,9 +28,8 @@ var capabilitiesCmd = &cobra.Command{
 
 func renderCapabilitySummary(cmd *cobra.Command, doc CapabilityDocument) {
 	cmd.Println("Machine-readable public CLI capabilities")
-	cmd.Println("Use --json for the canonical discovery document and inspect automationSupport for --automation readiness on each public command path.")
-	cmd.Println("Use --automation as the canonical non-interactive flag only on commands that report automation:full.")
-	cmd.Println("Hidden and shell-internal commands are intentionally excluded from this summary.")
+	cmd.Println("Use --json for the full discovery document. Inspect automationSupport before using --automation.")
+	cmd.Println("Hidden and shell-internal commands are excluded.")
 	cmd.Println("")
 	for _, capability := range doc.Commands {
 		renderCapabilitySummaryLine(cmd, capability, 0)
@@ -71,13 +68,13 @@ func init() {
 
 	setCommandMutation(capabilitiesCmd, CommandMutationReadOnly)
 	setContractSupport(capabilitiesCmd, ContractSupportLimited)
-	setAutomationSupport(capabilitiesCmd, AutomationSupportFull, "canonical discovery command for automation support")
+	setAutomationSupport(capabilitiesCmd, AutomationSupportFull, "discovery command for automation support")
 	setOutputModes(capabilitiesCmd,
 		OutputModeContract{
 			Name:             RenderModeJSON.String(),
 			Supported:        true,
 			MachinePreferred: true,
-			Notes:            "canonical discovery format",
+			Notes:            "full discovery format",
 		},
 		OutputModeContract{
 			Name:      RenderModeOneLine.String(),

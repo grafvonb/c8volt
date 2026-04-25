@@ -6,15 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt expect process-instance
 
-Expect a process instance(s) to reach a certain state from list of states
+Wait for process instances to reach states
 
 ### Synopsis
 
-Wait for process instance(s) to reach one of the requested states.
+Wait for process instances to reach one of the requested states.
 
-Use this read-only command after `run`, `cancel`, or `delete` when the operation returned before the final state was visible, or when you need an explicit post-action assertion. The command waits until each keyed process instance reaches one of the requested states or fails with a shared error model. For cancellation waits, `canceled` is the user-facing intent state; on Camunda `8.8` and `8.9`, that same outcome may be surfaced by the backend as `terminated`, and `c8volt` treats them as equivalent.
+Use this command after `run`, `cancel`, or `delete` when the previous command returned before the final state was visible, or when you need an explicit post-action assertion.
 
-Default output stays human-oriented and uses transient activity indicators instead of repeated per-key polling lines; use --verbose when you need detailed checked keys, states, and retry attempts. Use --json when another tool needs the final wait report. `--automation` remains unsupported because the broader waiting contract is not yet defined there.
+For cancellation waits, `canceled` is the user-facing intent state. On Camunda `8.8` and `8.9`, the backend may report the same outcome as `terminated`; c8volt treats both as a match.
 
 ```
 c8volt expect process-instance [flags]
@@ -23,12 +23,10 @@ c8volt expect process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt expect pi --key 2251799813685255 --state active
-  ./c8volt expect pi --key 2251799813685255 --state completed --state absent
-  ./c8volt expect pi --key 2251799813711967 --state canceled
-  ./c8volt run pi --bpmn-process-id order-process --no-wait --json
-  ./c8volt expect pi --key 2251799813711967 --state active
-  ./c8volt get pi --bpmn-process-id order-process --keys-only | ./c8volt expect pi - --state terminated
+  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --state completed --state absent
+  ./c8volt expect pi --key <process-instance-key> --state canceled
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
 ```
 
 ### Options
@@ -46,7 +44,7 @@ c8volt expect process-instance [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -62,5 +60,5 @@ c8volt expect process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt expect](c8volt_expect)	 - Wait for verification targets to reach the expected state
+* [c8volt expect](c8volt_expect)	 - Wait for process instances to reach a state
 

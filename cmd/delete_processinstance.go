@@ -18,23 +18,17 @@ var (
 
 var deleteProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Delete process instance(s) by key or search filters, optionally cancelling first",
-	Long: "Delete process instance(s) by key or search filters, optionally cancelling first.\n\n" +
-		"By default c8volt validates the full affected tree, prompts before the destructive action, and waits " +
-		"until deletion is observed. Use --auto-confirm for unattended runs, and add --no-wait when accepted " +
-		"deletion should return immediately instead of waiting for the final result.\n\n" +
-		"Use `get process-instance` or `expect process-instance --state absent` after non-blocking deletes when " +
-		"you need explicit follow-up verification.",
+	Short: "Delete process instances by key or filters",
+	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
+		"By default c8volt validates the affected tree, prompts before deletion, and waits until deletion is observed. Use --force when active instances should be cancelled before deletion.\n\n" +
+		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --count 250
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
-  ./c8volt delete pi --bpmn-process-id order-process --start-date-after 2026-01-01 --start-date-before 2026-01-31 --auto-confirm
-  ./c8volt delete pi --bpmn-process-id order-process --state completed --count 200 --auto-confirm
-  ./c8volt delete pi --state active --start-date-newer-days 30 --auto-confirm
+  ./c8volt delete pi --bpmn-process-id C88_SimpleUserTask_Process --state completed --count 200 --auto-confirm
   ./c8volt delete pi --state completed --count 200 --auto-confirm --no-wait
-  ./c8volt expect pi --key 2251799813711967 --state absent
-  ./c8volt get pi --state completed --keys-only | ./c8volt delete pi - --auto-confirm`,
+  ./c8volt expect pi --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

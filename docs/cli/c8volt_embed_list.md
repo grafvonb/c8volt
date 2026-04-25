@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt embed list
 
-List embedded (virtual) files containing process definitions
+List bundled BPMN fixture files
 
 ### Synopsis
 
-List embedded (virtual) files containing process definitions.
+List bundled BPMN fixture files.
 
-Use this read-only command to discover which BPMN resources are packaged into the c8volt binary before exporting or deploying them. Prefer `--json` when another tool needs the file names programmatically, and add `--details` when you need the full embedded paths.
+Run this before `embed deploy` or `embed export` when you need the exact file names. Use `--details` to show the full embedded paths.
 
 ```
 c8volt embed list [flags]
@@ -37,7 +37,7 @@ c8volt embed list [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -53,5 +53,5 @@ c8volt embed list [flags]
 
 ### SEE ALSO
 
-* [c8volt embed](c8volt_embed)	 - Inspect, export, or deploy embedded BPMN resources
+* [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
 

@@ -6,16 +6,15 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt embed
 
-Inspect, export, or deploy embedded BPMN resources
+Use bundled BPMN fixtures
 
 ### Synopsis
 
-Inspect, export, or deploy embedded BPMN resources.
+Use bundled BPMN fixtures.
 
-Use this command family when the workflow starts from BPMN assets already embedded in
-the c8volt binary. Choose `embed list` to discover packaged resources,
-`embed export` to write them to disk, and `embed deploy` when you want
-to deploy an embedded process definition to Camunda.
+Choose `embed list` to see what ships in the binary, `embed deploy` to
+create a runnable test environment quickly, or `embed export` when you want to
+inspect or edit the files locally.
 
 ```
 c8volt embed [flags]
@@ -25,8 +24,8 @@ c8volt embed [flags]
 
 ```
   ./c8volt embed list
-  ./c8volt embed export --name invoice.bpmn --output-dir ./tmp
-  ./c8volt embed deploy --name invoice.bpmn
+  ./c8volt embed deploy --all --run
+  ./c8volt embed export --all --out ./fixtures
 ```
 
 ### Options
@@ -39,7 +38,7 @@ c8volt embed [flags]
 
 ```
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
-      --automation         enable the canonical non-interactive contract for commands that explicitly support it
+      --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
       --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
   -j, --json               output as JSON (where applicable)
@@ -55,8 +54,8 @@ c8volt embed [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 with guided help and script-safe output modes
-* [c8volt embed deploy](c8volt_embed_deploy)	 - Deploy bundled BPMN fixtures for quick testing
-* [c8volt embed export](c8volt_embed_export)	 - Export embedded (virtual) resources to local files. Can be used to deploy updated versions of embedded resources using 'c8volt deploy'.
-* [c8volt embed list](c8volt_embed_list)	 - List embedded (virtual) files containing process definitions
+* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
+* [c8volt embed deploy](c8volt_embed_deploy)	 - Deploy bundled BPMN fixtures
+* [c8volt embed export](c8volt_embed_export)	 - Export bundled BPMN fixtures to local files
+* [c8volt embed list](c8volt_embed_list)	 - List bundled BPMN fixture files
 
