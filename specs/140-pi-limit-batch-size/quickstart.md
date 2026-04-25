@@ -5,7 +5,7 @@
 Use focused command tests first:
 
 ```bash
-go test ./cmd -run 'Test.*ProcessInstance.*Limit|Test.*ProcessInstance.*BatchSize|Test.*ProcessInstance.*Count' -count=1
+go test ./cmd -run 'Test(GetProcessInstancePagingFlow|CancelProcessInstanceCommand_SearchPagingLimitFlow|DeleteProcessInstanceCommand_SearchPagingLimitFlow|CancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow|DeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow|GetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags|CancelProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags|DeleteProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags|GetProcessInstanceHelp_DocumentsPagingAndAutomationSurface|CancelHelp_DocumentsConfirmationAndNoWaitSemantics|DeleteHelp_DocumentsDestructiveConfirmationPaths)$' -count=1
 ```
 
 If test names differ after implementation, run the closest affected package tests:

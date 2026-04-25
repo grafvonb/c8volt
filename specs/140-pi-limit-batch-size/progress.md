@@ -164,3 +164,22 @@ Started: 2026-04-25 15:48:48
 - `rg -n -- '--count' docs/cli/c8volt_get_process-instance.md docs/cli/c8volt_cancel_process-instance.md docs/cli/c8volt_delete_process-instance.md README.md` returned no matches, while generated pages include the expected `--batch-size` and `--limit` flag descriptions.
 - `go test ./cmd -count=1` passed.
 ---
+
+---
+## Iteration 7 - 2026-04-25 17:49:36 CEST
+**User Story**: Phase 7 Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T026: Update implementation notes in quickstart.md for the final focused validation command
+- [x] T027: Run focused validation with `go test ./cmd -count=1`
+- [x] T028: Run repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/140-pi-limit-batch-size/quickstart.md
+- specs/140-pi-limit-batch-size/tasks.md
+- specs/140-pi-limit-batch-size/progress.md
+**Learnings**:
+- `go test ./cmd -count=1` passed.
+- `make test` passed and runs `go test ./... -race -count=1`.
+- The final quickstart focused validation now names the concrete process-instance paging, validation, and help tests used during the feature instead of a broad placeholder regex.
+---

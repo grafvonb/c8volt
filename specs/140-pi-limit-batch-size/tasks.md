@@ -124,9 +124,9 @@
 
 **Purpose**: Final quality, validation, and traceability.
 
-- [ ] T026 [P] Update implementation notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/140-pi-limit-batch-size/quickstart.md if final commands or tests differ from the planned names
-- [ ] T027 Run focused validation with `go test ./cmd -count=1` against /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd
-- [ ] T028 Run repository validation with `make test` using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T026 [P] Update implementation notes in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/140-pi-limit-batch-size/quickstart.md if final commands or tests differ from the planned names
+- [x] T027 Run focused validation with `go test ./cmd -count=1` against /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd
+- [x] T028 Run repository validation with `make test` using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 
