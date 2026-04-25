@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"testing"
@@ -139,6 +140,44 @@ func TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, report.Ok)
 	assert.Equal(t, typex.Keys{"root-1"}, canceledKeys)
+}
+
+func TestClient_DeleteProcessDefinition_ForwardsContextToDryRunPlan(t *testing.T) {
+	t.Parallel()
+
+	type ctxKey struct{}
+	ctx := context.WithValue(context.Background(), ctxKey{}, "request-ctx")
+	api := &stubResourceAPI{
+		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) error {
+			assert.Equal(t, "pd-1", resourceKey)
+			return nil
+		},
+	}
+	papi := stubProcessAPI{
+		searchProcessInstances: func(_ context.Context, _ process.ProcessInstanceFilter, _ int32, _ ...options.FacadeOption) (process.ProcessInstances, error) {
+			return process.ProcessInstances{Items: []process.ProcessInstance{{Key: "child-1"}}}, nil
+		},
+		dryRunCancelOrDeletePlan: func(got context.Context, _ typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			if got.Value(ctxKey{}) != "request-ctx" {
+				return process.DryRunPIKeyExpansion{}, errors.New("dry-run plan did not receive caller context")
+			}
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "child-1"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.CancelReports, error) {
+			assert.Equal(t, typex.Keys{"root-1"}, keys)
+			return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}}}, nil
+		},
+	}
+
+	cli := New(api, papi, slog.Default())
+	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce(), options.WithAllowInconsistent())
+
+	require.NoError(t, err)
+	assert.True(t, report.Ok)
 }
 
 func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {

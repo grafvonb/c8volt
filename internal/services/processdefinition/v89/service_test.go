@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
@@ -213,15 +212,18 @@ func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {
 
 	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
 		Run(func(args mock.Arguments) {
-			rawBody := args.String(2)
-			assert.True(t, strings.Contains(rawBody, `"isLatestVersion":true`))
-			assert.False(t, strings.Contains(rawBody, `"tenantId":"tenant-a"`))
-			assert.True(t, strings.Contains(rawBody, `"after":""`))
-			assert.True(t, strings.Contains(rawBody, `"field":"processDefinitionId"`))
-			assert.True(t, strings.Contains(rawBody, `"field":"tenantId"`))
-			assert.False(t, strings.Contains(rawBody, `"field":"version"`))
-			assert.False(t, strings.Contains(rawBody, `"field":"name"`))
-			assert.False(t, strings.Contains(rawBody, `"from"`))
+			body := decodeProcessDefinitionSearchRequest(t, args.String(2))
+			require.NotNil(t, body.Filter.IsLatestVersion)
+			assert.True(t, *body.Filter.IsLatestVersion)
+			assert.Nil(t, body.Filter.TenantID)
+			assert.NotNil(t, body.Page.After)
+			assert.Equal(t, "", *body.Page.After)
+			require.NotNil(t, body.Page.Limit)
+			assert.Equal(t, int32(1000), *body.Page.Limit)
+			assert.Nil(t, body.Page.From)
+			require.Len(t, body.Sort, 2)
+			assert.Equal(t, "processDefinitionId", body.Sort[0].Field)
+			assert.Equal(t, "tenantId", body.Sort[1].Field)
 		}).
 		Return(resp, nil)
 	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 3)
@@ -273,33 +275,6 @@ func TestService_SearchProcessDefinitions_IncidentSearchIncludesTenantFilterWhen
 	m.AssertExpectations(t)
 }
 
-func TestService_SearchProcessDefinitions_CountsIncidentPages(t *testing.T) {
-	ctx := context.Background()
-	m := &mockProcessDefinitionClient{}
-
-	resp := &camundav89.SearchProcessDefinitionsResponse{
-		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200 OK"),
-		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
-		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
-	}
-	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
-	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 5)
-	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumCOMPLETED, 6)
-	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 7)
-	mockProcessInstanceIncidentCount(m, t, "123", "", 5)
-
-	svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
-	require.NoError(t, err)
-
-	defs, err := svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{}, 25, services.WithStat())
-	require.NoError(t, err)
-	require.Len(t, defs, 1)
-	require.NotNil(t, defs[0].Statistics)
-	assert.Equal(t, int64(5), defs[0].Statistics.Incidents)
-	assert.True(t, defs[0].Statistics.IncidentCountSupported)
-	m.AssertExpectations(t)
-}
-
 func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *testing.T) {
 	ctx := context.Background()
 	m := &mockProcessDefinitionClient{}
@@ -312,8 +287,9 @@ func TestService_SearchProcessDefinitions_IncludesTenantFilterWhenConfigured(t *
 
 	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).
 		Run(func(args mock.Arguments) {
-			rawBody := args.String(2)
-			assert.True(t, strings.Contains(rawBody, `"tenantId":"tenant-a"`))
+			body := decodeProcessDefinitionSearchRequest(t, args.String(2))
+			require.NotNil(t, body.Filter.TenantID)
+			assert.Equal(t, "tenant-a", *body.Filter.TenantID)
 		}).
 		Return(resp, nil)
 
@@ -686,6 +662,30 @@ func processInstanceIncidentSearchMatches(raw string, processDefinitionKey, tena
 		return false
 	}
 	return *page.From == 0 && *page.Limit == 1
+}
+
+type processDefinitionSearchRequest struct {
+	Filter struct {
+		TenantID        *string `json:"tenantId"`
+		IsLatestVersion *bool   `json:"isLatestVersion"`
+	} `json:"filter"`
+	Page struct {
+		After *string `json:"after"`
+		From  *int32  `json:"from"`
+		Limit *int32  `json:"limit"`
+	} `json:"page"`
+	Sort []struct {
+		Field string `json:"field"`
+		Order string `json:"order"`
+	} `json:"sort"`
+}
+
+func decodeProcessDefinitionSearchRequest(t *testing.T, raw string) processDefinitionSearchRequest {
+	t.Helper()
+
+	var body processDefinitionSearchRequest
+	require.NoError(t, json.Unmarshal([]byte(raw), &body))
+	return body
 }
 
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {

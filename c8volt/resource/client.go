@@ -60,7 +60,7 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 				for _, pi := range pis.Items {
 					keys = append(keys, pi.Key)
 				}
-				plan, err := c.papi.DryRunCancelOrDeletePlan(context.Background(), keys, opts...)
+				plan, err := c.papi.DryRunCancelOrDeletePlan(ctx, keys, opts...)
 				if err != nil {
 					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("delete process definition cancellation validation: %w", err)
 				}
@@ -73,7 +73,7 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 					return DeleteReport{Key: key, Ok: false}, fmt.Errorf("delete process definition cancel active instances: %w", err)
 				}
 			} else {
-				return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cannot delete process definition %s with active process instances; user --force to cancel them automatically", key)
+				return DeleteReport{Key: key, Ok: false}, fmt.Errorf("cannot delete process definition %s with active process instances; use --force to cancel them automatically", key)
 			}
 		}
 	}
