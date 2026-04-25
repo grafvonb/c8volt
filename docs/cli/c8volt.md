@@ -34,6 +34,10 @@ is implemented for Camunda 8.7, 8.8, and 8.9 through the repository's versioned 
 factories and facades, with the same repository command-family coverage on 8.9 that already
 exists on 8.8.
 
+Commands that create tenant-owned data, such as deploy and run, target <default> when the
+effective tenant is empty. Read/search commands preserve an empty tenant as an unscoped
+visible-tenants query unless --tenant is provided.
+
 Refer to the documentation at https://c8volt.info for more information.
 
 ```

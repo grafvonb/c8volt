@@ -276,6 +276,8 @@ Tenant-aware process-instance commands follow one shared contract across `get`, 
 
 - the effective tenant follows `flag > env > profile > base config > default`
 - supported wrong-tenant lookups behave like `not found`
+- mutation commands that must create a tenant-owned resource use `<default>` as the target tenant when the effective tenant is empty
+- read/search commands preserve an empty tenant as an unscoped visible-tenants query unless `--tenant` is provided
 - `8.9` now uses the same native tenant-safe process-instance runtime path and repository command-family coverage that `8.8` provides
 - `v8.8` uses tenant-safe search-backed lookup/state behavior as the authoritative path for direct-get-adjacent flows
 - `v8.7` keeps search-backed tenant-safe flows available, but keyed direct lookup and keyed state checks stay explicitly unsupported where no tenant-safe upstream equivalent exists
@@ -450,6 +452,8 @@ app:
 
 This tenant value is used by commands such as deploy and run, and tenant IDs are also visible in process-definition and process-instance output where the API returns them.
 
+Commands that create tenant-owned data need a concrete target tenant. For those mutation paths, including `deploy pd`, `embed deploy`, `deploy pd --run`, and `run pi`, an empty configured tenant is sent to Camunda as `<default>`. Read/search commands keep an empty configured tenant empty, so they can return assets from all tenants visible to the authenticated user. Use `--tenant` when you want either kind of command to target or filter a specific tenant.
+
 Set a default tenant in config:
 
 ```yaml
@@ -591,6 +595,8 @@ Switch profiles with:
 ./c8volt --profile local get cluster topology
 ./c8volt --profile prod get cluster topology
 ```
+
+With an empty local tenant, read/search commands can list resources visible across tenants. Commands that create deployments or process instances target Camunda's `<default>` tenant unless you pass `--tenant`.
 
 ### Recommended workflow for OAuth setups
 
