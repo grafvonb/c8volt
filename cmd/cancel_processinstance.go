@@ -213,5 +213,5 @@ func init() {
 
 	setCommandMutation(cancelProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(cancelProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(cancelProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation and paged continuation")
+	setAutomationSupport(cancelProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation, non-mutating dry-run previews, and paged continuation")
 }

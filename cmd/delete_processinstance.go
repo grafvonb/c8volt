@@ -209,5 +209,5 @@ func init() {
 
 	setCommandMutation(deleteProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(deleteProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(deleteProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation and paged continuation")
+	setAutomationSupport(deleteProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation, non-mutating dry-run previews, and paged continuation")
 }

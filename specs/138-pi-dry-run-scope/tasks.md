@@ -148,11 +148,11 @@
 
 **Purpose**: Final cleanup, documentation consistency, and repository validation.
 
-- [ ] T050 [P] Review command mutation metadata and automation metadata in cmd/cancel_processinstance.go and cmd/delete_processinstance.go for dry-run accuracy
-- [ ] T051 [P] Review process-instance dry-run contract notes against implemented fields in specs/138-pi-dry-run-scope/contracts/process-instance-dry-run.md
-- [ ] T052 Run `gofmt` on changed Go files listed in cmd/cancel_processinstance.go, cmd/delete_processinstance.go, cmd/get_processinstance.go, cmd/cmd_views_processinstance_dryrun.go, cmd/process_api_stub_test.go, cmd/cancel_test.go, cmd/delete_test.go, cmd/cmd_processinstance_test.go, c8volt/process/api.go, c8volt/process/dryrun.go, and c8volt/process/client_test.go
-- [ ] T053 Run targeted tests listed in specs/138-pi-dry-run-scope/quickstart.md for cmd/cancel_test.go, cmd/delete_test.go, cmd/cmd_processinstance_test.go, and c8volt/process/client_test.go
-- [ ] T054 Run final repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T050 [P] Review command mutation metadata and automation metadata in cmd/cancel_processinstance.go and cmd/delete_processinstance.go for dry-run accuracy
+- [x] T051 [P] Review process-instance dry-run contract notes against implemented fields in specs/138-pi-dry-run-scope/contracts/process-instance-dry-run.md
+- [x] T052 Run `gofmt` on changed Go files listed in cmd/cancel_processinstance.go, cmd/delete_processinstance.go, cmd/get_processinstance.go, cmd/cmd_views_processinstance_dryrun.go, cmd/process_api_stub_test.go, cmd/cancel_test.go, cmd/delete_test.go, cmd/cmd_processinstance_test.go, c8volt/process/api.go, c8volt/process/dryrun.go, and c8volt/process/client_test.go
+- [x] T053 Run targeted tests listed in specs/138-pi-dry-run-scope/quickstart.md for cmd/cancel_test.go, cmd/delete_test.go, cmd/cmd_processinstance_test.go, and c8volt/process/client_test.go
+- [x] T054 Run final repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 

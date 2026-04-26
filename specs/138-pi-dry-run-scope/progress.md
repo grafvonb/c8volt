@@ -18,6 +18,8 @@ Started: 2026-04-25 22:36:37
 - Process-instance command tests must reset `flagDryRun` in `resetProcessInstanceCommandGlobals` because cancel and delete share the package-level command flag.
 - Dry-run renderer coverage can exercise `renderProcessInstanceDryRunPreview` directly; JSON envelope assertions require a Cobra command marked with full contract support.
 - `make docs-content` regenerates `docs/cli/` and syncs `docs/index.md` from `README.md`, so README process-instance examples can legitimately produce docs homepage diffs alongside CLI reference diffs.
+- Destructive process-instance commands remain `CommandMutationStateChanging` even with `--dry-run`; automation notes should explicitly mention non-mutating dry-run previews because mutation classification is command-level.
+- Full `make test` starts `httptest` servers; restricted sandboxes that cannot bind loopback ports fail unrelated suites with `listen tcp6 [::1]:0: bind: operation not permitted`.
 
 ---
 
@@ -190,4 +192,43 @@ Started: 2026-04-25 22:36:37
 - Focused output assertions should cover both the human key/count text and the full JSON result envelope, not just payload construction.
 - Command help now carries direct-key and search dry-run examples so generated CLI docs inherit the non-mutating workflow from Cobra metadata.
 - Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun|TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode|Test(Cancel|Delete)Help' -count=1`.
+---
+
+---
+## Iteration 7 - 2026-04-26 06:24:17 CEST
+**User Story**: Partial progress on Phase 7: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T050: Review command mutation metadata and automation metadata in cmd/cancel_processinstance.go and cmd/delete_processinstance.go for dry-run accuracy
+- [x] T051: Review process-instance dry-run contract notes against implemented fields in specs/138-pi-dry-run-scope/contracts/process-instance-dry-run.md
+- [x] T052: Run `gofmt` on changed Go files listed in the Phase 7 task
+- [x] T053: Run targeted tests listed in specs/138-pi-dry-run-scope/quickstart.md for process-instance dry-run coverage
+**Tasks Remaining in Story**: 1
+**Commit**: No commit - partial progress
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- specs/138-pi-dry-run-scope/tasks.md
+- specs/138-pi-dry-run-scope/progress.md
+**Learnings**:
+- Command mutation metadata is command-level, so cancel/delete process-instance remain state-changing while automation notes now call out non-mutating dry-run previews.
+- The process-instance dry-run contract fields match the implemented structured preview and search summary payloads.
+- Targeted validation passed: `go test ./cmd -run 'Test(Cancel|Delete).*DryRun' -count=1`, `go test ./c8volt/process -run DryRunCancelOrDelete -count=1`, search/paged dry-run tests, orphan/partial tests, and help/capabilities-adjacent command tests.
+- Final `make test` could not complete in this sandbox because unrelated `httptest` suites cannot bind loopback ports.
+---
+
+---
+## Iteration 8 - 2026-04-26 06:27:44 CEST
+**User Story**: Phase 7: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T054: Run final repository validation with `make test`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- specs/138-pi-dry-run-scope/tasks.md
+- specs/138-pi-dry-run-scope/progress.md
+**Learnings**:
+- Final repository validation passed with `make test`, which runs `go test ./... -race -count=1`.
+- The Phase 7 work unit is complete after carrying forward the automation metadata note updates and final validation result in the same commit.
 ---
