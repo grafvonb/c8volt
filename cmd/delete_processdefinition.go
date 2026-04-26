@@ -79,10 +79,10 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
 		}
 
-		fmt.Println("WARNING: This removes process-definition resources from Zeebe only. Operate history remains and must be cleaned up manually.")
+		renderHumanWarningLine(cmd, "WARNING: This removes process-definition resources from Zeebe only. Operate history remains and must be cleaned up manually.")
 		prompt := fmt.Sprintf("Delete %d process definition(s) from Zeebe?", len(keys))
 		if !flagAllowInconsistent {
-			fmt.Println("Without --allow-inconsistent, c8volt prepares deletion only (for example, cancels active instances).")
+			renderHumanWarningLine(cmd, "Without --allow-inconsistent, c8volt prepares deletion only (for example, cancels active instances).")
 			prompt = fmt.Sprintf("Prepare %d process definition(s) for later manual deletion?", len(keys))
 		}
 		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {

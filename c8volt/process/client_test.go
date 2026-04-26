@@ -584,6 +584,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					StartKey:         "c1",
 					RootKey:          "r1",
 					Keys:             []string{"c1", "r1"},
+					Chain:            map[string]d.ProcessInstance{"c1": {Key: "c1", State: d.StateCanceled}, "r1": {Key: "r1", State: d.StateActive}},
 					MissingAncestors: []pitraversal.MissingAncestor{{Key: "missing", StartKey: "c1"}},
 					Warning:          "one or more parent process instances were not found",
 					Outcome:          pitraversal.OutcomePartial,
@@ -594,6 +595,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					StartKey: "c2",
 					RootKey:  "r2",
 					Keys:     []string{"c2", "r2"},
+					Chain:    map[string]d.ProcessInstance{"c2": {Key: "c2", State: d.StateActive}, "r2": {Key: "r2", State: d.StateActive}},
 					Outcome:  pitraversal.OutcomeComplete,
 				}, nil
 			default:
@@ -608,6 +610,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					Mode:    pitraversal.ModeDescendants,
 					RootKey: "r1",
 					Keys:    []string{"r1", "c1"},
+					Chain:   map[string]d.ProcessInstance{"r1": {Key: "r1", State: d.StateActive}, "c1": {Key: "c1", State: d.StateCanceled}},
 					Outcome: pitraversal.OutcomeComplete,
 				}, nil
 			case "r2":
@@ -615,6 +618,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 					Mode:    pitraversal.ModeDescendants,
 					RootKey: "r2",
 					Keys:    []string{"r2", "c2"},
+					Chain:   map[string]d.ProcessInstance{"r2": {Key: "r2", State: d.StateActive}, "c2": {Key: "c2", State: d.StateActive}},
 					Outcome: pitraversal.OutcomeComplete,
 				}, nil
 			default:
@@ -631,6 +635,12 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
 	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
 	assert.Equal(t, []MissingAncestor{{Key: "missing", StartKey: "c1"}}, got.MissingAncestors)
+	assert.Equal(t, []ProcessInstance{{Key: "c1", State: StateCanceled}}, got.SelectedFinalState)
+	assert.Equal(t, []ProcessInstance{
+		{Key: "r1", State: StateActive},
+		{Key: "r2", State: StateActive},
+		{Key: "c2", State: StateActive},
+	}, got.RequiresCancelBeforeDelete)
 	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
 	assert.NotEmpty(t, got.Warning)
 }

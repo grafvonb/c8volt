@@ -9,7 +9,6 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/embedded"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 )
@@ -41,16 +40,22 @@ var embedListCmd = &cobra.Command{
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 		}
 
+		viewItems := make([]string, 0, len(files))
 		for _, f := range files {
 			view := f
 			if !flagEmbedListDetails {
 				view = filepath.Base(f)
 			}
-			if flagViewAsJson {
-				cmd.Println(toolx.ToJSONString(view))
-			} else {
-				cmd.Println(view)
+			viewItems = append(viewItems, view)
+		}
+		if flagViewAsJson {
+			if err := renderJSONPayload(cmd, RenderModeJSON, viewItems); err != nil {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
 			}
+			return
+		}
+		for _, view := range viewItems {
+			renderOutputLine(cmd, "%s", view)
 		}
 	},
 }

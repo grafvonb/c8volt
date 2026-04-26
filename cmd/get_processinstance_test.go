@@ -1515,6 +1515,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagNoWait = false
 	flagForce = false
 	flagNoStateCheck = false
+	flagDryRun = false
 	flagWorkers = 0
 	flagNoWorkerLimit = false
 	flagFailFast = false

@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -23,11 +22,14 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: "Cancel process instances by key or search filters.\n\n" +
 		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
+		"Use --dry-run to preview selected process instances, process-instance trees to cancel, process instances in scope, selected instances already in final state, and partial-scope details without submitting cancellation, prompting for confirmation, or waiting for completion.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted cancellation is enough for the current step, then verify later with `get pi` or `expect pi`.",
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
+  ./c8volt cancel pi --key <process-instance-key> --dry-run
   ./c8volt cancel pi --key <process-instance-key> --force
   ./c8volt cancel pi --state active --batch-size 250
   ./c8volt cancel pi --state active --batch-size 250 --limit 25
+  ./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
   ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --batch-size 200 --auto-confirm
@@ -74,16 +76,26 @@ var cancelProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			reports, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
+			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))
 				for _, pi := range page.Items {
 					keys = append(keys, pi.Key)
 				}
-				return cancelProcessInstancePage(cmd, cli, keys, firstPage)
+				return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
 			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("cancel process instances: %w", err))
 			}
+			if flagDryRun {
+				if len(results.DryRunPreviews) > 0 {
+					summary := newProcessInstanceDryRunSummary("cancel", results.DryRunPreviews)
+					if err := renderProcessInstanceDryRunSummary(cmd, summary); err != nil {
+						handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cancel dry-run result: %w", err))
+					}
+				}
+				return
+			}
+			reports := results.Reports
 			if len(reports) > 0 {
 				payload := process.CancelReports{Items: make([]process.CancelReport, len(reports))}
 				for i, report := range reports {
@@ -97,7 +109,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		}
 		if len(keys) == 0 {
 			if searched {
-				cmd.Println("found:", 0)
+				renderOutputLine(cmd, "found: %d", 0)
 				return
 			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to cancel")))
@@ -105,6 +117,9 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		result, err := cancelProcessInstancesWithPlan(cmd, cli, keys, true)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if flagDryRun {
+			return
 		}
 		payload := process.CancelReports{Items: make([]process.CancelReport, len(result.Reports))}
 		for i, report := range result.Reports {
@@ -118,13 +133,29 @@ var cancelProcessInstanceCmd = &cobra.Command{
 }
 
 func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
-	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, collectOptions()...)
+	return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, true)
+}
+
+func cancelProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
+	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "cancel", keys)
 	if err != nil {
-		return processInstancePageActionResult{}, fmt.Errorf("cancel validation: %w", err)
+		return processInstancePageActionResult{}, err
+	}
+	plan := planned.Plan
+	if flagDryRun {
+		if renderDryRun {
+			if err := renderProcessInstanceDryRunPreview(cmd, planned.Preview); err != nil {
+				return processInstancePageActionResult{}, fmt.Errorf("render cancel dry-run result: %w", err)
+			}
+		}
+		return processInstancePageActionResult{
+			Impact:        planned.Impact,
+			DryRunPreview: &planned.Preview,
+		}, nil
 	}
 	printDryRunExpansionWarning(cmd, plan)
 
-	impact := processInstancePageImpact{Requested: len(keys), Affected: len(plan.Collected), Roots: len(plan.Roots)}
+	impact := planned.Impact
 	if firstPage {
 		affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
 		prompt := fmt.Sprintf("You are about to cancel %d process instance(s). Do you want to proceed?", affectedCount)
@@ -142,8 +173,9 @@ func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 		return processInstancePageActionResult{}, fmt.Errorf("cancel process instances: %w", err)
 	}
 	result := processInstancePageActionResult{
-		Impact:  impact,
-		Reports: make([]process.Reporter, len(reports.Items)),
+		Impact:        impact,
+		Reports:       make([]process.Reporter, len(reports.Items)),
+		DryRunPreview: &planned.Preview,
 	}
 	for i, report := range reports.Items {
 		result.Reports[i] = process.Reporter(report)
@@ -162,7 +194,7 @@ func init() {
 	fs := cancelProcessInstanceCmd.Flags()
 	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
-	// fs.BoolVar(&flagDryRun, "dry-run", false, "perform a dry-run; show which process instances would be canceled without actually cancelling them")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview cancel scope without submitting cancellation")
 
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")
@@ -181,5 +213,5 @@ func init() {
 
 	setCommandMutation(cancelProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(cancelProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(cancelProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation and paged continuation")
+	setAutomationSupport(cancelProcessInstanceCmd, AutomationSupportFull, "supports unattended destructive confirmation, non-mutating dry-run previews, and paged continuation")
 }

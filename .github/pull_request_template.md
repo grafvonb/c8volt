@@ -1,14 +1,21 @@
-<!--
-SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
-SPDX-License-Identifier: GPL-3.0-or-later
--->
-
 ## Summary
+
+- What changed:
+- Why:
 
 ## Validation
 
-## Contribution Checklist
+- Commands run:
+- Result:
+
+## AI Disclosure
+
+- [ ] No AI assistance used.
+- [ ] AI assistance used:
+<!-- If checked, name the tool and scope, for example: "ChatGPT for approach review; code written and tested manually." -->
+
+## Checklist
 
 - [ ] I have signed off my commits with `Signed-off-by:` as described in `CONTRIBUTING.md`.
-- [ ] I updated documentation when behavior, commands, configuration, licensing, or security guidance changed.
-- [ ] I did not use the `c8volt` name or logo in a way that suggests an unofficial modified version is official.
+- [ ] I updated tests and documentation where the change needs them.
+- [ ] I checked license, security, configuration, and trademark impact.

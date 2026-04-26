@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -67,5 +66,7 @@ func runGetClusterTopology(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster topology: %w", err))
 	}
-	cmd.Println(toolx.ToJSONString(topology))
+	if err := renderJSONPayload(cmd, RenderModeJSON, topology); err != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster topology: %w", err))
+	}
 }
