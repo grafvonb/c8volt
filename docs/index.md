@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-153-g47ff522-dirty`, commit `47ff522`, built `2026-04-25T12:27:36Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.1.6-8-gd1e761f-dirty`, commit `d1e761f`, built `2026-04-25T15:43:45Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -196,12 +196,14 @@ Deletion in real environments often means cancel-first, then remove, then verify
 ```bash
 ./c8volt get pi --state active
 ./c8volt get pi --state active --total
-./c8volt get pi --state active --count 250
-./c8volt cancel pi --state active --count 250
-./c8volt delete pi --state completed --count 250 --auto-confirm
+./c8volt get pi --state active --batch-size 250 --limit 25
+./c8volt cancel pi --state active --batch-size 250 --limit 25
+./c8volt delete pi --state completed --batch-size 250 --limit 25 --auto-confirm
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Human-oriented modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
+
+Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
 When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total.
 
@@ -252,7 +254,7 @@ app:
   process_instance_page_size: 250
 ```
 
-`--count` overrides this for one command run. `C8VOLT_APP_PROCESS_INSTANCE_PAGE_SIZE` provides the same setting through the environment.
+`--batch-size` overrides this for one command run. `C8VOLT_APP_PROCESS_INSTANCE_PAGE_SIZE` provides the same setting through the environment.
 
 ### Tenant Handling
 

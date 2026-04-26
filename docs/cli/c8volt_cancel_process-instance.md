@@ -25,11 +25,12 @@ c8volt cancel process-instance [flags]
 ```
   ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --count 250
+  ./c8volt cancel pi --state active --batch-size 250
+  ./c8volt cancel pi --state active --batch-size 250 --limit 25
   ./c8volt cancel pi --state active --start-date-before 2026-03-31
   ./c8volt cancel pi --state active --start-date-newer-days 30
-  ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --count 200 --auto-confirm
-  ./c8volt cancel pi --state active --count 200 --auto-confirm --no-wait
+  ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --batch-size 200 --auto-confirm
+  ./c8volt cancel pi --state active --batch-size 200 --auto-confirm --no-wait
   ./c8volt expect pi --key <process-instance-key> --state canceled
   ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
 ```
@@ -37,8 +38,8 @@ c8volt cancel process-instance [flags]
 ### Options
 
 ```
+  -n, --batch-size int32            number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
-  -n, --count int32                 number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
@@ -47,6 +48,7 @@ c8volt cancel process-instance [flags]
       --force                       force cancellation of the root process instance if a process instance is a child, including all its child instances
   -h, --help                        help for process-instance
   -k, --key strings                 process instance key(s) to cancel
+  -l, --limit int32                 maximum number of matching process instances to process across all pages
       --no-state-check              skip checking the current state of the process instance before cancelling it
       --no-wait                     skip waiting for the cancellation to be fully processed
       --no-worker-limit             disable limiting the number of workers to GOMAXPROCS when --workers > 1
@@ -58,7 +60,7 @@ c8volt cancel process-instance [flags]
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --with-age                    include process instance age in one-line output and JSON meta
-  -w, --workers int                 maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands

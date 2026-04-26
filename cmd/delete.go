@@ -13,7 +13,7 @@ Use this command family when workflow data should be removed. Leaf commands expl
 what c8volt validates first, when confirmation is required, and which follow-up
 command confirms the result.`,
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
-  ./c8volt delete pi --state completed --count 200 --auto-confirm
+  ./c8volt delete pi --state completed --batch-size 200 --auto-confirm
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm`,
 	Aliases: []string{"d", "del", "remove", "rm"},
 	RunE: func(cmd *cobra.Command, args []string) error {
