@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 BINARY := c8volt
 BIN_DIR := bin
 PKG := ./...
@@ -9,12 +12,12 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
 
-.PHONY: help all tidy generate generate-clients build test lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-all: tidy fmt vet lint test build docs ## Run the full local quality pipeline: tidy, format, vet, lint, test, build, and all docs.
+all: tidy fmt vet lint licenses test build docs ## Run the full local quality pipeline: tidy, format, vet, lint, licenses, test, build, and all docs.
 
 tidy: ## Synchronize Go module dependencies with the current imports.
 	go mod tidy
@@ -54,6 +57,9 @@ run: build ## Build the binary and print the CLI help output.
 
 test: ## Run the full Go test suite with the race detector enabled.
 	go test $(PKG) -race -count=1
+
+licenses: ## Check Go dependency licenses.
+	go tool go-licenses check $(PKG)
 
 lint: ## Run golangci-lint across the repository.
 	golangci-lint run

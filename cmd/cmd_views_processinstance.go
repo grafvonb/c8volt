@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package cmd
 
 import (
@@ -16,12 +19,14 @@ func printDryRunExpansionWarning(cmd *cobra.Command, plan process.DryRunPIKeyExp
 	if warning == "" {
 		warning = "one or more parent process instances were not found"
 	}
-	cmd.PrintErrf("warning: %s\n", warning)
+	renderHumanWarningLine(cmd, "warning: %s", warning)
 
 	if len(plan.MissingAncestors) == 0 {
 		return
 	}
-	printMissingAncestorKeyWarning(cmd.PrintErrf, missingAncestorKeys(plan.MissingAncestors))
+	printMissingAncestorKeyWarning(func(format string, args ...interface{}) {
+		renderHumanWarningLine(cmd, format, args...)
+	}, missingAncestorKeys(plan.MissingAncestors))
 }
 
 func missingAncestorKeys(items []process.MissingAncestor) []string {

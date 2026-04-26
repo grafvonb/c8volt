@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package main
 
 import (
@@ -6,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/grafvonb/c8volt/cmd"
@@ -76,8 +80,7 @@ func syncDocsIndexFromReadme(src, dst string) error {
 	}
 
 	body := string(b)
-	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
-	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
+	body = rewriteDocsIndexLinks(body)
 
 	const frontMatter = `---
 title: "c8volt"
@@ -94,6 +97,46 @@ has_toc: true
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
 	return nil
+}
+
+// rewriteDocsIndexLinks converts README-relative links into links valid from the generated docs index.
+func rewriteDocsIndexLinks(body string) string {
+	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
+	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
+
+	body = rewriteGovernanceLinks(body)
+
+	return body
+}
+
+var (
+	governanceLinkTargetPattern = regexp.MustCompile(`\]\((\./)?([A-Za-z0-9_.-]+)\)`)
+	governanceDocs              = map[string]string{
+		"code_of_conduct.md": "CODE_OF_CONDUCT.md",
+		"contributing.md":    "CONTRIBUTING.md",
+		"copyright":          "COPYRIGHT",
+		"license":            "LICENSE",
+		"notice.md":          "NOTICE.md",
+		"security.md":        "SECURITY.md",
+		"trademarks.md":      "TRADEMARKS.md",
+	}
+)
+
+// rewriteGovernanceLinks points governance documents at their canonical repository URLs.
+func rewriteGovernanceLinks(body string) string {
+	return governanceLinkTargetPattern.ReplaceAllStringFunc(body, func(linkTarget string) string {
+		matches := governanceLinkTargetPattern.FindStringSubmatch(linkTarget)
+		if len(matches) != 3 {
+			return linkTarget
+		}
+
+		doc, ok := governanceDocs[strings.ToLower(matches[2])]
+		if !ok {
+			return linkTarget
+		}
+
+		return "](https://github.com/grafvonb/c8volt/blob/main/" + doc + ")"
+	})
 }
 
 func docsLinkName(name string) string {

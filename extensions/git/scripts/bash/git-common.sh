@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Git-specific common functions for the git extension.
 # Extracted from scripts/bash/common.sh — contains only git-specific
 # branch validation and detection logic.

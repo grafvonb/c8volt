@@ -1,4 +1,7 @@
 #!/usr/bin/env zsh
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Purpose:
 #   Bundle the legacy docs-repo /v2 Camunda OpenAPI spec into a single YAML
 #   file.

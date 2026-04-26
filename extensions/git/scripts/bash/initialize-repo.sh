@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Git extension: initialize-repo.sh
 # Initialize a Git repository with an initial commit.
 # Customizable — replace this script to add .gitignore templates,

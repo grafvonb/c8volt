@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 app:
   # Supported values: 8.7, 8.8, 8.9
   camunda_version: "8.9"

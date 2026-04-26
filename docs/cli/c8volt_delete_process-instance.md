@@ -14,6 +14,8 @@ Delete process instances by key or search filters, optionally cancelling first.
 
 By default c8volt validates the affected tree, prompts before deletion, and waits until deletion is observed. Use --force when active instances should be cancelled before deletion.
 
+Use --dry-run to preview selected process instances, process-instance trees to delete, process instances in scope, selected instances already in final state, non-final instances that require cancellation before delete, and partial-scope details without submitting deletion, cancel-before-delete requests, prompting for confirmation, or waiting for completion.
+
 Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.
 
 ```
@@ -24,8 +26,10 @@ c8volt delete process-instance [flags]
 
 ```
   ./c8volt delete pi --key 2251799813711967 --force
+  ./c8volt delete pi --key 2251799813711967 --dry-run
   ./c8volt delete pi --state completed --batch-size 250
   ./c8volt delete pi --state completed --batch-size 250 --limit 25
+  ./c8volt delete pi --state completed --batch-size 250 --limit 25 --dry-run
   ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
   ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
   ./c8volt delete pi --bpmn-process-id C88_SimpleUserTask_Process --state completed --batch-size 200 --auto-confirm
@@ -38,6 +42,7 @@ c8volt delete process-instance [flags]
 ```
   -n, --batch-size int32            number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
+      --dry-run                     preview delete scope without submitting deletion or cancel-before-delete requests
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)

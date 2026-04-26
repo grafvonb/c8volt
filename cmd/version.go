@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package cmd
 
 import (
@@ -58,7 +61,7 @@ var versionCmd = &cobra.Command{
 			}
 			return
 		}
-		cmd.Printf("c8volt %s (%s, %s) | https://c8volt.info\nSupported Camunda versions: %s\n(c) %d Adam Bogdan Boczek | https://boczek.info\n", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, buildYear())
+		renderHumanLine(cmd, "c8volt %s (%s, %s) | https://c8volt.info\nSupported Camunda versions: %s\n(c) %d Adam Bogdan Boczek | https://boczek.info", info.Version, info.Commit, info.Date, info.SupportedCamundaVersions, buildYear())
 	},
 }
 

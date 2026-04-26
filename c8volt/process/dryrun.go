@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package process
 
 import (
@@ -70,15 +73,85 @@ func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, 
 		outcome = TraversalOutcomePartial
 	}
 
+	collected = collected.Unique()
 	plan := DryRunPIKeyExpansion{
-		Roots:            roots,
-		Collected:        collected.Unique(),
-		MissingAncestors: uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),
-		Warning:          warning,
-		Outcome:          outcome,
+		Roots:                      roots,
+		Collected:                  collected,
+		SelectedFinalState:         selectedFinalStateProcessInstances(keys, ancestryResults),
+		RequiresCancelBeforeDelete: nonFinalProcessInstances(collected, descendantResults),
+		MissingAncestors:           uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),
+		Warning:                    warning,
+		Outcome:                    outcome,
 	}
 
 	return plan, validateDryRunPIKeyExpansion(plan)
+}
+
+// nonFinalProcessInstances returns in-scope instances that still require a terminal state before deletion.
+func nonFinalProcessInstances(keys types.Keys, results []TraversalResult) []ProcessInstance {
+	if len(keys) == 0 || len(results) == 0 {
+		return nil
+	}
+
+	byKey := make(map[string]ProcessInstance)
+	for _, result := range results {
+		for key, pi := range result.Chain {
+			if _, ok := byKey[key]; !ok {
+				byKey[key] = pi
+			}
+		}
+	}
+
+	out := make([]ProcessInstance, 0, len(keys))
+	seen := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		pi, ok := byKey[key]
+		if !ok || pi.State == "" || pi.State.IsTerminal() {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, pi)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// selectedFinalStateProcessInstances returns selected instances already unaffected by cancellation.
+func selectedFinalStateProcessInstances(keys types.Keys, results []TraversalResult) []ProcessInstance {
+	if len(keys) == 0 || len(results) == 0 {
+		return nil
+	}
+	byStartKey := make(map[string]TraversalResult, len(results))
+	for _, result := range results {
+		byStartKey[result.StartKey] = result
+	}
+
+	out := make([]ProcessInstance, 0, len(keys))
+	seen := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		result, ok := byStartKey[key]
+		if !ok || result.Chain == nil {
+			continue
+		}
+		pi, ok := result.Chain[key]
+		if !ok || !pi.State.IsTerminal() {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, pi)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // dryRunCancelOrDeletePlanLegacy preserves the older traversal contract for services that cannot report structured partial results.

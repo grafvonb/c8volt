@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package main
 
 import (
@@ -47,6 +50,35 @@ func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected build info to contain %q, got %q", want, got)
+		}
+	}
+}
+
+// TestRewriteDocsIndexLinks verifies README-relative links become valid generated docs links.
+func TestRewriteDocsIndexLinks(t *testing.T) {
+	body := strings.Join([]string{
+		`<img src="./docs/logo/c8volt.png" />`,
+		`CLI: [reference](./docs/cli/index.md)`,
+		`Docs: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), [NOTICE.md](./NOTICE.md)`,
+		`Project: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), [TRADEMARKS.md](TRADEMARKS.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)`,
+		`Lowercase target: [trademarks.md](trademarks.md)`,
+	}, "\n")
+
+	got := rewriteDocsIndexLinks(body)
+
+	for _, want := range []string{
+		`<img src="./logo/c8volt.png" />`,
+		`CLI: [reference](./cli/)`,
+		`[LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE)`,
+		`[COPYRIGHT](https://github.com/grafvonb/c8volt/blob/main/COPYRIGHT)`,
+		`[NOTICE.md](https://github.com/grafvonb/c8volt/blob/main/NOTICE.md)`,
+		`[CONTRIBUTING.md](https://github.com/grafvonb/c8volt/blob/main/CONTRIBUTING.md)`,
+		`[SECURITY.md](https://github.com/grafvonb/c8volt/blob/main/SECURITY.md)`,
+		`[TRADEMARKS.md](https://github.com/grafvonb/c8volt/blob/main/TRADEMARKS.md)`,
+		`[CODE_OF_CONDUCT.md](https://github.com/grafvonb/c8volt/blob/main/CODE_OF_CONDUCT.md)`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected rewritten body to contain %q, got %q", want, got)
 		}
 	}
 }

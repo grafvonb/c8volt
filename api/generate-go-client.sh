@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Purpose:
 #   Generate a single Go client file from one OpenAPI specification using
 #   oapi-codegen.

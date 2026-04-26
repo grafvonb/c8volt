@@ -154,22 +154,24 @@ Camunda may reject direct cancellation of a child instance when the real action 
 
 ```bash
 ./c8volt cancel pi --key 2251799813711977
+./c8volt cancel pi --key 2251799813711977 --dry-run
 ./c8volt cancel pi --key 2251799813711977 --force
 ./c8volt cancel pi --state active --start-date-before 2026-03-31
 ./c8volt cancel pi --state active --start-date-newer-days 30
 ```
 
-With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
+With `--dry-run`, `c8volt` previews the selected process instances, process-instance trees to cancel, process instances in scope, selected instances already in final state, and any partial-scope details without submitting cancellation. With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
 
 ### Delete Thoroughly
 
 ```bash
+./c8volt delete pi --key 2251799813711967 --dry-run
 ./c8volt delete pi --key 2251799813711967 --force
 ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
-Deletion in real environments often means cancel-first, then remove, then verify. `c8volt` is built for that operational sequence.
+Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. For delete, non-final process instances cannot be removed directly; `--force` cancels them before delete. `c8volt` is built for that operational sequence.
 
 ### Wait For A Known State
 
@@ -188,7 +190,9 @@ Deletion in real environments often means cancel-first, then remove, then verify
 ./c8volt get pi --state active
 ./c8volt get pi --state active --total
 ./c8volt get pi --state active --batch-size 250 --limit 25
+./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run
 ./c8volt cancel pi --state active --batch-size 250 --limit 25
+./c8volt delete pi --state completed --batch-size 250 --limit 25 --dry-run
 ./c8volt delete pi --state completed --batch-size 250 --limit 25 --auto-confirm
 ```
 
@@ -429,6 +433,13 @@ c8volt
 - Project site: [c8volt.info](https://c8volt.info)
 - Generated CLI reference: [c8volt.info/cli](https://c8volt.info/cli/)
 - Search-oriented use cases and FAQ: [c8volt.info/use-cases](https://c8volt.info/use-cases.html)
+
+## Project Governance
+
+- License and copyright: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), and [NOTICE.md](./NOTICE.md)
+- Trademark policy: [TRADEMARKS.md](./TRADEMARKS.md)
+- Contributing and DCO sign-off: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- Security reporting: [SECURITY.md](./SECURITY.md)
 
 ## Copyright
 

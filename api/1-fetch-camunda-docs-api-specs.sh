@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Purpose:
 #   Fetch the legacy component API specs from camunda/camunda-docs into
 #   api/camunda-docs for local client generation.

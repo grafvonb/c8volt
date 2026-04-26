@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package cmd
 
 import (
@@ -213,6 +216,24 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 		sizes = append(sizes, size)
 	}
 	return sizes
+}
+
+// TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode verifies cancel
+// and delete help document dry-run previews.
+func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T) {
+	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
+	require.Contains(t, cancelOutput, "--dry-run")
+	require.Contains(t, cancelOutput, "preview selected process instances, process-instance trees to cancel")
+	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
+	require.Contains(t, cancelOutput, "./c8volt cancel pi --key <process-instance-key> --dry-run")
+	require.Contains(t, cancelOutput, "./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run")
+
+	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
+	require.Contains(t, deleteOutput, "--dry-run")
+	require.Contains(t, deleteOutput, "non-final instances that require cancellation before delete")
+	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
+	require.Contains(t, deleteOutput, "./c8volt delete pi --key 2251799813711967 --dry-run")
+	require.Contains(t, deleteOutput, "./c8volt delete pi --state completed --batch-size 250 --limit 25 --dry-run")
 }
 
 func TestProcessInstanceSearchDefaultOneLineOutput_IgnoresReportedTotalMetadata(t *testing.T) {

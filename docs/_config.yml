@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 title: "c8volt Camunda 8 CLI"
 description: "c8volt is a Camunda 8 CLI for deploying BPMN, running workflows, canceling and deleting process instances, and verifying workflow state from the terminal."
 tagline: "Camunda 8 CLI for workflow automation, BPMN deployment, and process-instance management"
@@ -37,6 +40,10 @@ nav_external_links:
     url: /cli/
   - title: README
     url: https://github.com/grafvonb/c8volt/blob/main/README.md
+  - title: License
+    url: https://github.com/grafvonb/c8volt/blob/main/LICENSE
+  - title: Trademarks
+    url: https://github.com/grafvonb/c8volt/blob/main/TRADEMARKS.md
 
 defaults:
   - scope:

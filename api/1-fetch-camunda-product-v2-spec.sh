@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Purpose:
 #   Fetch the product-repo /v2 Camunda OpenAPI source from camunda/camunda into
 #   api/camunda for local client generation.

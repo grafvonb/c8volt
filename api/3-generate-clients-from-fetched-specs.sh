@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Purpose:
 #   Generate all checked-in Go clients from the already fetched API specs under
 #   api/camunda and api/camunda-docs.

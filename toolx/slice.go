@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package toolx
 
 // UniqueSlice returns a new slice with duplicates removed, order preserved.

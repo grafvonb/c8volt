@@ -1,10 +1,12 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package cmd
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +21,9 @@ var capabilitiesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		doc := capabilityDocumentForRoot(Root())
 		if flagViewAsJson {
-			cmd.Println(toolx.ToJSONString(doc))
+			if err := renderJSONPayload(cmd, RenderModeJSON, doc); err != nil {
+				handleCommandError(cmd, nil, flagNoErrCodes, err)
+			}
 			return
 		}
 		renderCapabilitySummary(cmd, doc)
@@ -27,10 +31,10 @@ var capabilitiesCmd = &cobra.Command{
 }
 
 func renderCapabilitySummary(cmd *cobra.Command, doc CapabilityDocument) {
-	cmd.Println("Machine-readable public CLI capabilities")
-	cmd.Println("Use --json for the full discovery document. Inspect automationSupport before using --automation.")
-	cmd.Println("Hidden and shell-internal commands are excluded.")
-	cmd.Println("")
+	renderHumanLine(cmd, "Machine-readable public CLI capabilities")
+	renderHumanLine(cmd, "Use --json for the full discovery document. Inspect automationSupport before using --automation.")
+	renderHumanLine(cmd, "Hidden and shell-internal commands are excluded.")
+	renderHumanLine(cmd, "")
 	for _, capability := range doc.Commands {
 		renderCapabilitySummaryLine(cmd, capability, 0)
 	}
@@ -44,7 +48,7 @@ func renderCapabilitySummaryLine(cmd *cobra.Command, capability CommandCapabilit
 			modes = append(modes, mode.Name)
 		}
 	}
-	cmd.Printf("%s- %s [%s, %s] modes:%s\n",
+	renderHumanLine(cmd, "%s- %s [%s, %s] modes:%s",
 		indent,
 		capability.Path,
 		capability.Mutation,
