@@ -16,6 +16,8 @@ Started: 2026-04-25 22:36:37
 - `process.MissingAncestor` has exported Go field names without JSON tags, so command dry-run payloads use a local DTO to expose `key` and `startKey`.
 - Keyed dry-run support branches in the shared cancel/delete helper after `DryRunCancelOrDeletePlan` mapping and before warning, confirmation, mutation, or wait-adjacent report rendering.
 - Process-instance command tests must reset `flagDryRun` in `resetProcessInstanceCommandGlobals` because cancel and delete share the package-level command flag.
+- Dry-run renderer coverage can exercise `renderProcessInstanceDryRunPreview` directly; JSON envelope assertions require a Cobra command marked with full contract support.
+- `make docs-content` regenerates `docs/cli/` and syncs `docs/index.md` from `README.md`, so README process-instance examples can legitimately produce docs homepage diffs alongside CLI reference diffs.
 
 ---
 
@@ -153,4 +155,39 @@ Started: 2026-04-25 22:36:37
 - Unresolved orphan dry runs are represented as facade planning errors; the command helper returns the wrapped validation error before any confirmation prompt, render, or cancel/delete mutation.
 - Existing facade tests in `c8volt/process/client_test.go` already cover both partial structured expansion and unresolved no-actionable-scope failure.
 - Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process -run 'DryRun.*Orphan|DryRun.*Partial|DryRunCancelOrDelete' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun' -count=1`.
+---
+
+---
+## Iteration 6 - 2026-04-26 06:20:03 CEST
+**User Story**: User Story 4 - Consume Dry-Run Results in Human and Structured Output
+**Tasks Completed**:
+- [x] T040: Add human-readable cancel dry-run output assertions
+- [x] T041: Add structured cancel dry-run output assertions
+- [x] T042: Add human-readable delete dry-run output assertions
+- [x] T043: Add structured delete dry-run output assertions
+- [x] T044: Add help output assertions for cancel/delete `--dry-run`
+- [x] T045: Update cancel process-instance help and examples for `--dry-run`
+- [x] T046: Update delete process-instance help and examples for `--dry-run`
+- [x] T047: Update README dry-run examples for destructive process-instance previews
+- [x] T048: Regenerate generated CLI docs with `make docs-content`
+- [x] T049: Run focused human/structured output and help validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/cmd_processinstance_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/process_api_stub_test.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/index.md
+- specs/138-pi-dry-run-scope/tasks.md
+- specs/138-pi-dry-run-scope/progress.md
+**Learnings**:
+- Focused output assertions should cover both the human key/count text and the full JSON result envelope, not just payload construction.
+- Command help now carries direct-key and search dry-run examples so generated CLI docs inherit the non-mutating workflow from Cobra metadata.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun|TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode|Test(Cancel|Delete)Help' -count=1`.
 ---

@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.1.6-8-gd1e761f-dirty`, commit `d1e761f`, built `2026-04-25T15:43:45Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-171-g1a4e5e3-dirty`, commit `1a4e5e3`, built `2026-04-26T04:18:27Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -163,22 +163,24 @@ Camunda may reject direct cancellation of a child instance when the real action 
 
 ```bash
 ./c8volt cancel pi --key 2251799813711977
+./c8volt cancel pi --key 2251799813711977 --dry-run
 ./c8volt cancel pi --key 2251799813711977 --force
 ./c8volt cancel pi --state active --start-date-before 2026-03-31
 ./c8volt cancel pi --state active --start-date-newer-days 30
 ```
 
-With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
+With `--dry-run`, `c8volt` previews the requested keys, resolved roots, affected family keys, traversal status, and orphan-parent warnings without submitting cancellation. With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
 
 ### Delete Thoroughly
 
 ```bash
+./c8volt delete pi --key 2251799813711967 --dry-run
 ./c8volt delete pi --key 2251799813711967 --force
 ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
-Deletion in real environments often means cancel-first, then remove, then verify. `c8volt` is built for that operational sequence.
+Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `c8volt` is built for that operational sequence.
 
 ### Wait For A Known State
 
@@ -197,7 +199,9 @@ Deletion in real environments often means cancel-first, then remove, then verify
 ./c8volt get pi --state active
 ./c8volt get pi --state active --total
 ./c8volt get pi --state active --batch-size 250 --limit 25
+./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run
 ./c8volt cancel pi --state active --batch-size 250 --limit 25
+./c8volt delete pi --state completed --batch-size 250 --limit 25 --dry-run
 ./c8volt delete pi --state completed --batch-size 250 --limit 25 --auto-confirm
 ```
 

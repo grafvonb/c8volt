@@ -84,6 +84,61 @@ func TestCancelProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireCancelDryRunPreviewPayload(t, payload, want)
 }
 
+func TestCancelProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	preview := newProcessInstanceDryRunPreview("cancel", typex.Keys{"child-human"}, process.DryRunPIKeyExpansion{
+		Roots:     typex.Keys{"root-human"},
+		Collected: typex.Keys{"root-human", "child-human", "sibling-human"},
+		Outcome:   process.TraversalOutcomeComplete,
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: cancel process-instance")
+	require.Contains(t, output, "requested process instances: 1")
+	require.Contains(t, output, "resolved root process instances: 1")
+	require.Contains(t, output, "affected process instances: 3")
+	require.Contains(t, output, "scope: complete")
+	require.Contains(t, output, "requested keys: child-human")
+	require.Contains(t, output, "resolved root keys: root-human")
+	require.Contains(t, output, "affected family keys: root-human, child-human, sibling-human")
+	require.Contains(t, output, "no mutation submitted: cancel was not submitted")
+}
+
+func TestCancelProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagViewAsJson = true
+
+	want := newCancelDryRunPreviewFixture()
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	preview := newProcessInstanceDryRunPreview("cancel", want.RequestedKeys, process.DryRunPIKeyExpansion{
+		Roots:            want.ResolvedRoots,
+		Collected:        want.AffectedFamilyKeys,
+		MissingAncestors: want.MissingAncestors,
+		Warning:          want.Warning,
+		Outcome:          want.TraversalOutcome,
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+
+	payload := requireDryRunEnvelopePayload(t, buf.String())
+	requireCancelDryRunPreviewPayload(t, payload, want)
+}
+
 func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

@@ -82,6 +82,61 @@ func TestDeleteProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireDeleteDryRunPreviewPayload(t, payload, want)
 }
 
+func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	preview := newProcessInstanceDryRunPreview("delete", typex.Keys{"child-human"}, process.DryRunPIKeyExpansion{
+		Roots:     typex.Keys{"root-human"},
+		Collected: typex.Keys{"root-human", "child-human", "sibling-human"},
+		Outcome:   process.TraversalOutcomeComplete,
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: delete process-instance")
+	require.Contains(t, output, "requested process instances: 1")
+	require.Contains(t, output, "resolved root process instances: 1")
+	require.Contains(t, output, "affected process instances: 3")
+	require.Contains(t, output, "scope: complete")
+	require.Contains(t, output, "requested keys: child-human")
+	require.Contains(t, output, "resolved root keys: root-human")
+	require.Contains(t, output, "affected family keys: root-human, child-human, sibling-human")
+	require.Contains(t, output, "no mutation submitted: delete was not submitted")
+}
+
+func TestDeleteProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagViewAsJson = true
+
+	want := newDeleteDryRunPreviewFixture()
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	preview := newProcessInstanceDryRunPreview("delete", want.RequestedKeys, process.DryRunPIKeyExpansion{
+		Roots:            want.ResolvedRoots,
+		Collected:        want.AffectedFamilyKeys,
+		MissingAncestors: want.MissingAncestors,
+		Warning:          want.Warning,
+		Outcome:          want.TraversalOutcome,
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+
+	payload := requireDryRunEnvelopePayload(t, buf.String())
+	requireDeleteDryRunPreviewPayload(t, payload, want)
+}
+
 func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

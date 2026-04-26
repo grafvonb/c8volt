@@ -126,19 +126,19 @@
 
 ### Tests for User Story 4
 
-- [ ] T040 [P] [US4] Add human-readable cancel dry-run output assertions in cmd/cancel_test.go
-- [ ] T041 [P] [US4] Add structured cancel dry-run output assertions in cmd/cancel_test.go
-- [ ] T042 [P] [US4] Add human-readable delete dry-run output assertions in cmd/delete_test.go
-- [ ] T043 [P] [US4] Add structured delete dry-run output assertions in cmd/delete_test.go
-- [ ] T044 [P] [US4] Add help output assertions for cancel/delete `--dry-run` in cmd/cmd_processinstance_test.go
+- [x] T040 [P] [US4] Add human-readable cancel dry-run output assertions in cmd/cancel_test.go
+- [x] T041 [P] [US4] Add structured cancel dry-run output assertions in cmd/cancel_test.go
+- [x] T042 [P] [US4] Add human-readable delete dry-run output assertions in cmd/delete_test.go
+- [x] T043 [P] [US4] Add structured delete dry-run output assertions in cmd/delete_test.go
+- [x] T044 [P] [US4] Add help output assertions for cancel/delete `--dry-run` in cmd/cmd_processinstance_test.go
 
 ### Implementation for User Story 4
 
-- [ ] T045 [US4] Update cancel process-instance help and examples for `--dry-run` in cmd/cancel_processinstance.go
-- [ ] T046 [US4] Update delete process-instance help and examples for `--dry-run` in cmd/delete_processinstance.go
-- [ ] T047 [US4] Update README dry-run examples for destructive process-instance previews in README.md
-- [ ] T048 [US4] Regenerate generated CLI docs with `make docs-content`, updating docs/cli/c8volt_cancel_process-instance.md and docs/cli/c8volt_delete_process-instance.md
-- [ ] T049 [US4] Run focused human/structured output and help validation for cmd/cancel_test.go, cmd/delete_test.go, and cmd/cmd_processinstance_test.go using specs/138-pi-dry-run-scope/quickstart.md
+- [x] T045 [US4] Update cancel process-instance help and examples for `--dry-run` in cmd/cancel_processinstance.go
+- [x] T046 [US4] Update delete process-instance help and examples for `--dry-run` in cmd/delete_processinstance.go
+- [x] T047 [US4] Update README dry-run examples for destructive process-instance previews in README.md
+- [x] T048 [US4] Regenerate generated CLI docs with `make docs-content`, updating docs/cli/c8volt_cancel_process-instance.md and docs/cli/c8volt_delete_process-instance.md
+- [x] T049 [US4] Run focused human/structured output and help validation for cmd/cancel_test.go, cmd/delete_test.go, and cmd/cmd_processinstance_test.go using specs/138-pi-dry-run-scope/quickstart.md
 
 **Checkpoint**: Dry-run output and documentation are complete for users and automation.
 

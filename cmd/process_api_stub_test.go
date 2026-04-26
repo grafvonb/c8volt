@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -86,6 +87,17 @@ func requireDryRunSummaryPayload(t *testing.T, payload map[string]any, operation
 	require.True(t, ok, "expected dry-run summary previews to be a JSON array")
 	require.Len(t, previews, previewCount)
 	return previews
+}
+
+func requireDryRunEnvelopePayload(t *testing.T, output string) map[string]any {
+	t.Helper()
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload, ok := envelope["payload"].(map[string]any)
+	require.True(t, ok, "expected dry-run result envelope payload")
+	return payload
 }
 
 func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
