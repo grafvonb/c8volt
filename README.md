@@ -430,6 +430,13 @@ c8volt
 - Generated CLI reference: [c8volt.info/cli](https://c8volt.info/cli/)
 - Search-oriented use cases and FAQ: [c8volt.info/use-cases](https://c8volt.info/use-cases.html)
 
+## Project Governance
+
+- License and copyright: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), and [NOTICE.md](./NOTICE.md)
+- Trademark policy: [TRADEMARKS.md](./TRADEMARKS.md)
+- Contributing and DCO sign-off: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- Security reporting: [SECURITY.md](./SECURITY.md)
+
 ## Copyright
 
 (c) 2026 Adam Bogdan Boczek | <a href="https://boczek.info" target="_blank" rel="noopener noreferrer">boczek.info</a>

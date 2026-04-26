@@ -52,7 +52,6 @@ require (
 	github.com/speakeasy-api/openapi-overlay v0.10.3 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/cobra-cli v1.3.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
@@ -78,7 +77,4 @@ require (
 
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 
-tool (
-	github.com/google/go-licenses
-	github.com/spf13/cobra-cli
-)
+tool github.com/google/go-licenses
