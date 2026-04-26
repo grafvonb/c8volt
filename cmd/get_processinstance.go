@@ -426,7 +426,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine {
-				cmd.Println("found:", processedTotal)
+				renderOutputLine(cmd, "found: %d", processedTotal)
 			}
 			return process.ProcessInstances{}, true, nil
 		}
@@ -573,7 +573,7 @@ func processPISearchPagesWithAction(
 		}
 		if len(page.Items) == 0 {
 			if cumulative == 0 {
-				cmd.Println("found:", 0)
+				renderOutputLine(cmd, "found: %d", 0)
 			}
 			return results, nil
 		}

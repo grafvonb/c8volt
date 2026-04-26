@@ -13,6 +13,10 @@ Represents one non-mutating preview of a cancel/delete process-instance command.
 | `requestedCount` | integer | yes | Count of requested keys |
 | `resolvedRootCount` | integer | yes | Count of unique resolved roots |
 | `affectedCount` | integer | yes | Count of unique affected family keys |
+| `selectedFinalStateCount` | integer | yes | Count of selected process instances already in a final state |
+| `selectedFinalState` | list of SelectedFinalState | no | Selected process-instance keys and states for instances already in final state |
+| `requiresCancelBeforeDeleteCount` | integer | yes | Count of in-scope process instances that are not in final state and would need cancellation before delete |
+| `requiresCancelBeforeDelete` | list of RequiresCancelBeforeDelete | no | Delete-only process-instance keys and states that would need cancellation before delete |
 | `traversalOutcome` | string | yes | `complete`, `partial`, or `unresolved` |
 | `scopeComplete` | boolean | yes | True only when traversal outcome is complete |
 | `warning` | string | no | Warning text from dependency expansion |
@@ -28,6 +32,24 @@ Represents a parent process instance that traversal referenced but could not loa
 | `key` | string | yes | Missing ancestor process instance key |
 | `startKey` | string | yes | Requested or traversed key whose ancestry exposed the missing ancestor |
 
+## SelectedFinalState
+
+Represents a selected process instance that was already in a final state at dry-run planning time.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `key` | string | yes | Selected process instance key |
+| `state` | string | yes | Final state such as `COMPLETED`, `CANCELED`, or `TERMINATED` |
+
+## RequiresCancelBeforeDelete
+
+Represents an in-scope process instance that is not in final state during a delete dry run and cannot be removed directly without cancelling first.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `key` | string | yes | In-scope process instance key |
+| `state` | string | yes | Non-final state such as `ACTIVE` |
+
 ## DryRunScopeSummary
 
 Represents an aggregated view for search-mode dry runs that process more than one page. This is the required structured output shape for multi-page search-mode dry runs.
@@ -38,6 +60,10 @@ Represents an aggregated view for search-mode dry runs that process more than on
 | `requestedCount` | integer | yes | Total requested keys selected across processed pages |
 | `resolvedRootCount` | integer | yes | Total unique roots or accumulated root count, matching command output contract |
 | `affectedCount` | integer | yes | Total affected family keys reported across processed pages |
+| `selectedFinalStateCount` | integer | yes | Count of unique selected process instances already in final state across processed pages |
+| `selectedFinalState` | list of SelectedFinalState | no | Unique selected process instances already in final state across processed pages |
+| `requiresCancelBeforeDeleteCount` | integer | yes | Count of unique in-scope process instances that are not in final state across processed pages |
+| `requiresCancelBeforeDelete` | list of RequiresCancelBeforeDelete | no | Unique delete-only process instances that would need cancellation before delete |
 | `traversalOutcome` | string | yes | `partial` if any page is partial, otherwise `complete` when all pages are complete |
 | `scopeComplete` | boolean | yes | False if any page is partial |
 | `previews` | list of DryRunScopePreview | yes | Per-page or per-selection previews |

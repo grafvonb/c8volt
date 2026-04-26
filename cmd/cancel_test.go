@@ -22,6 +22,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -103,14 +104,53 @@ func TestCancelProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *test
 
 	output := buf.String()
 	require.Contains(t, output, "dry run: cancel process-instance")
-	require.Contains(t, output, "requested process instances: 1")
-	require.Contains(t, output, "resolved root process instances: 1")
-	require.Contains(t, output, "affected process instances: 3")
+	require.Contains(t, output, "selected process instances: 1")
+	require.Contains(t, output, "process-instance trees to cancel: 1")
+	require.Contains(t, output, "process instances in scope: 3")
 	require.Contains(t, output, "scope: complete")
-	require.Contains(t, output, "requested keys: child-human")
-	require.Contains(t, output, "resolved root keys: root-human")
-	require.Contains(t, output, "affected family keys: root-human, child-human, sibling-human")
-	require.Contains(t, output, "no mutation submitted: cancel was not submitted")
+	require.Contains(t, output, "selected process-instance keys: child-human")
+	require.Contains(t, output, "root process-instance tree keys: root-human")
+	require.Contains(t, output, "in-scope process-instance keys: root-human, child-human, sibling-human")
+	require.NotContains(t, output, "no mutation submitted")
+}
+
+func TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	preview := newProcessInstanceDryRunPreview("cancel", typex.Keys{"done-1", "active-1"}, process.DryRunPIKeyExpansion{
+		Roots:              typex.Keys{"root-human"},
+		Collected:          typex.Keys{"root-human", "done-1", "active-1"},
+		SelectedFinalState: []process.ProcessInstance{{Key: "done-1", State: process.StateCanceled}},
+		Outcome:            process.TraversalOutcomeComplete,
+	})
+
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+	require.Contains(t, buf.String(), "selected process instances already in final state: 1 (states: CANCELED; not affected by cancel; use --verbose to list keys)")
+	require.NotContains(t, buf.String(), "done-1=CANCELED")
+
+	var payload map[string]any
+	b, err := json.Marshal(preview)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(b, &payload))
+	require.Equal(t, float64(1), payload["selectedFinalStateCount"])
+	selectedFinalState, ok := payload["selectedFinalState"].([]any)
+	require.True(t, ok)
+	require.Len(t, selectedFinalState, 1)
+	selectedItem, ok := selectedFinalState[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "done-1", selectedItem["key"])
+	require.Equal(t, string(process.StateCanceled), selectedItem["state"])
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+	require.Contains(t, buf.String(), "selected process instances already in final state: 1 (states: CANCELED; not affected by cancel; done-1=CANCELED)")
 }
 
 func TestCancelProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t *testing.T) {
@@ -148,6 +188,8 @@ func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
+	sink := &fakeCommandActivitySink{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
 
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
@@ -177,10 +219,13 @@ func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "dry run: cancel process-instance")
-	require.Contains(t, buf.String(), "requested keys: child-1")
-	require.Contains(t, buf.String(), "resolved root keys: root-1")
-	require.Contains(t, buf.String(), "affected family keys: root-1, child-1")
-	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+	require.Contains(t, buf.String(), "selected process-instance keys: child-1")
+	require.Contains(t, buf.String(), "root process-instance tree keys: root-1")
+	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1")
+	require.NotContains(t, buf.String(), "no mutation submitted")
+	require.Equal(t, 1, sink.started)
+	require.Equal(t, 1, sink.stopped)
+	require.Equal(t, []string{"preparing cancel dry-run scope for 1 process instance(s)"}, sink.msgs)
 }
 
 func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t *testing.T) {
@@ -220,10 +265,10 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.NotNil(t, got.DryRunPreview)
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
-	require.Contains(t, buf.String(), "affected process instances: 3")
+	require.Contains(t, buf.String(), "process instances in scope: 3")
 	require.Contains(t, buf.String(), "scope: complete")
-	require.Contains(t, buf.String(), "affected family keys: root-1, child-1, child-2")
-	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1, child-2")
+	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
@@ -266,10 +311,10 @@ func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissing
 	require.Equal(t, process.TraversalOutcomePartial, got.DryRunPreview.TraversalOutcome)
 	require.False(t, got.DryRunPreview.ScopeComplete)
 	require.Equal(t, []processInstanceDryRunMissingAncestor{{Key: "missing-parent", StartKey: "child-orphan"}}, got.DryRunPreview.MissingAncestors)
-	require.Contains(t, buf.String(), "scope: partial")
-	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
-	require.Contains(t, buf.String(), "missing ancestor keys: missing-parent")
-	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+	require.Contains(t, buf.String(), "scope: partial (one or more parent process instances were not found; missing ancestor keys: 1; use --verbose to list keys)")
+	require.NotContains(t, buf.String(), "warning:")
+	require.NotContains(t, buf.String(), "missing ancestor keys: missing-parent")
+	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
 func TestCancelProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *testing.T) {
@@ -412,6 +457,64 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 	requireDryRunPreviewStringSlice(t, secondPreview, "requestedKeys", typex.Keys{"103"})
 	requireDryRunPreviewStringSlice(t, secondPreview, "resolvedRoots", typex.Keys{"root-b"})
 	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"root-b"})
+}
+
+func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	summary := newProcessInstanceDryRunSummary("cancel", []processInstanceDryRunPreview{
+		newProcessInstanceDryRunPreview("cancel", typex.Keys{"101", "102"}, process.DryRunPIKeyExpansion{
+			Roots:     typex.Keys{"root-a"},
+			Collected: typex.Keys{"root-a", "101", "102"},
+			Outcome:   process.TraversalOutcomeComplete,
+		}),
+		newProcessInstanceDryRunPreview("cancel", typex.Keys{"103"}, process.DryRunPIKeyExpansion{
+			Roots:              typex.Keys{"root-b"},
+			Collected:          typex.Keys{"root-b", "103"},
+			SelectedFinalState: []process.ProcessInstance{{Key: "103", State: process.StateTerminated}},
+			MissingAncestors:   []process.MissingAncestor{{Key: "missing-parent", StartKey: "103"}},
+			Warning:            "one or more parent process instances were not found",
+			Outcome:            process.TraversalOutcomePartial,
+		}),
+		newProcessInstanceDryRunPreview("cancel", typex.Keys{"104"}, process.DryRunPIKeyExpansion{
+			Roots:            typex.Keys{"root-c"},
+			Collected:        typex.Keys{"root-c", "104"},
+			MissingAncestors: []process.MissingAncestor{{Key: "missing-parent", StartKey: "103"}},
+			Warning:          "one or more parent process instances were not found",
+			Outcome:          process.TraversalOutcomePartial,
+		}),
+	})
+
+	require.False(t, summary.ScopeComplete)
+	require.Equal(t, process.TraversalOutcomePartial, summary.TraversalOutcome)
+	require.Equal(t, []processInstanceDryRunMissingAncestor{{Key: "missing-parent", StartKey: "103"}}, summary.MissingAncestors)
+	require.Equal(t, []processInstanceDryRunSelectedFinalState{{Key: "103", State: process.StateTerminated}}, summary.SelectedFinalState)
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: cancel process-instance")
+	require.Contains(t, output, "selected process instances: 4")
+	require.Contains(t, output, "process-instance trees to cancel: 3")
+	require.Contains(t, output, "process instances in scope: 7")
+	require.Contains(t, output, "selected process instances already in final state: 1 (states: TERMINATED; not affected by cancel; use --verbose to list keys)")
+	require.Contains(t, output, "scope: partial (one or more parent process instances were not found; missing ancestor keys: 1; use --verbose to list keys)")
+	require.NotContains(t, output, "warning:")
+	require.NotContains(t, output, "missing ancestor keys: missing-parent")
+	require.NotContains(t, output, "103=TERMINATED")
+	require.NotContains(t, output, "search pages processed")
+	require.NotContains(t, output, "no mutation submitted")
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, summary))
+	require.Contains(t, buf.String(), "selected process instances already in final state: 1 (states: TERMINATED; not affected by cancel; 103=TERMINATED)")
+	require.Contains(t, buf.String(), "scope: partial (one or more parent process instances were not found; missing ancestor keys: missing-parent)")
 }
 
 func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *testing.T) {

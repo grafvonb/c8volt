@@ -109,7 +109,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 		}
 		if len(keys) == 0 {
 			if searched {
-				cmd.Println("found:", 0)
+				renderOutputLine(cmd, "found: %d", 0)
 				return
 			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to cancel")))
@@ -137,7 +137,7 @@ func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 }
 
 func cancelProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
-	planned, err := planProcessInstanceDryRunPreview(cli, "cancel", keys)
+	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "cancel", keys)
 	if err != nil {
 		return processInstancePageActionResult{}, err
 	}

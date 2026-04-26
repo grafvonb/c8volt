@@ -105,7 +105,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		}
 		if len(keys) == 0 {
 			if searched {
-				cmd.Println("found:", 0)
+				renderOutputLine(cmd, "found: %d", 0)
 				return
 			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to delete")))
@@ -133,7 +133,7 @@ func deleteProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys ty
 }
 
 func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
-	planned, err := planProcessInstanceDryRunPreview(cli, "delete", keys)
+	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "delete", keys)
 	if err != nil {
 		return processInstancePageActionResult{}, err
 	}

@@ -48,11 +48,13 @@ func (r TraversalResult) HasActionableResults() bool {
 }
 
 type DryRunPIKeyExpansion struct {
-	Roots            types.Keys
-	Collected        types.Keys
-	MissingAncestors []MissingAncestor
-	Warning          string
-	Outcome          TraversalOutcome
+	Roots                      types.Keys
+	Collected                  types.Keys
+	SelectedFinalState         []ProcessInstance
+	RequiresCancelBeforeDelete []ProcessInstance
+	MissingAncestors           []MissingAncestor
+	Warning                    string
+	Outcome                    TraversalOutcome
 }
 
 func (r DryRunPIKeyExpansion) HasActionableResults() bool {

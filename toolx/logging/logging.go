@@ -93,9 +93,12 @@ func ToContext(ctx context.Context, log *slog.Logger) context.Context {
 }
 
 func FromContext(ctx context.Context) (*slog.Logger, error) {
+	if ctx == nil {
+		return slog.Default(), ErrNoLoggerInContext
+	}
 	l, ok := ctx.Value(ctxKey{}).(*slog.Logger)
 	if !ok || l == nil {
-		return slog.Default(), nil
+		return slog.Default(), ErrNoLoggerInContext
 	}
 	return l, nil
 }

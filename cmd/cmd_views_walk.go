@@ -43,9 +43,9 @@ func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, s
 	case RenderModeJSON:
 		return renderJSONPayload(cmd, mode, items)
 	case RenderModeKeysOnly:
-		cmd.Println(strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
+		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
 	default: // RenderModeOneLine
-		cmd.Println(strings.Join(mapItems(items, oneLinePI), sep))
+		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, oneLinePI), sep))
 	}
 	return nil
 }
@@ -90,12 +90,14 @@ func printTraversalWarning(cmd *cobra.Command, result process.TraversalResult) {
 	if warning == "" {
 		warning = "one or more parent process instances were not found"
 	}
-	cmd.Printf("warning: %s\n", warning)
+	renderHumanWarningLine(cmd, "warning: %s", warning)
 
 	if len(result.MissingAncestors) == 0 {
 		return
 	}
-	printMissingAncestorKeyWarning(cmd.Printf, missingAncestorKeys(result.MissingAncestors))
+	printMissingAncestorKeyWarning(func(format string, args ...interface{}) {
+		renderHumanWarningLine(cmd, format, args...)
+	}, missingAncestorKeys(result.MissingAncestors))
 }
 
 // renderFamilyTree prints descendants as an ASCII tree starting from rootKey.
@@ -105,7 +107,7 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 	if !ok {
 		return fmt.Errorf("root %s not found in chain", rootKey)
 	}
-	cmd.Println(oneLinePI(rootPI))
+	renderOutputLine(cmd, "%s", oneLinePI(rootPI))
 	var walk func(parentKey, prefix string)
 	walk = func(parentKey, prefix string) {
 		children := edges[parentKey]
@@ -125,7 +127,7 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 			if childKey == markerKey {
 				marker = " (--key)"
 			}
-			cmd.Println(prefix + branch + oneLinePI(pi) + marker)
+			renderOutputLine(cmd, "%s", prefix+branch+oneLinePI(pi)+marker)
 			walk(childKey, nextPrefix)
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
-	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -45,5 +44,7 @@ func runGetClusterLicense(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster license: %w", err))
 	}
-	cmd.Println(toolx.ToJSONString(license))
+	if err := renderJSONPayload(cmd, RenderModeJSON, license); err != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster license: %w", err))
+	}
 }

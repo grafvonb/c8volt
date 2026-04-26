@@ -114,9 +114,9 @@ As a CLI user or automation author, I want dry-run output to expose requested ke
 - **FR-013**: Dry run MUST preserve current orphan-parent behavior for partial traversal results.
 - **FR-014**: If one or more parent process instances are missing but actionable roots or family members are resolved, dry run MUST return the resolved partial scope instead of failing.
 - **FR-015**: If dependency expansion resolves no actionable roots or family members, dry run MUST fail consistently with current unresolved/orphan handling.
-- **FR-016**: Human-readable output MUST clearly show requested process instance count, resolved root count, total affected process instance count, and whether the resolved scope is complete or partial.
+- **FR-016**: Human-readable output MUST clearly show selected process instance count, process-instance tree count for the operation, total process instances in scope, count of selected process instances already in final state when applicable, delete-only count of in-scope process instances not in final state, and whether the resolved scope is complete or partial.
 - **FR-017**: Human-readable output MUST clearly show warnings and missing ancestor keys when applicable.
-- **FR-018**: Structured output MUST expose requested keys, resolved roots, collected family keys in scope, traversal outcome, warning text, and missing ancestor keys.
+- **FR-018**: Structured output MUST expose requested keys, resolved roots, collected family keys in scope, keys and states for selected instances already in final state, keys and states for delete instances requiring cancellation before delete, traversal outcome, warning text, and missing ancestor keys.
 - **FR-019**: Structured output for search-mode dry run spanning multiple pages MUST expose an aggregate summary plus nested per-page previews.
 - **FR-020**: Tests MUST cover keyed flows for both cancel and delete dry run.
 - **FR-021**: Tests MUST cover search-based and paged flows for both cancel and delete dry run.
