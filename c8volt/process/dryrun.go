@@ -87,6 +87,7 @@ func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, 
 	return plan, validateDryRunPIKeyExpansion(plan)
 }
 
+// nonFinalProcessInstances returns in-scope instances that still require a terminal state before deletion.
 func nonFinalProcessInstances(keys types.Keys, results []TraversalResult) []ProcessInstance {
 	if len(keys) == 0 || len(results) == 0 {
 		return nil
@@ -120,6 +121,7 @@ func nonFinalProcessInstances(keys types.Keys, results []TraversalResult) []Proc
 	return out
 }
 
+// selectedFinalStateProcessInstances returns selected instances already unaffected by cancellation.
 func selectedFinalStateProcessInstances(keys types.Keys, results []TraversalResult) []ProcessInstance {
 	if len(keys) == 0 || len(results) == 0 {
 		return nil

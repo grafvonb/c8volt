@@ -54,6 +54,7 @@ func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 	}
 }
 
+// TestRewriteDocsIndexLinks verifies README-relative links become valid generated docs links.
 func TestRewriteDocsIndexLinks(t *testing.T) {
 	body := strings.Join([]string{
 		`<img src="./docs/logo/c8volt.png" />`,

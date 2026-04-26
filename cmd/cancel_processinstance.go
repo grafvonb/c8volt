@@ -132,10 +132,14 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	},
 }
 
+// cancelProcessInstancesWithPlan validates the cancel scope, renders dry-run
+// output when requested, and submits the mutation otherwise.
 func cancelProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
 	return cancelProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, true)
 }
 
+// cancelProcessInstancesWithPlanAndRender shares cancel planning for keyed and
+// paged flows while allowing callers to defer dry-run rendering.
 func cancelProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
 	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "cancel", keys)
 	if err != nil {

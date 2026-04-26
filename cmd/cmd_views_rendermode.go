@@ -52,18 +52,22 @@ func machineReadableModeEnabled(mode RenderMode) bool {
 	return mode == RenderModeJSON
 }
 
+// renderOutputLine writes command output with one trailing newline.
 func renderOutputLine(cmd *cobra.Command, format string, args ...any) {
 	cmd.Println(strings.TrimRight(fmt.Sprintf(format, args...), "\n"))
 }
 
+// renderHumanLine writes human-readable command output through the activity-aware renderer.
 func renderHumanLine(cmd *cobra.Command, format string, args ...any) {
 	renderHumanLogLine(cmd, false, format, args...)
 }
 
+// renderHumanWarningLine writes human-readable warnings through the activity-aware renderer.
 func renderHumanWarningLine(cmd *cobra.Command, format string, args ...any) {
 	renderHumanLogLine(cmd, true, format, args...)
 }
 
+// renderHumanLogLine routes human output through the logger when command context provides one.
 func renderHumanLogLine(cmd *cobra.Command, warn bool, format string, args ...any) {
 	msg := strings.TrimRight(fmt.Sprintf(format, args...), "\n")
 	log, err := logging.FromContext(cmd.Context())

@@ -39,6 +39,7 @@ type cancelDryRunPreviewFixture struct {
 	MissingAncestors   []process.MissingAncestor
 }
 
+// newCancelDryRunPreviewFixture returns the shared cancel dry-run payload fixture.
 func newCancelDryRunPreviewFixture() cancelDryRunPreviewFixture {
 	return cancelDryRunPreviewFixture{
 		RequestedKeys:      typex.Keys{"2251799813711967"},
@@ -50,6 +51,7 @@ func newCancelDryRunPreviewFixture() cancelDryRunPreviewFixture {
 	}
 }
 
+// requireCancelDryRunPreviewPayload verifies the stable cancel dry-run JSON payload shape.
 func requireCancelDryRunPreviewPayload(t *testing.T, payload map[string]any, want cancelDryRunPreviewFixture) {
 	t.Helper()
 
@@ -67,6 +69,7 @@ func requireCancelDryRunPreviewPayload(t *testing.T, payload map[string]any, wan
 	require.Equal(t, false, payload["mutationSubmitted"])
 }
 
+// TestCancelProcessInstanceDryRunPreviewPayloadMapping verifies cancel dry-run plans map to the public JSON payload.
 func TestCancelProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	want := newCancelDryRunPreviewFixture()
 	preview := newProcessInstanceDryRunPreview("cancel", want.RequestedKeys, process.DryRunPIKeyExpansion{
@@ -85,6 +88,8 @@ func TestCancelProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireCancelDryRunPreviewPayload(t, payload, want)
 }
 
+// TestCancelProcessInstanceDryRun_HumanOutputIncludesInspectableScope verifies
+// human dry-run output includes selected, root, and in-scope keys.
 func TestCancelProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -114,6 +119,9 @@ func TestCancelProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *test
 	require.NotContains(t, output, "no mutation submitted")
 }
 
+// TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances
+// verifies terminal selected instances are summarized without noisy key lists by
+// default.
 func TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -153,6 +161,8 @@ func TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInst
 	require.Contains(t, buf.String(), "selected process instances already in final state: 1 (states: CANCELED; not affected by cancel; done-1=CANCELED)")
 }
 
+// TestCancelProcessInstanceDryRun_StructuredOutputIncludesInspectableScope
+// verifies JSON dry-run output carries scope metadata.
 func TestCancelProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -179,6 +189,8 @@ func TestCancelProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t 
 	requireCancelDryRunPreviewPayload(t, payload, want)
 }
 
+// TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation
+// verifies child selection previews root escalation without canceling anything.
 func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -228,6 +240,8 @@ func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Equal(t, []string{"preparing cancel dry-run scope for 1 process instance(s)"}, sink.msgs)
 }
 
+// TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation
+// verifies root selection previews the full family without mutation.
 func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -271,6 +285,8 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
+// verifies partial ancestry details are surfaced in human output.
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -317,6 +333,8 @@ func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissing
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestCancelProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation verifies
+// unresolved dry-run planning stops before mutation.
 func TestCancelProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -351,6 +369,8 @@ func TestCancelProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *tes
 	require.Empty(t, buf.String())
 }
 
+// TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput verifies
+// paged cancel dry-runs produce one aggregate JSON summary.
 func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -459,6 +479,8 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"root-b"})
 }
 
+// TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope verifies
+// aggregate human output preserves partial-scope warnings.
 func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -517,6 +539,8 @@ func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testin
 	require.Contains(t, buf.String(), "scope: partial (one or more parent process instances were not found; missing ancestor keys: missing-parent)")
 }
 
+// TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage verifies
+// dry-run paging honors the requested limit before planning.
 func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

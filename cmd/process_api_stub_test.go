@@ -22,6 +22,7 @@ type stubProcessAPI struct {
 	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 }
 
+// dryRunCancelMutationGuard fails a test if dry-run execution submits a cancel mutation.
 func dryRunCancelMutationGuard(t *testing.T) func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error) {
 	t.Helper()
 	return func(_ context.Context, keys types.Keys, _ int, _ ...options.FacadeOption) (process.CancelReports, error) {
@@ -30,6 +31,7 @@ func dryRunCancelMutationGuard(t *testing.T) func(context.Context, types.Keys, i
 	}
 }
 
+// dryRunDeleteMutationGuard fails a test if dry-run execution submits a delete mutation.
 func dryRunDeleteMutationGuard(t *testing.T) func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error) {
 	t.Helper()
 	return func(_ context.Context, keys types.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
@@ -38,6 +40,7 @@ func dryRunDeleteMutationGuard(t *testing.T) func(context.Context, types.Keys, i
 	}
 }
 
+// requireDryRunPreviewStringSlice verifies a dry-run JSON string-slice field.
 func requireDryRunPreviewStringSlice(t *testing.T, payload map[string]any, field string, want types.Keys) {
 	t.Helper()
 
@@ -55,6 +58,7 @@ func requireDryRunPreviewStringSlice(t *testing.T, payload map[string]any, field
 	require.Equal(t, []string(want), got)
 }
 
+// requireDryRunPreviewMissingAncestors verifies missing-ancestor details in a dry-run JSON payload.
 func requireDryRunPreviewMissingAncestors(t *testing.T, payload map[string]any, want []process.MissingAncestor) {
 	t.Helper()
 
@@ -72,6 +76,7 @@ func requireDryRunPreviewMissingAncestors(t *testing.T, payload map[string]any, 
 	}
 }
 
+// requireDryRunSummaryPayload verifies aggregate dry-run JSON counts and returns preview items for deeper checks.
 func requireDryRunSummaryPayload(t *testing.T, payload map[string]any, operation string, requestedCount, rootCount, affectedCount int, previewCount int) []any {
 	t.Helper()
 
@@ -89,6 +94,7 @@ func requireDryRunSummaryPayload(t *testing.T, payload map[string]any, operation
 	return previews
 }
 
+// requireDryRunEnvelopePayload decodes a successful dry-run result envelope and returns its payload.
 func requireDryRunEnvelopePayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 
@@ -136,6 +142,7 @@ func (stubProcessAPI) LookupProcessInstanceStateByKey(context.Context, string, .
 	panic("unexpected call")
 }
 
+// SearchProcessInstancesPage delegates to the optional paged-search callback used by dry-run command tests.
 func (s stubProcessAPI) SearchProcessInstancesPage(ctx context.Context, filter process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, opts ...options.FacadeOption) (process.ProcessInstancePage, error) {
 	if s.searchProcessInstancesPage == nil {
 		panic("unexpected call")

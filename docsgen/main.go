@@ -99,6 +99,7 @@ has_toc: true
 	return nil
 }
 
+// rewriteDocsIndexLinks converts README-relative links into links valid from the generated docs index.
 func rewriteDocsIndexLinks(body string) string {
 	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
 	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
@@ -121,6 +122,7 @@ var (
 	}
 )
 
+// rewriteGovernanceLinks points governance documents at their canonical repository URLs.
 func rewriteGovernanceLinks(body string) string {
 	return governanceLinkTargetPattern.ReplaceAllStringFunc(body, func(linkTarget string) string {
 		matches := governanceLinkTargetPattern.FindStringSubmatch(linkTarget)

@@ -67,6 +67,7 @@ type processInstanceDryRunPlanResult struct {
 	Preview processInstanceDryRunPreview
 }
 
+// planProcessInstanceDryRunPreview builds the shared dry-run plan, impact counts, and render payload for one key batch.
 func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, operation string, keys types.Keys) (processInstanceDryRunPlanResult, error) {
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing %s dry-run scope for %d process instance(s)", operation, len(keys)))
 	defer stopActivity()
@@ -83,6 +84,7 @@ func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, opera
 	}, nil
 }
 
+// newProcessInstanceDryRunPreview maps a dry-run expansion into the command payload contract.
 func newProcessInstanceDryRunPreview(operation string, requested types.Keys, plan process.DryRunPIKeyExpansion) processInstanceDryRunPreview {
 	outcome := processInstanceDryRunTraversalOutcome(plan)
 	requiresCancelBeforeDelete := newProcessInstanceDryRunRequiresCancelBeforeDelete(nil)
@@ -109,6 +111,7 @@ func newProcessInstanceDryRunPreview(operation string, requested types.Keys, pla
 	}
 }
 
+// newProcessInstanceDryRunSummary aggregates paged dry-run previews into one command payload.
 func newProcessInstanceDryRunSummary(operation string, previews []processInstanceDryRunPreview) processInstanceDryRunSummary {
 	summary := processInstanceDryRunSummary{
 		Operation:         operation,
@@ -137,6 +140,7 @@ func newProcessInstanceDryRunSummary(operation string, previews []processInstanc
 	return summary
 }
 
+// appendUniqueProcessInstanceDryRunMissingAncestors appends missing ancestors while preserving first-seen order.
 func appendUniqueProcessInstanceDryRunMissingAncestors(dst []processInstanceDryRunMissingAncestor, src ...processInstanceDryRunMissingAncestor) []processInstanceDryRunMissingAncestor {
 	seen := make(map[processInstanceDryRunMissingAncestor]struct{}, len(dst)+len(src))
 	for _, item := range dst {
@@ -152,6 +156,7 @@ func appendUniqueProcessInstanceDryRunMissingAncestors(dst []processInstanceDryR
 	return dst
 }
 
+// appendUniqueProcessInstanceDryRunSelectedFinalState appends final-state entries while preserving first-seen order.
 func appendUniqueProcessInstanceDryRunSelectedFinalState(dst []processInstanceDryRunSelectedFinalState, src ...processInstanceDryRunSelectedFinalState) []processInstanceDryRunSelectedFinalState {
 	seen := make(map[string]struct{}, len(dst)+len(src))
 	for _, item := range dst {
@@ -167,6 +172,8 @@ func appendUniqueProcessInstanceDryRunSelectedFinalState(dst []processInstanceDr
 	return dst
 }
 
+// appendUniqueProcessInstanceDryRunRequiresCancelBeforeDelete appends non-final
+// delete blockers while preserving first-seen order.
 func appendUniqueProcessInstanceDryRunRequiresCancelBeforeDelete(dst []processInstanceDryRunRequiresCancelBeforeDelete, src ...processInstanceDryRunRequiresCancelBeforeDelete) []processInstanceDryRunRequiresCancelBeforeDelete {
 	seen := make(map[string]struct{}, len(dst)+len(src))
 	for _, item := range dst {
@@ -182,6 +189,7 @@ func appendUniqueProcessInstanceDryRunRequiresCancelBeforeDelete(dst []processIn
 	return dst
 }
 
+// processInstanceDryRunTraversalOutcome normalizes empty traversal outcomes to the complete state.
 func processInstanceDryRunTraversalOutcome(plan process.DryRunPIKeyExpansion) process.TraversalOutcome {
 	if plan.Outcome != "" {
 		return plan.Outcome
@@ -192,6 +200,7 @@ func processInstanceDryRunTraversalOutcome(plan process.DryRunPIKeyExpansion) pr
 	return process.TraversalOutcomeComplete
 }
 
+// newProcessInstanceDryRunMissingAncestors converts domain missing-ancestor details to command JSON items.
 func newProcessInstanceDryRunMissingAncestors(items []process.MissingAncestor) []processInstanceDryRunMissingAncestor {
 	out := make([]processInstanceDryRunMissingAncestor, 0, len(items))
 	for _, item := range items {
@@ -200,6 +209,7 @@ func newProcessInstanceDryRunMissingAncestors(items []process.MissingAncestor) [
 	return out
 }
 
+// newProcessInstanceDryRunSelectedFinalState converts final-state process instances to command JSON items.
 func newProcessInstanceDryRunSelectedFinalState(items []process.ProcessInstance) []processInstanceDryRunSelectedFinalState {
 	out := make([]processInstanceDryRunSelectedFinalState, 0, len(items))
 	for _, item := range items {
@@ -208,6 +218,7 @@ func newProcessInstanceDryRunSelectedFinalState(items []process.ProcessInstance)
 	return out
 }
 
+// newProcessInstanceDryRunRequiresCancelBeforeDelete converts non-final delete blockers to command JSON items.
 func newProcessInstanceDryRunRequiresCancelBeforeDelete(items []process.ProcessInstance) []processInstanceDryRunRequiresCancelBeforeDelete {
 	out := make([]processInstanceDryRunRequiresCancelBeforeDelete, 0, len(items))
 	for _, item := range items {
@@ -216,6 +227,7 @@ func newProcessInstanceDryRunRequiresCancelBeforeDelete(items []process.ProcessI
 	return out
 }
 
+// renderProcessInstanceDryRunPreview renders a single keyed or page-level dry-run preview.
 func renderProcessInstanceDryRunPreview(cmd *cobra.Command, preview processInstanceDryRunPreview) error {
 	if pickMode() == RenderModeJSON {
 		return renderProcessInstanceDryRunResult(cmd, preview)
@@ -240,6 +252,7 @@ func renderProcessInstanceDryRunPreview(cmd *cobra.Command, preview processInsta
 	return nil
 }
 
+// renderProcessInstanceDryRunSummary renders the aggregate dry-run result for paged searches.
 func renderProcessInstanceDryRunSummary(cmd *cobra.Command, summary processInstanceDryRunSummary) error {
 	if pickMode() == RenderModeJSON {
 		return renderProcessInstanceDryRunResult(cmd, summary)
@@ -255,6 +268,7 @@ func renderProcessInstanceDryRunSummary(cmd *cobra.Command, summary processInsta
 	return nil
 }
 
+// renderProcessInstanceDryRunResult writes dry-run payloads through the shared result envelope when required.
 func renderProcessInstanceDryRunResult[T any](cmd *cobra.Command, payload T) error {
 	if !commandUsesSharedEnvelope(cmd, pickMode()) {
 		return nil
@@ -262,6 +276,7 @@ func renderProcessInstanceDryRunResult[T any](cmd *cobra.Command, payload T) err
 	return renderSucceededResult(cmd, payload)
 }
 
+// printProcessInstanceDryRunKeys writes a labeled dry-run key list for human output.
 func printProcessInstanceDryRunKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {
 		renderHumanLine(cmd, "%s: none", label)
@@ -270,6 +285,7 @@ func printProcessInstanceDryRunKeys(cmd *cobra.Command, label string, keys []str
 	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
 }
 
+// printProcessInstanceDryRunSelectedFinalState explains selected instances that are already terminal.
 func printProcessInstanceDryRunSelectedFinalState(cmd *cobra.Command, operation string, items []processInstanceDryRunSelectedFinalState) {
 	if len(items) == 0 {
 		return
@@ -286,6 +302,7 @@ func printProcessInstanceDryRunSelectedFinalState(cmd *cobra.Command, operation 
 	renderHumanLine(cmd, "selected process instances already in final state: %d (%s)", len(items), strings.Join(details, "; "))
 }
 
+// printProcessInstanceDryRunRequiresCancelBeforeDelete explains delete targets that must be canceled first.
 func printProcessInstanceDryRunRequiresCancelBeforeDelete(cmd *cobra.Command, operation string, items []processInstanceDryRunRequiresCancelBeforeDelete) {
 	if operation != "delete" || len(items) == 0 {
 		return
@@ -306,6 +323,7 @@ func printProcessInstanceDryRunRequiresCancelBeforeDelete(cmd *cobra.Command, op
 	renderHumanLine(cmd, "process instances not in final state: %d (%s)", len(items), strings.Join(details, "; "))
 }
 
+// formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates formats unique non-final states for delete blockers.
 func formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates(items []processInstanceDryRunRequiresCancelBeforeDelete) string {
 	seen := make(map[process.State]struct{}, len(items))
 	states := make([]string, 0, len(items))
@@ -319,6 +337,7 @@ func formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates(items []process
 	return strings.Join(states, ", ")
 }
 
+// formatProcessInstanceDryRunRequiresCancelBeforeDelete formats delete blockers as key/state pairs.
 func formatProcessInstanceDryRunRequiresCancelBeforeDelete(items []processInstanceDryRunRequiresCancelBeforeDelete) string {
 	out := make([]string, 0, len(items))
 	for _, item := range items {
@@ -327,6 +346,7 @@ func formatProcessInstanceDryRunRequiresCancelBeforeDelete(items []processInstan
 	return strings.Join(out, ", ")
 }
 
+// formatProcessInstanceDryRunSelectedFinalStateStates formats unique terminal states for selected instances.
 func formatProcessInstanceDryRunSelectedFinalStateStates(items []processInstanceDryRunSelectedFinalState) string {
 	seen := make(map[process.State]struct{}, len(items))
 	states := make([]string, 0, len(items))
@@ -340,6 +360,7 @@ func formatProcessInstanceDryRunSelectedFinalStateStates(items []processInstance
 	return strings.Join(states, ", ")
 }
 
+// formatProcessInstanceDryRunSelectedFinalState formats terminal selected instances as key/state pairs.
 func formatProcessInstanceDryRunSelectedFinalState(items []processInstanceDryRunSelectedFinalState) string {
 	out := make([]string, 0, len(items))
 	for _, item := range items {
@@ -348,10 +369,12 @@ func formatProcessInstanceDryRunSelectedFinalState(items []processInstanceDryRun
 	return strings.Join(out, ", ")
 }
 
+// printProcessInstanceDryRunScope writes the traversal completeness line for human dry-run output.
 func printProcessInstanceDryRunScope(cmd *cobra.Command, outcome process.TraversalOutcome, warning string, missingAncestors []processInstanceDryRunMissingAncestor) {
 	renderHumanLine(cmd, "scope: %s", formatProcessInstanceDryRunScope(outcome, warning, missingAncestors))
 }
 
+// formatProcessInstanceDryRunScope formats traversal completeness and partial-scope details.
 func formatProcessInstanceDryRunScope(outcome process.TraversalOutcome, warning string, missingAncestors []processInstanceDryRunMissingAncestor) string {
 	if outcome != process.TraversalOutcomePartial || (warning == "" && len(missingAncestors) == 0) {
 		return string(outcome)
@@ -368,6 +391,7 @@ func formatProcessInstanceDryRunScope(outcome process.TraversalOutcome, warning 
 	return fmt.Sprintf("%s (%s)", outcome, strings.Join(details, "; "))
 }
 
+// formatProcessInstanceDryRunMissingAncestors summarizes or lists missing ancestor keys based on verbosity.
 func formatProcessInstanceDryRunMissingAncestors(missingAncestors []processInstanceDryRunMissingAncestor) string {
 	keys := make([]string, 0, len(missingAncestors))
 	for _, missingAncestor := range missingAncestors {

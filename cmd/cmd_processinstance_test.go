@@ -218,6 +218,8 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 	return sizes
 }
 
+// TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode verifies cancel
+// and delete help document dry-run previews.
 func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T) {
 	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
 	require.Contains(t, cancelOutput, "--dry-run")

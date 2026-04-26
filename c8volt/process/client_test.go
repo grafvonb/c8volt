@@ -29,6 +29,7 @@ type fakeActivitySink struct {
 	msgs    []string
 }
 
+// StartActivity records activity starts for facade activity-indicator assertions.
 func (s *fakeActivitySink) StartActivity(msg string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -36,6 +37,7 @@ func (s *fakeActivitySink) StartActivity(msg string) {
 	s.msgs = append(s.msgs, msg)
 }
 
+// StopActivity records activity stops for facade activity-indicator assertions.
 func (s *fakeActivitySink) StopActivity() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -672,6 +674,8 @@ func TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve(t *
 	assert.Contains(t, err.Error(), "no process instances resolved during dependency expansion")
 }
 
+// TestClient_CancelProcessInstances_LogsExpandedAffectedScope verifies cancel
+// logs describe expanded dry-run scope counts.
 func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	t.Parallel()
 
@@ -694,6 +698,7 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	assert.NotContains(t, logBuf.String(), "cancelling 1 process instance(s) completed")
 }
 
+// TestClient_CancelProcessInstances_UsesActivityIndicator verifies bulk cancel emits activity lifecycle messages.
 func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	t.Parallel()
 
@@ -717,6 +722,8 @@ func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, sink.msgs)
 }
 
+// TestClient_DeleteProcessInstances_LogsExpandedAffectedScope verifies delete
+// logs describe expanded dry-run scope counts.
 func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	t.Parallel()
 
@@ -739,6 +746,8 @@ func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	assert.NotContains(t, logBuf.String(), "deleting 1 process instances completed")
 }
 
+// TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScope
+// verifies delete failures summarize non-terminal expanded scope.
 func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScope(t *testing.T) {
 	t.Parallel()
 
@@ -775,6 +784,7 @@ func (s *stubProcessDefinitionAPI) SearchProcessDefinitions(ctx context.Context,
 	return s.searchProcessDefinitions(ctx, filter, size, opts...)
 }
 
+// SearchProcessDefinitionsLatest panics when a facade test accidentally takes the latest-definition path.
 func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(context.Context, d.ProcessDefinitionFilter, ...services.CallOption) ([]d.ProcessDefinition, error) {
 	panic("unexpected call")
 }
@@ -811,18 +821,22 @@ type stubProcessInstanceAPI struct {
 	familyResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 }
 
+// CreateProcessInstance panics when a facade test accidentally starts a process instance.
 func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
 	panic("unexpected call")
 }
 
+// GetProcessInstance panics when a facade test accidentally performs direct lookup.
 func (stubProcessInstanceAPI) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
 	panic("unexpected call")
 }
 
+// GetDirectChildrenOfProcessInstance panics when a test takes the direct-children path unexpectedly.
 func (stubProcessInstanceAPI) GetDirectChildrenOfProcessInstance(context.Context, string, ...services.CallOption) ([]d.ProcessInstance, error) {
 	panic("unexpected call")
 }
 
+// FilterProcessInstanceWithOrphanParent panics when a test takes orphan filtering unexpectedly.
 func (stubProcessInstanceAPI) FilterProcessInstanceWithOrphanParent(context.Context, []d.ProcessInstance, ...services.CallOption) ([]d.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -856,6 +870,7 @@ func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Contex
 	}, nil
 }
 
+// CancelProcessInstance delegates to the per-test callback and panics on unexpected cancel calls.
 func (s stubProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	if s.cancelProcessInstance == nil {
 		panic("unexpected call")
@@ -863,6 +878,7 @@ func (s stubProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key s
 	return s.cancelProcessInstance(ctx, key, opts...)
 }
 
+// DeleteProcessInstance delegates to the per-test callback and panics on unexpected delete calls.
 func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
 	if s.deleteProcessInstance == nil {
 		panic("unexpected call")
@@ -870,10 +886,12 @@ func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key s
 	return s.deleteProcessInstance(ctx, key, opts...)
 }
 
+// GetProcessInstanceStateByKey panics when a facade test accidentally checks process state.
 func (stubProcessInstanceAPI) GetProcessInstanceStateByKey(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	panic("unexpected call")
 }
 
+// WaitForProcessInstanceState panics when a facade test accidentally waits for one process instance.
 func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -895,6 +913,7 @@ func (s stubProcessInstanceAPI) Descendants(ctx context.Context, rootKey string,
 	return s.descendants(ctx, rootKey, opts...)
 }
 
+// Family panics when a test unexpectedly takes the legacy full-family path.
 func (stubProcessInstanceAPI) Family(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -932,10 +951,12 @@ func (s stubProcessInstanceAPI) FamilyResult(ctx context.Context, startKey strin
 	return pitraversal.BuildFamilyResult(ctx, s, startKey, opts...)
 }
 
+// GetProcessInstances panics when a facade test accidentally performs bulk lookup.
 func (stubProcessInstanceAPI) GetProcessInstances(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error) {
 	panic("unexpected call")
 }
 
+// WaitForProcessInstancesState panics when a facade test accidentally waits for bulk state changes.
 func (stubProcessInstanceAPI) WaitForProcessInstancesState(context.Context, typex.Keys, d.States, int, ...services.CallOption) (d.StateResponses, error) {
 	panic("unexpected call")
 }

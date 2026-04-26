@@ -38,6 +38,7 @@ type deleteDryRunPreviewFixture struct {
 	MissingAncestors   []process.MissingAncestor
 }
 
+// newDeleteDryRunPreviewFixture returns the shared delete dry-run payload fixture.
 func newDeleteDryRunPreviewFixture() deleteDryRunPreviewFixture {
 	return deleteDryRunPreviewFixture{
 		RequestedKeys:      typex.Keys{"2251799813711967"},
@@ -50,6 +51,7 @@ func newDeleteDryRunPreviewFixture() deleteDryRunPreviewFixture {
 	}
 }
 
+// requireDeleteDryRunPreviewPayload verifies the stable delete dry-run JSON payload shape.
 func requireDeleteDryRunPreviewPayload(t *testing.T, payload map[string]any, want deleteDryRunPreviewFixture) {
 	t.Helper()
 
@@ -77,6 +79,7 @@ func requireDeleteDryRunPreviewPayload(t *testing.T, payload map[string]any, wan
 	require.Equal(t, false, payload["mutationSubmitted"])
 }
 
+// TestDeleteProcessInstanceDryRunPreviewPayloadMapping verifies delete dry-run plans map to the public JSON payload.
 func TestDeleteProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	want := newDeleteDryRunPreviewFixture()
 	preview := newProcessInstanceDryRunPreview("delete", want.RequestedKeys, process.DryRunPIKeyExpansion{
@@ -96,6 +99,8 @@ func TestDeleteProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireDeleteDryRunPreviewPayload(t, payload, want)
 }
 
+// TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope verifies
+// human dry-run output includes selected, root, and in-scope keys.
 func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -125,6 +130,9 @@ func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *test
 	require.NotContains(t, output, "no mutation submitted")
 }
 
+// TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances
+// verifies terminal selected instances are summarized without noisy key lists by
+// default.
 func TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -161,6 +169,8 @@ func TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInst
 	require.Contains(t, buf.String(), "process instances not in final state: 1 (states: ACTIVE; --force would cancel them before delete; use --verbose to list keys)")
 }
 
+// TestDeleteProcessInstanceDryRun_StructuredOutputIncludesInspectableScope
+// verifies JSON dry-run output carries scope metadata.
 func TestDeleteProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -188,6 +198,8 @@ func TestDeleteProcessInstanceDryRun_StructuredOutputIncludesInspectableScope(t 
 	requireDeleteDryRunPreviewPayload(t, payload, want)
 }
 
+// TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation
+// verifies child selection previews root escalation without deleting anything.
 func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -237,6 +249,8 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Equal(t, []string{"preparing delete dry-run scope for 1 process instance(s)"}, sink.msgs)
 }
 
+// TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation
+// verifies root selection previews the full family without mutation.
 func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -280,6 +294,8 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
+// verifies partial ancestry details are surfaced in human output.
 func TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -326,6 +342,8 @@ func TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissing
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestDeleteProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation verifies
+// unresolved dry-run planning stops before mutation.
 func TestDeleteProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -360,6 +378,8 @@ func TestDeleteProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *tes
 	require.Empty(t, buf.String())
 }
 
+// TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput verifies
+// paged delete dry-runs produce one aggregate JSON summary.
 func TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -468,6 +488,8 @@ func TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"delete-root-b"})
 }
 
+// TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope verifies
+// aggregate human output explains non-final delete blockers.
 func TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -518,6 +540,8 @@ func TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope(t *testi
 	require.Contains(t, buf.String(), "process instances not in final state: 3 (states: ACTIVE; --force would cancel them before delete; use --verbose to list keys)")
 }
 
+// TestDeleteProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage verifies
+// dry-run paging honors the requested limit before planning.
 func TestDeleteProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

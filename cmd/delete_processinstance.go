@@ -128,10 +128,14 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	},
 }
 
+// deleteProcessInstancesWithPlan validates the delete scope, renders dry-run
+// output when requested, and submits the mutation otherwise.
 func deleteProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
 	return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, true)
 }
 
+// deleteProcessInstancesWithPlanAndRender shares delete planning for keyed and
+// paged flows while allowing callers to defer dry-run rendering.
 func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
 	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "delete", keys)
 	if err != nil {
