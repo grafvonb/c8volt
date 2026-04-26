@@ -59,7 +59,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		`<img src="./docs/logo/c8volt.png" />`,
 		`CLI: [reference](./docs/cli/index.md)`,
 		`Docs: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), [NOTICE.md](./NOTICE.md)`,
-		`Project: [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), [TRADEMARKS.md](./TRADEMARKS.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)`,
+		`Project: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), [TRADEMARKS.md](TRADEMARKS.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)`,
+		`Lowercase target: [trademarks.md](trademarks.md)`,
 	}, "\n")
 
 	got := rewriteDocsIndexLinks(body)

@@ -42,6 +42,8 @@ nav_external_links:
     url: https://github.com/grafvonb/c8volt/blob/main/README.md
   - title: License
     url: https://github.com/grafvonb/c8volt/blob/main/LICENSE
+  - title: Trademarks
+    url: https://github.com/grafvonb/c8volt/blob/main/TRADEMARKS.md
 
 defaults:
   - scope:
