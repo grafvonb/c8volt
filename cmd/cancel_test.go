@@ -20,6 +20,7 @@ import (
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -168,6 +169,86 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Contains(t, buf.String(), "scope: complete")
 	require.Contains(t, buf.String(), "affected family keys: root-1, child-1, child-2")
 	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+}
+
+func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt during cancel dry-run orphan preview")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-orphan"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:            typex.Keys{"root-partial"},
+				Collected:        typex.Keys{"root-partial", "child-orphan"},
+				MissingAncestors: []process.MissingAncestor{{Key: "missing-parent", StartKey: "child-orphan"}},
+				Warning:          "one or more parent process instances were not found",
+				Outcome:          process.TraversalOutcomePartial,
+			}, nil
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-orphan"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 2, Roots: 1}, got.Impact)
+	require.Empty(t, got.Reports)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, process.TraversalOutcomePartial, got.DryRunPreview.TraversalOutcome)
+	require.False(t, got.DryRunPreview.ScopeComplete)
+	require.Equal(t, []processInstanceDryRunMissingAncestor{{Key: "missing-parent", StartKey: "child-orphan"}}, got.DryRunPreview.MissingAncestors)
+	require.Contains(t, buf.String(), "scope: partial")
+	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "missing ancestor keys: missing-parent")
+	require.Contains(t, buf.String(), "no mutation submitted: cancel was not submitted")
+}
+
+func TestCancelProcessInstanceDryRun_UnresolvedOrphanFailsWithoutMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt during unresolved cancel dry run")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"unresolved-child"}, keys)
+			return process.DryRunPIKeyExpansion{}, fmt.Errorf("%w: no process instances resolved during dependency expansion", services.ErrOrphanedInstance)
+		},
+		cancelProcessInstances: dryRunCancelMutationGuard(t),
+	}
+
+	got, err := cancelProcessInstancesWithPlan(cmd, cli, typex.Keys{"unresolved-child"}, true)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cancel validation")
+	require.ErrorContains(t, err, "no process instances resolved during dependency expansion")
+	require.Equal(t, processInstancePageActionResult{}, got)
+	require.Empty(t, buf.String())
 }
 
 func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *testing.T) {

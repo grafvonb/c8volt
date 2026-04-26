@@ -100,19 +100,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Add cancel dry-run partial orphan-parent test with warning and missing ancestor keys in cmd/cancel_test.go
-- [ ] T031 [P] [US3] Add delete dry-run partial orphan-parent test with warning and missing ancestor keys in cmd/delete_test.go
-- [ ] T032 [P] [US3] Add unresolved orphan dry-run failure test for cancel in cmd/cancel_test.go
-- [ ] T033 [P] [US3] Add unresolved orphan dry-run failure test for delete in cmd/delete_test.go
-- [ ] T034 [P] [US3] Confirm facade partial and unresolved dry-run coverage remains aligned in c8volt/process/client_test.go
+- [x] T030 [P] [US3] Add cancel dry-run partial orphan-parent test with warning and missing ancestor keys in cmd/cancel_test.go
+- [x] T031 [P] [US3] Add delete dry-run partial orphan-parent test with warning and missing ancestor keys in cmd/delete_test.go
+- [x] T032 [P] [US3] Add unresolved orphan dry-run failure test for cancel in cmd/cancel_test.go
+- [x] T033 [P] [US3] Add unresolved orphan dry-run failure test for delete in cmd/delete_test.go
+- [x] T034 [P] [US3] Confirm facade partial and unresolved dry-run coverage remains aligned in c8volt/process/client_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Ensure dry-run human output includes partial scope warning and missing ancestor keys in cmd/cmd_views_processinstance_dryrun.go
-- [ ] T036 [US3] Ensure dry-run structured output includes traversalOutcome, scopeComplete, warning, and missingAncestors in cmd/cmd_views_processinstance_dryrun.go
-- [ ] T037 [US3] Ensure cancel dry run returns unresolved expansion failures without mutation in cmd/cancel_processinstance.go
-- [ ] T038 [US3] Ensure delete dry run returns unresolved expansion failures without mutation in cmd/delete_processinstance.go
-- [ ] T039 [US3] Run focused orphan-parent dry-run validation for cmd/cancel_test.go, cmd/delete_test.go, and c8volt/process/client_test.go using specs/138-pi-dry-run-scope/quickstart.md
+- [x] T035 [US3] Ensure dry-run human output includes partial scope warning and missing ancestor keys in cmd/cmd_views_processinstance_dryrun.go
+- [x] T036 [US3] Ensure dry-run structured output includes traversalOutcome, scopeComplete, warning, and missingAncestors in cmd/cmd_views_processinstance_dryrun.go
+- [x] T037 [US3] Ensure cancel dry run returns unresolved expansion failures without mutation in cmd/cancel_processinstance.go
+- [x] T038 [US3] Ensure delete dry run returns unresolved expansion failures without mutation in cmd/delete_processinstance.go
+- [x] T039 [US3] Run focused orphan-parent dry-run validation for cmd/cancel_test.go, cmd/delete_test.go, and c8volt/process/client_test.go using specs/138-pi-dry-run-scope/quickstart.md
 
 **Checkpoint**: Orphan-parent dry-run behavior matches existing dependency-expansion semantics.
 

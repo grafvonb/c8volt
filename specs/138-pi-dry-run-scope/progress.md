@@ -5,6 +5,8 @@ Started: 2026-04-25 22:36:37
 
 ## Codebase Patterns
 
+- Dry-run command helpers wrap facade planning failures as `<operation> validation` errors and return before rendering, prompting, or mutating when the expansion is unresolved.
+- Human dry-run output always lists missing ancestor keys directly; the verbose/count behavior only applies to real preflight warnings rendered before mutation.
 - `processPISearchPagesWithAction` carries both mutation reports and dry-run previews; search-mode dry-run callers suppress per-page rendering and render one aggregate summary after pagination completes.
 - Dry-run search paging should not prompt for continuation; it still applies `limitPIPageItems` before dependency planning so `--batch-size` and `--limit` constrain the selected keys before preview aggregation.
 - `cancelProcessInstancesWithPlan` and `deleteProcessInstancesWithPlan` already call `DryRunCancelOrDeletePlan` before confirmation and mutation; dry-run behavior should branch after this shared plan is computed.
@@ -123,4 +125,32 @@ Started: 2026-04-25 22:36:37
 - Search-mode dry run needs to collect page previews separately from mutation reports so JSON mode emits one valid shared result envelope.
 - The page orchestration already performs limit truncation before invoking the page action, so dry-run page tests can assert the planned keys directly.
 - Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun.*Search|Test.*ProcessInstance.*DryRun.*Paged' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun|Test(Cancel|Delete)ProcessInstance' -count=1`.
+---
+
+---
+## Iteration 5 - 2026-04-26 06:08:00 CEST
+**User Story**: User Story 3 - Preserve Orphan-Parent Warning Behavior
+**Tasks Completed**:
+- [x] T030: Add cancel dry-run partial orphan-parent test with warning and missing ancestor keys
+- [x] T031: Add delete dry-run partial orphan-parent test with warning and missing ancestor keys
+- [x] T032: Add unresolved orphan dry-run failure test for cancel
+- [x] T033: Add unresolved orphan dry-run failure test for delete
+- [x] T034: Confirm facade partial and unresolved dry-run coverage remains aligned
+- [x] T035: Ensure dry-run human output includes partial scope warning and missing ancestor keys
+- [x] T036: Ensure dry-run structured output includes traversalOutcome, scopeComplete, warning, and missingAncestors
+- [x] T037: Ensure cancel dry run returns unresolved expansion failures without mutation
+- [x] T038: Ensure delete dry run returns unresolved expansion failures without mutation
+- [x] T039: Run focused orphan-parent dry-run validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/138-pi-dry-run-scope/tasks.md
+- specs/138-pi-dry-run-scope/progress.md
+**Learnings**:
+- Partial orphan dry runs can be verified through the command helper by asserting the rendered warning, direct missing ancestor keys, partial traversal outcome, and `mutationSubmitted=false` preview state.
+- Unresolved orphan dry runs are represented as facade planning errors; the command helper returns the wrapped validation error before any confirmation prompt, render, or cancel/delete mutation.
+- Existing facade tests in `c8volt/process/client_test.go` already cover both partial structured expansion and unresolved no-actionable-scope failure.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./c8volt/process -run 'DryRun.*Orphan|DryRun.*Partial|DryRunCancelOrDelete' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun' -count=1`.
 ---
