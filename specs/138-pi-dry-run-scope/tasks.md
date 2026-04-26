@@ -75,18 +75,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Add search-based cancel dry-run test across multiple pages with aggregate structured output and nested per-page previews in cmd/cancel_test.go
-- [ ] T022 [P] [US2] Add search-based delete dry-run test across multiple pages with aggregate structured output and nested per-page previews in cmd/delete_test.go
-- [ ] T023 [P] [US2] Add search dry-run test covering `--batch-size` and `--limit` page selection behavior in cmd/cancel_test.go
-- [ ] T024 [P] [US2] Add search dry-run test covering `--batch-size` and `--limit` page selection behavior in cmd/delete_test.go
+- [x] T021 [P] [US2] Add search-based cancel dry-run test across multiple pages with aggregate structured output and nested per-page previews in cmd/cancel_test.go
+- [x] T022 [P] [US2] Add search-based delete dry-run test across multiple pages with aggregate structured output and nested per-page previews in cmd/delete_test.go
+- [x] T023 [P] [US2] Add search dry-run test covering `--batch-size` and `--limit` page selection behavior in cmd/cancel_test.go
+- [x] T024 [P] [US2] Add search dry-run test covering `--batch-size` and `--limit` page selection behavior in cmd/delete_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Extend processPISearchPagesWithAction usage for cancel dry run in cmd/cancel_processinstance.go so each selected page renders dry-run scope without mutation
-- [ ] T026 [US2] Extend processPISearchPagesWithAction usage for delete dry run in cmd/delete_processinstance.go so each selected page renders dry-run scope without mutation
-- [ ] T027 [US2] Preserve existing search progress and limit-reached behavior for dry-run pages in cmd/get_processinstance.go
-- [ ] T028 [US2] Implement structured search dry-run output as an aggregate summary with nested per-page previews in cmd/cmd_views_processinstance_dryrun.go
-- [ ] T029 [US2] Run focused search/paged dry-run validation for cmd/cancel_test.go and cmd/delete_test.go using specs/138-pi-dry-run-scope/quickstart.md
+- [x] T025 [US2] Extend processPISearchPagesWithAction usage for cancel dry run in cmd/cancel_processinstance.go so each selected page renders dry-run scope without mutation
+- [x] T026 [US2] Extend processPISearchPagesWithAction usage for delete dry run in cmd/delete_processinstance.go so each selected page renders dry-run scope without mutation
+- [x] T027 [US2] Preserve existing search progress and limit-reached behavior for dry-run pages in cmd/get_processinstance.go
+- [x] T028 [US2] Implement structured search dry-run output as an aggregate summary with nested per-page previews in cmd/cmd_views_processinstance_dryrun.go
+- [x] T029 [US2] Run focused search/paged dry-run validation for cmd/cancel_test.go and cmd/delete_test.go using specs/138-pi-dry-run-scope/quickstart.md
 
 **Checkpoint**: Search-based and paged dry run is independently functional for both destructive commands.
 

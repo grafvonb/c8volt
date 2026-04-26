@@ -168,6 +168,175 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Contains(t, buf.String(), "no mutation submitted: delete was not submitted")
 }
 
+func TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagViewAsJson = true
+	flagGetPISize = 2
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "2"))
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt during delete dry-run search")
+		return nil
+	}
+
+	var planned []typex.Keys
+	var searchedFrom []int32
+	cli := stubProcessAPI{
+		searchProcessInstancesPage: func(_ context.Context, _ process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			searchedFrom = append(searchedFrom, req.From)
+			require.EqualValues(t, 2, req.Size)
+			switch req.From {
+			case 0:
+				return process.ProcessInstancePage{
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateHasMore,
+					Items: []process.ProcessInstance{
+						{Key: "401", State: process.StateCompleted},
+						{Key: "402", State: process.StateCompleted},
+					},
+				}, nil
+			case 2:
+				return process.ProcessInstancePage{
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+					Items: []process.ProcessInstance{
+						{Key: "403", State: process.StateCompleted},
+					},
+				}, nil
+			default:
+				t.Fatalf("unexpected search page offset %d", req.From)
+				return process.ProcessInstancePage{}, nil
+			}
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			planned = append(planned, append(typex.Keys(nil), keys...))
+			switch strings.Join(keys, ",") {
+			case "401,402":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"delete-root-a"},
+					Collected: typex.Keys{"delete-root-a", "401", "402"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			case "403":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"delete-root-b"},
+					Collected: typex.Keys{"delete-root-b"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected dry-run plan keys %v", keys)
+				return process.DryRunPIKeyExpansion{}, nil
+			}
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
+		keys := make(typex.Keys, 0, len(page.Items))
+		for _, pi := range page.Items {
+			keys = append(keys, pi.Key)
+		}
+		return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
+	})
+	require.NoError(t, err)
+	require.Empty(t, results.Reports)
+	require.Len(t, results.DryRunPreviews, 2)
+	require.Equal(t, []int32{0, 2}, searchedFrom)
+	require.Equal(t, []typex.Keys{{"401", "402"}, {"403"}}, planned)
+
+	require.NoError(t, renderProcessInstanceDryRunSummary(cmd, newProcessInstanceDryRunSummary("delete", results.DryRunPreviews)))
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload, ok := envelope["payload"].(map[string]any)
+	require.True(t, ok)
+	previews := requireDryRunSummaryPayload(t, payload, "delete", 3, 2, 4, 2)
+
+	firstPreview, ok := previews[0].(map[string]any)
+	require.True(t, ok)
+	requireDryRunPreviewStringSlice(t, firstPreview, "requestedKeys", typex.Keys{"401", "402"})
+	requireDryRunPreviewStringSlice(t, firstPreview, "resolvedRoots", typex.Keys{"delete-root-a"})
+	requireDryRunPreviewStringSlice(t, firstPreview, "affectedFamilyKeys", typex.Keys{"delete-root-a", "401", "402"})
+
+	secondPreview, ok := previews[1].(map[string]any)
+	require.True(t, ok)
+	requireDryRunPreviewStringSlice(t, secondPreview, "requestedKeys", typex.Keys{"403"})
+	requireDryRunPreviewStringSlice(t, secondPreview, "resolvedRoots", typex.Keys{"delete-root-b"})
+	requireDryRunPreviewStringSlice(t, secondPreview, "affectedFamilyKeys", typex.Keys{"delete-root-b"})
+}
+
+func TestDeleteProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagDryRun = true
+	flagGetPISize = 4
+	flagGetPILimit = 2
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int32("batch-size", 1000, "")
+	require.NoError(t, cmd.Flags().Set("batch-size", "4"))
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt during delete dry-run limited search")
+		return nil
+	}
+
+	var planned typex.Keys
+	var searchRequests []process.ProcessInstancePageRequest
+	cli := stubProcessAPI{
+		searchProcessInstancesPage: func(_ context.Context, _ process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			searchRequests = append(searchRequests, req)
+			require.EqualValues(t, 4, req.Size)
+			return process.ProcessInstancePage{
+				Request:       req,
+				OverflowState: process.ProcessInstanceOverflowStateHasMore,
+				Items: []process.ProcessInstance{
+					{Key: "501", State: process.StateCompleted},
+					{Key: "502", State: process.StateCompleted},
+					{Key: "503", State: process.StateCompleted},
+					{Key: "504", State: process.StateCompleted},
+				},
+			}, nil
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			planned = append(typex.Keys(nil), keys...)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"delete-root-limit"},
+				Collected: typex.Keys{"delete-root-limit", "501", "502"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	results, err := processPISearchPagesWithAction(cmd, cli, nil, process.ProcessInstanceFilter{}, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
+		keys := make(typex.Keys, 0, len(page.Items))
+		for _, pi := range page.Items {
+			keys = append(keys, pi.Key)
+		}
+		return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
+	})
+	require.NoError(t, err)
+	require.Len(t, searchRequests, 1)
+	require.EqualValues(t, 0, searchRequests[0].From)
+	require.Equal(t, typex.Keys{"501", "502"}, planned)
+	require.Empty(t, results.Reports)
+	require.Len(t, results.DryRunPreviews, 1)
+	require.Equal(t, 2, results.DryRunPreviews[0].RequestedCount)
+}
+
 func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "24s")
 

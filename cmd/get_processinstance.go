@@ -250,6 +250,11 @@ type processInstancePageActionResult struct {
 	DryRunPreview *processInstanceDryRunPreview
 }
 
+type processInstancePageActionResults struct {
+	Reports        []process.Reporter
+	DryRunPreviews []processInstanceDryRunPreview
+}
+
 func registerPISharedDateRangeFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&flagGetPIStartDateAfter, "start-date-after", "", "only include process instances with start date >= YYYY-MM-DD")
 	fs.StringVar(&flagGetPIStartDateBefore, "start-date-before", "", "only include process instances with start date <= YYYY-MM-DD")
@@ -554,23 +559,23 @@ func processPISearchPagesWithAction(
 	cfg *config.Config,
 	filter process.ProcessInstanceFilter,
 	processPage func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error),
-) ([]process.Reporter, error) {
+) (processInstancePageActionResults, error) {
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	cumulative := 0
 	cumulativeAffected := 0
 	firstPage := true
-	var reports []process.Reporter
+	var results processInstancePageActionResults
 
 	for {
 		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
 		if err != nil {
-			return nil, err
+			return processInstancePageActionResults{}, err
 		}
 		if len(page.Items) == 0 {
 			if cumulative == 0 {
 				cmd.Println("found:", 0)
 			}
-			return reports, nil
+			return results, nil
 		}
 
 		limitedPage := limitPIPageItems(page, cumulative)
@@ -584,25 +589,28 @@ func processPISearchPagesWithAction(
 					OverflowState:     page.OverflowState,
 					ContinuationState: processInstanceContinuationPartialComplete,
 				})
-				return reports, nil
+				return results, nil
 			}
-			return nil, err
+			return processInstancePageActionResults{}, err
 		}
 
 		impact := result.Impact
-		reports = append(reports, result.Reports...)
+		results.Reports = append(results.Reports, result.Reports...)
+		if result.DryRunPreview != nil {
+			results.DryRunPreviews = append(results.DryRunPreviews, *result.DryRunPreview)
+		}
 		cumulative += len(limitedPage.Items)
 		if impact.Affected > 0 {
 			cumulativeAffected += impact.Affected
 		} else {
 			cumulativeAffected += len(limitedPage.Items)
 		}
-		summary := newPIProgressSummary(limitedPage, cumulative, shouldImplicitlyConfirm(cmd))
+		summary := newPIProgressSummary(limitedPage, cumulative, flagDryRun || shouldAutoContinuePISearchPages(cmd))
 		printPISearchProgress(cmd, summary)
 
 		switch summary.ContinuationState {
 		case processInstanceContinuationCompleted, processInstanceContinuationWarningStop, processInstanceContinuationLimitReached:
-			return reports, nil
+			return results, nil
 		case processInstanceContinuationAutoContinue:
 			firstPage = false
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
@@ -618,9 +626,9 @@ func processPISearchPagesWithAction(
 						OverflowState:     summary.OverflowState,
 						ContinuationState: processInstanceContinuationPartialComplete,
 					})
-					return reports, nil
+					return results, nil
 				}
-				return nil, err
+				return processInstancePageActionResults{}, err
 			}
 			firstPage = false
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))

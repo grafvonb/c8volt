@@ -5,6 +5,8 @@ Started: 2026-04-25 22:36:37
 
 ## Codebase Patterns
 
+- `processPISearchPagesWithAction` carries both mutation reports and dry-run previews; search-mode dry-run callers suppress per-page rendering and render one aggregate summary after pagination completes.
+- Dry-run search paging should not prompt for continuation; it still applies `limitPIPageItems` before dependency planning so `--batch-size` and `--limit` constrain the selected keys before preview aggregation.
 - `cancelProcessInstancesWithPlan` and `deleteProcessInstancesWithPlan` already call `DryRunCancelOrDeletePlan` before confirmation and mutation; dry-run behavior should branch after this shared plan is computed.
 - Process-instance preflight warnings are rendered through `printDryRunExpansionWarning`, with verbose mode controlling whether missing ancestor keys are listed or counted.
 - Command tests use `stubProcessAPI` for focused helper coverage and `require` assertions from `testify`; unexpected process API calls panic unless a test installs a handler.
@@ -91,4 +93,34 @@ Started: 2026-04-25 22:36:37
 - Keyed dry-run can reuse the shared preview payload directly and return an empty report list so the caller can exit without rendering mutation reports.
 - Focused mutation guards are enough to prove the shared helper does not call cancel/delete APIs when `flagDryRun` is set.
 - Validation passed with `go test ./cmd -run 'Test(Cancel|Delete).*DryRun' -count=1` and `go test ./cmd -run 'Test(Cancel|Delete)ProcessInstance' -count=1`.
+---
+
+---
+## Iteration 4 - 2026-04-26 06:04:43 CEST
+**User Story**: User Story 2 - Preview Search-Based and Paged Scope
+**Tasks Completed**:
+- [x] T021: Add search-based cancel dry-run test across multiple pages with aggregate structured output and nested per-page previews
+- [x] T022: Add search-based delete dry-run test across multiple pages with aggregate structured output and nested per-page previews
+- [x] T023: Add search dry-run test covering `--batch-size` and `--limit` page selection behavior for cancel
+- [x] T024: Add search dry-run test covering `--batch-size` and `--limit` page selection behavior for delete
+- [x] T025: Extend cancel search dry run so each selected page contributes dry-run scope without mutation
+- [x] T026: Extend delete search dry run so each selected page contributes dry-run scope without mutation
+- [x] T027: Preserve search progress and limit-reached behavior for dry-run pages
+- [x] T028: Implement structured search dry-run output as an aggregate summary with nested per-page previews
+- [x] T029: Run focused search/paged dry-run validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/delete_processinstance.go
+- cmd/get_processinstance.go
+- cmd/process_api_stub_test.go
+- cmd/cancel_test.go
+- cmd/delete_test.go
+- specs/138-pi-dry-run-scope/tasks.md
+- specs/138-pi-dry-run-scope/progress.md
+**Learnings**:
+- Search-mode dry run needs to collect page previews separately from mutation reports so JSON mode emits one valid shared result envelope.
+- The page orchestration already performs limit truncation before invoking the page action, so dry-run page tests can assert the planned keys directly.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun.*Search|Test.*ProcessInstance.*DryRun.*Paged' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'Test(Cancel|Delete).*DryRun|Test(Cancel|Delete)ProcessInstance' -count=1`.
 ---

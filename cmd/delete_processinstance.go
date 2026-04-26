@@ -69,16 +69,26 @@ var deleteProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
 			searchFilterOpts := populatePISearchFilterOpts()
-			reports, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
+			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))
 				for _, pi := range page.Items {
 					keys = append(keys, pi.Key)
 				}
-				return deleteProcessInstancePage(cmd, cli, keys, firstPage)
+				return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, false)
 			})
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("delete process instances: %w", err))
 			}
+			if flagDryRun {
+				if len(results.DryRunPreviews) > 0 {
+					summary := newProcessInstanceDryRunSummary("delete", results.DryRunPreviews)
+					if err := renderProcessInstanceDryRunSummary(cmd, summary); err != nil {
+						handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render delete dry-run result: %w", err))
+					}
+				}
+				return
+			}
+			reports := results.Reports
 			if len(reports) > 0 {
 				payload := process.DeleteReports{Items: make([]process.DeleteReport, len(reports))}
 				for i, report := range reports {
@@ -116,14 +126,20 @@ var deleteProcessInstanceCmd = &cobra.Command{
 }
 
 func deleteProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (processInstancePageActionResult, error) {
+	return deleteProcessInstancesWithPlanAndRender(cmd, cli, keys, firstPage, true)
+}
+
+func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool, renderDryRun bool) (processInstancePageActionResult, error) {
 	planned, err := planProcessInstanceDryRunPreview(cli, "delete", keys)
 	if err != nil {
 		return processInstancePageActionResult{}, err
 	}
 	plan := planned.Plan
 	if flagDryRun {
-		if err := renderProcessInstanceDryRunPreview(cmd, planned.Preview); err != nil {
-			return processInstancePageActionResult{}, fmt.Errorf("render delete dry-run result: %w", err)
+		if renderDryRun {
+			if err := renderProcessInstanceDryRunPreview(cmd, planned.Preview); err != nil {
+				return processInstancePageActionResult{}, fmt.Errorf("render delete dry-run result: %w", err)
+			}
 		}
 		return processInstancePageActionResult{
 			Impact:        planned.Impact,

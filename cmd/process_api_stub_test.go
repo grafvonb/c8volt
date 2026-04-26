@@ -14,10 +14,11 @@ import (
 )
 
 type stubProcessAPI struct {
-	dryRunCancelOrDeletePlan func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
-	cancelProcessInstances   func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
-	deleteProcessInstances   func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
-	filterOrphanParent       func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
+	dryRunCancelOrDeletePlan   func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
+	cancelProcessInstances     func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
+	deleteProcessInstances     func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
+	filterOrphanParent         func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
+	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 }
 
 func dryRunCancelMutationGuard(t *testing.T) func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error) {
@@ -70,6 +71,23 @@ func requireDryRunPreviewMissingAncestors(t *testing.T, payload map[string]any, 
 	}
 }
 
+func requireDryRunSummaryPayload(t *testing.T, payload map[string]any, operation string, requestedCount, rootCount, affectedCount int, previewCount int) []any {
+	t.Helper()
+
+	require.Equal(t, operation, payload["operation"])
+	require.Equal(t, float64(requestedCount), payload["requestedCount"])
+	require.Equal(t, float64(rootCount), payload["resolvedRootCount"])
+	require.Equal(t, float64(affectedCount), payload["affectedCount"])
+	require.Equal(t, string(process.TraversalOutcomeComplete), payload["traversalOutcome"])
+	require.Equal(t, true, payload["scopeComplete"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+
+	previews, ok := payload["previews"].([]any)
+	require.True(t, ok, "expected dry-run summary previews to be a JSON array")
+	require.Len(t, previews, previewCount)
+	return previews
+}
+
 func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
 	panic("unexpected call")
 }
@@ -106,8 +124,11 @@ func (stubProcessAPI) LookupProcessInstanceStateByKey(context.Context, string, .
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) SearchProcessInstancesPage(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchProcessInstancesPage(ctx context.Context, filter process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, opts ...options.FacadeOption) (process.ProcessInstancePage, error) {
+	if s.searchProcessInstancesPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstancesPage(ctx, filter, req, opts...)
 }
 
 func (stubProcessAPI) SearchProcessInstances(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error) {
