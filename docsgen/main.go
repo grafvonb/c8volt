@@ -79,8 +79,7 @@ func syncDocsIndexFromReadme(src, dst string) error {
 	}
 
 	body := string(b)
-	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
-	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
+	body = rewriteDocsIndexLinks(body)
 
 	const frontMatter = `---
 title: "c8volt"
@@ -97,6 +96,25 @@ has_toc: true
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
 	return nil
+}
+
+func rewriteDocsIndexLinks(body string) string {
+	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
+	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
+
+	for _, doc := range []string{
+		"CODE_OF_CONDUCT.md",
+		"CONTRIBUTING.md",
+		"COPYRIGHT",
+		"LICENSE",
+		"NOTICE.md",
+		"SECURITY.md",
+		"TRADEMARKS.md",
+	} {
+		body = strings.ReplaceAll(body, "](./"+doc+")", "](https://github.com/grafvonb/c8volt/blob/main/"+doc+")")
+	}
+
+	return body
 }
 
 func docsLinkName(name string) string {
