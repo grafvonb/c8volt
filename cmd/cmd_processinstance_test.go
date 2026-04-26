@@ -221,15 +221,15 @@ func decodeCapturedTopLevelPISearchSizes(t *testing.T, requests []string) []floa
 func TestProcessInstanceDestructiveHelp_DocumentsDryRunPreviewMode(t *testing.T) {
 	cancelOutput := executeRootForProcessInstanceTest(t, "cancel", "process-instance", "--help")
 	require.Contains(t, cancelOutput, "--dry-run")
-	require.Contains(t, cancelOutput, "preview the resolved scope without submitting cancellation")
-	require.Contains(t, cancelOutput, "preview which process instances would be canceled without submitting cancellation")
+	require.Contains(t, cancelOutput, "preview selected process instances, process-instance trees to cancel")
+	require.Contains(t, cancelOutput, "preview cancel scope without submitting cancellation")
 	require.Contains(t, cancelOutput, "./c8volt cancel pi --key <process-instance-key> --dry-run")
 	require.Contains(t, cancelOutput, "./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run")
 
 	deleteOutput := executeRootForProcessInstanceTest(t, "delete", "process-instance", "--help")
 	require.Contains(t, deleteOutput, "--dry-run")
-	require.Contains(t, deleteOutput, "preview the resolved scope without submitting deletion")
-	require.Contains(t, deleteOutput, "preview which process instances would be deleted without submitting deletion")
+	require.Contains(t, deleteOutput, "non-final instances that require cancellation before delete")
+	require.Contains(t, deleteOutput, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	require.Contains(t, deleteOutput, "./c8volt delete pi --key 2251799813711967 --dry-run")
 	require.Contains(t, deleteOutput, "./c8volt delete pi --state completed --batch-size 250 --limit 25 --dry-run")
 }

@@ -14,7 +14,7 @@ Delete process instances by key or search filters, optionally cancelling first.
 
 By default c8volt validates the affected tree, prompts before deletion, and waits until deletion is observed. Use --force when active instances should be cancelled before deletion.
 
-Use --dry-run to preview the resolved scope without submitting deletion, cancel-before-delete requests, prompting for confirmation, or waiting for completion.
+Use --dry-run to preview selected process instances, process-instance trees to delete, process instances in scope, selected instances already in final state, non-final instances that require cancellation before delete, and partial-scope details without submitting deletion, cancel-before-delete requests, prompting for confirmation, or waiting for completion.
 
 Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.
 
@@ -42,7 +42,7 @@ c8volt delete process-instance [flags]
 ```
   -n, --batch-size int32            number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
-      --dry-run                     preview which process instances would be deleted without submitting deletion
+      --dry-run                     preview delete scope without submitting deletion or cancel-before-delete requests
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)

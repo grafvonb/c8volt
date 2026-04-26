@@ -30,7 +30,7 @@ As a CLI operator, I want `cancel process-instance --dry-run` and `delete proces
 
 **Acceptance Scenarios**:
 
-1. **Given** a requested child process instance whose real cancellation would escalate to a root, **When** the user runs `cancel process-instance --key <child> --dry-run`, **Then** the output reports the requested key, resolved root, full affected family, and that no cancellation was submitted.
+1. **Given** a requested child process instance whose real cancellation would escalate to a root, **When** the user runs `cancel process-instance --key <child> --dry-run`, **Then** the output reports selected process instances, process-instance trees to cancel, process instances in scope, and that no cancellation was submitted.
 2. **Given** a requested child process instance whose real deletion would select a root for family deletion, **When** the user runs `delete process-instance --key <child> --dry-run`, **Then** the output reports the same root and family members that real deletion would affect.
 3. **Given** a requested root process instance with multiple descendants, **When** either command runs with `--dry-run`, **Then** the output reports the root and all affected family members without prompting for confirmation or polling for completion.
 
@@ -79,7 +79,7 @@ As a CLI user or automation author, I want dry-run output to expose requested ke
 
 **Acceptance Scenarios**:
 
-1. **Given** a complete resolved scope, **When** human-readable dry-run output is rendered, **Then** it shows requested process instance count, resolved root count, total affected process instance count, and that the scope is complete.
+1. **Given** a complete resolved scope, **When** human-readable dry-run output is rendered, **Then** it shows selected process instance count, process-instance tree count for the operation, total process instances in scope, and that the scope is complete.
 2. **Given** a partial resolved scope, **When** structured output is rendered, **Then** it includes requested keys, resolved roots, collected family keys, traversal outcome, warning text, and missing ancestor keys.
 3. **Given** a user reads command help or docs, **When** they inspect cancel/delete process-instance usage, **Then** `--dry-run` is documented with examples that make clear no destructive action is submitted.
 

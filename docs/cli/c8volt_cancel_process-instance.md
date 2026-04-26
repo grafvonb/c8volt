@@ -14,7 +14,7 @@ Cancel process instances by key or search filters.
 
 By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.
 
-Use --dry-run to preview the resolved scope without submitting cancellation, prompting for confirmation, or waiting for completion.
+Use --dry-run to preview selected process instances, process-instance trees to cancel, process instances in scope, selected instances already in final state, and partial-scope details without submitting cancellation, prompting for confirmation, or waiting for completion.
 
 Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted cancellation is enough for the current step, then verify later with `get pi` or `expect pi`.
 
@@ -44,7 +44,7 @@ c8volt cancel process-instance [flags]
 ```
   -n, --batch-size int32            number of process instances to process per page (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string      BPMN process ID to filter process instances
-      --dry-run                     preview which process instances would be canceled without submitting cancellation
+      --dry-run                     preview cancel scope without submitting cancellation
       --end-date-after string       only include process instances with end date >= YYYY-MM-DD
       --end-date-before string      only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)

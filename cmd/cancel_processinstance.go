@@ -22,7 +22,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: "Cancel process instances by key or search filters.\n\n" +
 		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
-		"Use --dry-run to preview the resolved scope without submitting cancellation, prompting for confirmation, or waiting for completion.\n\n" +
+		"Use --dry-run to preview selected process instances, process-instance trees to cancel, process instances in scope, selected instances already in final state, and partial-scope details without submitting cancellation, prompting for confirmation, or waiting for completion.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted cancellation is enough for the current step, then verify later with `get pi` or `expect pi`.",
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --dry-run
@@ -194,7 +194,7 @@ func init() {
 	fs := cancelProcessInstanceCmd.Flags()
 	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the cancellation to be fully processed")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before cancelling it")
-	fs.BoolVar(&flagDryRun, "dry-run", false, "preview which process instances would be canceled without submitting cancellation")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview cancel scope without submitting cancellation")
 
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the root process instance if a process instance is a child, including all its child instances")

@@ -160,7 +160,7 @@ Camunda may reject direct cancellation of a child instance when the real action 
 ./c8volt cancel pi --state active --start-date-newer-days 30
 ```
 
-With `--dry-run`, `c8volt` previews the selected process instances, root process-instance trees, in-scope process instances, instances already in final state, traversal status, and orphan-parent warnings without submitting cancellation. With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
+With `--dry-run`, `c8volt` previews the selected process instances, process-instance trees to cancel, process instances in scope, selected instances already in final state, and any partial-scope details without submitting cancellation. With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
 
 ### Delete Thoroughly
 
@@ -171,7 +171,7 @@ With `--dry-run`, `c8volt` previews the selected process instances, root process
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
-Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows process instances that are not in final state so operators can see when delete cannot remove them directly and whether `--force` would broaden the action by cancelling before delete. `c8volt` is built for that operational sequence.
+Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. For delete, non-final process instances cannot be removed directly; `--force` cancels them before delete. `c8volt` is built for that operational sequence.
 
 ### Wait For A Known State
 

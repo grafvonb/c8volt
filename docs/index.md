@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-171-g1a4e5e3-dirty`, commit `1a4e5e3`, built `2026-04-26T04:18:27Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-179-g6ef7796-dirty`, commit `6ef7796`, built `2026-04-26T10:07:27Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
 
@@ -169,7 +169,7 @@ Camunda may reject direct cancellation of a child instance when the real action 
 ./c8volt cancel pi --state active --start-date-newer-days 30
 ```
 
-With `--dry-run`, `c8volt` previews the selected process instances, root process-instance trees, in-scope process instances, instances already in final state, traversal status, and orphan-parent warnings without submitting cancellation. With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
+With `--dry-run`, `c8volt` previews the selected process instances, process-instance trees to cancel, process instances in scope, selected instances already in final state, and any partial-scope details without submitting cancellation. With `--force`, `c8volt` escalates from the selected child to the root process instance and waits for the family-level outcome.
 
 ### Delete Thoroughly
 
@@ -180,7 +180,7 @@ With `--dry-run`, `c8volt` previews the selected process instances, root process
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
-Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows process instances that are not in final state so operators can see when delete cannot remove them directly and whether `--force` would broaden the action by cancelling before delete. `c8volt` is built for that operational sequence.
+Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. For delete, non-final process instances cannot be removed directly; `--force` cancels them before delete. `c8volt` is built for that operational sequence.
 
 ### Wait For A Known State
 
@@ -442,6 +442,13 @@ c8volt
 - Project site: [c8volt.info](https://c8volt.info)
 - Generated CLI reference: [c8volt.info/cli](https://c8volt.info/cli/)
 - Search-oriented use cases and FAQ: [c8volt.info/use-cases](https://c8volt.info/use-cases.html)
+
+## Project Governance
+
+- License and copyright: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), and [NOTICE.md](./NOTICE.md)
+- Trademark policy: [TRADEMARKS.md](./TRADEMARKS.md)
+- Contributing and DCO sign-off: [CONTRIBUTING.md](./CONTRIBUTING.md)
+- Security reporting: [SECURITY.md](./SECURITY.md)
 
 ## Copyright
 

@@ -60,4 +60,4 @@ Inspect structured output:
 ./c8volt --json cancel pi --key <process-instance-key> --dry-run
 ```
 
-Expected result: JSON output reports requested keys, resolved roots, affected family keys, selected instances already in final state, delete instances that require cancellation before delete, traversal outcome, warning/missing ancestor data when present, and `mutationSubmitted=false`.
+Expected result: JSON output reports requested keys, resolved roots, affected family keys, selected instances already in final state, delete-only instances that require cancellation before delete, traversal outcome, warning/missing ancestor data when present, and `mutationSubmitted=false`.
