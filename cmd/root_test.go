@@ -19,7 +19,8 @@ import (
 )
 
 // TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand protects the root help text as a UX contract.
-// The command groups must stay discoverable for humans, while shell-completion plumbing remains hidden.
+// The command groups and Cobra's shell completion command must stay discoverable for humans, while
+// internal completion plumbing remains hidden.
 func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 	output := executeRootForTest(t, "--help")
 
@@ -31,6 +32,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"deploy",
 		"delete",
 		"cancel",
+		"completion",
 		"config",
 		"embed",
 		"version",
@@ -47,7 +49,6 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"./c8volt --config ./config.yaml config show --validate",
 	)
 	assertHelpOutputOmitsAll(t, output,
-		"\ncompletion\n",
 		"__complete",
 		"__completeNoDesc",
 	)
