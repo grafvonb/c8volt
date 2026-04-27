@@ -127,6 +127,11 @@ func TestIsDiscoverableCommand_FiltersHiddenAndInternalCommands(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "shell completion command",
+			cmd:  &cobra.Command{Use: "completion", Short: "Shell completion"},
+			want: false,
+		},
+		{
 			name: "help command",
 			cmd:  &cobra.Command{Use: "help", Short: "Help"},
 			want: false,

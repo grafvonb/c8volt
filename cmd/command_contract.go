@@ -325,7 +325,7 @@ func commandPath(cmd *cobra.Command) string {
 	return strings.TrimSpace(strings.TrimPrefix(path, root))
 }
 
-// isDiscoverableCommand filters out hidden and shell-internal commands from capability output.
+// isDiscoverableCommand filters out hidden and shell-only commands from capability output.
 func isDiscoverableCommand(cmd *cobra.Command) bool {
 	if cmd == nil || cmd.Hidden {
 		return false
@@ -333,7 +333,7 @@ func isDiscoverableCommand(cmd *cobra.Command) bool {
 	if strings.HasPrefix(cmd.Name(), "__complete") {
 		return false
 	}
-	return cmd.Name() != "help"
+	return cmd.Name() != "help" && cmd.Name() != "completion"
 }
 
 // hasFlag reports whether a command exposes a given flag after Cobra inheritance is applied.

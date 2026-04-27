@@ -40,6 +40,7 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	require.Contains(t, output, "walk\tInspect process-instance relationships\n")
 	require.Contains(t, output, "run\tStart process instances\n")
 	require.Contains(t, output, "deploy\tDeploy BPMN resources to Camunda\n")
+	require.Contains(t, output, "completion\tGenerate the autocompletion script for the specified shell\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
@@ -74,7 +75,6 @@ func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
 func requireCompletionOutputStaysUserFacing(t *testing.T, output string) {
 	t.Helper()
 
-	require.NotContains(t, output, "\ncompletion\n")
 	require.NotContains(t, output, "__complete")
 	require.NotContains(t, output, "Usage:")
 	require.NotContains(t, output, "Get resources such as process definitions or process instances.")

@@ -84,9 +84,6 @@ when a script, CI job, or agent needs the machine-readable command contract.`,
   ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt capabilities --json
   ./c8volt get --help`,
-	CompletionOptions: cobra.CompletionOptions{
-		HiddenDefaultCmd: true,
-	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		v := viper.New()
 		bindings, err := initViper(v, cmd)
