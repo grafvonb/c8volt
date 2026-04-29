@@ -103,6 +103,8 @@ extensions/
 integrations/
 presets/
 workflows/
+!.github/workflows/
+!.github/workflows/*
 scripts/ralph/
 
 # AI temporary or backup files
