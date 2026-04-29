@@ -4,7 +4,7 @@
 title: "c8volt Camunda 8 CLI"
 description: "c8volt is a Camunda 8 CLI for deploying BPMN, running workflows, canceling and deleting process instances, and verifying workflow state from the terminal."
 tagline: "Camunda 8 CLI for workflow automation, BPMN deployment, and process-instance management"
-logo: "/logo/c8volt_logo_3_transparent_w_shadow_400x244.png"
+logo: "/logo/c8volt_logo_transparent_w_shadow_400x244.png"
 lang: "en-US"
 
 theme: just-the-docs

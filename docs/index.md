@@ -7,7 +7,7 @@ has_toc: true
 
 > Generated from build `c8volt v2.1.0-187-g0ec3d57-dirty`, commit `0ec3d57`, built `2026-04-29T19:14:56Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
-<img src="./logo/c8volt_logo_3_transparent_w_shadow_400x244.png" alt="c8volt logo" />
+<img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
