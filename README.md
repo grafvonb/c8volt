@@ -1,4 +1,4 @@
-<img src="./docs/logo/c8volt_orange_black_bkg_white_400x152.png" alt="c8volt logo" style="border-radius: 5px;" />
+<img src="./docs/logo/c8volt_logo_3_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
