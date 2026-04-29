@@ -95,17 +95,15 @@ api/camunda-docs/.git/
 /docs/.sass-cache/
 /docs/.bundle/
 
-# Ralph local run artifacts
+# Speckit / ai-tooling synchronized artifacts
 .codex-*
-scripts/ralph/.last-branch
-scripts/ralph/.codex-last-message*.txt
-scripts/ralph/.codex-output-iter-*.txt
 .agents/skills/
 .specify/
-scripts/ralph/*
-!scripts/ralph/archive/
-!scripts/ralph/archive/**
-!scripts/ralph/prd.json
+extensions/
+integrations/
+presets/
+workflows/
+scripts/ralph/
 
 # AI temporary or backup files
 AGENTS.md.ai-tooling-backup-*
