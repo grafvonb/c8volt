@@ -91,7 +91,7 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "return only the numeric total of matching process instances; capped backend totals stay lower bounds",
+		Description: "return only the numeric total of matching process instances; capped backend totals are counted by paging",
 	})
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
 		Name:             "json",

@@ -200,7 +200,7 @@ Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of
 
 Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
-When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total.
+When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
 
 ### Pull Exact Artifacts
 

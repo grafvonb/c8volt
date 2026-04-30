@@ -232,7 +232,7 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	piAPI := stubProcessInstanceAPI{
 		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
-			assert.Equal(t, d.ProcessInstancePageRequest{From: 25, Size: 10}, page)
+			assert.Equal(t, d.ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, page)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.ProcessInstancePage{
 				Request:       page,
@@ -241,6 +241,7 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 					Count: 17,
 					Kind:  d.ProcessInstanceReportedTotalKindExact,
 				},
+				EndCursor: "cursor-1",
 				Items: []d.ProcessInstance{
 					{Key: "2251799813711967", BpmnProcessId: "order-process"},
 				},
@@ -251,14 +252,15 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
-	}, ProcessInstancePageRequest{From: 25, Size: 10}, options.WithVerbose())
+	}, ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, options.WithVerbose())
 
 	require.NoError(t, err)
-	assert.Equal(t, ProcessInstancePageRequest{From: 25, Size: 10}, page.Request)
+	assert.Equal(t, ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, page.Request)
 	assert.Equal(t, ProcessInstanceOverflowStateIndeterminate, page.OverflowState)
 	require.NotNil(t, page.ReportedTotal)
 	assert.Equal(t, int64(17), page.ReportedTotal.Count)
 	assert.Equal(t, ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
+	assert.Equal(t, "cursor-1", page.EndCursor)
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, "2251799813711967", page.Items[0].Key)
 }

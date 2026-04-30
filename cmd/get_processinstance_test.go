@@ -57,7 +57,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "JSON returns one aggregated result")
 	require.Contains(t, output, "./c8volt get pi --state active --total")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
-	require.Contains(t, output, "capped backend totals stay lower bounds")
+	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
 	require.Contains(t, output, "number of process instances to fetch per page")
@@ -122,7 +122,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 	t.Run("reported total prints only the numeric count without fetching later pages", func(t *testing.T) {
 		var requests []string
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
-			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":true}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
 		)
 		t.Cleanup(srv.Close)
 
@@ -148,6 +148,99 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		require.Zero(t, promptCalls)
 		require.Equal(t, "3\n", stdout)
 		require.Empty(t, stderr)
+	})
+
+	t.Run("capped reported total falls back to cursor paging for exact count", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-1","startCursor":null}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-2","startCursor":"cursor-1"}}`,
+			`{"items":[],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+		promptCalls := 0
+		prevConfirm := confirmCmdOrAbortFn
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			promptCalls++
+			return nil
+		}
+		t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"get", "process-instance",
+			"--batch-size", "2",
+			"--total",
+		)
+
+		pages := decodeCapturedPISearchPages(t, requests)
+		require.Len(t, pages, 3)
+		require.EqualValues(t, 2, pages[0]["limit"])
+		require.EqualValues(t, 0, pages[0]["from"])
+		require.Equal(t, "cursor-1", pages[1]["after"])
+		require.NotContains(t, pages[1], "from")
+		require.Equal(t, "cursor-2", pages[2]["after"])
+		require.Zero(t, promptCalls)
+		require.Equal(t, "3\n", stdout)
+		require.Empty(t, stderr)
+	})
+
+	t.Run("verbose capped total logs progress through logger", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-1","startCursor":null}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-2","startCursor":"cursor-1"}}`,
+			`{"items":[],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"get", "process-instance",
+			"--batch-size", "2",
+			"--total",
+			"--verbose",
+		)
+
+		require.Equal(t, "3\n", stdout)
+		require.Contains(t, stderr, "INFO page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
+		require.Contains(t, stderr, "INFO page size: 2, current page: 1, total so far: 3, more matches: yes, next step: auto-continue")
+		require.Contains(t, stderr, "INFO page size: 2, current page: 0, total so far: 3, more matches: yes, next step: auto-continue")
+		require.NotContains(t, stderr, "\npage size:")
+	})
+
+	t.Run("debug capped total includes paging values", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-1","startCursor":null}}`,
+			`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"125","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":"cursor-2","startCursor":"cursor-1"}}`,
+			`{"items":[],"page":{"totalItems":10000,"hasMoreTotalItems":true,"endCursor":null,"startCursor":"cursor-2"}}`,
+		)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+			"--config", cfgPath,
+			"--tenant", "tenant",
+			"--debug",
+			"get", "process-instance",
+			"--batch-size", "2",
+			"--total",
+		)
+
+		require.Equal(t, "3\n", stdout)
+		require.Contains(t, stderr, `DEBUG process-instance total page: mode=offset, from=0, after="", limit=2, items=2, total before=0, total after=2`)
+		require.Contains(t, stderr, `reported total=10000, reported kind=lower_bound, end cursor="cursor-1"`)
+		require.Contains(t, stderr, `DEBUG process-instance total page: mode=cursor, from=0, after="cursor-1", limit=2, items=1, total before=2, total after=3`)
+		require.Contains(t, stderr, `DEBUG process-instance total page: mode=cursor, from=0, after="cursor-2", limit=2, items=0, total before=3, total after=3`)
+		require.NotContains(t, stderr, "INFO page size:")
 	})
 
 	t.Run("zero matches still print zero only", func(t *testing.T) {

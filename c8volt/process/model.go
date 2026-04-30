@@ -64,8 +64,9 @@ type ProcessInstances struct {
 }
 
 type ProcessInstancePageRequest struct {
-	From int32 `json:"from,omitempty"`
-	Size int32 `json:"size,omitempty"`
+	From  int32  `json:"from,omitempty"`
+	Size  int32  `json:"size,omitempty"`
+	After string `json:"after,omitempty"`
 }
 
 type ProcessInstanceOverflowState string
@@ -92,6 +93,7 @@ type ProcessInstancePage struct {
 	Request       ProcessInstancePageRequest    `json:"request,omitempty"`
 	OverflowState ProcessInstanceOverflowState  `json:"overflowState,omitempty"`
 	ReportedTotal *ProcessInstanceReportedTotal `json:"reportedTotal,omitempty"`
+	EndCursor     string                        `json:"endCursor,omitempty"`
 	Items         []ProcessInstance             `json:"items,omitempty"`
 }
 

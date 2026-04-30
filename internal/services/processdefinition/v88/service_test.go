@@ -139,6 +139,30 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 			},
 		},
 		{
+			name: "Stats capped total falls back to cursor paging",
+			setupMock: func(m *mockProcessDefinitionClient) {
+				resp := &camundav88.SearchProcessDefinitionsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+					JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+						Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+					},
+				}
+				m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
+				mockCappedProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnumACTIVE)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnumCOMPLETED, 22)
+				mockProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnum(domain.StateTerminated), 33)
+				mockProcessInstanceIncidentCount(m, t, "123", "", 2)
+			},
+			opts: []services.CallOption{services.WithStat()},
+			assertResult: func(t *testing.T, defs []domain.ProcessDefinition) {
+				require.NotNil(t, defs[0].Statistics)
+				assert.Equal(t, int64(3), defs[0].Statistics.Active)
+				assert.Equal(t, int64(22), defs[0].Statistics.Completed)
+				assert.Equal(t, int64(33), defs[0].Statistics.Canceled)
+				assert.Equal(t, int64(2), defs[0].Statistics.Incidents)
+			},
+		},
+		{
 			name: "Stats retrieval fails",
 			setupMock: func(m *mockProcessDefinitionClient) {
 				resp := &camundav88.SearchProcessDefinitionsResponse{
@@ -572,13 +596,24 @@ func makeProcessDefinitionResult(id, key string, version int32) camundav88.Proce
 }
 
 func makeSearchProcessInstancesResponse(total int64) *camundav88.SearchProcessInstancesResponse {
+	return makeSearchProcessInstancesPageResponse(total, false, 0, "")
+}
+
+func makeSearchProcessInstancesPageResponse(total int64, hasMore bool, itemCount int, endCursor string) *camundav88.SearchProcessInstancesResponse {
+	items := make([]camundav88.ProcessInstanceResult, itemCount)
+	page := camundav88.SearchQueryPageResponse{
+		TotalItems:        total,
+		HasMoreTotalItems: hasMore,
+	}
+	if endCursor != "" {
+		cursor := camundav88.EndCursor(endCursor)
+		page.EndCursor = &cursor
+	}
 	return &camundav88.SearchProcessInstancesResponse{
 		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-instances/search", http.StatusOK, "200"),
 		JSON200: &camundav88.ProcessInstanceSearchQueryResult{
-			Items: []camundav88.ProcessInstanceResult{},
-			Page: camundav88.SearchQueryPageResponse{
-				TotalItems: total,
-			},
+			Items: items,
+			Page:  page,
 		},
 	}
 }
@@ -587,6 +622,15 @@ func mockProcessInstanceStateCount(m *mockProcessDefinitionClient, t *testing.T,
 	m.On("SearchProcessInstancesWithResponse", mock.Anything, mock.MatchedBy(func(body camundav88.SearchProcessInstancesJSONRequestBody) bool {
 		return processInstanceSearchMatches(body, processDefinitionKey, tenantID, state)
 	})).Return(makeSearchProcessInstancesResponse(total), nil).Once()
+}
+
+func mockCappedProcessInstanceStateCount(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, state camundav88.ProcessInstanceStateEnum) {
+	m.On("SearchProcessInstancesWithResponse", mock.Anything, mock.MatchedBy(func(body camundav88.SearchProcessInstancesJSONRequestBody) bool {
+		return processInstanceSearchMatches(body, processDefinitionKey, tenantID, state)
+	})).Return(makeSearchProcessInstancesPageResponse(10000, true, 1, "cursor-1"), nil).Once()
+	m.On("SearchProcessInstancesWithResponse", mock.Anything, mock.MatchedBy(func(body camundav88.SearchProcessInstancesJSONRequestBody) bool {
+		return processInstanceCursorSearchMatches(body, processDefinitionKey, tenantID, state, "cursor-1")
+	})).Return(makeSearchProcessInstancesPageResponse(10000, true, 2, ""), nil).Once()
 }
 
 func mockProcessInstanceIncidentCount(m *mockProcessDefinitionClient, t *testing.T, processDefinitionKey, tenantID string, total int64) {
@@ -625,6 +669,38 @@ func processInstanceSearchMatches(body camundav88.SearchProcessInstancesJSONRequ
 		return false
 	}
 	return *page.From == 0 && *page.Limit == 1
+}
+
+func processInstanceCursorSearchMatches(body camundav88.SearchProcessInstancesJSONRequestBody, processDefinitionKey, tenantID string, expectedState camundav88.ProcessInstanceStateEnum, after string) bool {
+	if body.Filter == nil || body.Filter.ProcessDefinitionKey == nil || body.Filter.State == nil || body.Page == nil {
+		return false
+	}
+	pdKey, err := body.Filter.ProcessDefinitionKey.AsProcessDefinitionKeyFilterProperty0()
+	if err != nil || string(pdKey) != processDefinitionKey {
+		return false
+	}
+	state, err := body.Filter.State.AsProcessInstanceStateFilterProperty0()
+	if err != nil || state != expectedState {
+		return false
+	}
+	if tenantID == "" {
+		if body.Filter.TenantId != nil {
+			return false
+		}
+	} else {
+		if body.Filter.TenantId == nil {
+			return false
+		}
+		actualTenant, err := body.Filter.TenantId.AsStringFilterProperty0()
+		if err != nil || actualTenant != tenantID {
+			return false
+		}
+	}
+	page, err := body.Page.AsCursorForwardPagination()
+	if err != nil || page.Limit == nil {
+		return false
+	}
+	return string(page.After) == after && *page.Limit == 1000
 }
 
 func processInstanceIncidentSearchMatches(body camundav88.SearchProcessInstancesJSONRequestBody, processDefinitionKey, tenantID string) bool {

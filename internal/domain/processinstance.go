@@ -36,8 +36,9 @@ type ProcessInstanceFilter struct {
 }
 
 type ProcessInstancePageRequest struct {
-	From int32
-	Size int32
+	From  int32
+	Size  int32
+	After string
 }
 
 type ProcessInstanceOverflowState string
@@ -65,6 +66,7 @@ type ProcessInstancePage struct {
 	Request       ProcessInstancePageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *ProcessInstanceReportedTotal
+	EndCursor     string
 }
 
 type CancelResponse struct {

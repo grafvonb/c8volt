@@ -239,11 +239,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		bodyFilter = nil
 	}
 
-	page := camundav89.SearchQueryPageRequest{}
-	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
-		From:  &pageReq.From,
-		Limit: &pageReq.Size,
-	})
+	page := newSearchQueryPageRequest(pageReq)
 	sort := []camundav89.ProcessInstanceSearchQuerySortRequest{
 		{
 			Field: camundav89.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionName,
@@ -282,7 +278,31 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Request:       pageReq,
 		OverflowState: pickProcessInstanceOverflowState(result.Page, pageReq, len(result.Items)),
 		ReportedTotal: pickProcessInstanceReportedTotal(result.Page, len(result.Items)),
+		EndCursor:     processInstanceEndCursor(result.Page),
 	}, nil
+}
+
+func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav89.SearchQueryPageRequest {
+	page := camundav89.SearchQueryPageRequest{}
+	if pageReq.After != "" {
+		_ = page.FromCursorForwardPagination(camundav89.CursorForwardPagination{
+			After: camundav89.EndCursor(pageReq.After),
+			Limit: &pageReq.Size,
+		})
+		return page
+	}
+	_ = page.FromOffsetPagination(camundav89.OffsetPagination{
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
+	})
+	return page
+}
+
+func processInstanceEndCursor(page camundav89.SearchQueryPageResponse) string {
+	if page.EndCursor == nil {
+		return ""
+	}
+	return string(*page.EndCursor)
 }
 
 func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) (*camundav89.ProcessInstanceKeyFilterProperty, error) {

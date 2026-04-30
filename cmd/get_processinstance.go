@@ -6,6 +6,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -132,7 +133,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
 			if flagGetPITotal {
-				total, err := searchProcessInstancesTotal(cmd, cli, cfg, filter)
+				total, err := searchProcessInstancesTotal(cmd, log, cli, cfg, filter)
 				if err != nil {
 					fail(fmt.Errorf("get process instances total: %w", err))
 				}
@@ -168,7 +169,7 @@ func init() {
 	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
-	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals stay lower bounds")
+	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -483,18 +484,28 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	}
 }
 
-func searchProcessInstancesTotal(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (int64, error) {
+func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (int64, error) {
 	pageReq := newPISearchPageRequest(cmd, cfg, 0)
 	total := int64(0)
+	stopActivity := func() {}
+	countingByPaging := false
+	defer func() {
+		stopActivity()
+	}()
 
 	for {
 		page, err := cli.SearchProcessInstancesPage(cmd.Context(), filter, pageReq, collectOptions()...)
 		if err != nil {
 			return 0, err
 		}
+		logPITotalPage(cmd, log, pageReq, page, total)
 
-		if canUsePIReportedTotal() && page.ReportedTotal != nil {
+		if canUsePIExactReportedTotal(page) {
 			return page.ReportedTotal.Count, nil
+		}
+		if !countingByPaging {
+			stopActivity = startCommandActivity(cmd, "counting process instances page by page")
+			countingByPaging = true
 		}
 
 		filtered, err := applyPISearchResultFilters(cmd, cli, process.ProcessInstances{
@@ -506,13 +517,43 @@ func searchProcessInstancesTotal(cmd *cobra.Command, cli process.API, cfg *confi
 		}
 
 		total += int64(len(filtered.Items))
-		printPISearchProgress(cmd, newPIProgressSummary(page, int(total), true))
+		logPISearchProgress(cmd, log, newPIProgressSummary(page, int(total), true))
 
 		if len(page.Items) == 0 || page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
 			return total, nil
 		}
-		pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
+		pageReq = nextPISearchPageRequest(cmd, cfg, pageReq, page)
 	}
+}
+
+func logPITotalPage(cmd *cobra.Command, log *slog.Logger, req process.ProcessInstancePageRequest, page process.ProcessInstancePage, totalBefore int64) {
+	if cmd == nil || log == nil {
+		return
+	}
+	mode := "offset"
+	if req.After != "" {
+		mode = "cursor"
+	}
+	reportedTotal := int64(-1)
+	reportedKind := "unavailable"
+	if page.ReportedTotal != nil {
+		reportedTotal = page.ReportedTotal.Count
+		reportedKind = string(page.ReportedTotal.Kind)
+	}
+	log.DebugContext(cmd.Context(), fmt.Sprintf(
+		"process-instance total page: mode=%s, from=%d, after=%q, limit=%d, items=%d, total before=%d, total after=%d, overflow=%s, reported total=%d, reported kind=%s, end cursor=%q",
+		mode,
+		req.From,
+		req.After,
+		req.Size,
+		len(page.Items),
+		totalBefore,
+		totalBefore+int64(len(page.Items)),
+		page.OverflowState,
+		reportedTotal,
+		reportedKind,
+		page.EndCursor,
+	))
 }
 
 func shouldRenderPISearchPageIncrementally(cmd *cobra.Command) bool {
@@ -660,6 +701,21 @@ func canUsePIReportedTotal() bool {
 	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
 }
 
+func canUsePIExactReportedTotal(page process.ProcessInstancePage) bool {
+	return canUsePIReportedTotal() &&
+		page.ReportedTotal != nil &&
+		page.ReportedTotal.Kind == process.ProcessInstanceReportedTotalKindExact
+}
+
+func nextPISearchPageRequest(cmd *cobra.Command, cfg *config.Config, current process.ProcessInstancePageRequest, page process.ProcessInstancePage) process.ProcessInstancePageRequest {
+	if page.EndCursor != "" {
+		req := newPISearchPageRequest(cmd, cfg, 0)
+		req.After = page.EndCursor
+		return req
+	}
+	return newPISearchPageRequest(cmd, cfg, current.From+int32(len(page.Items)))
+}
+
 func startCommandActivity(cmd *cobra.Command, msg string) func() {
 	if cmd == nil {
 		return func() {}
@@ -671,6 +727,17 @@ func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSu
 	if cmd == nil || !flagVerbose || pickMode() != RenderModeOneLine {
 		return
 	}
+	fmt.Fprintln(cmd.ErrOrStderr(), formatPISearchProgress(summary))
+}
+
+func logPISearchProgress(cmd *cobra.Command, log *slog.Logger, summary processInstanceProgressSummary) {
+	if cmd == nil || log == nil || !flagVerbose || pickMode() != RenderModeOneLine {
+		return
+	}
+	log.InfoContext(cmd.Context(), formatPISearchProgress(summary))
+}
+
+func formatPISearchProgress(summary processInstanceProgressSummary) string {
 	line := fmt.Sprintf("page size: %d, current page: %d, total so far: %d, more matches: %s, next step: %s",
 		summary.PageSize,
 		summary.CurrentPageCount,
@@ -681,7 +748,7 @@ func printPISearchProgress(cmd *cobra.Command, summary processInstanceProgressSu
 	if detail := describePIProgressDetail(summary); detail != "" {
 		line += ", " + detail
 	}
-	fmt.Fprintln(cmd.ErrOrStderr(), line)
+	return line
 }
 
 func describePIOverflowState(state process.ProcessInstanceOverflowState) string {

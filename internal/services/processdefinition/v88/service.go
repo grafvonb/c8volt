@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/consts"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -149,15 +150,15 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
 	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
-	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav88.ProcessInstanceStateEnumACTIVE)
+	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "active", camundav88.ProcessInstanceStateEnumACTIVE)
 	if err != nil {
 		return err
 	}
-	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav88.ProcessInstanceStateEnumCOMPLETED)
+	completed, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "completed", camundav88.ProcessInstanceStateEnumCOMPLETED)
 	if err != nil {
 		return err
 	}
-	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, camundav88.ProcessInstanceStateEnum(d.StateTerminated))
+	canceled, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "canceled", camundav88.ProcessInstanceStateEnum(d.StateTerminated))
 	if err != nil {
 		return err
 	}
@@ -176,7 +177,7 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	return nil
 }
 
-func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, state camundav88.ProcessInstanceStateEnum) (int64, error) {
+func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, label string, state camundav88.ProcessInstanceStateEnum) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
 	}
@@ -184,17 +185,7 @@ func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Con
 	if err != nil {
 		return 0, err
 	}
-	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, req)
-	if err != nil {
-		return 0, err
-	}
-	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return 0, err
-	}
-	if resp.JSON200 == nil {
-		return 0, d.ErrMalformedResponse
-	}
-	return resp.JSON200.Page.TotalItems, nil
+	return s.countProcessInstancesForDefinitionSearch(ctx, pd, label, req)
 }
 
 func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
@@ -205,17 +196,122 @@ func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx con
 	if err != nil {
 		return 0, err
 	}
-	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, req)
+	return s.countProcessInstancesForDefinitionSearch(ctx, pd, "incidents", req)
+}
+
+func (s *Service) countProcessInstancesForDefinitionSearch(ctx context.Context, pd d.ProcessDefinition, label string, req camundav88.SearchProcessInstancesJSONRequestBody) (int64, error) {
+	resp, err := s.searchProcessInstancesForDefinitionStatsPage(ctx, req)
 	if err != nil {
 		return 0, err
 	}
+	s.logProcessDefinitionStatsPage(ctx, pd, label, req, resp, 0)
+	if !resp.JSON200.Page.HasMoreTotalItems {
+		return resp.JSON200.Page.TotalItems, nil
+	}
+
+	total := int64(len(resp.JSON200.Items))
+	cursor := processDefinitionStatsEndCursor(resp.JSON200.Page)
+	offset := int32(total)
+	for len(resp.JSON200.Items) > 0 {
+		req.Page = processDefinitionStatsNextPage(cursor, offset)
+		resp, err = s.searchProcessInstancesForDefinitionStatsPage(ctx, req)
+		if err != nil {
+			return 0, err
+		}
+		s.logProcessDefinitionStatsPage(ctx, pd, label, req, resp, total)
+		total += int64(len(resp.JSON200.Items))
+		if len(resp.JSON200.Items) == 0 {
+			return total, nil
+		}
+		if next := processDefinitionStatsEndCursor(resp.JSON200.Page); next != "" {
+			if next == cursor {
+				return total, nil
+			}
+			cursor = next
+			continue
+		}
+		if cursor != "" {
+			return total, nil
+		}
+		offset += int32(len(resp.JSON200.Items))
+	}
+	return total, nil
+}
+
+func (s *Service) logProcessDefinitionStatsPage(ctx context.Context, pd d.ProcessDefinition, label string, req camundav88.SearchProcessInstancesJSONRequestBody, resp *camundav88.SearchProcessInstancesResponse, totalBefore int64) {
+	if s.log == nil || resp == nil || resp.JSON200 == nil {
+		return
+	}
+	mode, from, after, limit := describeProcessDefinitionStatsPageRequest(req.Page)
+	items := len(resp.JSON200.Items)
+	page := resp.JSON200.Page
+	s.log.DebugContext(ctx, fmt.Sprintf(
+		"process-definition stats page: process definition key=%s, bpmn process id=%s, bucket=%s, mode=%s, from=%d, after=%q, limit=%d, items=%d, total before=%d, total after=%d, reported total=%d, has more total items=%t, end cursor=%q",
+		pd.Key,
+		pd.BpmnProcessId,
+		label,
+		mode,
+		from,
+		after,
+		limit,
+		items,
+		totalBefore,
+		totalBefore+int64(items),
+		page.TotalItems,
+		page.HasMoreTotalItems,
+		processDefinitionStatsEndCursor(page),
+	))
+}
+
+func describeProcessDefinitionStatsPageRequest(page *camundav88.SearchQueryPageRequest) (string, int32, string, int32) {
+	if page == nil {
+		return "none", 0, "", 0
+	}
+	if cursor, err := page.AsCursorForwardPagination(); err == nil {
+		return "cursor", 0, string(cursor.After), toolx.Deref(cursor.Limit, 0)
+	}
+	if offset, err := page.AsOffsetPagination(); err == nil {
+		return "offset", toolx.Deref(offset.From, 0), "", toolx.Deref(offset.Limit, 0)
+	}
+	return "unknown", 0, "", 0
+}
+
+func (s *Service) searchProcessInstancesForDefinitionStatsPage(ctx context.Context, req camundav88.SearchProcessInstancesJSONRequestBody) (*camundav88.SearchProcessInstancesResponse, error) {
+	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return 0, err
+		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return 0, d.ErrMalformedResponse
+		return nil, d.ErrMalformedResponse
 	}
-	return resp.JSON200.Page.TotalItems, nil
+	return resp, nil
+}
+
+func processDefinitionStatsNextPage(after string, offset int32) *camundav88.SearchQueryPageRequest {
+	limit := consts.MaxPISearchSize
+	page := camundav88.SearchQueryPageRequest{}
+	if after != "" {
+		_ = page.FromCursorForwardPagination(camundav88.CursorForwardPagination{
+			After: camundav88.EndCursor(after),
+			Limit: &limit,
+		})
+		return &page
+	}
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
+		From:  &offset,
+		Limit: &limit,
+	})
+	return &page
+}
+
+func processDefinitionStatsEndCursor(page camundav88.SearchQueryPageResponse) string {
+	if page.EndCursor == nil {
+		return ""
+	}
+	return string(*page.EndCursor)
 }
 
 func searchProcessDefinitionsRequest(tenantID string, filter d.ProcessDefinitionFilter, size int32) (camundav88.SearchProcessDefinitionsJSONRequestBody, error) {
@@ -294,6 +390,7 @@ func searchProcessInstancesForDefinitionStateRequest(tenantID, processDefinition
 		From:  &from,
 		Limit: &limit,
 	})
+	sort := processDefinitionStatsPISort()
 	return camundav88.SearchProcessInstancesJSONRequestBody{
 		Filter: &camundav88.ProcessInstanceFilter{
 			ProcessDefinitionKey: processDefinitionKeyFilter,
@@ -301,6 +398,7 @@ func searchProcessInstancesForDefinitionStateRequest(tenantID, processDefinition
 			TenantId:             tenantIDFilter,
 		},
 		Page: &page,
+		Sort: sort,
 	}, nil
 }
 
@@ -321,6 +419,7 @@ func searchProcessInstancesForDefinitionIncidentRequest(tenantID, processDefinit
 		From:  &from,
 		Limit: &limit,
 	})
+	sort := processDefinitionStatsPISort()
 	return camundav88.SearchProcessInstancesJSONRequestBody{
 		Filter: &camundav88.ProcessInstanceFilter{
 			ProcessDefinitionKey: processDefinitionKeyFilter,
@@ -328,7 +427,18 @@ func searchProcessInstancesForDefinitionIncidentRequest(tenantID, processDefinit
 			HasIncident:          &hasIncident,
 		},
 		Page: &page,
+		Sort: sort,
 	}, nil
+}
+
+func processDefinitionStatsPISort() *[]camundav88.ProcessInstanceSearchQuerySortRequest {
+	asc := camundav88.ASC
+	return &[]camundav88.ProcessInstanceSearchQuerySortRequest{
+		{
+			Field: camundav88.ProcessInstanceSearchQuerySortRequestFieldProcessInstanceKey,
+			Order: &asc,
+		},
+	}
 }
 
 func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav88.ProcessDefinitionKeyFilterProperty, error) {

@@ -79,11 +79,13 @@ func fromDomainProcessInstances(xs []d.ProcessInstance) ProcessInstances {
 func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage {
 	return ProcessInstancePage{
 		Request: ProcessInstancePageRequest{
-			From: x.Request.From,
-			Size: x.Request.Size,
+			From:  x.Request.From,
+			Size:  x.Request.Size,
+			After: x.Request.After,
 		},
 		OverflowState: ProcessInstanceOverflowState(x.OverflowState),
 		ReportedTotal: toolx.MapPtr(x.ReportedTotal, fromDomainProcessInstanceReportedTotal),
+		EndCursor:     x.EndCursor,
 		Items:         toolx.MapSlice(x.Items, fromDomainProcessInstance),
 	}
 }
@@ -146,8 +148,9 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 
 func toDomainProcessInstancePageRequest(x ProcessInstancePageRequest) d.ProcessInstancePageRequest {
 	return d.ProcessInstancePageRequest{
-		From: x.From,
-		Size: x.Size,
+		From:  x.From,
+		Size:  x.Size,
+		After: x.After,
 	}
 }
 
