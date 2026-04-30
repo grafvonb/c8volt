@@ -100,9 +100,8 @@ func TestDeleteProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireDeleteDryRunPreviewPayload(t, payload, want)
 }
 
-// TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope verifies
-// human dry-run output includes selected, root, and in-scope keys.
-func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *testing.T) {
+// TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose verifies human dry-run output keeps key lists verbose-only.
+func TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -125,6 +124,18 @@ func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *test
 	require.Contains(t, output, "process-instance trees to delete: 1")
 	require.Contains(t, output, "process instances in scope: 3")
 	require.Contains(t, output, "scope: complete")
+	require.NotContains(t, output, "selected process-instance keys")
+	require.NotContains(t, output, "root process-instance tree keys")
+	require.NotContains(t, output, "in-scope process-instance keys")
+	require.NotContains(t, output, "root-human")
+	require.NotContains(t, output, "child-human")
+	require.NotContains(t, output, "sibling-human")
+	require.NotContains(t, output, "no mutation submitted")
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+	output = buf.String()
 	require.Contains(t, output, "selected process-instance keys: child-human")
 	require.Contains(t, output, "root process-instance tree keys: root-human")
 	require.Contains(t, output, "in-scope process-instance keys: root-human, child-human, sibling-human")
@@ -156,6 +167,7 @@ func TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInst
 	require.Contains(t, buf.String(), "process instances not in final state: 1 (states: ACTIVE; delete cannot remove them directly; use --force to cancel before delete; use --verbose to list keys)")
 	require.NotContains(t, buf.String(), "done-1=TERMINATED")
 	require.NotContains(t, buf.String(), "active-1=ACTIVE")
+	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 
 	buf.Reset()
 	flagVerbose = true
@@ -241,9 +253,9 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "dry run: delete process-instance")
-	require.Contains(t, buf.String(), "selected process-instance keys: child-1")
-	require.Contains(t, buf.String(), "root process-instance tree keys: root-1")
-	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1")
+	require.NotContains(t, buf.String(), "selected process-instance keys")
+	require.NotContains(t, buf.String(), "root process-instance tree keys")
+	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 	started, stopped, msgs := sink.Snapshot()
 	require.Equal(t, 1, started)
@@ -292,7 +304,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "process instances in scope: 3")
 	require.Contains(t, buf.String(), "scope: complete")
-	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1, child-2")
+	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 

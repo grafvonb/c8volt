@@ -246,9 +246,11 @@ func renderProcessInstanceDryRunPreview(cmd *cobra.Command, preview processInsta
 	printProcessInstanceDryRunSelectedFinalState(cmd, preview.Operation, preview.SelectedFinalState)
 	printProcessInstanceDryRunRequiresCancelBeforeDelete(cmd, preview.Operation, preview.RequiresCancelBeforeDelete)
 	printProcessInstanceDryRunScope(cmd, preview.TraversalOutcome, preview.Warning, preview.MissingAncestors)
-	printProcessInstanceDryRunKeys(cmd, "selected process-instance keys", preview.RequestedKeys)
-	printProcessInstanceDryRunKeys(cmd, "root process-instance tree keys", preview.ResolvedRoots)
-	printProcessInstanceDryRunKeys(cmd, "in-scope process-instance keys", preview.AffectedFamilyKeys)
+	if flagVerbose {
+		printProcessInstanceDryRunKeys(cmd, "selected process-instance keys", preview.RequestedKeys)
+		printProcessInstanceDryRunKeys(cmd, "root process-instance tree keys", preview.ResolvedRoots)
+		printProcessInstanceDryRunKeys(cmd, "in-scope process-instance keys", preview.AffectedFamilyKeys)
+	}
 	return nil
 }
 
@@ -276,7 +278,7 @@ func renderProcessInstanceDryRunResult[T any](cmd *cobra.Command, payload T) err
 	return renderSucceededResult(cmd, payload)
 }
 
-// printProcessInstanceDryRunKeys writes a labeled dry-run key list for human output.
+// printProcessInstanceDryRunKeys writes a labeled verbose dry-run key list for human output.
 func printProcessInstanceDryRunKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {
 		renderHumanLine(cmd, "%s: none", label)
