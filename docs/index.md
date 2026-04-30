@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-187-g0ec3d57-dirty`, commit `0ec3d57`, built `2026-04-29T19:14:56Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-191-g3e6b56d-dirty`, commit `3e6b56d`, built `2026-04-30T04:42:55Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -232,6 +232,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
 ./c8volt get pi --end-date-before 2026-03-31 --state completed
 ```
+
+Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 

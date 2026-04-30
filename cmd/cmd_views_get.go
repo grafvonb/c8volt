@@ -39,7 +39,7 @@ func oneLinePI(it process.ProcessInstance) string {
 	}
 	eTag := ""
 	if it.EndDate != "" {
-		eTag = " e:" + it.EndDate
+		eTag = " e:" + processInstanceTimestampMillis(it.EndDate)
 	}
 	vTag := ""
 	if it.ProcessVersionTag != "" {
@@ -55,10 +55,25 @@ func oneLinePI(it process.ProcessInstance) string {
 			}
 		}
 	}
+	incidentTag := ""
+	if it.Incident {
+		incidentTag = " inc!"
+	}
 	return fmt.Sprintf(
-		"%-16s %s %s v%d%s %-10s s:%-20s%s%s i:%t%s",
-		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag, it.State, it.StartDate, eTag, pTag, it.Incident, ageTag,
+		"%-16s %s %s v%d%s %-10s s:%-20s%s%s%s%s",
+		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag, it.State, processInstanceTimestampMillis(it.StartDate), eTag, pTag, incidentTag, ageTag,
 	)
+}
+
+func processInstanceTimestampMillis(value string) string {
+	if value == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return value
+	}
+	return t.Format("2006-01-02T15:04:05.000Z07:00")
 }
 
 type processInstanceAgeMeta struct {

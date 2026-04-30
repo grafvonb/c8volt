@@ -224,6 +224,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --end-date-before 2026-03-31 --state completed
 ```
 
+Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
+
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
 ## Configuration Notes
