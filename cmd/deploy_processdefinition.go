@@ -19,8 +19,8 @@ var deployProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Deploy BPMN process definition files",
 	Long: "Deploy BPMN process definition files and report the deployed definitions.\n\n" +
-		"By default c8volt waits until deployment is confirmed before returning success. Use --run when you want to start one process instance for each deployed definition as a smoke test.\n\n" +
-		"Use --no-wait when accepted deployment work is enough for the current step, then verify later with `get pd`.",
+		"By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.\n\n" +
+		"Add --no-wait to verify later with `get pd`.",
 	Example: `  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
   ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn
   ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
@@ -77,11 +77,11 @@ func init() {
 	deployCmd.AddCommand(deployProcessDefinitionCmd)
 
 	fs := deployProcessDefinitionCmd.Flags()
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deployment to be fully processed")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deployment is accepted")
 	fs.StringSliceVarP(&flagDeployPDFiles, "file", "f", nil, "paths to BPMN/YAML file(s) or '-' for stdin")
 	_ = deployProcessDefinitionCmd.MarkFlagRequired("file")
 
-	fs.BoolVar(&flagDeployPDWithRun, "run", false, "run single process instance without vars after deploying process definition(s)")
+	fs.BoolVar(&flagDeployPDWithRun, "run", false, "start one process instance per deployed definition")
 
 	setCommandMutation(deployProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deployProcessDefinitionCmd, ContractSupportFull)

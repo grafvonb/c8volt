@@ -116,9 +116,8 @@ func TestCapabilitiesCommand_HelpDocumentsCanonicalAutomationSurface(t *testing.
 	output := executeRootForTest(t, "capabilities", "--help")
 
 	require.Contains(t, output, "public c8volt command contract for scripts")
-	require.Contains(t, output, "c8volt capabilities --json")
 	require.Contains(t, output, "command paths, flags, output modes")
-	require.Contains(t, output, "Human help stays focused on usage")
+	require.Contains(t, output, "automation support")
 	require.Contains(t, output, "./c8volt capabilities")
 	require.Contains(t, output, "./c8volt capabilities --json")
 }
@@ -135,9 +134,8 @@ func TestCapabilitiesHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T)
 
 	for _, anchor := range []string{
 		"public c8volt command contract for scripts",
-		"c8volt capabilities --json",
 		"command paths, flags, output modes",
-		"Human help stays focused on usage",
+		"automation support",
 	} {
 		require.Contains(t, helpOutput, anchor)
 		require.Contains(t, markdown, anchor)

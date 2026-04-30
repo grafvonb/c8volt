@@ -39,7 +39,7 @@ func TestGetHelp(t *testing.T) {
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
 	require.Contains(t, output, "resource")
-	require.Contains(t, output, "look before acting")
+	require.Contains(t, output, "Check cluster health")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get pi --state active")
 	require.NotContains(t, output, "canonical non-interactive contract")
@@ -124,7 +124,7 @@ func TestGetResourceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "resource", "--help")
 
 	require.Contains(t, output, "Get a single resource by id")
-	require.Contains(t, output, "when you already know the resource id")
+	require.Contains(t, output, "Requires --id")
 	require.Contains(t, output, "c8volt get resource")
 	require.Contains(t, output, "--id")
 	require.Contains(t, output, "resource id to fetch")
@@ -167,11 +167,10 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-definition", "--help")
 
 	require.Contains(t, output, "List or fetch deployed process definitions")
-	require.Contains(t, output, "Use this command to inspect deployed BPMN models")
+	require.Contains(t, output, "Inspect deployed BPMN models")
 	require.Contains(t, output, "Use `--xml` only with `--key`")
-	require.Contains(t, output, "With `--stat` on Camunda `8.8` or `8.9`")
-	require.Contains(t, output, "`in:<count>`")
-	require.Contains(t, output, "instances with incidents")
+	require.Contains(t, output, "`--stat` requires Camunda `8.8` or `8.9`")
+	require.Contains(t, output, "prints exact-version")
 	require.Contains(t, output, "Camunda `8.7` does not support")
 	require.Contains(t, output, "./c8volt get pd --key <process-definition-key> --json")
 }

@@ -24,7 +24,7 @@ func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
 	output := executeRootForTest(t, "config", "--help")
 
 	require.Contains(t, output, "Inspect and validate c8volt configuration")
-	require.Contains(t, output, "effective settings c8volt will use")
+	require.Contains(t, output, "view effective settings")
 	require.Contains(t, output, "`config show`")
 	require.Contains(t, output, "./c8volt config show")
 	require.Contains(t, output, "./c8volt config show --template")
@@ -33,10 +33,9 @@ func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
 func TestConfigShowHelp_ExplainsEffectiveConfigExamples(t *testing.T) {
 	output := executeRootForTest(t, "config", "show", "--help")
 
-	require.Contains(t, output, "Show the effective configuration with sensitive values sanitized")
+	require.Contains(t, output, "Show effective configuration with sensitive values sanitized")
 	require.Contains(t, output, "flag > env > profile > base config > default")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config show --validate")
-	require.Contains(t, output, "C8VOLT_AUTH_MODE=oauth2 ./c8volt --config ./config.yaml config show --validate")
 }
 
 // Verifies config show surfaces invalid effective configuration through the shared failure model.

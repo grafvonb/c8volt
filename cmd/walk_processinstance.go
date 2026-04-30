@@ -27,7 +27,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
-		"Use this command when you need to understand ancestry or descendants before cancelling, deleting, or checking downstream effects. Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.\n\n" +
+		"Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree

@@ -17,9 +17,8 @@ var flagGetResourceID string
 var getResourceCmd = &cobra.Command{
 	Use:   "resource",
 	Short: "Get a resource by id",
-	Long: "Get a single resource by id.\n" +
-		"It requires --id to select exactly one resource and renders the standard single-resource view.\n\n" +
-		"Use this command when you already know the resource id and need the stored metadata or payload reference.",
+	Long: "Get a single resource by id.\n\n" +
+		"Requires --id.",
 	Example: `  ./c8volt get resource --id <resource-key>
   ./c8volt --json get resource --id <resource-key>
   ./c8volt --keys-only get resource --id <resource-key>`,

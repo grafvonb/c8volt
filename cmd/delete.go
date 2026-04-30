@@ -12,9 +12,8 @@ var deleteCmd = &cobra.Command{
 	Short: "Delete process instances or definitions",
 	Long: `Delete process instances or process definitions.
 
-Use this command family when workflow data should be removed. Leaf commands explain
-what c8volt validates first, when confirmation is required, and which follow-up
-command confirms the result.`,
+Leaf commands validate scope, require confirmation for destructive steps, and
+show verification examples.`,
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --state completed --batch-size 200 --auto-confirm
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm`,

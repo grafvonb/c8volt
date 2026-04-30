@@ -26,7 +26,7 @@ var embedDeployCmd = &cobra.Command{
 	Short: "Deploy bundled BPMN fixtures",
 	Long: "Deploy bundled BPMN fixtures.\n\n" +
 		"Use `--all` for the configured Camunda version, or pass one or more `--file` values from `embed list`. " +
-		"By default c8volt waits for deployment confirmation. Add `--run` when you want one process instance started after deployment.",
+		"Add --run to start one process instance after deployment.",
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all
   ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
@@ -103,10 +103,10 @@ var embedDeployCmd = &cobra.Command{
 func init() {
 	embedCmd.AddCommand(embedDeployCmd)
 	fs := embedDeployCmd.Flags()
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deployment to be fully processed")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deployment is accepted")
 	fs.StringSliceVarP(&flagEmbedDeployFileNames, "file", "f", nil, "embedded file(s) to deploy (repeatable)")
 	fs.BoolVar(&flagEmbedDeployAll, "all", false, "deploy all embedded files for the configured Camunda version")
 	embedDeployCmd.MarkFlagsMutuallyExclusive("file", "all")
 
-	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "run single process instance without vars after deploying process definition(s)")
+	fs.BoolVar(&flagEmbedDeployWithRun, "run", false, "start one process instance after deployment")
 }

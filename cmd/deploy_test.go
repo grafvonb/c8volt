@@ -40,9 +40,9 @@ func TestDeployHelp_DocumentsWaitContractsAndFollowUp(t *testing.T) {
 	require.Contains(t, output, "process-definition")
 
 	output = assertCommandHelpOutput(t, []string{"deploy", "process-definition"}, []string{
-		"By default c8volt waits until deployment is confirmed",
-		"Use --run when you want to start one process instance",
-		"verify later with `get pd`",
+		"By default c8volt waits for deployment confirmation",
+		"Use --run to start one process instance",
+		"Add --no-wait to verify later with `get pd`",
 		"./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --no-wait",
 	}, nil)
 	require.Contains(t, output, "--run")

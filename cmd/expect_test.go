@@ -32,9 +32,9 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{
-		"Use this command after `run`, `cancel`, or `delete`",
-		"explicit post-action assertion",
-		"c8volt treats both as a match",
+		"Use after `run`, `cancel`, or `delete`",
+		"final state is visible",
+		"canceled waits also match terminated",
 		"./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -",
 	}, nil)
 	require.Contains(t, output, "--state")

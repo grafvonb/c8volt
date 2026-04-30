@@ -12,9 +12,8 @@ Delete process instances or definitions
 
 Delete process instances or process definitions.
 
-Use this command family when workflow data should be removed. Leaf commands explain
-what c8volt validates first, when confirmation is required, and which follow-up
-command confirms the result.
+Leaf commands validate scope, require confirmation for destructive steps, and
+show verification examples.
 
 ```
 c8volt delete [flags]
@@ -40,16 +39,16 @@ c8volt delete [flags]
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
-      --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
+      --debug              enable debug logging
   -j, --json               output as JSON (where applicable)
-      --keys-only          output as keys only (where applicable), can be used for piping to other commands
+      --keys-only          output keys only (where applicable)
       --log-level string   log level (debug, info, warn, error) (default "info")
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress all output, except errors, overrides --log-level
+  -q, --quiet              suppress output except errors
       --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
       --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            adds additional verbosity to the output, e.g. for progress indication
+  -v, --verbose            show additional output
 ```
 
 ### SEE ALSO

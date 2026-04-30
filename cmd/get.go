@@ -12,9 +12,8 @@ var getCmd = &cobra.Command{
 	Short: "Inspect cluster, process, and resource state",
 	Long: `Inspect cluster, process, and resource state without changing it.
 
-Use this command family when you want to look before acting: check cluster health,
-list deployed process definitions, inspect process instances, or fetch a known resource.
-The leaf commands document their filters and output modes.`,
+Check cluster health, list deployed process definitions, inspect process
+instances, or fetch a known resource.`,
 	Example: `  ./c8volt get cluster topology
   ./c8volt get pd --latest
   ./c8volt get pi --state active

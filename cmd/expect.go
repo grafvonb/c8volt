@@ -12,8 +12,8 @@ var expectCmd = &cobra.Command{
 	Short: "Wait for process instances to reach a state",
 	Long: `Wait for process instances to reach a state.
 
-Use this command family after run, cancel, or delete when success depends on an
-observed process-instance state rather than an accepted request.`,
+Use after run, cancel, or delete when success depends on an observed
+process-instance state.`,
 	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
   ./c8volt expect pi --key <process-instance-key> --state absent
   ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -`,

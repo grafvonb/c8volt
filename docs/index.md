@@ -5,9 +5,9 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-187-g0ec3d57-dirty`, commit `0ec3d57`, built `2026-04-29T19:14:56Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-192-g23dc1b3-dirty`, commit `23dc1b3`, built `2026-04-30T04:57:59Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
-<img src="./logo/c8volt_logo_3_transparent_w_shadow_400x244.png" alt="c8volt logo" />
+<img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
@@ -233,6 +233,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --end-date-before 2026-03-31 --state completed
 ```
 
+Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
+
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
 ## Configuration Notes
@@ -416,6 +418,7 @@ c8volt
 |   |-- process-instance      List or fetch process instances
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
+|-- completion                Generate shell completion scripts
 |-- config                    Inspect and validate c8volt configuration
 `-- version                   Print build and compatibility information
 ```

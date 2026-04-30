@@ -12,9 +12,8 @@ var embedCmd = &cobra.Command{
 	Short: "Use bundled BPMN fixtures",
 	Long: `Use bundled BPMN fixtures.
 
-Choose ` + "`embed list`" + ` to see what ships in the binary, ` + "`embed deploy`" + ` to
-create a runnable test environment quickly, or ` + "`embed export`" + ` when you want to
-inspect or edit the files locally.`,
+Use ` + "`embed list`" + ` to see bundled files, ` + "`embed deploy`" + ` to deploy fixtures, or
+` + "`embed export`" + ` to inspect or edit files locally.`,
 	Example: `  ./c8volt embed list
   ./c8volt embed deploy --all --run
   ./c8volt embed export --all --out ./fixtures`,

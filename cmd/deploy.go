@@ -19,8 +19,8 @@ var deployCmd = &cobra.Command{
 	Short: "Deploy BPMN resources to Camunda",
 	Long: `Deploy BPMN resources to Camunda.
 
-Use ` + "`deploy pd`" + ` for local BPMN files or stdin. Use ` + "`embed deploy`" + ` when
-you want the bundled fixtures that ship with c8volt.`,
+Use ` + "`deploy pd`" + ` for local BPMN files or stdin. Use ` + "`embed deploy`" + ` for bundled
+fixtures.`,
 	Example: `  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
   ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
   ./c8volt embed deploy --all --run`,

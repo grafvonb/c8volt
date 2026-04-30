@@ -12,7 +12,7 @@ Inspect the parent/child tree of process instances
 
 Inspect the parent/child tree of process instances.
 
-Use this command when you need to understand ancestry or descendants before cancelling, deleting, or checking downstream effects. Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.
+Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.
 
 When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
 
@@ -47,16 +47,16 @@ c8volt walk process-instance [flags]
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
-      --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
+      --debug              enable debug logging
   -j, --json               output as JSON (where applicable)
-      --keys-only          output as keys only (where applicable), can be used for piping to other commands
+      --keys-only          output keys only (where applicable)
       --log-level string   log level (debug, info, warn, error) (default "info")
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress all output, except errors, overrides --log-level
+  -q, --quiet              suppress output except errors
       --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
       --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            adds additional verbosity to the output, e.g. for progress indication
+  -v, --verbose            show additional output
 ```
 
 ### SEE ALSO

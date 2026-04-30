@@ -54,21 +54,13 @@ var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
-		"Use this command to inspect workflow instances by key, process-definition selectors, state, or date filters.\n\n" +
-		"Use --total when you only need the numeric count of matching process instances. Direct --key lookups stay strict: if the requested process instance is missing, c8volt returns the normal not-found error.\n\n" +
-		"When search results span multiple pages, human-oriented output prompts before continuing unless --auto-confirm or --json is set. JSON mode consumes remaining pages and returns one aggregated result.",
+		"Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.\n\n" +
+		"Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --state active --total
-  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
-  ./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --batch-size 250
   ./c8volt get pi --state active --batch-size 250 --limit 25
-  ./c8volt get pi --state active --auto-confirm
-  ./c8volt --json get pi --state active --batch-size 250
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt get pi --start-date-older-days 7 --start-date-newer-days 30
-  ./c8volt get pi --end-date-before 2026-03-31 --state completed
-  ./c8volt get pi --end-date-newer-days 14 --state completed
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -182,10 +174,10 @@ func init() {
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
 
-	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances, meaning instances with empty parent key")
-	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances, meaning instances that have a parent key set")
+	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "show only root process instances")
+	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "show only child process instances")
 
-	fs.BoolVar(&flagGetPIOrphanChildrenOnly, "orphan-children-only", false, "show only child instances where parent key is set but the parent process instance does not exist (anymore)")
+	fs.BoolVar(&flagGetPIOrphanChildrenOnly, "orphan-children-only", false, "show only child instances with missing parents")
 
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")

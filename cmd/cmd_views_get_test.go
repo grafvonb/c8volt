@@ -81,6 +81,46 @@ func TestOneLinePI_WithAgeToday(t *testing.T) {
 	require.NotContains(t, line, "day ago")
 }
 
+func TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists(t *testing.T) {
+	base := process.ProcessInstance{
+		Key:            "2251799813758959",
+		TenantId:       "<default>",
+		BpmnProcessId:  "Process_18qgpch",
+		ProcessVersion: 6,
+		State:          process.StateActive,
+		StartDate:      "2026-02-01T07:00:00.000Z",
+	}
+
+	line := oneLinePI(base)
+	require.NotContains(t, line, "inc!")
+	require.NotContains(t, line, "i:false")
+
+	base.Incident = true
+	line = oneLinePI(base)
+	require.Contains(t, line, " inc!")
+	require.NotContains(t, line, "i:true")
+}
+
+func TestOneLinePI_RendersStartAndEndDateWithThreeDigitMilliseconds(t *testing.T) {
+	line := oneLinePI(process.ProcessInstance{
+		Key:            "2251799813758959",
+		TenantId:       "<default>",
+		BpmnProcessId:  "Process_18qgpch",
+		ProcessVersion: 6,
+		State:          process.StateActive,
+		StartDate:      "2026-04-13T18:03:24.36Z",
+		EndDate:        "2026-04-13T18:03:24Z",
+	})
+
+	require.Contains(t, line, "s:2026-04-13T18:03:24.360Z")
+	require.Contains(t, line, "e:2026-04-13T18:03:24.000Z")
+}
+
+func TestProcessInstanceTimestampMillis_LeavesInvalidValuesUnchanged(t *testing.T) {
+	require.Equal(t, "not-a-date", processInstanceTimestampMillis("not-a-date"))
+	require.Equal(t, "", processInstanceTimestampMillis(""))
+}
+
 func TestProcessInstancesWithAgeMeta(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {

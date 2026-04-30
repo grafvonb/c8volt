@@ -30,14 +30,11 @@ var getProcessDefinitionCmd = &cobra.Command{
 	Short: "List or fetch deployed process definitions",
 	Long: `List or fetch deployed process definitions.
 
-Use this command to inspect deployed BPMN models by key, BPMN process ID,
-version selectors, or latest deployed version. Use ` + "`--xml`" + ` only with ` + "`--key`" + `
-when you need the raw BPMN XML for one definition.
+Inspect deployed BPMN models by key, BPMN process ID, version selectors, or
+latest deployed version. Use ` + "`--xml`" + ` only with ` + "`--key`" + `.
 
-With ` + "`--stat`" + ` on Camunda ` + "`8.8`" + ` or ` + "`8.9`" + `, c8volt prints exact-version counts
-as ` + "`ac:<count>`" + ` active, ` + "`cp:<count>`" + ` completed, ` + "`cx:<count>`" + ` canceled, and
-` + "`in:<count>`" + ` instances with incidents. Camunda ` + "`8.7`" + ` does not support this
-native statistics endpoint.`,
+` + "`--stat`" + ` requires Camunda ` + "`8.8`" + ` or ` + "`8.9`" + ` and prints exact-version
+counts. Camunda ` + "`8.7`" + ` does not support native statistics.`,
 	Example: `  ./c8volt get pd --latest
   ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
   ./c8volt get pd --key <process-definition-key> --json

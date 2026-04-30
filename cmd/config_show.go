@@ -20,15 +20,10 @@ var (
 var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show effective configuration",
-	Long: `Show the effective configuration with sensitive values sanitized.
+	Long: `Show effective configuration with sensitive values sanitized.
 
-Precedence follows one shared contract for all config-backed settings:
-flag > env > profile > base config > default.
-
-Use this command to inspect the values a command will actually use after
-applying flags, environment variables, profile overlays, base config, and
-defaults. Profile values overlay base config field by field and never override
-an explicit flag or environment winner.`,
+Precedence: flag > env > profile > base config > default.
+Use --validate to check the effective config, or --template for a blank template.`,
 	Example: `  ./c8volt config show
   ./c8volt --config ./config.yaml --profile prod config show
   ./c8volt --config ./config.yaml config show --validate
@@ -72,13 +67,6 @@ func init() {
 	configCmd.AddCommand(configShowCmd)
 
 	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "validate the effective configuration and exit with an error code if invalid")
-	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "template configuration with values blanked out (copy-paste ready)")
+	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "print a blank configuration template")
 	configShowCmd.MarkFlagsMutuallyExclusive("validate", "template")
-	configShowCmd.Example += `
-
-# Inspect how flags override env/profile/config for the current command invocation
-./c8volt --config ./config.yaml --profile prod --tenant ops-tenant config show
-
-# Validate the effective config after env/profile/config resolution
-C8VOLT_AUTH_MODE=oauth2 ./c8volt --config ./config.yaml config show --validate`
 }

@@ -25,8 +25,8 @@ var runProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Start process instances and confirm activation",
 	Long: "Start process instances and confirm activation.\n\n" +
-		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition. By default c8volt waits until the created instances can be confirmed as active.\n\n" +
-		"Use --no-wait when accepted-but-not-yet-confirmed work is enough for the current step, then verify later with `get pi`, `expect pi`, or `walk pi`.",
+		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
+		"By default c8volt waits for active instances. Add --no-wait to verify later with `get pi`, `expect pi`, or `walk pi`.",
 	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
@@ -137,7 +137,7 @@ func init() {
 	fs.IntVarP(&flagRunPICount, "count", "n", 1, "number of instances to start for a single process definition")
 	fs.StringVar(&flagRunPIVars, "vars", "", "JSON-encoded variables to pass to the started process instance(s)")
 
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the creation to be fully processed")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after creation is accepted")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")

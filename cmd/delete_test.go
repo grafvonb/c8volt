@@ -617,7 +617,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
 		"Delete process instances or process definitions",
 		"--auto-confirm",
-		"which follow-up",
+		"show verification examples",
 		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
@@ -627,7 +627,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"validates the affected tree",
 		"Use --force when active instances should be cancelled",
 		"Use --auto-confirm for unattended destructive runs",
-		"`expect pi --state absent`",
+		"Add --no-wait to verify later with `get pi` or `expect pi --state absent`",
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
 		"./c8volt delete pi --state completed --batch-size 250 --limit 25",
@@ -641,7 +641,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Delete process definition resources from Zeebe",
 		"Without --allow-inconsistent",
 		"Use --auto-confirm for unattended destructive runs",
-		"`get pd`",
+		"Add --no-wait to verify later with `get pd`",
 		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --allow-inconsistent --auto-confirm --no-wait",
 	}, nil)
 	require.Contains(t, output, "--allow-inconsistent")

@@ -12,9 +12,8 @@ var configCmd = &cobra.Command{
 	Short: "Inspect and validate c8volt configuration",
 	Long: `Inspect and validate c8volt configuration.
 
-Use ` + "`config show`" + ` to see the effective settings c8volt will use after flags,
-environment variables, profiles, config files, and defaults are resolved. Generate a
-template first when setting up a new environment.`,
+Use ` + "`config show`" + ` to view effective settings, validate configuration, or print
+a blank template.`,
 	Example: `  ./c8volt config show
   ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
