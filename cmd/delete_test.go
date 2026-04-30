@@ -22,6 +22,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -209,7 +210,7 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
-	sink := &fakeCommandActivitySink{}
+	sink := &activitysink.Sink{}
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
 
 	prevConfirm := confirmCmdOrAbortFn
@@ -244,9 +245,10 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Contains(t, buf.String(), "root process-instance tree keys: root-1")
 	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1")
 	require.NotContains(t, buf.String(), "no mutation submitted")
-	require.Equal(t, 1, sink.started)
-	require.Equal(t, 1, sink.stopped)
-	require.Equal(t, []string{"preparing delete dry-run scope for 1 process instance(s)"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"preparing delete dry-run scope for 1 process instance(s)"}, msgs)
 }
 
 // TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation
@@ -603,6 +605,7 @@ func TestDeleteProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 	require.Equal(t, 2, results.DryRunPreviews[0].RequestedCount)
 }
 
+// TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig verifies command-local timeout precedence.
 func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "24s")
 
@@ -613,6 +616,7 @@ func TestDeleteCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfi
 	require.Equal(t, 46*time.Second, cfg.App.Backoff.Timeout)
 }
 
+// TestDeleteHelp_DocumentsDestructiveConfirmationPaths verifies delete help explains confirmation paths.
 func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"delete"}, []string{
 		"Delete process instances or process definitions",
@@ -714,6 +718,7 @@ func TestDeleteProcessInstanceCommand_RejectsKeyAndRelativeDayFilters(t *testing
 	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+// TestDeleteProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags verifies paging flag validation errors.
 func TestDeleteProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -885,6 +890,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+// TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI verifies v8.9 deletion uses the native API.
 func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *testing.T) {
 	var requests []string
 	var deleted []string
@@ -941,6 +947,7 @@ func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *
 	require.Contains(t, stderr, "INFO")
 }
 
+// TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight verifies keyed preflight warnings are printed.
 func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -991,6 +998,7 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
+// TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight verifies paged preflight warnings are printed.
 func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -1312,6 +1320,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
+// TestDeleteProcessInstanceCommand_SearchPagingLimitFlow verifies delete search stops at the requested limit.
 func TestDeleteProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	var requests safeSlice[string]
 	var deleted safeSlice[string]
@@ -1400,6 +1409,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: yes, next step: limit-reached")
 }
 
+// TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow verifies batch size and limit interact correctly.
 func TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
 	var requests safeSlice[string]
 	var deleted safeSlice[string]
@@ -1477,6 +1487,7 @@ func TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 	require.Contains(t, output, "page size: 4, current page: 2, total so far: 2, more matches: yes, next step: limit-reached")
 }
 
+// TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow verifies automation mode auto-continues paged delete searches.
 func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	var requests safeSlice[string]
 	var deleted safeSlice[string]
@@ -1769,6 +1780,7 @@ func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	require.Contains(t, stderr, "INFO")
 }
 
+// TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail verifies direct-key failures keep root detail.
 func TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -1812,6 +1824,7 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 	require.Contains(t, string(output), "either --key, stdin keys, or --bpmn-process-id must be provided")
 }
 
+// TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector verifies stdin input counts as a delete target.
 func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -1823,6 +1836,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.Contains(t, string(output), "preparation for deleting")
 }
 
+// TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant verifies latest-definition lookup uses resolved tenant context.
 func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1889,6 +1903,7 @@ func executeDeleteProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return out, nil
 }
 
+// TestDeleteProcessInstanceCommand_RejectsRemovedCountFlagHelper is the helper-process entrypoint for removed --count validation.
 func TestDeleteProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1902,6 +1917,7 @@ func TestDeleteProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T
 	Execute()
 }
 
+// TestDeleteProcessInstanceCommand_RejectsInvalidLimitHelper is the helper-process entrypoint for invalid --limit validation.
 func TestDeleteProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1915,6 +1931,7 @@ func TestDeleteProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
 	Execute()
 }
 
+// TestDeleteProcessInstanceCommand_RejectsLimitWithKeyHelper is the helper-process entrypoint for --limit with --key validation.
 func TestDeleteProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1942,6 +1959,7 @@ func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
+// TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper is the helper-process entrypoint for v8.7 paging.
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2108,6 +2126,7 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelectorHelper(t *testing.
 	_ = root.Execute()
 }
 
+// TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector is the helper-process entrypoint for stdin target validation.
 func TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2134,6 +2153,7 @@ func TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t
 	_ = root.Execute()
 }
 
+// TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper is the helper-process entrypoint for tenant lookup validation.
 func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2146,6 +2166,7 @@ func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t 
 	_ = root.Execute()
 }
 
+// TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper is the helper-process entrypoint for direct-key failure detail.
 func TestDeleteProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

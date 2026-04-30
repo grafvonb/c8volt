@@ -3,7 +3,11 @@
 
 package domain
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/grafvonb/c8volt/toolx"
+)
 
 type ProcessDefinition struct {
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
@@ -32,8 +36,25 @@ type ProcessDefinitionFilter struct {
 	IsLatestVersion   bool   `json:"isLatestVersion,omitempty"`
 }
 
+func (f ProcessDefinitionFilter) String() string {
+	parts := make([]string, 0, 6)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = toolx.AppendQuotedField(parts, "key", f.Key)
+	parts = toolx.AppendQuotedField(parts, "tenantId", f.TenantId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", f.ProcessVersionTag)
+	parts = toolx.AppendTrueBoolField(parts, "isLatestVersion", f.IsLatestVersion)
+	return toolx.FormatActiveFields(parts)
+}
+
 type ProcessDefinitionStatisticsFilter struct {
 	TenantId string `json:"tenantId,omitempty"`
+}
+
+func (f ProcessDefinitionStatisticsFilter) String() string {
+	parts := make([]string, 0, 1)
+	parts = toolx.AppendQuotedField(parts, "tenantId", f.TenantId)
+	return toolx.FormatActiveFields(parts)
 }
 
 func SortByVersionDesc(pds []ProcessDefinition) {

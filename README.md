@@ -200,7 +200,7 @@ Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of
 
 Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
-When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total.
+When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
 
 ### Pull Exact Artifacts
 
@@ -210,7 +210,7 @@ When a script only needs the count of matching process instances, `./c8volt get 
 ./c8volt get resource --id <resource-key>
 ```
 
-For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process-definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `in:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
+For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for the exact process-definition version: `ac:<count>` for active, `cp:<count>` for completed, `cx:<count>` for canceled, and `inc:<count>` for process instances having at least one incident. Camunda `8.7` rejects statistics because the generated client surface does not provide the same native statistics endpoints.
 
 ### Narrow Process Instances
 

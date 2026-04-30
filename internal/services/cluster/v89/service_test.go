@@ -45,6 +45,7 @@ func (m *mockClusterClient) GetLicenseWithResponse(ctx context.Context, reqEdito
 var testTopologyURL = &url.URL{Scheme: "https", Host: "camunda.local", Path: "/cluster/topology"}
 var testLicenseURL = &url.URL{Scheme: "https", Host: "camunda.local", Path: "/cluster/license"}
 
+// newHTTPResponse builds a minimal v8.9 cluster HTTP response for error normalization tests.
 func newHTTPResponse(u *url.URL, statusCode int, status string) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,

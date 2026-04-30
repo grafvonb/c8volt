@@ -91,7 +91,7 @@ func TestCapabilitiesCommand_ReportsRepresentativeFamilyMetadata(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "return only the numeric total of matching process instances; capped backend totals stay lower bounds",
+		Description: "return only the numeric total of matching process instances; capped backend totals are counted by paging",
 	})
 	require.Contains(t, runPI.OutputModes, OutputModeContract{
 		Name:             "json",
@@ -656,16 +656,16 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 			versionLabel:      "8.8",
 			incidents:         3,
 			supported:         true,
-			expectedSegment:   "[ac:4 cp:9 cx:2 in:3]",
-			unexpectedSegment: "in:-",
+			expectedSegment:   "[ac:4 cp:9 cx:2 inc:3]",
+			unexpectedSegment: "inc:-",
 		},
 		{
 			name:              "v8.9 renders supported zero incident count",
 			versionLabel:      "8.9",
 			incidents:         0,
 			supported:         true,
-			expectedSegment:   "[ac:4 cp:9 cx:2 in:-]",
-			unexpectedSegment: "in:0",
+			expectedSegment:   "[ac:4 cp:9 cx:2 inc:-]",
+			unexpectedSegment: "inc:0",
 		},
 		{
 			name:              "v8.7 omits unsupported incident count",
@@ -673,7 +673,7 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 			incidents:         7,
 			supported:         false,
 			expectedSegment:   "[ac:4 cp:9 cx:2]",
-			unexpectedSegment: " in:",
+			unexpectedSegment: " inc:",
 		},
 	}
 

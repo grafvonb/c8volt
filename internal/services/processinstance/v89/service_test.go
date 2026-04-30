@@ -668,6 +668,7 @@ func searchResponse(t *testing.T, statusCode int, payload searchProcessInstances
 	}
 }
 
+// newTestService creates a v8.9 process-instance service with a strict injected Camunda client.
 func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamundaClient) *v89.Service {
 	t.Helper()
 
@@ -681,6 +682,7 @@ func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamunda
 	return svc
 }
 
+// newStrictCamundaClient returns a v8.9 Camunda client mock that fails on unexpected calls.
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	t.Helper()
 	return &mockCamundaClient{
@@ -790,10 +792,12 @@ func readBody(t *testing.T, body io.Reader) string {
 	return string(b)
 }
 
+// newHTTPResponse builds a minimal HTTP response for v8.9 process-instance error handling tests.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	return newHTTPResponseWithContentType(method, rawURL, statusCode, status, "")
 }
 
+// newHTTPResponseWithContentType builds a v8.9 HTTP response with an explicit content type.
 func newHTTPResponseWithContentType(method, rawURL string, statusCode int, status string, contentType string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {

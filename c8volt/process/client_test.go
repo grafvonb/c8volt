@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
-	"sync"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -16,33 +15,12 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeActivitySink struct {
-	mu      sync.Mutex
-	started int
-	stopped int
-	msgs    []string
-}
-
-// StartActivity records activity starts for facade activity-indicator assertions.
-func (s *fakeActivitySink) StartActivity(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.started++
-	s.msgs = append(s.msgs, msg)
-}
-
-// StopActivity records activity stops for facade activity-indicator assertions.
-func (s *fakeActivitySink) StopActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopped++
-}
 
 // TestClient_GetProcessDefinitionXML verifies facade option translation for
 // XML retrieval. The key and call options must pass through unchanged because
@@ -232,7 +210,7 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	piAPI := stubProcessInstanceAPI{
 		searchForProcessInstancesPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 			assert.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "order-process"}, filter)
-			assert.Equal(t, d.ProcessInstancePageRequest{From: 25, Size: 10}, page)
+			assert.Equal(t, d.ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, page)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.ProcessInstancePage{
 				Request:       page,
@@ -241,6 +219,7 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 					Count: 17,
 					Kind:  d.ProcessInstanceReportedTotalKindExact,
 				},
+				EndCursor: "cursor-1",
 				Items: []d.ProcessInstance{
 					{Key: "2251799813711967", BpmnProcessId: "order-process"},
 				},
@@ -251,14 +230,15 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
-	}, ProcessInstancePageRequest{From: 25, Size: 10}, options.WithVerbose())
+	}, ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, options.WithVerbose())
 
 	require.NoError(t, err)
-	assert.Equal(t, ProcessInstancePageRequest{From: 25, Size: 10}, page.Request)
+	assert.Equal(t, ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, page.Request)
 	assert.Equal(t, ProcessInstanceOverflowStateIndeterminate, page.OverflowState)
 	require.NotNil(t, page.ReportedTotal)
 	assert.Equal(t, int64(17), page.ReportedTotal.Count)
 	assert.Equal(t, ProcessInstanceReportedTotalKindExact, page.ReportedTotal.Kind)
+	assert.Equal(t, "cursor-1", page.EndCursor)
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, "2251799813711967", page.Items[0].Key)
 }
@@ -702,7 +682,7 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	t.Parallel()
 
-	sink := &fakeActivitySink{}
+	sink := &activitysink.Sink{}
 	ctx := logging.ToActivityContext(context.Background(), sink)
 	piAPI := stubProcessInstanceAPI{
 		cancelProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
@@ -715,11 +695,10 @@ func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	_, err := cli.CancelProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
 
 	require.NoError(t, err)
-	sink.mu.Lock()
-	defer sink.mu.Unlock()
-	assert.Equal(t, 1, sink.started)
-	assert.Equal(t, 1, sink.stopped)
-	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, msgs)
 }
 
 // TestClient_DeleteProcessInstances_LogsExpandedAffectedScope verifies delete

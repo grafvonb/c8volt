@@ -3,6 +3,8 @@
 
 package process
 
+import "github.com/grafvonb/c8volt/toolx"
+
 type ProcessDefinition struct {
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
 	Key               string                       `json:"key,omitempty"`
@@ -31,6 +33,15 @@ type ProcessDefinitionFilter struct {
 	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
 	ProcessVersion    int32  `json:"processVersion,omitempty"`
 	ProcessVersionTag string `json:"processVersionTag,omitempty"`
+}
+
+func (f ProcessDefinitionFilter) String() string {
+	parts := make([]string, 0, 4)
+	parts = toolx.AppendQuotedField(parts, "key", f.Key)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", f.ProcessVersionTag)
+	return toolx.FormatActiveFields(parts)
 }
 
 type ProcessInstanceData struct {
@@ -64,8 +75,9 @@ type ProcessInstances struct {
 }
 
 type ProcessInstancePageRequest struct {
-	From int32 `json:"from,omitempty"`
-	Size int32 `json:"size,omitempty"`
+	From  int32  `json:"from,omitempty"`
+	Size  int32  `json:"size,omitempty"`
+	After string `json:"after,omitempty"`
 }
 
 type ProcessInstanceOverflowState string
@@ -92,6 +104,7 @@ type ProcessInstancePage struct {
 	Request       ProcessInstancePageRequest    `json:"request,omitempty"`
 	OverflowState ProcessInstanceOverflowState  `json:"overflowState,omitempty"`
 	ReportedTotal *ProcessInstanceReportedTotal `json:"reportedTotal,omitempty"`
+	EndCursor     string                        `json:"endCursor,omitempty"`
 	Items         []ProcessInstance             `json:"items,omitempty"`
 }
 
@@ -109,6 +122,24 @@ type ProcessInstanceFilter struct {
 	ParentKey            string `json:"parentKey,omitempty"`
 	HasParent            *bool  `json:"hasParent,omitempty"`
 	HasIncident          *bool  `json:"hasIncident,omitempty"`
+}
+
+func (f ProcessInstanceFilter) String() string {
+	parts := make([]string, 0, 13)
+	parts = toolx.AppendQuotedField(parts, "key", f.Key)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", f.ProcessVersionTag)
+	parts = toolx.AppendQuotedField(parts, "processDefinitionKey", f.ProcessDefinitionKey)
+	parts = toolx.AppendQuotedField(parts, "startDateAfter", f.StartDateAfter)
+	parts = toolx.AppendQuotedField(parts, "startDateBefore", f.StartDateBefore)
+	parts = toolx.AppendQuotedField(parts, "endDateAfter", f.EndDateAfter)
+	parts = toolx.AppendQuotedField(parts, "endDateBefore", f.EndDateBefore)
+	parts = toolx.AppendRawField(parts, "state", f.State.String())
+	parts = toolx.AppendQuotedField(parts, "parentKey", f.ParentKey)
+	parts = toolx.AppendBoolPtrField(parts, "hasParent", f.HasParent)
+	parts = toolx.AppendBoolPtrField(parts, "hasIncident", f.HasIncident)
+	return toolx.FormatActiveFields(parts)
 }
 
 type Reporter struct {

@@ -176,7 +176,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
+	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %s", filter.String()))
 
 	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
 	if err != nil {
@@ -244,11 +244,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		HasIncident:                 filter.HasIncident,
 		ParentProcessInstanceKey:    parentProcessInstanceKeyFilter,
 	}
-	page := camundav88.SearchQueryPageRequest{}
-	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
-		From:  &pageReq.From,
-		Limit: &pageReq.Size,
-	})
+	page := newSearchQueryPageRequest(pageReq)
 	sort := []camundav88.ProcessInstanceSearchQuerySortRequest{
 		{
 			Field: camundav88.ProcessInstanceSearchQuerySortRequestFieldProcessDefinitionName,
@@ -288,9 +284,35 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		Request:       pageReq,
 		OverflowState: pickProcessInstanceOverflowState(payload.Page, pageReq, len(payload.Items)),
 		ReportedTotal: pickProcessInstanceReportedTotal(payload.Page, len(payload.Items)),
+		EndCursor:     processInstanceEndCursor(payload.Page),
 	}, nil
 }
 
+// newSearchQueryPageRequest builds the v8.8 page request, preferring cursor pagination when available.
+func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav88.SearchQueryPageRequest {
+	page := camundav88.SearchQueryPageRequest{}
+	if pageReq.After != "" {
+		_ = page.FromCursorForwardPagination(camundav88.CursorForwardPagination{
+			After: camundav88.EndCursor(pageReq.After),
+			Limit: &pageReq.Size,
+		})
+		return page
+	}
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
+	})
+	return page
+}
+
+func processInstanceEndCursor(page camundav88.SearchQueryPageResponse) string {
+	if page.EndCursor == nil {
+		return ""
+	}
+	return string(*page.EndCursor)
+}
+
+// newParentProcessInstanceKeyFilter builds either an equality or existence filter for parent process-instance keys.
 func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) (*camundav88.ProcessInstanceKeyFilterProperty, error) {
 	if filter.ParentKey != "" {
 		return common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey)

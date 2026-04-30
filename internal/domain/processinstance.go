@@ -3,6 +3,8 @@
 
 package domain
 
+import "github.com/grafvonb/c8volt/toolx"
+
 type ProcessInstance struct {
 	BpmnProcessId             string
 	EndDate                   string
@@ -35,9 +37,28 @@ type ProcessInstanceFilter struct {
 	HasIncident          *bool
 }
 
+func (f ProcessInstanceFilter) String() string {
+	parts := make([]string, 0, 13)
+	parts = toolx.AppendQuotedField(parts, "key", f.Key)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", f.ProcessVersionTag)
+	parts = toolx.AppendQuotedField(parts, "processDefinitionKey", f.ProcessDefinitionKey)
+	parts = toolx.AppendQuotedField(parts, "startDateAfter", f.StartDateAfter)
+	parts = toolx.AppendQuotedField(parts, "startDateBefore", f.StartDateBefore)
+	parts = toolx.AppendQuotedField(parts, "endDateAfter", f.EndDateAfter)
+	parts = toolx.AppendQuotedField(parts, "endDateBefore", f.EndDateBefore)
+	parts = toolx.AppendRawField(parts, "state", f.State.String())
+	parts = toolx.AppendQuotedField(parts, "parentKey", f.ParentKey)
+	parts = toolx.AppendBoolPtrField(parts, "hasParent", f.HasParent)
+	parts = toolx.AppendBoolPtrField(parts, "hasIncident", f.HasIncident)
+	return toolx.FormatActiveFields(parts)
+}
+
 type ProcessInstancePageRequest struct {
-	From int32
-	Size int32
+	From  int32
+	Size  int32
+	After string
 }
 
 type ProcessInstanceOverflowState string
@@ -65,6 +86,7 @@ type ProcessInstancePage struct {
 	Request       ProcessInstancePageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *ProcessInstanceReportedTotal
+	EndCursor     string
 }
 
 type CancelResponse struct {

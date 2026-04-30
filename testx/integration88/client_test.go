@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newITClient builds an integration-test client from the required local environment.
 func newITClient(t *testing.T) (context.Context, c8volt.API, *config.Config, *slog.Logger) {
 	t.Helper()
 

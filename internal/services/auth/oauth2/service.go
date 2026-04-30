@@ -145,17 +145,18 @@ func (s *Service) RetrieveTokenForAPI(ctx context.Context, target string) (strin
 	if s == nil {
 		return "", errors.New("oauth2 service is nil (not wired)")
 	}
-	s.log.Debug(fmt.Sprintf("looking up bearer token in cache for target: %s", target))
+	targetLabel := tokenTargetLabel(target)
+	s.log.Debug(fmt.Sprintf("looking up bearer token in cache for target: %s", targetLabel))
 	s.mu.Lock()
 	if tok, ok := s.cache[target]; ok && tok != "" {
 		s.mu.Unlock()
-		s.log.Debug(fmt.Sprintf("found bearer token in cache for target: %s", target))
+		s.log.Debug(fmt.Sprintf("found bearer token in cache for target: %s", targetLabel))
 		return tok, nil
 	}
 	s.mu.Unlock()
 
 	scope := s.cfg.Auth.OAuth2.Scope(target)
-	s.log.Debug(fmt.Sprintf("fetching bearer token for target: %s", target))
+	s.log.Debug(fmt.Sprintf("fetching bearer token for target: %s", targetLabel))
 	tok, err := s.requestToken(ctx, s.cfg.Auth.OAuth2.ClientID, s.cfg.Auth.OAuth2.ClientSecret, scope)
 	if err != nil {
 		var t string
@@ -165,11 +166,18 @@ func (s *Service) RetrieveTokenForAPI(ctx context.Context, target string) (strin
 		return "", fmt.Errorf("retrieve token%s: %w", t, err)
 	}
 
-	s.log.Debug(fmt.Sprintf("puting bearer token in cache for target: %s", target))
+	s.log.Debug(fmt.Sprintf("putting bearer token in cache for target: %s", targetLabel))
 	s.mu.Lock()
 	s.cache[target] = tok
 	s.mu.Unlock()
 	return tok, nil
+}
+
+func tokenTargetLabel(target string) string {
+	if strings.TrimSpace(target) == "" {
+		return "<default>"
+	}
+	return target
 }
 
 func (s *Service) requestToken(ctx context.Context, clientID, clientSecret, scope string) (string, error) {

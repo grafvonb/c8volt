@@ -83,6 +83,7 @@ func StartActivity(ctx context.Context, msg string) func() {
 	return activity.StopActivity
 }
 
+// newActivityWriter builds an activity writer with default spinner timing.
 func newActivityWriter(w io.Writer, enabled bool) *activityWriter {
 	return &activityWriter{
 		w:        w,

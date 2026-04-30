@@ -9,38 +9,18 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeWaitActivitySink struct {
-	mu      sync.Mutex
-	started int
-	stopped int
-	msgs    []string
-}
-
-func (s *fakeWaitActivitySink) StartActivity(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.started++
-	s.msgs = append(s.msgs, msg)
-}
-
-func (s *fakeWaitActivitySink) StopActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopped++
-}
 
 type stubPIWaiter struct {
 	getStateByKey func(ctx context.Context, key string) (d.State, d.ProcessInstance, error)
@@ -54,6 +34,7 @@ func (s stubPIWaiter) GetProcessInstanceStateByKey(ctx context.Context, key stri
 	return s.getStateByKey(ctx, key)
 }
 
+// TestWaitForProcessInstanceState verifies single-instance wait behavior across success, retry, timeout, and activity paths.
 func TestWaitForProcessInstanceState(t *testing.T) {
 	t.Run("returns immediately when desired state is already present", func(t *testing.T) {
 		t.Parallel()
@@ -333,7 +314,7 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 	t.Run("uses command activity while waiting for a single instance", func(t *testing.T) {
 		t.Parallel()
 
-		sink := &fakeWaitActivitySink{}
+		sink := &activitysink.Sink{}
 		waiter := stubPIWaiter{
 			getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
 				return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
@@ -350,18 +331,18 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		sink.mu.Lock()
-		defer sink.mu.Unlock()
-		assert.Equal(t, 1, sink.started)
-		assert.Equal(t, 1, sink.stopped)
-		assert.Equal(t, []string{"waiting for process instance 123 to reach desired state(s)"}, sink.msgs)
+		started, stopped, msgs := sink.Snapshot()
+		assert.Equal(t, 1, started)
+		assert.Equal(t, 1, stopped)
+		assert.Equal(t, []string{"waiting for process instance 123 to reach desired state(s)"}, msgs)
 	})
 }
 
+// TestWaitForProcessInstancesState_UsesAggregateCommandActivity verifies aggregate waits expose one shared activity scope.
 func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T) {
 	t.Parallel()
 
-	sink := &fakeWaitActivitySink{}
+	sink := &activitysink.Sink{}
 	waiter := stubPIWaiter{
 		getStateByKey: func(ctx context.Context, key string) (d.State, d.ProcessInstance, error) {
 			return d.StateCompleted, d.ProcessInstance{Key: key, State: d.StateCompleted}, nil
@@ -379,12 +360,12 @@ func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T)
 	)
 
 	require.NoError(t, err)
-	sink.mu.Lock()
-	defer sink.mu.Unlock()
-	assert.Equal(t, sink.started, sink.stopped)
-	assert.Contains(t, sink.msgs, "waiting for 2 process instance(s) to reach desired state(s)")
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, started, stopped)
+	assert.Contains(t, msgs, "waiting for 2 process instance(s) to reach desired state(s)")
 }
 
+// testConfig builds a waiter config with explicit retry timing for unit tests.
 func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duration) *config.Config {
 	return &config.Config{
 		App: config.App{
@@ -398,6 +379,7 @@ func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duratio
 	}
 }
 
+// testLogger returns a discard logger for waiter tests.
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
