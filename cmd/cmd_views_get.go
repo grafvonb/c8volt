@@ -156,7 +156,7 @@ func oneLinePD(it process.ProcessDefinition) string {
 		stats := it.Statistics
 		incidentTag := ""
 		if stats.IncidentCountSupported {
-			incidentTag = fmt.Sprintf(" in:%s", zeroAsMinus(stats.Incidents))
+			incidentTag = fmt.Sprintf(" inc:%s", zeroAsMinus(stats.Incidents))
 		}
 		return fmt.Sprintf("%s [ac:%s cp:%s cx:%s%s]",
 			core,
