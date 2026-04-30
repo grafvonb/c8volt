@@ -4,11 +4,13 @@
 #   Bootstrap the current target repository with a fresh ai-tooling installer.
 #
 # Usage:
-#   ./ai/bootstrap-ai-tooling.sh [tag]
+#   ./ai/bootstrap-ai-tooling.sh [--force] [tag]
 #   AI_TOOLING_REPO=/path/to/local/ai-tooling ./ai/bootstrap-ai-tooling.sh
 #   AI_TOOLING_REPO=git@github.com:your-org/private-ai-tooling.git ./ai/bootstrap-ai-tooling.sh
 #
 # Parameters:
+#   --force  Forward to the installer to allow overwriting locally drifted
+#            ai-tooling-managed files.
 #   tag      Optional ai-tooling tag or branch to install. If omitted, the
 #            latest tag from AI_TOOLING_REPO is used.
 #
@@ -20,15 +22,13 @@
 #   This script is intentionally small and stable. It fetches the requested
 #   ai-tooling version, then runs that version's installer against this target
 #   repository so installer changes do not require running install/sync.sh by
-#   hand. Bootstrap treats managed-file refresh as part of updating the
-#   installer itself; run ai/install-ai-tooling.sh directly when you want the
-#   explicit managed-drift review gate.
+#   hand.
 
 set -euo pipefail
 
 usage() {
     cat >&2 <<'EOF'
-Usage: bootstrap-ai-tooling.sh [tag]
+Usage: bootstrap-ai-tooling.sh [--force] [tag]
 EOF
     exit 1
 }
@@ -38,6 +38,10 @@ TAG_ARG=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --force)
+            INSTALL_ARGS+=("$1")
+            shift
+            ;;
         -h|--help)
             usage
             ;;
@@ -110,6 +114,4 @@ git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE
 
 AI_TOOLING_REPO="$RESOLVED_AI_TOOLING_REPO" \
 AI_TOOLING_TARGET_REPO="$REPO_ROOT" \
-AI_TOOLING_ACCEPT_MANAGED_SYNC=1 \
-AI_TOOLING_ALLOW_DRIFT=1 \
     "$TMP_DIR/ai/install-ai-tooling.sh" "${INSTALL_ARGS[@]}"
