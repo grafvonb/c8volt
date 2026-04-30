@@ -111,4 +111,5 @@ git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE
 AI_TOOLING_REPO="$RESOLVED_AI_TOOLING_REPO" \
 AI_TOOLING_TARGET_REPO="$REPO_ROOT" \
 AI_TOOLING_ACCEPT_MANAGED_SYNC=1 \
+AI_TOOLING_ALLOW_DRIFT=1 \
     "$TMP_DIR/ai/install-ai-tooling.sh" "${INSTALL_ARGS[@]}"
