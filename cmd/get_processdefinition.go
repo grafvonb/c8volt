@@ -89,7 +89,7 @@ func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.
 }
 
 func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter) {
-	log.Debug(fmt.Sprintf("searching process definitions for filter %+v", filter))
+	log.Debug(fmt.Sprintf("searching process definitions for filter: %s", filter.String()))
 
 	var (
 		pds process.ProcessDefinitions

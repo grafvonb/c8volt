@@ -3,7 +3,10 @@
 
 package domain
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 type ProcessDefinition struct {
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
@@ -32,8 +35,29 @@ type ProcessDefinitionFilter struct {
 	IsLatestVersion   bool   `json:"isLatestVersion,omitempty"`
 }
 
+func (f ProcessDefinitionFilter) String() string {
+	parts := make([]string, 0, 6)
+	parts = appendStringFilter(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = appendStringFilter(parts, "key", f.Key)
+	parts = appendStringFilter(parts, "tenantId", f.TenantId)
+	if f.ProcessVersion != 0 {
+		parts = append(parts, fmt.Sprintf("processVersion=%d", f.ProcessVersion))
+	}
+	parts = appendStringFilter(parts, "processVersionTag", f.ProcessVersionTag)
+	if f.IsLatestVersion {
+		parts = append(parts, "isLatestVersion=true")
+	}
+	return formatFilterParts(parts)
+}
+
 type ProcessDefinitionStatisticsFilter struct {
 	TenantId string `json:"tenantId,omitempty"`
+}
+
+func (f ProcessDefinitionStatisticsFilter) String() string {
+	parts := make([]string, 0, 1)
+	parts = appendStringFilter(parts, "tenantId", f.TenantId)
+	return formatFilterParts(parts)
 }
 
 func SortByVersionDesc(pds []ProcessDefinition) {

@@ -131,7 +131,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 		default:
 			filter := populatePISearchFilterOpts()
-			log.Debug(fmt.Sprintf("using process instance search filter: %+v", filter))
+			log.Debug(fmt.Sprintf("using process instance search filter: %s", filter.String()))
 			if flagGetPITotal {
 				total, err := searchProcessInstancesTotal(cmd, log, cli, cfg, filter)
 				if err != nil {

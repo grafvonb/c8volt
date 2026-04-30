@@ -3,6 +3,11 @@
 
 package process
 
+import (
+	"fmt"
+	"strings"
+)
+
 type ProcessDefinition struct {
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
 	Key               string                       `json:"key,omitempty"`
@@ -31,6 +36,17 @@ type ProcessDefinitionFilter struct {
 	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
 	ProcessVersion    int32  `json:"processVersion,omitempty"`
 	ProcessVersionTag string `json:"processVersionTag,omitempty"`
+}
+
+func (f ProcessDefinitionFilter) String() string {
+	parts := make([]string, 0, 4)
+	parts = appendStringFilter(parts, "key", f.Key)
+	parts = appendStringFilter(parts, "bpmnProcessId", f.BpmnProcessId)
+	if f.ProcessVersion != 0 {
+		parts = append(parts, fmt.Sprintf("processVersion=%d", f.ProcessVersion))
+	}
+	parts = appendStringFilter(parts, "processVersionTag", f.ProcessVersionTag)
+	return formatFilterParts(parts)
 }
 
 type ProcessInstanceData struct {
@@ -111,6 +127,49 @@ type ProcessInstanceFilter struct {
 	ParentKey            string `json:"parentKey,omitempty"`
 	HasParent            *bool  `json:"hasParent,omitempty"`
 	HasIncident          *bool  `json:"hasIncident,omitempty"`
+}
+
+func (f ProcessInstanceFilter) String() string {
+	parts := make([]string, 0, 13)
+	parts = appendStringFilter(parts, "key", f.Key)
+	parts = appendStringFilter(parts, "bpmnProcessId", f.BpmnProcessId)
+	if f.ProcessVersion != 0 {
+		parts = append(parts, fmt.Sprintf("processVersion=%d", f.ProcessVersion))
+	}
+	parts = appendStringFilter(parts, "processVersionTag", f.ProcessVersionTag)
+	parts = appendStringFilter(parts, "processDefinitionKey", f.ProcessDefinitionKey)
+	parts = appendStringFilter(parts, "startDateAfter", f.StartDateAfter)
+	parts = appendStringFilter(parts, "startDateBefore", f.StartDateBefore)
+	parts = appendStringFilter(parts, "endDateAfter", f.EndDateAfter)
+	parts = appendStringFilter(parts, "endDateBefore", f.EndDateBefore)
+	if f.State != "" {
+		parts = append(parts, fmt.Sprintf("state=%s", f.State))
+	}
+	parts = appendStringFilter(parts, "parentKey", f.ParentKey)
+	parts = appendBoolFilter(parts, "hasParent", f.HasParent)
+	parts = appendBoolFilter(parts, "hasIncident", f.HasIncident)
+	return formatFilterParts(parts)
+}
+
+func formatFilterParts(parts []string) string {
+	if len(parts) == 0 {
+		return "none"
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+func appendStringFilter(parts []string, name, value string) []string {
+	if value == "" {
+		return parts
+	}
+	return append(parts, fmt.Sprintf("%s=%q", name, value))
+}
+
+func appendBoolFilter(parts []string, name string, value *bool) []string {
+	if value == nil {
+		return parts
+	}
+	return append(parts, fmt.Sprintf("%s=%t", name, *value))
 }
 
 type Reporter struct {

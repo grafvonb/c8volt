@@ -168,7 +168,7 @@ func (s *Service) SearchForProcessInstances(ctx context.Context, filter d.Proces
 
 func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, pageReq d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %+v", filter))
+	s.log.Debug(fmt.Sprintf("searching for process instances with filter: %s", filter.String()))
 
 	startDateAfter, err := parseInclusiveDateLowerBound(filter.StartDateAfter)
 	if err != nil {
