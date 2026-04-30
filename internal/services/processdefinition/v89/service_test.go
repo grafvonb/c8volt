@@ -18,6 +18,8 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v89 "github.com/grafvonb/c8volt/internal/services/processdefinition/v89"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	activitylogging "github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -224,6 +226,35 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 			m.AssertExpectations(t)
 		})
 	}
+}
+
+// TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator verifies stats retrieval exposes progress activity.
+func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testing.T) {
+	sink := &activitysink.Sink{}
+	ctx := activitylogging.ToActivityContext(context.Background(), sink)
+	m := &mockProcessDefinitionClient{}
+	resp := &camundav89.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+		Body:         []byte(`{"items":[{"hasStartForm":false,"name":"name-proc","processDefinitionId":"proc","processDefinitionKey":"123","resourceName":"proc.bpmn","tenantId":"tenant","version":2,"versionTag":"tag"}],"page":{"hasMoreTotalItems":false,"totalItems":1}}`),
+		JSON200:      &camundav89.ProcessDefinitionSearchQueryResult{},
+	}
+	m.On("SearchProcessDefinitionsWithBodyWithResponse", mock.Anything, "application/json", mock.Anything).Return(resp, nil)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumACTIVE, 10)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnumCOMPLETED, 20)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav89.ProcessInstanceStateEnum(domain.StateTerminated), 30)
+	mockProcessInstanceIncidentCount(m, t, "123", "", 4)
+
+	svc, err := v89.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClientCamunda(m))
+	require.NoError(t, err)
+
+	_, err = svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{BpmnProcessId: "proc"}, 25, services.WithStat())
+
+	require.NoError(t, err)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"retrieving process definition stats for proc (123)"}, msgs)
+	m.AssertExpectations(t)
 }
 
 func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {

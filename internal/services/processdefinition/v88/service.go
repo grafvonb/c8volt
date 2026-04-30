@@ -18,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 type Service struct {
@@ -150,6 +151,9 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
 	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
+	stopActivity := logging.StartActivity(ctx, common.ProcessDefinitionStatsActivity(pd.BpmnProcessId, pd.Key))
+	defer stopActivity()
+
 	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "active", camundav88.ProcessInstanceStateEnumACTIVE)
 	if err != nil {
 		return err
