@@ -20,8 +20,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Wait for process instances to reach states",
 	Long: "Wait for process instances to reach one of the requested states.\n\n" +
-		"Use this command after `run`, `cancel`, or `delete` when the previous command returned before the final state was visible, or when you need an explicit post-action assertion.\n\n" +
-		"For cancellation waits, `canceled` is the user-facing intent state. On Camunda `8.8` and `8.9`, the backend may report the same outcome as `terminated`; c8volt treats both as a match.",
+		"Use after `run`, `cancel`, or `delete` when a command returns before the final state is visible.\n\n" +
+		"On Camunda 8.8/8.9, canceled waits also match terminated.",
 	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
   ./c8volt expect pi --key <process-instance-key> --state completed --state absent
   ./c8volt expect pi --key <process-instance-key> --state canceled
@@ -84,7 +84,7 @@ func init() {
 	expectCmd.AddCommand(expectProcessInstanceCmd)
 
 	fs := expectProcessInstanceCmd.Flags()
-	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to expect a state for")
+	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to watch")
 	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated")
 	_ = expectProcessInstanceCmd.MarkFlagRequired("state")
 

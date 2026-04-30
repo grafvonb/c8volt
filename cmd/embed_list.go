@@ -21,8 +21,7 @@ var embedListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List bundled BPMN fixture files",
 	Long: "List bundled BPMN fixture files.\n\n" +
-		"Run this before `embed deploy` or `embed export` when you need the exact file names. " +
-		"Use `--details` to show the full embedded paths.",
+		"Use before `embed deploy` or `embed export` to get exact file names.",
 	Example: `  ./c8volt embed list
   ./c8volt embed list --details
   ./c8volt --json embed list`,

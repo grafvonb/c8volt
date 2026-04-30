@@ -12,13 +12,11 @@ Operate Camunda 8 workflows from the command line
 
 c8volt: Camunda 8 Operations CLI.
 
-c8volt helps operators deploy BPMN models, start process instances, inspect workflow state,
-wait for state changes, walk process trees, cancel safely, and delete thoroughly.
-It supports Camunda 8.7, 8.8, and 8.9.
+Deploy BPMN models, start process instances, inspect workflow state, wait for
+state changes, walk process trees, cancel, and delete.
 
-For a first connection, start with config validation and a cluster check. For day-to-day work,
-open the command group you need and follow the leaf command examples. Use capabilities only
-when a script, CI job, or agent needs the machine-readable command contract.
+Supports Camunda 8.7, 8.8, and 8.9. Use capabilities for the machine-readable
+command contract.
 
 ```
 c8volt [flags]
@@ -42,17 +40,17 @@ c8volt [flags]
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
-      --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
+      --debug              enable debug logging
   -h, --help               help for c8volt
   -j, --json               output as JSON (where applicable)
-      --keys-only          output as keys only (where applicable), can be used for piping to other commands
+      --keys-only          output keys only (where applicable)
       --log-level string   log level (debug, info, warn, error) (default "info")
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress all output, except errors, overrides --log-level
+  -q, --quiet              suppress output except errors
       --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
       --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            adds additional verbosity to the output, e.g. for progress indication
+  -v, --verbose            show additional output
 ```
 
 ### SEE ALSO

@@ -23,8 +23,8 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instances by key or filters",
 	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
 		"By default c8volt validates the affected tree, prompts before deletion, and waits until deletion is observed. Use --force when active instances should be cancelled before deletion.\n\n" +
-		"Use --dry-run to preview selected process instances, process-instance trees to delete, process instances in scope, selected instances already in final state, non-final instances that require cancellation before delete, and partial-scope details without submitting deletion, cancel-before-delete requests, prompting for confirmation, or waiting for completion.\n\n" +
-		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.",
+		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
+		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi --state absent`.",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
   ./c8volt delete pi --key 2251799813711967 --dry-run
   ./c8volt delete pi --state completed --batch-size 250
@@ -193,7 +193,7 @@ func init() {
 	useInvalidInputFlagErrors(deleteProcessInstanceCmd)
 
 	fs := deleteProcessInstanceCmd.Flags()
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview delete scope without submitting deletion or cancel-before-delete requests")
 	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete")

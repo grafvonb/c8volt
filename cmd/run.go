@@ -12,8 +12,7 @@ var runCmd = &cobra.Command{
 	Short: "Start process instances",
 	Long: `Start process instances.
 
-Use this command family when you want to create new workflow work in Camunda.
-The process-instance command waits for confirmed activation by default.`,
+The process-instance command waits for active instances by default.`,
 	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt run pi -b C88_SimpleUserTask_Process --no-wait`,

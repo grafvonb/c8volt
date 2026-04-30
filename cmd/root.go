@@ -70,13 +70,11 @@ var rootCmd = &cobra.Command{
 	Short: "Operate Camunda 8 workflows from the command line",
 	Long: `c8volt: Camunda 8 Operations CLI.
 
-c8volt helps operators deploy BPMN models, start process instances, inspect workflow state,
-wait for state changes, walk process trees, cancel safely, and delete thoroughly.
-It supports Camunda 8.7, 8.8, and 8.9.
+Deploy BPMN models, start process instances, inspect workflow state, wait for
+state changes, walk process trees, cancel, and delete.
 
-For a first connection, start with config validation and a cluster check. For day-to-day work,
-open the command group you need and follow the leaf command examples. Use capabilities only
-when a script, CI job, or agent needs the machine-readable command contract.`,
+Supports Camunda 8.7, 8.8, and 8.9. Use capabilities for the machine-readable
+command contract.`,
 	Example: `  ./c8volt config show --template
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
@@ -198,14 +196,14 @@ func Execute() {
 
 func init() {
 	pf := rootCmd.PersistentFlags()
-	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress all output, except errors, overrides --log-level")
+	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress output except errors")
 	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable non-interactive mode for commands that explicitly support it")
 	pf.BoolVarP(&flagCmdAutoConfirm, "auto-confirm", "y", false, "auto-confirm prompts for non-interactive use")
-	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "adds additional verbosity to the output, e.g. for progress indication")
+	pf.BoolVarP(&flagVerbose, "verbose", "v", false, "show additional output")
 	pf.BoolVar(&flagNoIndicator, "no-indicator", false, "disable transient terminal activity indicators")
-	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging, overwrites and is shorthand for --log-level=debug")
+	pf.BoolVar(&flagDebug, "debug", false, "enable debug logging")
 	pf.BoolVarP(&flagViewAsJson, "json", "j", false, "output as JSON (where applicable)")
-	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output as keys only (where applicable), can be used for piping to other commands")
+	pf.BoolVar(&flagViewKeysOnly, "keys-only", false, "output keys only (where applicable)")
 
 	pf.String("config", "", "path to config file")
 	pf.String("profile", "", "config active profile name to use (e.g. dev, prod)")

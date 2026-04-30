@@ -14,9 +14,9 @@ Delete process instances by key or search filters, optionally cancelling first.
 
 By default c8volt validates the affected tree, prompts before deletion, and waits until deletion is observed. Use --force when active instances should be cancelled before deletion.
 
-Use --dry-run to preview selected process instances, process-instance trees to delete, process instances in scope, selected instances already in final state, non-final instances that require cancellation before delete, and partial-scope details without submitting deletion, cancel-before-delete requests, prompting for confirmation, or waiting for completion.
+Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.
 
-Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion is enough for the current step, then verify later with `get pi` or `expect pi --state absent`.
+Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi --state absent`.
 
 ```
 c8volt delete process-instance [flags]
@@ -53,7 +53,7 @@ c8volt delete process-instance [flags]
   -k, --key strings                 process instance key(s) to delete
   -l, --limit int32                 maximum number of matching process instances to process across all pages
       --no-state-check              skip checking the current state of the process instance before deleting it
-      --no-wait                     skip waiting for the deletion to be fully processed
+      --no-wait                     return after deletion is accepted
       --no-worker-limit             disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-version int32            process definition version
       --pd-version-tag string       process definition version tag
@@ -72,16 +72,16 @@ c8volt delete process-instance [flags]
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
-      --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
+      --debug              enable debug logging
   -j, --json               output as JSON (where applicable)
-      --keys-only          output as keys only (where applicable), can be used for piping to other commands
+      --keys-only          output keys only (where applicable)
       --log-level string   log level (debug, info, warn, error) (default "info")
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress all output, except errors, overrides --log-level
+  -q, --quiet              suppress output except errors
       --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
       --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            adds additional verbosity to the output, e.g. for progress indication
+  -v, --verbose            show additional output
 ```
 
 ### SEE ALSO

@@ -37,9 +37,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"embed",
 		"version",
 		"capabilities",
-		"config validation and a cluster check",
-		"follow the leaf command examples",
-		"c8volt capabilities --json",
+		"Use capabilities for the machine-readable",
 		"Camunda 8.7, 8.8, and 8.9",
 		"--automation",
 		"Examples:",
@@ -67,9 +65,7 @@ func TestRootHelpAndGeneratedMarkdownShareDiscoveryAnchors(t *testing.T) {
 	markdown := renderMarkdownForCommand(t, root)
 
 	for _, anchor := range []string{
-		"config validation and a cluster check",
-		"follow the leaf command examples",
-		"c8volt capabilities --json",
+		"Use capabilities for the machine-readable",
 		"Camunda 8.7, 8.8, and 8.9",
 	} {
 		require.Contains(t, helpOutput, anchor)

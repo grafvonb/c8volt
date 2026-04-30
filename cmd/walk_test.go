@@ -73,13 +73,12 @@ profiles:
 func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"walk"}, []string{
 		"Inspect process-instance relationships",
-		"parent/child structure",
+		"Inspect ancestry, descendants",
 		"./c8volt walk pi --key 2251799813711967 --family --tree",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
-		"understand ancestry or descendants",
 		"Choose --parent for ancestry, --children for descendants, and --family",
 		"returns the partial tree plus a warning",
 		"./c8volt walk pi --key 2251799813711967 --family --tree",

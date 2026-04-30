@@ -12,9 +12,9 @@ Deploy BPMN process definition files
 
 Deploy BPMN process definition files and report the deployed definitions.
 
-By default c8volt waits until deployment is confirmed before returning success. Use --run when you want to start one process instance for each deployed definition as a smoke test.
+By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.
 
-Use --no-wait when accepted deployment work is enough for the current step, then verify later with `get pd`.
+Add --no-wait to verify later with `get pd`.
 
 ```
 c8volt deploy process-definition [flags]
@@ -35,8 +35,8 @@ c8volt deploy process-definition [flags]
 ```
   -f, --file strings   paths to BPMN/YAML file(s) or '-' for stdin
   -h, --help           help for process-definition
-      --no-wait        skip waiting for the deployment to be fully processed
-      --run            run single process instance without vars after deploying process definition(s)
+      --no-wait        return after deployment is accepted
+      --run            start one process instance per deployed definition
 ```
 
 ### Options inherited from parent commands
@@ -45,16 +45,16 @@ c8volt deploy process-definition [flags]
   -y, --auto-confirm       auto-confirm prompts for non-interactive use
       --automation         enable non-interactive mode for commands that explicitly support it
       --config string      path to config file
-      --debug              enable debug logging, overwrites and is shorthand for --log-level=debug
+      --debug              enable debug logging
   -j, --json               output as JSON (where applicable)
-      --keys-only          output as keys only (where applicable), can be used for piping to other commands
+      --keys-only          output keys only (where applicable)
       --log-level string   log level (debug, info, warn, error) (default "info")
       --no-indicator       disable transient terminal activity indicators
       --profile string     config active profile name to use (e.g. dev, prod)
-  -q, --quiet              suppress all output, except errors, overrides --log-level
+  -q, --quiet              suppress output except errors
       --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
       --timeout duration   HTTP request timeout (default 30s)
-  -v, --verbose            adds additional verbosity to the output, e.g. for progress indication
+  -v, --verbose            show additional output
 ```
 
 ### SEE ALSO

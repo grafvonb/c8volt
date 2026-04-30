@@ -14,7 +14,7 @@ var capabilitiesCmd = &cobra.Command{
 	Use:   "capabilities",
 	Short: "Describe commands for scripts and agents",
 	Long: "Describe the public c8volt command contract for scripts, CI jobs, and agents.\n\n" +
-		"Use `c8volt capabilities --json` when another program needs command paths, flags, output modes, mutation behavior, contract support, or automation-mode support. Human help stays focused on usage; capabilities is the machine-readable inventory.",
+		"Use --json for command paths, flags, output modes, mutation behavior, contract support, and automation support.",
 	Example: `  ./c8volt capabilities
   ./c8volt capabilities --json`,
 	Args: cobra.NoArgs,

@@ -12,8 +12,7 @@ var walkCmd = &cobra.Command{
 	Short: "Inspect process-instance relationships",
 	Long: `Inspect process-instance relationships.
 
-Use this command family before cancellation or deletion when parent/child structure
-matters. It is also useful after a run to see which instances were created around a key.`,
+Inspect ancestry, descendants, or a process-instance family around a key.`,
 	Example: `  ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
   ./c8volt walk pi --key 2251799813711967 --children`,

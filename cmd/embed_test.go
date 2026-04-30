@@ -20,7 +20,7 @@ func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 	output := executeRootForTest(t, "embed", "list", "--help")
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
-	require.Contains(t, output, "Run this before `embed deploy` or `embed export`")
+	require.Contains(t, output, "Use before `embed deploy` or `embed export`")
 	require.Contains(t, output, "./c8volt embed list --details")
 	require.Contains(t, output, "./c8volt --json embed list")
 }
@@ -29,7 +29,7 @@ func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 	output := executeRootForTest(t, "embed", "export", "--help")
 
 	require.Contains(t, output, "Export bundled BPMN fixtures to local files")
-	require.Contains(t, output, "Choose `--all` for the full set")
+	require.Contains(t, output, "Use --all for the full set")
 	require.Contains(t, output, "./c8volt embed export --all --out ./fixtures")
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }

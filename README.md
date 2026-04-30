@@ -409,6 +409,7 @@ c8volt
 |   |-- process-instance      List or fetch process instances
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
+|-- completion                Generate shell completion scripts
 |-- config                    Inspect and validate c8volt configuration
 `-- version                   Print build and compatibility information
 ```

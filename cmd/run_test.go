@@ -31,7 +31,7 @@ func TestRunCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"run"}, []string{
 		"Start process instances",
-		"waits for confirmed activation by default",
+		"waits for active instances by default",
 		"--no-wait",
 		"./c8volt run pi -b C88_SimpleUserTask_Process",
 	}, nil)
@@ -40,8 +40,8 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 
 	output = assertCommandHelpOutput(t, []string{"run", "process-instance"}, []string{
 		"Run by BPMN process ID",
-		"waits until the created instances can be confirmed as active",
-		"verify later with `get pi`, `expect pi`, or `walk pi`",
+		"waits for active instances",
+		"Add --no-wait to verify later with `get pi`, `expect pi`, or `walk pi`",
 		"./c8volt expect pi --key <process-instance-key> --state active",
 	}, nil)
 	require.Contains(t, output, "--no-wait")

@@ -23,7 +23,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Short: "Delete process definition resources",
 	Long: "Delete process definition resources from Zeebe.\n\n" +
 		"By default c8volt prompts before the destructive step. Without --allow-inconsistent, it prepares definitions for later manual cleanup instead of forcing inconsistent Operate state.\n\n" +
-		"Use --auto-confirm for unattended destructive runs. Add --no-wait when accepted deletion work is enough for the current step, then verify later with `get pd`.",
+		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pd`.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --force
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --allow-inconsistent --auto-confirm --no-wait
@@ -102,8 +102,8 @@ func init() {
 	deleteCmd.AddCommand(deleteProcessDefinitionCmd)
 
 	fs := deleteProcessDefinitionCmd.Flags()
-	fs.BoolVar(&flagNoWait, "no-wait", false, "skip waiting for the deletion to be fully processed")
-	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance(s) of the process definition before deleting it")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion work is accepted")
+	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
 	fs.BoolVar(&flagAllowInconsistent, "allow-inconsistent", false, "allow deletion of process definitions even if their state will become inconsistent (not deleted from Operate's data)")
 	fs.StringSliceVarP(&flagDeletePDKeys, "key", "k", nil, "process definition key(s) to delete")
 	fs.StringVarP(&flagDeletePDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID of the process definition (all versions) to delete")

@@ -27,7 +27,7 @@ var embedExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export bundled BPMN fixtures to local files",
 	Long: "Export bundled BPMN fixtures to local files.\n\n" +
-		"Use this command when you want to inspect or edit the packaged BPMN assets. Choose `--all` for the full set, or repeat `--file` with exact names or quoted globs for a narrower export.",
+		"Use --all for the full set, or repeat --file with exact names or quoted globs.",
 	Example: `  ./c8volt embed export --all --out ./fixtures
   ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
   ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures`,
