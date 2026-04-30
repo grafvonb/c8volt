@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/138-pi-dry-run-scope/plan.md`
+- No active Speckit implementation plan has been recorded yet.
 <!-- SPECKIT END -->

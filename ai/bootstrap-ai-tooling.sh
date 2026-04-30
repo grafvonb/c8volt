@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
-# SPDX-License-Identifier: GPL-3.0-or-later
-
 #
 # Purpose:
 #   Bootstrap the current target repository with a fresh ai-tooling installer.
