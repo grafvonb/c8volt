@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
-	"sync"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -16,33 +15,12 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeActivitySink struct {
-	mu      sync.Mutex
-	started int
-	stopped int
-	msgs    []string
-}
-
-// StartActivity records activity starts for facade activity-indicator assertions.
-func (s *fakeActivitySink) StartActivity(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.started++
-	s.msgs = append(s.msgs, msg)
-}
-
-// StopActivity records activity stops for facade activity-indicator assertions.
-func (s *fakeActivitySink) StopActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopped++
-}
 
 // TestClient_GetProcessDefinitionXML verifies facade option translation for
 // XML retrieval. The key and call options must pass through unchanged because
@@ -704,7 +682,7 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	t.Parallel()
 
-	sink := &fakeActivitySink{}
+	sink := &activitysink.Sink{}
 	ctx := logging.ToActivityContext(context.Background(), sink)
 	piAPI := stubProcessInstanceAPI{
 		cancelProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
@@ -717,11 +695,10 @@ func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	_, err := cli.CancelProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
 
 	require.NoError(t, err)
-	sink.mu.Lock()
-	defer sink.mu.Unlock()
-	assert.Equal(t, 1, sink.started)
-	assert.Equal(t, 1, sink.stopped)
-	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, msgs)
 }
 
 // TestClient_DeleteProcessInstances_LogsExpandedAffectedScope verifies delete

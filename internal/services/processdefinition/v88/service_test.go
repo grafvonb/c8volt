@@ -734,6 +734,7 @@ func processInstanceIncidentSearchMatches(body camundav88.SearchProcessInstances
 	return *page.From == 0 && *page.Limit == 1
 }
 
+// newHTTPResponse builds a minimal HTTP response for v8.8 process-definition error handling tests.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {

@@ -441,6 +441,7 @@ func processDefinitionStatsPISort() *[]camundav88.ProcessInstanceSearchQuerySort
 	}
 }
 
+// newProcessDefinitionKeyEqFilterPtr builds a v8.8 process-definition-key equality filter when a key is set.
 func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav88.ProcessDefinitionKeyFilterProperty, error) {
 	if v == "" {
 		return nil, nil

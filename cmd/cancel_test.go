@@ -22,6 +22,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -200,7 +201,7 @@ func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
-	sink := &fakeCommandActivitySink{}
+	sink := &activitysink.Sink{}
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
 
 	prevConfirm := confirmCmdOrAbortFn
@@ -235,9 +236,10 @@ func TestCancelProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Contains(t, buf.String(), "root process-instance tree keys: root-1")
 	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1")
 	require.NotContains(t, buf.String(), "no mutation submitted")
-	require.Equal(t, 1, sink.started)
-	require.Equal(t, 1, sink.stopped)
-	require.Equal(t, []string{"preparing cancel dry-run scope for 1 process instance(s)"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"preparing cancel dry-run scope for 1 process instance(s)"}, msgs)
 }
 
 // TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation
@@ -602,6 +604,7 @@ func TestCancelProcessInstanceDryRun_SearchBatchSizeLimitUsesLimitedPage(t *test
 	require.Equal(t, 2, results.DryRunPreviews[0].RequestedCount)
 }
 
+// TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig verifies command-local timeout precedence.
 func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "27s")
 
@@ -610,6 +613,7 @@ func TestCancelCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 	require.Equal(t, 27*time.Second, cfg.App.Backoff.Timeout)
 }
 
+// TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics verifies cancel help explains confirmation and wait behavior.
 func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"cancel"}, []string{
 		"Cancel running process instances",
@@ -803,6 +807,7 @@ func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingPromptFlow verifies paged cancel search prompts between pages.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	var requests safeSlice[string]
 	var cancelled safeSlice[string]
@@ -896,6 +901,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	require.NotContains(t, output, "next step: auto-continue")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals verifies v8.7 paging includes dependency totals.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
 	var requests safeSlice[string]
 	var cancelled safeSlice[string]
@@ -957,6 +963,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 	require.Contains(t, output, "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
 }
 
+// TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight verifies keyed preflight warnings are printed.
 func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -1007,6 +1014,7 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
+// TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight verifies paged preflight warnings are printed.
 func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -1046,6 +1054,7 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testi
 	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow verifies --auto-confirm continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1133,6 +1142,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingLimitFlow verifies cancel search stops at the requested limit.
 func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1221,6 +1231,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: yes, next step: limit-reached")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow verifies batch size and limit interact correctly.
 func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1298,6 +1309,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 	require.Contains(t, output, "page size: 4, current page: 2, total so far: 2, more matches: yes, next step: limit-reached")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingAutomationFlow verifies automation mode auto-continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1385,6 +1397,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary verifies aborted paging reports partial completion.
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1461,6 +1474,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary verifies indeterminate overflow emits a warning summary.
 func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1530,6 +1544,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 	require.Contains(t, output, "warning: stopped after 2 processed process instance(s) because more matching process instances may remain")
 }
 
+// TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging verifies direct keys do not use search paging.
 func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests []string
 	var cancelled safeSlice[string]
@@ -1588,6 +1603,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 	require.Contains(t, stderr, "INFO")
 }
 
+// TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail verifies direct-key failures keep root detail.
 func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -1669,6 +1685,7 @@ func TestCancelProcessInstanceCommand_RejectsKeyAndRelativeDayFilters(t *testing
 	require.Contains(t, output, "date filters are only supported for list/search usage and cannot be combined with --key")
 }
 
+// TestCancelProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags verifies paging flag validation errors.
 func TestCancelProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -1726,6 +1743,7 @@ func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.
 	require.Contains(t, output, "process-instance date filters require Camunda 8.8")
 }
 
+// executeCancelProcessInstanceFailureHelper runs a cancel helper subprocess expected to fail.
 func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
@@ -1740,6 +1758,7 @@ func executeCancelProcessInstanceFailureHelper(t *testing.T, helperName string, 
 	return string(output), exitErr.ExitCode()
 }
 
+// executeCancelProcessInstanceSuccessHelper runs a cancel helper subprocess expected to succeed.
 func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, cfgPath string) (string, error) {
 	t.Helper()
 
@@ -1754,6 +1773,7 @@ func executeCancelProcessInstanceSuccessHelper(t *testing.T, helperName string, 
 	return out, nil
 }
 
+// TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper is the helper-process entrypoint for removed --count validation.
 func TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1767,6 +1787,7 @@ func TestCancelProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T
 	Execute()
 }
 
+// TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper is the helper-process entrypoint for invalid --limit validation.
 func TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1780,6 +1801,7 @@ func TestCancelProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
 	Execute()
 }
 
+// TestCancelProcessInstanceCommand_RejectsLimitWithKeyHelper is the helper-process entrypoint for --limit with --key validation.
 func TestCancelProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1807,6 +1829,7 @@ func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
+// TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper is the helper-process entrypoint for v8.7 paging.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotalsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1974,6 +1997,7 @@ func TestCancelProcessInstanceCommand_RejectsRelativeDayFiltersOnV87Helper(t *te
 	Execute()
 }
 
+// TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper is the helper-process entrypoint for direct-key failure detail.
 func TestCancelProcessInstanceCommand_DirectKeyFailureKeepsSingleRootDetailHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

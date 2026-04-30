@@ -3,10 +3,7 @@
 
 package domain
 
-import (
-	"fmt"
-	"strings"
-)
+import "github.com/grafvonb/c8volt/toolx"
 
 type ProcessInstance struct {
 	BpmnProcessId             string
@@ -42,45 +39,20 @@ type ProcessInstanceFilter struct {
 
 func (f ProcessInstanceFilter) String() string {
 	parts := make([]string, 0, 13)
-	parts = appendStringFilter(parts, "key", f.Key)
-	parts = appendStringFilter(parts, "bpmnProcessId", f.BpmnProcessId)
-	if f.ProcessVersion != 0 {
-		parts = append(parts, fmt.Sprintf("processVersion=%d", f.ProcessVersion))
-	}
-	parts = appendStringFilter(parts, "processVersionTag", f.ProcessVersionTag)
-	parts = appendStringFilter(parts, "processDefinitionKey", f.ProcessDefinitionKey)
-	parts = appendStringFilter(parts, "startDateAfter", f.StartDateAfter)
-	parts = appendStringFilter(parts, "startDateBefore", f.StartDateBefore)
-	parts = appendStringFilter(parts, "endDateAfter", f.EndDateAfter)
-	parts = appendStringFilter(parts, "endDateBefore", f.EndDateBefore)
-	if f.State != "" {
-		parts = append(parts, fmt.Sprintf("state=%s", f.State))
-	}
-	parts = appendStringFilter(parts, "parentKey", f.ParentKey)
-	parts = appendBoolFilter(parts, "hasParent", f.HasParent)
-	parts = appendBoolFilter(parts, "hasIncident", f.HasIncident)
-	return formatFilterParts(parts)
-}
-
-func formatFilterParts(parts []string) string {
-	if len(parts) == 0 {
-		return "none"
-	}
-	return "{" + strings.Join(parts, ", ") + "}"
-}
-
-func appendStringFilter(parts []string, name, value string) []string {
-	if value == "" {
-		return parts
-	}
-	return append(parts, fmt.Sprintf("%s=%q", name, value))
-}
-
-func appendBoolFilter(parts []string, name string, value *bool) []string {
-	if value == nil {
-		return parts
-	}
-	return append(parts, fmt.Sprintf("%s=%t", name, *value))
+	parts = toolx.AppendQuotedField(parts, "key", f.Key)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", f.ProcessVersionTag)
+	parts = toolx.AppendQuotedField(parts, "processDefinitionKey", f.ProcessDefinitionKey)
+	parts = toolx.AppendQuotedField(parts, "startDateAfter", f.StartDateAfter)
+	parts = toolx.AppendQuotedField(parts, "startDateBefore", f.StartDateBefore)
+	parts = toolx.AppendQuotedField(parts, "endDateAfter", f.EndDateAfter)
+	parts = toolx.AppendQuotedField(parts, "endDateBefore", f.EndDateBefore)
+	parts = toolx.AppendRawField(parts, "state", f.State.String())
+	parts = toolx.AppendQuotedField(parts, "parentKey", f.ParentKey)
+	parts = toolx.AppendBoolPtrField(parts, "hasParent", f.HasParent)
+	parts = toolx.AppendBoolPtrField(parts, "hasIncident", f.HasIncident)
+	return toolx.FormatActiveFields(parts)
 }
 
 type ProcessInstancePageRequest struct {

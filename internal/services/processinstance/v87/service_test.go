@@ -828,6 +828,7 @@ func TestService_TraversalResults(t *testing.T) {
 	})
 }
 
+// newTestService creates a v8.7 process-instance service with strict injected clients.
 func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamundaClient, operateClient *mockOperateClient) *v87.Service {
 	t.Helper()
 
@@ -842,6 +843,7 @@ func newTestService(t *testing.T, cfg *config.Config, camundaClient *mockCamunda
 	return svc
 }
 
+// newStrictCamundaClient returns a v8.7 Camunda client mock that fails on unexpected calls.
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	t.Helper()
 	return &mockCamundaClient{
@@ -856,6 +858,7 @@ func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	}
 }
 
+// newStrictOperateClient returns a v8.7 Operate client mock that fails on unexpected calls.
 func newStrictOperateClient(t *testing.T) *mockOperateClient {
 	t.Helper()
 	return &mockOperateClient{
@@ -927,6 +930,7 @@ func wrongStateMessage() string {
 	return "Process instances needs to be in one of the states [COMPLETED, CANCELED]"
 }
 
+// newHTTPResponse builds a minimal HTTP response for v8.7 process-instance error handling tests.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {

@@ -44,6 +44,7 @@ type resolverBindings struct {
 	flags map[string]*pflag.Flag
 }
 
+// newResolverBindings creates the flag registry used during config resolution.
 func newResolverBindings() *resolverBindings {
 	return &resolverBindings{
 		flags: make(map[string]*pflag.Flag),

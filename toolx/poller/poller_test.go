@@ -7,38 +7,19 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/require"
 )
 
-type fakeActivitySink struct {
-	mu      sync.Mutex
-	started int
-	stopped int
-	msgs    []string
-}
-
-func (s *fakeActivitySink) StartActivity(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.started++
-	s.msgs = append(s.msgs, msg)
-}
-
-func (s *fakeActivitySink) StopActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopped++
-}
-
+// TestWaitForCompletion_UsesSharedActivitySink verifies polling progress uses the activity context sink.
 func TestWaitForCompletion_UsesSharedActivitySink(t *testing.T) {
 	t.Parallel()
 
-	sink := &fakeActivitySink{}
+	sink := &activitysink.Sink{}
 	ctx := logging.ToActivityContext(context.Background(), sink)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	attempts := 0
@@ -52,9 +33,8 @@ func TestWaitForCompletion_UsesSharedActivitySink(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sink.mu.Lock()
-	defer sink.mu.Unlock()
-	require.Equal(t, 1, sink.started)
-	require.Equal(t, 1, sink.stopped)
-	require.Equal(t, []string{"waiting for completion"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"waiting for completion"}, msgs)
 }

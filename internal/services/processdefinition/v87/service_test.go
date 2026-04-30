@@ -499,6 +499,7 @@ func makeProcessDefinition(key int64, id string, version int32) operatev87.Proce
 	}
 }
 
+// newHTTPResponse builds a minimal HTTP response for v8.7 process-definition error handling tests.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {

@@ -485,6 +485,7 @@ func decodeSearchProcessDefinitionsResponse(body []byte, page *camundav89.Proces
 	return result, nil
 }
 
+// newStringEqFilterPtr builds a v8.9 string equality filter when a value is set.
 func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	if v == "" {
 		return nil, nil
@@ -496,6 +497,7 @@ func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	return new(f), nil
 }
 
+// newProcessDefinitionKeyEqFilterPtr builds a v8.9 process-definition-key equality filter when a key is set.
 func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinitionKeyFilterProperty, error) {
 	if v == "" {
 		return nil, nil
@@ -507,6 +509,7 @@ func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinition
 	return &filter, nil
 }
 
+// newProcessInstanceStateEqFilterPtr builds a v8.9 process-instance-state equality filter.
 func newProcessInstanceStateEqFilterPtr(v camundav89.ProcessInstanceStateEnum) (*camundav89.ProcessInstanceStateFilterProperty, error) {
 	var filter camundav89.ProcessInstanceStateFilterProperty
 	if err := filter.FromProcessInstanceStateFilterProperty0(v); err != nil {

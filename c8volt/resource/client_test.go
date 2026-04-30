@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 	"testing"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -17,31 +16,12 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeActivitySink struct {
-	mu      sync.Mutex
-	started int
-	stopped int
-	msgs    []string
-}
-
-func (s *fakeActivitySink) StartActivity(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.started++
-	s.msgs = append(s.msgs, msg)
-}
-
-func (s *fakeActivitySink) StopActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopped++
-}
 
 // TestClient_GetResource verifies facade-to-service option mapping and domain
 // resource conversion. The facade should not expose generated Camunda response
@@ -145,6 +125,7 @@ func TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan(t *testing.T) {
 	assert.Equal(t, typex.Keys{"root-1"}, canceledKeys)
 }
 
+// TestClient_DeleteProcessDefinition_ForwardsContextToDryRunPlan verifies dry-run planning receives caller context.
 func TestClient_DeleteProcessDefinition_ForwardsContextToDryRunPlan(t *testing.T) {
 	t.Parallel()
 
@@ -183,6 +164,7 @@ func TestClient_DeleteProcessDefinition_ForwardsContextToDryRunPlan(t *testing.T
 	assert.True(t, report.Ok)
 }
 
+// TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntilVerbose verifies warning details respect verbosity.
 func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {
 	t.Parallel()
 
@@ -204,10 +186,11 @@ func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntil
 	assert.Contains(t, verbose, "missing ancestor keys: missing-1, missing-2")
 }
 
+// TestClient_DeleteProcessDefinitions_UsesActivityIndicator verifies bulk deletion reports one activity scope.
 func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 	t.Parallel()
 
-	sink := &fakeActivitySink{}
+	sink := &activitysink.Sink{}
 	ctx := logging.ToActivityContext(context.Background(), sink)
 	api := &stubResourceAPI{
 		delete: func(_ context.Context, _ string, _ ...services.CallOption) error {
@@ -220,11 +203,10 @@ func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 2)
-	sink.mu.Lock()
-	defer sink.mu.Unlock()
-	assert.Equal(t, 1, sink.started)
-	assert.Equal(t, 1, sink.stopped)
-	assert.Equal(t, []string{"deleting 2 process definition(s)"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"deleting 2 process definition(s)"}, msgs)
 }
 
 type stubResourceAPI struct {

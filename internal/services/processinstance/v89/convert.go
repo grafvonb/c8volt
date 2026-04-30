@@ -146,6 +146,7 @@ func decodeSearchProcessInstancesResponse(body []byte, page *camundav89.ProcessI
 	return result, nil
 }
 
+// newStringEqFilterPtr builds a v8.9 string equality filter when a value is set.
 func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	if v == "" {
 		return nil, nil
@@ -157,6 +158,7 @@ func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	return new(f), nil
 }
 
+// newIntegerEqFilterPtr builds a v8.9 integer equality filter when a value is set.
 func newIntegerEqFilterPtr(v int32) (*camundav89.IntegerFilterProperty, error) {
 	if v == 0 {
 		return nil, nil
@@ -168,6 +170,7 @@ func newIntegerEqFilterPtr(v int32) (*camundav89.IntegerFilterProperty, error) {
 	return new(f), nil
 }
 
+// newProcessInstanceKeyEqFilterPtr builds a v8.9 process-instance-key equality filter when a key is set.
 func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
 	if v == "" {
 		return nil, nil
@@ -179,6 +182,7 @@ func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyF
 	return new(f), nil
 }
 
+// newProcessInstanceKeyExistsFilterPtr builds a v8.9 process-instance-key existence filter when explicitly requested.
 func newProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
 	if exists == nil {
 		return nil, nil
@@ -192,6 +196,7 @@ func newProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav89.ProcessInst
 	return new(f), nil
 }
 
+// newProcessInstanceStateEqFilterPtr builds a v8.9 process-instance-state equality filter when a state is set.
 func newProcessInstanceStateEqFilterPtr(v string) (*camundav89.ProcessInstanceStateFilterProperty, error) {
 	if v == "" {
 		return nil, nil
@@ -203,6 +208,7 @@ func newProcessInstanceStateEqFilterPtr(v string) (*camundav89.ProcessInstanceSt
 	return new(f), nil
 }
 
+// newDateTimeRangeFilterPtr builds a v8.9 datetime range or existence filter when any bound is set.
 func newDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) (*camundav89.DateTimeFilterProperty, error) {
 	if after == nil && before == nil && exists == nil {
 		return nil, nil

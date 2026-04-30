@@ -771,6 +771,7 @@ func decodeProcessDefinitionSearchRequest(t *testing.T, raw string) processDefin
 	return body
 }
 
+// newHTTPResponse builds a minimal HTTP response for v8.9 process-definition error handling tests.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, err := url.Parse(rawURL)
 	if err != nil {

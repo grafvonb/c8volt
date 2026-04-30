@@ -224,6 +224,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	}, nil
 }
 
+// newProcessInstanceReportedTotal converts an Operate total into exact domain metadata.
 func newProcessInstanceReportedTotal(total *int64) *d.ProcessInstanceReportedTotal {
 	if total == nil {
 		return nil

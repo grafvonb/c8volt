@@ -352,6 +352,7 @@ func resolvePISearchSize(cmd *cobra.Command, cfg *config.Config) int32 {
 	return consts.MaxPISearchSize
 }
 
+// newPISearchPageRequest builds the process-instance page request for the current command and config.
 func newPISearchPageRequest(cmd *cobra.Command, cfg *config.Config, from int32) process.ProcessInstancePageRequest {
 	return process.ProcessInstancePageRequest{
 		From: from,
@@ -373,6 +374,7 @@ func pickPIContinuationState(overflow process.ProcessInstanceOverflowState, auto
 	}
 }
 
+// newPIProgressSummary converts page metadata into user-facing continuation progress.
 func newPIProgressSummary(page process.ProcessInstancePage, cumulative int, autoConfirm bool) processInstanceProgressSummary {
 	continuationState := pickPIContinuationState(page.OverflowState, autoConfirm)
 	if isPILimitReached(cumulative) {

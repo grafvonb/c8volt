@@ -4,8 +4,9 @@
 package domain
 
 import (
-	"fmt"
 	"slices"
+
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 type ProcessDefinition struct {
@@ -37,17 +38,13 @@ type ProcessDefinitionFilter struct {
 
 func (f ProcessDefinitionFilter) String() string {
 	parts := make([]string, 0, 6)
-	parts = appendStringFilter(parts, "bpmnProcessId", f.BpmnProcessId)
-	parts = appendStringFilter(parts, "key", f.Key)
-	parts = appendStringFilter(parts, "tenantId", f.TenantId)
-	if f.ProcessVersion != 0 {
-		parts = append(parts, fmt.Sprintf("processVersion=%d", f.ProcessVersion))
-	}
-	parts = appendStringFilter(parts, "processVersionTag", f.ProcessVersionTag)
-	if f.IsLatestVersion {
-		parts = append(parts, "isLatestVersion=true")
-	}
-	return formatFilterParts(parts)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", f.BpmnProcessId)
+	parts = toolx.AppendQuotedField(parts, "key", f.Key)
+	parts = toolx.AppendQuotedField(parts, "tenantId", f.TenantId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", f.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", f.ProcessVersionTag)
+	parts = toolx.AppendTrueBoolField(parts, "isLatestVersion", f.IsLatestVersion)
+	return toolx.FormatActiveFields(parts)
 }
 
 type ProcessDefinitionStatisticsFilter struct {
@@ -56,8 +53,8 @@ type ProcessDefinitionStatisticsFilter struct {
 
 func (f ProcessDefinitionStatisticsFilter) String() string {
 	parts := make([]string, 0, 1)
-	parts = appendStringFilter(parts, "tenantId", f.TenantId)
-	return formatFilterParts(parts)
+	parts = toolx.AppendQuotedField(parts, "tenantId", f.TenantId)
+	return toolx.FormatActiveFields(parts)
 }
 
 func SortByVersionDesc(pds []ProcessDefinition) {

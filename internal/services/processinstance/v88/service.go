@@ -288,6 +288,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	}, nil
 }
 
+// newSearchQueryPageRequest builds the v8.8 page request, preferring cursor pagination when available.
 func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav88.SearchQueryPageRequest {
 	page := camundav88.SearchQueryPageRequest{}
 	if pageReq.After != "" {
@@ -311,6 +312,7 @@ func processInstanceEndCursor(page camundav88.SearchQueryPageResponse) string {
 	return string(*page.EndCursor)
 }
 
+// newParentProcessInstanceKeyFilter builds either an equality or existence filter for parent process-instance keys.
 func newParentProcessInstanceKeyFilter(filter d.ProcessInstanceFilter) (*camundav88.ProcessInstanceKeyFilterProperty, error) {
 	if filter.ParentKey != "" {
 		return common.NewProcessInstanceKeyEqFilterPtr(filter.ParentKey)

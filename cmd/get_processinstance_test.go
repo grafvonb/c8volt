@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -23,32 +22,14 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 )
 
-type fakeCommandActivitySink struct {
-	mu      sync.Mutex
-	started int
-	stopped int
-	msgs    []string
-}
-
-func (s *fakeCommandActivitySink) StartActivity(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.started++
-	s.msgs = append(s.msgs, msg)
-}
-
-func (s *fakeCommandActivitySink) StopActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopped++
-}
-
+// TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface verifies help text exposes paging and automation contracts.
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
@@ -94,6 +75,7 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+// TestGetProcessInstanceJSONWithAge_AddsMetaField verifies --with-age decorates JSON rows with age metadata.
 func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	var requests []string
 	srv := newProcessInstanceSearchCaptureServer(t, &requests)
@@ -118,6 +100,7 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 	require.Equal(t, true, meta["withAge"])
 }
 
+// TestGetProcessInstanceTotalOutput verifies --total output uses exact fallback counting when backend totals are capped.
 func TestGetProcessInstanceTotalOutput(t *testing.T) {
 	t.Run("reported total prints only the numeric count without fetching later pages", func(t *testing.T) {
 		var requests []string
@@ -266,6 +249,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 	})
 }
 
+// TestGetProcessInstanceTotalValidation verifies --total rejects incompatible output and lookup modes.
 func TestGetProcessInstanceTotalValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -307,6 +291,7 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 	}
 }
 
+// TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags verifies paging flag validation errors stay user-facing.
 func TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -352,6 +337,7 @@ func TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *te
 	}
 }
 
+// TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity verifies orphan filtering is wrapped in command activity output.
 func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.T) {
 	prevOrphanOnly := flagGetPIOrphanChildrenOnly
 	t.Cleanup(func() {
@@ -359,7 +345,7 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	})
 	flagGetPIOrphanChildrenOnly = true
 
-	sink := &fakeCommandActivitySink{}
+	sink := &activitysink.Sink{}
 	cmd := &cobra.Command{}
 	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
 	cliFilterCalls := 0
@@ -382,13 +368,13 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	require.Len(t, got.Items, 1)
 	require.EqualValues(t, 1, got.Total)
 
-	sink.mu.Lock()
-	defer sink.mu.Unlock()
-	require.Equal(t, 1, sink.started)
-	require.Equal(t, 1, sink.stopped)
-	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, sink.msgs)
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, msgs)
 }
 
+// TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint verifies direct key lookup uses the versioned generated endpoint.
 func TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint(t *testing.T) {
 	response := `{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`
 
@@ -523,6 +509,7 @@ apis:
 	})
 }
 
+// TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
 func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -553,6 +540,7 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
+// TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native search contract.
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -718,6 +706,7 @@ func TestGetProcessInstanceDateFilterScaffold(t *testing.T) {
 	})
 }
 
+// TestGetProcessInstanceRelativeDayFilterScaffold verifies relative-day filters derive stable date bounds for search.
 func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {
@@ -779,6 +768,7 @@ func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
 	})
 }
 
+// TestGetProcessInstanceRelativeDayValidation verifies invalid relative-day ranges and combinations are rejected.
 func TestGetProcessInstanceRelativeDayValidation(t *testing.T) {
 	t.Run("negative relative-day values exit through shared invalid-input path", func(t *testing.T) {
 		cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
@@ -835,6 +825,7 @@ func TestGetProcessInstanceRelativeDayValidation(t *testing.T) {
 	})
 }
 
+// TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds verifies command options convert relative days to canonical dates.
 func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -860,6 +851,7 @@ func TestPopulatePISearchFilterOpts_DerivesRelativeDayBounds(t *testing.T) {
 	require.Equal(t, "2026-03-27", filter.EndDateBefore)
 }
 
+// TestPopulatePISearchFilterOpts_TranslatesSupportedPresenceFlags verifies parent and incident flags become facade options.
 func TestPopulatePISearchFilterOpts_TranslatesSupportedPresenceFlags(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -873,6 +865,7 @@ func TestPopulatePISearchFilterOpts_TranslatesSupportedPresenceFlags(t *testing.
 	require.Equal(t, new(true), filter.HasIncident)
 }
 
+// TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs verifies absolute and relative date modes are exclusive.
 func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -886,6 +879,7 @@ func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.
 	require.Contains(t, err.Error(), "start-date absolute and relative day filters cannot be combined")
 }
 
+// TestHasPISearchFilterFlags_WithRelativeDaysOnly verifies relative-day flags activate search mode.
 func TestHasPISearchFilterFlags_WithRelativeDaysOnly(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -895,6 +889,7 @@ func TestHasPISearchFilterFlags_WithRelativeDaysOnly(t *testing.T) {
 	require.True(t, hasPISearchFilterFlags())
 }
 
+// TestResolvePISearchSize verifies page-size precedence from flags, config, and defaults.
 func TestResolvePISearchSize(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -929,6 +924,7 @@ func TestResolvePISearchSize(t *testing.T) {
 	})
 }
 
+// TestGetProcessInstancePagingFlow verifies interactive, automatic, and limited paging behavior.
 func TestGetProcessInstancePagingFlow(t *testing.T) {
 	t.Run("limit truncates results across pages and stops without continuation prompt", func(t *testing.T) {
 		var requests []string
@@ -1452,6 +1448,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 	})
 }
 
+// TestPIContinuationHelpers verifies paging progress summary and continuation decisions.
 func TestPIContinuationHelpers(t *testing.T) {
 	t.Run("auto-confirm chooses auto-continue for overflow", func(t *testing.T) {
 		page := process.ProcessInstancePage{
@@ -1480,6 +1477,7 @@ func TestPIContinuationHelpers(t *testing.T) {
 	})
 }
 
+// decodeSingleRequestJSON decodes the single captured request body for request-shape assertions.
 func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	t.Helper()
 
@@ -1490,11 +1488,13 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	return got
 }
 
+// newIPv4Server creates an IPv4-only test server for command tests that must avoid IPv6 listeners.
 func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
 	return testx.NewIPv4Server(t, handler)
 }
 
+// executeRootForProcessInstanceTest runs the root command with process-instance globals reset.
 func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	t.Helper()
 
@@ -1518,6 +1518,7 @@ func executeRootForProcessInstanceTest(t *testing.T, args ...string) string {
 	return buf.String()
 }
 
+// executeRootForProcessInstanceWithSeparateOutputs runs the root command and returns stdout and stderr independently.
 func executeRootForProcessInstanceWithSeparateOutputs(t *testing.T, args ...string) (string, string) {
 	t.Helper()
 
@@ -1542,6 +1543,7 @@ func executeRootForProcessInstanceWithSeparateOutputs(t *testing.T, args ...stri
 	return stdout.String(), stderr.String()
 }
 
+// executeRootForProcessInstanceTestWithEnv runs the root command with temporary environment overrides.
 func executeRootForProcessInstanceTestWithEnv(t *testing.T, env []string, args ...string) string {
 	t.Helper()
 
@@ -1568,6 +1570,7 @@ func executeRootForProcessInstanceTestWithEnv(t *testing.T, env []string, args .
 	return executeRootForProcessInstanceTest(t, args...)
 }
 
+// resetProcessInstanceCommandGlobals restores process-instance command globals between tests.
 func resetProcessInstanceCommandGlobals() {
 	flagCancelPIKeys = nil
 	flagDeletePIKeys = nil
@@ -1614,6 +1617,7 @@ func resetProcessInstanceCommandGlobals() {
 	confirmCmdOrAbortFn = confirmCmdOrAbort
 }
 
+// resetPISearchBatchSizeFlag restores the process-instance batch-size flag default.
 func resetPISearchBatchSizeFlag(t *testing.T, cmd *cobra.Command) {
 	t.Helper()
 
@@ -1623,6 +1627,7 @@ func resetPISearchBatchSizeFlag(t *testing.T, cmd *cobra.Command) {
 	flag.Changed = false
 }
 
+// resetRootPersistentFlags clears root persistent flag globals that can leak across command tests.
 func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {
 	t.Helper()
 
@@ -1632,6 +1637,7 @@ func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {
 	})
 }
 
+// executeProcessInstanceFailureHelper runs a helper subprocess expected to fail and returns output with exit code.
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
@@ -1646,6 +1652,7 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	return string(output), exitErr.ExitCode()
 }
 
+// TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper is the helper-process entrypoint for removed --count validation.
 func TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1658,6 +1665,7 @@ func TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper(t *testing.T) {
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_RejectsInvalidLimitHelper is the helper-process entrypoint for invalid --limit validation.
 func TestGetProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1670,6 +1678,7 @@ func TestGetProcessInstanceCommand_RejectsInvalidLimitHelper(t *testing.T) {
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_RejectsLimitWithKeyHelper is the helper-process entrypoint for --limit with --key validation.
 func TestGetProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1682,6 +1691,7 @@ func TestGetProcessInstanceCommand_RejectsLimitWithKeyHelper(t *testing.T) {
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_RejectsLimitWithTotalHelper is the helper-process entrypoint for --limit with --total validation.
 func TestGetProcessInstanceCommand_RejectsLimitWithTotalHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1694,6 +1704,7 @@ func TestGetProcessInstanceCommand_RejectsLimitWithTotalHelper(t *testing.T) {
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_RejectsInvalidBatchSizeHelper is the helper-process entrypoint for invalid --batch-size validation.
 func TestGetProcessInstanceCommand_RejectsInvalidBatchSizeHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

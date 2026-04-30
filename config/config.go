@@ -349,6 +349,7 @@ func (c *Config) Validate() error {
 	return errors.Join(errs...)
 }
 
+// newConfigKeyRegistry builds a lookup that knows whether a config key is set by any active source.
 func newConfigKeyRegistry(
 	v *viper.Viper,
 	activeProfile string,
