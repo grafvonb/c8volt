@@ -17,10 +17,10 @@
 
 **Purpose**: Establish the current command and service seams before behavior changes begin.
 
-- [ ] T001 Review the existing keyed-vs-search flow and validation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T002 [P] Review process-instance facade and internal service contracts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/api.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go
-- [ ] T003 [P] Review generated native user-task client signatures for 8.8 and 8.9 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v88/camunda/client.gen.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v89/camunda/client.gen.go
-- [ ] T004 [P] Review command test helpers and HTTP fixture patterns in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/process_api_stub_test.go
+- [x] T001 Review the existing keyed-vs-search flow and validation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T002 [P] Review process-instance facade and internal service contracts in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/process/api.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/processinstance/api.go
+- [x] T003 [P] Review generated native user-task client signatures for 8.8 and 8.9 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v88/camunda/client.gen.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/clients/camunda/v89/camunda/client.gen.go
+- [x] T004 [P] Review command test helpers and HTTP fixture patterns in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/process_api_stub_test.go
 
 ---
 
