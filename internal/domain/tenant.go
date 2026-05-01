@@ -14,22 +14,8 @@ type Tenant struct {
 	Description string `json:"description,omitempty"`
 }
 
-func SortTenantsByNameAscThenTenantIDAsc(tenants []Tenant) {
-	slices.SortFunc(tenants, func(a, b Tenant) int {
-		if a.Name < b.Name {
-			return -1
-		}
-		if a.Name > b.Name {
-			return 1
-		}
-		if a.TenantId < b.TenantId {
-			return -1
-		}
-		if a.TenantId > b.TenantId {
-			return 1
-		}
-		return 0
-	})
+type TenantFilter struct {
+	NameContains string
 }
 
 func FilterTenantsByNameContains(tenants []Tenant, text string) []Tenant {

@@ -10,21 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSortTenantsByNameAscThenTenantIDAsc(t *testing.T) {
-	tenants := []Tenant{
-		{TenantId: "tenant-c", Name: "Beta"},
-		{TenantId: "tenant-b", Name: "Alpha"},
-		{TenantId: "tenant-a", Name: "Alpha"},
-	}
-
-	SortTenantsByNameAscThenTenantIDAsc(tenants)
-
-	require.Len(t, tenants, 3)
-	assert.Equal(t, "tenant-a", tenants[0].TenantId)
-	assert.Equal(t, "tenant-b", tenants[1].TenantId)
-	assert.Equal(t, "tenant-c", tenants[2].TenantId)
-}
-
 func TestFilterTenantsByNameContains_TreatsTextLiterally(t *testing.T) {
 	tenants := []Tenant{
 		{TenantId: "tenant-a", Name: "demo.*"},

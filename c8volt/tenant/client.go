@@ -9,7 +9,6 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
-	d "github.com/grafvonb/c8volt/internal/domain"
 	tsvc "github.com/grafvonb/c8volt/internal/services/tenant"
 )
 
@@ -23,12 +22,10 @@ func New(api tsvc.API, log *slog.Logger) API {
 }
 
 func (c *client) SearchTenants(ctx context.Context, filter TenantFilter, opts ...foptions.FacadeOption) (Tenants, error) {
-	tenants, err := c.api.SearchTenants(ctx, tsvc.MaxResultSize, foptions.MapFacadeOptionsToCallOptions(opts)...)
+	tenants, err := c.api.SearchTenants(ctx, toDomainTenantFilter(filter), tsvc.MaxResultSize, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return Tenants{}, ferrors.FromDomain(err)
 	}
-	tenants = d.FilterTenantsByNameContains(tenants, filter.NameContains)
-	d.SortTenantsByNameAscThenTenantIDAsc(tenants)
 	return fromDomainTenants(tenants), nil
 }
 

@@ -27,7 +27,7 @@ func newTestService(t *testing.T) *Service {
 func TestService_SearchTenants_Unsupported(t *testing.T) {
 	svc := newTestService(t)
 
-	tenants, err := svc.SearchTenants(context.Background(), 1000)
+	tenants, err := svc.SearchTenants(context.Background(), domain.TenantFilter{}, 1000)
 
 	require.Error(t, err)
 	assert.Nil(t, tenants)

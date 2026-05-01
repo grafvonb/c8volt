@@ -49,6 +49,7 @@ func TestService_SearchTenants(t *testing.T) {
 
 	tests := []struct {
 		name          string
+		filter        domain.TenantFilter
 		setupMock     func(*mockTenantClient)
 		expectedError error
 		assertResult  func(*testing.T, []domain.Tenant)
@@ -76,6 +77,26 @@ func TestService_SearchTenants(t *testing.T) {
 				assert.Empty(t, tenants[0].Description)
 				assert.Equal(t, "tenant-a", tenants[1].TenantId)
 				assert.Equal(t, "primary tenant", tenants[1].Description)
+			},
+		},
+		{
+			name:   "literal name filter",
+			filter: domain.TenantFilter{NameContains: ".*"},
+			setupMock: func(m *mockTenantClient) {
+				resp := &camundav88.SearchTenantsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/tenants/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.TenantSearchQueryResult{
+						Items: []camundav88.TenantResult{
+							{TenantId: "tenant-a", Name: "demo.*"},
+							{TenantId: "tenant-b", Name: "demo-1"},
+						},
+					},
+				}
+				m.On("SearchTenantsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
+			},
+			assertResult: func(t *testing.T, tenants []domain.Tenant) {
+				require.Len(t, tenants, 1)
+				assert.Equal(t, "tenant-a", tenants[0].TenantId)
 			},
 		},
 		{
@@ -115,7 +136,7 @@ func TestService_SearchTenants(t *testing.T) {
 			svc, err := v88.New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClient(m))
 			require.NoError(t, err)
 
-			got, err := svc.SearchTenants(ctx, 100, services.WithVerbose())
+			got, err := svc.SearchTenants(ctx, tt.filter, 100, services.WithVerbose())
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.expectedError)

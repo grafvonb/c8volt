@@ -68,10 +68,10 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-func (s *Service) SearchTenants(ctx context.Context, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
+func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	body := searchTenantsRequest(size)
-	common.VerboseLog(ctx, cCfg, s.log, "searching tenants", "baseURL", s.cfg.APIs.Camunda.BaseURL, "body", body)
+	common.VerboseLog(ctx, cCfg, s.log, "searching tenants", "baseURL", s.cfg.APIs.Camunda.BaseURL, "filter", filter, "body", body)
 	resp, err := s.c.SearchTenantsWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
@@ -81,6 +81,7 @@ func (s *Service) SearchTenants(ctx context.Context, size int32, opts ...service
 		return nil, err
 	}
 	out := toolx.MapSlice(payload.Items, fromTenantResult)
+	out = d.FilterTenantsByNameContains(out, filter.NameContains)
 	common.VerboseLog(ctx, cCfg, s.log, "found tenants", "count", len(out))
 	return out, nil
 }

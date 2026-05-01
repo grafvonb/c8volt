@@ -23,3 +23,7 @@ func fromDomainTenants(xs []d.Tenant) Tenants {
 		Items: items,
 	}
 }
+
+func toDomainTenantFilter(x TenantFilter) d.TenantFilter {
+	return d.TenantFilter{NameContains: x.NameContains}
+}

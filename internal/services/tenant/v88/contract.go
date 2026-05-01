@@ -12,7 +12,7 @@ import (
 )
 
 type API interface {
-	SearchTenants(ctx context.Context, size int32, opts ...services.CallOption) ([]d.Tenant, error)
+	SearchTenants(ctx context.Context, filter d.TenantFilter, size int32, opts ...services.CallOption) ([]d.Tenant, error)
 	GetTenant(ctx context.Context, tenantID string, opts ...services.CallOption) (d.Tenant, error)
 }
 

@@ -48,8 +48,9 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-func (s *Service) SearchTenants(ctx context.Context, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
+func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
 	_ = ctx
+	_ = filter
 	_ = size
 	_ = services.ApplyCallOptions(opts)
 	return nil, unsupportedTenantOperation("tenant search")
