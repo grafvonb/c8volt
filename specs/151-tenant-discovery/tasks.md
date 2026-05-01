@@ -102,17 +102,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T038 [P] [US3] Add command filter tests for matching and empty results in `cmd/get_tenant_test.go`
-- [ ] T039 [P] [US3] Add wildcard/glob/regex/query literal filter tests in `cmd/get_tenant_test.go`
-- [ ] T040 [P] [US3] Add `--key` plus `--filter` invalid-combination command test in `cmd/get_tenant_test.go`
-- [ ] T041 [P] [US3] Add facade filter tests in `c8volt/tenant/client_test.go`
+- [x] T038 [P] [US3] Add command filter tests for matching and empty results in `cmd/get_tenant_test.go`
+- [x] T039 [P] [US3] Add wildcard/glob/regex/query literal filter tests in `cmd/get_tenant_test.go`
+- [x] T040 [P] [US3] Add `--key` plus `--filter` invalid-combination command test in `cmd/get_tenant_test.go`
+- [x] T041 [P] [US3] Add facade filter tests in `c8volt/tenant/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Add tenant filter field and list filtering path in `c8volt/tenant/model.go`
-- [ ] T043 [US3] Apply literal name filtering before final sort in `c8volt/tenant/client.go`
-- [ ] T044 [US3] Add `--filter` flag and reject `--key` plus `--filter` in `cmd/get_tenant.go`
-- [ ] T045 [US3] Ensure filtered tenant list rendering reuses existing tenant list renderer in `cmd/cmd_views_get.go`
+- [x] T042 [US3] Add tenant filter field and list filtering path in `c8volt/tenant/model.go`
+- [x] T043 [US3] Apply literal name filtering before final sort in `c8volt/tenant/client.go`
+- [x] T044 [US3] Add `--filter` flag and reject `--key` plus `--filter` in `cmd/get_tenant.go`
+- [x] T045 [US3] Ensure filtered tenant list rendering reuses existing tenant list renderer in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Stories 1, 2, and 3 are independently functional.
 

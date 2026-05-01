@@ -10,7 +10,7 @@ import (
 )
 
 type API interface {
-	SearchTenants(ctx context.Context, opts ...foptions.FacadeOption) (Tenants, error)
+	SearchTenants(ctx context.Context, filter TenantFilter, opts ...foptions.FacadeOption) (Tenants, error)
 	GetTenant(ctx context.Context, tenantID string, opts ...foptions.FacadeOption) (Tenant, error)
 }
 

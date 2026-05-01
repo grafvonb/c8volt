@@ -14,10 +14,10 @@ Started: 2026-05-01 13:08:19
 - Top-level `c8volt.New` wires each internal service factory into a public facade, embeds the facade interface in the root client struct, and exposes matching type aliases.
 - Unsupported version services wrap `domain.ErrUnsupported` with operation-specific text so facade normalization can classify the failure consistently.
 - Versioned tenant search services build generated `SearchTenants` requests with limit pagination and upstream name/tenant-id sorting, while the public facade still performs final local sorting for deterministic command output.
+- Public tenant facade filtering stays local: commands pass raw `--filter` text as `tenant.TenantFilter.NameContains`, the facade applies the domain literal-contains helper before final sorting, and versioned services remain unaware of CLI filter semantics.
 - `get` list renderers should use the shared `listOrJSON` helper so one-line, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
 - Single-item `get` renderers should use the shared `itemView` helper so human, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
 
----
 ## Iteration 1 - 2026-05-01 13:10:26 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
 **Tasks Completed**:
@@ -157,4 +157,33 @@ Started: 2026-05-01 13:08:19
 - Keyed command tests can exercise `runGetTenantByKey` with an embedded `c8volt.API` stub, avoiding local listener creation that is blocked in this sandbox.
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test(Service_GetTenant|Client_GetTenant|GetTenant)' -count=1` passes for the US2 slice.
 - Broader `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` is blocked by unrelated `httptest` listener failure in `cmd/deploy_test.go`.
+---
+---
+## Iteration 5 - 2026-05-01 13:42:53 CEST
+**User Story**: User Story 3 - Filter Tenant Lists by Name
+**Tasks Completed**:
+- [x] T038: Add command filter tests for matching and empty results in `cmd/get_tenant_test.go`
+- [x] T039: Add wildcard/glob/regex/query literal filter tests in `cmd/get_tenant_test.go`
+- [x] T040: Add `--key` plus `--filter` invalid-combination command test in `cmd/get_tenant_test.go`
+- [x] T041: Add facade filter tests in `c8volt/tenant/client_test.go`
+- [x] T042: Add tenant filter field and list filtering path in `c8volt/tenant/model.go`
+- [x] T043: Apply literal name filtering before final sort in `c8volt/tenant/client.go`
+- [x] T044: Add `--filter` flag and reject `--key` plus `--filter` in `cmd/get_tenant.go`
+- [x] T045: Ensure filtered tenant list rendering reuses existing tenant list renderer in `cmd/cmd_views_get.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/client_test.go
+- c8volt/tenant/api.go
+- c8volt/tenant/client.go
+- c8volt/tenant/client_test.go
+- c8volt/tenant/model.go
+- cmd/get_tenant.go
+- cmd/get_tenant_test.go
+- specs/151-tenant-discovery/tasks.md
+- specs/151-tenant-discovery/progress.md
+**Learnings**:
+- `--filter` is intentionally passed through unchanged so pattern-like text such as `.*` remains literal and is interpreted only by the facade/domain helper.
+- `GOCACHE=/tmp/c8volt-go-build go test ./internal/domain ./c8volt ./c8volt/tenant ./cmd -run 'Test(FilterTenants|New_V89WiresSupportedRuntime|Client_SearchTenants|GetTenantListOutput|GetTenantCommand)' -count=1` passes for the US3 slice and root wiring.
+- `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` is still blocked in `cmd` by the unrelated sandbox `httptest` listener failure in `cmd/deploy_test.go`; internal tenant services and facade packages pass before that package failure.
 ---

@@ -13,3 +13,7 @@ type Tenants struct {
 	Total int32    `json:"total,omitempty"`
 	Items []Tenant `json:"items,omitempty"`
 }
+
+type TenantFilter struct {
+	NameContains string `json:"nameContains,omitempty"`
+}

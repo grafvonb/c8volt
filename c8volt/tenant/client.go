@@ -22,11 +22,12 @@ func New(api tsvc.API, log *slog.Logger) API {
 	return &client{api: api, log: log}
 }
 
-func (c *client) SearchTenants(ctx context.Context, opts ...foptions.FacadeOption) (Tenants, error) {
+func (c *client) SearchTenants(ctx context.Context, filter TenantFilter, opts ...foptions.FacadeOption) (Tenants, error) {
 	tenants, err := c.api.SearchTenants(ctx, tsvc.MaxResultSize, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return Tenants{}, ferrors.FromDomain(err)
 	}
+	tenants = d.FilterTenantsByNameContains(tenants, filter.NameContains)
 	d.SortTenantsByNameAscThenTenantIDAsc(tenants)
 	return fromDomainTenants(tenants), nil
 }

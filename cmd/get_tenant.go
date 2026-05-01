@@ -9,10 +9,12 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 )
 
 var flagGetTenantKey string
+var flagGetTenantFilter string
 
 var getTenantCmd = &cobra.Command{
 	Use:   "tenant",
@@ -21,6 +23,7 @@ var getTenantCmd = &cobra.Command{
 		"Human output includes tenant ID, name, and description when available.",
 	Example: `  ./c8volt get tenant
   ./c8volt get tenant --key <tenant-id>
+  ./c8volt get tenant --filter demo
   ./c8volt get tenant --json
   ./c8volt get tenant --keys-only`,
 	Aliases: []string{"tenants"},
@@ -39,7 +42,7 @@ func runGetTenant(cmd *cobra.Command, args []string) {
 		runGetTenantByKey(cmd, cli, log, cfg.App.NoErrCodes, key)
 		return
 	}
-	runSearchTenants(cmd, cli, log, cfg.App.NoErrCodes)
+	runSearchTenants(cmd, cli, log, cfg.App.NoErrCodes, tenantFilterFromFlags())
 }
 
 func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, tenantID string) {
@@ -53,9 +56,9 @@ func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noE
 	}
 }
 
-func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool) {
-	log.Debug("searching tenants")
-	tenants, err := cli.SearchTenants(cmd.Context(), collectOptions()...)
+func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter tenant.TenantFilter) {
+	log.Debug(fmt.Sprintf("searching tenants with filter: %+v", filter))
+	tenants, err := cli.SearchTenants(cmd.Context(), filter, collectOptions()...)
 	if err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search tenants: %w", err))
 	}
@@ -70,6 +73,7 @@ func init() {
 
 	fs := getTenantCmd.Flags()
 	fs.StringVarP(&flagGetTenantKey, "key", "k", "", "tenant ID to fetch")
+	fs.StringVarP(&flagGetTenantFilter, "filter", "f", "", "literal tenant name contains filter")
 
 	setCommandMutation(getTenantCmd, CommandMutationReadOnly)
 	setContractSupport(getTenantCmd, ContractSupportFull)
@@ -80,5 +84,12 @@ func validateTenantLookupFlags(cmd *cobra.Command) error {
 	if cmd != nil && cmd.Flags().Changed("key") && strings.TrimSpace(flagGetTenantKey) == "" {
 		return invalidFlagValuef("tenant lookup requires a non-empty --key")
 	}
+	if cmd != nil && cmd.Flags().Changed("key") && cmd.Flags().Changed("filter") {
+		return mutuallyExclusiveFlagsf("--key cannot be combined with --filter")
+	}
 	return nil
+}
+
+func tenantFilterFromFlags() tenant.TenantFilter {
+	return tenant.TenantFilter{NameContains: flagGetTenantFilter}
 }

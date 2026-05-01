@@ -22,7 +22,7 @@ import (
 func TestGetTenantListOutput_SortsAndRendersCompactRows(t *testing.T) {
 	resetTenantRenderFlags(t)
 	cmd := newTenantListTestCommand()
-	api := tenantCommandAPI{searchTenants: func(context.Context, ...foptions.FacadeOption) (tenant.Tenants, error) {
+	api := tenantCommandAPI{searchTenants: func(context.Context, tenant.TenantFilter, ...foptions.FacadeOption) (tenant.Tenants, error) {
 		return tenant.Tenants{
 			Total: 2,
 			Items: []tenant.Tenant{
@@ -32,7 +32,7 @@ func TestGetTenantListOutput_SortsAndRendersCompactRows(t *testing.T) {
 		}, nil
 	}}
 
-	runSearchTenants(cmd, api, tenantTestLogger(), true)
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenant.TenantFilter{})
 	output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 	require.Contains(t, output, "tenant-a")
@@ -48,7 +48,7 @@ func TestGetTenantListOutput_KeysOnlyUsesTenantID(t *testing.T) {
 	resetTenantRenderFlags(t)
 	flagViewKeysOnly = true
 	cmd := newTenantListTestCommand()
-	api := tenantCommandAPI{searchTenants: func(context.Context, ...foptions.FacadeOption) (tenant.Tenants, error) {
+	api := tenantCommandAPI{searchTenants: func(context.Context, tenant.TenantFilter, ...foptions.FacadeOption) (tenant.Tenants, error) {
 		return tenant.Tenants{
 			Total: 2,
 			Items: []tenant.Tenant{
@@ -58,7 +58,7 @@ func TestGetTenantListOutput_KeysOnlyUsesTenantID(t *testing.T) {
 		}, nil
 	}}
 
-	runSearchTenants(cmd, api, tenantTestLogger(), true)
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenant.TenantFilter{})
 	output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 	require.Equal(t, "tenant-a\ntenant-b\n", output)
@@ -69,7 +69,7 @@ func TestGetTenantListOutput_JSONUsesTenantPayload(t *testing.T) {
 	flagViewAsJson = true
 	cmd := newTenantListTestCommand()
 	setContractSupport(cmd, ContractSupportFull)
-	api := tenantCommandAPI{searchTenants: func(context.Context, ...foptions.FacadeOption) (tenant.Tenants, error) {
+	api := tenantCommandAPI{searchTenants: func(context.Context, tenant.TenantFilter, ...foptions.FacadeOption) (tenant.Tenants, error) {
 		return tenant.Tenants{
 			Total: 2,
 			Items: []tenant.Tenant{
@@ -79,7 +79,7 @@ func TestGetTenantListOutput_JSONUsesTenantPayload(t *testing.T) {
 		}, nil
 	}}
 
-	runSearchTenants(cmd, api, tenantTestLogger(), true)
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenant.TenantFilter{})
 	output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 	var got map[string]any
@@ -115,6 +115,65 @@ func TestGetTenantByKeyOutput_RendersSingleTenant(t *testing.T) {
 	require.Contains(t, output, "Alpha")
 	require.Contains(t, output, "primary tenant")
 	require.NotContains(t, output, "found:")
+}
+
+func TestGetTenantListOutput_FilterPassesNameContainsAndRendersMatches(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagGetTenantFilter = "demo"
+	cmd := newTenantListTestCommand()
+	api := tenantCommandAPI{searchTenants: func(_ context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+		require.Equal(t, tenant.TenantFilter{NameContains: "demo"}, filter)
+		return tenant.Tenants{
+			Total: 1,
+			Items: []tenant.Tenant{
+				{TenantId: "tenant-demo", Name: "demo tenant"},
+			},
+		}, nil
+	}}
+
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenantFilterFromFlags())
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Contains(t, output, "tenant-demo")
+	require.Contains(t, output, "demo tenant")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetTenantListOutput_FilterEmptyResults(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagGetTenantFilter = "missing"
+	cmd := newTenantListTestCommand()
+	api := tenantCommandAPI{searchTenants: func(_ context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+		require.Equal(t, tenant.TenantFilter{NameContains: "missing"}, filter)
+		return tenant.Tenants{}, nil
+	}}
+
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenantFilterFromFlags())
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Equal(t, "found: 0\n", output)
+}
+
+func TestGetTenantListOutput_FilterKeepsPatternTextLiteral(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagGetTenantFilter = ".*"
+	cmd := newTenantListTestCommand()
+	api := tenantCommandAPI{searchTenants: func(_ context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+		require.Equal(t, tenant.TenantFilter{NameContains: ".*"}, filter)
+		return tenant.Tenants{
+			Total: 1,
+			Items: []tenant.Tenant{
+				{TenantId: "tenant-literal", Name: "demo.*"},
+			},
+		}, nil
+	}}
+
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenantFilterFromFlags())
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Contains(t, output, "tenant-literal")
+	require.Contains(t, output, "demo.*")
+	require.Contains(t, output, "found: 1")
 }
 
 func TestGetTenantByKeyOutput_KeysOnlyUsesTenantID(t *testing.T) {
@@ -170,14 +229,30 @@ func TestGetTenantCommand_RejectsWhitespaceKey(t *testing.T) {
 	require.Contains(t, err.Error(), "tenant lookup requires a non-empty --key")
 }
 
+func TestGetTenantCommand_RejectsKeyPlusFilter(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagGetTenantKey = "tenant-a"
+	flagGetTenantFilter = "demo"
+	cmd := newTenantListTestCommand()
+	cmd.Flags().String("key", "", "")
+	cmd.Flags().String("filter", "", "")
+	require.NoError(t, cmd.Flags().Set("key", "tenant-a"))
+	require.NoError(t, cmd.Flags().Set("filter", "demo"))
+
+	err := validateTenantLookupFlags(cmd)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--key cannot be combined with --filter")
+}
+
 type tenantCommandAPI struct {
 	c8volt.API
-	searchTenants func(context.Context, ...foptions.FacadeOption) (tenant.Tenants, error)
+	searchTenants func(context.Context, tenant.TenantFilter, ...foptions.FacadeOption) (tenant.Tenants, error)
 	getTenant     func(context.Context, string, ...foptions.FacadeOption) (tenant.Tenant, error)
 }
 
-func (a tenantCommandAPI) SearchTenants(ctx context.Context, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
-	return a.searchTenants(ctx, opts...)
+func (a tenantCommandAPI) SearchTenants(ctx context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+	return a.searchTenants(ctx, filter, opts...)
 }
 
 func (a tenantCommandAPI) GetTenant(ctx context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
@@ -200,16 +275,19 @@ func resetTenantRenderFlags(t *testing.T) {
 	prevKeysOnly := flagViewKeysOnly
 	prevTree := flagViewAsTree
 	prevTenantKey := flagGetTenantKey
+	prevTenantFilter := flagGetTenantFilter
 	t.Cleanup(func() {
 		flagViewAsJson = prevJSON
 		flagViewKeysOnly = prevKeysOnly
 		flagViewAsTree = prevTree
 		flagGetTenantKey = prevTenantKey
+		flagGetTenantFilter = prevTenantFilter
 	})
 	flagViewAsJson = false
 	flagViewKeysOnly = false
 	flagViewAsTree = false
 	flagGetTenantKey = ""
+	flagGetTenantFilter = ""
 }
 
 func tenantTestLogger() *slog.Logger {

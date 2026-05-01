@@ -43,7 +43,7 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	_, err = cli.GetResource(context.Background(), "resource-id-123")
 	require.Error(t, err)
 
-	gotTenants, err := cli.SearchTenants(context.Background())
+	gotTenants, err := cli.SearchTenants(context.Background(), tenant.TenantFilter{})
 	require.Error(t, err)
 	require.Empty(t, gotTenants.Items)
 	require.IsType(t, tenant.Tenants{}, gotTenants)

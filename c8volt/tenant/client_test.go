@@ -48,7 +48,7 @@ func TestClient_SearchTenants_ConvertsAndSortsDomainResults(t *testing.T) {
 	}
 
 	cli := New(api, slog.Default())
-	got, err := cli.SearchTenants(ctx, foptions.WithVerbose())
+	got, err := cli.SearchTenants(ctx, TenantFilter{}, foptions.WithVerbose())
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(3), got.Total)
@@ -76,6 +76,44 @@ func TestClient_GetTenant_ConvertsDomainResult(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, Tenant{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"}, got)
+}
+
+func TestClient_SearchTenants_FiltersByLiteralNameContainsBeforeSorting(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := stubTenantAPI{
+		searchTenants: func(_ context.Context, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
+			assert.Equal(t, tsvc.MaxResultSize, size)
+			return []d.Tenant{
+				{TenantId: "tenant-d", Name: "demo.*"},
+				{TenantId: "tenant-c", Name: "z demo"},
+				{TenantId: "tenant-b", Name: "a demo"},
+				{TenantId: "tenant-a", Name: "alpha"},
+			}, nil
+		},
+	}
+
+	cli := New(api, slog.Default())
+
+	matching, err := cli.SearchTenants(ctx, TenantFilter{NameContains: "demo"})
+	require.NoError(t, err)
+	require.Len(t, matching.Items, 3)
+	assert.Equal(t, int32(3), matching.Total)
+	assert.Equal(t, "tenant-b", matching.Items[0].TenantId)
+	assert.Equal(t, "tenant-d", matching.Items[1].TenantId)
+	assert.Equal(t, "tenant-c", matching.Items[2].TenantId)
+
+	literal, err := cli.SearchTenants(ctx, TenantFilter{NameContains: ".*"})
+	require.NoError(t, err)
+	require.Len(t, literal.Items, 1)
+	assert.Equal(t, int32(1), literal.Total)
+	assert.Equal(t, "tenant-d", literal.Items[0].TenantId)
+
+	empty, err := cli.SearchTenants(ctx, TenantFilter{NameContains: "missing"})
+	require.NoError(t, err)
+	assert.Empty(t, empty.Items)
+	assert.Equal(t, int32(0), empty.Total)
 }
 
 func TestClient_GetTenant_MapsNotFound(t *testing.T) {
@@ -111,7 +149,7 @@ func TestClient_MapsDomainErrors(t *testing.T) {
 
 	cli := New(api, slog.Default())
 
-	_, err := cli.SearchTenants(ctx)
+	_, err := cli.SearchTenants(ctx, TenantFilter{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ferrors.ErrUnsupported)
 
