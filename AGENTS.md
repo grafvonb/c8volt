@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- No active Speckit implementation plan has been recorded yet.
+- Active plan: specs/152-task-key-pi-lookup/plan.md
 <!-- SPECKIT END -->
