@@ -78,6 +78,24 @@ func TestClient_GetTenant_ConvertsDomainResult(t *testing.T) {
 	assert.Equal(t, Tenant{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"}, got)
 }
 
+func TestClient_GetTenant_MapsNotFound(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := stubTenantAPI{
+		getTenant: func(_ context.Context, tenantID string, opts ...services.CallOption) (d.Tenant, error) {
+			assert.Equal(t, "missing", tenantID)
+			return d.Tenant{}, fmtWrappedDomainError(d.ErrNotFound)
+		},
+	}
+
+	cli := New(api, slog.Default())
+	_, err := cli.GetTenant(ctx, "missing")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ferrors.ErrNotFound)
+}
+
 func TestClient_MapsDomainErrors(t *testing.T) {
 	t.Parallel()
 

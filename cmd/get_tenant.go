@@ -6,10 +6,13 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/spf13/cobra"
 )
+
+var flagGetTenantKey string
 
 var getTenantCmd = &cobra.Command{
 	Use:   "tenant",
@@ -17,10 +20,14 @@ var getTenantCmd = &cobra.Command{
 	Long: "List tenants visible to the configured environment.\n\n" +
 		"Human output includes tenant ID, name, and description when available.",
 	Example: `  ./c8volt get tenant
+  ./c8volt get tenant --key <tenant-id>
   ./c8volt get tenant --json
   ./c8volt get tenant --keys-only`,
 	Aliases: []string{"tenants"},
-	Run:     runGetTenant,
+	Args: func(cmd *cobra.Command, args []string) error {
+		return validateTenantLookupFlags(cmd)
+	},
+	Run: runGetTenant,
 }
 
 func runGetTenant(cmd *cobra.Command, args []string) {
@@ -28,7 +35,22 @@ func runGetTenant(cmd *cobra.Command, args []string) {
 	if err != nil {
 		handleNewCliError(cmd, log, cfg, err)
 	}
+	if key := strings.TrimSpace(flagGetTenantKey); key != "" {
+		runGetTenantByKey(cmd, cli, log, cfg.App.NoErrCodes, key)
+		return
+	}
 	runSearchTenants(cmd, cli, log, cfg.App.NoErrCodes)
+}
+
+func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, tenantID string) {
+	log.Debug(fmt.Sprintf("getting tenant by id: %s", tenantID))
+	tenant, err := cli.GetTenant(cmd.Context(), tenantID, collectOptions()...)
+	if err != nil {
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get tenant: %w", err))
+	}
+	if err := tenantView(cmd, tenant); err != nil {
+		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("render tenant: %w", err))
+	}
 }
 
 func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool) {
@@ -46,7 +68,17 @@ func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noEr
 func init() {
 	getCmd.AddCommand(getTenantCmd)
 
+	fs := getTenantCmd.Flags()
+	fs.StringVarP(&flagGetTenantKey, "key", "k", "", "tenant ID to fetch")
+
 	setCommandMutation(getTenantCmd, CommandMutationReadOnly)
 	setContractSupport(getTenantCmd, ContractSupportFull)
 	setAutomationSupport(getTenantCmd, AutomationSupportFull, "supports shared machine output")
+}
+
+func validateTenantLookupFlags(cmd *cobra.Command) error {
+	if cmd != nil && cmd.Flags().Changed("key") && strings.TrimSpace(flagGetTenantKey) == "" {
+		return invalidFlagValuef("tenant lookup requires a non-empty --key")
+	}
+	return nil
 }

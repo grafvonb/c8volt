@@ -35,7 +35,11 @@ func (m *mockTenantClient) SearchTenantsWithResponse(ctx context.Context, body c
 }
 
 func (m *mockTenantClient) GetTenantWithResponse(ctx context.Context, tenantId camundav89.TenantId, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetTenantResponse, error) {
-	panic("unexpected GetTenantWithResponse call")
+	args := m.Called(ctx, tenantId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav89.GetTenantResponse), args.Error(1)
 }
 
 func TestService_SearchTenants(t *testing.T) {
@@ -112,6 +116,90 @@ func TestService_SearchTenants(t *testing.T) {
 			require.NoError(t, err)
 
 			got, err := svc.SearchTenants(ctx, 100, services.WithVerbose())
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			tt.assertResult(t, got)
+			m.AssertExpectations(t)
+		})
+	}
+}
+
+func TestService_GetTenant(t *testing.T) {
+	ctx := context.Background()
+	desc := "primary tenant"
+	mockErr := errors.New("lookup failed")
+
+	tests := []struct {
+		name          string
+		setupMock     func(*mockTenantClient)
+		expectedError error
+		assertResult  func(*testing.T, domain.Tenant)
+	}{
+		{
+			name: "success",
+			setupMock: func(m *mockTenantClient) {
+				resp := &camundav89.GetTenantResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/tenants/tenant-a", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.TenantResult{
+						TenantId:    "tenant-a",
+						Name:        "Alpha",
+						Description: &desc,
+					},
+				}
+				m.On("GetTenantWithResponse", mock.Anything, camundav89.TenantId("tenant-a")).Return(resp, nil)
+			},
+			assertResult: func(t *testing.T, tenant domain.Tenant) {
+				assert.Equal(t, "tenant-a", tenant.TenantId)
+				assert.Equal(t, "Alpha", tenant.Name)
+				assert.Equal(t, "primary tenant", tenant.Description)
+			},
+		},
+		{
+			name: "not found",
+			setupMock: func(m *mockTenantClient) {
+				resp := &camundav89.GetTenantResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/tenants/missing", http.StatusNotFound, "404 Not Found"),
+					Body:         []byte("missing"),
+				}
+				m.On("GetTenantWithResponse", mock.Anything, camundav89.TenantId("missing")).Return(resp, nil)
+			},
+			expectedError: domain.ErrNotFound,
+		},
+		{
+			name: "nil payload",
+			setupMock: func(m *mockTenantClient) {
+				resp := &camundav89.GetTenantResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/tenants/tenant-a", http.StatusOK, "200 OK"),
+				}
+				m.On("GetTenantWithResponse", mock.Anything, camundav89.TenantId("tenant-a")).Return(resp, nil)
+			},
+			expectedError: domain.ErrMalformedResponse,
+		},
+		{
+			name: "client error",
+			setupMock: func(m *mockTenantClient) {
+				m.On("GetTenantWithResponse", mock.Anything, camundav89.TenantId("tenant-a")).Return((*camundav89.GetTenantResponse)(nil), mockErr)
+			},
+			expectedError: mockErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &mockTenantClient{}
+			tt.setupMock(m)
+			svc, err := v89.New(testx.TestConfig(t), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v89.WithClient(m))
+			require.NoError(t, err)
+
+			tenantID := "tenant-a"
+			if tt.name == "not found" {
+				tenantID = "missing"
+			}
+			got, err := svc.GetTenant(ctx, tenantID, services.WithVerbose())
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.expectedError)

@@ -5,7 +5,6 @@ package v89
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -87,10 +86,19 @@ func (s *Service) SearchTenants(ctx context.Context, size int32, opts ...service
 }
 
 func (s *Service) GetTenant(ctx context.Context, tenantID string, opts ...services.CallOption) (d.Tenant, error) {
-	_ = ctx
-	_ = tenantID
-	_ = services.ApplyCallOptions(opts)
-	return d.Tenant{}, fmt.Errorf("%w: tenant lookup implementation pending", d.ErrUnsupported)
+	cCfg := services.ApplyCallOptions(opts)
+	common.VerboseLog(ctx, cCfg, s.log, "getting tenant", "baseURL", s.cfg.APIs.Camunda.BaseURL, "tenantID", tenantID)
+	resp, err := s.c.GetTenantWithResponse(ctx, camundav89.TenantId(tenantID))
+	if err != nil {
+		return d.Tenant{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.Tenant{}, err
+	}
+	out := fromTenantResult(*payload)
+	common.VerboseLog(ctx, cCfg, s.log, "got tenant", "tenantID", out.TenantId)
+	return out, nil
 }
 
 func searchTenantsRequest(size int32) camundav89.SearchTenantsJSONRequestBody {

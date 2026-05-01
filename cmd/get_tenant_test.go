@@ -100,13 +100,88 @@ func TestGetTenantListOutput_JSONUsesTenantPayload(t *testing.T) {
 	require.Equal(t, "primary tenant", first["description"])
 }
 
+func TestGetTenantByKeyOutput_RendersSingleTenant(t *testing.T) {
+	resetTenantRenderFlags(t)
+	cmd := newTenantListTestCommand()
+	api := tenantCommandAPI{getTenant: func(_ context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
+		require.Equal(t, "tenant-a", tenantID)
+		return tenant.Tenant{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"}, nil
+	}}
+
+	runGetTenantByKey(cmd, api, tenantTestLogger(), true, "tenant-a")
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Contains(t, output, "tenant-a")
+	require.Contains(t, output, "Alpha")
+	require.Contains(t, output, "primary tenant")
+	require.NotContains(t, output, "found:")
+}
+
+func TestGetTenantByKeyOutput_KeysOnlyUsesTenantID(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagViewKeysOnly = true
+	cmd := newTenantListTestCommand()
+	api := tenantCommandAPI{getTenant: func(_ context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
+		require.Equal(t, "tenant-a", tenantID)
+		return tenant.Tenant{TenantId: "tenant-a", Name: "Alpha"}, nil
+	}}
+
+	runGetTenantByKey(cmd, api, tenantTestLogger(), true, "tenant-a")
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Equal(t, "tenant-a\n", output)
+}
+
+func TestGetTenantByKeyOutput_JSONUsesTenantPayload(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagViewAsJson = true
+	cmd := newTenantListTestCommand()
+	setContractSupport(cmd, ContractSupportFull)
+	api := tenantCommandAPI{getTenant: func(_ context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
+		require.Equal(t, "tenant-a", tenantID)
+		return tenant.Tenant{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"}, nil
+	}}
+
+	runGetTenantByKey(cmd, api, tenantTestLogger(), true, "tenant-a")
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &got))
+	require.Equal(t, string(OutcomeSucceeded), got["outcome"])
+	require.Equal(t, "get tenant", got["command"])
+
+	payload, ok := got["payload"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tenant-a", payload["tenantId"])
+	require.Equal(t, "Alpha", payload["name"])
+	require.Equal(t, "primary tenant", payload["description"])
+}
+
+func TestGetTenantCommand_RejectsWhitespaceKey(t *testing.T) {
+	resetTenantRenderFlags(t)
+	flagGetTenantKey = "   "
+	cmd := newTenantListTestCommand()
+	cmd.Flags().String("key", "", "")
+	require.NoError(t, cmd.Flags().Set("key", "   "))
+
+	err := validateTenantLookupFlags(cmd)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "tenant lookup requires a non-empty --key")
+}
+
 type tenantCommandAPI struct {
 	c8volt.API
 	searchTenants func(context.Context, ...foptions.FacadeOption) (tenant.Tenants, error)
+	getTenant     func(context.Context, string, ...foptions.FacadeOption) (tenant.Tenant, error)
 }
 
 func (a tenantCommandAPI) SearchTenants(ctx context.Context, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
 	return a.searchTenants(ctx, opts...)
+}
+
+func (a tenantCommandAPI) GetTenant(ctx context.Context, tenantID string, opts ...foptions.FacadeOption) (tenant.Tenant, error) {
+	return a.getTenant(ctx, tenantID, opts...)
 }
 
 func newTenantListTestCommand() *cobra.Command {
@@ -124,14 +199,17 @@ func resetTenantRenderFlags(t *testing.T) {
 	prevJSON := flagViewAsJson
 	prevKeysOnly := flagViewKeysOnly
 	prevTree := flagViewAsTree
+	prevTenantKey := flagGetTenantKey
 	t.Cleanup(func() {
 		flagViewAsJson = prevJSON
 		flagViewKeysOnly = prevKeysOnly
 		flagViewAsTree = prevTree
+		flagGetTenantKey = prevTenantKey
 	})
 	flagViewAsJson = false
 	flagViewKeysOnly = false
 	flagViewAsTree = false
+	flagGetTenantKey = ""
 }
 
 func tenantTestLogger() *slog.Logger {

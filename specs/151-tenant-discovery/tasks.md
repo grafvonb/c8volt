@@ -77,18 +77,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T029 [P] [US2] Add `v88` get-by-ID service tests in `internal/services/tenant/v88/service_test.go`
-- [ ] T030 [P] [US2] Add `v89` get-by-ID service tests in `internal/services/tenant/v89/service_test.go`
-- [ ] T031 [P] [US2] Add keyed tenant command tests in `cmd/get_tenant_test.go`
-- [ ] T032 [P] [US2] Add tenant lookup facade tests in `c8volt/tenant/client_test.go`
+- [x] T029 [P] [US2] Add `v88` get-by-ID service tests in `internal/services/tenant/v88/service_test.go`
+- [x] T030 [P] [US2] Add `v89` get-by-ID service tests in `internal/services/tenant/v89/service_test.go`
+- [x] T031 [P] [US2] Add keyed tenant command tests in `cmd/get_tenant_test.go`
+- [x] T032 [P] [US2] Add tenant lookup facade tests in `c8volt/tenant/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] Implement `v88` generated `GetTenant` service path in `internal/services/tenant/v88/service.go`
-- [ ] T034 [US2] Implement `v89` generated `GetTenant` service path in `internal/services/tenant/v89/service.go`
-- [ ] T035 [US2] Add tenant lookup facade method in `c8volt/tenant/client.go`
-- [ ] T036 [US2] Add `--key` handling and keyed-mode validation in `cmd/get_tenant.go`
-- [ ] T037 [US2] Add single-tenant renderer in `cmd/cmd_views_get.go`
+- [x] T033 [US2] Implement `v88` generated `GetTenant` service path in `internal/services/tenant/v88/service.go`
+- [x] T034 [US2] Implement `v89` generated `GetTenant` service path in `internal/services/tenant/v89/service.go`
+- [x] T035 [US2] Add tenant lookup facade method in `c8volt/tenant/client.go`
+- [x] T036 [US2] Add `--key` handling and keyed-mode validation in `cmd/get_tenant.go`
+- [x] T037 [US2] Add single-tenant renderer in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

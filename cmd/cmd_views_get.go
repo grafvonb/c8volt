@@ -192,6 +192,10 @@ func listTenantsView(cmd *cobra.Command, resp tenant.Tenants) error {
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
+func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
+	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
+}
+
 func oneLineTenant(it tenant.Tenant) string {
 	if it.Description == "" {
 		return fmt.Sprintf("%-24s %s", it.TenantId, it.Name)

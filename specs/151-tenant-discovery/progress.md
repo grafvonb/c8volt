@@ -15,6 +15,7 @@ Started: 2026-05-01 13:08:19
 - Unsupported version services wrap `domain.ErrUnsupported` with operation-specific text so facade normalization can classify the failure consistently.
 - Versioned tenant search services build generated `SearchTenants` requests with limit pagination and upstream name/tenant-id sorting, while the public facade still performs final local sorting for deterministic command output.
 - `get` list renderers should use the shared `listOrJSON` helper so one-line, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
+- Single-item `get` renderers should use the shared `itemView` helper so human, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
 
 ---
 ## Iteration 1 - 2026-05-01 13:10:26 CEST
@@ -124,4 +125,36 @@ Started: 2026-05-01 13:08:19
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant -count=1` passes for the tenant service and facade slice.
 - `GOCACHE=/tmp/c8volt-go-build go test ./c8volt ./c8volt/tenant ./internal/services/tenant/... ./cmd -run 'Test(New_V89WiresSupportedRuntime|Client_SearchTenants|Service_SearchTenants|GetTenantListOutput|GetHelp)' -count=1` passes for the US1 command and wiring checks.
 - Broader `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` is blocked by unrelated `httptest` listener failures in existing non-tenant command tests.
+---
+---
+## Iteration 4 - 2026-05-01 13:36:45 CEST
+**User Story**: User Story 2 - Show One Tenant by ID
+**Tasks Completed**:
+- [x] T029: Add `v88` get-by-ID service tests in `internal/services/tenant/v88/service_test.go`
+- [x] T030: Add `v89` get-by-ID service tests in `internal/services/tenant/v89/service_test.go`
+- [x] T031: Add keyed tenant command tests in `cmd/get_tenant_test.go`
+- [x] T032: Add tenant lookup facade tests in `c8volt/tenant/client_test.go`
+- [x] T033: Implement `v88` generated `GetTenant` service path in `internal/services/tenant/v88/service.go`
+- [x] T034: Implement `v89` generated `GetTenant` service path in `internal/services/tenant/v89/service.go`
+- [x] T035: Add tenant lookup facade method in `c8volt/tenant/client.go`
+- [x] T036: Add `--key` handling and keyed-mode validation in `cmd/get_tenant.go`
+- [x] T037: Add single-tenant renderer in `cmd/cmd_views_get.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/services/tenant/v88/service.go
+- internal/services/tenant/v88/service_test.go
+- internal/services/tenant/v89/service.go
+- internal/services/tenant/v89/service_test.go
+- c8volt/tenant/client_test.go
+- cmd/get_tenant.go
+- cmd/get_tenant_test.go
+- cmd/cmd_views_get.go
+- specs/151-tenant-discovery/tasks.md
+- specs/151-tenant-discovery/progress.md
+**Learnings**:
+- Supported-version tenant lookup can share the existing `common.RequirePayload` path; generated 404 responses map to `domain.ErrNotFound` and then to the public facade not-found class.
+- Keyed command tests can exercise `runGetTenantByKey` with an embedded `c8volt.API` stub, avoiding local listener creation that is blocked in this sandbox.
+- `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test(Service_GetTenant|Client_GetTenant|GetTenant)' -count=1` passes for the US2 slice.
+- Broader `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` is blocked by unrelated `httptest` listener failure in `cmd/deploy_test.go`.
 ---
