@@ -1,7 +1,7 @@
-tag=v2.8.3
+tag=v2.8.3.1
 source=/Users/adam.boczek/Development/Workspace/Boczek/Projects/ai-tooling
-commit=a903c6e30b07b29424a45b0cf44cbffab0284463
-synced_at_utc=2026-04-30T16:09:06Z
+commit=72d26b55ec17e86acda454ab8f059e2f3780dc0a
+synced_at_utc=2026-05-01T10:59:30Z
 
 # path sha256
 .agents/skills/gvb-ghissue-to-ralph/SKILL.md 4c206afd112e50dffba2d67edf334a30969c42f0f8c436e96953defdc2f3f681
@@ -36,7 +36,6 @@ synced_at_utc=2026-04-30T16:09:06Z
 .specify/extensions/git/commands/speckit.git.validate.md d8f8e5ecc52e819749f355b6dd1ad8400e9b1dfe03882a12c0d2369530f1f083
 .specify/extensions/git/config-template.yml d07938ce94303be1c8afac77d4b0ea84654f811490850e744f8ee3021b59f8e3
 .specify/extensions/git/extension.yml 9731aa8143a72fbebfdb440f155038ab42642517c2b2bdbbf67c8fdbe076ed79
-.specify/extensions/git/git-config.yml d07938ce94303be1c8afac77d4b0ea84654f811490850e744f8ee3021b59f8e3
 .specify/extensions/git/README.md 38c0140b7804028cf0d212a29b930c9183f4eec7dcaf3ebc4af080653e290924
 .specify/extensions/git/scripts/bash/auto-commit.sh e12ff0e010c8891bbe7445950ea00a49ef7e0b387b050e382fed57bd09d0c8bc
 .specify/extensions/git/scripts/bash/create-new-feature.sh 373ff6e1a232bbf383b29d7994eea90f0113931583dcd6496289885136e24182
@@ -54,7 +53,6 @@ synced_at_utc=2026-04-30T16:09:06Z
 .specify/extensions/ralph/extension.yml cddcb4d418a333bbb96f689ddee0a61153697c36f94027132b87983e1c9706ec
 .specify/extensions/ralph/LICENSE abecf967e422cd9eab9cfe1809c3ac4cddc2263b785944f53a947037e650ec30
 .specify/extensions/ralph/ralph-config.template.yml 92602abc4d679ecf32896c2953176d8529899ade4faef012ad809f57ba14395e
-.specify/extensions/ralph/ralph-config.yml dfe16f4715efb1401538647133e712d2efd8a77ac65e745f731c033772030b4f
 .specify/extensions/ralph/README.md dd942f667d9418d6296f94b67be231badc695eab5e46faca7157b9aa59077ca3
 .specify/extensions/ralph/scripts/bash/ralph-loop.sh 2d8da3e12c0929dead0f8b0e53d3ca71665f9debe26d55be6ddced8badd8b951
 .specify/extensions/ralph/scripts/powershell/ralph-loop.ps1 e27e642065c855bc10c94a8be14b61e40be795c99a43e8bb804ef6f1881341aa
@@ -82,12 +80,10 @@ synced_at_utc=2026-04-30T16:09:06Z
 .specify/workflows/speckit/workflow.yml 30862b06e500cf482819b8b8db31de86a9d621633110692598e806ba0407b3d1
 .specify/workflows/workflow-registry.json 617ccaac33d3fdc58a80ba3bec8e7e64be13f726acd4e83d44c1d2afbd7a7444
 AGENTS.md 7d61af5dd30fd06b1a86cc96762624e585af50c948d187fe680e40b4b13f73d8
-ai/bootstrap-ai-tooling.sh c298d10f930ac9d1858abef890849de3e0127c831e7d302f7cf308ae040f639b
-ai/cleanup-ai-tooling-sync.sh 0f3d3fa53172d1c199a2f64d2883c405b19697abb86f67088c46ffaa1f022a2f
+ai/bootstrap-ai-tooling.sh e4fb3e8054b6c8656dad69aa6070f53666ba503ea308ff85c009048d061f948a
+ai/cleanup-ai-tooling-sync.sh c138275937b1ff3d2ca7d4e487271d43baeb5749b4f590ac763f1ab3b1c87fcb
 ai/compose-agents-md.sh 9b6dd87526ae834b4924b1b56e4825d9629e67261a11fd1de4a45a3d4f629869
-ai/install-ai-tooling.sh 86a520d12e16393b1fcfe4625cf5fc67ad45ef8265bd4d2eecfe85f6ace00d61
-ai/installed-ai-tooling-manifest.txt 4c9eb8f1f5dd17da2221885ceba517bc4ef3f191c51bba8505bcdb964814a58b
-ai/installed-ai-tooling-version eb90afecff7b0b6c87d74eb38a8546609a458331078305adccd0b12a4c892b90
+ai/install-ai-tooling.sh ab4e38de0bac8bce2eef10f7c7e18e477064ad39b77030c897a0504fa4bcf3ce
 extensions/git/commands/speckit.git.commit.md 445ed4cd43c8e685de294b68c841b8f15e082f7033f74b042feddd59edf7779c
 extensions/git/commands/speckit.git.feature.md facdc68ceff5fc5dc985964c534e142a46483c5442e9fca8d635ced4d31db3a0
 extensions/git/commands/speckit.git.initialize.md 07bf0e1a9fc251482774141be5a903cbeb018f90cb66b2d29a5fff7f0bd3ecb7

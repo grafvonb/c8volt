@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active Speckit implementation plan: `specs/151-tenant-discovery/plan.md`
+- No active Speckit implementation plan has been recorded yet.
 <!-- SPECKIT END -->
