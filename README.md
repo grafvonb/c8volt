@@ -106,6 +106,7 @@ That is the gap `c8volt` closes.
 - wait for the state you actually need
 - page through large process-instance result sets safely
 - return only the numeric process-instance match count with `get pi --total`
+- discover visible tenants with `get tenant`
 - validate config and inspect cluster metadata
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
@@ -171,7 +172,7 @@ With `--dry-run`, `c8volt` previews the selected process instances, process-inst
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
-Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. For delete, non-final process instances cannot be removed directly; `--force` cancels them before delete. `c8volt` is built for that operational sequence.
+Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. Delete is all-or-nothing for the affected scope: if any selected or dependency-expanded process instance is not in a final state, c8volt refuses the whole delete batch before submitting any delete request. Use `--force` when the affected scope must be canceled first and then deleted.
 
 ### Wait For A Known State
 
@@ -407,6 +408,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances
+|   |-- tenant                List or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
@@ -425,6 +427,7 @@ c8volt
 ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
+./c8volt get tenant
 ./c8volt get cluster topology
 ./c8volt get resource --id <resource-key>
 ./c8volt config show

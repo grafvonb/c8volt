@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-194-ga702bb7-dirty`, commit `a702bb7`, built `2026-04-30T06:41:04Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-215-g56ae315`, commit `56ae315`, built `2026-05-01T11:50:35Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -180,7 +180,7 @@ With `--dry-run`, `c8volt` previews the selected process instances, process-inst
 ./c8volt get pi --state completed --keys-only | ./c8volt delete pi --auto-confirm -
 ```
 
-Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. For delete, non-final process instances cannot be removed directly; `--force` cancels them before delete. `c8volt` is built for that operational sequence.
+Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. Delete is all-or-nothing for the affected scope: if any selected or dependency-expanded process instance is not in a final state, c8volt refuses the whole delete batch before submitting any delete request. Use `--force` when the affected scope must be canceled first and then deleted.
 
 ### Wait For A Known State
 

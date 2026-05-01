@@ -1,31 +1,21 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
-# SPDX-License-Identifier: GPL-3.0-or-later
-
 #
 # Purpose:
 #   Remove stale ai-tooling-managed files from a target repository before sync.
 #
 # Usage:
-#   ./ai/cleanup-ai-tooling-sync.sh [--dry-run] [ai-tooling-repo]
-#   AI_TOOLING_TARGET_REPO=/path/to/consumer ./ai/cleanup-ai-tooling-sync.sh /path/to/local/ai-tooling
+#   ./ai/cleanup-ai-tooling-sync.sh [--dry-run] <target-repo> <ai-tooling-repo>
 #
 # Parameters:
 #   --dry-run          Print removals without deleting files.
-#   ai-tooling-repo   Optional source checkout to compare against. Defaults to
-#                     AI_TOOLING_REPO or ../../ai-tooling relative to target.
-#
-# Environment:
-#   AI_TOOLING_REPO          Source checkout used when ai-tooling-repo is not
-#                            passed.
-#   AI_TOOLING_TARGET_REPO   Repository to clean. Defaults to the parent of
-#                            this script's ai/ directory.
+#   target-repo       Target repository to clean.
+#   ai-tooling-repo   Source checkout to compare against.
 
 set -euo pipefail
 
 usage() {
     cat >&2 <<'EOF'
-Usage: cleanup-ai-tooling-sync.sh [--dry-run] [ai-tooling-repo]
+Usage: cleanup-ai-tooling-sync.sh [--dry-run] <target-repo> <ai-tooling-repo>
 EOF
     exit 1
 }
@@ -51,25 +41,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ $# -gt 1 ]; then
+if [ $# -ne 2 ]; then
     usage
 fi
 
-SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -n "${AI_TOOLING_TARGET_REPO:-}" ]; then
-    REPO_ROOT="$(CDPATH="" cd "$AI_TOOLING_TARGET_REPO" && pwd)"
-else
-    REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
-fi
-DEFAULT_LOCAL_AI_TOOLING_REPO="$(CDPATH="" cd "$REPO_ROOT/../.." && pwd)/ai-tooling"
-
-if [ -n "${AI_TOOLING_REPO:-}" ]; then
-    SOURCE_ROOT="$AI_TOOLING_REPO"
-elif [ $# -eq 1 ]; then
-    SOURCE_ROOT="$1"
-else
-    SOURCE_ROOT="$DEFAULT_LOCAL_AI_TOOLING_REPO"
-fi
+REPO_ROOT="$(CDPATH="" cd "$1" && pwd)"
+SOURCE_ROOT="$(CDPATH="" cd "$2" && pwd)"
 
 if [ ! -d "$SOURCE_ROOT" ]; then
     echo "ai-tooling source repository does not exist: $SOURCE_ROOT" >&2

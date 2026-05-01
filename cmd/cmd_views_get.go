@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/spf13/cobra"
 )
 
@@ -185,6 +186,21 @@ func oneLineResource(it resource.Resource) string {
 	return fmt.Sprintf("%-24s k:%-16s %s %s v%d%s",
 		it.ID, it.Key, it.TenantId, it.Name, it.Version, vTag,
 	)
+}
+
+func listTenantsView(cmd *cobra.Command, resp tenant.Tenants) error {
+	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
+}
+
+func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
+	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
+}
+
+func oneLineTenant(it tenant.Tenant) string {
+	if it.Description == "" {
+		return fmt.Sprintf("%-24s %s", it.TenantId, it.Name)
+	}
+	return fmt.Sprintf("%-s %s - %s", it.TenantId, it.Name, it.Description)
 }
 
 func zeroAsMinus(v int64) string {

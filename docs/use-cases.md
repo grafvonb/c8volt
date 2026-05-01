@@ -106,6 +106,8 @@ This supports searches around "cancel child process instance Camunda 8", "Camund
 ./c8volt delete pi --state completed --end-date-older-days 7 --auto-confirm
 ```
 
+Delete is intentionally all-or-nothing for the affected process-instance scope. If dependency expansion finds any active or otherwise non-final instance, c8volt stops the whole batch before submitting delete requests; use `--force` when the scope must be canceled first.
+
 This targets operational cleanup flows behind searches such as "delete process instance Camunda 8 CLI" and "bulk cleanup completed workflows".
 
 ## FAQ

@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
@@ -49,12 +48,12 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
 func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {
-	baseSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	baseSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("base profile server should not be used: %s %s", r.Method, r.URL.Path)
 	}))
 	t.Cleanup(baseSrv.Close)
 
-	prodSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	prodSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		defer r.Body.Close()
@@ -126,7 +125,7 @@ func TestRunProcessInstanceCommand_JSONInvalidInputUsesEnvelope(t *testing.T) {
 
 // Verifies run process-instance maps HTTP 409 responses to the conflict exit code.
 func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		http.Error(w, "already exists", http.StatusConflict)
@@ -149,7 +148,7 @@ func TestRunProcessInstanceCommand_ConflictUsesConflictExitCode(t *testing.T) {
 
 func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	var sawRun bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		sawRun = true
@@ -185,7 +184,7 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 }
 
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v2/process-instances", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
