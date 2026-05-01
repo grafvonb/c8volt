@@ -69,7 +69,7 @@ func StartAuthServerCookie(t testing.TB, opts CookieAuthOpts) *AuthServerCookie 
 	})
 
 	t.Log("trying to start AuthServerCookie...")
-	ts := httptest.NewTLSServer(mux)
+	ts := NewIPv4TLSServer(t, mux)
 	t.Log("AuthServerCookie started")
 	return &AuthServerCookie{TS: ts, BaseURL: ts.URL}
 }

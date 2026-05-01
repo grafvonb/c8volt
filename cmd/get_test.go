@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
@@ -191,7 +190,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 	t.Setenv("C8VOLT_AUTH_OAUTH2_SCOPES_CAMUNDA_API", "env-scope")
 
-	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tokenSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/token", r.URL.Path)
 		require.NoError(t, r.ParseForm())
@@ -202,7 +201,7 @@ func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 	}))
 	t.Cleanup(tokenSrv.Close)
 
-	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	apiSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		require.Equal(t, "Bearer env-token", r.Header.Get("Authorization"))
@@ -220,7 +219,7 @@ func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 
 // Verifies nested `get cluster topology` succeeds and renders topology fields.
 func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -259,7 +258,7 @@ func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
 
 // Verifies legacy `get cluster-topology` command still succeeds without deprecation noise in output.
 func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -299,7 +298,7 @@ func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
 
 // Verifies legacy `ct` alias resolves to cluster-topology retrieval.
 func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -323,7 +322,7 @@ func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
 }
 
 func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -349,7 +348,7 @@ func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
 
 // Verifies nested `get cluster license` succeeds with required license fields.
 func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -374,7 +373,7 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 
 // Verifies optional license fields are rendered when the API returns them.
 func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -399,7 +398,7 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 
 // Verifies cluster license HTTP failures map to unavailable exit behavior.
 func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
@@ -422,7 +421,7 @@ func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 
 // Verifies nested cluster topology HTTP failures map to unavailable exit behavior.
 func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
 	}))
@@ -444,7 +443,7 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 
 func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T) {
 	t.Run("cluster topology", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/topology", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -460,7 +459,7 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 	})
 
 	t.Run("process definition lookup", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -477,7 +476,7 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 	})
 
 	t.Run("resource lookup", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -496,7 +495,7 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 
 // Verifies legacy cluster-topology HTTP failures map to unavailable exit behavior.
 func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
 	}))
@@ -519,7 +518,7 @@ func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
 
 // Verifies malformed successful license responses are classified as malformed-response failures.
 func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -542,7 +541,7 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 
 // Verifies `get process-definition --xml` returns raw XML content by key.
 func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		w.Header().Set("Content-Type", "application/xml")
@@ -559,7 +558,7 @@ func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 
 // Verifies XML output preserves formatting and line breaks from the API payload.
 func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		w.Header().Set("Content-Type", "application/xml")
@@ -576,7 +575,7 @@ func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) 
 
 // Verifies process-definition key lookup renders model output instead of XML.
 func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -714,7 +713,7 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 
 // Verifies `get resource --id` succeeds and renders default table output.
 func TestGetResourceCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -742,7 +741,7 @@ func TestGetResourceCommand_Success(t *testing.T) {
 
 // Verifies resource lookup JSON view uses serialized model field keys.
 func TestGetResourceCommand_JSONOutput(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -771,7 +770,7 @@ func TestGetResourceCommand_JSONOutput(t *testing.T) {
 
 // Verifies keys-only mode emits only the resource id.
 func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -795,7 +794,7 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 
 // Verifies resource lookup HTTP failures map to not-found exit behavior.
 func TestGetResourceCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -818,7 +817,7 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 }
 
 func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -845,7 +844,7 @@ func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
 
 // Verifies `--no-err-codes` preserves failure output while returning success exit status.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -974,7 +973,7 @@ func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T
 
 // Verifies malformed successful resource payloads are treated as malformed-response failures.
 func TestGetResourceCommand_MalformedResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -1000,7 +999,7 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 
 // Verifies gateway timeout responses map to timeout exit behavior.
 func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/timeout-resource", r.URL.Path)
 		http.Error(w, "slow", http.StatusGatewayTimeout)
@@ -1056,7 +1055,7 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 
 // Verifies process-definition XML HTTP failures map to unavailable exit behavior.
 func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)

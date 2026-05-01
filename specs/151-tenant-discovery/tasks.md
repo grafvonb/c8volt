@@ -146,12 +146,12 @@
 
 **Purpose**: Documentation, formatting, and validation across the completed feature.
 
-- [ ] T054 [P] Run `gofmt` on tenant-related Go files in `cmd/`, `c8volt/tenant/`, `internal/domain/`, and `internal/services/tenant/`
-- [ ] T055 Regenerate CLI documentation with `make docs-content`
-- [ ] T056 [P] Review README tenant/get command mentions and update `README.md` only if the new command belongs in existing examples
-- [ ] T057 Run targeted tenant validation with `go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1`
-- [ ] T058 Run full repository validation with `make test`
-- [ ] T059 Confirm `specs/151-tenant-discovery/quickstart.md` scenarios match final command behavior
+- [x] T054 [P] Run `gofmt` on tenant-related Go files in `cmd/`, `c8volt/tenant/`, `internal/domain/`, and `internal/services/tenant/`
+- [x] T055 Regenerate CLI documentation with `make docs-content`
+- [x] T056 [P] Review README tenant/get command mentions and update `README.md` only if the new command belongs in existing examples
+- [x] T057 Run targeted tenant validation with `go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1`
+- [x] T058 Run full repository validation with `make test`
+- [x] T059 Confirm `specs/151-tenant-discovery/quickstart.md` scenarios match final command behavior
 
 ---
 

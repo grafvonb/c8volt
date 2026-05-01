@@ -1,36 +1,40 @@
 ---
-title: "c8volt get resource"
+title: "c8volt get tenant"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt get resource
+## c8volt get tenant
 
-Get a resource by id
+List tenants
 
 ### Synopsis
 
-Get a single resource by id.
+List tenants visible to the configured environment.
 
-Requires --id.
+Human output includes tenant ID, name, and description when available.
 
 ```
-c8volt get resource [flags]
+c8volt get tenant [flags]
 ```
 
 ### Examples
 
 ```
-  ./c8volt get resource --id <resource-key>
-  ./c8volt --json get resource --id <resource-key>
-  ./c8volt --keys-only get resource --id <resource-key>
+  ./c8volt get tenant
+  ./c8volt get tenant --key <tenant-id>
+  ./c8volt get tenant --filter demo
+  ./c8volt get tenant --json
+  ./c8volt get tenant --key <tenant-id> --json
+  ./c8volt get tenant --keys-only
 ```
 
 ### Options
 
 ```
-  -h, --help        help for resource
-  -i, --id string   resource id to fetch
+  -f, --filter string   literal tenant name contains filter
+  -h, --help            help for tenant
+  -k, --key string      tenant ID to fetch
 ```
 
 ### Options inherited from parent commands

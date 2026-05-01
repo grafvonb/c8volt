@@ -52,7 +52,7 @@ c8volt get cluster [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
 * [c8volt get cluster license](c8volt_get_cluster_license)	 - Show connected cluster license
 * [c8volt get cluster topology](c8volt_get_cluster_topology)	 - Show connected cluster topology
 

@@ -35,7 +35,7 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "")
 
-	require.Contains(t, output, "get\tInspect cluster, process, and resource state\n")
+	require.Contains(t, output, "get\tInspect cluster, process, tenant, and resource state\n")
 	require.Contains(t, output, "embed\tUse bundled BPMN fixtures\n")
 	require.Contains(t, output, "walk\tInspect process-instance relationships\n")
 	require.Contains(t, output, "run\tStart process instances\n")
@@ -48,7 +48,7 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "g")
 
-	require.Contains(t, output, "get\tInspect cluster, process, and resource state\n")
+	require.Contains(t, output, "get\tInspect cluster, process, tenant, and resource state\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
@@ -58,6 +58,7 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 
 	require.Contains(t, output, "process-definition\tList or fetch deployed process definitions\n")
 	require.Contains(t, output, "process-instance\tList or fetch process instances\n")
+	require.Contains(t, output, "tenant\tList tenants\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 

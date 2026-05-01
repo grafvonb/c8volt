@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
@@ -38,7 +37,7 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	var sawDeploy bool
 	var sawRun bool
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -20,13 +19,13 @@ import (
 
 // Verifies walk commands consume env-overridden API base URLs during traversal requests.
 func TestWalkProcessInstanceCommand_EnvBaseURLOverridesProfileAndBaseConfig(t *testing.T) {
-	baseSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	baseSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("base/profile server should not be used: %s %s", r.Method, r.URL.Path)
 	}))
 	t.Cleanup(baseSrv.Close)
 
 	searchCalls := 0
-	envSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	envSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/2251799813685255":
 			w.Header().Set("Content-Type", "application/json")

@@ -106,6 +106,7 @@ That is the gap `c8volt` closes.
 - wait for the state you actually need
 - page through large process-instance result sets safely
 - return only the numeric process-instance match count with `get pi --total`
+- discover visible tenants with `get tenant`
 - validate config and inspect cluster metadata
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
@@ -407,6 +408,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances
+|   |-- tenant                List or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
@@ -425,6 +427,7 @@ c8volt
 ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
+./c8volt get tenant
 ./c8volt get cluster topology
 ./c8volt get resource --id <resource-key>
 ./c8volt config show
