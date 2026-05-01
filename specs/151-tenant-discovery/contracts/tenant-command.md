@@ -35,6 +35,7 @@ Required behavior:
 - Treats the filter as literal text.
 - Does not interpret wildcard, glob, regex, or query-language syntax.
 - Preserves final sorting after filtering.
+- Must be rejected when `--key` is also present.
 
 ### `--json`
 
@@ -51,7 +52,7 @@ Required behavior:
 
 - Unsupported tenant-management versions fail with the repository's existing unsupported-capability style.
 - Missing keyed tenants use the comparable not-found style.
-- Invalid flag combinations, such as combining list-only filtering with keyed lookup, use existing invalid-input flag error style.
+- Invalid flag combinations, including `--key` plus `--filter`, use existing invalid-input flag error style.
 - Upstream authentication, authorization, and connectivity failures continue to flow through existing command error mapping.
 
 ## Documentation Contract

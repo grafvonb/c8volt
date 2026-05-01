@@ -44,7 +44,7 @@ Validation rules:
 
 - A matching tenant ID returns exactly one tenant.
 - A missing tenant ID maps to the existing comparable not-found outcome.
-- `--filter` must not broaden or modify keyed lookup behavior.
+- `--filter` must not broaden or modify keyed lookup behavior; combining `--key` and `--filter` is invalid.
 
 ## Tenant Name Filter
 
@@ -59,6 +59,7 @@ Validation rules:
 - Matching uses literal contains behavior against `Tenant.name`.
 - Wildcard, glob, regex, and query-language syntax are treated as literal text.
 - Empty filter text should behave like no filter unless existing flag validation rejects empty string values.
+- Tenant name filters apply only to list mode and are rejected when `--key` is also supplied.
 
 ## Unsupported Tenant Capability
 

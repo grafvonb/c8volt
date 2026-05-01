@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/151-tenant-discovery/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/tenant-command.md
 
-**Tests**: Required by the feature specification for list, single-tenant lookup, filtering, sorting, JSON output, unsupported-version behavior, and existing `get` behavior preservation.
+**Tests**: Required by the feature specification for list, single-tenant lookup, filtering, sorting, invalid flag-combination handling, JSON output, unsupported-version behavior, and existing `get` behavior preservation.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing.
 
@@ -98,20 +98,21 @@
 
 **Goal**: `c8volt get tenant --filter <text>` applies literal contains filtering to tenant names.
 
-**Independent Test**: Run command and domain tests with matching, non-matching, and pattern-like filter text and verify no wildcard/glob/regex/query interpretation.
+**Independent Test**: Run command and domain tests with matching, non-matching, and pattern-like filter text, then verify no wildcard/glob/regex/query interpretation and that `--key` plus `--filter` is rejected.
 
 ### Tests for User Story 3
 
 - [ ] T038 [P] [US3] Add command filter tests for matching and empty results in `cmd/get_tenant_test.go`
 - [ ] T039 [P] [US3] Add wildcard/glob/regex/query literal filter tests in `cmd/get_tenant_test.go`
-- [ ] T040 [P] [US3] Add facade filter tests in `c8volt/tenant/client_test.go`
+- [ ] T040 [P] [US3] Add `--key` plus `--filter` invalid-combination command test in `cmd/get_tenant_test.go`
+- [ ] T041 [P] [US3] Add facade filter tests in `c8volt/tenant/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T041 [US3] Add tenant filter field and list filtering path in `c8volt/tenant/model.go`
-- [ ] T042 [US3] Apply literal name filtering before final sort in `c8volt/tenant/client.go`
-- [ ] T043 [US3] Add `--filter` flag and list-only validation in `cmd/get_tenant.go`
-- [ ] T044 [US3] Ensure filtered tenant list rendering reuses existing tenant list renderer in `cmd/cmd_views_get.go`
+- [ ] T042 [US3] Add tenant filter field and list filtering path in `c8volt/tenant/model.go`
+- [ ] T043 [US3] Apply literal name filtering before final sort in `c8volt/tenant/client.go`
+- [ ] T044 [US3] Add `--filter` flag and reject `--key` plus `--filter` in `cmd/get_tenant.go`
+- [ ] T045 [US3] Ensure filtered tenant list rendering reuses existing tenant list renderer in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Stories 1, 2, and 3 are independently functional.
 
@@ -125,17 +126,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T045 [P] [US4] Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
-- [ ] T046 [P] [US4] Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
-- [ ] T047 [P] [US4] Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
-- [ ] T048 [P] [US4] Add existing `get` command preservation smoke test in `cmd/get_test.go`
+- [ ] T046 [P] [US4] Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
+- [ ] T047 [P] [US4] Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
+- [ ] T048 [P] [US4] Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
+- [ ] T049 [P] [US4] Add existing `get` command preservation smoke test in `cmd/get_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T049 [US4] Ensure tenant list JSON output uses the public tenant model in `cmd/cmd_views_get.go`
-- [ ] T050 [US4] Ensure tenant keyed JSON output uses the public tenant model in `cmd/cmd_views_get.go`
-- [ ] T051 [US4] Ensure unsupported tenant capability errors map through the existing command handler in `cmd/get_tenant.go`
-- [ ] T052 [US4] Add command help examples for list, key, filter, and JSON modes in `cmd/get_tenant.go`
+- [ ] T050 [US4] Ensure tenant list JSON output uses the public tenant model in `cmd/cmd_views_get.go`
+- [ ] T051 [US4] Ensure tenant keyed JSON output uses the public tenant model in `cmd/cmd_views_get.go`
+- [ ] T052 [US4] Ensure unsupported tenant capability errors map through the existing command handler in `cmd/get_tenant.go`
+- [ ] T053 [US4] Add command help examples for list, key, filter, and JSON modes in `cmd/get_tenant.go`
 
 **Checkpoint**: All user stories are independently functional.
 
@@ -145,12 +146,12 @@
 
 **Purpose**: Documentation, formatting, and validation across the completed feature.
 
-- [ ] T053 [P] Run `gofmt` on tenant-related Go files in `cmd/`, `c8volt/tenant/`, `internal/domain/`, and `internal/services/tenant/`
-- [ ] T054 Regenerate CLI documentation with `make docs-content`
-- [ ] T055 [P] Review README tenant/get command mentions and update `README.md` only if the new command belongs in existing examples
-- [ ] T056 Run targeted tenant validation with `go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1`
-- [ ] T057 Run full repository validation with `make test`
-- [ ] T058 Confirm `specs/151-tenant-discovery/quickstart.md` scenarios match final command behavior
+- [ ] T054 [P] Run `gofmt` on tenant-related Go files in `cmd/`, `c8volt/tenant/`, `internal/domain/`, and `internal/services/tenant/`
+- [ ] T055 Regenerate CLI documentation with `make docs-content`
+- [ ] T056 [P] Review README tenant/get command mentions and update `README.md` only if the new command belongs in existing examples
+- [ ] T057 Run targeted tenant validation with `go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1`
+- [ ] T058 Run full repository validation with `make test`
+- [ ] T059 Confirm `specs/151-tenant-discovery/quickstart.md` scenarios match final command behavior
 
 ---
 

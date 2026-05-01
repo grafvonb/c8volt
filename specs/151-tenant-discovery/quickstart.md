@@ -39,6 +39,17 @@ Expected result:
 - Only tenants whose names contain `demo` are returned.
 - Characters such as `*`, `[abc]`, `.*`, and `name:demo` are treated as literal filter text.
 
+Invalid combination:
+
+```bash
+./c8volt get tenant --key tenant-a --filter demo
+```
+
+Expected result:
+
+- The command fails with the existing invalid flag-combination style.
+- No tenant data is rendered.
+
 ## Scenario 4: Use JSON Output
 
 ```bash

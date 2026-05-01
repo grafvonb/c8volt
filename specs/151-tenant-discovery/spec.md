@@ -11,6 +11,12 @@
 - **Issue URL**: https://github.com/grafvonb/c8volt/issues/151
 - **Issue Title**: feat(get): add tenant discovery command
 
+## Clarifications
+
+### Session 2026-05-01
+
+- Q: How should `c8volt get tenant --key <id> --filter <text>` behave? → A: Reject as invalid.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - List Tenants Compactly (Priority: P1)
@@ -80,7 +86,7 @@ As an automation user or maintainer, I want tenant discovery to support existing
 - Tenant descriptions may be absent and must not produce malformed human-readable or JSON output.
 - Multiple tenants may share the same name, so tenant ID remains visible and participates in stable sorting.
 - Tenant IDs and names may differ only by case; sorting and filtering must remain deterministic.
-- `--filter` is only meaningful for list mode and must not broaden single-tenant lookup beyond the selected tenant ID.
+- Combining `--key` and `--filter` must be rejected as an invalid flag combination.
 - Filter text is matched as a literal substring of the tenant name; wildcard, glob, regex, and query-language syntax must not be interpreted.
 - JSON output must not include credentials, tokens, secrets, authorization internals, or other sensitive data.
 - Unsupported Camunda versions must fail before presenting partial or misleading tenant results.
@@ -101,6 +107,7 @@ As an automation user or maintainer, I want tenant discovery to support existing
 - **FR-009**: The system MUST support `c8volt get tenant --filter <text>` for list filtering by tenant name.
 - **FR-010**: Tenant filtering MUST use simple literal contains matching against tenant names.
 - **FR-011**: Tenant filtering MUST NOT implement wildcard matching, glob matching, regex matching, or a query language.
+- **FR-011a**: The system MUST reject combining `--key` and `--filter` as an invalid flag combination.
 - **FR-012**: List mode with `--json` MUST return structured tenant data for all matching tenants.
 - **FR-013**: Single-tenant mode with `--json` MUST return structured tenant data for the selected tenant.
 - **FR-014**: JSON output MUST include relevant non-sensitive tenant information available to the command.

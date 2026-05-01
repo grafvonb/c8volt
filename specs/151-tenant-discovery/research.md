@@ -24,6 +24,14 @@ Rationale: The issue explicitly asks for simple contains behavior and explicitly
 
 Alternatives considered: Passing name filters to the upstream API was rejected as the only filtering mechanism because generated filter semantics may not be simple contains. Case-insensitive matching was deferred because the issue does not request it and the simplest literal contains behavior is case-sensitive in Go.
 
+## Keyed Lookup and Filtering
+
+Decision: Reject `--key` and `--filter` together as an invalid flag combination.
+
+Rationale: `--key` selects one tenant by tenant ID, while `--filter` is a list-mode convenience against tenant names. Rejecting the combination keeps command behavior explicit and matches existing CLI validation patterns for incompatible filters.
+
+Alternatives considered: Ignoring `--filter` in keyed mode was rejected because it silently discards user input. Applying the filter after keyed lookup was rejected because it makes a direct ID lookup unexpectedly depend on tenant name text.
+
 ## Sorting Boundary
 
 Decision: Sort final list results by tenant name and then tenant ID in the facade or command-facing layer.
