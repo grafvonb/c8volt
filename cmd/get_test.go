@@ -35,13 +35,15 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
-	require.Contains(t, output, "Inspect cluster, process, and resource state")
+	require.Contains(t, output, "Inspect cluster, process, tenant, and resource state")
 	require.Contains(t, output, "cluster")
 	require.Contains(t, output, "cluster-topology")
+	require.Contains(t, output, "tenant")
 	require.Contains(t, output, "resource")
 	require.Contains(t, output, "Check cluster health")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get pi --state active")
+	require.Contains(t, output, "./c8volt get tenant")
 	require.NotContains(t, output, "canonical non-interactive contract")
 }
 

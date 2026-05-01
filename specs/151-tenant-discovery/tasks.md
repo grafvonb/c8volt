@@ -24,19 +24,19 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Implement tenant sort and literal name-filter helpers in `internal/domain/tenant.go`
-- [ ] T006 [P] Add domain helper tests for tenant sorting and literal filtering in `internal/domain/tenant_test.go`
-- [ ] T007 Define `internal/services/tenant.API` list and get operations in `internal/services/tenant/api.go`
-- [ ] T008 Implement tenant service factory with `v87`, `v88`, and `v89` routing in `internal/services/tenant/factory.go`
-- [ ] T009 [P] Add tenant factory version routing tests in `internal/services/tenant/factory_test.go`
-- [ ] T010 Implement `v87` unsupported tenant service in `internal/services/tenant/v87/service.go`
-- [ ] T011 [P] Add `v87` unsupported service tests in `internal/services/tenant/v87/service_test.go`
-- [ ] T012 Define public tenant facade models in `c8volt/tenant/model.go`
-- [ ] T013 Implement tenant facade conversion helpers in `c8volt/tenant/convert.go`
-- [ ] T014 Implement tenant facade client in `c8volt/tenant/client.go`
-- [ ] T015 Wire tenant facade into `c8volt.API` in `c8volt/contract.go`
-- [ ] T016 Wire tenant service creation into `c8volt.New` in `c8volt/client.go`
-- [ ] T017 [P] Add facade conversion and error-mapping tests in `c8volt/tenant/client_test.go`
+- [x] T005 Implement tenant sort and literal name-filter helpers in `internal/domain/tenant.go`
+- [x] T006 [P] Add domain helper tests for tenant sorting and literal filtering in `internal/domain/tenant_test.go`
+- [x] T007 Define `internal/services/tenant.API` list and get operations in `internal/services/tenant/api.go`
+- [x] T008 Implement tenant service factory with `v87`, `v88`, and `v89` routing in `internal/services/tenant/factory.go`
+- [x] T009 [P] Add tenant factory version routing tests in `internal/services/tenant/factory_test.go`
+- [x] T010 Implement `v87` unsupported tenant service in `internal/services/tenant/v87/service.go`
+- [x] T011 [P] Add `v87` unsupported service tests in `internal/services/tenant/v87/service_test.go`
+- [x] T012 Define public tenant facade models in `c8volt/tenant/model.go`
+- [x] T013 Implement tenant facade conversion helpers in `c8volt/tenant/convert.go`
+- [x] T014 Implement tenant facade client in `c8volt/tenant/client.go`
+- [x] T015 Wire tenant facade into `c8volt.API` in `c8volt/contract.go`
+- [x] T016 Wire tenant service creation into `c8volt.New` in `c8volt/client.go`
+- [x] T017 [P] Add facade conversion and error-mapping tests in `c8volt/tenant/client_test.go`
 
 **Checkpoint**: Foundation ready; tenant services and facade can be used by command stories.
 
@@ -50,20 +50,20 @@
 
 ### Tests for User Story 1
 
-- [ ] T018 [P] [US1] Add `v88` tenant search service tests in `internal/services/tenant/v88/service_test.go`
-- [ ] T019 [P] [US1] Add `v89` tenant search service tests in `internal/services/tenant/v89/service_test.go`
-- [ ] T020 [P] [US1] Add command list output tests in `cmd/get_tenant_test.go`
-- [ ] T021 [P] [US1] Add tenant list facade tests in `c8volt/tenant/client_test.go`
+- [x] T018 [P] [US1] Add `v88` tenant search service tests in `internal/services/tenant/v88/service_test.go`
+- [x] T019 [P] [US1] Add `v89` tenant search service tests in `internal/services/tenant/v89/service_test.go`
+- [x] T020 [P] [US1] Add command list output tests in `cmd/get_tenant_test.go`
+- [x] T021 [P] [US1] Add tenant list facade tests in `c8volt/tenant/client_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Implement `v88` generated `SearchTenants` service in `internal/services/tenant/v88/service.go`
-- [ ] T023 [US1] Implement `v88` tenant conversion in `internal/services/tenant/v88/convert.go`
-- [ ] T024 [US1] Implement `v89` generated `SearchTenants` service in `internal/services/tenant/v89/service.go`
-- [ ] T025 [US1] Implement `v89` tenant conversion in `internal/services/tenant/v89/convert.go`
-- [ ] T026 [US1] Add tenant list facade method in `c8volt/tenant/client.go`
-- [ ] T027 [US1] Add `get tenant` command registration and read-only metadata in `cmd/get_tenant.go`
-- [ ] T028 [US1] Add compact tenant list renderer in `cmd/cmd_views_get.go`
+- [x] T022 [US1] Implement `v88` generated `SearchTenants` service in `internal/services/tenant/v88/service.go`
+- [x] T023 [US1] Implement `v88` tenant conversion in `internal/services/tenant/v88/convert.go`
+- [x] T024 [US1] Implement `v89` generated `SearchTenants` service in `internal/services/tenant/v89/service.go`
+- [x] T025 [US1] Implement `v89` tenant conversion in `internal/services/tenant/v89/convert.go`
+- [x] T026 [US1] Add tenant list facade method in `c8volt/tenant/client.go`
+- [x] T027 [US1] Add `get tenant` command registration and read-only metadata in `cmd/get_tenant.go`
+- [x] T028 [US1] Add compact tenant list renderer in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

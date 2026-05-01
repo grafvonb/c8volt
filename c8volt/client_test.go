@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
@@ -41,4 +42,9 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 
 	_, err = cli.GetResource(context.Background(), "resource-id-123")
 	require.Error(t, err)
+
+	gotTenants, err := cli.SearchTenants(context.Background())
+	require.Error(t, err)
+	require.Empty(t, gotTenants.Items)
+	require.IsType(t, tenant.Tenants{}, gotTenants)
 }
