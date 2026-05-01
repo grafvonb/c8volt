@@ -126,17 +126,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T046 [P] [US4] Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
-- [ ] T047 [P] [US4] Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
-- [ ] T048 [P] [US4] Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
-- [ ] T049 [P] [US4] Add existing `get` command preservation smoke test in `cmd/get_test.go`
+- [x] T046 [P] [US4] Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
+- [x] T047 [P] [US4] Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
+- [x] T048 [P] [US4] Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
+- [x] T049 [P] [US4] Add existing `get` command preservation smoke test in `cmd/get_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T050 [US4] Ensure tenant list JSON output uses the public tenant model in `cmd/cmd_views_get.go`
-- [ ] T051 [US4] Ensure tenant keyed JSON output uses the public tenant model in `cmd/cmd_views_get.go`
-- [ ] T052 [US4] Ensure unsupported tenant capability errors map through the existing command handler in `cmd/get_tenant.go`
-- [ ] T053 [US4] Add command help examples for list, key, filter, and JSON modes in `cmd/get_tenant.go`
+- [x] T050 [US4] Ensure tenant list JSON output uses the public tenant model in `cmd/cmd_views_get.go`
+- [x] T051 [US4] Ensure tenant keyed JSON output uses the public tenant model in `cmd/cmd_views_get.go`
+- [x] T052 [US4] Ensure unsupported tenant capability errors map through the existing command handler in `cmd/get_tenant.go`
+- [x] T053 [US4] Add command help examples for list, key, filter, and JSON modes in `cmd/get_tenant.go`
 
 **Checkpoint**: All user stories are independently functional.
 

@@ -9,12 +9,16 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -98,6 +102,9 @@ func TestGetTenantListOutput_JSONUsesTenantPayload(t *testing.T) {
 	require.Equal(t, "tenant-a", first["tenantId"])
 	require.Equal(t, "Alpha", first["name"])
 	require.Equal(t, "primary tenant", first["description"])
+	require.NotContains(t, output, "secret")
+	require.NotContains(t, output, "authorization")
+	require.NotContains(t, output, "members")
 }
 
 func TestGetTenantByKeyOutput_RendersSingleTenant(t *testing.T) {
@@ -214,6 +221,47 @@ func TestGetTenantByKeyOutput_JSONUsesTenantPayload(t *testing.T) {
 	require.Equal(t, "tenant-a", payload["tenantId"])
 	require.Equal(t, "Alpha", payload["name"])
 	require.Equal(t, "primary tenant", payload["description"])
+	require.NotContains(t, output, "secret")
+	require.NotContains(t, output, "authorization")
+	require.NotContains(t, output, "members")
+}
+
+func TestGetTenantCommand_V87ListReportsUnsupported(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.7
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetTenantCommand_V87ListReportsUnsupportedHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "tenant search requires Camunda 8.8 or newer")
+}
+
+func TestGetTenantCommand_V87KeyedReportsUnsupported(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.7
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetTenantCommand_V87KeyedReportsUnsupportedHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "tenant lookup requires Camunda 8.8 or newer")
 }
 
 func TestGetTenantCommand_RejectsWhitespaceKey(t *testing.T) {
@@ -243,6 +291,16 @@ func TestGetTenantCommand_RejectsKeyPlusFilter(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--key cannot be combined with --filter")
+}
+
+func TestGetTenantHelp_DocumentsListKeyFilterAndJSONExamples(t *testing.T) {
+	output := executeRootForTest(t, "get", "tenant", "--help")
+
+	require.Contains(t, output, "./c8volt get tenant")
+	require.Contains(t, output, "./c8volt get tenant --key <tenant-id>")
+	require.Contains(t, output, "./c8volt get tenant --filter demo")
+	require.Contains(t, output, "./c8volt get tenant --json")
+	require.Contains(t, output, "./c8volt get tenant --key <tenant-id> --json")
 }
 
 type tenantCommandAPI struct {
@@ -292,4 +350,28 @@ func resetTenantRenderFlags(t *testing.T) {
 
 func tenantTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func TestGetTenantCommand_V87ListReportsUnsupportedHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "tenant"}
+
+	Execute()
+}
+
+func TestGetTenantCommand_V87KeyedReportsUnsupportedHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "tenant", "--key", "tenant-a"}
+
+	Execute()
 }

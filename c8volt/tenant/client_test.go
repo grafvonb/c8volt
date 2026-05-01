@@ -5,6 +5,7 @@ package tenant
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"testing"
@@ -116,6 +117,32 @@ func TestClient_SearchTenants_FiltersByLiteralNameContainsBeforeSorting(t *testi
 	assert.Equal(t, int32(0), empty.Total)
 }
 
+func TestClient_TenantJSONExposesOnlyPublicDiscoveryFields(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := stubTenantAPI{
+		searchTenants: func(context.Context, int32, ...services.CallOption) ([]d.Tenant, error) {
+			return []d.Tenant{
+				{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"},
+			}, nil
+		},
+		getTenant: func(context.Context, string, ...services.CallOption) (d.Tenant, error) {
+			return d.Tenant{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"}, nil
+		},
+	}
+
+	cli := New(api, slog.Default())
+	list, err := cli.SearchTenants(ctx, TenantFilter{})
+	require.NoError(t, err)
+	keyed, err := cli.GetTenant(ctx, "tenant-a")
+	require.NoError(t, err)
+
+	assertJSONKeys(t, list.Items[0], "tenantId", "name", "description")
+	assertJSONKeys(t, keyed, "tenantId", "name", "description")
+	assertJSONKeys(t, list, "total", "items")
+}
+
 func TestClient_GetTenant_MapsNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -160,4 +187,23 @@ func TestClient_MapsDomainErrors(t *testing.T) {
 
 func fmtWrappedDomainError(err error) error {
 	return errors.Join(err)
+}
+
+func assertJSONKeys(t *testing.T, value any, want ...string) {
+	t.Helper()
+
+	raw, err := json.Marshal(value)
+	require.NoError(t, err)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(raw, &got))
+
+	require.Len(t, got, len(want))
+	for _, key := range want {
+		assert.Contains(t, got, key)
+	}
+	assert.NotContains(t, got, "secret")
+	assert.NotContains(t, got, "credentials")
+	assert.NotContains(t, got, "authorization")
+	assert.NotContains(t, got, "members")
+	assert.NotContains(t, got, "roles")
 }

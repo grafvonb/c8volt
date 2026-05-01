@@ -17,6 +17,7 @@ Started: 2026-05-01 13:08:19
 - Public tenant facade filtering stays local: commands pass raw `--filter` text as `tenant.TenantFilter.NameContains`, the facade applies the domain literal-contains helper before final sorting, and versioned services remain unaware of CLI filter semantics.
 - `get` list renderers should use the shared `listOrJSON` helper so one-line, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
 - Single-item `get` renderers should use the shared `itemView` helper so human, `--keys-only`, and JSON/envelope modes stay consistent with existing command output behavior.
+- Unsupported-version command tests can use helper subprocesses with a `v8.7` config and `http://127.0.0.1:1` base URL because tenant services fail before making network calls.
 
 ## Iteration 1 - 2026-05-01 13:10:26 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
@@ -186,4 +187,30 @@ Started: 2026-05-01 13:08:19
 - `--filter` is intentionally passed through unchanged so pattern-like text such as `.*` remains literal and is interpreted only by the facade/domain helper.
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/domain ./c8volt ./c8volt/tenant ./cmd -run 'Test(FilterTenants|New_V89WiresSupportedRuntime|Client_SearchTenants|GetTenantListOutput|GetTenantCommand)' -count=1` passes for the US3 slice and root wiring.
 - `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant' -count=1` is still blocked in `cmd` by the unrelated sandbox `httptest` listener failure in `cmd/deploy_test.go`; internal tenant services and facade packages pass before that package failure.
+---
+---
+## Iteration 6 - 2026-05-01 13:48:55 CEST
+**User Story**: User Story 4 - Structured Output and Version-Aware Support
+**Tasks Completed**:
+- [x] T046: Add JSON list and keyed command tests in `cmd/get_tenant_test.go`
+- [x] T047: Add `v8.7` unsupported command tests in `cmd/get_tenant_test.go`
+- [x] T048: Add generated-client sensitive-field exclusion assertions in `c8volt/tenant/client_test.go`
+- [x] T049: Add existing `get` command preservation smoke test in `cmd/get_test.go`
+- [x] T050: Ensure tenant list JSON output uses the public tenant model in `cmd/cmd_views_get.go`
+- [x] T051: Ensure tenant keyed JSON output uses the public tenant model in `cmd/cmd_views_get.go`
+- [x] T052: Ensure unsupported tenant capability errors map through the existing command handler in `cmd/get_tenant.go`
+- [x] T053: Add command help examples for list, key, filter, and JSON modes in `cmd/get_tenant.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/tenant/client_test.go
+- cmd/get_tenant.go
+- cmd/get_tenant_test.go
+- cmd/get_test.go
+- specs/151-tenant-discovery/tasks.md
+- specs/151-tenant-discovery/progress.md
+**Learnings**:
+- Tenant JSON command rendering already flows through `listOrJSON` and `itemView`, so tests can prove the public facade payload without adding renderer-specific branches.
+- `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test(Service_|Client_|GetTenant|GetCommand_PreservesExistingProcessInstanceHelp)' -count=1` passes for the US4 slice.
+- `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/tenant/... ./c8volt/tenant ./cmd -run 'Test.*Tenant|TestGetCommand_PreservesExistingProcessInstanceHelp' -count=1` is blocked in `cmd` by the unrelated sandbox `httptest` listener failure in `cmd/deploy_test.go`; tenant service and facade packages pass before that package failure.
 ---

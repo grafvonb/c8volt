@@ -25,6 +25,7 @@ var getTenantCmd = &cobra.Command{
   ./c8volt get tenant --key <tenant-id>
   ./c8volt get tenant --filter demo
   ./c8volt get tenant --json
+  ./c8volt get tenant --key <tenant-id> --json
   ./c8volt get tenant --keys-only`,
 	Aliases: []string{"tenants"},
 	Args: func(cmd *cobra.Command, args []string) error {
