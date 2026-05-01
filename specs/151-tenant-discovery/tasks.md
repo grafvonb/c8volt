@@ -11,10 +11,10 @@
 
 **Purpose**: Prepare the tenant slice without changing command behavior yet.
 
-- [ ] T001 [P] Review generated tenant client shapes and record any field mismatch in `specs/151-tenant-discovery/research.md`
-- [ ] T002 [P] Create tenant domain model skeleton in `internal/domain/tenant.go`
-- [ ] T003 [P] Create public tenant facade package skeleton in `c8volt/tenant/api.go`
-- [ ] T004 [P] Create internal tenant service package skeleton in `internal/services/tenant/api.go`
+- [x] T001 [P] Review generated tenant client shapes and record any field mismatch in `specs/151-tenant-discovery/research.md`
+- [x] T002 [P] Create tenant domain model skeleton in `internal/domain/tenant.go`
+- [x] T003 [P] Create public tenant facade package skeleton in `c8volt/tenant/api.go`
+- [x] T004 [P] Create internal tenant service package skeleton in `internal/services/tenant/api.go`
 
 ---
 
