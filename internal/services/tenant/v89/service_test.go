@@ -42,6 +42,14 @@ func (m *mockTenantClient) GetTenantWithResponse(ctx context.Context, tenantId c
 	return args.Get(0).(*camundav89.GetTenantResponse), args.Error(1)
 }
 
+func (m *mockTenantClient) GetAuthenticationWithResponse(ctx context.Context, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetAuthenticationResponse, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*camundav89.GetAuthenticationResponse), args.Error(1)
+}
+
 func TestService_SearchTenants(t *testing.T) {
 	ctx := context.Background()
 	desc := "primary tenant"
@@ -76,6 +84,31 @@ func TestService_SearchTenants(t *testing.T) {
 				assert.Empty(t, tenants[0].Description)
 				assert.Equal(t, "tenant-a", tenants[1].TenantId)
 				assert.Equal(t, "primary tenant", tenants[1].Description)
+			},
+		},
+		{
+			name: "empty search falls back to authenticated principal tenants",
+			setupMock: func(m *mockTenantClient) {
+				searchResp := &camundav89.SearchTenantsResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/tenants/search", http.StatusOK, "200 OK"),
+					JSON200:      &camundav89.TenantSearchQueryResult{},
+				}
+				authResp := &camundav89.GetAuthenticationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://example.com/authentication/me", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.CamundaUserResult{
+						Tenants: []camundav89.TenantResult{
+							{TenantId: "tenant-a", Name: "Alpha", Description: &desc},
+						},
+					},
+				}
+				m.On("SearchTenantsWithResponse", mock.Anything, mock.Anything).Return(searchResp, nil)
+				m.On("GetAuthenticationWithResponse", mock.Anything).Return(authResp, nil)
+			},
+			assertResult: func(t *testing.T, tenants []domain.Tenant) {
+				require.Len(t, tenants, 1)
+				assert.Equal(t, "tenant-a", tenants[0].TenantId)
+				assert.Equal(t, "Alpha", tenants[0].Name)
+				assert.Equal(t, "primary tenant", tenants[0].Description)
 			},
 		},
 		{

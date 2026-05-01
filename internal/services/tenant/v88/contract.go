@@ -19,6 +19,7 @@ type API interface {
 type GenTenantClient interface {
 	SearchTenantsWithResponse(ctx context.Context, body camundav88.SearchTenantsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchTenantsResponse, error)
 	GetTenantWithResponse(ctx context.Context, tenantId camundav88.TenantId, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetTenantResponse, error)
+	GetAuthenticationWithResponse(ctx context.Context, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetAuthenticationResponse, error)
 }
 
 var _ API = (*Service)(nil)
