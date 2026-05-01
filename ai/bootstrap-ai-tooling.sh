@@ -1,45 +1,39 @@
 #!/usr/bin/env bash
 #
 # Purpose:
-#   Bootstrap the current target repository with a fresh ai-tooling installer.
+#   Bootstrap ai-tooling in two small steps:
+#   - from ai-tooling: copy this bootstrap script into a target repository
+#   - from a target: copy ai/install-ai-tooling.sh from the recorded source
 #
 # Usage:
-#   ./ai/bootstrap-ai-tooling.sh [--force] [tag]
-#   AI_TOOLING_REPO=/path/to/local/ai-tooling ./ai/bootstrap-ai-tooling.sh
-#   AI_TOOLING_REPO=git@github.com:your-org/private-ai-tooling.git ./ai/bootstrap-ai-tooling.sh
+#   ./ai/bootstrap-ai-tooling.sh [--allow-dirty] /path/to/target-repo
+#   ./ai/bootstrap-ai-tooling.sh
 #
 # Parameters:
-#   --force  Forward to the installer to allow overwriting locally drifted
-#            ai-tooling-managed files.
-#   tag      Optional ai-tooling tag or branch to install. If omitted, the
-#            latest tag from AI_TOOLING_REPO is used.
-#
-# Environment:
-#   AI_TOOLING_REPO  Local ai-tooling checkout or remote git URL. Defaults to
-#                    ../../ai-tooling relative to the target repository.
-#
-# Notes:
-#   This script is intentionally small and stable. It fetches the requested
-#   ai-tooling version, then runs that version's installer against this target
-#   repository so installer changes do not require running install/sync.sh by
-#   hand.
+#   --allow-dirty  When copying into a target, allow copying from a dirty
+#                  ai-tooling working tree.
+#   target-repo    Optional target repository. If present, bootstrap is copied
+#                  there. If omitted, install-ai-tooling.sh is copied into the
+#                  current target repository from the recorded source.
 
 set -euo pipefail
 
 usage() {
     cat >&2 <<'EOF'
-Usage: bootstrap-ai-tooling.sh [--force] [tag]
+Usage:
+  bootstrap-ai-tooling.sh [--allow-dirty] /path/to/target-repo
+  bootstrap-ai-tooling.sh
 EOF
     exit 1
 }
 
-INSTALL_ARGS=()
-TAG_ARG=""
+ALLOW_DIRTY=0
+TARGET_ARG=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --force)
-            INSTALL_ARGS+=("$1")
+        --allow-dirty)
+            ALLOW_DIRTY=1
             shift
             ;;
         -h|--help)
@@ -50,11 +44,10 @@ while [ $# -gt 0 ]; do
             usage
             ;;
         *)
-            if [ -n "$TAG_ARG" ]; then
+            if [ -n "$TARGET_ARG" ]; then
                 usage
             fi
-            TAG_ARG="$1"
-            INSTALL_ARGS+=("$1")
+            TARGET_ARG="$1"
             shift
             ;;
     esac
@@ -62,56 +55,60 @@ done
 
 SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(CDPATH="" cd "$SCRIPT_DIR/.." && pwd)"
-DEFAULT_LOCAL_AI_TOOLING_REPO="$(CDPATH="" cd "$REPO_ROOT/../.." && pwd)/ai-tooling"
+SOURCE_FILE="$REPO_ROOT/ai/ai-tooling-source"
 
-if [ -n "${AI_TOOLING_REPO:-}" ]; then
-    RESOLVED_AI_TOOLING_REPO="$AI_TOOLING_REPO"
-elif [ -d "$DEFAULT_LOCAL_AI_TOOLING_REPO/.git" ]; then
-    RESOLVED_AI_TOOLING_REPO="$DEFAULT_LOCAL_AI_TOOLING_REPO"
-else
-    echo "Could not resolve ai-tooling source." >&2
-    echo "Tried default local checkout: $DEFAULT_LOCAL_AI_TOOLING_REPO" >&2
-    echo "Set AI_TOOLING_REPO to a local ai-tooling checkout or private git URL." >&2
-    exit 1
-fi
+is_git_worktree() {
+    git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
 
-latest_tag() {
-    local repo="$1"
+install_bootstrap_into_target() {
+    local target_root="$1"
 
-    if [ -d "$repo/.git" ]; then
-        git -C "$repo" tag --sort=-version:refname | head -n 1
-        return
+    target_root="$(CDPATH="" cd "$target_root" && pwd)"
+    if ! is_git_worktree "$target_root"; then
+        echo "Target is not a git repository: $target_root" >&2
+        exit 1
     fi
 
-    git ls-remote --tags --refs "$repo" \
-        | sed 's#.*refs/tags/##' \
-        | sort -V -r \
-        | head -n 1
+    if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ] && [ "$ALLOW_DIRTY" -ne 1 ]; then
+        echo "Refusing to sync bootstrap from a dirty ai-tooling working tree." >&2
+        echo "Commit or stash ai-tooling changes first, or rerun with --allow-dirty to copy the worktree bootstrap intentionally:" >&2
+        echo "  ./ai/bootstrap-ai-tooling.sh --allow-dirty $target_root" >&2
+        exit 1
+    fi
+
+    mkdir -p "$target_root/ai"
+    cp "$REPO_ROOT/ai/bootstrap-ai-tooling.sh" "$target_root/ai/bootstrap-ai-tooling.sh"
+    chmod +x "$target_root/ai/bootstrap-ai-tooling.sh"
+    printf '%s\n' "$REPO_ROOT" > "$target_root/ai/ai-tooling-source"
+
+    echo "Installed ai/bootstrap-ai-tooling.sh into $target_root"
 }
 
-TAG="${TAG_ARG:-$(latest_tag "$RESOLVED_AI_TOOLING_REPO")}"
-if [ -z "$TAG" ]; then
-    echo "Could not resolve an ai-tooling tag from $RESOLVED_AI_TOOLING_REPO" >&2
-    exit 1
-fi
+install_installer_from_source() {
+    local source_root=""
 
-if [ -z "$TAG_ARG" ]; then
-    INSTALL_ARGS+=("$TAG")
-fi
+    if [ -f "$SOURCE_FILE" ]; then
+        source_root="$(sed -n '1p' "$SOURCE_FILE")"
+    fi
 
-TMP_DIR="$(mktemp -d)"
-cleanup() {
-    rm -rf "$TMP_DIR"
+    if [ -z "$source_root" ] || [ ! -f "$source_root/ai/install-ai-tooling.sh" ]; then
+        echo "Could not resolve ai-tooling source for install-ai-tooling.sh." >&2
+        echo "Run this from the ai-tooling checkout first:" >&2
+        echo "  ./ai/bootstrap-ai-tooling.sh $REPO_ROOT" >&2
+        exit 1
+    fi
+
+    mkdir -p "$REPO_ROOT/ai"
+    cp "$source_root/ai/install-ai-tooling.sh" "$REPO_ROOT/ai/install-ai-tooling.sh"
+    chmod +x "$REPO_ROOT/ai/install-ai-tooling.sh"
+    printf '%s\n' "$source_root" > "$SOURCE_FILE"
+
+    echo "Installed ai/install-ai-tooling.sh from $source_root"
 }
-trap cleanup EXIT
 
-CLONE_SOURCE="$RESOLVED_AI_TOOLING_REPO"
-if [ -d "$RESOLVED_AI_TOOLING_REPO/.git" ]; then
-    CLONE_SOURCE="file://$RESOLVED_AI_TOOLING_REPO"
+if [ -n "$TARGET_ARG" ]; then
+    install_bootstrap_into_target "$TARGET_ARG"
+else
+    install_installer_from_source
 fi
-
-git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$TAG" "$CLONE_SOURCE" "$TMP_DIR"
-
-AI_TOOLING_REPO="$RESOLVED_AI_TOOLING_REPO" \
-AI_TOOLING_TARGET_REPO="$REPO_ROOT" \
-    "$TMP_DIR/ai/install-ai-tooling.sh" "${INSTALL_ARGS[@]}"
