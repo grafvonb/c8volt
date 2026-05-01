@@ -81,30 +81,7 @@ func (s *Service) SearchTenants(ctx context.Context, size int32, opts ...service
 		return nil, err
 	}
 	out := toolx.MapSlice(payload.Items, fromTenantResult)
-	if len(out) == 0 {
-		fallback, fallbackErr := s.searchTenantsFromAuthentication(ctx, cCfg)
-		if fallbackErr != nil {
-			common.VerboseLog(ctx, cCfg, s.log, "authenticated principal tenant lookup failed", "error", fallbackErr)
-		} else if len(fallback) > 0 {
-			out = fallback
-		}
-	}
 	common.VerboseLog(ctx, cCfg, s.log, "found tenants", "count", len(out))
-	return out, nil
-}
-
-func (s *Service) searchTenantsFromAuthentication(ctx context.Context, cCfg *services.CallCfg) ([]d.Tenant, error) {
-	common.VerboseLog(ctx, cCfg, s.log, "tenant search returned no items; checking authenticated principal tenants", "baseURL", s.cfg.APIs.Camunda.BaseURL)
-	resp, err := s.c.GetAuthenticationWithResponse(ctx)
-	if err != nil {
-		return nil, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return nil, err
-	}
-	out := toolx.MapSlice(payload.Tenants, fromTenantResult)
-	common.VerboseLog(ctx, cCfg, s.log, "found authenticated principal tenants", "count", len(out))
 	return out, nil
 }
 
