@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package v88
+package v89
 
 import (
 	"context"
 
-	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 )
@@ -16,8 +16,8 @@ type API interface {
 }
 
 type GenUserTaskClientCamunda interface {
-	GetUserTaskWithResponse(ctx context.Context, userTaskKey camundav88.UserTaskKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetUserTaskResponse, error)
+	GetUserTaskWithResponse(ctx context.Context, userTaskKey camundav89.UserTaskKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetUserTaskResponse, error)
 }
 
 var _ API = (*Service)(nil)
-var _ GenUserTaskClientCamunda = (*camundav88.ClientWithResponses)(nil)
+var _ GenUserTaskClientCamunda = (*camundav89.ClientWithResponses)(nil)

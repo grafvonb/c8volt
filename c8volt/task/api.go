@@ -3,6 +3,14 @@
 
 package task
 
-type API interface{}
+import (
+	"context"
+
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
+)
+
+type API interface {
+	ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error)
+}
 
 var _ API = (*client)(nil)

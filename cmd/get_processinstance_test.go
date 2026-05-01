@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -563,6 +564,262 @@ func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T
 
 	require.Equal(t, []string{"/v2/process-instances/2251799813711967"}, requests)
 	require.Contains(t, output, `"key": "2251799813711967"`)
+}
+
+func TestGetProcessInstanceCommand_TaskKeyLookupUsesNativeUserTaskAndKeyedProcessInstance(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9"} {
+		t.Run(version, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodGet, r.Method)
+				requests = append(requests, r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/user-tasks/2251799815391233":
+					_, _ = w.Write([]byte(`{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967"}`))
+				case "/v2/process-instances/2251799813711967":
+					_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"get", "pi",
+				"--task-key", "2251799815391233",
+			)
+
+			require.Equal(t, []string{
+				"/v2/user-tasks/2251799815391233",
+				"/v2/process-instances/2251799813711967",
+			}, requests)
+			require.Contains(t, output, "2251799813711967")
+			require.NotContains(t, output, "2251799815391233")
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_TaskKeyJSONMatchesDirectKeyedJSON(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/2251799815391233":
+			_, _ = w.Write([]byte(`{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967"}`))
+		case "/v2/process-instances/2251799813711967":
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	taskKeyOutput := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--task-key", "2251799815391233",
+	)
+	directKeyOutput := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "2251799813711967",
+	)
+
+	require.Equal(t, []string{
+		"/v2/user-tasks/2251799815391233",
+		"/v2/process-instances/2251799813711967",
+		"/v2/process-instances/2251799813711967",
+	}, requests)
+	require.JSONEq(t, directKeyOutput, taskKeyOutput)
+}
+
+func TestGetProcessInstanceCommand_TaskKeyPreservesSingleLookupRenderFlags(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "with age",
+			args: []string{"--with-age"},
+			want: "(2 days ago)",
+		},
+		{
+			name: "keys only",
+			args: []string{"--keys-only"},
+			want: "2251799813711967\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodGet, r.Method)
+				requests = append(requests, r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/user-tasks/2251799815391233":
+					_, _ = w.Write([]byte(`{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967"}`))
+				case "/v2/process-instances/2251799813711967":
+					_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := append([]string{
+				"--config", cfgPath,
+				"get", "process-instance",
+				"--task-key", "2251799815391233",
+			}, tt.args...)
+
+			output := executeRootForProcessInstanceTest(t, args...)
+
+			require.Equal(t, []string{
+				"/v2/user-tasks/2251799815391233",
+				"/v2/process-instances/2251799813711967",
+			}, requests)
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_TaskKeyPreservesResolvedProcessInstanceNotFound(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/2251799815391233":
+			_, _ = w.Write([]byte(`{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967"}`))
+		case "/v2/process-instances/2251799813711967":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"not found"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceCommand_TaskKeyResolvedProcessInstanceNotFoundHelper", cfgPath)
+
+	require.Equal(t, exitcode.NotFound, code)
+	require.Contains(t, output, "resource not found")
+	require.Contains(t, output, "get process instance resolved from user task key [2251799815391233]")
+	require.Contains(t, output, "/v2/process-instances/2251799813711967")
+	require.Equal(t, []string{
+		"/v2/user-tasks/2251799815391233",
+		"/v2/process-instances/2251799813711967",
+	}, requests)
+}
+
+func TestGetProcessInstanceCommand_RejectsTaskKeyConflictsBeforeLookup(t *testing.T) {
+	var requestCount int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		http.Error(w, "unexpected request", http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	tests := []struct {
+		name string
+		mode string
+		want string
+	}{
+		{
+			name: "key selector",
+			mode: "key",
+			want: "--task-key cannot be combined with --key or stdin key input",
+		},
+		{
+			name: "stdin key selector",
+			mode: "stdin",
+			want: "--task-key cannot be combined with --key or stdin key input",
+		},
+		{
+			name: "state filter",
+			mode: "state",
+			want: "--task-key cannot be combined with process-instance search filters",
+		},
+		{
+			name: "process definition filter",
+			mode: "bpmn-process-id",
+			want: "--task-key cannot be combined with process-instance search filters",
+		},
+		{
+			name: "date filter",
+			mode: "start-date-after",
+			want: "--task-key cannot be combined with process-instance search filters",
+		},
+		{
+			name: "derived search filter",
+			mode: "roots-only",
+			want: "--task-key cannot be combined with process-instance search filters",
+		},
+		{
+			name: "total mode",
+			mode: "total",
+			want: "--task-key cannot be combined with --total",
+		},
+		{
+			name: "limit mode",
+			mode: "limit",
+			want: "--task-key cannot be combined with --limit",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := atomic.LoadInt32(&requestCount)
+			output, code := executeProcessInstanceFailureHelperWithEnv(t,
+				"TestGetProcessInstanceCommand_RejectsTaskKeyConflictHelper",
+				cfgPath,
+				map[string]string{"C8VOLT_TEST_TASK_KEY_CONFLICT": tt.mode},
+			)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+			require.Equal(t, before, atomic.LoadInt32(&requestCount))
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_TaskKeyUnsupportedOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceCommand_TaskKeyUnsupportedOnV87Helper", cfgPath)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, output, "unsupported capability")
+	require.Contains(t, output, "task-key lookup is unsupported in Camunda 8.7")
+	require.Contains(t, output, "requires Camunda 8.8 or 8.9")
 }
 
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.
@@ -1575,6 +1832,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagCancelPIKeys = nil
 	flagDeletePIKeys = nil
 	flagGetPIKeys = nil
+	flagGetPITaskKey = ""
 	flagRunPIProcessDefinitionBpmnProcessIds = nil
 	flagRunPIProcessDefinitionKey = nil
 	flagRunPIProcessDefinitionVersion = 0
@@ -1641,15 +1899,94 @@ func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
-	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+	return executeProcessInstanceFailureHelperWithEnv(t, helperName, cfgPath, nil)
+}
+
+func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string, cfgPath string, extraEnv map[string]string) (string, int) {
+	t.Helper()
+
+	env := map[string]string{
 		"C8VOLT_TEST_CONFIG":  cfgPath,
 		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
-	})
+	}
+	for k, v := range extraEnv {
+		env[k] = v
+	}
+	output, err := testx.RunCmdSubprocess(t, helperName, env)
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	return string(output), exitErr.ExitCode()
+}
+
+func TestGetProcessInstanceCommand_RejectsTaskKeyConflictHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+
+	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--task-key", "2251799815391233"}
+	switch os.Getenv("C8VOLT_TEST_TASK_KEY_CONFLICT") {
+	case "key":
+		args = append(args, "--key", "2251799813711967")
+	case "stdin":
+		stdinReader, stdinWriter, err := os.Pipe()
+		require.NoError(t, err)
+		_, err = stdinWriter.WriteString("2251799813711967\n")
+		require.NoError(t, err)
+		require.NoError(t, stdinWriter.Close())
+		prevStdin := os.Stdin
+		os.Stdin = stdinReader
+		t.Cleanup(func() {
+			os.Stdin = prevStdin
+			require.NoError(t, stdinReader.Close())
+		})
+		args = append(args, "-")
+	case "state":
+		args = append(args, "--state", "active")
+	case "bpmn-process-id":
+		args = append(args, "--bpmn-process-id", "C88_SimpleUserTask_Process")
+	case "start-date-after":
+		args = append(args, "--start-date-after", "2026-01-01")
+	case "roots-only":
+		args = append(args, "--roots-only")
+	case "total":
+		args = append(args, "--total")
+	case "limit":
+		args = append(args, "--limit", "1")
+	default:
+		t.Fatalf("unknown task-key conflict mode %q", os.Getenv("C8VOLT_TEST_TASK_KEY_CONFLICT"))
+	}
+	os.Args = args
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_TaskKeyUnsupportedOnV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--task-key", "2251799815391233"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_TaskKeyResolvedProcessInstanceNotFoundHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--task-key", "2251799815391233"}
+
+	Execute()
 }
 
 // TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper is the helper-process entrypoint for removed --count validation.

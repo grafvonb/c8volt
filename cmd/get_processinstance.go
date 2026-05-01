@@ -16,12 +16,14 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 var (
 	flagGetPIKeys                 []string
+	flagGetPITaskKey              string
 	flagGetPIBpmnProcessID        string
 	flagGetPIProcessVersion       int32
 	flagGetPIProcessVersionTag    string
@@ -94,6 +96,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		keys := mergeAndValidateKeys(flagGetPIKeys, stdinKeys, log, cfg)
 		ukeys := keys.Unique()
 		lk := len(ukeys)
+		if err := validatePITaskKeyMode(cmd, lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
 		if lk == 0 {
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				fail(err)
@@ -103,6 +108,16 @@ var getProcessInstanceCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		var pis process.ProcessInstances
 		switch {
+		case flagGetPITaskKey != "":
+			log.Debug(fmt.Sprintf("resolving process instance key from user task key [%s]", flagGetPITaskKey))
+			processInstanceKey, err := cli.ResolveProcessInstanceKeyFromUserTask(ctx, flagGetPITaskKey, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("resolve process instance key from user task: %w", err))
+			}
+			pis, err = cli.GetProcessInstances(ctx, types.Keys{processInstanceKey}, 1, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("get process instance resolved from user task key [%s]: %w", flagGetPITaskKey, err))
+			}
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
@@ -163,6 +178,7 @@ func init() {
 
 	fs := getProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
+	fs.StringVar(&flagGetPITaskKey, "task-key", "", "user task key whose owning process instance should be fetched")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
@@ -331,6 +347,25 @@ func hasPIRelativeDayFilterFlags() bool {
 func validatePIKeyedModeDateFilters(keyCount int) error {
 	if keyCount > 0 && (hasPIDateFilterFlags() || hasPIRelativeDayFilterFlags()) {
 		return mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key")
+	}
+	return nil
+}
+
+func validatePITaskKeyMode(cmd *cobra.Command, keyCount int, filterFlagsSet bool) error {
+	if flagGetPITaskKey == "" {
+		return nil
+	}
+	if keyCount > 0 {
+		return mutuallyExclusiveFlagsf("--task-key cannot be combined with --key or stdin key input")
+	}
+	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
+		return mutuallyExclusiveFlagsf("--task-key cannot be combined with process-instance search filters")
+	}
+	if flagGetPITotal {
+		return mutuallyExclusiveFlagsf("--task-key cannot be combined with --total")
+	}
+	if flagGetPILimit > 0 || isPILimitFlagChanged(cmd) {
+		return mutuallyExclusiveFlagsf("--task-key cannot be combined with --limit")
 	}
 	return nil
 }

@@ -30,11 +30,11 @@
 
 **CRITICAL**: No user story implementation should bypass this shared seam.
 
-- [ ] T005 Add a user-task domain type exposing the owning process-instance key in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/usertask.go
-- [ ] T006 Add internal user-task service API, factory, and version assertions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/api.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/factory.go
-- [ ] T007 Add public facade task API method for resolving a process-instance key from a user task in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/task/api.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/task/client.go
-- [ ] T008 Wire the user-task service into the c8volt client construction in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/client.go
-- [ ] T009 [P] Add test doubles or helper seams for task-key command tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/process_api_stub_test.go
+- [x] T005 Add a user-task domain type exposing the owning process-instance key in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/domain/usertask.go
+- [x] T006 Add internal user-task service API, factory, and version assertions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/api.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/factory.go
+- [x] T007 Add public facade task API method for resolving a process-instance key from a user task in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/task/api.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/task/client.go
+- [x] T008 Wire the user-task service into the c8volt client construction in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt/client.go
+- [x] T009 [P] Add test doubles or helper seams for task-key command tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/process_api_stub_test.go
 
 **Checkpoint**: The repository has one native user-task resolution seam available to command code and tests.
 
@@ -48,18 +48,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T010 [P] [US1] Add 8.8 native user-task service success test resolving processInstanceKey in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service_test.go
-- [ ] T011 [P] [US1] Add 8.9 native user-task service success test resolving processInstanceKey in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service_test.go
-- [ ] T012 [P] [US1] Add command success test for `get pi --task-key` on 8.8 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T013 [P] [US1] Add command success test for `get pi --task-key` on 8.9 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T010 [P] [US1] Add 8.8 native user-task service success test resolving processInstanceKey in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service_test.go
+- [x] T011 [P] [US1] Add 8.9 native user-task service success test resolving processInstanceKey in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service_test.go
+- [x] T012 [P] [US1] Add command success test for `get pi --task-key` on 8.8 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T013 [P] [US1] Add command success test for `get pi --task-key` on 8.9 in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implement 8.8 native `GetUserTaskWithResponse` resolution and conversion in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/convert.go
-- [ ] T015 [US1] Implement 8.9 native `GetUserTaskWithResponse` resolution and conversion in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/convert.go
-- [ ] T016 [US1] Add `--task-key` flag registration and happy-path branch before search mode in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T017 [US1] Reuse existing process-instance keyed lookup and `listProcessInstancesView` rendering after task-key resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T018 [US1] Run focused US1 validation with `go test ./cmd ./c8volt/task ./internal/services/usertask/v88 ./internal/services/usertask/v89 -count=1`
+- [x] T014 [US1] Implement 8.8 native `GetUserTaskWithResponse` resolution and conversion in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/convert.go
+- [x] T015 [US1] Implement 8.9 native `GetUserTaskWithResponse` resolution and conversion in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/convert.go
+- [x] T016 [US1] Add `--task-key` flag registration and happy-path branch before search mode in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T017 [US1] Reuse existing process-instance keyed lookup and `listProcessInstancesView` rendering after task-key resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T018 [US1] Run focused US1 validation with `go test ./cmd ./c8volt/task ./internal/services/usertask/v88 ./internal/services/usertask/v89 -count=1`
 
 **Checkpoint**: User Story 1 is the MVP and returns an owning process instance from a user task key on 8.8 and 8.9.
 
@@ -73,17 +73,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Add 8.7 unsupported task-key service test in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v87/service_test.go
-- [ ] T020 [P] [US2] Add command validation tests for `--task-key` with `--key` and stdin key input in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T021 [P] [US2] Add command validation tests for `--task-key` with process-instance search filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T022 [P] [US2] Add command validation tests for `--task-key` with `--total` and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T019 [P] [US2] Add 8.7 unsupported task-key service test in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v87/service_test.go
+- [x] T020 [P] [US2] Add command validation tests for `--task-key` with `--key` and stdin key input in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T021 [P] [US2] Add command validation tests for `--task-key` with process-instance search filters in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T022 [P] [US2] Add command validation tests for `--task-key` with `--total` and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Implement explicit 8.7 unsupported behavior for task-key lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v87/service.go
-- [ ] T024 [US2] Add task-key mutual-exclusion validation for `--key`, stdin `-`, filters, `--total`, and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T025 [US2] Ensure validation rejects conflicts before native user-task or process-instance lookup calls in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T026 [US2] Run focused US2 validation with `go test ./cmd ./c8volt/task ./internal/services/usertask/... -count=1`
+- [x] T023 [US2] Implement explicit 8.7 unsupported behavior for task-key lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v87/service.go
+- [x] T024 [US2] Add task-key mutual-exclusion validation for `--key`, stdin `-`, filters, `--total`, and `--limit` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T025 [US2] Ensure validation rejects conflicts before native user-task or process-instance lookup calls in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T026 [US2] Run focused US2 validation with `go test ./cmd ./c8volt/task ./internal/services/usertask/... -count=1`
 
 **Checkpoint**: User Story 2 prevents unsupported and ambiguous task-key usage without fallback APIs.
 
@@ -97,16 +97,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T027 [P] [US3] Add command test proving `get pi --task-key=<task-key> --json` matches direct keyed JSON shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T028 [P] [US3] Add command tests for `--task-key` with valid single lookup render flags such as `--with-age` and `--keys-only` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T029 [P] [US3] Add missing user task and missing processInstanceKey tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service_test.go
-- [ ] T030 [P] [US3] Add command test preserving process-instance not-found behavior after task-key resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T027 [P] [US3] Add command test proving `get pi --task-key=<task-key> --json` matches direct keyed JSON shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T028 [P] [US3] Add command tests for `--task-key` with valid single lookup render flags such as `--with-age` and `--keys-only` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T029 [P] [US3] Add missing user task and missing processInstanceKey tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service_test.go
+- [x] T030 [P] [US3] Add command test preserving process-instance not-found behavior after task-key resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Normalize missing task and missing processInstanceKey errors through repository error conventions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service.go
-- [ ] T032 [US3] Preserve existing direct keyed render option flow after task-key resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_processinstance.go
-- [ ] T033 [US3] Run focused US3 validation with `go test ./cmd ./internal/services/usertask/v88 ./internal/services/usertask/v89 -count=1`
+- [x] T031 [US3] Normalize missing task and missing processInstanceKey errors through repository error conventions in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service.go
+- [x] T032 [US3] Preserve existing direct keyed render option flow after task-key resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_processinstance.go
+- [x] T033 [US3] Run focused US3 validation with `go test ./cmd ./internal/services/usertask/v88 ./internal/services/usertask/v89 -count=1`
 
 **Checkpoint**: User Story 3 makes task-key lookup feel like direct keyed lookup after resolution.
 

@@ -17,6 +17,7 @@ import (
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 	tsvc "github.com/grafvonb/c8volt/internal/services/tenant"
+	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -78,11 +79,15 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
 
 	cl := client{
 		ClusterAPI: cluster.New(cAPI, c.log),
 		ProcessAPI: process.New(pdAPI, piAPI, c.log),
-		TaskAPI:    task.New(pdAPI, piAPI, c.log),
+		TaskAPI:    task.New(pdAPI, piAPI, utAPI, c.log),
 		TenantAPI:  tenant.New(tAPI, c.log),
 		capsFunc: func(context.Context) (Capabilities, error) {
 			return Capabilities{

@@ -6,12 +6,10 @@ package v87
 import (
 	"context"
 
-	tasklistv87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/tasklist"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 )
 
-type GenUserTaskClientTasklist interface {
-	GetVariableByIdWithResponse(ctx context.Context, variableId string, reqEditors ...tasklistv87.RequestEditorFn) (*tasklistv87.GetVariableByIdResponse, error)
-	SearchTaskVariablesWithResponse(ctx context.Context, taskId string, body tasklistv87.SearchTaskVariablesJSONRequestBody, reqEditors ...tasklistv87.RequestEditorFn) (*tasklistv87.SearchTaskVariablesResponse, error)
+type API interface {
+	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 }
-
-var _ GenUserTaskClientTasklist = (*tasklistv87.ClientWithResponses)(nil)
