@@ -48,6 +48,18 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.NotContains(t, output, "--count")
 }
 
+func TestGetProcessInstanceHelp_DocumentsTaskKeyLookup(t *testing.T) {
+	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+
+	require.Contains(t, output, "--task-key string")
+	require.Contains(t, output, "user task key whose owning process instance should be fetched")
+	require.Contains(t, output, "./c8volt get pi --task-key 2251799815391233")
+	require.Contains(t, output, "./c8volt get pi --task-key 2251799815391233 --json")
+	require.Contains(t, output, "Camunda 8.8 and 8.9 support --task-key")
+	require.Contains(t, output, "Camunda 8.7 rejects it as unsupported")
+	require.Contains(t, output, "Tasklist or Operate fallback")
+}
+
 // Verifies search-mode get process-instance sends the expected filter and pagination request shape.
 func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest(t *testing.T) {
 	var requests []string

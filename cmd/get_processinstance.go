@@ -58,11 +58,14 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
 		"Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.\n\n" +
+		"Use --task-key to resolve the owning process instance from a user task key. Camunda 8.8 and 8.9 support --task-key through the native user-task lookup; Camunda 8.7 rejects it as unsupported. There is no Tasklist or Operate fallback.\n\n" +
 		"Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --state active --total
   ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --key 2251799813711967 --json
+  ./c8volt get pi --task-key 2251799815391233
+  ./c8volt get pi --task-key 2251799815391233 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
@@ -178,7 +181,7 @@ func init() {
 
 	fs := getProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
-	fs.StringVar(&flagGetPITaskKey, "task-key", "", "user task key whose owning process instance should be fetched")
+	fs.StringVar(&flagGetPITaskKey, "task-key", "", "user task key whose owning process instance should be fetched (Camunda 8.8/8.9 only)")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)

@@ -17,7 +17,35 @@ Started: 2026-05-01 12:35:04
 - Native user-task services let `common.RequirePayload` map missing-task 404s to `domain.ErrNotFound`, and treat an empty resolved `ProcessInstanceKey` as `domain.ErrMalformedResponse`.
 - Task-key conflict validation runs after merging `--key` and stdin keys but before version support and API calls, so command tests can assert zero HTTP requests for invalid selector/search combinations.
 - v8.7 user-task lookup returns a domain unsupported error directly from `internal/services/usertask/v87`, with no Tasklist or Operate client construction.
+- Generated CLI docs are sourced from Cobra command metadata through `make docs-content`, and `docs/index.md` is regenerated from `README.md` by `docsgen`.
 
+---
+
+---
+## Iteration 6 - 2026-05-01 13:06:14 CEST
+**User Story**: User Story 4 - Discover Task-Key Lookup In Help And Docs
+**Tasks Completed**:
+- [x] T034: Add help-output assertions for `--task-key`, human example, JSON example, and 8.7 unsupported wording
+- [x] T035: Add docs contract check for generated `get process-instance` docs
+- [x] T036: Update command help and examples for task-key lookup
+- [x] T037: Update README examples and process-instance lookup documentation
+- [x] T038: Regenerate generated CLI docs with `make docs-content`
+- [x] T039: Verify generated docs and README do not suggest Tasklist or Operate fallback for task-key lookup
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/152-task-key-pi-lookup/tasks.md
+- specs/152-task-key-pi-lookup/progress.md
+**Learnings**:
+- Help and generated CLI docs can share the task-key contract by putting examples, version support, and the no-fallback rule in `getProcessInstanceCmd.Long` and `Example`.
+- `make docs-content` regenerates both the affected CLI markdown page and the README-backed docs homepage.
+- Passing validation: `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestGetProcessInstanceHelp_DocumentsTaskKeyLookup' -count=1`, `GOCACHE=/tmp/c8volt-go-build go test ./docsgen -run 'TestGeneratedProcessInstanceDocsDocumentTaskKeyLookup' -count=1`, and `rg -n "Tasklist or Operate fallback|does not use Tasklist or Operate fallback|--task-key" README.md docs/cli/c8volt_get_process-instance.md`.
 ---
 
 ---

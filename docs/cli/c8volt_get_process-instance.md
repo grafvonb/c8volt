@@ -13,6 +13,8 @@ List or fetch process instances
 List process instances by search filters or fetch them by key.
 Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.
 
+Use --task-key to resolve the owning process instance from a user task key. Camunda 8.8 and 8.9 support --task-key through the native user-task lookup; Camunda 8.7 rejects it as unsupported. There is no Tasklist or Operate fallback.
+
 Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.
 
 ```
@@ -26,6 +28,8 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --total
   ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --key 2251799813711967 --json
+  ./c8volt get pi --task-key 2251799815391233
+  ./c8volt get pi --task-key 2251799815391233 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977
 ```
@@ -58,6 +62,7 @@ c8volt get process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
+      --task-key string             user task key whose owning process instance should be fetched (Camunda 8.8/8.9 only)
       --total                       return only the numeric total of matching process instances; capped backend totals are counted by paging
       --with-age                    include process instance age in one-line output and JSON meta
   -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))

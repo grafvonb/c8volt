@@ -120,15 +120,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Add help-output assertions for `--task-key`, human example, JSON example, and 8.7 unsupported wording in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [ ] T035 [P] [US4] Add docs contract check for generated `get process-instance` docs in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docsgen/main_test.go
+- [x] T034 [P] [US4] Add help-output assertions for `--task-key`, human example, JSON example, and 8.7 unsupported wording in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T035 [P] [US4] Add docs contract check for generated `get process-instance` docs in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docsgen/main_test.go
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Update command help and examples for task-key lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
-- [ ] T037 [US4] Update README examples and process-instance lookup documentation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
-- [ ] T038 [US4] Regenerate generated CLI docs with `make docs-content`, updating /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md
-- [ ] T039 [US4] Verify generated docs and README do not suggest Tasklist or Operate fallback for task-key lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
+- [x] T036 [US4] Update command help and examples for task-key lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go
+- [x] T037 [US4] Update README examples and process-instance lookup documentation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
+- [x] T038 [US4] Regenerate generated CLI docs with `make docs-content`, updating /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md
+- [x] T039 [US4] Verify generated docs and README do not suggest Tasklist or Operate fallback for task-key lookup in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli/c8volt_get_process-instance.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md
 
 **Checkpoint**: User Story 4 makes the new public behavior discoverable and synchronized.
 

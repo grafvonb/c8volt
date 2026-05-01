@@ -203,6 +203,17 @@ Use `--batch-size` or `-n` to control how many process instances each backend pa
 
 When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
 
+### Resolve From A User Task Key
+
+```bash
+./c8volt get pi --task-key <user-task-key>
+./c8volt get pi --task-key <user-task-key> --json
+```
+
+On Camunda `8.8` and `8.9`, `--task-key` resolves the owning process instance through the native Camunda user-task lookup, then renders the process instance through the same single-instance path as `get pi --key <process-instance-key>`. Human output, JSON output, `--with-age`, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+
+Camunda `8.7` rejects `--task-key` as unsupported. c8volt does not use Tasklist or Operate fallback APIs for task-key resolution.
+
 ### Pull Exact Artifacts
 
 ```bash
