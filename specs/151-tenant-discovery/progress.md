@@ -55,7 +55,7 @@ Started: 2026-05-01 13:08:19
 - [x] T016: Wire tenant service creation into `c8volt.New` in `c8volt/client.go`
 - [x] T017: Add facade conversion and error-mapping tests in `c8volt/tenant/client_test.go`
 **Tasks Remaining in Story**: None - story complete
-**Commit**: No commit - sandbox blocked writing Git metadata outside writable roots
+**Commit**: Recorded in Git history for this iteration
 **Files Changed**:
 - internal/domain/tenant.go
 - internal/domain/tenant_test.go
