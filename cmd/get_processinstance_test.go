@@ -308,6 +308,37 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 	}
 }
 
+func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "requires keyed lookup",
+			helper: "TestGetProcessInstanceWithIncidentsWithoutKeyHelper",
+			want:   "--with-incidents requires --key",
+		},
+		{
+			name:   "rejects search-mode incident filters",
+			helper: "TestGetProcessInstanceWithIncidentsWithSearchFilterHelper",
+			want:   "--with-incidents cannot be combined with search-mode filters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
 // TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags verifies paging flag validation errors stay user-facing.
 func TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
@@ -2034,6 +2065,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize
 	flagGetPILimit = 0
+	flagGetPIWithIncidents = false
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
@@ -2348,6 +2380,34 @@ func TestGetProcessInstanceTotalWithAgeHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-age", "--total"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --with-incidents without --key validation.
+func TestGetProcessInstanceWithIncidentsWithoutKeyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-incidents"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --with-incidents with search-mode filter validation.
+func TestGetProcessInstanceWithIncidentsWithSearchFilterHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incidents-only"}
 
 	Execute()
 }

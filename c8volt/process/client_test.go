@@ -200,6 +200,101 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 	require.NoError(t, err)
 }
 
+func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			assert.Equal(t, "2251799813711967", key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceIncidentDetail{
+				{
+					IncidentKey:            "4503599627370497",
+					ProcessInstanceKey:     "2251799813711967",
+					TenantId:               "tenant-a",
+					State:                  "ACTIVE",
+					ErrorType:              "JOB_NO_RETRIES",
+					ErrorMessage:           "No retries left",
+					FlowNodeId:             "task-a",
+					FlowNodeInstanceKey:    "2251799813711999",
+					JobKey:                 "2251799813712000",
+					RootProcessInstanceKey: "2251799813711967",
+					ProcessDefinitionKey:   "2251799813685255",
+					ProcessDefinitionId:    "order-process",
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.SearchProcessInstanceIncidents(ctx, "2251799813711967", options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []ProcessInstanceIncidentDetail{
+		{
+			IncidentKey:            "4503599627370497",
+			ProcessInstanceKey:     "2251799813711967",
+			TenantId:               "tenant-a",
+			State:                  "ACTIVE",
+			ErrorType:              "JOB_NO_RETRIES",
+			ErrorMessage:           "No retries left",
+			FlowNodeId:             "task-a",
+			FlowNodeInstanceKey:    "2251799813711999",
+			JobKey:                 "2251799813712000",
+			RootProcessInstanceKey: "2251799813711967",
+			ProcessDefinitionKey:   "2251799813685255",
+			ProcessDefinitionId:    "order-process",
+		},
+	}, got)
+}
+
+func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			switch key {
+			case "123":
+				return []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "i-123", ProcessInstanceKey: "123", ErrorMessage: "first"},
+					{IncidentKey: "wrong", ProcessInstanceKey: "999", ErrorMessage: "wrong key"},
+				}, nil
+			case "124":
+				return nil, nil
+			default:
+				t.Fatalf("unexpected incident lookup for key %s", key)
+				return nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithIncidents(ctx, ProcessInstances{
+		Total: 2,
+		Items: []ProcessInstance{
+			{Key: "123", BpmnProcessId: "order-process"},
+			{Key: "124", BpmnProcessId: "invoice-process"},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"123", "124"}, calls)
+	require.Equal(t, int32(2), got.Total)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, "123", got.Items[0].Item.Key)
+	require.Equal(t, []ProcessInstanceIncidentDetail{
+		{IncidentKey: "i-123", ProcessInstanceKey: "123", ErrorMessage: "first"},
+	}, got.Items[0].Incidents)
+	require.Equal(t, "124", got.Items[1].Item.Key)
+	require.Empty(t, got.Items[1].Incidents)
+	require.NotNil(t, got.Items[1].Incidents)
+}
+
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
 // contract: request echoing, overflow state, reported total kind, and item
 // mapping all need to survive the facade boundary.
@@ -789,15 +884,16 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
-	searchForProcessInstances     func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
-	searchForProcessInstancesPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
-	ancestry                      func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
-	descendants                   func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
-	cancelProcessInstance         func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
-	deleteProcessInstance         func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
-	ancestryResult                func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
-	descendantsResult             func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
-	familyResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	searchForProcessInstances      func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
+	searchForProcessInstancesPage  func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	ancestry                       func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
+	descendants                    func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+	cancelProcessInstance          func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	deleteProcessInstance          func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
+	ancestryResult                 func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	descendantsResult              func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	familyResult                   func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 }
 
 // CreateProcessInstance panics when a facade test accidentally starts a process instance.
@@ -808,6 +904,13 @@ func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessIn
 // GetProcessInstance panics when a facade test accidentally performs direct lookup.
 func (stubProcessInstanceAPI) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
 	panic("unexpected call")
+}
+
+func (s stubProcessInstanceAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchProcessInstanceIncidents == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstanceIncidents(ctx, key, opts...)
 }
 
 // GetDirectChildrenOfProcessInstance panics when a test takes the direct-children path unexpectedly.

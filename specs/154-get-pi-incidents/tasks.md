@@ -24,14 +24,14 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Extend `internal/services/processinstance.API` with tenant-aware incident lookup in `internal/services/processinstance/api.go`
-- [ ] T006 Extend public `process.API` with process-instance incident lookup/enrichment in `c8volt/process/api.go`
-- [ ] T007 Add conversion helpers between domain and public incident models in `c8volt/process/convert.go`
-- [ ] T008 Implement facade incident lookup and keyed result enrichment helpers in `c8volt/process/client.go`
-- [ ] T009 Add `--with-incidents` flag storage and registration in `cmd/get_processinstance.go`
-- [ ] T010 Add early validation for keyed-only `--with-incidents` usage in `cmd/get_processinstance.go`
-- [ ] T011 [P] Add foundational facade tests for incident conversion/enrichment in `c8volt/process/client_test.go`
-- [ ] T012 [P] Add command validation tests for `--with-incidents` without `--key` and with search-mode filters in `cmd/get_processinstance_test.go`
+- [x] T005 Extend `internal/services/processinstance.API` with tenant-aware incident lookup in `internal/services/processinstance/api.go`
+- [x] T006 Extend public `process.API` with process-instance incident lookup/enrichment in `c8volt/process/api.go`
+- [x] T007 Add conversion helpers between domain and public incident models in `c8volt/process/convert.go`
+- [x] T008 Implement facade incident lookup and keyed result enrichment helpers in `c8volt/process/client.go`
+- [x] T009 Add `--with-incidents` flag storage and registration in `cmd/get_processinstance.go`
+- [x] T010 Add early validation for keyed-only `--with-incidents` usage in `cmd/get_processinstance.go`
+- [x] T011 [P] Add foundational facade tests for incident conversion/enrichment in `c8volt/process/client_test.go`
+- [x] T012 [P] Add command validation tests for `--with-incidents` without `--key` and with search-mode filters in `cmd/get_processinstance_test.go`
 
 **Checkpoint**: The repository can represent incident details, validate the flag scope, and call incident lookup through established service/facade seams.
 

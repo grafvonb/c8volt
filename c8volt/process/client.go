@@ -73,6 +73,42 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 	return fromDomainProcessInstance(pi), nil
 }
 
+func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
+	incidents, err := c.piApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return nil, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstanceIncidentDetails(incidents), nil
+}
+
+func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
+	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
+	for _, pi := range pis.Items {
+		incidents, err := c.SearchProcessInstanceIncidents(ctx, pi.Key, opts...)
+		if err != nil {
+			return IncidentEnrichedProcessInstances{}, err
+		}
+		items = append(items, IncidentEnrichedProcessInstance{
+			Item:      pi,
+			Incidents: incidentsForProcessInstance(pi.Key, incidents),
+		})
+	}
+	return IncidentEnrichedProcessInstances{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
+func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncidentDetail) []ProcessInstanceIncidentDetail {
+	out := make([]ProcessInstanceIncidentDetail, 0, len(incidents))
+	for _, incident := range incidents {
+		if incident.ProcessInstanceKey == key {
+			out = append(out, incident)
+		}
+	}
+	return out
+}
+
 func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
 	got, pi, err := pisvc.LookupProcessInstanceStateByKey(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	pgot, _ := ParseState(got.String())

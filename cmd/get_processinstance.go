@@ -42,6 +42,7 @@ var (
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
 	flagGetPILimit                int32
+	flagGetPIWithIncidents        bool
 )
 
 // command options
@@ -105,6 +106,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 		ltk := len(taskKeys)
 		if err := validatePIHasUserTasksMode(cmd, ltk, lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
+		if err := validatePIWithIncidentsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
 		if lk == 0 && ltk == 0 {
@@ -199,6 +203,7 @@ func init() {
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
+	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident error messages for keyed process-instance lookups")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -853,6 +858,8 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
 		case flagGetPIWithAge:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-age")
+		case flagGetPIWithIncidents:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		}
 	}
 	if flagGetPIProcessDefinitionKey != "" &&
@@ -920,6 +927,19 @@ func isPILimitFlagChanged(cmd *cobra.Command) bool {
 func validatePIKeyedModeLimit(keyCount int) error {
 	if keyCount > 0 && flagGetPILimit > 0 {
 		return mutuallyExclusiveFlagsf("--limit cannot be combined with --key")
+	}
+	return nil
+}
+
+func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
+	if !flagGetPIWithIncidents {
+		return nil
+	}
+	if keyCount == 0 {
+		return missingDependentFlagsf("--with-incidents requires --key")
+	}
+	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal {
+		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with search-mode filters")
 	}
 	return nil
 }

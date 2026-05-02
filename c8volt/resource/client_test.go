@@ -280,6 +280,14 @@ func (stubProcessAPI) LookupProcessInstanceStateByKey(context.Context, string, .
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceIncidentDetail, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) EnrichProcessInstancesWithIncidents(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) SearchProcessInstancesPage(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {
 	panic("unexpected call")
 }
