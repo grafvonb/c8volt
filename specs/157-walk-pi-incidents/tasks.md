@@ -69,17 +69,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Add JSON command test for one walked item with incident details in `cmd/walk_test.go`
-- [ ] T022 [P] [US2] Add JSON command test for multiple walked items with per-key incident association in `cmd/walk_test.go`
-- [ ] T023 [P] [US2] Add JSON command test for an empty incidents collection in `cmd/walk_test.go`
-- [ ] T024 [P] [US2] Add JSON command test preserving traversal metadata with `--with-incidents` in `cmd/walk_test.go`
+- [x] T021 [P] [US2] Add JSON command test for one walked item with incident details in `cmd/walk_test.go`
+- [x] T022 [P] [US2] Add JSON command test for multiple walked items with per-key incident association in `cmd/walk_test.go`
+- [x] T023 [P] [US2] Add JSON command test for an empty incidents collection in `cmd/walk_test.go`
+- [x] T024 [P] [US2] Add JSON command test preserving traversal metadata with `--with-incidents` in `cmd/walk_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Add enriched traversal JSON payload builder in `cmd/cmd_views_walk.go`
-- [ ] T026 [US2] Ensure enriched JSON output preserves existing shared envelope behavior in `cmd/cmd_views_walk.go`
-- [ ] T027 [US2] Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
-- [ ] T028 [US2] Wire JSON mode to enriched traversal payload when `--with-incidents` is set in `cmd/walk_processinstance.go`
+- [x] T025 [US2] Add enriched traversal JSON payload builder in `cmd/cmd_views_walk.go`
+- [x] T026 [US2] Ensure enriched JSON output preserves existing shared envelope behavior in `cmd/cmd_views_walk.go`
+- [x] T027 [US2] Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
+- [x] T028 [US2] Wire JSON mode to enriched traversal payload when `--with-incidents` is set in `cmd/walk_processinstance.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

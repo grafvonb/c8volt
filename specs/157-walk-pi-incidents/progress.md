@@ -5,7 +5,8 @@ Started: 2026-05-02 12:59:38
 
 ## Codebase Patterns
 
-- `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes only one-line human output through enriched path renderers; JSON and tree rendering remain on their existing paths until their later user-story work units.
+- Enriched walk JSON should use a dedicated walk payload builder and still render through `renderJSONPayload` so the shared command envelope remains `outcome`/`command`/`payload`.
+- `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes one-line human output plus JSON output through enriched renderers; tree rendering remains on its existing path until its later user-story work unit.
 - Issue #154 incident enrichment is the source of truth for `ProcessInstanceIncidentDetail`, keyed-only incident lookup, tenant-aware v8.8/v8.9 behavior, explicit v8.7 unsupported behavior, and human `incident: <message>` lines.
 - Existing walk JSON uses a shared command envelope with traversal metadata in the payload; enriched walk output should preserve that envelope and only replace plain items with enriched traversal items when requested.
 - Walk command tests commonly use IPv4 HTTP fixture servers and JSON response helpers in `cmd/walk_test.go`; traversal fixture helpers should produce v8.8/v8.9-shaped `hasIncident` process-instance responses and incident search result payloads.
@@ -90,4 +91,29 @@ Started: 2026-05-02 12:59:38
 - One-line enriched path output keeps the existing path separators and inserts `incident:` lines immediately after each owning process-instance row.
 - Command coverage can exercise children, parent, and family enriched rendering through v8.9 fixture servers while reusing the shared walked process-instance and incident response helpers.
 - Facade traversal enrichment intentionally ignores both result keys missing from `Chain` and extra `Chain` entries absent from `Keys`, so lookups stay scoped to actually rendered traversal items.
+---
+---
+## Iteration 4 - 2026-05-02 13:20:03 CEST
+**User Story**: User Story 2 - Consume Walk Incident Details in JSON
+**Tasks Completed**: 
+- [x] T021: Add JSON command test for one walked item with incident details
+- [x] T022: Add JSON command test for multiple walked items with per-key incident association
+- [x] T023: Add JSON command test for an empty incidents collection
+- [x] T024: Add JSON command test preserving traversal metadata with `--with-incidents`
+- [x] T025: Add enriched traversal JSON payload builder
+- [x] T026: Ensure enriched JSON output preserves existing shared envelope behavior
+- [x] T027: Ensure empty incident results render as an empty collection when enrichment was requested
+- [x] T028: Wire JSON mode to enriched traversal payload when `--with-incidents` is set
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- cmd/cmd_views_walk.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- specs/157-walk-pi-incidents/tasks.md
+- specs/157-walk-pi-incidents/progress.md
+**Learnings**:
+- Enriched walk JSON must replace plain process-instance `items` with `{item, incidents}` entries while keeping the existing shared command envelope.
+- The existing facade enrichment already returns non-nil empty incident slices for no-incident results, so JSON renders `incidents: []` once command output uses the enriched payload.
+- `process.MissingAncestor` currently serializes with exported Go field names in walk JSON because the public type has no JSON tags; US2 preserves that existing metadata shape.
 ---

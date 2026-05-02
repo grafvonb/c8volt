@@ -25,6 +25,17 @@ type walkTraversalPayload struct {
 	Warning          string                    `json:"warning,omitempty"`
 }
 
+type walkIncidentEnrichedTraversalPayload struct {
+	Mode             process.TraversalMode                   `json:"mode"`
+	Outcome          process.TraversalOutcome                `json:"outcome"`
+	RootKey          string                                  `json:"rootKey,omitempty"`
+	Keys             []string                                `json:"keys,omitempty"`
+	Edges            map[string][]string                     `json:"edges,omitempty"`
+	Items            []process.IncidentEnrichedTraversalItem `json:"items,omitempty"`
+	MissingAncestors []process.MissingAncestor               `json:"missingAncestors,omitempty"`
+	Warning          string                                  `json:"warning,omitempty"`
+}
+
 func ancestorsView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ← \n")
 }
@@ -105,6 +116,19 @@ func traversalPayload(result process.TraversalResult) walkTraversalPayload {
 		Keys:             append([]string(nil), result.Keys...),
 		Edges:            result.Edges,
 		Items:            pathItems(result.Keys, result.Chain),
+		MissingAncestors: append([]process.MissingAncestor(nil), result.MissingAncestors...),
+		Warning:          result.Warning,
+	}
+}
+
+func incidentEnrichedTraversalPayload(result process.IncidentEnrichedTraversalResult) walkIncidentEnrichedTraversalPayload {
+	return walkIncidentEnrichedTraversalPayload{
+		Mode:             result.Mode,
+		Outcome:          result.Outcome,
+		RootKey:          result.RootKey,
+		Keys:             append([]string(nil), result.Keys...),
+		Edges:            result.Edges,
+		Items:            result.Items,
 		MissingAncestors: append([]process.MissingAncestor(nil), result.MissingAncestors...),
 		Warning:          result.Warning,
 	}

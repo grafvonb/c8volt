@@ -153,7 +153,13 @@ var walkProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
-			if pickMode() == RenderModeOneLine {
+			switch pickMode() {
+			case RenderModeJSON:
+				if err := renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedTraversalPayload(enriched)); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				return
+			case RenderModeOneLine:
 				if err := w.enrichedView(cmd, enriched); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
