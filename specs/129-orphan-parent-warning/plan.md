@@ -124,7 +124,7 @@ Design artifacts are captured in:
 |--------------|-------------------|
 | `walker.Ancestry` when a non-start parent is missing | Return partial chain plus machine-readable missing ancestor metadata instead of only `ErrOrphanedInstance` |
 | `walker.Family` / `walker.Descendants` for affected flows | Continue from the resolved root or boundary data when actionable results remain, and preserve partial edges/chain for rendering and preflight |
-| `walk pi --parent` / `--family` / `--family --tree` | Render partial data and warn when ancestors are missing |
+| `walk pi --parent` / default family tree / `--flat` | Render partial data and warn when ancestors are missing |
 | Delete/cancel dry-run expansion | Return resolved family keys and missing ancestor keys through one shared contract; remain actionable when at least one result is resolved |
 | Fully unresolved traversal | Return a normal failure rather than warning-only success |
 | Direct `get process-instance --key` | Stay strict and keep normal `not found` behavior |

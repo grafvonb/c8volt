@@ -40,7 +40,7 @@ Refresh the full public `c8volt` help surface so every user-visible command has 
    - Add help regressions for state-changing and verification-oriented commands before editing help text.
    - Refresh `run`/`deploy`, then `cancel`/`delete`, then `expect`/`walk`.
 5. User Story 3 slices:
-   - Update top-level guidance in `README.md` and `docs/use-cases.md`.
+   - Update top-level guidance in `README.md` and `docs/index.md`.
    - Regenerate `docs/cli/` through `make docs`.
    - Regenerate `docs/index.md` through `make docs-content` only if README changed.
 

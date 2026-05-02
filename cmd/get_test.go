@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies get command-local backoff flags participate in the shared configuration precedence chain.
 func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "21s")
 
@@ -46,10 +47,11 @@ func TestGetHelp(t *testing.T) {
 	require.NotContains(t, output, "canonical non-interactive contract")
 }
 
+// Verifies process-instance help remains discoverable from the get command family.
 func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "List process instances by search filters or fetch them by key.")
+	require.Contains(t, output, "Get process instances by key or by search criteria.")
 	require.Contains(t, output, "./c8volt get pi --state active")
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")

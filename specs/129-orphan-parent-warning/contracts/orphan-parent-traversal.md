@@ -39,8 +39,8 @@ Warning text alone is insufficient.
 This success boundary applies to:
 
 - `walk pi --parent`
-- `walk pi --family`
-- `walk pi --family --tree`
+- `walk pi`
+- `walk pi --flat`
 - cancel preflight and force-root expansion
 - delete preflight and indirect process-definition cleanup expansion
 

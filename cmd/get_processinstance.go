@@ -36,12 +36,12 @@ var (
 	flagGetPIStartBeforeDays      int
 	flagGetPIEndAfterDays         int
 	flagGetPIEndBeforeDays        int
-	flagGetPIWithAge              bool
 	flagGetPITotal                bool
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
 	flagGetPILimit                int32
+	flagGetPIWithIncidents        bool
 )
 
 // command options
@@ -56,17 +56,23 @@ var (
 var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
-	Long: "List process instances by search filters or fetch them by key.\n" +
-		"Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.\n\n" +
-		"Use --has-user-tasks to resolve owning process instances from user task keys through tenant-aware native user-task search. There is no Tasklist or Operate fallback.\n\n" +
-		"Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.",
-	Example: `  ./c8volt get pi --state active
+	Long: "Get process instances by key or by search criteria.\n\n" +
+		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
+		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
+		"Use --with-incidents with --key to include incident keys and messages for the returned process instance.\n\n" +
+		"User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.\n\n" +
+		"Run `c8volt get pi --help` for the complete flag reference.",
+	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+  ./c8volt get pi --key <process-instance-key>
+  ./c8volt get pi --state active
+  ./c8volt get pi --state active --json
   ./c8volt get pi --state active --total
+  ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --state active --batch-size 250 --limit 25
+  ./c8volt get pi --state active --limit 25 --auto-confirm
+  ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --json
-  ./c8volt get pi --has-user-tasks 2251799815391233
-  ./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244
-  ./c8volt get pi --has-user-tasks 2251799815391233 --json
+  ./c8volt get pi --key 2251799813711967 --with-incidents --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
@@ -106,6 +112,9 @@ var getProcessInstanceCmd = &cobra.Command{
 		}
 		ltk := len(taskKeys)
 		if err := validatePIHasUserTasksMode(cmd, ltk, lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
+		if err := validatePIWithIncidentsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
 		if lk == 0 && ltk == 0 {
@@ -158,6 +167,16 @@ var getProcessInstanceCmd = &cobra.Command{
 				}
 				fail(msg)
 			}
+			if flagGetPIWithIncidents {
+				enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+				if err != nil {
+					fail(fmt.Errorf("get process instance incidents: %w", err))
+				}
+				if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
+					fail(fmt.Errorf("render process instances with incidents: %w", err))
+				}
+				return
+			}
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %s", filter.String()))
@@ -196,10 +215,10 @@ func init() {
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
-	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
+	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident keys and messages for direct --key process-instance lookups")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -296,10 +315,6 @@ func registerPISharedProcessDefinitionFilterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
 }
 
-func registerPISharedRenderFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(&flagGetPIWithAge, "with-age", false, "include process instance age in one-line output and JSON meta")
-}
-
 func populatePISearchFilterOpts() process.ProcessInstanceFilter {
 	f := process.ProcessInstanceFilter{
 		ParentKey:            flagGetPIParentKey,
@@ -363,56 +378,6 @@ func validatePIKeyedModeDateFilters(keyCount int) error {
 		return mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key")
 	}
 	return nil
-}
-
-func validatePIHasUserTasksMode(cmd *cobra.Command, taskKeyCount, keyCount int, filterFlagsSet bool) error {
-	if taskKeyCount == 0 {
-		return nil
-	}
-	if keyCount > 0 {
-		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --key or stdin key input")
-	}
-	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
-		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with process-instance search filters")
-	}
-	if flagGetPITotal {
-		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --total")
-	}
-	if flagGetPILimit > 0 || isPILimitFlagChanged(cmd) {
-		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --limit")
-	}
-	return nil
-}
-
-func normalizeHasUserTasks(keys types.Keys) (types.Keys, error) {
-	if len(keys) == 0 {
-		return nil, nil
-	}
-	out := make(types.Keys, 0, len(keys))
-	for i, key := range keys {
-		trimmed := strings.TrimSpace(key)
-		if !isPositiveDecimalUserTaskKey(trimmed) {
-			return nil, invalidFlagValuef("invalid value for --has-user-tasks: %q at index %d is not a positive decimal user task key", key, i)
-		}
-		out = append(out, trimmed)
-	}
-	return out.Unique(), nil
-}
-
-func isPositiveDecimalUserTaskKey(key string) bool {
-	if key == "" {
-		return false
-	}
-	hasNonZero := false
-	for _, r := range key {
-		if r < '0' || r > '9' {
-			return false
-		}
-		if r != '0' {
-			hasNonZero = true
-		}
-	}
-	return hasNonZero
 }
 
 func pickPISearchSize() int32 {
@@ -902,8 +867,8 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
 		case flagViewKeysOnly:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
-		case flagGetPIWithAge:
-			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-age")
+		case flagGetPIWithIncidents:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		}
 	}
 	if flagGetPIProcessDefinitionKey != "" &&
@@ -971,6 +936,19 @@ func isPILimitFlagChanged(cmd *cobra.Command) bool {
 func validatePIKeyedModeLimit(keyCount int) error {
 	if keyCount > 0 && flagGetPILimit > 0 {
 		return mutuallyExclusiveFlagsf("--limit cannot be combined with --key")
+	}
+	return nil
+}
+
+func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
+	if !flagGetPIWithIncidents {
+		return nil
+	}
+	if keyCount == 0 {
+		return missingDependentFlagsf("--with-incidents requires --key")
+	}
+	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal {
+		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with search-mode filters")
 	}
 	return nil
 }

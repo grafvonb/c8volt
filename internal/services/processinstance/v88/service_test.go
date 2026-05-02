@@ -27,6 +27,7 @@ import (
 type mockCamundaClient struct {
 	createProcessInstanceWithResponse func(ctx context.Context, body camundav88.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateProcessInstanceResponse, error)
 	getProcessInstanceWithResponse    func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error)
+	searchProcessInstanceIncidents    func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error)
 	searchProcessInstancesWithResp    func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error)
 	cancelProcessInstanceWithResponse func(ctx context.Context, key string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error)
 }
@@ -37,6 +38,10 @@ func (m *mockCamundaClient) CreateProcessInstanceWithResponse(ctx context.Contex
 
 func (m *mockCamundaClient) GetProcessInstanceWithResponse(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error) {
 	return m.getProcessInstanceWithResponse(ctx, key, reqEditors...)
+}
+
+func (m *mockCamundaClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
+	return m.searchProcessInstanceIncidents(ctx, key, body, reqEditors...)
 }
 
 func (m *mockCamundaClient) SearchProcessInstancesWithResponse(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
@@ -507,6 +512,59 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, d.ErrMalformedResponse)
 	})
+}
+
+func TestService_SearchProcessInstanceIncidents(t *testing.T) {
+	ctx := context.Background()
+	jobKey := camundav88.JobKey("job-1")
+	rootKey := camundav88.ProcessInstanceKey("root-123")
+
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
+		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		searchProcessInstanceIncidents: func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
+			payload := marshalJSON(t, body)
+			assert.Equal(t, "123", key)
+			assert.NotContains(t, payload, "processInstanceKey")
+			assert.Contains(t, payload, `"tenantId":"tenant"`)
+			assert.Contains(t, payload, `"limit":1000`)
+			return &camundav88.SearchProcessInstanceIncidentsResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/incidents/search", http.StatusOK, "200 OK"),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{
+						{
+							ElementId:              "task-a",
+							ElementInstanceKey:     "element-123",
+							ErrorMessage:           "No retries left",
+							ErrorType:              camundav88.IncidentErrorTypeEnum("JOB_NO_RETRIES"),
+							IncidentKey:            "incident-123",
+							JobKey:                 &jobKey,
+							ProcessDefinitionId:    "demo",
+							ProcessDefinitionKey:   "pd-123",
+							ProcessInstanceKey:     "123",
+							RootProcessInstanceKey: &rootKey,
+							State:                  camundav88.IncidentStateEnum("ACTIVE"),
+							TenantId:               "tenant",
+						},
+					},
+				},
+			}, nil
+		},
+		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+	}, newStrictOperateClient(t))
+
+	incidents, err := svc.SearchProcessInstanceIncidents(ctx, "123")
+
+	require.NoError(t, err)
+	require.Len(t, incidents, 1)
+	assert.Equal(t, "incident-123", incidents[0].IncidentKey)
+	assert.Equal(t, "123", incidents[0].ProcessInstanceKey)
+	assert.Equal(t, "No retries left", incidents[0].ErrorMessage)
+	assert.Equal(t, "task-a", incidents[0].FlowNodeId)
+	assert.Equal(t, "element-123", incidents[0].FlowNodeInstanceKey)
+	assert.Equal(t, "job-1", incidents[0].JobKey)
+	assert.Equal(t, "root-123", incidents[0].RootProcessInstanceKey)
 }
 
 func TestService_FilterProcessInstanceWithOrphanParent_UsesFollowUpLookup(t *testing.T) {
@@ -1008,6 +1066,7 @@ func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	return &mockCamundaClient{
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 	}
@@ -1044,6 +1103,14 @@ func unexpectedSearchProcessInstances(t *testing.T) func(context.Context, camund
 	t.Helper()
 	return func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
 		t.Fatalf("unexpected search call")
+		return nil, nil
+	}
+}
+
+func unexpectedSearchProcessInstanceIncidents(t *testing.T) func(context.Context, string, camundav88.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
+	t.Helper()
+	return func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
+		t.Fatalf("unexpected incident search call")
 		return nil, nil
 	}
 }

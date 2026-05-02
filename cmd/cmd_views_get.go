@@ -15,7 +15,7 @@ import (
 
 //nolint:unused
 func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
-	if pickMode() == RenderModeJSON && flagGetPIWithAge {
+	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstanceWithAgeMeta(item))
 	}
 	return itemView(cmd, item, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
@@ -27,7 +27,7 @@ func processInstanceTotalView(cmd *cobra.Command, total int64) error {
 }
 
 func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances) error {
-	if pickMode() == RenderModeJSON && flagGetPIWithAge {
+	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
 	}
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
@@ -47,13 +47,11 @@ func oneLinePI(it process.ProcessInstance) string {
 		vTag = "/" + it.ProcessVersionTag
 	}
 	ageTag := ""
-	if flagGetPIWithAge {
-		if age, ok := processInstanceAgeDays(it.StartDate); ok {
-			if age == 0 {
-				ageTag = " (today)"
-			} else {
-				ageTag = fmt.Sprintf(" (%d days ago)", age)
-			}
+	if age, ok := processInstanceAgeDays(it.StartDate); ok {
+		if age == 0 {
+			ageTag = " (today)"
+		} else {
+			ageTag = fmt.Sprintf(" (%d days ago)", age)
 		}
 	}
 	incidentTag := ""
@@ -188,16 +186,19 @@ func oneLineResource(it resource.Resource) string {
 	)
 }
 
+// listTenantsView renders tenant discovery output through the shared list, keys-only, and JSON modes.
 func listTenantsView(cmd *cobra.Command, resp tenant.Tenants) error {
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
+// tenantView renders a single tenant through the same mode contract as other get commands.
 func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
 	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
 const tenantNameColumnWidth = 32
 
+// oneLineTenant formats tenant rows for compact human output.
 func oneLineTenant(it tenant.Tenant) string {
 	if it.Description == "" {
 		return fmt.Sprintf("%-24s %-*s", it.TenantId, tenantNameColumnWidth, it.Name)

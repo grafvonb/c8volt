@@ -12,7 +12,9 @@ Inspect the parent/child tree of process instances
 
 Inspect the parent/child tree of process instances.
 
-Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.
+By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.
+
+Add --with-incidents to keyed walks to show incident keys and messages below matching process-instance rows.
 
 When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
 
@@ -23,22 +25,22 @@ c8volt walk process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt walk pi --key 2251799813711967 --family
-  ./c8volt walk pi --key 2251799813711967 --family --tree
+  ./c8volt walk pi --key 2251799813711967
+  ./c8volt walk pi --key 2251799813711967 --with-incidents
+  ./c8volt walk pi --key 2251799813711967 --flat
   ./c8volt walk pi --key 2251799813711977 --parent
-  ./c8volt --json walk pi --key 2251799813711967 --children
+  ./c8volt --json walk pi --key 2251799813711967 --children --with-incidents
 ```
 
 ### Options
 
 ```
-      --children      shorthand for --mode=children
-      --family        shorthand for --mode=family
-  -h, --help          help for process-instance
-  -k, --key string    start walking from this process instance key
-      --mode string   walk mode: parent, children, family (default "children")
-      --parent        shorthand for --mode=parent
-      --tree          render family mode as an ASCII tree (only valid with --family)
+      --children         show descendants from the selected process instance
+      --flat             render family output as a flat path instead of an ASCII tree
+  -h, --help             help for process-instance
+  -k, --key string       start walking from this process instance key
+      --parent           show ancestry from the selected process instance toward the root
+      --with-incidents   show incident keys and messages for keyed process-instance walks
 ```
 
 ### Options inherited from parent commands

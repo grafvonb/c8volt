@@ -34,11 +34,16 @@ import (
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Use --total for the numeric count")
-	require.Contains(t, output, "Direct --key lookups stay strict")
-	require.Contains(t, output, "JSON returns one aggregated result")
+	require.Contains(t, output, "Get process instances by key or by search criteria.")
+	require.Contains(t, output, "Search results support interactive paging, scriptable JSON aggregation, and count-only workflows.")
+	require.Contains(t, output, "matching process instances by process definition")
+	require.Contains(t, output, "Direct key lookup stays strict")
+	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
+	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active")
+	require.Contains(t, output, "./c8volt get pi --key <process-instance-key>")
 	require.Contains(t, output, "./c8volt get pi --state active --total")
-	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
+	require.Contains(t, output, "./c8volt get pi --state active --json")
+	require.Contains(t, output, "./c8volt get pi --state active --limit 25 --auto-confirm")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -48,14 +53,14 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.NotContains(t, output, "--count")
 }
 
+// Verifies help text documents has-user-tasks as a compact lookup selector without overloaded examples.
 func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
 	require.Contains(t, output, "--has-user-tasks strings")
 	require.Contains(t, output, "user task key(s) whose owning process instances should be fetched")
-	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233")
-	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
-	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --json")
+	require.Contains(t, output, "./c8volt get pi --has-user-tasks <user-task-key>")
+	require.NotContains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
 	require.Contains(t, output, "Tasklist or Operate fallback")
 }
 
@@ -87,8 +92,8 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
-// TestGetProcessInstanceJSONWithAge_AddsMetaField verifies --with-age decorates JSON rows with age metadata.
-func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
+// TestGetProcessInstanceJSON_AddsAgeMetaField verifies JSON rows include age metadata.
+func TestGetProcessInstanceJSON_AddsAgeMetaField(t *testing.T) {
 	var requests []string
 	srv := newProcessInstanceSearchCaptureServer(t, &requests)
 	t.Cleanup(srv.Close)
@@ -99,7 +104,6 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 		"--config", cfgPath,
 		"--json",
 		"get", "process-instance",
-		"--with-age",
 	)
 
 	require.NotEmpty(t, requests)
@@ -285,10 +289,37 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 			helper: "TestGetProcessInstanceTotalWithKeysOnlyHelper",
 			want:   "--total cannot be combined with --keys-only",
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+// TestGetProcessInstanceWithIncidentsValidation rejects enrichment outside direct keyed lookups.
+func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
 		{
-			name:   "with-age output is rejected",
-			helper: "TestGetProcessInstanceTotalWithAgeHelper",
-			want:   "--total cannot be combined with --with-age",
+			name:   "requires keyed lookup",
+			helper: "TestGetProcessInstanceWithIncidentsWithoutKeyHelper",
+			want:   "--with-incidents requires --key",
+		},
+		{
+			name:   "rejects search-mode incident filters",
+			helper: "TestGetProcessInstanceWithIncidentsWithSearchFilterHelper",
+			want:   "--with-incidents cannot be combined with search-mode filters",
 		},
 	}
 
@@ -521,6 +552,374 @@ apis:
 	})
 }
 
+// TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident verifies the direct incident line includes the incident key.
+func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.T) {
+	var requests []string
+	var incidentBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			incidentBodies = append(incidentBodies, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","jobKey":"job-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
+	require.Len(t, incidentBodies, 1)
+	require.NotContains(t, incidentBodies[0], "processInstanceKey")
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "demo v3")
+	require.Contains(t, output, "inc!")
+	require.Contains(t, output, "  incident incident-123: No retries left")
+	require.Contains(t, output, "found: 1")
+}
+
+// TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents covers both direct incident rendering and tree-propagated incident warnings.
+func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(t *testing.T) {
+	tests := []struct {
+		name             string
+		incidentResponse string
+		wantMessages     []string
+	}{
+		{
+			name: "multiple incident lines",
+			incidentResponse: `{"items":[
+				{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
+				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+			wantMessages: []string{"  incident incident-123: No retries left", "  incident incident-124: Gateway failed"},
+		},
+		{
+			name:             "no incident lines",
+			incidentResponse: `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+			wantMessages:     nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/process-instances/123":
+					require.Equal(t, http.MethodGet, r.Method)
+					_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+				case "/v2/process-instances/123/incidents/search":
+					require.Equal(t, http.MethodPost, r.Method)
+					_, _ = w.Write([]byte(tt.incidentResponse))
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"get", "process-instance",
+				"--key", "123",
+				"--with-incidents",
+			)
+
+			require.Contains(t, output, "123")
+			require.Contains(t, output, "found: 1")
+			for _, msg := range tt.wantMessages {
+				require.Contains(t, output, msg)
+			}
+			if len(tt.wantMessages) == 0 {
+				require.NotContains(t, output, "  incident ")
+				require.Contains(t, output, "no direct incidents on this process instance; check the process tree with walk pi --with-incidents")
+			}
+		})
+	}
+}
+
+// TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails preserves the structured incident detail payload.
+func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","jobKey":"job-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	require.Equal(t, float64(1), payload["total"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	item := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", item["key"])
+
+	incidents := requireJSONItems(t, first["incidents"], 1)
+	incident := requireJSONObject(t, incidents[0])
+	require.Equal(t, "incident-123", incident["incidentKey"])
+	require.Equal(t, "123", incident["processInstanceKey"])
+	require.Equal(t, "No retries left", incident["errorMessage"])
+	require.Equal(t, "task-a", incident["flowNodeId"])
+}
+
+// TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
+func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/124":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[
+				{"errorMessage":"First key failed","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
+				{"errorMessage":"wrong association","incidentKey":"incident-wrong","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/124/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"Second key failed","incidentKey":"incident-124","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--key", "124",
+		"--workers", "1",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	require.Equal(t, float64(2), payload["total"])
+	items := requireJSONItems(t, payload["items"], 2)
+
+	first := requireJSONObject(t, items[0])
+	firstItem := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", firstItem["key"])
+	firstIncidents := requireJSONItems(t, first["incidents"], 1)
+	require.Equal(t, "First key failed", requireJSONObject(t, firstIncidents[0])["errorMessage"])
+
+	second := requireJSONObject(t, items[1])
+	secondItem := requireJSONObject(t, second["item"])
+	require.Equal(t, "124", secondItem["key"])
+	secondIncidents := requireJSONItems(t, second["incidents"], 1)
+	require.Equal(t, "Second key failed", requireJSONObject(t, secondIncidents[0])["errorMessage"])
+}
+
+// TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection keeps empty enrichment explicit for automation.
+func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	incidents := requireJSONItems(t, first["incidents"], 0)
+	require.Empty(t, incidents)
+}
+
+// TestGetProcessInstanceWithIncidents_V87ReportsUnsupported preserves the tenant-safe version boundary.
+func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithIncidentsUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
+}
+
+// TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault keeps default keyed output free of enrichment lines.
+func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+	)
+
+	wantItem := process.ProcessInstance{
+		Key:            "123",
+		TenantId:       "tenant",
+		BpmnProcessId:  "demo",
+		ProcessVersion: 3,
+		State:          process.StateActive,
+		StartDate:      "2026-03-23T18:00:00Z",
+		Incident:       true,
+	}
+	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
+	require.Equal(t, strings.TrimSpace(oneLinePI(wantItem))+"\nfound: 1\n", output)
+	require.NotContains(t, output, "  incident ")
+}
+
+// TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape keeps default JSON free of enrichment wrappers.
+func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get process-instance", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.NotContains(t, payload, "item")
+	require.NotContains(t, payload, "incidents")
+	require.Equal(t, float64(1), payload["total"])
+	items := requireJSONItems(t, payload["items"], 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "123", item["key"])
+	require.Equal(t, true, item["incident"])
+	require.NotContains(t, item, "incidents")
+}
+
+func TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode(t *testing.T) {
+	tests := []struct {
+		name         string
+		flag         string
+		wantIncident bool
+		response     string
+	}{
+		{
+			name:         "incidents only",
+			flag:         "--incidents-only",
+			wantIncident: true,
+			response:     `{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		},
+		{
+			name:         "no incidents only",
+			flag:         "--no-incidents-only",
+			wantIncident: false,
+			response:     `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, tt.response)
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--json",
+				"get", "process-instance",
+				tt.flag,
+			)
+
+			filter := decodeCapturedPISearchFilter(t, requests)
+			require.Equal(t, tt.wantIncident, filter["hasIncident"])
+			require.NotContains(t, output, `"incidents"`)
+			require.Contains(t, output, `"total": 1`)
+		})
+	}
+}
+
 // TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
 func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
 	var requests []string
@@ -552,7 +951,7 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
-// TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native search contract.
+// TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native single-instance endpoint.
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -577,6 +976,7 @@ func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T
 	require.Contains(t, output, `"key": "2251799813711967"`)
 }
 
+// Verifies has-user-tasks resolves through native user-task search, then reuses keyed process-instance rendering.
 func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedProcessInstance(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9"} {
 		t.Run(version, func(t *testing.T) {
@@ -615,6 +1015,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedP
 	}
 }
 
+// Verifies has-user-tasks lookup applies the effective tenant while resolving the owning process instance.
 func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -643,6 +1044,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *
 	require.Contains(t, output, "2251799813711967")
 }
 
+// Verifies repeated has-user-tasks values resolve each task and render the resulting process instances.
 func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -691,6 +1093,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *test
 	require.Contains(t, output, "2251799813711977")
 }
 
+// Verifies has-user-tasks JSON output stays identical to direct keyed lookup for the resolved process instance.
 func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -732,6 +1135,7 @@ func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *tes
 	require.JSONEq(t, directKeyOutput, taskKeyOutput)
 }
 
+// Verifies has-user-tasks lookup preserves render flags that are valid for direct single-instance lookup.
 func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {
@@ -747,8 +1151,8 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 		want string
 	}{
 		{
-			name: "with age",
-			args: []string{"--with-age"},
+			name: "default age",
+			args: nil,
 			want: "(2 days ago)",
 		},
 		{
@@ -795,6 +1199,7 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 	}
 }
 
+// Verifies a missing resolved process instance keeps the not-found behavior of direct keyed lookup.
 func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceNotFound(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -828,6 +1233,7 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceN
 	}, requests)
 }
 
+// Verifies numeric but unknown user-task keys reach native lookup and return not-found, not validation failure.
 func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShortNumericKey(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -858,6 +1264,7 @@ func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShor
 	require.Equal(t, []string{"/v2/user-tasks/search"}, requests)
 }
 
+// Verifies malformed has-user-tasks values fail validation before any network lookup is attempted.
 func TestGetProcessInstanceCommand_HasUserTasksRejectsNonDecimalKeyBeforeLookup(t *testing.T) {
 	var requestCount int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -880,6 +1287,7 @@ func TestGetProcessInstanceCommand_HasUserTasksRejectsNonDecimalKeyBeforeLookup(
 	require.Equal(t, int32(0), atomic.LoadInt32(&requestCount))
 }
 
+// Verifies has-user-tasks selector conflicts fail before any user-task or process-instance request is made.
 func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *testing.T) {
 	var requestCount int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -954,6 +1362,7 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *t
 	}
 }
 
+// Verifies Camunda 8.7 reports has-user-tasks as unsupported instead of falling back to another API.
 func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -965,6 +1374,7 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
 	require.Contains(t, output, "requires Camunda 8.8 or 8.9")
 }
 
+// requireUserTaskSearchRequest validates the native user-task search request and returns its decoded body for scenario-specific assertions.
 func requireUserTaskSearchRequest(t *testing.T, r *http.Request, taskKey, tenantID string) map[string]any {
 	t.Helper()
 	require.Equal(t, http.MethodPost, r.Method)
@@ -1907,6 +2317,33 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	return got
 }
 
+func requireProcessInstanceIncidentJSONPayload(t *testing.T, output string) map[string]any {
+	t.Helper()
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get process-instance", envelope["command"])
+	return requireJSONObject(t, envelope["payload"])
+}
+
+func requireJSONObject(t *testing.T, value any) map[string]any {
+	t.Helper()
+
+	got, ok := value.(map[string]any)
+	require.True(t, ok, "expected JSON object")
+	return got
+}
+
+func requireJSONItems(t *testing.T, value any, wantLen int) []any {
+	t.Helper()
+
+	items, ok := value.([]any)
+	require.True(t, ok, "expected JSON array")
+	require.Len(t, items, wantLen)
+	return items
+}
+
 // newIPv4Server creates an IPv4-only test server for command tests that must avoid IPv6 listeners.
 func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
@@ -2012,17 +2449,22 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIStartBeforeDays = -1
 	flagGetPIEndAfterDays = -1
 	flagGetPIEndBeforeDays = -1
-	flagGetPIWithAge = false
 	flagGetPITotal = false
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
 	flagGetPISize = consts.MaxPISearchSize
 	flagGetPILimit = 0
+	flagGetPIWithIncidents = false
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
+	flagWalkPIKey = ""
+	flagWalkPIModeParent = false
+	flagWalkPIModeChildren = false
+	flagWalkPIFlat = false
+	flagWalkPIWithIncidents = false
 	flagCmdAutoConfirm = false
 	flagVerbose = false
 	flagViewAsJson = false
@@ -2064,6 +2506,7 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	return executeProcessInstanceFailureHelperWithEnv(t, helperName, cfgPath, nil)
 }
 
+// executeProcessInstanceFailureHelperWithEnv runs a failing helper subprocess with extra environment for scenario selection.
 func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string, cfgPath string, extraEnv map[string]string) (string, int) {
 	t.Helper()
 
@@ -2082,6 +2525,7 @@ func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string,
 	return string(output), exitErr.ExitCode()
 }
 
+// TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper drives conflict cases that must exercise real Execute exit behavior.
 func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2127,6 +2571,7 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper drives the unsupported-version path in a helper process.
 func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2139,6 +2584,7 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper preserves process exit behavior for resolved-key not-found.
 func TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2151,6 +2597,7 @@ func TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHe
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper drives invalid and missing task-key lookups in a helper process.
 func TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2317,8 +2764,8 @@ func TestGetProcessInstanceTotalWithKeysOnlyHelper(t *testing.T) {
 	Execute()
 }
 
-// Helper-process entrypoint for --total with --with-age validation.
-func TestGetProcessInstanceTotalWithAgeHelper(t *testing.T) {
+// Helper-process entrypoint for --with-incidents without --key validation.
+func TestGetProcessInstanceWithIncidentsWithoutKeyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
@@ -2326,7 +2773,35 @@ func TestGetProcessInstanceTotalWithAgeHelper(t *testing.T) {
 
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-age", "--total"}
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-incidents"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --with-incidents with search-mode filter validation.
+func TestGetProcessInstanceWithIncidentsWithSearchFilterHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incidents-only"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for unsupported v8.7 --with-incidents coverage.
+func TestGetProcessInstanceWithIncidentsUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents"}
 
 	Execute()
 }

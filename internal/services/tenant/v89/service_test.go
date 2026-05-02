@@ -26,6 +26,7 @@ type mockTenantClient struct {
 	mock.Mock
 }
 
+// SearchTenantsWithResponse records tenant search calls and returns the configured mock response.
 func (m *mockTenantClient) SearchTenantsWithResponse(ctx context.Context, body camundav89.SearchTenantsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchTenantsResponse, error) {
 	args := m.Called(ctx, body)
 	if args.Get(0) == nil {
@@ -34,6 +35,7 @@ func (m *mockTenantClient) SearchTenantsWithResponse(ctx context.Context, body c
 	return args.Get(0).(*camundav89.SearchTenantsResponse), args.Error(1)
 }
 
+// GetTenantWithResponse records keyed tenant lookup calls and returns the configured mock response.
 func (m *mockTenantClient) GetTenantWithResponse(ctx context.Context, tenantId camundav89.TenantId, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetTenantResponse, error) {
 	args := m.Called(ctx, tenantId)
 	if args.Get(0) == nil {
@@ -42,6 +44,7 @@ func (m *mockTenantClient) GetTenantWithResponse(ctx context.Context, tenantId c
 	return args.Get(0).(*camundav89.GetTenantResponse), args.Error(1)
 }
 
+// Verifies v8.9 tenant search builds the native request, converts results, filters locally, and maps failures.
 func TestService_SearchTenants(t *testing.T) {
 	ctx := context.Background()
 	desc := "primary tenant"
@@ -151,6 +154,7 @@ func TestService_SearchTenants(t *testing.T) {
 	}
 }
 
+// Verifies v8.9 keyed tenant lookup converts native results and maps native response failures.
 func TestService_GetTenant(t *testing.T) {
 	ctx := context.Background()
 	desc := "primary tenant"
@@ -235,6 +239,7 @@ func TestService_GetTenant(t *testing.T) {
 	}
 }
 
+// newHTTPResponse builds minimal response metadata needed by shared payload validation.
 func newHTTPResponse(method, rawURL string, statusCode int, status string) *http.Response {
 	u, _ := url.Parse(rawURL)
 	return &http.Response{

@@ -9,6 +9,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// fromTenantResult converts the generated v8.8 tenant payload into the shared domain model.
 func fromTenantResult(x camundav88.TenantResult) d.Tenant {
 	return d.Tenant{
 		TenantId:    string(x.TenantId),

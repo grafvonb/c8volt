@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// New selects the tenant service implementation for the configured Camunda version.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 	v := cfg.App.CamundaVersion
 	switch v {

@@ -22,12 +22,18 @@ type Service struct {
 	log *slog.Logger
 }
 
+// Client returns the generated Camunda tenant client used by the v8.8 service.
 func (s *Service) Client() GenTenantClient { return s.c }
-func (s *Service) Config() *config.Config  { return s.cfg }
-func (s *Service) Logger() *slog.Logger    { return s.log }
+
+// Config returns the normalized service configuration used by the v8.8 tenant service.
+func (s *Service) Config() *config.Config { return s.cfg }
+
+// Logger returns the service logger used by the v8.8 tenant service.
+func (s *Service) Logger() *slog.Logger { return s.log }
 
 type Option func(*Service)
 
+// WithClient overrides the generated Camunda tenant client, primarily for service tests.
 func WithClient(c GenTenantClient) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -36,6 +42,7 @@ func WithClient(c GenTenantClient) Option {
 	}
 }
 
+// WithLogger overrides the default logger for tests and callers that need custom logging.
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
@@ -44,6 +51,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New prepares a v8.8 tenant service with the generated Camunda v2 tenant client.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -68,6 +76,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
+// SearchTenants lists native Camunda tenants, then applies the local literal tenant name or ID filter.
 func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	body := searchTenantsRequest(size)
@@ -86,6 +95,7 @@ func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size
 	return out, nil
 }
 
+// GetTenant fetches one native Camunda tenant by tenant ID.
 func (s *Service) GetTenant(ctx context.Context, tenantID string, opts ...services.CallOption) (d.Tenant, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	common.VerboseLog(ctx, cCfg, s.log, "getting tenant", "baseURL", s.cfg.APIs.Camunda.BaseURL, "tenantID", tenantID)
@@ -102,6 +112,7 @@ func (s *Service) GetTenant(ctx context.Context, tenantID string, opts ...servic
 	return out, nil
 }
 
+// searchTenantsRequest builds the stable sorted tenant search request used for discovery output.
 func searchTenantsRequest(size int32) camundav88.SearchTenantsJSONRequestBody {
 	page := camundav88.SearchQueryPageRequest{}
 	_ = page.FromLimitPagination(camundav88.LimitPagination{Limit: &size})

@@ -90,7 +90,7 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 - Confirm whether `--total` should be implemented as a command-specific flag instead of a new global render mode.
 - Confirm how the current `get pi` flow renders one-line, JSON, and keys-only output so count-only behavior can remain small and compatible.
 - Confirm where backend-reported totals and capped-total signals already exist in `v87`, `v88`, and `v89`, and identify the shared model gap that prevents the command from using them today.
-- Confirm the correct contract boundary for `--total` versus `--key`, `--json`, `--keys-only`, and `--with-age`.
+- Confirm the correct contract boundary for `--total` versus `--key`, `--json`, and `--keys-only`.
 - Confirm the documentation regeneration path for CLI reference output after flag additions.
 
 ## Phase 1: Design & Contracts
@@ -103,7 +103,7 @@ Design artifacts are captured in:
 
 - Add `--total` to `get process-instance` as a command-specific count-only flag, not as a new shared render mode.
 - Keep `--total` limited to search/list workflows; direct `--key` lookups remain on the strict single-resource path and should reject `--total`.
-- Treat `--total` as mutually exclusive with detail-oriented output modifiers such as `--json`, `--keys-only`, and `--with-age` so the command can keep the spec’s numeric-only contract without weakening the shared output-mode model.
+- Treat `--total` as mutually exclusive with detail-oriented output modifiers such as `--json` and `--keys-only` so the command can keep the spec’s numeric-only contract without weakening the shared output-mode model.
 - Extend the shared domain/public page model with reported-total metadata so `v8.8` and `v8.9` can pass through `totalItems` plus capped/lower-bound state, and `v8.7` can surface the best available total signal from its current response payload.
 - Normalize the shared page metadata as an optional `ReportedTotal{Count, Kind}` value on `ProcessInstancePage`; absence means unavailable, `Kind=exact` is authoritative, and `Kind=lower_bound` preserves capped totals without reinterpretation.
 - Keep count-only logic centralized in the existing `get pi` command/search flow, using backend-reported totals when available and preserving the clarified lower-bound contract instead of forcing recounts.
@@ -120,7 +120,6 @@ Design artifacts are captured in:
 | Direct `--key` lookup with `--total` | Reject as invalid flag combination |
 | `--total` with `--json` | Reject as invalid flag combination |
 | `--total` with `--keys-only` | Reject as invalid flag combination |
-| `--total` with `--with-age` | Reject as invalid flag combination |
 
 This table is the planning boundary for later tasks. Any implementation that silently emits detail output, quietly changes JSON semantics, or invents exact recount behavior for capped totals is incomplete.
 
@@ -152,7 +151,7 @@ Task generation should break the work into dependency-ordered slices:
 
 - Shared reported-total page metadata is implemented across the public/domain process-instance page models and versioned `v87`, `v88`, and `v89` search services.
 - `get process-instance --total` is implemented as a command-local count-only branch that preserves default non-`--total` rendering behavior.
-- Validation rejects incompatible `--total` combinations with `--key`, `--json`, `--keys-only`, and `--with-age`.
+- Validation rejects incompatible `--total` combinations with `--key`, `--json`, and `--keys-only`.
 - README help text and generated CLI docs now describe `--total` consistently for operators and automation users.
 
 ## Verification Record

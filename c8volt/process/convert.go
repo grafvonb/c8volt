@@ -76,6 +76,27 @@ func fromDomainProcessInstances(xs []d.ProcessInstance) ProcessInstances {
 	}
 }
 
+func fromDomainProcessInstanceIncidentDetail(x d.ProcessInstanceIncidentDetail) ProcessInstanceIncidentDetail {
+	return ProcessInstanceIncidentDetail{
+		IncidentKey:            x.IncidentKey,
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		TenantId:               x.TenantId,
+		State:                  x.State,
+		ErrorType:              x.ErrorType,
+		ErrorMessage:           x.ErrorMessage,
+		FlowNodeId:             x.FlowNodeId,
+		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		JobKey:                 x.JobKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		ProcessDefinitionKey:   x.ProcessDefinitionKey,
+		ProcessDefinitionId:    x.ProcessDefinitionId,
+	}
+}
+
+func fromDomainProcessInstanceIncidentDetails(xs []d.ProcessInstanceIncidentDetail) []ProcessInstanceIncidentDetail {
+	return toolx.MapSlice(xs, fromDomainProcessInstanceIncidentDetail)
+}
+
 func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage {
 	return ProcessInstancePage{
 		Request: ProcessInstancePageRequest{
@@ -116,6 +137,23 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 		State:                     d.State(x.State),
 		TenantId:                  x.TenantId,
 		Variables:                 toolx.CopyMap(x.Variables),
+	}
+}
+
+func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.ProcessInstanceIncidentDetail {
+	return d.ProcessInstanceIncidentDetail{
+		IncidentKey:            x.IncidentKey,
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		TenantId:               x.TenantId,
+		State:                  x.State,
+		ErrorType:              x.ErrorType,
+		ErrorMessage:           x.ErrorMessage,
+		FlowNodeId:             x.FlowNodeId,
+		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		JobKey:                 x.JobKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		ProcessDefinitionKey:   x.ProcessDefinitionKey,
+		ProcessDefinitionId:    x.ProcessDefinitionId,
 	}
 }
 

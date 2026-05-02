@@ -11,9 +11,10 @@
 #            latest tag from the recorded ai-tooling source is used.
 #
 # Notes:
-#   The target repository must have a clean git worktree. After a successful
-#   install, this script records the installed tag, writes an install manifest,
-#   validates copied assets, and commits the resulting changes automatically.
+#   The target repository must have a clean git worktree, except for feature
+#   specs under specs/. After a successful install, this script records the
+#   installed tag, writes an install manifest, validates copied assets, and
+#   commits the resulting installer-managed changes automatically.
 
 set -euo pipefail
 
@@ -143,6 +144,17 @@ is_installer_dirty_path() {
     return 1
 }
 
+is_target_local_allowed_dirty_path() {
+    case "$1" in
+        specs|specs/*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 check_target_dirty_state() {
     local blockers_file="$1"
     local line=""
@@ -158,7 +170,7 @@ check_target_dirty_state() {
                 ;;
         esac
 
-        if ! is_installer_dirty_path "$path"; then
+        if ! is_installer_dirty_path "$path" && ! is_target_local_allowed_dirty_path "$path"; then
             printf '%s\n' "$line" >> "$blockers_file"
         fi
     done < <(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)
@@ -166,10 +178,34 @@ check_target_dirty_state() {
     if [ -s "$blockers_file" ]; then
         echo "Refusing to install ai-tooling into a dirty repository." >&2
         sed 's/^/  - /' "$blockers_file" >&2
-        echo "Commit or stash target-local changes first, then rerun this script." >&2
+        echo "Commit or stash target-local changes outside specs/ first, then rerun this script." >&2
         echo "Installer-managed files may be dirty; they will be refreshed by this install." >&2
         exit 1
     fi
+}
+
+stage_install_changes() {
+    local line=""
+    local path=""
+
+    while IFS= read -r line; do
+        path="${line:3}"
+        case "$path" in
+            *" -> "*)
+                path="${path##* -> }"
+                ;;
+        esac
+
+        if is_target_local_allowed_dirty_path "$path"; then
+            continue
+        fi
+
+        if git -C "$REPO_ROOT" ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+            git -C "$REPO_ROOT" add -u -- "$path"
+        elif ! git -C "$REPO_ROOT" check-ignore -q -- "$path"; then
+            git -C "$REPO_ROOT" add -A -- "$path"
+        fi
+    done < <(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)
 }
 
 write_install_manifest() {
@@ -302,24 +338,25 @@ write_install_manifest "$RESOLVED_SOURCE_REPO" "$SOURCE_COMMIT" "$TAG" "$SYNCED_
 
 printf '%s\n' "$TAG" > "$VERSION_MARKER_FILE"
 
-if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
-    git -C "$REPO_ROOT" add -A
+stage_install_changes
 
-    modified_files=()
-    while IFS= read -r modified_file; do
+modified_files=()
+while IFS= read -r modified_file; do
+    if ! is_target_local_allowed_dirty_path "$modified_file"; then
         modified_files+=("$modified_file")
-    done < <(git -C "$REPO_ROOT" diff --cached --name-only)
+    fi
+done < <(git -C "$REPO_ROOT" diff --cached --name-only)
+
+if [ "${#modified_files[@]}" -gt 0 ]; then
     commit_message="chore(ai): install ai-tooling $TAG"
 
-    if [ "${#modified_files[@]}" -gt 0 ]; then
-        commit_message+=$'\n\nModified files:\n'
+    commit_message+=$'\n\nModified files:\n'
 
-        for modified_file in "${modified_files[@]}"; do
-            commit_message+="- ${modified_file}"$'\n'
-        done
-    fi
+    for modified_file in "${modified_files[@]}"; do
+        commit_message+="- ${modified_file}"$'\n'
+    done
 
-    git -C "$REPO_ROOT" commit -m "$commit_message"
+    git -C "$REPO_ROOT" commit -m "$commit_message" -- "${modified_files[@]}"
 fi
 
 echo "Installed ai-tooling $TAG from $RESOLVED_SOURCE_REPO"

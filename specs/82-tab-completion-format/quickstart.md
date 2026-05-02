@@ -51,7 +51,7 @@ fpath=(/tmp $fpath)
 autoload -Uz compinit && compinit
 go run . <TAB>
 go run . get <TAB>
-go run . walk process-instance --mode <TAB>
+go run . walk process-instance --<TAB>
 ```
 
 Expected result:

@@ -74,8 +74,7 @@ c8volt/
 docs/
 ├── cli/
 │   └── generated Cobra reference pages
-├── index.md
-└── use-cases.md
+└── index.md
 
 README.md
 ```
@@ -100,7 +99,7 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 | Shared result envelope | Wrap supported command-family JSON responses in one common machine-readable envelope while preserving command-specific payloads | `cmd/cmd_views_rendermode.go`, selected `cmd/*` handlers, public models under `c8volt/process` and `c8volt/resource` |
 | Outcome and exit alignment | Preserve `ferrors`-driven exit codes and align envelope outcomes with the current failure model and `--no-wait` semantics | `c8volt/ferrors/errors.go`, state-changing command handlers under `cmd/` |
 | Representative contract coverage | Prove discovery, structured result behavior, accepted-work behavior, invalid input, remote failures, and unsupported/limited reporting for each family | `cmd/*_test.go`, `c8volt/ferrors/errors_test.go` |
-| Documentation | Explain the recommended automation contract and regenerate CLI docs from command help text | `README.md`, `docs/index.md`, `docs/use-cases.md`, `docs/cli/` |
+| Documentation | Explain the recommended automation contract and regenerate CLI docs from command help text | `README.md`, `docs/index.md`, `docs/cli/` |
 
 The implementation boundary for this feature is intentionally limited to CLI-facing metadata, structured output rendering, representative command-family wiring, and user-facing automation documentation. It does not add new Camunda operations or replace the current human-oriented command structure.
 

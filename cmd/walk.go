@@ -13,8 +13,8 @@ var walkCmd = &cobra.Command{
 	Long: `Inspect process-instance relationships.
 
 Inspect ancestry, descendants, or a process-instance family around a key.`,
-	Example: `  ./c8volt walk pi --key 2251799813711967 --family
-  ./c8volt walk pi --key 2251799813711967 --family --tree
+	Example: `  ./c8volt walk pi --key 2251799813711967
+  ./c8volt walk pi --key 2251799813711967 --with-incidents
   ./c8volt walk pi --key 2251799813711967 --children`,
 	Aliases: []string{"w", "traverse"},
 	RunE: func(cmd *cobra.Command, args []string) error {

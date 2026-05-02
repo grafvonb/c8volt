@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies tenant filtering treats pattern-looking input as literal text.
 func TestFilterTenantsByNameOrIDContains_TreatsTextLiterally(t *testing.T) {
 	tenants := []Tenant{
 		{TenantId: "tenant-a", Name: "demo.*"},
@@ -23,6 +24,7 @@ func TestFilterTenantsByNameOrIDContains_TreatsTextLiterally(t *testing.T) {
 	assert.Equal(t, "tenant-a", got[0].TenantId)
 }
 
+// Verifies tenant filtering matches either tenant ID or name without case sensitivity.
 func TestFilterTenantsByNameOrIDContains_MatchesNameOrTenantIDCaseInsensitively(t *testing.T) {
 	tenants := []Tenant{
 		{TenantId: "dev01", Name: "Development Stage 01"},
@@ -41,6 +43,7 @@ func TestFilterTenantsByNameOrIDContains_MatchesNameOrTenantIDCaseInsensitively(
 	assert.Equal(t, "tenant-a", got[0].TenantId)
 }
 
+// Verifies empty tenant filter text returns an equal copy instead of aliasing the input slice.
 func TestFilterTenantsByNameOrIDContains_EmptyTextReturnsCopy(t *testing.T) {
 	tenants := []Tenant{{TenantId: "tenant-a", Name: "Alpha"}}
 

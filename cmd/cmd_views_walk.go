@@ -86,18 +86,21 @@ func printTraversalWarning(cmd *cobra.Command, result process.TraversalResult) {
 		return
 	}
 
-	warning := result.Warning
+	printTraversalWarningDetails(cmd, result.Warning, result.MissingAncestors)
+}
+
+func printTraversalWarningDetails(cmd *cobra.Command, warning string, missingAncestors []process.MissingAncestor) {
 	if warning == "" {
 		warning = "one or more parent process instances were not found"
 	}
 	renderHumanWarningLine(cmd, "warning: %s", warning)
 
-	if len(result.MissingAncestors) == 0 {
+	if len(missingAncestors) == 0 {
 		return
 	}
 	printMissingAncestorKeyWarning(func(format string, args ...interface{}) {
 		renderHumanWarningLine(cmd, format, args...)
-	}, missingAncestorKeys(result.MissingAncestors))
+	}, missingAncestorKeys(missingAncestors))
 }
 
 // renderFamilyTree prints descendants as an ASCII tree starting from rootKey.

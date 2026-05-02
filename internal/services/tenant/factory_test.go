@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testConfig returns the minimal service configuration needed by tenant factory tests.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
@@ -28,6 +29,7 @@ func testConfig() *config.Config {
 	}
 }
 
+// Verifies the tenant factory selects the implementation matching each supported Camunda version.
 func TestFactory_SupportedVersions(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -71,6 +73,7 @@ func TestFactory_SupportedVersions(t *testing.T) {
 	}
 }
 
+// Verifies unknown Camunda versions fail with the shared unknown-version error.
 func TestFactory_UnknownVersion(t *testing.T) {
 	cfg := testConfig()
 	cfg.App.CamundaVersion = "v0"
@@ -84,6 +87,7 @@ func TestFactory_UnknownVersion(t *testing.T) {
 	require.Contains(t, err.Error(), toolx.ImplementedCamundaVersionsString())
 }
 
+// Verifies the current default Camunda version continues to resolve to the v8.8 tenant service.
 func TestFactory_CurrentDefaultVersionStillUsesV88(t *testing.T) {
 	cfg := testConfig()
 	cfg.App.CamundaVersion = toolx.CurrentCamundaVersion

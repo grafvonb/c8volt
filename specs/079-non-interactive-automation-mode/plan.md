@@ -17,7 +17,7 @@ Add one dedicated root automation flag to `c8volt`, layer it onto the existing `
 **Project Type**: CLI  
 **Performance Goals**: Keep automation-mode checks local to command metadata and existing render/prompt seams; avoid extra network calls or additional command-discovery passes; preserve current command runtime characteristics outside the explicit automation flag  
 **Constraints**: Keep the existing Cobra command tree and human UX intact, expose automation mode through one dedicated root flag, fail explicitly for unsupported commands instead of guessing behavior, preserve current exit-code semantics through `ferrors`, keep stdout machine-safe when JSON mode is requested, reuse existing `--no-wait` accepted-work semantics instead of inventing a second async model, update README and generated docs for the user-visible automation contract, and finish with `make test`  
-**Scale/Scope**: Root flags and bootstrap in [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), prompt handling in [`cmd/cmd_cli.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_cli.go), render/envelope helpers in [`cmd/cmd_views_rendermode.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_rendermode.go) and [`cmd/cmd_views_contract.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_contract.go), command metadata in [`cmd/command_contract.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go), representative commands under `cmd/get_processinstance.go`, `cmd/run_processinstance.go`, `cmd/deploy_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/expect_processinstance.go`, and `cmd/walk_processinstance.go`, plus user-facing guidance in `README.md`, `docs/use-cases.md`, and generated docs under `docs/cli/`
+**Scale/Scope**: Root flags and bootstrap in [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), prompt handling in [`cmd/cmd_cli.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_cli.go), render/envelope helpers in [`cmd/cmd_views_rendermode.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_rendermode.go) and [`cmd/cmd_views_contract.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_contract.go), command metadata in [`cmd/command_contract.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go), representative commands under `cmd/get_processinstance.go`, `cmd/run_processinstance.go`, `cmd/deploy_processdefinition.go`, `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/expect_processinstance.go`, and `cmd/walk_processinstance.go`, plus user-facing guidance in `README.md`, `docs/index.md`, and generated docs under `docs/cli/`
 
 ## Constitution Check
 
@@ -75,8 +75,7 @@ c8volt/
 docs/
 ├── cli/
 │   └── generated Cobra reference pages
-├── index.md
-└── use-cases.md
+└── index.md
 
 README.md
 ```
@@ -101,7 +100,7 @@ Research findings are captured in [research.md](/Users/adam.boczek/Development/W
 | Command metadata and discovery | Record which commands support automation mode and reflect that in machine discovery | `cmd/command_contract.go`, `cmd/capabilities.go` |
 | Prompt and continuation control | Make supported commands auto-confirm and auto-continue under automation mode while rejecting unsupported flows explicitly | `cmd/cmd_cli.go`, `cmd/get_processinstance.go`, `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/delete_processdefinition.go` |
 | Result and output behavior | Preserve current exit-code semantics, keep shared result envelopes authoritative in JSON mode, and ensure stdout stays machine-safe when automation callers request JSON | `cmd/cmd_views_rendermode.go`, `cmd/cmd_views_contract.go`, representative state-changing commands |
-| Documentation and tests | Describe the canonical invocation pattern and prove representative read/write behavior under automation mode | `README.md`, `docs/use-cases.md`, `docs/cli/`, `cmd/*_test.go` |
+| Documentation and tests | Describe the canonical invocation pattern and prove representative read/write behavior under automation mode | `README.md`, `docs/index.md`, `docs/cli/`, `cmd/*_test.go` |
 
 The implementation boundary is intentionally limited to CLI-facing automation semantics built on top of the existing machine contract. It does not redesign command families, add new business operations, or replace current human-oriented flows outside the explicit automation flag.
 
@@ -178,7 +177,7 @@ Task generation should break the work into dependency-ordered slices:
 - Representative observe flows `expect process-instance` and `walk process-instance` intentionally remain `automation:unsupported`, and reject `--automation` explicitly instead of falling back to interactive behavior.
 - Shared prompt handling stays centralized in `cmd/cmd_cli.go`, so supported confirmation and paging-continuation prompts are implicitly accepted under automation mode without changing human-mode defaults.
 - Shared result envelopes remain authoritative in JSON mode, with `accepted` reserved for explicit `--no-wait` runs and human-oriented diagnostics kept off stdout in automation JSON flows.
-- User-facing automation guidance now lives in root and command help text, `README.md`, `docs/use-cases.md`, generated `docs/cli/`, and the README-synced `docs/index.md`.
+- User-facing automation guidance now lives in root and command help text, `README.md`, generated `docs/cli/`, and the README-synced `docs/index.md`.
 
 ## Final Validation Checklist
 

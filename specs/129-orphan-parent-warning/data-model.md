@@ -85,8 +85,8 @@
 - **Purpose**: Groups the user-facing flows that consume traversal or dependency-expansion results.
 - **Members**:
   - `walk process-instance --parent`
-  - `walk process-instance --family`
-  - `walk process-instance --family --tree`
+  - `walk process-instance`
+  - `walk process-instance --flat`
   - `cancel process-instance` keyed and paged preflight
   - `delete process-instance` keyed and paged preflight
   - Indirect process-definition deletion paths that reuse process-instance dry-run expansion

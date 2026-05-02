@@ -16,10 +16,10 @@
   - Allow `--total` with `--key` and print `0` or `1`: rejected because it changes a strict lookup into a count contract and weakens existing error behavior.
   - Allow `--total` with `--key` only when one key is supplied: rejected because it still creates two behavioral contracts for the same direct lookup path.
 
-## Decision 3: Make `--total` mutually exclusive with `--json`, `--keys-only`, and `--with-age`
+## Decision 3: Make `--total` mutually exclusive with `--json` and `--keys-only`
 
-- **Decision**: Reject `--total` when combined with `--json`, `--keys-only`, or `--with-age`.
-- **Rationale**: The clarified specification says `--total` should return only the numeric count. The current shared render model treats `--json` and `--keys-only` as distinct output contracts, and `--with-age` only makes sense for instance details. Explicit validation is clearer and smaller than silently overriding those flags.
+- **Decision**: Reject `--total` when combined with `--json` or `--keys-only`.
+- **Rationale**: The clarified specification says `--total` should return only the numeric count. The current shared render model treats `--json` and `--keys-only` as distinct output contracts. Explicit validation is clearer and smaller than silently overriding those flags.
 - **Alternatives considered**:
   - Let `--json --total` return `{"total":12}`: rejected because the spec’s primary acceptance criteria describe a single numeric value and this would dilute the new flag into yet another response envelope.
   - Let `--total` silently override the other flags: rejected because hidden precedence rules are harder to explain, test, and discover.

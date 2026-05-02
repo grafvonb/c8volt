@@ -16,6 +16,7 @@ import (
 var flagGetTenantKey string
 var flagGetTenantFilter string
 
+// getTenantCmd exposes tenant discovery through list, keyed lookup, and literal filtering modes.
 var getTenantCmd = &cobra.Command{
 	Use:   "tenant",
 	Short: "List tenants",
@@ -34,6 +35,7 @@ var getTenantCmd = &cobra.Command{
 	Run: runGetTenant,
 }
 
+// runGetTenant routes between keyed tenant lookup and tenant search based on the parsed selector flags.
 func runGetTenant(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {
@@ -46,6 +48,7 @@ func runGetTenant(cmd *cobra.Command, args []string) {
 	runSearchTenants(cmd, cli, log, cfg.App.NoErrCodes, tenantFilterFromFlags())
 }
 
+// runGetTenantByKey fetches one tenant and renders it through the shared tenant view contract.
 func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, tenantID string) {
 	log.Debug(fmt.Sprintf("getting tenant by id: %s", tenantID))
 	tenant, err := cli.GetTenant(cmd.Context(), tenantID, collectOptions()...)
@@ -57,6 +60,7 @@ func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noE
 	}
 }
 
+// runSearchTenants fetches visible tenants with the optional literal filter and renders the list output.
 func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter tenant.TenantFilter) {
 	log.Debug(fmt.Sprintf("searching tenants with filter: %+v", filter))
 	tenants, err := cli.SearchTenants(cmd.Context(), filter, collectOptions()...)
@@ -70,6 +74,7 @@ func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noEr
 	log.Debug(fmt.Sprintf("fetched tenants, found: %d items", tenants.Total))
 }
 
+// warnIfUnfilteredTenantSearchReturnedEmpty explains empty unfiltered tenant lists, which usually indicate access restrictions.
 func warnIfUnfilteredTenantSearchReturnedEmpty(log *slog.Logger, filter tenant.TenantFilter, tenants tenant.Tenants) {
 	if log == nil || strings.TrimSpace(filter.NameContains) != "" || len(tenants.Items) > 0 {
 		return
@@ -77,6 +82,7 @@ func warnIfUnfilteredTenantSearchReturnedEmpty(log *slog.Logger, filter tenant.T
 	log.Warn("tenant search returned no tenants; Camunda creates a reserved <default> tenant, so the configured client may not have access to tenant resources")
 }
 
+// init registers the tenant discovery command and its read-only automation metadata.
 func init() {
 	getCmd.AddCommand(getTenantCmd)
 
@@ -89,6 +95,7 @@ func init() {
 	setAutomationSupport(getTenantCmd, AutomationSupportFull, "supports shared machine output")
 }
 
+// validateTenantLookupFlags rejects empty keyed lookup and ambiguous key-plus-filter invocations before command execution.
 func validateTenantLookupFlags(cmd *cobra.Command) error {
 	if cmd != nil && cmd.Flags().Changed("key") && strings.TrimSpace(flagGetTenantKey) == "" {
 		return invalidFlagValuef("tenant lookup requires a non-empty --key")
@@ -99,6 +106,7 @@ func validateTenantLookupFlags(cmd *cobra.Command) error {
 	return nil
 }
 
+// tenantFilterFromFlags builds the facade filter from the command's literal --filter value.
 func tenantFilterFromFlags() tenant.TenantFilter {
 	return tenant.TenantFilter{NameContains: flagGetTenantFilter}
 }
