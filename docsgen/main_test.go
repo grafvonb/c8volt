@@ -86,7 +86,7 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 	}
 }
 
-func TestGeneratedProcessInstanceDocsDocumentTaskKeyLookup(t *testing.T) {
+func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	out := t.TempDir()
 	root := cmd.Root()
 	root.DisableAutoGenTag = true
@@ -109,12 +109,11 @@ func TestGeneratedProcessInstanceDocsDocumentTaskKeyLookup(t *testing.T) {
 	got := string(b)
 
 	for _, want := range []string{
-		"--task-key string",
-		"user task key whose owning process instance should be fetched",
-		"./c8volt get pi --task-key 2251799815391233",
-		"./c8volt get pi --task-key 2251799815391233 --json",
-		"Camunda 8.8 and 8.9 support --task-key",
-		"Camunda 8.7 rejects it as unsupported",
+		"--has-user-tasks strings",
+		"user task key(s) whose owning process instances should be fetched",
+		"./c8volt get pi --has-user-tasks 2251799815391233",
+		"./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244",
+		"./c8volt get pi --has-user-tasks 2251799815391233 --json",
 		"Tasklist or Operate fallback",
 	} {
 		if !strings.Contains(got, want) {

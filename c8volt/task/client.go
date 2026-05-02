@@ -12,6 +12,7 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
+	types "github.com/grafvonb/c8volt/typex"
 )
 
 type client struct {
@@ -31,9 +32,22 @@ func New(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, log *slog.Logger) AP
 }
 
 func (c *client) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
-	task, err := c.utApi.GetUserTask(ctx, taskKey, options.MapFacadeOptionsToCallOptions(opts)...)
+	keys, err := c.ResolveProcessInstanceKeysFromUserTasks(ctx, types.Keys{taskKey}, opts...)
 	if err != nil {
-		return "", ferr.FromDomain(err)
+		return "", err
 	}
-	return task.ProcessInstanceKey, nil
+	return keys[0], nil
+}
+
+func (c *client) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
+	processInstanceKeys := make(types.Keys, 0, len(taskKeys))
+	callOpts := options.MapFacadeOptionsToCallOptions(opts)
+	for _, taskKey := range taskKeys {
+		task, err := c.utApi.GetUserTask(ctx, taskKey, callOpts...)
+		if err != nil {
+			return nil, ferr.FromDomain(err)
+		}
+		processInstanceKeys = append(processInstanceKeys, task.ProcessInstanceKey)
+	}
+	return processInstanceKeys, nil
 }

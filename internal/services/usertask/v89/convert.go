@@ -12,5 +12,6 @@ func fromUserTaskResult(r camundav89.UserTaskResult) d.UserTask {
 	return d.UserTask{
 		Key:                r.UserTaskKey,
 		ProcessInstanceKey: r.ProcessInstanceKey,
+		TenantId:           r.TenantId,
 	}
 }

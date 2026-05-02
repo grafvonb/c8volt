@@ -70,18 +70,61 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("fetching user task with key %s using generated camunda client", key))
-	resp, err := s.cc.GetUserTaskWithResponse(ctx, key)
+	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated camunda client", key))
+	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)
 	if err != nil {
-		return d.UserTask{}, fmt.Errorf("get user task: %w", err)
+		return d.UserTask{}, fmt.Errorf("build user task search request: %w", err)
+	}
+	resp, err := s.cc.SearchUserTasksWithResponse(ctx, body)
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("search user task: %w", err)
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return d.UserTask{}, fmt.Errorf("get user task: %w", err)
+		return d.UserTask{}, fmt.Errorf("search user task: %w", err)
 	}
-	task := fromUserTaskResult(*payload)
+	task, err := requireSingleUserTask(payload.Items, key)
+	if err != nil {
+		return d.UserTask{}, err
+	}
 	if task.ProcessInstanceKey == "" {
 		return d.UserTask{}, fmt.Errorf("%w: user task %s has no process instance key", d.ErrMalformedResponse, key)
 	}
 	return task, nil
+}
+
+func searchUserTaskRequest(tenantID, key string) (camundav89.SearchUserTasksJSONRequestBody, error) {
+	tenantIDFilter, err := newStringEqFilterPtr(tenantID)
+	if err != nil {
+		return camundav89.SearchUserTasksJSONRequestBody{}, err
+	}
+	userTaskKey := camundav89.UserTaskKey(key)
+	return camundav89.SearchUserTasksJSONRequestBody{
+		Filter: &camundav89.UserTaskFilter{
+			TenantId:    tenantIDFilter,
+			UserTaskKey: &userTaskKey,
+		},
+	}, nil
+}
+
+func requireSingleUserTask(items []camundav89.UserTaskResult, key string) (d.UserTask, error) {
+	switch len(items) {
+	case 0:
+		return d.UserTask{}, fmt.Errorf("%w: user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
+	case 1:
+		return fromUserTaskResult(items[0]), nil
+	default:
+		return d.UserTask{}, fmt.Errorf("%w: user task %s returned %d matches", d.ErrMalformedResponse, key, len(items))
+	}
+}
+
+func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.StringFilterProperty
+	if err := f.FromStringFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
 }

@@ -1,40 +1,41 @@
-# CLI Contract: `get pi --task-key`
+# CLI Contract: `get pi --has-user-tasks`
 
 ## Supported Commands
 
 ```bash
-./c8volt get pi --task-key=2251799815391233
-./c8volt get process-instance --task-key=2251799815391233
-./c8volt get pi --task-key=2251799815391233 --json
+./c8volt get pi --has-user-tasks=2251799815391233
+./c8volt get process-instance --has-user-tasks=2251799815391233
+./c8volt get pi --has-user-tasks=2251799815391233 --has-user-tasks=2251799815391244
+./c8volt get pi --has-user-tasks=2251799815391233 --json
 ```
 
 ## Success Behavior
 
-- On Camunda 8.8 and 8.9, `--task-key` resolves the user task through the native Camunda v2 user-task lookup.
-- The owning process-instance key from the user-task result is passed through existing single process-instance lookup.
+- On Camunda 8.8 and 8.9, `--has-user-tasks` resolves user tasks through tenant-aware native Camunda v2 user-task search.
+- The owning process-instance keys from user-task results are passed through existing keyed process-instance lookup.
 - Human output matches `get pi --key=<resolved-process-instance-key>` as closely as possible.
 - JSON output matches the existing direct keyed lookup shape.
-- Existing valid single lookup render flags, including `--with-age` and `--keys-only` where supported, remain valid with `--task-key`.
+- Existing valid keyed lookup render flags, including `--with-age` and `--keys-only` where supported, remain valid with `--has-user-tasks`.
 
 ## Unsupported Version Behavior
 
 ```bash
-./c8volt get pi --task-key=2251799815391233
+./c8volt get pi --has-user-tasks=2251799815391233
 ```
 
-On Camunda 8.7, the command fails with an explicit unsupported-version error for `--task-key`. It must not call Tasklist or Operate.
+On Camunda 8.7, the command fails with an explicit unsupported-version error for `--has-user-tasks`. It must not call Tasklist or Operate.
 
 ## Invalid Combinations
 
 Each invocation below must fail before API resolution:
 
 ```bash
-./c8volt get pi --task-key=2251799815391233 --key=2251799813711967
-printf '2251799813711967\n' | ./c8volt get pi --task-key=2251799815391233 -
-./c8volt get pi --task-key=2251799815391233 --state=active
-./c8volt get pi --task-key=2251799815391233 --bpmn-process-id C88_SimpleUserTask_Process
-./c8volt get pi --task-key=2251799815391233 --total
-./c8volt get pi --task-key=2251799815391233 --limit=1
+./c8volt get pi --has-user-tasks=2251799815391233 --key=2251799813711967
+printf '2251799813711967\n' | ./c8volt get pi --has-user-tasks=2251799815391233 -
+./c8volt get pi --has-user-tasks=2251799815391233 --state=active
+./c8volt get pi --has-user-tasks=2251799815391233 --bpmn-process-id C88_SimpleUserTask_Process
+./c8volt get pi --has-user-tasks=2251799815391233 --total
+./c8volt get pi --has-user-tasks=2251799815391233 --limit=1
 ```
 
 ## Error Behavior
@@ -46,6 +47,6 @@ printf '2251799813711967\n' | ./c8volt get pi --task-key=2251799815391233 -
 
 ## Documentation Contract
 
-- Command help includes `--task-key`.
-- Examples include human and JSON task-key lookup.
+- Command help includes `--has-user-tasks`.
+- Examples include human and JSON has-user-tasks lookup.
 - README and generated CLI docs mention Camunda 8.8/8.9 support, 8.7 unsupported behavior, and the no Tasklist/Operate fallback rule.

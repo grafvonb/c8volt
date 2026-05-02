@@ -6,15 +6,16 @@
 2. Run:
 
    ```bash
-   ./c8volt get pi --task-key=2251799815391233
+   ./c8volt get pi --has-user-tasks=2251799815391233
+   ./c8volt get pi --has-user-tasks=2251799815391233 --has-user-tasks=2251799815391244
    ./c8volt get pi --key=<resolved-process-instance-key>
    ```
 
-3. Confirm the task-key output matches direct keyed process-instance output.
+3. Confirm the has-user-tasks output matches direct keyed process-instance output for the resolved key or keys.
 4. Run:
 
    ```bash
-   ./c8volt get pi --task-key=2251799815391233 --json
+   ./c8volt get pi --has-user-tasks=2251799815391233 --json
    ```
 
 5. Confirm the JSON shape matches direct keyed lookup for the resolved key.
@@ -22,7 +23,7 @@
 7. Configure Camunda 8.7 and confirm:
 
    ```bash
-   ./c8volt get pi --task-key=2251799815391233
+   ./c8volt get pi --has-user-tasks=2251799815391233
    ```
 
    fails explicitly as unsupported without Tasklist or Operate fallback usage.

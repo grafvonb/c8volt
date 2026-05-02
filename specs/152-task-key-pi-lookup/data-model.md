@@ -3,28 +3,28 @@
 ## User Task Key
 
 - **Type**: User-supplied command selector value.
-- **Validation**: Must be non-empty when `--task-key` is provided. It is mutually exclusive with `--key`, stdin key input via `-`, search filters, `--total`, and `--limit`.
-- **Lifecycle**: Parsed from CLI input, resolved once through version-specific user-task service, then discarded after the owning process-instance key is extracted.
+- **Validation**: Each value must be non-empty when `--has-user-tasks` is provided. `--has-user-tasks` may be repeated, and is mutually exclusive with `--key`, stdin key input via `-`, search filters, `--total`, and `--limit`.
+- **Lifecycle**: Parsed from CLI input, each unique user task key is resolved through version-specific user-task service, then discarded after the owning process-instance key is extracted.
 
 ## Resolved User Task
 
-- **Type**: Native Camunda v2 user-task lookup result.
+- **Type**: Native Camunda v2 user-task search result.
 - **Fields Used**:
   - `processInstanceKey`: required owning process-instance key.
 - **Validation**: Missing or empty `processInstanceKey` is a resolution error.
-- **Lifecycle**: Returned by the 8.8/8.9 native lookup and converted into a domain-level result that exposes the owning process-instance key.
+- **Lifecycle**: Returned by the 8.8/8.9 tenant-aware native search and converted into a domain-level result that exposes the owning process-instance key.
 
 ## Owning Process Instance Key
 
 - **Type**: Process-instance key string compatible with existing process-instance lookup.
 - **Validation**: Must be non-empty after task resolution.
-- **Lifecycle**: Passed into the same single process-instance lookup path used by `get pi --key`.
+- **Lifecycle**: Passed into the same keyed process-instance lookup path used by `get pi --key`.
 
 ## Task-Key Lookup Request
 
 - **Type**: Command invocation state.
 - **Fields**:
-  - `taskKey`: user task key selector.
+  - `taskKeys`: user task key selectors.
   - `renderOptions`: existing single process-instance output options.
   - `version`: configured Camunda version.
 - **State Transitions**:
@@ -38,9 +38,9 @@
 
 - **Type**: Invalid command invocation.
 - **Conflict Inputs**:
-  - `--task-key` with `--key`
-  - `--task-key` with stdin key input via `-`
-  - `--task-key` with process-instance search filters
-  - `--task-key` with `--total`
-  - `--task-key` with `--limit`
+  - `--has-user-tasks` with `--key`
+  - `--has-user-tasks` with stdin key input via `-`
+  - `--has-user-tasks` with process-instance search filters
+  - `--has-user-tasks` with `--total`
+  - `--has-user-tasks` with `--limit`
 - **Behavior**: Fail through repository-standard invalid argument handling before API resolution.

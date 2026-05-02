@@ -16,7 +16,7 @@ type API interface {
 }
 
 type GenUserTaskClientCamunda interface {
-	GetUserTaskWithResponse(ctx context.Context, userTaskKey camundav89.UserTaskKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetUserTaskResponse, error)
+	SearchUserTasksWithResponse(ctx context.Context, body camundav89.SearchUserTasksJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error)
 }
 
 var _ API = (*Service)(nil)

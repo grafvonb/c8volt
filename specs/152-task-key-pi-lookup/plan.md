@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add `--task-key` as a single lookup selector on `get process-instance` / `get pi`. For Camunda 8.8 and 8.9, resolve the owning process-instance key through the native generated Camunda v2 user-task lookup, then pass that resolved key into the existing single process-instance lookup and rendering path. Camunda 8.7 must reject `--task-key` explicitly, and the command must reject combinations with other selectors, search filters, `--total`, or `--limit`.
+Add repeatable `--has-user-tasks` as a lookup selector on `get process-instance` / `get pi`. For Camunda 8.8 and 8.9, resolve owning process-instance keys through tenant-aware native generated Camunda v2 user-task search, then pass those resolved keys into the existing keyed process-instance lookup and rendering path. Camunda 8.7 must reject `--has-user-tasks` explicitly, and the command must reject combinations with other selectors, search filters, `--total`, or `--limit`.
 
 ## Technical Context
 
@@ -15,9 +15,9 @@ Add `--task-key` as a single lookup selector on `get process-instance` / `get pi
 **Testing**: Go tests through targeted `go test` packages and final `make test`  
 **Target Platform**: CLI on the repository's supported platforms  
 **Project Type**: Go CLI  
-**Performance Goals**: Task-key lookup performs one user-task lookup plus the existing single process-instance lookup; no paging or fallback API fan-out  
-**Constraints**: Use only native Camunda v2 user-task lookup for 8.8/8.9; reject 8.7; do not call Tasklist or Operate for task-key resolution; preserve existing output shape after resolution  
-**Scale/Scope**: One user task key resolves to one owning process instance per command invocation
+**Performance Goals**: Task-key lookup performs one tenant-aware user-task search per user task key plus the existing keyed process-instance lookup; no fallback API fan-out  
+**Constraints**: Use only native Camunda v2 user-task search for 8.8/8.9; reject 8.7; do not call Tasklist or Operate for user-task resolution; preserve existing output shape after resolution  
+**Scale/Scope**: One or more user task keys resolve to owning process instances per command invocation
 
 ## Constitution Check
 

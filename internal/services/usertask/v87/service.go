@@ -23,7 +23,7 @@ type Service struct {
 func (s *Service) Config() *config.Config { return s.cfg }
 func (s *Service) Logger() *slog.Logger   { return s.log }
 func (s *Service) GetUserTask(context.Context, string, ...services.CallOption) (d.UserTask, error) {
-	return d.UserTask{}, fmt.Errorf("%w: task-key lookup is unsupported in Camunda 8.7; requires Camunda 8.8 or 8.9", d.ErrUnsupported)
+	return d.UserTask{}, fmt.Errorf("%w: has-user-tasks lookup is unsupported in Camunda 8.7; requires Camunda 8.8 or 8.9", d.ErrUnsupported)
 }
 
 type Option func(*Service)

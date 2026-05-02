@@ -24,7 +24,8 @@ type stubProcessAPI struct {
 }
 
 type stubTaskAPI struct {
-	resolveProcessInstanceKeyFromUserTask func(context.Context, string, ...options.FacadeOption) (string, error)
+	resolveProcessInstanceKeyFromUserTask   func(context.Context, string, ...options.FacadeOption) (string, error)
+	resolveProcessInstanceKeysFromUserTasks func(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, error)
 }
 
 func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
@@ -32,6 +33,24 @@ func (s stubTaskAPI) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, 
 		panic("unexpected call")
 	}
 	return s.resolveProcessInstanceKeyFromUserTask(ctx, taskKey, opts...)
+}
+
+func (s stubTaskAPI) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
+	if s.resolveProcessInstanceKeysFromUserTasks != nil {
+		return s.resolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, opts...)
+	}
+	if s.resolveProcessInstanceKeyFromUserTask == nil {
+		panic("unexpected call")
+	}
+	processInstanceKeys := make(types.Keys, 0, len(taskKeys))
+	for _, taskKey := range taskKeys {
+		processInstanceKey, err := s.resolveProcessInstanceKeyFromUserTask(ctx, taskKey, opts...)
+		if err != nil {
+			return nil, err
+		}
+		processInstanceKeys = append(processInstanceKeys, processInstanceKey)
+	}
+	return processInstanceKeys, nil
 }
 
 // dryRunCancelMutationGuard fails a test if dry-run execution submits a cancel mutation.

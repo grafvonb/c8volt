@@ -6,4 +6,5 @@ package domain
 type UserTask struct {
 	Key                string
 	ProcessInstanceKey string
+	TenantId           string
 }
