@@ -437,21 +437,46 @@ c8volt
 
 ## Everyday Commands
 
+These are the commands most teams reach for during normal development,
+support, and operations loops: deploy something, start it, find the affected
+instances, inspect the tree, wait for the outcome, and clean up safely.
+
 ```bash
-./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
+# Deploy or redeploy BPMN, then verify the latest definition Camunda sees.
+./c8volt deploy pd --file ./fixtures/order-process.bpmn
+./c8volt deploy pd --file ./fixtures/order-process.bpmn --run
+./c8volt get pd --bpmn-process-id Order_Process --latest --stat
+
+# Local fixture loop for quick smoke tests.
 ./c8volt embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
-./c8volt --tenant tenant-a embed deploy --file processdefinitions/C88_SimpleUserTaskProcess.bpmn
-./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
-./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --stat
+
+# Start process instances from the latest version.
 ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
-./c8volt get pi --state active
+./c8volt run pi -b C88_SimpleUserTask_Process -n 25 --workers 5
+
+# Find active work, incidents, and exact instance details.
+./c8volt get pi --bpmn-process-id C88_SimpleUserTask_Process --state active --with-age
 ./c8volt get pi --state active --incidents-only --with-age
-./c8volt get tenant
-./c8volt get tenant --filter dev
-./c8volt get cluster topology
-./c8volt get resource --id <resource-key>
-./c8volt config show
-./c8volt version
+./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get pi --state active --total
+
+# Inspect parent/child relationships before taking action.
+./c8volt walk pi --key <process-instance-key> --family --tree
+./c8volt walk pi --key <process-instance-key> --family --with-incidents
+
+# Wait for automation-visible outcomes.
+./c8volt expect pi --key <process-instance-key> --state active
+./c8volt expect pi --key <process-instance-key> --state completed --state absent
+
+# Preview and perform cancellation.
+./c8volt cancel pi --key <process-instance-key> --dry-run
+./c8volt cancel pi --key <process-instance-key> --force
+./c8volt get pi --state active --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
+
+# Preview and perform cleanup of completed instances.
+./c8volt delete pi --state completed --end-date-older-days 7 --limit 25 --dry-run
+./c8volt delete pi --state completed --end-date-older-days 7 --auto-confirm
+./c8volt expect pi --key <process-instance-key> --state absent
 ```
 
 ## Documentation
