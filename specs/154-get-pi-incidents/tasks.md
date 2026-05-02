@@ -71,15 +71,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Add JSON command test for one key with incident details in `cmd/get_processinstance_test.go`
-- [ ] T024 [P] [US2] Add JSON command test for multiple keys with per-key incident association in `cmd/get_processinstance_test.go`
-- [ ] T025 [P] [US2] Add JSON command test for an empty incidents collection in `cmd/get_processinstance_test.go`
+- [x] T023 [P] [US2] Add JSON command test for one key with incident details in `cmd/get_processinstance_test.go`
+- [x] T024 [P] [US2] Add JSON command test for multiple keys with per-key incident association in `cmd/get_processinstance_test.go`
+- [x] T025 [P] [US2] Add JSON command test for an empty incidents collection in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Add enriched JSON renderer that emits `total` and per-item `incidents` in `cmd/cmd_views_get.go`
-- [ ] T027 [US2] Ensure enriched JSON output preserves existing command envelope behavior in `cmd/cmd_views_get.go`
-- [ ] T028 [US2] Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
+- [x] T026 [US2] Add enriched JSON renderer that emits `total` and per-item `incidents` in `cmd/cmd_views_get.go`
+- [x] T027 [US2] Ensure enriched JSON output preserves existing command envelope behavior in `cmd/cmd_views_get.go`
+- [x] T028 [US2] Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

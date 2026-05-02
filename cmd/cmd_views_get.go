@@ -34,6 +34,9 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 }
 
 func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
+	if pickMode() == RenderModeJSON {
+		return renderJSONPayload(cmd, RenderModeJSON, resp)
+	}
 	for _, it := range resp.Items {
 		renderOutputLine(cmd, "%s", oneLinePI(it.Item))
 		for _, incident := range it.Incidents {

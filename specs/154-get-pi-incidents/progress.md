@@ -11,6 +11,7 @@ Started: 2026-05-02 09:54:51
 - Process-instance command validation happens after stdin/flag keys are merged and before lookup/search requests; use command-local helpers like `missingDependentFlagsf` and `mutuallyExclusiveFlagsf` so failures stay in the invalid-input path.
 - Versioned process-instance incident lookup has dedicated `incidents.go` files; replace those stubs there and keep generated-client incident contract methods in the versioned `contract.go` interface.
 - Keyed `--with-incidents` rendering is an opt-in command branch after strict keyed lookup; it should render and return before the default `listProcessInstancesView` path so default output remains untouched.
+- Enriched process-instance views must branch on `pickMode() == RenderModeJSON` and use `renderJSONPayload` so full-contract commands keep the shared result envelope in machine output.
 
 ---
 
@@ -105,4 +106,27 @@ Started: 2026-05-02 09:54:51
 - Supported-version incident lookup should be implemented in the existing `incidents.go` seam, not as an additional method in `service.go`.
 - Human `--with-incidents` output preserves the existing process-instance row and appends one indented line for each returned incident error message.
 - Validation passed with `GOCACHE=/tmp/codex-gocache go test ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./cmd -count=1`.
+---
+---
+## Iteration 4 - 2026-05-02 10:21:13 CEST
+**User Story**: User Story 2 - Consume Incident Details in JSON
+**Tasks Completed**:
+- [x] T023: Add JSON command test for one key with incident details in `cmd/get_processinstance_test.go`
+- [x] T024: Add JSON command test for multiple keys with per-key incident association in `cmd/get_processinstance_test.go`
+- [x] T025: Add JSON command test for an empty incidents collection in `cmd/get_processinstance_test.go`
+- [x] T026: Add enriched JSON renderer that emits `total` and per-item `incidents` in `cmd/cmd_views_get.go`
+- [x] T027: Ensure enriched JSON output preserves existing command envelope behavior in `cmd/cmd_views_get.go`
+- [x] T028: Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/cmd_views_get_test.go
+- cmd/get_processinstance_test.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- Enriched JSON output should use the same shared command result envelope as existing process-instance JSON output.
+- `EnrichProcessInstancesWithIncidents` already keeps empty incident results as a non-nil slice, so JSON renders an empty `incidents` collection.
+- Listener-backed command tests skip in this sandbox because local TCP bind is not permitted; the direct renderer test and package tests passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process -count=1`.
 ---

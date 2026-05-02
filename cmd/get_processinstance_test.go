@@ -657,6 +657,134 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 	}
 }
 
+func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","jobKey":"job-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	require.Equal(t, float64(1), payload["total"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	item := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", item["key"])
+
+	incidents := requireJSONItems(t, first["incidents"], 1)
+	incident := requireJSONObject(t, incidents[0])
+	require.Equal(t, "incident-123", incident["incidentKey"])
+	require.Equal(t, "123", incident["processInstanceKey"])
+	require.Equal(t, "No retries left", incident["errorMessage"])
+	require.Equal(t, "task-a", incident["flowNodeId"])
+}
+
+func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/124":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[
+				{"errorMessage":"First key failed","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
+				{"errorMessage":"wrong association","incidentKey":"incident-wrong","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/124/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"Second key failed","incidentKey":"incident-124","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--key", "124",
+		"--workers", "1",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	require.Equal(t, float64(2), payload["total"])
+	items := requireJSONItems(t, payload["items"], 2)
+
+	first := requireJSONObject(t, items[0])
+	firstItem := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", firstItem["key"])
+	firstIncidents := requireJSONItems(t, first["incidents"], 1)
+	require.Equal(t, "First key failed", requireJSONObject(t, firstIncidents[0])["errorMessage"])
+
+	second := requireJSONObject(t, items[1])
+	secondItem := requireJSONObject(t, second["item"])
+	require.Equal(t, "124", secondItem["key"])
+	secondIncidents := requireJSONItems(t, second["incidents"], 1)
+	require.Equal(t, "Second key failed", requireJSONObject(t, secondIncidents[0])["errorMessage"])
+}
+
+func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	incidents := requireJSONItems(t, first["incidents"], 0)
+	require.Empty(t, incidents)
+}
+
 // TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
 func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
 	var requests []string
@@ -2052,6 +2180,33 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(requests[0]), &got))
 	return got
+}
+
+func requireProcessInstanceIncidentJSONPayload(t *testing.T, output string) map[string]any {
+	t.Helper()
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get process-instance", envelope["command"])
+	return requireJSONObject(t, envelope["payload"])
+}
+
+func requireJSONObject(t *testing.T, value any) map[string]any {
+	t.Helper()
+
+	got, ok := value.(map[string]any)
+	require.True(t, ok, "expected JSON object")
+	return got
+}
+
+func requireJSONItems(t *testing.T, value any, wantLen int) []any {
+	t.Helper()
+
+	items, ok := value.([]any)
+	require.True(t, ok, "expected JSON array")
+	require.Len(t, items, wantLen)
+	return items
 }
 
 // newIPv4Server creates an IPv4-only test server for command tests that must avoid IPv6 listeners.

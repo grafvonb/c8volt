@@ -4,10 +4,13 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,4 +143,44 @@ func TestProcessInstancesWithAgeMeta(t *testing.T) {
 
 	require.True(t, payload.Meta.WithAge)
 	require.Equal(t, 4, payload.Meta.AgeDaysBy["2251799813758959"])
+}
+
+func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.IncidentEnrichedProcessInstance{{
+			Item: process.ProcessInstance{Key: "123"},
+			Incidents: []process.ProcessInstanceIncidentDetail{{
+				IncidentKey:        "incident-123",
+				ProcessInstanceKey: "123",
+				ErrorMessage:       "No retries left",
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload, ok := envelope["payload"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, float64(1), payload["total"])
+	items, ok := payload["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 1)
+	first := items[0].(map[string]any)
+	incidents, ok := first["incidents"].([]any)
+	require.True(t, ok)
+	require.Len(t, incidents, 1)
 }
