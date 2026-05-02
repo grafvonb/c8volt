@@ -408,7 +408,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances
-|   |-- tenant                List or fetch visible tenants
+|   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
@@ -428,6 +428,7 @@ c8volt
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
 ./c8volt get tenant
+./c8volt get tenant --filter dev
 ./c8volt get cluster topology
 ./c8volt get resource --id <resource-key>
 ./c8volt config show

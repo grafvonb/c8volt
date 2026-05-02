@@ -32,7 +32,7 @@ c8volt get tenant [flags]
 ### Options
 
 ```
-  -f, --filter string   literal tenant name contains filter
+  -f, --filter string   literal tenant ID or name contains filter
   -h, --help            help for tenant
   -k, --key string      tenant ID to fetch
 ```

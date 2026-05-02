@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-215-g56ae315`, commit `56ae315`, built `2026-05-01T11:50:35Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.4.0-alpha1-5-ge46c872-dirty`, commit `e46c872`, built `2026-05-02T05:30:18Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -115,6 +115,7 @@ That is the gap `c8volt` closes.
 - wait for the state you actually need
 - page through large process-instance result sets safely
 - return only the numeric process-instance match count with `get pi --total`
+- discover visible tenants with `get tenant`
 - validate config and inspect cluster metadata
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
@@ -416,6 +417,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances
+|   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
@@ -434,6 +436,8 @@ c8volt
 ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
+./c8volt get tenant
+./c8volt get tenant --filter dev
 ./c8volt get cluster topology
 ./c8volt get resource --id <resource-key>
 ./c8volt config show
