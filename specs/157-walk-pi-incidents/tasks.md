@@ -124,17 +124,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T044 [P] [US4] Add facade test passing configured options through walk incident enrichment in `c8volt/process/client_test.go`
-- [ ] T045 [P] [US4] Add command test proving tenant option reaches incident enrichment during walk in `cmd/walk_test.go`
-- [ ] T046 [P] [US4] Add v8.8 tenant-filter request assertion for reused incident search behavior in `internal/services/processinstance/v88/service_test.go`
-- [ ] T047 [P] [US4] Add v8.9 tenant-filter request assertion for reused incident search behavior in `internal/services/processinstance/v89/service_test.go`
-- [ ] T048 [P] [US4] Add command unsupported-version test for `--with-incidents` on Camunda 8.7 walk in `cmd/walk_test.go`
+- [x] T044 [P] [US4] Add facade test passing configured options through walk incident enrichment in `c8volt/process/client_test.go`
+- [x] T045 [P] [US4] Add command test proving tenant option reaches incident enrichment during walk in `cmd/walk_test.go`
+- [x] T046 [P] [US4] Add v8.8 tenant-filter request assertion for reused incident search behavior in `internal/services/processinstance/v88/service_test.go`
+- [x] T047 [P] [US4] Add v8.9 tenant-filter request assertion for reused incident search behavior in `internal/services/processinstance/v89/service_test.go`
+- [x] T048 [P] [US4] Add command unsupported-version test for `--with-incidents` on Camunda 8.7 walk in `cmd/walk_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T049 [US4] Ensure walk enrichment uses existing facade options from `collectOptions()` in `cmd/walk_processinstance.go`
-- [ ] T050 [US4] Ensure v8.7 unsupported incident lookup propagates through walk command handlers in `c8volt/process/client.go` and `cmd/walk_processinstance.go`
-- [ ] T051 [US4] Confirm v8.8 and v8.9 incident request bodies remain process-instance-key scoped without redundant rejected filters in `internal/services/processinstance/v88/incidents.go` and `internal/services/processinstance/v89/incidents.go`
+- [x] T049 [US4] Ensure walk enrichment uses existing facade options from `collectOptions()` in `cmd/walk_processinstance.go`
+- [x] T050 [US4] Ensure v8.7 unsupported incident lookup propagates through walk command handlers in `c8volt/process/client.go` and `cmd/walk_processinstance.go`
+- [x] T051 [US4] Confirm v8.8 and v8.9 incident request bodies remain process-instance-key scoped without redundant rejected filters in `internal/services/processinstance/v88/incidents.go` and `internal/services/processinstance/v89/incidents.go`
 
 **Checkpoint**: All user stories are independently functional.
 

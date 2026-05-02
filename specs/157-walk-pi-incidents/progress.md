@@ -13,8 +13,8 @@ Started: 2026-05-02 12:59:38
 - Walk command tests commonly use IPv4 HTTP fixture servers and JSON response helpers in `cmd/walk_test.go`; traversal fixture helpers should produce v8.8/v8.9-shaped `hasIncident` process-instance responses and incident search result payloads.
 - Public traversal enrichment now lives on `process.API`/`process.Walker` as `EnrichTraversalWithIncidents`, reusing `SearchProcessInstanceIncidents` and the per-process-instance incident filter so traversal metadata stays authoritative.
 - `walk process-instance` flag validation happens after CLI bootstrap/automation checks and before traversal fetches; command globals for walk flags must be reset in `resetProcessInstanceCommandGlobals` for tests.
+- Camunda 8.7 walk traversal uses a tenant-scoped process-instance search through the traversal adapter before enrichment; requested incident enrichment then fails through the existing unsupported incident lookup path without issuing an incident request.
 
----
 ## Iteration 1 - 2026-05-02 13:02:16 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
 **Tasks Completed**: 
@@ -150,4 +150,29 @@ Started: 2026-05-02 12:59:38
 - The plain traversal payload, path view, and family tree renderer can remain untouched because the command only switches to enriched rendering after successful enrichment and only when `--with-incidents` is requested.
 - Tree incident messages are rendered from enriched traversal items keyed by process-instance key, while traversal edges continue to drive tree order and branch layout.
 - Command-level lookup failure coverage needs a subprocess because the CLI error path exits through the shared command error handler.
+---
+---
+## Iteration 6 - 2026-05-02 13:29:51 CEST
+**User Story**: User Story 4 - Respect Tenant and Version Boundaries
+**Tasks Completed**: 
+- [x] T044: Add facade test passing configured options through walk incident enrichment
+- [x] T045: Add command test proving tenant option reaches incident enrichment during walk
+- [x] T046: Add v8.8 tenant-filter request assertion for reused incident search behavior
+- [x] T047: Add v8.9 tenant-filter request assertion for reused incident search behavior
+- [x] T048: Add command unsupported-version test for `--with-incidents` on Camunda 8.7 walk
+- [x] T049: Ensure walk enrichment uses existing facade options from `collectOptions()`
+- [x] T050: Ensure v8.7 unsupported incident lookup propagates through walk command handlers
+- [x] T051: Confirm v8.8 and v8.9 incident request bodies remain process-instance-key scoped without redundant rejected filters
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- c8volt/process/client_test.go
+- cmd/walk_test.go
+- specs/157-walk-pi-incidents/tasks.md
+- specs/157-walk-pi-incidents/progress.md
+**Learnings**:
+- The command already passes `collectOptions()` into traversal enrichment; facade coverage now proves those options reach every incident lookup.
+- Tenant override behavior is visible at the HTTP fixture boundary because v8.9 incident search serializes the effective tenant into the request filter.
+- Existing v8.8 and v8.9 service coverage already protects tenant-filtered, path-key-scoped incident search bodies without a rejected `processInstanceKey` body filter.
+- Validation used `GOCACHE=/tmp/c8volt-go-build` because the default Go build cache was outside the writable sandbox.
 ---

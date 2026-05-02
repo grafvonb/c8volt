@@ -889,6 +889,98 @@ apis:
 	require.NotContains(t, output, "base-tenant")
 }
 
+func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches(t *testing.T) {
+	var incidentRequests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), `"tenantId":"tenant-a"`)
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			incidentRequests = append(incidentRequests, string(body))
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root failed")))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.9
+  tenant: base-tenant
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant-a",
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-incidents",
+	)
+
+	require.Contains(t, output, "incident: Root failed")
+	require.Len(t, incidentRequests, 1)
+	body := decodeCapturedPISearchRequest(t, incidentRequests[0])
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok, "expected incident search request filter object")
+	require.Equal(t, "tenant-a", filter["tenantId"])
+	require.NotContains(t, filter, "processInstanceKey")
+}
+
+func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
+	searchCalls := 0
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/process-instances/search", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		request := decodeCapturedPISearchRequest(t, string(body))
+		filter, _ := request["filter"].(map[string]any)
+
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case searchCalls == 0:
+			require.NotContains(t, filter, "parentKey")
+			searchCalls++
+			_, _ = w.Write([]byte(`{"items":[{"key":123,"bpmnProcessId":"demo","processVersion":3,"state":"ACTIVE","startDate":"2026-03-23T18:00:00Z","tenantId":"tenant"}],"total":1}`))
+		case filter["parentKey"] == float64(123):
+			searchCalls++
+			_, _ = w.Write([]byte(`{"items":[],"total":0}`))
+		default:
+			t.Fatalf("unexpected search body: %s", string(body))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, 2, searchCalls)
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "process-instance incident lookup is not tenant-safe in Camunda 8.7")
+	require.NotContains(t, string(output), "incident:")
+}
+
 // Verifies walk process-instance rejects unsupported --mode values.
 func TestWalkProcessInstanceCommand_RejectsInvalidMode(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
@@ -1053,6 +1145,19 @@ func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderParti
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "walk", "process-instance", "--key", "123", "--children", "--with-incidents"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant", "walk", "process-instance", "--key", "123", "--children", "--with-incidents"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

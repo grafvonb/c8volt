@@ -356,6 +356,37 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, got.Items[1].Incidents)
 }
 
+func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, key)
+			cfg := services.ApplyCallOptions(opts)
+			assert.True(t, cfg.Verbose)
+			assert.True(t, cfg.WithStat)
+			return nil, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
+		Mode:    TraversalModeDescendants,
+		Outcome: TraversalOutcomeComplete,
+		Keys:    []string{"root", "child"},
+		Chain: map[string]ProcessInstance{
+			"root":  {Key: "root"},
+			"child": {Key: "child"},
+		},
+	}, options.WithVerbose(), options.WithStat())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"root", "child"}, calls)
+	require.Len(t, got.Items, 2)
+}
+
 func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *testing.T) {
 	t.Parallel()
 
