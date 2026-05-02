@@ -45,19 +45,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add `v88` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v88/service_test.go`
-- [ ] T014 [P] [US1] Add `v89` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v89/service_test.go`
-- [ ] T015 [P] [US1] Add command human-output test for one indented `incident:` message in `cmd/get_processinstance_test.go`
-- [ ] T016 [P] [US1] Add command human-output tests for multiple indented `incident:` lines and no incidents in `cmd/get_processinstance_test.go`
+- [x] T013 [P] [US1] Add `v88` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v88/service_test.go`
+- [x] T014 [P] [US1] Add `v89` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v89/service_test.go`
+- [x] T015 [P] [US1] Add command human-output test for one indented `incident:` message in `cmd/get_processinstance_test.go`
+- [x] T016 [P] [US1] Add command human-output tests for multiple indented `incident:` lines and no incidents in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Add generated incident search method to `internal/services/processinstance/v88/contract.go`
-- [ ] T018 [US1] Implement `v88` incident search request and conversion in `internal/services/processinstance/v88/service.go` and `internal/services/processinstance/v88/convert.go`
-- [ ] T019 [US1] Add generated incident search method to `internal/services/processinstance/v89/contract.go`
-- [ ] T020 [US1] Implement `v89` incident search request and conversion in `internal/services/processinstance/v89/service.go` and `internal/services/processinstance/v89/convert.go`
-- [ ] T021 [US1] Call facade enrichment after keyed process-instance lookup when `--with-incidents` is set in `cmd/get_processinstance.go`
-- [ ] T022 [US1] Add enriched human renderer for indented `incident:` message lines in `cmd/cmd_views_get.go`
+- [x] T017 [US1] Add generated incident search method to `internal/services/processinstance/v88/contract.go`
+- [x] T018 [US1] Implement `v88` incident search request and conversion in `internal/services/processinstance/v88/service.go` and `internal/services/processinstance/v88/convert.go`
+- [x] T019 [US1] Add generated incident search method to `internal/services/processinstance/v89/contract.go`
+- [x] T020 [US1] Implement `v89` incident search request and conversion in `internal/services/processinstance/v89/service.go` and `internal/services/processinstance/v89/convert.go`
+- [x] T021 [US1] Call facade enrichment after keyed process-instance lookup when `--with-incidents` is set in `cmd/get_processinstance.go`
+- [x] T022 [US1] Add enriched human renderer for indented `incident:` message lines in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

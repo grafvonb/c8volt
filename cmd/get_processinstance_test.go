@@ -557,6 +557,106 @@ apis:
 	})
 }
 
+func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.T) {
+	var requests []string
+	var incidentBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			incidentBodies = append(incidentBodies, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","jobKey":"job-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
+	require.Len(t, incidentBodies, 1)
+	require.Contains(t, incidentBodies[0], `"processInstanceKey":"123"`)
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "demo v3")
+	require.Contains(t, output, "inc!")
+	require.Contains(t, output, "  incident: No retries left")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(t *testing.T) {
+	tests := []struct {
+		name             string
+		incidentResponse string
+		wantMessages     []string
+	}{
+		{
+			name: "multiple incident lines",
+			incidentResponse: `{"items":[
+				{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
+				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+			wantMessages: []string{"  incident: No retries left", "  incident: Gateway failed"},
+		},
+		{
+			name:             "no incident lines",
+			incidentResponse: `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+			wantMessages:     nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/process-instances/123":
+					require.Equal(t, http.MethodGet, r.Method)
+					_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+				case "/v2/process-instances/123/incidents/search":
+					require.Equal(t, http.MethodPost, r.Method)
+					_, _ = w.Write([]byte(tt.incidentResponse))
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"get", "process-instance",
+				"--key", "123",
+				"--with-incidents",
+			)
+
+			require.Contains(t, output, "123")
+			require.Contains(t, output, "found: 1")
+			for _, msg := range tt.wantMessages {
+				require.Contains(t, output, msg)
+			}
+			if len(tt.wantMessages) == 0 {
+				require.NotContains(t, output, "  incident:")
+			}
+		})
+	}
+}
+
 // TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
 func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
 	var requests []string

@@ -29,6 +29,23 @@ func fromProcessInstanceResult(r camundav88.ProcessInstanceResult) d.ProcessInst
 	}
 }
 
+func fromIncidentResult(r camundav88.IncidentResult) d.ProcessInstanceIncidentDetail {
+	return d.ProcessInstanceIncidentDetail{
+		IncidentKey:            r.IncidentKey,
+		ProcessInstanceKey:     r.ProcessInstanceKey,
+		TenantId:               r.TenantId,
+		State:                  string(r.State),
+		ErrorType:              string(r.ErrorType),
+		ErrorMessage:           r.ErrorMessage,
+		FlowNodeId:             r.ElementId,
+		FlowNodeInstanceKey:    r.ElementInstanceKey,
+		JobKey:                 toolx.Deref(r.JobKey, ""),
+		RootProcessInstanceKey: toolx.Deref(r.RootProcessInstanceKey, ""),
+		ProcessDefinitionKey:   r.ProcessDefinitionKey,
+		ProcessDefinitionId:    r.ProcessDefinitionId,
+	}
+}
+
 func formatTime(t time.Time) string {
 	if t.IsZero() {
 		return ""

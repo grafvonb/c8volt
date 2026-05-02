@@ -161,6 +161,16 @@ var getProcessInstanceCmd = &cobra.Command{
 				}
 				fail(msg)
 			}
+			if flagGetPIWithIncidents {
+				enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+				if err != nil {
+					fail(fmt.Errorf("get process instance incidents: %w", err))
+				}
+				if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
+					fail(fmt.Errorf("render process instances with incidents: %w", err))
+				}
+				return
+			}
 		default:
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %s", filter.String()))
