@@ -11,10 +11,10 @@
 
 **Purpose**: Prepare shared models and contracts without changing command behavior.
 
-- [ ] T001 [P] Review generated incident search shapes and record any field mismatch in `specs/154-get-pi-incidents/research.md`
-- [ ] T002 [P] Add domain incident detail model in `internal/domain/processinstance.go`
-- [ ] T003 [P] Add public incident detail and enriched output models in `c8volt/process/model.go`
-- [ ] T004 [P] Add incident-enrichment contract notes to `specs/154-get-pi-incidents/contracts/get-pi-with-incidents.md`
+- [x] T001 [P] Review generated incident search shapes and record any field mismatch in `specs/154-get-pi-incidents/research.md`
+- [x] T002 [P] Add domain incident detail model in `internal/domain/processinstance.go`
+- [x] T003 [P] Add public incident detail and enriched output models in `c8volt/process/model.go`
+- [x] T004 [P] Add incident-enrichment contract notes to `specs/154-get-pi-incidents/contracts/get-pi-with-incidents.md`
 
 ---
 

@@ -6,6 +6,12 @@
 
 **Alternatives considered**: General incident search was rejected as the primary path because the issue calls out process-instance incident search APIs. Direct incident get-by-key was rejected because the command starts from process-instance keys and must avoid tenant-unsafe lookups.
 
+## Generated shape review: v8.8/v8.9 incident fields
+
+**Finding**: The v8.8 and v8.9 generated `IncidentResult` shapes match for the fields needed by this feature: `IncidentKey`, `ProcessInstanceKey`, `TenantId`, `State`, `ErrorType`, `ErrorMessage`, `ElementId`, `ElementInstanceKey`, `JobKey`, `RootProcessInstanceKey`, `ProcessDefinitionKey`, and `ProcessDefinitionId`.
+
+**Field naming mismatch**: The generated Camunda clients expose BPMN flow-node metadata as `ElementId`/`elementId` and `ElementInstanceKey`/`elementInstanceKey`. The feature model uses `FlowNodeId`/`flowNodeId` and `FlowNodeInstanceKey`/`flowNodeInstanceKey`, so conversion helpers must map generated element fields into the public flow-node fields.
+
 ## Decision: Treat v8.7 incident enrichment as unsupported
 
 **Rationale**: The existing v8.7 process-instance direct lookup path is already constrained by tenant-safety limits. Even though older generated clients expose incident search shapes, this feature must not create a tenant-unsafe enrichment path for keyed lookup.

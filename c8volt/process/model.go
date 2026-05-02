@@ -69,6 +69,31 @@ type ProcessInstance struct {
 	Variables                 map[string]any `json:"variables,omitempty"`
 }
 
+type ProcessInstanceIncidentDetail struct {
+	IncidentKey            string `json:"incidentKey,omitempty"`
+	ProcessInstanceKey     string `json:"processInstanceKey"`
+	TenantId               string `json:"tenantId,omitempty"`
+	State                  string `json:"state,omitempty"`
+	ErrorType              string `json:"errorType,omitempty"`
+	ErrorMessage           string `json:"errorMessage"`
+	FlowNodeId             string `json:"flowNodeId,omitempty"`
+	FlowNodeInstanceKey    string `json:"flowNodeInstanceKey,omitempty"`
+	JobKey                 string `json:"jobKey,omitempty"`
+	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
+}
+
+type IncidentEnrichedProcessInstance struct {
+	Item      ProcessInstance                 `json:"item"`
+	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`
+}
+
+type IncidentEnrichedProcessInstances struct {
+	Total int32                             `json:"total"`
+	Items []IncidentEnrichedProcessInstance `json:"items"`
+}
+
 type ProcessInstances struct {
 	Total int32             `json:"total,omitempty"`
 	Items []ProcessInstance `json:"items,omitempty"`

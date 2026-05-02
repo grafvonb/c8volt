@@ -60,6 +60,21 @@ Expected payload shape:
 
 `incidents` is present as an empty array when enrichment was requested and no incidents were returned for an item.
 
+### Incident Detail Fields
+
+- `incidentKey`: Incident identifier when returned by the supported versioned client.
+- `processInstanceKey`: Process-instance key used to associate the detail with the enriched item.
+- `tenantId`: Tenant identifier returned for the incident when available.
+- `state`: Incident state when returned.
+- `errorType`: Incident error type when returned.
+- `errorMessage`: Diagnostic message returned by the incident search API. The field remains present even when the message is empty.
+- `flowNodeId`: Public field populated from generated `elementId`.
+- `flowNodeInstanceKey`: Public field populated from generated `elementInstanceKey`.
+- `jobKey`: Associated job key when returned.
+- `rootProcessInstanceKey`: Root process-instance key when returned.
+- `processDefinitionKey`: Associated process-definition key when returned.
+- `processDefinitionId`: Associated BPMN process ID when returned.
+
 ## Tenant Contract
 
 - Supported versions include configured tenant filtering in the incident search request when a tenant is configured.
