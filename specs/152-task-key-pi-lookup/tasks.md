@@ -138,11 +138,11 @@
 
 **Purpose**: Final cleanup, formatting, validation, and traceability.
 
-- [ ] T040 [P] Review task-key lookup contract against implementation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/152-task-key-pi-lookup/contracts/cli-get-pi-task-key.md
-- [ ] T041 [P] Review quickstart commands against final behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/152-task-key-pi-lookup/quickstart.md
-- [ ] T042 Run `gofmt` on changed Go files in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask
-- [ ] T043 Run targeted validation with `go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
-- [ ] T044 Run final repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
+- [x] T040 [P] Review task-key lookup contract against implementation in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/152-task-key-pi-lookup/contracts/cli-get-pi-task-key.md
+- [x] T041 [P] Review quickstart commands against final behavior in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/specs/152-task-key-pi-lookup/quickstart.md
+- [x] T042 Run `gofmt` on changed Go files in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd, /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/c8volt, and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask
+- [x] T043 Run targeted validation with `go test ./cmd ./c8volt/process ./c8volt/task ./internal/services/usertask/... ./internal/services/processinstance/... -count=1` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt
+- [x] T044 Run final repository validation with `make test` from /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
 ---
 
