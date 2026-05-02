@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/154-get-pi-incidents/plan.md`
+- Active implementation plan: `specs/157-walk-pi-incidents/plan.md`
 <!-- SPECKIT END -->
