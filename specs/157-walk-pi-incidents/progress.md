@@ -5,6 +5,7 @@ Started: 2026-05-02 12:59:38
 
 ## Codebase Patterns
 
+- `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes only one-line human output through enriched path renderers; JSON and tree rendering remain on their existing paths until their later user-story work units.
 - Issue #154 incident enrichment is the source of truth for `ProcessInstanceIncidentDetail`, keyed-only incident lookup, tenant-aware v8.8/v8.9 behavior, explicit v8.7 unsupported behavior, and human `incident: <message>` lines.
 - Existing walk JSON uses a shared command envelope with traversal metadata in the payload; enriched walk output should preserve that envelope and only replace plain items with enriched traversal items when requested.
 - Walk command tests commonly use IPv4 HTTP fixture servers and JSON response helpers in `cmd/walk_test.go`; traversal fixture helpers should produce v8.8/v8.9-shaped `hasIncident` process-instance responses and incident search result payloads.
@@ -62,4 +63,31 @@ Started: 2026-05-02 12:59:38
 - Traversal enrichment should iterate `TraversalResult.Keys`, skip keys absent from `Chain`, and never let incident search results add unwalked process instances.
 - The existing `incidentsForProcessInstance` helper already provides the per-key association filter needed for both get and walk enrichment paths.
 - Required `--key` absence is caught by Cobra before command run logic; explicit blank keys and incompatible keyed output modes are handled by `validateWalkPIWithIncidentsUsage`.
+---
+---
+## Iteration 3 - 2026-05-02 13:15:33 CEST
+**User Story**: User Story 1 - Show Incident Messages While Walking
+**Tasks Completed**: 
+- [x] T012: Add command human-output test for one walked process instance with one incident
+- [x] T013: Add command human-output test for multiple walked instances with incidents
+- [x] T014: Add command human-output test for walked instances without incidents
+- [x] T015: Add facade test proving incident lookups run only for traversal result keys
+- [x] T016: Call facade traversal enrichment after walk fetch when `--with-incidents` is set
+- [x] T017: Add enriched path renderer for indented `incident:` message lines
+- [x] T018: Wire parent mode human output to enriched path rendering
+- [x] T019: Wire children mode human output to enriched path rendering
+- [x] T020: Wire family mode human output to enriched path rendering
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- c8volt/process/client_test.go
+- cmd/cmd_views_walk.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- specs/157-walk-pi-incidents/tasks.md
+- specs/157-walk-pi-incidents/progress.md
+**Learnings**:
+- One-line enriched path output keeps the existing path separators and inserts `incident:` lines immediately after each owning process-instance row.
+- Command coverage can exercise children, parent, and family enriched rendering through v8.9 fixture servers while reusing the shared walked process-instance and incident response helpers.
+- Facade traversal enrichment intentionally ignores both result keys missing from `Chain` and extra `Chain` entries absent from `Keys`, so lookups stay scoped to actually rendered traversal items.
 ---

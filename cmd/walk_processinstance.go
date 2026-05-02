@@ -56,8 +56,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 
 		type walker struct {
-			fetch func() (process.TraversalResult, error)
-			view  func(*cobra.Command, process.TraversalResult) error
+			fetch        func() (process.TraversalResult, error)
+			view         func(*cobra.Command, process.TraversalResult) error
+			enrichedView func(*cobra.Command, process.IncidentEnrichedTraversalResult) error
 		}
 
 		walkers := map[string]walker{
@@ -75,6 +76,13 @@ var walkProcessInstanceCmd = &cobra.Command{
 					printTraversalWarning(cmd, result)
 					return nil
 				},
+				enrichedView: func(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+					if err := incidentEnrichedAncestorsView(cmd, result); err != nil {
+						return err
+					}
+					printIncidentEnrichedTraversalWarning(cmd, result)
+					return nil
+				},
 			},
 			walkPIModeChildren: {
 				fetch: func() (process.TraversalResult, error) {
@@ -85,6 +93,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 						return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
 					}
 					return descendantsView(cmd, result.Keys, result.Chain)
+				},
+				enrichedView: func(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+					return incidentEnrichedDescendantsView(cmd, result)
 				},
 			},
 			walkPIModeFamily: {
@@ -112,6 +123,13 @@ var walkProcessInstanceCmd = &cobra.Command{
 					printTraversalWarning(cmd, result)
 					return nil
 				},
+				enrichedView: func(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+					if err := incidentEnrichedFamilyView(cmd, result); err != nil {
+						return err
+					}
+					printIncidentEnrichedTraversalWarning(cmd, result)
+					return nil
+				},
 			},
 		}
 		switch {
@@ -129,6 +147,18 @@ var walkProcessInstanceCmd = &cobra.Command{
 		result, err := w.fetch()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if flagWalkPIWithIncidents {
+			enriched, err := cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if pickMode() == RenderModeOneLine {
+				if err := w.enrichedView(cmd, enriched); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+				return
+			}
 		}
 		if err := w.view(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)

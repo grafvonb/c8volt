@@ -37,6 +37,18 @@ func familyView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ⇄ \n")
 }
 
+func incidentEnrichedAncestorsView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+	return incidentEnrichedPathView(cmd, result.Items, " ← \n")
+}
+
+func incidentEnrichedDescendantsView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+	return incidentEnrichedPathView(cmd, result.Items, " → \n")
+}
+
+func incidentEnrichedFamilyView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+	return incidentEnrichedPathView(cmd, result.Items, " ⇄ \n")
+}
+
 func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, sep string) error {
 	items := pathItems(path, chain)
 	switch mode {
@@ -47,6 +59,23 @@ func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, s
 	default: // RenderModeOneLine
 		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, oneLinePI), sep))
 	}
+	return nil
+}
+
+func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrichedTraversalItem, sep string) error {
+	var out strings.Builder
+	for i, item := range items {
+		if i > 0 {
+			out.WriteString(sep)
+		}
+		out.WriteString(oneLinePI(item.Item))
+		for _, incident := range item.Incidents {
+			out.WriteByte('\n')
+			out.WriteString("  incident: ")
+			out.WriteString(incident.ErrorMessage)
+		}
+	}
+	renderOutputLine(cmd, "%s", out.String())
 	return nil
 }
 
@@ -86,18 +115,29 @@ func printTraversalWarning(cmd *cobra.Command, result process.TraversalResult) {
 		return
 	}
 
-	warning := result.Warning
+	printTraversalWarningDetails(cmd, result.Warning, result.MissingAncestors)
+}
+
+func printIncidentEnrichedTraversalWarning(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) {
+	if result.Warning == "" && len(result.MissingAncestors) == 0 {
+		return
+	}
+
+	printTraversalWarningDetails(cmd, result.Warning, result.MissingAncestors)
+}
+
+func printTraversalWarningDetails(cmd *cobra.Command, warning string, missingAncestors []process.MissingAncestor) {
 	if warning == "" {
 		warning = "one or more parent process instances were not found"
 	}
 	renderHumanWarningLine(cmd, "warning: %s", warning)
 
-	if len(result.MissingAncestors) == 0 {
+	if len(missingAncestors) == 0 {
 		return
 	}
 	printMissingAncestorKeyWarning(func(format string, args ...interface{}) {
 		renderHumanWarningLine(cmd, format, args...)
-	}, missingAncestorKeys(result.MissingAncestors))
+	}, missingAncestorKeys(missingAncestors))
 }
 
 // renderFamilyTree prints descendants as an ASCII tree starting from rootKey.

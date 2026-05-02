@@ -44,18 +44,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add command human-output test for one walked process instance with one incident in `cmd/walk_test.go`
-- [ ] T013 [P] [US1] Add command human-output test for multiple walked instances with incidents in `cmd/walk_test.go`
-- [ ] T014 [P] [US1] Add command human-output test for walked instances without incidents in `cmd/walk_test.go`
-- [ ] T015 [P] [US1] Add facade test proving incident lookups run only for traversal result keys in `c8volt/process/client_test.go`
+- [x] T012 [P] [US1] Add command human-output test for one walked process instance with one incident in `cmd/walk_test.go`
+- [x] T013 [P] [US1] Add command human-output test for multiple walked instances with incidents in `cmd/walk_test.go`
+- [x] T014 [P] [US1] Add command human-output test for walked instances without incidents in `cmd/walk_test.go`
+- [x] T015 [P] [US1] Add facade test proving incident lookups run only for traversal result keys in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Call facade traversal enrichment after walk fetch when `--with-incidents` is set in `cmd/walk_processinstance.go`
-- [ ] T017 [US1] Add enriched path renderer for indented `incident:` message lines in `cmd/cmd_views_walk.go`
-- [ ] T018 [US1] Wire parent mode human output to enriched path rendering in `cmd/walk_processinstance.go`
-- [ ] T019 [US1] Wire children mode human output to enriched path rendering in `cmd/walk_processinstance.go`
-- [ ] T020 [US1] Wire family mode human output to enriched path rendering in `cmd/walk_processinstance.go`
+- [x] T016 [US1] Call facade traversal enrichment after walk fetch when `--with-incidents` is set in `cmd/walk_processinstance.go`
+- [x] T017 [US1] Add enriched path renderer for indented `incident:` message lines in `cmd/cmd_views_walk.go`
+- [x] T018 [US1] Wire parent mode human output to enriched path rendering in `cmd/walk_processinstance.go`
+- [x] T019 [US1] Wire children mode human output to enriched path rendering in `cmd/walk_processinstance.go`
+- [x] T020 [US1] Wire family mode human output to enriched path rendering in `cmd/walk_processinstance.go`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

@@ -355,6 +355,43 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, got.Items[1].Incidents)
 }
 
+func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, key)
+			switch key {
+			case "root", "walked":
+				return nil, nil
+			default:
+				t.Fatalf("unexpected incident lookup for key %s", key)
+				return nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
+		Mode:    TraversalModeDescendants,
+		Outcome: TraversalOutcomeComplete,
+		Keys:    []string{"root", "missing-chain", "walked"},
+		Chain: map[string]ProcessInstance{
+			"root":        {Key: "root"},
+			"walked":      {Key: "walked"},
+			"chain-extra": {Key: "chain-extra"},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"root", "walked"}, calls)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, "root", got.Items[0].Item.Key)
+	require.Equal(t, "walked", got.Items[1].Item.Key)
+}
+
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
 // contract: request echoing, overflow state, reported total kind, and item
 // mapping all need to survive the facade boundary.

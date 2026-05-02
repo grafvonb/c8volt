@@ -105,6 +105,137 @@ func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T)
 	require.NotContains(t, buf.String(), "127.0.0.1:1")
 }
 
+func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident(t *testing.T) {
+	var incidentRequests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
+			incidentRequests = append(incidentRequests, r.URL.Path)
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{"/v2/process-instances/123/incidents/search"}, incidentRequests)
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "inc!")
+	require.Contains(t, output, "  incident: Root job failed")
+}
+
+func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents(t *testing.T) {
+	var incidentRequests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			switch {
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"123"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t, walkedProcessInstanceJSON("124", "123", true))))
+			case strings.Contains(string(body), `"parentProcessInstanceKey":"124"`):
+				_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+			default:
+				t.Fatalf("unexpected search body: %s", string(body))
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
+			incidentRequests = append(incidentRequests, r.URL.Path)
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root failed")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/124/incidents/search":
+			incidentRequests = append(incidentRequests, r.URL.Path)
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "124", "Child failed", "Child timed out")))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--family",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"/v2/process-instances/123/incidents/search",
+		"/v2/process-instances/124/incidents/search",
+	}, incidentRequests)
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "124")
+	require.Contains(t, output, "  incident: Root failed")
+	require.Contains(t, output, "  incident: Child failed")
+	require.Contains(t, output, "  incident: Child timed out")
+}
+
+func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned(t *testing.T) {
+	var incidentRequests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/124":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("124", "123", false)))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", false)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/124/incidents/search":
+			incidentRequests = append(incidentRequests, r.URL.Path)
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "124")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
+			incidentRequests = append(incidentRequests, r.URL.Path)
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123")))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "124",
+		"--parent",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"/v2/process-instances/124/incidents/search",
+		"/v2/process-instances/123/incidents/search",
+	}, incidentRequests)
+	require.Contains(t, output, "124")
+	require.Contains(t, output, "123")
+	require.NotContains(t, output, "  incident:")
+}
+
 func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 
