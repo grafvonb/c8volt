@@ -188,16 +188,19 @@ func oneLineResource(it resource.Resource) string {
 	)
 }
 
+// listTenantsView renders tenant discovery output through the shared list, keys-only, and JSON modes.
 func listTenantsView(cmd *cobra.Command, resp tenant.Tenants) error {
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
+// tenantView renders a single tenant through the same mode contract as other get commands.
 func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
 	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
 const tenantNameColumnWidth = 32
 
+// oneLineTenant formats tenant rows for compact human output.
 func oneLineTenant(it tenant.Tenant) string {
 	if it.Description == "" {
 		return fmt.Sprintf("%-24s %-*s", it.TenantId, tenantNameColumnWidth, it.Name)

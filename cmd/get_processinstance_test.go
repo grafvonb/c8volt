@@ -53,6 +53,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.NotContains(t, output, "--count")
 }
 
+// Verifies help text documents has-user-tasks as a compact lookup selector without overloaded examples.
 func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
@@ -556,7 +557,7 @@ func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.
 	require.Contains(t, output, `"tenantId": "<default>"`)
 }
 
-// TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native search contract.
+// TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath verifies v8.9 direct lookup uses the native single-instance endpoint.
 func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -581,6 +582,7 @@ func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T
 	require.Contains(t, output, `"key": "2251799813711967"`)
 }
 
+// Verifies has-user-tasks resolves through native user-task search, then reuses keyed process-instance rendering.
 func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedProcessInstance(t *testing.T) {
 	for _, version := range []string{"8.8", "8.9"} {
 		t.Run(version, func(t *testing.T) {
@@ -619,6 +621,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedP
 	}
 }
 
+// Verifies has-user-tasks lookup applies the effective tenant while resolving the owning process instance.
 func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -647,6 +650,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *
 	require.Contains(t, output, "2251799813711967")
 }
 
+// Verifies repeated has-user-tasks values resolve each task and render the resulting process instances.
 func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -695,6 +699,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *test
 	require.Contains(t, output, "2251799813711977")
 }
 
+// Verifies has-user-tasks JSON output stays identical to direct keyed lookup for the resolved process instance.
 func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -736,6 +741,7 @@ func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *tes
 	require.JSONEq(t, directKeyOutput, taskKeyOutput)
 }
 
+// Verifies has-user-tasks lookup preserves render flags that are valid for direct single-instance lookup.
 func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {
@@ -799,6 +805,7 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 	}
 }
 
+// Verifies a missing resolved process instance keeps the not-found behavior of direct keyed lookup.
 func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceNotFound(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -832,6 +839,7 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceN
 	}, requests)
 }
 
+// Verifies numeric but unknown user-task keys reach native lookup and return not-found, not validation failure.
 func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShortNumericKey(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -862,6 +870,7 @@ func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShor
 	require.Equal(t, []string{"/v2/user-tasks/search"}, requests)
 }
 
+// Verifies malformed has-user-tasks values fail validation before any network lookup is attempted.
 func TestGetProcessInstanceCommand_HasUserTasksRejectsNonDecimalKeyBeforeLookup(t *testing.T) {
 	var requestCount int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -884,6 +893,7 @@ func TestGetProcessInstanceCommand_HasUserTasksRejectsNonDecimalKeyBeforeLookup(
 	require.Equal(t, int32(0), atomic.LoadInt32(&requestCount))
 }
 
+// Verifies has-user-tasks selector conflicts fail before any user-task or process-instance request is made.
 func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *testing.T) {
 	var requestCount int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -958,6 +968,7 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *t
 	}
 }
 
+// Verifies Camunda 8.7 reports has-user-tasks as unsupported instead of falling back to another API.
 func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -969,6 +980,7 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
 	require.Contains(t, output, "requires Camunda 8.8 or 8.9")
 }
 
+// requireUserTaskSearchRequest validates the native user-task search request and returns its decoded body for scenario-specific assertions.
 func requireUserTaskSearchRequest(t *testing.T, r *http.Request, taskKey, tenantID string) map[string]any {
 	t.Helper()
 	require.Equal(t, http.MethodPost, r.Method)
@@ -2068,6 +2080,7 @@ func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPat
 	return executeProcessInstanceFailureHelperWithEnv(t, helperName, cfgPath, nil)
 }
 
+// executeProcessInstanceFailureHelperWithEnv runs a failing helper subprocess with extra environment for scenario selection.
 func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string, cfgPath string, extraEnv map[string]string) (string, int) {
 	t.Helper()
 
@@ -2086,6 +2099,7 @@ func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string,
 	return string(output), exitErr.ExitCode()
 }
 
+// TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper drives conflict cases that must exercise real Execute exit behavior.
 func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2131,6 +2145,7 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper drives the unsupported-version path in a helper process.
 func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2143,6 +2158,7 @@ func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper preserves process exit behavior for resolved-key not-found.
 func TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -2155,6 +2171,7 @@ func TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHe
 	Execute()
 }
 
+// TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper drives invalid and missing task-key lookups in a helper process.
 func TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return

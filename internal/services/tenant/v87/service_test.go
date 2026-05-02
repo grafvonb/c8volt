@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newTestService builds a v8.7 tenant service with discard logging for unsupported-version tests.
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 
@@ -24,6 +25,7 @@ func newTestService(t *testing.T) *Service {
 	return svc
 }
 
+// Verifies v8.7 tenant search fails with an explicit unsupported capability error.
 func TestService_SearchTenants_Unsupported(t *testing.T) {
 	svc := newTestService(t)
 
@@ -36,6 +38,7 @@ func TestService_SearchTenants_Unsupported(t *testing.T) {
 	assert.Contains(t, err.Error(), "Camunda 8.8")
 }
 
+// Verifies v8.7 keyed tenant lookup fails with an explicit unsupported capability error.
 func TestService_GetTenant_Unsupported(t *testing.T) {
 	svc := newTestService(t)
 

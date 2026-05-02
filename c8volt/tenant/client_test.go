@@ -19,19 +19,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// stubTenantAPI provides tenant service behavior directly to the facade tests.
 type stubTenantAPI struct {
 	searchTenants func(context.Context, d.TenantFilter, int32, ...services.CallOption) ([]d.Tenant, error)
 	getTenant     func(context.Context, string, ...services.CallOption) (d.Tenant, error)
 }
 
+// SearchTenants delegates to the configured test search function.
 func (s stubTenantAPI) SearchTenants(ctx context.Context, filter d.TenantFilter, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
 	return s.searchTenants(ctx, filter, size, opts...)
 }
 
+// GetTenant delegates to the configured test keyed lookup function.
 func (s stubTenantAPI) GetTenant(ctx context.Context, tenantID string, opts ...services.CallOption) (d.Tenant, error) {
 	return s.getTenant(ctx, tenantID, opts...)
 }
 
+// Verifies the tenant facade forwards filters, page size, and options while preserving service order.
 func TestClient_SearchTenants_ConvertsAndForwardsFilter(t *testing.T) {
 	t.Parallel()
 
@@ -61,6 +65,7 @@ func TestClient_SearchTenants_ConvertsAndForwardsFilter(t *testing.T) {
 	assert.Equal(t, "duplicate name", got.Items[1].Description)
 }
 
+// Verifies keyed tenant facade lookup converts the domain result into the public model.
 func TestClient_GetTenant_ConvertsDomainResult(t *testing.T) {
 	t.Parallel()
 
@@ -80,6 +85,7 @@ func TestClient_GetTenant_ConvertsDomainResult(t *testing.T) {
 	assert.Equal(t, Tenant{TenantId: "tenant-a", Name: "Alpha", Description: "primary tenant"}, got)
 }
 
+// Verifies tenant JSON payloads expose only discovery fields and omit sensitive membership data.
 func TestClient_TenantJSONExposesOnlyPublicDiscoveryFields(t *testing.T) {
 	t.Parallel()
 
@@ -106,6 +112,7 @@ func TestClient_TenantJSONExposesOnlyPublicDiscoveryFields(t *testing.T) {
 	assertJSONKeys(t, list, "total", "items")
 }
 
+// Verifies keyed tenant not-found errors are mapped into the facade not-found class.
 func TestClient_GetTenant_MapsNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -124,6 +131,7 @@ func TestClient_GetTenant_MapsNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ferrors.ErrNotFound)
 }
 
+// Verifies tenant facade methods map domain error classes consistently across list and keyed modes.
 func TestClient_MapsDomainErrors(t *testing.T) {
 	t.Parallel()
 
@@ -148,10 +156,12 @@ func TestClient_MapsDomainErrors(t *testing.T) {
 	assert.ErrorIs(t, err, ferrors.ErrNotFound)
 }
 
+// fmtWrappedDomainError keeps test errors wrapped enough to prove error-class mapping uses errors.Is.
 func fmtWrappedDomainError(err error) error {
 	return errors.Join(err)
 }
 
+// assertJSONKeys verifies exact public JSON keys while guarding against sensitive tenant fields.
 func assertJSONKeys(t *testing.T, value any, want ...string) {
 	t.Helper()
 

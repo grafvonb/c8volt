@@ -20,11 +20,15 @@ type Service struct {
 	log *slog.Logger
 }
 
+// Config returns the normalized service configuration used by the v8.7 tenant service.
 func (s *Service) Config() *config.Config { return s.cfg }
-func (s *Service) Logger() *slog.Logger   { return s.log }
+
+// Logger returns the service logger used by the v8.7 tenant service.
+func (s *Service) Logger() *slog.Logger { return s.log }
 
 type Option func(*Service)
 
+// WithLogger overrides the default logger for tests and callers that need custom logging.
 func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
@@ -33,6 +37,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// New prepares a v8.7 tenant service that reports tenant discovery as unsupported.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -48,6 +53,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
+// SearchTenants reports unsupported because Camunda 8.7 lacks the native tenant search endpoint used by c8volt.
 func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size int32, opts ...services.CallOption) ([]d.Tenant, error) {
 	_ = ctx
 	_ = filter
@@ -56,6 +62,7 @@ func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size
 	return nil, unsupportedTenantOperation("tenant search")
 }
 
+// GetTenant reports unsupported because Camunda 8.7 lacks the native tenant lookup endpoint used by c8volt.
 func (s *Service) GetTenant(ctx context.Context, tenantID string, opts ...services.CallOption) (d.Tenant, error) {
 	_ = ctx
 	_ = tenantID
@@ -63,6 +70,7 @@ func (s *Service) GetTenant(ctx context.Context, tenantID string, opts ...servic
 	return d.Tenant{}, unsupportedTenantOperation("tenant lookup")
 }
 
+// unsupportedTenantOperation formats the shared unsupported-version message for tenant operations.
 func unsupportedTenantOperation(operation string) error {
 	return fmt.Errorf("%w: %s requires Camunda 8.8 or newer", d.ErrUnsupported, operation)
 }

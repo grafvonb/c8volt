@@ -18,6 +18,7 @@ type TenantFilter struct {
 	NameContains string
 }
 
+// FilterTenantsByNameOrIDContains applies the CLI literal contains filter across tenant name and ID.
 func FilterTenantsByNameOrIDContains(tenants []Tenant, text string) []Tenant {
 	if text == "" {
 		return slices.Clone(tenants)
