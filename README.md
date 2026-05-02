@@ -203,6 +203,18 @@ Use `--batch-size` or `-n` to control how many process instances each backend pa
 
 When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
 
+### Resolve From User Task Keys
+
+```bash
+./c8volt get pi --has-user-tasks <user-task-key>
+./c8volt get pi --has-user-tasks <user-task-key> --has-user-tasks <another-user-task-key>
+./c8volt get pi --has-user-tasks <user-task-key> --json
+```
+
+`--has-user-tasks` resolves owning process instances through tenant-aware native Camunda user-task search, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--with-age`, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+
+c8volt does not use Tasklist or Operate fallback APIs for user-task resolution.
+
 ### Pull Exact Artifacts
 
 ```bash
@@ -408,7 +420,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances
-|   |-- tenant                List or fetch visible tenants
+|   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
@@ -428,6 +440,7 @@ c8volt
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
 ./c8volt get tenant
+./c8volt get tenant --filter dev
 ./c8volt get cluster topology
 ./c8volt get resource --id <resource-key>
 ./c8volt config show

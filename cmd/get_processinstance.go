@@ -16,12 +16,14 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 var (
 	flagGetPIKeys                 []string
+	flagGetPIHasUserTasks         []string
 	flagGetPIBpmnProcessID        string
 	flagGetPIProcessVersion       int32
 	flagGetPIProcessVersionTag    string
@@ -56,11 +58,15 @@ var getProcessInstanceCmd = &cobra.Command{
 	Short: "List or fetch process instances",
 	Long: "List process instances by search filters or fetch them by key.\n" +
 		"Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.\n\n" +
+		"Use --has-user-tasks to resolve owning process instances from user task keys through tenant-aware native user-task search. There is no Tasklist or Operate fallback.\n\n" +
 		"Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.",
 	Example: `  ./c8volt get pi --state active
   ./c8volt get pi --state active --total
   ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --key 2251799813711967 --json
+  ./c8volt get pi --has-user-tasks 2251799815391233
+  ./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244
+  ./c8volt get pi --has-user-tasks 2251799815391233 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
@@ -94,7 +100,15 @@ var getProcessInstanceCmd = &cobra.Command{
 		keys := mergeAndValidateKeys(flagGetPIKeys, stdinKeys, log, cfg)
 		ukeys := keys.Unique()
 		lk := len(ukeys)
-		if lk == 0 {
+		taskKeys, err := normalizeHasUserTasks(types.Keys(flagGetPIHasUserTasks))
+		if err != nil {
+			fail(err)
+		}
+		ltk := len(taskKeys)
+		if err := validatePIHasUserTasksMode(cmd, ltk, lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
+		if lk == 0 && ltk == 0 {
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				fail(err)
 			}
@@ -103,6 +117,21 @@ var getProcessInstanceCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		var pis process.ProcessInstances
 		switch {
+		case ltk > 0:
+			log.Debug(fmt.Sprintf("resolving process instance key(s) from user task key(s) [%s]", taskKeys))
+			processInstanceKeys, err := cli.ResolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("resolve process instance key(s) from user task key(s): %w", err))
+			}
+			processInstanceKeys = processInstanceKeys.Unique()
+			wantedWorkers := len(processInstanceKeys)
+			if cmd.Flags().Changed("workers") {
+				wantedWorkers = flagWorkers
+			}
+			pis, err = cli.GetProcessInstances(ctx, processInstanceKeys, wantedWorkers, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("get process instance(s) resolved from user task key(s) [%s]: %w", taskKeys, err))
+			}
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
@@ -163,6 +192,7 @@ func init() {
 
 	fs := getProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
+	fs.StringSliceVar(&flagGetPIHasUserTasks, "has-user-tasks", nil, "user task key(s) whose owning process instances should be fetched")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
@@ -333,6 +363,56 @@ func validatePIKeyedModeDateFilters(keyCount int) error {
 		return mutuallyExclusiveFlagsf("date filters are only supported for list/search usage and cannot be combined with --key")
 	}
 	return nil
+}
+
+func validatePIHasUserTasksMode(cmd *cobra.Command, taskKeyCount, keyCount int, filterFlagsSet bool) error {
+	if taskKeyCount == 0 {
+		return nil
+	}
+	if keyCount > 0 {
+		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --key or stdin key input")
+	}
+	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
+		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with process-instance search filters")
+	}
+	if flagGetPITotal {
+		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --total")
+	}
+	if flagGetPILimit > 0 || isPILimitFlagChanged(cmd) {
+		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --limit")
+	}
+	return nil
+}
+
+func normalizeHasUserTasks(keys types.Keys) (types.Keys, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	out := make(types.Keys, 0, len(keys))
+	for i, key := range keys {
+		trimmed := strings.TrimSpace(key)
+		if !isPositiveDecimalUserTaskKey(trimmed) {
+			return nil, invalidFlagValuef("invalid value for --has-user-tasks: %q at index %d is not a positive decimal user task key", key, i)
+		}
+		out = append(out, trimmed)
+	}
+	return out.Unique(), nil
+}
+
+func isPositiveDecimalUserTaskKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	hasNonZero := false
+	for _, r := range key {
+		if r < '0' || r > '9' {
+			return false
+		}
+		if r != '0' {
+			hasNonZero = true
+		}
+	}
+	return hasNonZero
 }
 
 func pickPISearchSize() int32 {

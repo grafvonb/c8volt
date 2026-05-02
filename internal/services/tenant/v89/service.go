@@ -81,7 +81,7 @@ func (s *Service) SearchTenants(ctx context.Context, filter d.TenantFilter, size
 		return nil, err
 	}
 	out := toolx.MapSlice(payload.Items, fromTenantResult)
-	out = d.FilterTenantsByNameContains(out, filter.NameContains)
+	out = d.FilterTenantsByNameOrIDContains(out, filter.NameContains)
 	common.VerboseLog(ctx, cCfg, s.log, "found tenants", "count", len(out))
 	return out, nil
 }

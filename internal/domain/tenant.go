@@ -18,14 +18,17 @@ type TenantFilter struct {
 	NameContains string
 }
 
-func FilterTenantsByNameContains(tenants []Tenant, text string) []Tenant {
+func FilterTenantsByNameOrIDContains(tenants []Tenant, text string) []Tenant {
 	if text == "" {
 		return slices.Clone(tenants)
 	}
 
+	needle := strings.ToLower(text)
 	out := make([]Tenant, 0, len(tenants))
 	for _, tenant := range tenants {
-		if strings.Contains(tenant.Name, text) {
+		name := strings.ToLower(tenant.Name)
+		tenantID := strings.ToLower(tenant.TenantId)
+		if strings.Contains(name, needle) || strings.Contains(tenantID, needle) {
 			out = append(out, tenant)
 		}
 	}

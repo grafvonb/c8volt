@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -45,6 +46,17 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--limit int32")
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.NotContains(t, output, "--count")
+}
+
+func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
+	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
+
+	require.Contains(t, output, "--has-user-tasks strings")
+	require.Contains(t, output, "user task key(s) whose owning process instances should be fetched")
+	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233")
+	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
+	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --json")
+	require.Contains(t, output, "Tasklist or Operate fallback")
 }
 
 // Verifies search-mode get process-instance sends the expected filter and pagination request shape.
@@ -563,6 +575,413 @@ func TestGetProcessInstanceCommand_V89KeyLookupUsesNativeSearchPath(t *testing.T
 
 	require.Equal(t, []string{"/v2/process-instances/2251799813711967"}, requests)
 	require.Contains(t, output, `"key": "2251799813711967"`)
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksLookupUsesNativeUserTaskAndKeyedProcessInstance(t *testing.T) {
+	for _, version := range []string{"8.8", "8.9"} {
+		t.Run(version, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/user-tasks/search":
+					requireUserTaskSearchRequest(t, r, "2251799815391233", "")
+					_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+				case "/v2/process-instances/2251799813711967":
+					require.Equal(t, http.MethodGet, r.Method)
+					_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, version)
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"get", "pi",
+				"--has-user-tasks", "2251799815391233",
+			)
+
+			require.Equal(t, []string{
+				"/v2/user-tasks/search",
+				"/v2/process-instances/2251799813711967",
+			}, requests)
+			require.Contains(t, output, "2251799813711967")
+			require.NotContains(t, output, "2251799815391233")
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksLookupIncludesEffectiveTenant(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/search":
+			requireUserTaskSearchRequest(t, r, "2251799815391233", "tenant-a")
+			_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/2251799813711967":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant-a"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant-a",
+		"get", "pi",
+		"--has-user-tasks", "2251799815391233",
+	)
+
+	require.Contains(t, output, "2251799813711967")
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksLookupAcceptsMultipleKeys(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/search":
+			body := requireUserTaskSearchRequest(t, r, "", "")
+			switch body["filter"].(map[string]any)["userTaskKey"] {
+			case "2251799815391233":
+				_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			case "2251799815391244":
+				_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391244","processInstanceKey":"2251799813711977","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			default:
+				t.Fatalf("unexpected user task search body: %v", body)
+			}
+		case "/v2/process-instances/2251799813711967":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/2251799813711977":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711977","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "pi",
+		"--has-user-tasks", "2251799815391233",
+		"--has-user-tasks", "2251799815391244",
+		"--workers", "1",
+	)
+
+	require.Equal(t, []string{
+		"/v2/user-tasks/search",
+		"/v2/user-tasks/search",
+		"/v2/process-instances/2251799813711967",
+		"/v2/process-instances/2251799813711977",
+	}, requests)
+	require.Contains(t, output, "2251799813711967")
+	require.Contains(t, output, "2251799813711977")
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksJSONMatchesDirectKeyedJSON(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/search":
+			requireUserTaskSearchRequest(t, r, "2251799815391233", "")
+			_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/2251799813711967":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	taskKeyOutput := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--has-user-tasks", "2251799815391233",
+	)
+	directKeyOutput := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "2251799813711967",
+	)
+
+	require.Equal(t, []string{
+		"/v2/user-tasks/search",
+		"/v2/process-instances/2251799813711967",
+		"/v2/process-instances/2251799813711967",
+	}, requests)
+	require.JSONEq(t, directKeyOutput, taskKeyOutput)
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "with age",
+			args: []string{"--with-age"},
+			want: "(2 days ago)",
+		},
+		{
+			name: "keys only",
+			args: []string{"--keys-only"},
+			want: "2251799813711967\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/user-tasks/search":
+					requireUserTaskSearchRequest(t, r, "2251799815391233", "")
+					_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+				case "/v2/process-instances/2251799813711967":
+					require.Equal(t, http.MethodGet, r.Method)
+					_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+				default:
+					t.Fatalf("unexpected request path: %s", r.URL.Path)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := append([]string{
+				"--config", cfgPath,
+				"get", "process-instance",
+				"--has-user-tasks", "2251799815391233",
+			}, tt.args...)
+
+			output := executeRootForProcessInstanceTest(t, args...)
+
+			require.Equal(t, []string{
+				"/v2/user-tasks/search",
+				"/v2/process-instances/2251799813711967",
+			}, requests)
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksPreservesResolvedProcessInstanceNotFound(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/search":
+			requireUserTaskSearchRequest(t, r, "2251799815391233", "")
+			_, _ = w.Write([]byte(`{"items":[{"userTaskKey":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/2251799813711967":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"not found"}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper", cfgPath)
+
+	require.Equal(t, exitcode.NotFound, code)
+	require.Contains(t, output, "resource not found")
+	require.Contains(t, output, "get process instance(s) resolved from user task key(s) [2251799815391233]")
+	require.Contains(t, output, "/v2/process-instances/2251799813711967")
+	require.Equal(t, []string{
+		"/v2/user-tasks/search",
+		"/v2/process-instances/2251799813711967",
+	}, requests)
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShortNumericKey(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/user-tasks/search":
+			requireUserTaskSearchRequest(t, r, "225179981539123", "")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeProcessInstanceFailureHelperWithEnv(t,
+		"TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper",
+		cfgPath,
+		map[string]string{"C8VOLT_TEST_HAS_USER_TASKS_KEY": "225179981539123"},
+	)
+
+	require.Equal(t, exitcode.NotFound, code)
+	require.Contains(t, output, "resource not found")
+	require.Contains(t, output, "user task 225179981539123 was not found or is not visible to the configured tenant")
+	require.NotContains(t, output, "invalid input")
+	require.Equal(t, []string{"/v2/user-tasks/search"}, requests)
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksRejectsNonDecimalKeyBeforeLookup(t *testing.T) {
+	var requestCount int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		http.Error(w, "unexpected request", http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, code := executeProcessInstanceFailureHelperWithEnv(t,
+		"TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper",
+		cfgPath,
+		map[string]string{"C8VOLT_TEST_HAS_USER_TASKS_KEY": "not-a-key"},
+	)
+
+	require.Equal(t, exitcode.InvalidArgs, code)
+	require.Contains(t, output, "invalid input")
+	require.Contains(t, output, `invalid value for --has-user-tasks: "not-a-key" at index 0 is not a positive decimal user task key`)
+	require.Equal(t, int32(0), atomic.LoadInt32(&requestCount))
+}
+
+func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictsBeforeLookup(t *testing.T) {
+	var requestCount int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		http.Error(w, "unexpected request", http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	tests := []struct {
+		name string
+		mode string
+		want string
+	}{
+		{
+			name: "key selector",
+			mode: "key",
+			want: "--has-user-tasks cannot be combined with --key or stdin key input",
+		},
+		{
+			name: "stdin key selector",
+			mode: "stdin",
+			want: "--has-user-tasks cannot be combined with --key or stdin key input",
+		},
+		{
+			name: "state filter",
+			mode: "state",
+			want: "--has-user-tasks cannot be combined with process-instance search filters",
+		},
+		{
+			name: "process definition filter",
+			mode: "bpmn-process-id",
+			want: "--has-user-tasks cannot be combined with process-instance search filters",
+		},
+		{
+			name: "date filter",
+			mode: "start-date-after",
+			want: "--has-user-tasks cannot be combined with process-instance search filters",
+		},
+		{
+			name: "derived search filter",
+			mode: "roots-only",
+			want: "--has-user-tasks cannot be combined with process-instance search filters",
+		},
+		{
+			name: "total mode",
+			mode: "total",
+			want: "--has-user-tasks cannot be combined with --total",
+		},
+		{
+			name: "limit mode",
+			mode: "limit",
+			want: "--has-user-tasks cannot be combined with --limit",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := atomic.LoadInt32(&requestCount)
+			output, code := executeProcessInstanceFailureHelperWithEnv(t,
+				"TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper",
+				cfgPath,
+				map[string]string{"C8VOLT_TEST_HAS_USER_TASKS_CONFLICT": tt.mode},
+			)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+			require.Equal(t, before, atomic.LoadInt32(&requestCount))
+		})
+	}
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, code := executeProcessInstanceFailureHelper(t, "TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper", cfgPath)
+
+	require.Equal(t, exitcode.Error, code)
+	require.Contains(t, output, "unsupported capability")
+	require.Contains(t, output, "has-user-tasks lookup is unsupported in Camunda 8.7")
+	require.Contains(t, output, "requires Camunda 8.8 or 8.9")
+}
+
+func requireUserTaskSearchRequest(t *testing.T, r *http.Request, taskKey, tenantID string) map[string]any {
+	t.Helper()
+	require.Equal(t, http.MethodPost, r.Method)
+	require.Equal(t, "/v2/user-tasks/search", r.URL.Path)
+	raw, err := io.ReadAll(r.Body)
+	require.NoError(t, err)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(raw, &body))
+	filter, ok := body["filter"].(map[string]any)
+	require.True(t, ok, "expected user task search filter in %s", string(raw))
+	if taskKey != "" {
+		require.Equal(t, taskKey, filter["userTaskKey"])
+	}
+	if tenantID != "" {
+		require.Equal(t, tenantID, filter["tenantId"])
+	}
+	return body
 }
 
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.
@@ -1575,6 +1994,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagCancelPIKeys = nil
 	flagDeletePIKeys = nil
 	flagGetPIKeys = nil
+	flagGetPIHasUserTasks = nil
 	flagRunPIProcessDefinitionBpmnProcessIds = nil
 	flagRunPIProcessDefinitionKey = nil
 	flagRunPIProcessDefinitionVersion = 0
@@ -1641,15 +2061,111 @@ func resetRootPersistentFlags(t *testing.T, root *cobra.Command) {
 func executeProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
 
-	output, err := testx.RunCmdSubprocess(t, helperName, map[string]string{
+	return executeProcessInstanceFailureHelperWithEnv(t, helperName, cfgPath, nil)
+}
+
+func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string, cfgPath string, extraEnv map[string]string) (string, int) {
+	t.Helper()
+
+	env := map[string]string{
 		"C8VOLT_TEST_CONFIG":  cfgPath,
 		testRelativeDayNowEnv: cancelDeleteRelativeDayNow,
-	})
+	}
+	for k, v := range extraEnv {
+		env[k] = v
+	}
+	output, err := testx.RunCmdSubprocess(t, helperName, env)
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	return string(output), exitErr.ExitCode()
+}
+
+func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+
+	args := []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
+	switch os.Getenv("C8VOLT_TEST_HAS_USER_TASKS_CONFLICT") {
+	case "key":
+		args = append(args, "--key", "2251799813711967")
+	case "stdin":
+		stdinReader, stdinWriter, err := os.Pipe()
+		require.NoError(t, err)
+		_, err = stdinWriter.WriteString("2251799813711967\n")
+		require.NoError(t, err)
+		require.NoError(t, stdinWriter.Close())
+		prevStdin := os.Stdin
+		os.Stdin = stdinReader
+		t.Cleanup(func() {
+			os.Stdin = prevStdin
+			require.NoError(t, stdinReader.Close())
+		})
+		args = append(args, "-")
+	case "state":
+		args = append(args, "--state", "active")
+	case "bpmn-process-id":
+		args = append(args, "--bpmn-process-id", "C88_SimpleUserTask_Process")
+	case "start-date-after":
+		args = append(args, "--start-date-after", "2026-01-01")
+	case "roots-only":
+		args = append(args, "--roots-only")
+	case "total":
+		args = append(args, "--total")
+	case "limit":
+		args = append(args, "--limit", "1")
+	default:
+		t.Fatalf("unknown has-user-tasks conflict mode %q", os.Getenv("C8VOLT_TEST_HAS_USER_TASKS_CONFLICT"))
+	}
+	os.Args = args
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksUnsupportedOnV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksResolvedProcessInstanceNotFoundHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", "2251799815391233"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceCommand_HasUserTasksLookupFailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	taskKey := os.Getenv("C8VOLT_TEST_HAS_USER_TASKS_KEY")
+	if taskKey == "" {
+		taskKey = "2251799815391233"
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--has-user-tasks", taskKey}
+
+	Execute()
 }
 
 // TestGetProcessInstanceCommand_RejectsRemovedCountFlagHelper is the helper-process entrypoint for removed --count validation.

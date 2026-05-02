@@ -10,23 +10,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFilterTenantsByNameContains_TreatsTextLiterally(t *testing.T) {
+func TestFilterTenantsByNameOrIDContains_TreatsTextLiterally(t *testing.T) {
 	tenants := []Tenant{
 		{TenantId: "tenant-a", Name: "demo.*"},
 		{TenantId: "tenant-b", Name: "demo-1"},
 		{TenantId: "tenant-c", Name: "prod"},
 	}
 
-	got := FilterTenantsByNameContains(tenants, ".*")
+	got := FilterTenantsByNameOrIDContains(tenants, ".*")
 
 	require.Len(t, got, 1)
 	assert.Equal(t, "tenant-a", got[0].TenantId)
 }
 
-func TestFilterTenantsByNameContains_EmptyTextReturnsCopy(t *testing.T) {
+func TestFilterTenantsByNameOrIDContains_MatchesNameOrTenantIDCaseInsensitively(t *testing.T) {
+	tenants := []Tenant{
+		{TenantId: "dev01", Name: "Development Stage 01"},
+		{TenantId: "tenant-a", Name: "Alpha"},
+		{TenantId: "tenant-b", Name: "Beta"},
+	}
+
+	got := FilterTenantsByNameOrIDContains(tenants, "DEV")
+
+	require.Len(t, got, 1)
+	assert.Equal(t, "dev01", got[0].TenantId)
+
+	got = FilterTenantsByNameOrIDContains(tenants, "alp")
+
+	require.Len(t, got, 1)
+	assert.Equal(t, "tenant-a", got[0].TenantId)
+}
+
+func TestFilterTenantsByNameOrIDContains_EmptyTextReturnsCopy(t *testing.T) {
 	tenants := []Tenant{{TenantId: "tenant-a", Name: "Alpha"}}
 
-	got := FilterTenantsByNameContains(tenants, "")
+	got := FilterTenantsByNameOrIDContains(tenants, "")
 
 	require.Equal(t, tenants, got)
 	require.NotSame(t, &tenants[0], &got[0])

@@ -196,11 +196,13 @@ func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
 	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
+const tenantNameColumnWidth = 32
+
 func oneLineTenant(it tenant.Tenant) string {
 	if it.Description == "" {
-		return fmt.Sprintf("%-24s %s", it.TenantId, it.Name)
+		return fmt.Sprintf("%-24s %-*s", it.TenantId, tenantNameColumnWidth, it.Name)
 	}
-	return fmt.Sprintf("%-s %s - %s", it.TenantId, it.Name, it.Description)
+	return fmt.Sprintf("%-24s %-*s %s", it.TenantId, tenantNameColumnWidth, it.Name, it.Description)
 }
 
 func zeroAsMinus(v int64) string {

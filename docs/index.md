@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-215-g56ae315`, commit `56ae315`, built `2026-05-01T11:50:35Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.4.0-alpha1-12-g9cb9a39`, commit `9cb9a39`, built `2026-05-02T06:58:18Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -115,6 +115,7 @@ That is the gap `c8volt` closes.
 - wait for the state you actually need
 - page through large process-instance result sets safely
 - return only the numeric process-instance match count with `get pi --total`
+- discover visible tenants with `get tenant`
 - validate config and inspect cluster metadata
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
@@ -210,6 +211,18 @@ Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of
 Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
 When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
+
+### Resolve From User Task Keys
+
+```bash
+./c8volt get pi --has-user-tasks <user-task-key>
+./c8volt get pi --has-user-tasks <user-task-key> --has-user-tasks <another-user-task-key>
+./c8volt get pi --has-user-tasks <user-task-key> --json
+```
+
+`--has-user-tasks` resolves owning process instances through tenant-aware native Camunda user-task search, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--with-age`, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+
+c8volt does not use Tasklist or Operate fallback APIs for user-task resolution.
 
 ### Pull Exact Artifacts
 
@@ -416,6 +429,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances
+|   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
@@ -434,6 +448,8 @@ c8volt
 ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
 ./c8volt get pi --state active
 ./c8volt get pi --state active --incidents-only --with-age
+./c8volt get tenant
+./c8volt get tenant --filter dev
 ./c8volt get cluster topology
 ./c8volt get resource --id <resource-key>
 ./c8volt config show

@@ -80,23 +80,25 @@ func TestService_SearchTenants(t *testing.T) {
 			},
 		},
 		{
-			name:   "literal name filter",
-			filter: domain.TenantFilter{NameContains: ".*"},
+			name:   "literal name or tenant id filter ignores case",
+			filter: domain.TenantFilter{NameContains: "DEV"},
 			setupMock: func(m *mockTenantClient) {
 				resp := &camundav89.SearchTenantsResponse{
 					HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/tenants/search", http.StatusOK, "200 OK"),
 					JSON200: &camundav89.TenantSearchQueryResult{
 						Items: []camundav89.TenantResult{
-							{TenantId: "tenant-a", Name: "demo.*"},
-							{TenantId: "tenant-b", Name: "demo-1"},
+							{TenantId: "dev01", Name: "Development Stage 01"},
+							{TenantId: "tenant-dev", Name: "Beta"},
+							{TenantId: "tenant-prod", Name: "Production"},
 						},
 					},
 				}
 				m.On("SearchTenantsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
 			},
 			assertResult: func(t *testing.T, tenants []domain.Tenant) {
-				require.Len(t, tenants, 1)
-				assert.Equal(t, "tenant-a", tenants[0].TenantId)
+				require.Len(t, tenants, 2)
+				assert.Equal(t, "dev01", tenants[0].TenantId)
+				assert.Equal(t, "tenant-dev", tenants[1].TenantId)
 			},
 		},
 		{

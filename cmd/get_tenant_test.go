@@ -48,6 +48,32 @@ func TestGetTenantListOutput_SortsAndRendersCompactRows(t *testing.T) {
 	require.Less(t, strings.Index(output, "tenant-a"), strings.Index(output, "tenant-b"))
 }
 
+func TestGetTenantListOutput_AlignsTenantIDAndNameColumns(t *testing.T) {
+	resetTenantRenderFlags(t)
+	cmd := newTenantListTestCommand()
+	api := tenantCommandAPI{searchTenants: func(context.Context, tenant.TenantFilter, ...foptions.FacadeOption) (tenant.Tenants, error) {
+		return tenant.Tenants{
+			Total: 3,
+			Items: []tenant.Tenant{
+				{TenantId: "<default>", Name: "Default"},
+				{TenantId: "dev01", Name: "Dev 01 - Development Stage 01", Description: "shared development stage"},
+				{TenantId: "dev02", Name: "Dev 02"},
+			},
+		}, nil
+	}}
+
+	runSearchTenants(cmd, api, tenantTestLogger(), true, tenant.TenantFilter{})
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Equal(t, strings.Join([]string{
+		"<default>                Default",
+		"dev01                    Dev 01 - Development Stage 01    shared development stage",
+		"dev02                    Dev 02",
+		"found: 3",
+		"",
+	}, "\n"), output)
+}
+
 func TestGetTenantListOutput_KeysOnlyUsesTenantID(t *testing.T) {
 	resetTenantRenderFlags(t)
 	flagViewKeysOnly = true
@@ -124,16 +150,17 @@ func TestGetTenantByKeyOutput_RendersSingleTenant(t *testing.T) {
 	require.NotContains(t, output, "found:")
 }
 
-func TestGetTenantListOutput_FilterPassesNameContainsAndRendersMatches(t *testing.T) {
+func TestGetTenantListOutput_FilterPassesTenantIDOrNameContainsAndRendersMatches(t *testing.T) {
 	resetTenantRenderFlags(t)
-	flagGetTenantFilter = "demo"
+	flagGetTenantFilter = "dev"
 	cmd := newTenantListTestCommand()
 	api := tenantCommandAPI{searchTenants: func(_ context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
-		require.Equal(t, tenant.TenantFilter{NameContains: "demo"}, filter)
+		require.Equal(t, tenant.TenantFilter{NameContains: "dev"}, filter)
 		return tenant.Tenants{
-			Total: 1,
+			Total: 2,
 			Items: []tenant.Tenant{
-				{TenantId: "tenant-demo", Name: "demo tenant"},
+				{TenantId: "dev01", Name: "Alpha"},
+				{TenantId: "tenant-a", Name: "Development"},
 			},
 		}, nil
 	}}
@@ -141,24 +168,49 @@ func TestGetTenantListOutput_FilterPassesNameContainsAndRendersMatches(t *testin
 	runSearchTenants(cmd, api, tenantTestLogger(), true, tenantFilterFromFlags())
 	output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
-	require.Contains(t, output, "tenant-demo")
-	require.Contains(t, output, "demo tenant")
-	require.Contains(t, output, "found: 1")
+	require.Contains(t, output, "dev01")
+	require.Contains(t, output, "Alpha")
+	require.Contains(t, output, "tenant-a")
+	require.Contains(t, output, "Development")
+	require.Contains(t, output, "found: 2")
 }
 
 func TestGetTenantListOutput_FilterEmptyResults(t *testing.T) {
 	resetTenantRenderFlags(t)
 	flagGetTenantFilter = "missing"
 	cmd := newTenantListTestCommand()
+	logBuf := &bytes.Buffer{}
+	log := slog.New(slog.NewTextHandler(logBuf, nil))
 	api := tenantCommandAPI{searchTenants: func(_ context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
 		require.Equal(t, tenant.TenantFilter{NameContains: "missing"}, filter)
 		return tenant.Tenants{}, nil
 	}}
 
-	runSearchTenants(cmd, api, tenantTestLogger(), true, tenantFilterFromFlags())
+	runSearchTenants(cmd, api, log, true, tenantFilterFromFlags())
 	output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 	require.Equal(t, "found: 0\n", output)
+	require.NotContains(t, logBuf.String(), "tenant search returned no tenants")
+}
+
+func TestGetTenantListOutput_UnfilteredEmptyResultsWarnsAboutTenantAccess(t *testing.T) {
+	resetTenantRenderFlags(t)
+	cmd := newTenantListTestCommand()
+	logBuf := &bytes.Buffer{}
+	log := slog.New(slog.NewTextHandler(logBuf, nil))
+	api := tenantCommandAPI{searchTenants: func(_ context.Context, filter tenant.TenantFilter, opts ...foptions.FacadeOption) (tenant.Tenants, error) {
+		require.Equal(t, tenant.TenantFilter{}, filter)
+		return tenant.Tenants{}, nil
+	}}
+
+	runSearchTenants(cmd, api, log, true, tenant.TenantFilter{})
+	output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+	require.Equal(t, "found: 0\n", output)
+	require.Contains(t, logBuf.String(), "level=WARN")
+	require.Contains(t, logBuf.String(), "tenant search returned no tenants")
+	require.Contains(t, logBuf.String(), "<default>")
+	require.Contains(t, logBuf.String(), "configured client may not have access to tenant resources")
 }
 
 func TestGetTenantListOutput_FilterKeepsPatternTextLiteral(t *testing.T) {

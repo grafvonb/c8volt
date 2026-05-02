@@ -63,10 +63,18 @@ func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noEr
 	if err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search tenants: %w", err))
 	}
+	warnIfUnfilteredTenantSearchReturnedEmpty(log, filter, tenants)
 	if err := listTenantsView(cmd, tenants); err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("render tenants: %w", err))
 	}
 	log.Debug(fmt.Sprintf("fetched tenants, found: %d items", tenants.Total))
+}
+
+func warnIfUnfilteredTenantSearchReturnedEmpty(log *slog.Logger, filter tenant.TenantFilter, tenants tenant.Tenants) {
+	if log == nil || strings.TrimSpace(filter.NameContains) != "" || len(tenants.Items) > 0 {
+		return
+	}
+	log.Warn("tenant search returned no tenants; Camunda creates a reserved <default> tenant, so the configured client may not have access to tenant resources")
 }
 
 func init() {
@@ -74,7 +82,7 @@ func init() {
 
 	fs := getTenantCmd.Flags()
 	fs.StringVarP(&flagGetTenantKey, "key", "k", "", "tenant ID to fetch")
-	fs.StringVarP(&flagGetTenantFilter, "filter", "f", "", "literal tenant name contains filter")
+	fs.StringVarP(&flagGetTenantFilter, "filter", "f", "", "literal tenant ID or name contains filter")
 
 	setCommandMutation(getTenantCmd, CommandMutationReadOnly)
 	setContractSupport(getTenantCmd, ContractSupportFull)

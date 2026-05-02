@@ -13,6 +13,8 @@ List or fetch process instances
 List process instances by search filters or fetch them by key.
 Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.
 
+Use --has-user-tasks to resolve owning process instances from user task keys through tenant-aware native user-task search. There is no Tasklist or Operate fallback.
+
 Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.
 
 ```
@@ -26,6 +28,9 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --total
   ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --key 2251799813711967 --json
+  ./c8volt get pi --has-user-tasks 2251799815391233
+  ./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244
+  ./c8volt get pi --has-user-tasks 2251799815391233 --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977
 ```
@@ -41,6 +46,7 @@ c8volt get process-instance [flags]
       --end-date-newer-days int     only include process instances with end date N days old or newer (0 means today) (default -1)
       --end-date-older-days int     only include process instances with end date N days old or older (default -1)
       --fail-fast                   stop scheduling new instances after the first error
+      --has-user-tasks strings      user task key(s) whose owning process instances should be fetched
   -h, --help                        help for process-instance
       --incidents-only              show only process instances that have incidents
   -k, --key strings                 process instance key(s) to fetch
