@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// NewIPv4Server starts an HTTP test server on IPv4 loopback for command tests that cannot use bracketed IPv6 URLs.
 func NewIPv4Server(t testing.TB, handler http.Handler) *httptest.Server {
 	t.Helper()
 
@@ -22,6 +23,7 @@ func NewIPv4Server(t testing.TB, handler http.Handler) *httptest.Server {
 	return srv
 }
 
+// NewIPv4TLSServer starts a TLS test server on IPv4 loopback for client paths that need stable localhost URLs.
 func NewIPv4TLSServer(t testing.TB, handler http.Handler) *httptest.Server {
 	t.Helper()
 
@@ -34,6 +36,7 @@ func NewIPv4TLSServer(t testing.TB, handler http.Handler) *httptest.Server {
 	return srv
 }
 
+// newIPv4Listener isolates environments without IPv4 loopback by skipping the dependent integration-style tests.
 func newIPv4Listener(t testing.TB) net.Listener {
 	t.Helper()
 

@@ -319,6 +319,7 @@ func TestService_SearchAndLookup(t *testing.T) {
 	})
 }
 
+// TestService_SearchProcessInstanceIncidents verifies v8.9 incident lookup uses the scoped endpoint and preserves returned detail fields.
 func TestService_SearchProcessInstanceIncidents(t *testing.T) {
 	ctx := context.Background()
 	jobKey := camundav89.JobKey("job-1")

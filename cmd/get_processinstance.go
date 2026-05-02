@@ -940,6 +940,7 @@ func validatePIKeyedModeLimit(keyCount int) error {
 	return nil
 }
 
+// validatePIWithIncidentsUsage keeps incident enrichment scoped to direct keyed lookups where the output can attach details unambiguously.
 func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
 	if !flagGetPIWithIncidents {
 		return nil

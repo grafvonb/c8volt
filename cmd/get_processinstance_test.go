@@ -876,6 +876,7 @@ func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *t
 	require.NotContains(t, item, "incidents")
 }
 
+// TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode keeps incident presence filters on the paged search path.
 func TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -2317,6 +2318,7 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 	return got
 }
 
+// requireProcessInstanceIncidentJSONPayload unwraps the shared JSON envelope used by incident-enriched keyed lookups.
 func requireProcessInstanceIncidentJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 

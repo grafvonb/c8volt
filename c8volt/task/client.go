@@ -31,6 +31,7 @@ func New(pdApi pdsvc.API, piApi pisvc.API, utApi utsvc.API, log *slog.Logger) AP
 	}
 }
 
+// ResolveProcessInstanceKeyFromUserTask keeps single task-key lookup aligned with the multi-key path used by the CLI.
 func (c *client) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, taskKey string, opts ...options.FacadeOption) (string, error) {
 	keys, err := c.ResolveProcessInstanceKeysFromUserTasks(ctx, types.Keys{taskKey}, opts...)
 	if err != nil {
@@ -39,6 +40,7 @@ func (c *client) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, task
 	return keys[0], nil
 }
 
+// ResolveProcessInstanceKeysFromUserTasks resolves user tasks through the native task API and returns their owning process-instance keys in input order.
 func (c *client) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
 	processInstanceKeys := make(types.Keys, 0, len(taskKeys))
 	callOpts := options.MapFacadeOptionsToCallOptions(opts)

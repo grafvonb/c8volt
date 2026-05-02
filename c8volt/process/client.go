@@ -73,6 +73,7 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 	return fromDomainProcessInstance(pi), nil
 }
 
+// SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.
 func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
 	incidents, err := c.piApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
@@ -81,6 +82,7 @@ func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string,
 	return fromDomainProcessInstanceIncidentDetails(incidents), nil
 }
 
+// EnrichProcessInstancesWithIncidents attaches direct incident details to keyed process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
 	for _, pi := range pis.Items {
@@ -99,6 +101,7 @@ func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis Pr
 	}, nil
 }
 
+// EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.
 func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error) {
 	items := make([]IncidentEnrichedTraversalItem, 0, len(result.Keys))
 	for _, key := range result.Keys {
@@ -128,6 +131,7 @@ func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result Traver
 	}, nil
 }
 
+// incidentsForProcessInstance keeps only details owned by the requested key, guarding against broad backend incident responses.
 func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncidentDetail) []ProcessInstanceIncidentDetail {
 	out := make([]ProcessInstanceIncidentDetail, 0, len(incidents))
 	for _, incident := range incidents {

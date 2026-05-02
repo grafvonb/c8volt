@@ -201,6 +201,7 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 	require.NoError(t, err)
 }
 
+// TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions verifies the facade keeps incident detail fields and call options intact.
 func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *testing.T) {
 	t.Parallel()
 
@@ -250,6 +251,7 @@ func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *te
 	}, got)
 }
 
+// TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation prevents incident details from leaking across keyed results.
 func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
 
@@ -296,6 +298,7 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	require.NotNil(t, got.Items[1].Incidents)
 }
 
+// TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
 func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
 
@@ -356,6 +359,7 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 	}, got.Items[1].Incidents)
 }
 
+// TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup verifies tenant and verbosity options flow into every enrichment lookup.
 func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLookup(t *testing.T) {
 	t.Parallel()
 
@@ -387,6 +391,7 @@ func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLo
 	require.Len(t, got.Items, 2)
 }
 
+// TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys avoids querying incidents for chain entries outside the selected walk path.
 func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *testing.T) {
 	t.Parallel()
 
@@ -424,6 +429,7 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 	require.Equal(t, "walked", got.Items[1].Item.Key)
 }
 
+// TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure prevents rendering partially enriched traversal output after lookup errors.
 func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *testing.T) {
 	t.Parallel()
 
@@ -1067,6 +1073,7 @@ func (stubProcessInstanceAPI) GetProcessInstance(context.Context, string, ...ser
 	panic("unexpected call")
 }
 
+// SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.
 func (s stubProcessInstanceAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	if s.searchProcessInstanceIncidents == nil {
 		panic("unexpected call")

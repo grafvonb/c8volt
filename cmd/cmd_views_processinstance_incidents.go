@@ -38,6 +38,7 @@ type incidentEnrichedProcessInstancesJSONWithMeta struct {
 	Meta  processInstanceAgeMeta                    `json:"meta"`
 }
 
+// incidentEnrichedProcessInstancesWithAgeMeta keeps incident JSON compatible with default process-instance age metadata.
 func incidentEnrichedProcessInstancesWithAgeMeta(resp process.IncidentEnrichedProcessInstances) incidentEnrichedProcessInstancesJSONWithMeta {
 	meta := processInstanceAgeMeta{WithAge: true, AgeDaysBy: map[string]int{}}
 	for _, it := range resp.Items {

@@ -68,6 +68,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
+// GetUserTask resolves a Camunda user task through search so tenant scoping and generated v8.9 filter shapes stay explicit.
 func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated camunda client", key))
@@ -93,6 +94,7 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 	return task, nil
 }
 
+// searchUserTaskRequest builds the v8.9 user-task search body used to find one task within the effective tenant.
 func searchUserTaskRequest(tenantID, key string) (camundav89.SearchUserTasksJSONRequestBody, error) {
 	tenantIDFilter, err := newStringEqFilterPtr(tenantID)
 	if err != nil {
@@ -107,6 +109,7 @@ func searchUserTaskRequest(tenantID, key string) (camundav89.SearchUserTasksJSON
 	}, nil
 }
 
+// requireSingleUserTask turns the search response into lookup semantics, preserving missing and duplicate matches as domain errors.
 func requireSingleUserTask(items []camundav89.UserTaskResult, key string) (d.UserTask, error) {
 	switch len(items) {
 	case 0:

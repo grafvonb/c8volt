@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// SearchProcessInstanceIncidents uses the scoped process-instance incident endpoint and applies only tenant/page filters locally.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))

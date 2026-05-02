@@ -178,6 +178,7 @@ func init() {
 	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "automation mode is not supported for traversal commands")
 }
 
+// validateWalkPIWithIncidentsUsage keeps walk incident enrichment in render modes that can show incident detail rows.
 func validateWalkPIWithIncidentsUsage() error {
 	if !flagWalkPIWithIncidents {
 		return nil

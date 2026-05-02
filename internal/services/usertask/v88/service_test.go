@@ -30,6 +30,7 @@ func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Cont
 
 var _ v88.GenUserTaskClientCamunda = (*mockUserTaskCamundaClient)(nil)
 
+// TestService_GetUserTask_ResolvesProcessInstanceKey verifies task lookup returns the owning process-instance key from the native search result.
 func TestService_GetUserTask_ResolvesProcessInstanceKey(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskCamundaClient{
 		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
@@ -55,6 +56,7 @@ func TestService_GetUserTask_ResolvesProcessInstanceKey(t *testing.T) {
 	require.Equal(t, "tenant-a", task.TenantId)
 }
 
+// TestService_GetUserTask_IncludesConfiguredTenantFilter verifies task lookup stays scoped to the configured tenant.
 func TestService_GetUserTask_IncludesConfiguredTenantFilter(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskCamundaClient{
 		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
@@ -77,6 +79,7 @@ func TestService_GetUserTask_IncludesConfiguredTenantFilter(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestService_GetUserTask_ReturnsNotFoundForMissingTask keeps empty tenant-scoped search results mapped to a lookup-style not-found error.
 func TestService_GetUserTask_ReturnsNotFoundForMissingTask(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskCamundaClient{
 		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {
@@ -95,6 +98,7 @@ func TestService_GetUserTask_ReturnsNotFoundForMissingTask(t *testing.T) {
 	require.Contains(t, err.Error(), "user task 2251799815391233 was not found or is not visible to the configured tenant")
 }
 
+// TestService_GetUserTask_RejectsMissingProcessInstanceKey protects the command path from rendering a task lookup with no owning process instance.
 func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskCamundaClient{
 		searchUserTasksWithResponse: func(_ context.Context, body camundav88.SearchUserTasksJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error) {

@@ -86,6 +86,7 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 	}
 }
 
+// TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup protects generated command docs for the task-key lookup surface.
 func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	out := t.TempDir()
 	root := cmd.Root()
