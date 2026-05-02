@@ -99,6 +99,35 @@ func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis Pr
 	}, nil
 }
 
+func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error) {
+	items := make([]IncidentEnrichedTraversalItem, 0, len(result.Keys))
+	for _, key := range result.Keys {
+		pi, ok := result.Chain[key]
+		if !ok {
+			continue
+		}
+		incidents, err := c.SearchProcessInstanceIncidents(ctx, key, opts...)
+		if err != nil {
+			return IncidentEnrichedTraversalResult{}, err
+		}
+		items = append(items, IncidentEnrichedTraversalItem{
+			Item:      pi,
+			Incidents: incidentsForProcessInstance(key, incidents),
+		})
+	}
+	return IncidentEnrichedTraversalResult{
+		Mode:             result.Mode,
+		Outcome:          result.Outcome,
+		StartKey:         result.StartKey,
+		RootKey:          result.RootKey,
+		Keys:             append([]string(nil), result.Keys...),
+		Edges:            result.Edges,
+		Items:            items,
+		MissingAncestors: append([]MissingAncestor(nil), result.MissingAncestors...),
+		Warning:          result.Warning,
+	}, nil
+}
+
 func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncidentDetail) []ProcessInstanceIncidentDetail {
 	out := make([]ProcessInstanceIncidentDetail, 0, len(incidents))
 	for _, incident := range incidents {

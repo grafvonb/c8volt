@@ -4,7 +4,9 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -83,6 +85,24 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 		"./c8volt walk pi --key 2251799813711967 --family --tree",
 	}, nil)
 	require.Contains(t, output, "--tree")
+}
+
+func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	root := Root()
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--config", cfgPath, "walk", "process-instance", "--with-incidents"})
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	_, err := root.ExecuteC()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `required flag(s) "key" not set`)
+	require.NotContains(t, buf.String(), "127.0.0.1:1")
 }
 
 func TestWalkProcessInstanceCommand_V89ChildrenTraversalUsesNativeSearchPath(t *testing.T) {
@@ -431,4 +451,61 @@ func TestWalkProcessInstanceCommand_RejectsAutomationModeHelper(t *testing.T) {
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+func walkedProcessInstanceJSON(key, parentKey string, hasIncident bool) string {
+	parent := ""
+	if parentKey != "" {
+		parent = `,"parentProcessInstanceKey":"` + parentKey + `"`
+	}
+	incident := "false"
+	if hasIncident {
+		incident = "true"
+	}
+	return `{"processInstanceKey":"` + key + `"` + parent + `,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","hasIncident":` + incident + `}`
+}
+
+func walkedProcessInstanceSearchJSON(t *testing.T, items ...string) string {
+	t.Helper()
+
+	rawItems := make([]json.RawMessage, len(items))
+	for i, item := range items {
+		rawItems[i] = json.RawMessage(item)
+	}
+	payload := map[string]any{
+		"items": rawItems,
+		"page": map[string]any{
+			"totalItems":        len(rawItems),
+			"hasMoreTotalItems": false,
+		},
+	}
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func walkedIncidentDetailsJSON(t *testing.T, processInstanceKey string, messages ...string) string {
+	t.Helper()
+
+	items := make([]map[string]any, 0, len(messages))
+	for i, message := range messages {
+		items = append(items, map[string]any{
+			"incidentKey":        fmt.Sprintf("incident-%d", i+1),
+			"processInstanceKey": processInstanceKey,
+			"tenantId":           "tenant",
+			"state":              "ACTIVE",
+			"errorType":          "JOB_NO_RETRIES",
+			"errorMessage":       message,
+		})
+	}
+	payload := map[string]any{
+		"items": items,
+		"page": map[string]any{
+			"totalItems":        len(items),
+			"hasMoreTotalItems": false,
+		},
+	}
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	return string(raw)
 }

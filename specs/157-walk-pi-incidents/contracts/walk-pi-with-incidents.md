@@ -82,6 +82,15 @@ Example shape:
 
 The shared top-level JSON envelope behavior remains whatever the command renderer already provides for JSON mode.
 
+## Public Model Contract
+
+The process facade exposes walk enrichment through traversal-specific public models:
+
+- `IncidentEnrichedTraversalResult` preserves traversal metadata from the plain walk result: mode, outcome, start key, root key, ordered keys, edges, missing ancestors, and warning.
+- `IncidentEnrichedTraversalItem` wraps the walked `ProcessInstance` plus the matching `ProcessInstanceIncidentDetail` collection.
+- `ProcessInstanceIncidentDetail` is reused from issue #154 without field changes so `get pi --with-incidents` and `walk pi --with-incidents` report the same incident detail fields.
+- Empty incident result sets are represented as empty `incidents` collections on the matching traversal item, not by omitting the item or changing traversal order.
+
 ## Incident Lookup Contract
 
 - Incident lookup is performed only for process-instance keys returned by traversal.

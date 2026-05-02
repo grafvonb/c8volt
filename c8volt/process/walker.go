@@ -17,6 +17,7 @@ type Walker interface {
 	AncestryResult(ctx context.Context, startKey string, opts ...options.FacadeOption) (TraversalResult, error)
 	DescendantsResult(ctx context.Context, rootKey string, opts ...options.FacadeOption) (TraversalResult, error)
 	FamilyResult(ctx context.Context, startKey string, opts ...options.FacadeOption) (TraversalResult, error)
+	EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error)
 }
 
 func AsWalker(client API) (Walker, bool) {

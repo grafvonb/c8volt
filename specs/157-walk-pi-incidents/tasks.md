@@ -11,10 +11,10 @@
 
 **Purpose**: Prepare shared enriched traversal shape and review existing issue #154 incident behavior without changing command output.
 
-- [ ] T001 [P] Review issue #154 incident enrichment behavior and record any field mismatch in `specs/157-walk-pi-incidents/research.md`
-- [ ] T002 [P] Add incident-enriched traversal item/result public models in `c8volt/process/model.go`
-- [ ] T003 [P] Add walk incident enrichment contract notes to `specs/157-walk-pi-incidents/contracts/walk-pi-with-incidents.md`
-- [ ] T004 [P] Add fixture helpers for walked incident details in `cmd/walk_test.go`
+- [x] T001 [P] Review issue #154 incident enrichment behavior and record any field mismatch in `specs/157-walk-pi-incidents/research.md`
+- [x] T002 [P] Add incident-enriched traversal item/result public models in `c8volt/process/model.go`
+- [x] T003 [P] Add walk incident enrichment contract notes to `specs/157-walk-pi-incidents/contracts/walk-pi-with-incidents.md`
+- [x] T004 [P] Add fixture helpers for walked incident details in `cmd/walk_test.go`
 
 ---
 
@@ -24,13 +24,13 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Extend public `process.API` or `process.Walker` contract with traversal incident enrichment in `c8volt/process/api.go` and `c8volt/process/walker.go`
-- [ ] T006 Implement traversal enrichment helper that fetches incidents for returned traversal keys in `c8volt/process/client.go`
-- [ ] T007 Add filtering helpers for per-key incident association in `c8volt/process/client.go`
-- [ ] T008 Add `--with-incidents` flag storage and registration in `cmd/walk_processinstance.go`
-- [ ] T009 Add early validation for keyed-only `--with-incidents` usage in `cmd/walk_processinstance.go`
-- [ ] T010 Add foundational facade tests for traversal incident enrichment in `c8volt/process/client_test.go`
-- [ ] T011 [P] Add command validation tests for `--with-incidents` without `--key` in `cmd/walk_test.go`
+- [x] T005 Extend public `process.API` or `process.Walker` contract with traversal incident enrichment in `c8volt/process/api.go` and `c8volt/process/walker.go`
+- [x] T006 Implement traversal enrichment helper that fetches incidents for returned traversal keys in `c8volt/process/client.go`
+- [x] T007 Add filtering helpers for per-key incident association in `c8volt/process/client.go`
+- [x] T008 Add `--with-incidents` flag storage and registration in `cmd/walk_processinstance.go`
+- [x] T009 Add early validation for keyed-only `--with-incidents` usage in `cmd/walk_processinstance.go`
+- [x] T010 Add foundational facade tests for traversal incident enrichment in `c8volt/process/client_test.go`
+- [x] T011 [P] Add command validation tests for `--with-incidents` without `--key` in `cmd/walk_test.go`
 
 **Checkpoint**: The repository can represent enriched traversal results, validate the flag scope, and call incident lookup through established facade/service seams.
 

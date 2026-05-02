@@ -2457,6 +2457,12 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIOrphanChildrenOnly = false
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
+	flagWalkPIKey = ""
+	flagWalkPIMode = walkPIModeChildren
+	flagWalkPIModeFamily = false
+	flagWalkPIModeParent = false
+	flagWalkPIModeChildren = false
+	flagWalkPIWithIncidents = false
 	flagCmdAutoConfirm = false
 	flagVerbose = false
 	flagViewAsJson = false

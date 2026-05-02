@@ -4,17 +4,20 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
 var (
-	flagWalkPIKey          string
-	flagWalkPIMode         string
-	flagWalkPIModeFamily   bool
-	flagWalkPIModeParent   bool
-	flagWalkPIModeChildren bool
+	flagWalkPIKey           string
+	flagWalkPIMode          string
+	flagWalkPIModeFamily    bool
+	flagWalkPIModeParent    bool
+	flagWalkPIModeChildren  bool
+	flagWalkPIWithIncidents bool
 )
 
 const (
@@ -40,6 +43,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, err)
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateWalkPIWithIncidentsUsage(); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
@@ -142,6 +148,7 @@ func init() {
 	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "shorthand for --mode=children")
 	fs.BoolVar(&flagWalkPIModeFamily, "family", false, "shorthand for --mode=family")
 	fs.BoolVar(&flagViewAsTree, "tree", false, "render family mode as an ASCII tree (only valid with --family)")
+	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "fetch and show incident messages for keyed walk results")
 
 	// shell completion for --mode
 	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -151,4 +158,17 @@ func init() {
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "automation mode is not supported for traversal commands")
+}
+
+func validateWalkPIWithIncidentsUsage() error {
+	if !flagWalkPIWithIncidents {
+		return nil
+	}
+	if strings.TrimSpace(flagWalkPIKey) == "" {
+		return invalidFlagValuef("--with-incidents requires --key")
+	}
+	if flagViewKeysOnly {
+		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with --keys-only")
+	}
+	return nil
 }

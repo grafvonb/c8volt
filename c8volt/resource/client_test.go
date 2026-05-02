@@ -288,6 +288,10 @@ func (stubProcessAPI) EnrichProcessInstancesWithIncidents(context.Context, proce
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) EnrichTraversalWithIncidents(context.Context, process.TraversalResult, ...options.FacadeOption) (process.IncidentEnrichedTraversalResult, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) SearchProcessInstancesPage(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {
 	panic("unexpected call")
 }

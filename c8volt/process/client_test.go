@@ -295,6 +295,66 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	require.NotNil(t, got.Items[1].Incidents)
 }
 
+func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			switch key {
+			case "root":
+				return nil, nil
+			case "child":
+				return []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "incident-child", ProcessInstanceKey: "child", ErrorMessage: "child failed"},
+					{IncidentKey: "incident-other", ProcessInstanceKey: "other", ErrorMessage: "not walked"},
+				}, nil
+			default:
+				t.Fatalf("unexpected incident lookup for key %s", key)
+				return nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
+		Mode:     TraversalModeDescendants,
+		Outcome:  TraversalOutcomePartial,
+		StartKey: "root",
+		RootKey:  "root",
+		Keys:     []string{"root", "child"},
+		Edges:    map[string][]string{"root": {"child"}},
+		Chain: map[string]ProcessInstance{
+			"root":  {Key: "root", BpmnProcessId: "order-process"},
+			"child": {Key: "child", BpmnProcessId: "invoice-process"},
+		},
+		MissingAncestors: []MissingAncestor{{Key: "missing", StartKey: "child"}},
+		Warning:          "one or more parent process instances were not found",
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"root", "child"}, calls)
+	require.Equal(t, TraversalModeDescendants, got.Mode)
+	require.Equal(t, TraversalOutcomePartial, got.Outcome)
+	require.Equal(t, "root", got.StartKey)
+	require.Equal(t, "root", got.RootKey)
+	require.Equal(t, []string{"root", "child"}, got.Keys)
+	require.Equal(t, map[string][]string{"root": {"child"}}, got.Edges)
+	require.Equal(t, []MissingAncestor{{Key: "missing", StartKey: "child"}}, got.MissingAncestors)
+	require.Equal(t, "one or more parent process instances were not found", got.Warning)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, "root", got.Items[0].Item.Key)
+	require.Empty(t, got.Items[0].Incidents)
+	require.NotNil(t, got.Items[0].Incidents)
+	require.Equal(t, "child", got.Items[1].Item.Key)
+	require.Equal(t, []ProcessInstanceIncidentDetail{
+		{IncidentKey: "incident-child", ProcessInstanceKey: "child", ErrorMessage: "child failed"},
+	}, got.Items[1].Incidents)
+}
+
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
 // contract: request echoing, overflow state, reported total kind, and item
 // mapping all need to survive the facade boundary.

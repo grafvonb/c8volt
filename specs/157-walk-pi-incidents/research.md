@@ -4,6 +4,8 @@
 
 **Rationale**: Issue #154 already introduced `ProcessInstanceIncidentDetail`, enriched process-instance output, tenant-aware incident search methods, and v8.7 unsupported behavior. Reusing those models keeps this feature aligned with existing output conventions and avoids adding a parallel incident representation for walk.
 
+**Issue #154 review**: The persisted issue text and current code agree on the core fields needed here: incident key, process-instance key, tenant ID, state, error type, error message, flow-node/job metadata, root process-instance key, and process-definition identifiers. No field mismatch was found between the issue #154 behavior and the walk enrichment needs. Walk-specific output should add traversal metadata around the same incident detail model rather than changing the incident fields.
+
 **Alternatives considered**:
 
 - Create walk-specific incident models. Rejected because it would duplicate #154 and increase JSON drift.

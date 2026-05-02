@@ -94,6 +94,23 @@ type IncidentEnrichedProcessInstances struct {
 	Items []IncidentEnrichedProcessInstance `json:"items"`
 }
 
+type IncidentEnrichedTraversalItem struct {
+	Item      ProcessInstance                 `json:"item"`
+	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`
+}
+
+type IncidentEnrichedTraversalResult struct {
+	Mode             TraversalMode                   `json:"mode"`
+	Outcome          TraversalOutcome                `json:"outcome"`
+	StartKey         string                          `json:"startKey,omitempty"`
+	RootKey          string                          `json:"rootKey,omitempty"`
+	Keys             []string                        `json:"keys,omitempty"`
+	Edges            map[string][]string             `json:"edges,omitempty"`
+	Items            []IncidentEnrichedTraversalItem `json:"items,omitempty"`
+	MissingAncestors []MissingAncestor               `json:"missingAncestors,omitempty"`
+	Warning          string                          `json:"warning,omitempty"`
+}
+
 type ProcessInstances struct {
 	Total int32             `json:"total,omitempty"`
 	Items []ProcessInstance `json:"items,omitempty"`
