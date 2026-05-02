@@ -15,7 +15,7 @@
 
 ### Session 2026-05-02
 
-- Q: How should human-readable `--with-incidents` output place incident messages? → A: Print the normal process-instance row, then indented `incident:` lines below it.
+- Q: How should human-readable `--with-incidents` output place incident messages? → A: Print the normal process-instance row, then indented `incident <incident-key>:` lines below it.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -25,12 +25,12 @@ As a Camunda operator diagnosing a known process instance, I want `c8volt get pi
 
 **Why this priority**: This is the core workflow requested in the issue and removes the extra manual lookup that currently blocks fast diagnosis.
 
-**Independent Test**: Run keyed process-instance lookup with `--with-incidents` against a fixture where the process instance has one or more incidents, then verify the normal process-instance row is returned unchanged and each incident error message appears as an indented `incident:` line directly below its matching process-instance row.
+**Independent Test**: Run keyed process-instance lookup with `--with-incidents` against a fixture where the process instance has one or more incidents, then verify the normal process-instance row is returned unchanged and each incident error message appears as an indented `incident <incident-key>:` line directly below its matching process-instance row.
 
 **Acceptance Scenarios**:
 
-1. **Given** a keyed process instance has one active incident with an error message, **When** the operator runs `c8volt get pi --key <key> --with-incidents`, **Then** the command returns the normal process-instance row and shows the incident error message as an indented `incident:` line directly below it.
-2. **Given** a keyed process instance has multiple incidents, **When** the operator runs the command with `--with-incidents`, **Then** the command shows all returned incident messages as indented `incident:` lines below that process-instance row.
+1. **Given** a keyed process instance has one active incident with an error message, **When** the operator runs `c8volt get pi --key <key> --with-incidents`, **Then** the command returns the normal process-instance row and shows the incident error message as an indented `incident <incident-key>:` line directly below it.
+2. **Given** a keyed process instance has multiple incidents, **When** the operator runs the command with `--with-incidents`, **Then** the command shows all returned incident messages as indented `incident <incident-key>:` lines below that process-instance row.
 3. **Given** a keyed process instance has no incidents, **When** the operator runs the command with `--with-incidents`, **Then** the command still renders the process instance successfully and does not imply that an incident message exists.
 
 ---
@@ -88,7 +88,7 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 - Multiple `--key` values must fetch and render incident details for each returned process instance without mixing incident messages between keys.
 - A process instance that has the existing incident marker but whose incident search returns no items must still render successfully with an empty incident-details collection.
 - Incident results with empty error messages must not break human-readable or JSON rendering.
-- Human-readable incident messages must render as indented `incident:` lines directly below the matching process-instance row.
+- Human-readable incident messages must render as indented `incident <incident-key>:` lines directly below the matching process-instance row.
 - A configured tenant must be included in incident lookup filters when the incident search API supports tenant filtering.
 - Camunda 8.7 must not use a tenant-unsafe direct incident lookup as a fallback for this feature.
 - Existing `--incidents-only` and `--no-incidents-only` search-mode behavior must remain unchanged.
@@ -103,7 +103,7 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 - **FR-003**: The system MUST reject `--with-incidents` without `--key` with a clear validation error.
 - **FR-004**: The system MUST reject `--with-incidents` when combined with search-mode filters, including `--incidents-only` and `--no-incidents-only`.
 - **FR-005**: When `--with-incidents` is provided, the system MUST fetch incident data for each requested process-instance key that is successfully returned.
-- **FR-006**: Human-readable output MUST preserve the normal process-instance row and show returned incident error messages as indented `incident:` lines directly below the matching row.
+- **FR-006**: Human-readable output MUST preserve the normal process-instance row and show returned incident keys and error messages as indented `incident <incident-key>:` lines directly below the matching row.
 - **FR-007**: Human-readable output MUST continue to render process instances successfully when no incident details are returned.
 - **FR-008**: JSON output MUST include incident details in a machine-readable shape for each returned process instance when `--with-incidents` is provided.
 - **FR-009**: JSON incident details MUST include each incident's error message when available and enough key information to associate the incident with the process instance.
@@ -115,7 +115,7 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 - **FR-015**: Camunda 8.8 and 8.9 support MUST use generated Camunda client incident search APIs that expose process-instance-key and tenant filters and return error messages.
 - **FR-016**: Camunda 8.7 MUST return the repository's existing unsupported-capability style for `--with-incidents` when tenant-safe keyed incident enrichment cannot be implemented.
 - **FR-017**: The implementation MUST NOT use a tenant-unsafe direct incident lookup as the primary incident enrichment path.
-- **FR-018**: Command help and generated user-facing documentation MUST describe `--with-incidents`, its keyed-only scope, and its incident-message purpose.
+- **FR-018**: Command help and generated user-facing documentation MUST describe `--with-incidents`, its keyed-only scope, and its incident-key/message purpose.
 - **FR-019**: Automated tests MUST cover validation, human-readable output, JSON output, tenant-aware request construction, multiple keys, no-incident results, default-output preservation, search-mode incident-filter preservation, and version-specific unsupported behavior.
 
 ### Key Entities *(include if feature involves data)*
@@ -130,7 +130,7 @@ As an operator in tenant-aware environments, I want incident lookups to use tena
 
 ### Measurable Outcomes
 
-- **SC-001**: Automated command tests show `c8volt get pi --key <key> --with-incidents` preserves the normal process-instance row and includes returned incident error messages as indented `incident:` lines below it.
+- **SC-001**: Automated command tests show `c8volt get pi --key <key> --with-incidents` preserves the normal process-instance row and includes returned incident keys and error messages as indented `incident <incident-key>:` lines below it.
 - **SC-002**: Automated command tests show `c8volt get pi --key <key> --with-incidents --json` includes machine-readable incident details with error messages.
 - **SC-003**: Automated validation tests show `--with-incidents` without `--key` fails with a clear validation error.
 - **SC-004**: Automated regression tests show existing default keyed output is unchanged when `--with-incidents` is omitted.

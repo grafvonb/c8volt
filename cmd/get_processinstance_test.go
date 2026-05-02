@@ -308,6 +308,7 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 	}
 }
 
+// TestGetProcessInstanceWithIncidentsValidation rejects enrichment outside direct keyed lookups.
 func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -557,6 +558,7 @@ apis:
 	})
 }
 
+// TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident verifies the direct incident line includes the incident key.
 func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.T) {
 	var requests []string
 	var incidentBodies []string
@@ -594,10 +596,11 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  incident: No retries left")
+	require.Contains(t, output, "  incident incident-123: No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents covers both direct incident rendering and tree-propagated incident warnings.
 func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -610,7 +613,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
 				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
-			wantMessages: []string{"  incident: No retries left", "  incident: Gateway failed"},
+			wantMessages: []string{"  incident incident-123: No retries left", "  incident incident-124: Gateway failed"},
 		},
 		{
 			name:             "no incident lines",
@@ -651,12 +654,14 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				require.Contains(t, output, msg)
 			}
 			if len(tt.wantMessages) == 0 {
-				require.NotContains(t, output, "  incident:")
+				require.NotContains(t, output, "  incident ")
+				require.Contains(t, output, "no direct incidents on this process instance; check the process tree with walk pi --family --tree --with-incidents")
 			}
 		})
 	}
 }
 
+// TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails preserves the structured incident detail payload.
 func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -698,6 +703,7 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsIncidentDetails(t *testi
 	require.Equal(t, "task-a", incident["flowNodeId"])
 }
 
+// TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys prevents incident details from crossing keyed lookup boundaries.
 func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -752,6 +758,7 @@ func TestGetProcessInstanceWithIncidents_JSONOutputAssociatesMultipleKeys(t *tes
 	require.Equal(t, "Second key failed", requireJSONObject(t, secondIncidents[0])["errorMessage"])
 }
 
+// TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection keeps empty enrichment explicit for automation.
 func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -785,6 +792,7 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(
 	require.Empty(t, incidents)
 }
 
+// TestGetProcessInstanceWithIncidents_V87ReportsUnsupported preserves the tenant-safe version boundary.
 func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
@@ -800,6 +808,7 @@ func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
 	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
 }
 
+// TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault keeps default keyed output free of enrichment lines.
 func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -831,9 +840,10 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 	}
 	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
 	require.Equal(t, strings.TrimSpace(oneLinePI(wantItem))+"\nfound: 1\n", output)
-	require.NotContains(t, output, "  incident:")
+	require.NotContains(t, output, "  incident ")
 }
 
+// TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape keeps default JSON free of enrichment wrappers.
 func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

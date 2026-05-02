@@ -14,7 +14,7 @@ Inspect the parent/child tree of process instances.
 
 Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.
 
-Add --with-incidents to keyed walks to fetch incident details and show incident messages below matching process-instance rows.
+Add --with-incidents to keyed walks to show incident keys and messages below matching process-instance rows.
 
 When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
 
@@ -42,7 +42,7 @@ c8volt walk process-instance [flags]
       --mode string      walk mode: parent, children, family (default "children")
       --parent           shorthand for --mode=parent
       --tree             render family mode as an ASCII tree (only valid with --family)
-      --with-incidents   fetch incident details and show messages for keyed process-instance walks
+      --with-incidents   show incident keys and messages for keyed process-instance walks
 ```
 
 ### Options inherited from parent commands

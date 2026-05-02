@@ -30,7 +30,7 @@ When `--with-incidents` is provided:
 
 - Normal process-instance rows remain the primary output.
 - Incident messages render directly below the process-instance row that owns them.
-- Incident message lines use the issue #154 convention: `incident: <message>`.
+- Incident message lines use the issue #154 convention: `incident <incident-key>: <message>`.
 - Tree output keeps branch prefixes and indents incident lines beneath the matching node.
 - Partial traversal warnings and missing ancestor warnings remain visible.
 

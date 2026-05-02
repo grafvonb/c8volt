@@ -88,6 +88,7 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	require.Contains(t, output, "--tree")
 }
 
+// TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
 func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -106,6 +107,7 @@ func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T)
 	require.NotContains(t, buf.String(), "127.0.0.1:1")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident renders incident keys under child-walk rows.
 func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident(t *testing.T) {
 	var incidentRequests []string
 
@@ -141,9 +143,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 	require.Equal(t, []string{"/v2/process-instances/123/incidents/search"}, incidentRequests)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  incident: Root job failed")
+	require.Contains(t, output, "  incident incident-1: Root job failed")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents keeps incidents attached to their walked owners.
 func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents(t *testing.T) {
 	var incidentRequests []string
 
@@ -191,11 +194,12 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 	}, incidentRequests)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "124")
-	require.Contains(t, output, "  incident: Root failed")
-	require.Contains(t, output, "  incident: Child failed")
-	require.Contains(t, output, "  incident: Child timed out")
+	require.Contains(t, output, "  incident incident-1: Root failed")
+	require.Contains(t, output, "  incident incident-1: Child failed")
+	require.Contains(t, output, "  incident incident-2: Child timed out")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned avoids implying missing details exist.
 func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned(t *testing.T) {
 	var incidentRequests []string
 
@@ -234,9 +238,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 	}, incidentRequests)
 	require.Contains(t, output, "124")
 	require.Contains(t, output, "123")
-	require.NotContains(t, output, "  incident:")
+	require.NotContains(t, output, "  incident ")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails preserves incident details in traversal JSON.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -280,6 +285,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails(
 	require.Equal(t, "Root job failed", incident["errorMessage"])
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKeys prevents cross-key incident leakage.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKeys(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -335,6 +341,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKey
 	require.Equal(t, "Child failed", requireJSONObject(t, childIncidents[0])["errorMessage"])
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsEmptyIncidentCollection keeps empty enrichment explicit.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsEmptyIncidentCollection(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -369,6 +376,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsEmptyIncidentCol
 	require.Empty(t, incidents)
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsJSONOutputPreservesTraversalMetadata keeps walk metadata intact after enrichment.
 func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputPreservesTraversalMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -423,6 +431,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputPreservesTraversalMet
 	requireJSONItems(t, edges["123"], 1)
 }
 
+// TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWithIncidents protects the default path renderer.
 func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWithIncidents(t *testing.T) {
 	incidentRequests := 0
 
@@ -464,9 +473,10 @@ func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWi
 	child := walkedProcessInstanceModel("124", "123", false)
 	require.Equal(t, oneLinePI(root)+" → \n"+oneLinePI(child)+"\n", output)
 	require.Zero(t, incidentRequests)
-	require.NotContains(t, output, "incident:")
+	require.NotContains(t, output, "  incident ")
 }
 
+// TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithIncidents protects the default traversal JSON shape.
 func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithIncidents(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -512,6 +522,7 @@ func TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithInciden
 	require.NotContains(t, second, "incidents")
 }
 
+// TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithIncidents protects the plain tree renderer.
 func TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithIncidents(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -555,9 +566,10 @@ func TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithI
 	firstChild := walkedProcessInstanceModel("124", "123", false)
 	secondChild := walkedProcessInstanceModel("125", "123", false)
 	require.Equal(t, oneLinePI(root)+"\n"+"├─ "+oneLinePI(firstChild)+"\n"+"└─ "+oneLinePI(secondChild)+"\n", output)
-	require.NotContains(t, output, "incident:")
+	require.NotContains(t, output, "  incident ")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUnderMatchingNode preserves tree ownership and indentation.
 func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUnderMatchingNode(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -597,14 +609,15 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUn
 	)
 
 	require.Contains(t, output, "123")
-	require.Contains(t, output, "  incident: Root failed")
+	require.Contains(t, output, "  incident incident-1: Root failed")
 	require.Contains(t, output, "└─ ")
 	require.Contains(t, output, "124")
-	require.Contains(t, output, "     incident: Child failed")
+	require.Contains(t, output, "     incident incident-1: Child failed")
 	require.Less(t, strings.Index(output, "123"), strings.Index(output, "Root failed"))
 	require.Less(t, strings.Index(output, "124"), strings.Index(output, "Child failed"))
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarning keeps traversal warnings visible after enrichment.
 func TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarning(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -640,6 +653,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarnin
 	require.Contains(t, output, "missing ancestor keys: 999")
 }
 
+// TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidents rejects output modes that cannot carry incident details.
 func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidents(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
@@ -656,6 +670,7 @@ func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidents(t *testing.T) {
 	require.NotContains(t, string(output), "127.0.0.1:1")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversal fails before showing partial enriched output.
 func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversal(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -889,6 +904,7 @@ apis:
 	require.NotContains(t, output, "base-tenant")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches applies command tenant overrides to incident lookup.
 func TestWalkProcessInstanceCommand_WithIncidentsUsesEffectiveTenantForIncidentSearches(t *testing.T) {
 	var incidentRequests []string
 
@@ -930,7 +946,7 @@ apis:
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "incident: Root failed")
+	require.Contains(t, output, "incident incident-1: Root failed")
 	require.Len(t, incidentRequests, 1)
 	body := decodeCapturedPISearchRequest(t, incidentRequests[0])
 	filter, ok := body["filter"].(map[string]any)
@@ -939,6 +955,7 @@ apis:
 	require.NotContains(t, filter, "processInstanceKey")
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87 preserves the tenant-safe version boundary.
 func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -978,7 +995,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
 	require.Equal(t, 2, searchCalls)
 	require.Contains(t, string(output), "unsupported capability")
 	require.Contains(t, string(output), "process-instance incident lookup is not tenant-safe in Camunda 8.7")
-	require.NotContains(t, string(output), "incident:")
+	require.NotContains(t, string(output), "  incident ")
 }
 
 // Verifies walk process-instance rejects unsupported --mode values.
@@ -1124,6 +1141,7 @@ func TestWalkProcessInstanceCommand_RejectsAutomationModeHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
+// TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidentsHelper exercises invalid key-only enrichment in a subprocess.
 func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidentsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1137,6 +1155,7 @@ func TestWalkProcessInstanceCommand_RejectsKeysOnlyWithIncidentsHelper(t *testin
 	_ = root.Execute()
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversalHelper exercises lookup failure in a subprocess.
 func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderPartialTraversalHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1150,6 +1169,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsLookupFailureDoesNotRenderParti
 	_ = root.Execute()
 }
 
+// TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper exercises unsupported v8.7 enrichment in a subprocess.
 func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -1163,6 +1183,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87Helper(t *testing
 	_ = root.Execute()
 }
 
+// walkedProcessInstanceModel builds the canonical process-instance fixture used by walk renderer assertions.
 func walkedProcessInstanceModel(key, parentKey string, hasIncident bool) process.ProcessInstance {
 	return process.ProcessInstance{
 		Key:            key,
@@ -1176,6 +1197,7 @@ func walkedProcessInstanceModel(key, parentKey string, hasIncident bool) process
 	}
 }
 
+// walkedProcessInstanceJSON builds a v8.8/v8.9 process-instance response fixture.
 func walkedProcessInstanceJSON(key, parentKey string, hasIncident bool) string {
 	parent := ""
 	if parentKey != "" {
@@ -1188,6 +1210,7 @@ func walkedProcessInstanceJSON(key, parentKey string, hasIncident bool) string {
 	return `{"processInstanceKey":"` + key + `"` + parent + `,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant","hasIncident":` + incident + `}`
 }
 
+// walkedProcessInstanceSearchJSON wraps process-instance fixtures in the generated search response shape.
 func walkedProcessInstanceSearchJSON(t *testing.T, items ...string) string {
 	t.Helper()
 
@@ -1207,6 +1230,7 @@ func walkedProcessInstanceSearchJSON(t *testing.T, items ...string) string {
 	return string(raw)
 }
 
+// walkedIncidentDetailsJSON builds incident search fixtures with stable incident keys.
 func walkedIncidentDetailsJSON(t *testing.T, processInstanceKey string, messages ...string) string {
 	t.Helper()
 
@@ -1233,6 +1257,7 @@ func walkedIncidentDetailsJSON(t *testing.T, processInstanceKey string, messages
 	return string(raw)
 }
 
+// requireWalkProcessInstanceJSONPayload unwraps the shared JSON envelope for walk command assertions.
 func requireWalkProcessInstanceJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 

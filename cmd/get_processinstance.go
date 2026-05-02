@@ -60,7 +60,7 @@ var getProcessInstanceCmd = &cobra.Command{
 	Long: "Get process instances by key or by search criteria.\n\n" +
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
-		"Use --with-incidents with --key to include incident error messages for the returned process instance.\n\n" +
+		"Use --with-incidents with --key to include incident keys and messages for the returned process instance.\n\n" +
 		"User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
 	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
@@ -219,7 +219,7 @@ func init() {
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
-	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident error messages for direct --key process-instance lookups")
+	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident keys and messages for direct --key process-instance lookups")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")

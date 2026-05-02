@@ -17,7 +17,7 @@ Add `--with-incidents` to `c8volt get process-instance` / `get pi` for direct ke
 **Project Type**: CLI  
 **Performance Goals**: Keyed lookup with `--with-incidents` performs one incident search per returned key and no incident search when the flag is omitted; multiple keys preserve existing worker behavior for process-instance lookup and may enrich results after the keyed results are known  
 **Constraints**: Preserve existing keyed default output, preserve search-mode incident filters, reject `--with-incidents` outside keyed mode, avoid tenant-unsafe direct incident lookup, include configured tenant in incident search filters where supported, update generated CLI docs, finish with targeted tests and `make test`  
-**Scale/Scope**: Command validation/rendering in `cmd/get_processinstance.go` and `cmd/cmd_views_get.go`, process public models/facade in `c8volt/process/`, domain/service interfaces in `internal/domain/processinstance.go` and `internal/services/processinstance/api.go`, versioned implementations in `internal/services/processinstance/v87`, `v88`, and `v89`, generated-client contract interfaces in `internal/services/processinstance/v88/contract.go` and `v89/contract.go`, tests in matching packages, docs under `docs/cli/` and README review
+**Scale/Scope**: Command validation/rendering in `cmd/get_processinstance.go`, base process-instance rendering in `cmd/cmd_views_get.go`, incident-enriched rendering in `cmd/cmd_views_processinstance_incidents.go`, process public models/facade in `c8volt/process/`, domain/service interfaces in `internal/domain/processinstance.go` and `internal/services/processinstance/api.go`, versioned implementations in `internal/services/processinstance/v87`, `v88`, and `v89`, generated-client contract interfaces in `internal/services/processinstance/v88/contract.go` and `v89/contract.go`, tests in matching packages, docs under `docs/cli/` and README review
 
 ## Constitution Check
 
@@ -85,7 +85,7 @@ README.md
 docs/cli/
 ```
 
-**Structure Decision**: Keep incident enrichment inside the existing process-instance slice. `cmd/get_processinstance.go` owns flag validation and decides whether enrichment is requested; `c8volt/process` owns the public incident models and facade method; versioned `internal/services/processinstance` implementations own generated-client incident search and tenant filtering. Rendering remains in `cmd/cmd_views_get.go` so human and JSON output follow existing command patterns.
+**Structure Decision**: Keep incident enrichment inside the existing process-instance slice. `cmd/get_processinstance.go` owns flag validation and decides whether enrichment is requested; `cmd/cmd_views_processinstance_incidents.go` owns enriched human/JSON rendering; `c8volt/process` owns the public incident models and facade method; versioned `internal/services/processinstance` implementations own generated-client incident search and tenant filtering. Default rendering remains in `cmd/cmd_views_get.go` so ordinary process-instance output stays isolated.
 
 ## Phase 0: Research
 
@@ -94,7 +94,7 @@ Research findings are captured in [research.md](/Users/adam.boczek/.codex/worktr
 - Confirmed `v8.8` and `v8.9` generated Camunda clients expose `SearchProcessInstanceIncidentsWithResponse(ctx, processInstanceKey, body, ...)`, `IncidentSearchQuery`, `IncidentFilter`, `IncidentResult`, and `ErrorMessage`.
 - Confirmed `v8.7` exposes older general incident search methods, but existing `v87` process-instance direct lookup is explicitly not tenant-safe. This feature should return unsupported for `v8.7` rather than add a tenant-unsafe enrichment path.
 - Confirmed the current public `process.ProcessInstance` model has only the boolean incident marker. Incident details should be additive and only appear in an enriched output wrapper when `--with-incidents` is requested.
-- Confirmed current human output is a compact one-line row with `inc!`. Incident messages should render as indented `incident:` lines directly below the matching process-instance row only when requested, leaving `oneLinePI` behavior unchanged for default output.
+- Confirmed current human output is a compact one-line row with `inc!`. Incident messages should render as indented `incident <incident-key>:` lines directly below the matching process-instance row only when requested, leaving `oneLinePI` behavior unchanged for default output.
 - Confirmed JSON output currently serializes `process.ProcessInstances`. `--with-incidents --json` needs an explicit enriched shape instead of silently changing `process.ProcessInstance` for all JSON callers.
 
 ## Phase 1: Design & Contracts
@@ -127,7 +127,7 @@ Design artifacts are captured in:
 Task generation should keep the work in independently verifiable user-story slices:
 
 1. Prepare shared models, service/facade method contracts, and command flag validation first.
-2. Deliver User Story 1 as the MVP: supported-version incident search and human-readable incident messages for keyed lookup.
+2. Deliver User Story 1 as the MVP: supported-version incident search and human-readable incident keys and messages for keyed lookup.
 3. Add User Story 2 JSON enrichment with a stable machine-readable wrapper.
 4. Add User Story 3 regression coverage for validation and output preservation.
 5. Add User Story 4 tenant/version safeguards, docs generation, and final validation.

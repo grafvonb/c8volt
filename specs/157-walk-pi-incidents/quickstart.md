@@ -10,7 +10,7 @@ Expected behavior:
 
 - Walks the selected process-instance relationship mode using current defaults.
 - Preserves existing process-instance row ordering.
-- Prints returned incident messages as indented `incident:` lines below the matching process-instance row.
+- Prints returned incident messages as indented `incident <incident-key>:` lines below the matching process-instance row.
 - Prints no incident lines for walked instances with no returned incidents.
 
 ## Family Tree With Incidents

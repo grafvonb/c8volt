@@ -20,7 +20,7 @@
 
 ## Decision: Use an enriched output wrapper only when the flag is present
 
-**Rationale**: Current default JSON serializes `process.ProcessInstances` and current human output uses `oneLinePI`. Adding incident details directly to the base process-instance model would risk changing default output for callers that did not request the feature. Human-readable incident messages should instead render as indented `incident:` lines directly below the matching row when enrichment is requested.
+**Rationale**: Current default JSON serializes `process.ProcessInstances` and current human output uses `oneLinePI`. Adding incident details directly to the base process-instance model would risk changing default output for callers that did not request the feature. Human-readable incident messages should instead render as indented `incident <incident-key>:` lines directly below the matching row when enrichment is requested.
 
 **Alternatives considered**: Adding `incidents` directly to `ProcessInstance` was rejected because it would make absent-vs-not-requested harder to distinguish and could change default JSON output.
 

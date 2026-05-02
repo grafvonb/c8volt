@@ -23,7 +23,7 @@ When `--with-incidents` is omitted, process-instance human output is unchanged.
 When `--with-incidents` is present:
 
 - The normal process-instance row is still shown.
-- Incident error messages are shown as indented `incident:` lines directly below the matching process-instance row.
+- Incident error messages are shown as indented `incident <incident-key>:` lines directly below the matching process-instance row.
 - Process instances without incidents still render successfully.
 - Empty incident messages do not break output.
 

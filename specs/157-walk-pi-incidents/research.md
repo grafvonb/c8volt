@@ -22,7 +22,7 @@
 
 ## Decision: Human output places incident messages under matching rows
 
-**Rationale**: Issue #157 says to reuse #154 output conventions where possible. Issue #154 established normal process-instance row first, then indented `incident:` lines below it. Applying the same convention keeps diagnosis predictable.
+**Rationale**: Issue #157 says to reuse #154 output conventions where possible. Issue #154 established normal process-instance row first, then indented `incident <incident-key>:` lines below it. Applying the same convention keeps diagnosis predictable.
 
 **Alternatives considered**:
 

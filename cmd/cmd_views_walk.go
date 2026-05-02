@@ -25,17 +25,6 @@ type walkTraversalPayload struct {
 	Warning          string                    `json:"warning,omitempty"`
 }
 
-type walkIncidentEnrichedTraversalPayload struct {
-	Mode             process.TraversalMode                   `json:"mode"`
-	Outcome          process.TraversalOutcome                `json:"outcome"`
-	RootKey          string                                  `json:"rootKey,omitempty"`
-	Keys             []string                                `json:"keys,omitempty"`
-	Edges            map[string][]string                     `json:"edges,omitempty"`
-	Items            []process.IncidentEnrichedTraversalItem `json:"items,omitempty"`
-	MissingAncestors []process.MissingAncestor               `json:"missingAncestors,omitempty"`
-	Warning          string                                  `json:"warning,omitempty"`
-}
-
 func ancestorsView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ← \n")
 }
@@ -46,24 +35,6 @@ func descendantsView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 
 func familyView(cmd *cobra.Command, path KeysPath, chain Chain) error {
 	return pathView(cmd, path, chain, pickMode(), " ⇄ \n")
-}
-
-func incidentEnrichedAncestorsView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
-	return incidentEnrichedPathView(cmd, result.Items, " ← \n")
-}
-
-func incidentEnrichedDescendantsView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
-	return incidentEnrichedPathView(cmd, result.Items, " → \n")
-}
-
-func incidentEnrichedFamilyView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
-	if pickMode() == RenderModeTree {
-		if len(result.Keys) == 0 {
-			return nil
-		}
-		return renderIncidentEnrichedFamilyTree(cmd, result.RootKey, result.Edges, result.Items, flagWalkPIKey)
-	}
-	return incidentEnrichedPathView(cmd, result.Items, " ⇄ \n")
 }
 
 func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, sep string) error {
@@ -77,32 +48,6 @@ func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, s
 		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, oneLinePI), sep))
 	}
 	return nil
-}
-
-func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrichedTraversalItem, sep string) error {
-	var out strings.Builder
-	for i, item := range items {
-		if i > 0 {
-			out.WriteString(sep)
-		}
-		out.WriteString(oneLinePI(item.Item))
-		for _, incident := range item.Incidents {
-			out.WriteByte('\n')
-			out.WriteString("  incident: ")
-			out.WriteString(incident.ErrorMessage)
-		}
-	}
-	renderOutputLine(cmd, "%s", out.String())
-	return nil
-}
-
-func writeIncidentLines(out *strings.Builder, prefix string, incidents []process.ProcessInstanceIncidentDetail) {
-	for _, incident := range incidents {
-		out.WriteByte('\n')
-		out.WriteString(prefix)
-		out.WriteString("incident: ")
-		out.WriteString(incident.ErrorMessage)
-	}
 }
 
 func pathItems(p KeysPath, c Chain) []process.ProcessInstance {
@@ -136,28 +81,7 @@ func traversalPayload(result process.TraversalResult) walkTraversalPayload {
 	}
 }
 
-func incidentEnrichedTraversalPayload(result process.IncidentEnrichedTraversalResult) walkIncidentEnrichedTraversalPayload {
-	return walkIncidentEnrichedTraversalPayload{
-		Mode:             result.Mode,
-		Outcome:          result.Outcome,
-		RootKey:          result.RootKey,
-		Keys:             append([]string(nil), result.Keys...),
-		Edges:            result.Edges,
-		Items:            result.Items,
-		MissingAncestors: append([]process.MissingAncestor(nil), result.MissingAncestors...),
-		Warning:          result.Warning,
-	}
-}
-
 func printTraversalWarning(cmd *cobra.Command, result process.TraversalResult) {
-	if result.Warning == "" && len(result.MissingAncestors) == 0 {
-		return
-	}
-
-	printTraversalWarningDetails(cmd, result.Warning, result.MissingAncestors)
-}
-
-func printIncidentEnrichedTraversalWarning(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) {
 	if result.Warning == "" && len(result.MissingAncestors) == 0 {
 		return
 	}
@@ -207,54 +131,6 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 				marker = " (--key)"
 			}
 			renderOutputLine(cmd, "%s", prefix+branch+oneLinePI(pi)+marker)
-			walk(childKey, nextPrefix)
-		}
-	}
-	walk(rootKey, "")
-	return nil
-}
-
-func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]string, items []process.IncidentEnrichedTraversalItem, markerKey string) error {
-	itemsByKey := make(map[string]process.IncidentEnrichedTraversalItem, len(items))
-	for _, item := range items {
-		itemsByKey[item.Item.Key] = item
-	}
-
-	rootItem, ok := itemsByKey[rootKey]
-	if !ok {
-		return fmt.Errorf("root %s not found in enriched traversal items", rootKey)
-	}
-	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
-	for _, incident := range rootItem.Incidents {
-		renderOutputLine(cmd, "  incident: %s", incident.ErrorMessage)
-	}
-
-	var walk func(parentKey, prefix string)
-	walk = func(parentKey, prefix string) {
-		children := edges[parentKey]
-		for i, childKey := range children {
-			last := i == len(children)-1
-			branch := "├─ "
-			nextPrefix := prefix + "│  "
-			if last {
-				branch = "└─ "
-				nextPrefix = prefix + "   "
-			}
-			item, ok := itemsByKey[childKey]
-			if !ok {
-				continue
-			}
-			marker := ""
-			if childKey == markerKey {
-				marker = " (--key)"
-			}
-			var out strings.Builder
-			out.WriteString(prefix)
-			out.WriteString(branch)
-			out.WriteString(oneLinePI(item.Item))
-			out.WriteString(marker)
-			writeIncidentLines(&out, nextPrefix+"  ", item.Incidents)
-			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
 	}

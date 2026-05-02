@@ -9,7 +9,7 @@ Started: 2026-05-02 12:59:38
 - Enriched family tree output must branch at `pickMode() == RenderModeTree` inside the enriched family view, preserving the existing plain `renderFamilyTree` path when `--with-incidents` is omitted.
 - Enriched walk JSON should use a dedicated walk payload builder and still render through `renderJSONPayload` so the shared command envelope remains `outcome`/`command`/`payload`.
 - `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes one-line, JSON, and family tree output through enriched renderers.
-- Issue #154 incident enrichment is the source of truth for `ProcessInstanceIncidentDetail`, keyed-only incident lookup, tenant-aware v8.8/v8.9 behavior, explicit v8.7 unsupported behavior, and human `incident: <message>` lines.
+- Issue #154 incident enrichment is the source of truth for `ProcessInstanceIncidentDetail`, keyed-only incident lookup, tenant-aware v8.8/v8.9 behavior, explicit v8.7 unsupported behavior, and human `incident <incident-key>: <message>` lines.
 - Existing walk JSON uses a shared command envelope with traversal metadata in the payload; enriched walk output should preserve that envelope and only replace plain items with enriched traversal items when requested.
 - Walk command tests commonly use IPv4 HTTP fixture servers and JSON response helpers in `cmd/walk_test.go`; traversal fixture helpers should produce v8.8/v8.9-shaped `hasIncident` process-instance responses and incident search result payloads.
 - Public traversal enrichment now lives on `process.API`/`process.Walker` as `EnrichTraversalWithIncidents`, reusing `SearchProcessInstanceIncidents` and the per-process-instance incident filter so traversal metadata stays authoritative.
@@ -76,7 +76,7 @@ Started: 2026-05-02 12:59:38
 - [x] T014: Add command human-output test for walked instances without incidents
 - [x] T015: Add facade test proving incident lookups run only for traversal result keys
 - [x] T016: Call facade traversal enrichment after walk fetch when `--with-incidents` is set
-- [x] T017: Add enriched path renderer for indented `incident:` message lines
+- [x] T017: Add enriched path renderer for indented `incident <incident-key>:` message lines
 - [x] T018: Wire parent mode human output to enriched path rendering
 - [x] T019: Wire children mode human output to enriched path rendering
 - [x] T020: Wire family mode human output to enriched path rendering
@@ -84,13 +84,13 @@ Started: 2026-05-02 12:59:38
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**: 
 - c8volt/process/client_test.go
-- cmd/cmd_views_walk.go
+- cmd/cmd_views_walk_incidents.go
 - cmd/walk_processinstance.go
 - cmd/walk_test.go
 - specs/157-walk-pi-incidents/tasks.md
 - specs/157-walk-pi-incidents/progress.md
 **Learnings**:
-- One-line enriched path output keeps the existing path separators and inserts `incident:` lines immediately after each owning process-instance row.
+- One-line enriched path output keeps the existing path separators and inserts `incident <incident-key>:` lines immediately after each owning process-instance row.
 - Command coverage can exercise children, parent, and family enriched rendering through v8.9 fixture servers while reusing the shared walked process-instance and incident response helpers.
 - Facade traversal enrichment intentionally ignores both result keys missing from `Chain` and extra `Chain` entries absent from `Keys`, so lookups stay scoped to actually rendered traversal items.
 ---
@@ -109,7 +109,7 @@ Started: 2026-05-02 12:59:38
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**: 
-- cmd/cmd_views_walk.go
+- cmd/cmd_views_walk_incidents.go
 - cmd/walk_processinstance.go
 - cmd/walk_test.go
 - specs/157-walk-pi-incidents/tasks.md
@@ -143,6 +143,7 @@ Started: 2026-05-02 12:59:38
 **Files Changed**: 
 - c8volt/process/client_test.go
 - cmd/cmd_views_walk.go
+- cmd/cmd_views_walk_incidents.go
 - cmd/walk_processinstance.go
 - cmd/walk_test.go
 - specs/157-walk-pi-incidents/tasks.md

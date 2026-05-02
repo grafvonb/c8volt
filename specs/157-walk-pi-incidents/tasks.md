@@ -38,7 +38,7 @@
 
 ## Phase 3: User Story 1 - Show Incident Messages While Walking (Priority: P1) MVP
 
-**Goal**: `c8volt walk pi --key <key> --with-incidents` shows incident error messages in human-readable walk output.
+**Goal**: `c8volt walk pi --key <key> --with-incidents` shows incident keys and error messages in human-readable walk output.
 
 **Independent Test**: Run keyed walk command tests against fixture responses with one incident, multiple incidents, and no incidents, then verify human-readable output preserves traversal ordering and renders incident messages under the matching process-instance rows.
 
@@ -52,7 +52,7 @@
 ### Implementation for User Story 1
 
 - [x] T016 [US1] Call facade traversal enrichment after walk fetch when `--with-incidents` is set in `cmd/walk_processinstance.go`
-- [x] T017 [US1] Add enriched path renderer for indented `incident:` message lines in `cmd/cmd_views_walk.go`
+- [x] T017 [US1] Add enriched path renderer for indented `incident <incident-key>:` message lines in `cmd/cmd_views_walk_incidents.go`
 - [x] T018 [US1] Wire parent mode human output to enriched path rendering in `cmd/walk_processinstance.go`
 - [x] T019 [US1] Wire children mode human output to enriched path rendering in `cmd/walk_processinstance.go`
 - [x] T020 [US1] Wire family mode human output to enriched path rendering in `cmd/walk_processinstance.go`
@@ -76,8 +76,8 @@
 
 ### Implementation for User Story 2
 
-- [x] T025 [US2] Add enriched traversal JSON payload builder in `cmd/cmd_views_walk.go`
-- [x] T026 [US2] Ensure enriched JSON output preserves existing shared envelope behavior in `cmd/cmd_views_walk.go`
+- [x] T025 [US2] Add enriched traversal JSON payload builder in `cmd/cmd_views_walk_incidents.go`
+- [x] T026 [US2] Ensure enriched JSON output preserves existing shared envelope behavior in `cmd/cmd_views_walk_incidents.go`
 - [x] T027 [US2] Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
 - [x] T028 [US2] Wire JSON mode to enriched traversal payload when `--with-incidents` is set in `cmd/walk_processinstance.go`
 
@@ -106,7 +106,7 @@
 
 - [x] T037 [US3] Keep existing `traversalPayload` path untouched when `--with-incidents` is omitted in `cmd/cmd_views_walk.go`
 - [x] T038 [US3] Keep existing `pathView` and `renderFamilyTree` behavior untouched when enrichment is omitted in `cmd/cmd_views_walk.go`
-- [x] T039 [US3] Implement enriched tree renderer without changing traversal edges or node ordering in `cmd/cmd_views_walk.go`
+- [x] T039 [US3] Implement enriched tree renderer without changing traversal edges or node ordering in `cmd/cmd_views_walk_incidents.go`
 - [x] T040 [US3] Preserve traversal warning printing after enriched parent/family output in `cmd/walk_processinstance.go`
 - [x] T041 [US3] Reject `--keys-only --with-incidents` with a clear validation error in `cmd/walk_processinstance.go`
 - [x] T042 [US3] Propagate incident lookup errors from traversal enrichment in `c8volt/process/client.go`

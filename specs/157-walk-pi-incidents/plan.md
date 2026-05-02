@@ -17,7 +17,7 @@ Add `--with-incidents` to `c8volt walk process-instance` / `walk pi` for keyed t
 **Project Type**: CLI  
 **Performance Goals**: Walk command performs no incident searches when `--with-incidents` is omitted; when enabled, it performs incident searches only for process instances returned by the selected traversal mode  
 **Constraints**: Preserve current walk traversal behavior, preserve default human/key-only/tree/JSON output when the flag is omitted, fail instead of rendering partially enriched output when incident lookup fails, keep incident lookups tenant-aware, avoid tenant-unsafe direct incident fallback, update generated CLI docs, finish with targeted tests and `make test`  
-**Scale/Scope**: Command flag validation and render selection in `cmd/walk_processinstance.go`, human/JSON traversal rendering in `cmd/cmd_views_walk.go`, public traversal enrichment models/helpers in `c8volt/process/`, optional traversal result model expansion in `internal/services/processinstance/traversal`, command tests in `cmd/walk_test.go`, facade tests in `c8volt/process/client_test.go`, documentation under `docs/cli/c8volt_walk_process-instance.md` and README review
+**Scale/Scope**: Command flag validation and render selection in `cmd/walk_processinstance.go`, base traversal rendering in `cmd/cmd_views_walk.go`, incident-enriched traversal rendering in `cmd/cmd_views_walk_incidents.go`, public traversal enrichment models/helpers in `c8volt/process/`, optional traversal result model expansion in `internal/services/processinstance/traversal`, command tests in `cmd/walk_test.go`, facade tests in `c8volt/process/client_test.go`, documentation under `docs/cli/c8volt_walk_process-instance.md` and README review
 
 ## Constitution Check
 
@@ -80,7 +80,7 @@ README.md
 docs/cli/c8volt_walk_process-instance.md
 ```
 
-**Structure Decision**: Keep traversal ownership where it already lives. `cmd/walk_processinstance.go` owns flag registration, validation, mode selection, and choosing enriched versus default views. `cmd/cmd_views_walk.go` owns human and JSON walk rendering. `c8volt/process` owns reusable public enrichment shapes that combine traversal results with issue #154 incident detail models. Versioned incident lookup stays in `internal/services/processinstance`.
+**Structure Decision**: Keep traversal ownership where it already lives. `cmd/walk_processinstance.go` owns flag registration, validation, mode selection, and choosing enriched versus default views. `cmd/cmd_views_walk.go` owns base human and JSON walk rendering, while `cmd/cmd_views_walk_incidents.go` owns enriched rendering. `c8volt/process` owns reusable public enrichment shapes that combine traversal results with issue #154 incident detail models. Versioned incident lookup stays in `internal/services/processinstance`.
 
 ## Phase 0: Research
 
@@ -107,7 +107,7 @@ Design artifacts are captured in:
 - Add a facade helper that enriches a `process.TraversalResult` by looking up incidents for `result.Keys` and attaching them to the corresponding process instance.
 - Propagate any incident lookup error from traversal enrichment so the command fails instead of rendering partial incident details.
 - Add `--with-incidents` flag registration and validation to `walk process-instance`.
-- Render human incident messages directly below matching process-instance rows. Tree mode should preserve branch layout and indent incident lines under the tree node that owns them.
+- Render human incident keys and messages directly below matching process-instance rows. Tree mode should preserve branch layout and indent incident lines under the tree node that owns them.
 - Render JSON using the same shared envelope path as existing walk JSON while replacing plain `items` with incident-enriched items only when the flag is requested.
 - Reject `--keys-only --with-incidents` with a clear validation error because key-only output cannot carry incident details.
 - Regenerate CLI docs through `make docs-content` after help text changes.
@@ -125,7 +125,7 @@ Design artifacts are captured in:
 Task generation should keep the work in independently verifiable user-story slices:
 
 1. Prepare shared enriched traversal models and command flag validation.
-2. Deliver User Story 1 as the MVP: human-readable incident messages for walked process instances.
+2. Deliver User Story 1 as the MVP: human-readable incident keys and messages for walked process instances.
 3. Add User Story 2 JSON enrichment with stable traversal metadata and per-item incidents.
 4. Add User Story 3 regression coverage for default traversal behavior, key-only rejection, tree semantics, and incident lookup failure behavior.
 5. Add User Story 4 tenant/version safeguards, docs generation, and final validation.

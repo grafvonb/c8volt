@@ -82,18 +82,18 @@ Started: 2026-05-02 09:54:51
 **Tasks Completed**:
 - [x] T013: Add `v88` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v88/service_test.go`
 - [x] T014: Add `v89` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v89/service_test.go`
-- [x] T015: Add command human-output test for one indented `incident:` message in `cmd/get_processinstance_test.go`
-- [x] T016: Add command human-output tests for multiple indented `incident:` lines and no incidents in `cmd/get_processinstance_test.go`
+- [x] T015: Add command human-output test for one indented `incident <incident-key>:` message in `cmd/get_processinstance_test.go`
+- [x] T016: Add command human-output tests for multiple indented `incident <incident-key>:` lines and no incidents in `cmd/get_processinstance_test.go`
 - [x] T017: Add generated incident search method to `internal/services/processinstance/v88/contract.go`
 - [x] T018: Implement `v88` incident search request and conversion in `internal/services/processinstance/v88/service.go` and `internal/services/processinstance/v88/convert.go`
 - [x] T019: Add generated incident search method to `internal/services/processinstance/v89/contract.go`
 - [x] T020: Implement `v89` incident search request and conversion in `internal/services/processinstance/v89/service.go` and `internal/services/processinstance/v89/convert.go`
 - [x] T021: Call facade enrichment after keyed process-instance lookup when `--with-incidents` is set in `cmd/get_processinstance.go`
-- [x] T022: Add enriched human renderer for indented `incident:` message lines in `cmd/cmd_views_get.go`
+- [x] T022: Add enriched human renderer for indented `incident <incident-key>:` message lines in `cmd/cmd_views_processinstance_incidents.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
-- cmd/cmd_views_get.go
+- cmd/cmd_views_processinstance_incidents.go
 - cmd/get_processinstance.go
 - cmd/get_processinstance_test.go
 - internal/services/processinstance/v88/contract.go
@@ -108,7 +108,7 @@ Started: 2026-05-02 09:54:51
 - specs/154-get-pi-incidents/tasks.md
 **Learnings**:
 - Supported-version incident lookup should be implemented in the existing `incidents.go` seam, not as an additional method in `service.go`.
-- Human `--with-incidents` output preserves the existing process-instance row and appends one indented line for each returned incident error message.
+- Human `--with-incidents` output preserves the existing process-instance row and appends one indented key/message line for each returned incident.
 - Validation passed with `GOCACHE=/tmp/codex-gocache go test ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./cmd -count=1`.
 ---
 ---
@@ -118,13 +118,13 @@ Started: 2026-05-02 09:54:51
 - [x] T023: Add JSON command test for one key with incident details in `cmd/get_processinstance_test.go`
 - [x] T024: Add JSON command test for multiple keys with per-key incident association in `cmd/get_processinstance_test.go`
 - [x] T025: Add JSON command test for an empty incidents collection in `cmd/get_processinstance_test.go`
-- [x] T026: Add enriched JSON renderer that emits `total` and per-item `incidents` in `cmd/cmd_views_get.go`
-- [x] T027: Ensure enriched JSON output preserves existing command envelope behavior in `cmd/cmd_views_get.go`
+- [x] T026: Add enriched JSON renderer that emits `total` and per-item `incidents` in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T027: Ensure enriched JSON output preserves existing command envelope behavior in `cmd/cmd_views_processinstance_incidents.go`
 - [x] T028: Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
-- cmd/cmd_views_get.go
+- cmd/cmd_views_processinstance_incidents.go
 - cmd/cmd_views_get_test.go
 - cmd/get_processinstance_test.go
 - specs/154-get-pi-incidents/progress.md

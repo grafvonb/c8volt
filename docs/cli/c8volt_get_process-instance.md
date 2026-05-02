@@ -16,7 +16,7 @@ Use direct lookup when you know a process-instance key, or combine search filter
 
 Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.
 
-Use --with-incidents with --key to include incident error messages for the returned process instance.
+Use --with-incidents with --key to include incident keys and messages for the returned process instance.
 
 User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.
 
@@ -74,7 +74,7 @@ c8volt get process-instance [flags]
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                       return only the numeric total of matching process instances; capped backend totals are counted by paging
       --with-age                    include process instance age in one-line output and JSON meta
-      --with-incidents              include incident error messages for direct --key process-instance lookups
+      --with-incidents              include incident keys and messages for direct --key process-instance lookups
   -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```
 

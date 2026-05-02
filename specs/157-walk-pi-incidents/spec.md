@@ -104,7 +104,7 @@ As an operator in tenant-aware environments, I want walk incident enrichment to 
 - **FR-002**: The system MUST accept `--with-incidents` only for keyed process-instance walks using `--key`.
 - **FR-003**: The system MUST reject `--with-incidents` without a usable `--key` with a clear validation error.
 - **FR-004**: When `--with-incidents` is provided, the system MUST fetch incident data only for walked process instances returned by the selected walk mode.
-- **FR-005**: Human-readable output MUST preserve current walk ordering and show returned incident error messages directly under the matching process-instance row.
+- **FR-005**: Human-readable output MUST preserve current walk ordering and show returned incident keys and error messages directly under the matching process-instance row.
 - **FR-006**: Human-readable output MUST continue to render process instances successfully when no incident details are returned.
 - **FR-007**: JSON output MUST include incident details in a machine-readable shape for each walked process instance when `--with-incidents` is provided.
 - **FR-008**: JSON incident details MUST include each incident's error message when available and enough key information to associate the incident with the process instance.
@@ -136,7 +136,7 @@ As an operator in tenant-aware environments, I want walk incident enrichment to 
 
 ### Measurable Outcomes
 
-- **SC-001**: Automated command tests show `c8volt walk pi --key <key> --with-incidents` preserves walk ordering and includes returned incident error messages under the matching process-instance rows.
+- **SC-001**: Automated command tests show `c8volt walk pi --key <key> --with-incidents` preserves walk ordering and includes returned incident keys and error messages under the matching process-instance rows.
 - **SC-002**: Automated command tests show `c8volt walk pi --key <key> --with-incidents --json` includes machine-readable incident details with error messages for walked items.
 - **SC-003**: Automated validation tests show `--with-incidents` without a usable `--key` fails with a clear validation error.
 - **SC-004**: Automated regression tests show existing default walk output is unchanged when `--with-incidents` is omitted.

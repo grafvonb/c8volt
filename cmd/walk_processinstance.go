@@ -31,7 +31,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
 		"Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.\n\n" +
-		"Add --with-incidents to keyed walks to fetch incident details and show incident messages below matching process-instance rows.\n\n" +
+		"Add --with-incidents to keyed walks to show incident keys and messages below matching process-instance rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key 2251799813711967 --family
   ./c8volt walk pi --key 2251799813711967 --family --tree
@@ -186,7 +186,7 @@ func init() {
 	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "shorthand for --mode=children")
 	fs.BoolVar(&flagWalkPIModeFamily, "family", false, "shorthand for --mode=family")
 	fs.BoolVar(&flagViewAsTree, "tree", false, "render family mode as an ASCII tree (only valid with --family)")
-	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "fetch incident details and show messages for keyed process-instance walks")
+	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys and messages for keyed process-instance walks")
 
 	// shell completion for --mode
 	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

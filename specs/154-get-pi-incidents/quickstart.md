@@ -11,7 +11,7 @@ c8volt get pi --key 2251799813711967 --with-incidents
 Expected result:
 
 - The process-instance row is shown.
-- Incident message text is visible as an indented `incident:` line below the matching process-instance row when the process instance has returned incidents.
+- Incident message text is visible as an indented `incident <incident-key>:` line below the matching process-instance row when the process instance has returned incidents.
 - The command exits successfully for process instances without incidents.
 
 ### Keyed JSON output with incidents

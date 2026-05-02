@@ -33,20 +33,6 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
 }
 
-func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
-	if pickMode() == RenderModeJSON {
-		return renderJSONPayload(cmd, RenderModeJSON, resp)
-	}
-	for _, it := range resp.Items {
-		renderOutputLine(cmd, "%s", oneLinePI(it.Item))
-		for _, incident := range it.Incidents {
-			renderOutputLine(cmd, "  incident: %s", incident.ErrorMessage)
-		}
-	}
-	renderOutputLine(cmd, "found: %d", len(resp.Items))
-	return nil
-}
-
 func oneLinePI(it process.ProcessInstance) string {
 	pTag := " p:<root>"
 	if it.ParentKey != "" {
