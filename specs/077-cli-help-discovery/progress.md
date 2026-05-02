@@ -160,7 +160,7 @@ Started: 2026-04-19 13:07:21
 **User Story**: US3 - Keep Generated Docs In Sync With Help Metadata
 **Tasks Completed**:
 - [x] T017: Add doc-parity regression coverage for public help anchors in `cmd/root_test.go` and `cmd/capabilities_test.go`
-- [x] T018: Update top-level workflow and discovery guidance in `README.md` and `docs/use-cases.md`
+- [x] T018: Update top-level workflow and discovery guidance in `README.md` and `docs/index.md`
 - [x] T019: Regenerate the public CLI reference pages in `docs/cli` using the Makefile docs generation path
 - [x] T020: Sync README-derived documentation content in `docs/index.md` using the Makefile docs generation path
 **Tasks Remaining in Story**: None - story complete
@@ -170,7 +170,7 @@ Started: 2026-04-19 13:07:21
 - cmd/capabilities_test.go
 - cmd/root_test.go
 - docs/index.md
-- docs/use-cases.md
+- docs/index.md
 - docs/cli/
 - specs/077-cli-help-discovery/progress.md
 - specs/077-cli-help-discovery/tasks.md

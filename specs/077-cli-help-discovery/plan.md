@@ -17,7 +17,7 @@ Refresh the full public `c8volt` command tree so every user-visible parent comma
 **Project Type**: CLI  
 **Performance Goals**: Keep help and docs improvements metadata-only; do not introduce new runtime API calls or alter command execution behavior beyond small truth-preserving help clarifications; keep doc generation within the existing `make docs` and `make docs-content` flow  
 **Constraints**: Cover all user-visible commands in the public Cobra tree, include both parent/group commands and executable leaf commands, refresh examples for every covered command, exclude hidden/internal commands, preserve existing command structure and terminology, keep docs generated from source metadata rather than hand-edited, and avoid broad behavioral changes unless needed to make help truthful  
-**Scale/Scope**: Root and parent command metadata in [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), family entry points such as `cmd/get.go`, `cmd/delete.go`, `cmd/deploy.go`, `cmd/run.go`, `cmd/walk.go`, `cmd/expect.go`, `cmd/config.go`, `cmd/cancel.go`, `cmd/embed.go`, command leaf files under [`cmd/`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd), capability and automation guidance in [`cmd/command_contract.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go) and [`cmd/capabilities.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go), user-facing docs in [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), [`docs/use-cases.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/use-cases.md), [`docs/index.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md), and generated CLI pages under [`docs/cli/`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli)
+**Scale/Scope**: Root and parent command metadata in [`cmd/root.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/root.go), family entry points such as `cmd/get.go`, `cmd/delete.go`, `cmd/deploy.go`, `cmd/run.go`, `cmd/walk.go`, `cmd/expect.go`, `cmd/config.go`, `cmd/cancel.go`, `cmd/embed.go`, command leaf files under [`cmd/`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd), capability and automation guidance in [`cmd/command_contract.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go) and [`cmd/capabilities.go`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/capabilities.go), user-facing docs in [`README.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md), [`docs/index.md`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md), and generated CLI pages under [`docs/cli/`](/Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli)
 
 ## Constitution Check
 
@@ -132,8 +132,7 @@ cmd/
 docs/
 ├── cli/
 │   └── generated Markdown command reference
-├── index.md
-└── use-cases.md
+└── index.md
 
 README.md
 Makefile
