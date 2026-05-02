@@ -1,10 +1,10 @@
-tag=v2.8.3.2
+tag=v2.8.3.3
 source=/Users/adam.boczek/Development/Workspace/Boczek/Projects/ai-tooling
-commit=713746954f733960e588fbbd5ba0b8e6b85dfd5c
-synced_at_utc=2026-05-02T07:26:30Z
+commit=36bb40447f030cd90fb893e420ad2b142565a34f
+synced_at_utc=2026-05-02T19:47:27Z
 
 # path sha256
-.agents/skills/gvb-ghissue-to-ralph/SKILL.md 4c206afd112e50dffba2d67edf334a30969c42f0f8c436e96953defdc2f3f681
+.agents/skills/gvb-ghissue-to-ralph/SKILL.md d9e3bd3c4b293cee6fd6ba676d3e74283bf65031d82b83b7f7150dd257549d2c
 .agents/skills/gvb-ghissue-to-speckit/SKILL.md a5a1bd02c6528ea358fdd42a2cf6b73b31a79b21a6829bf483916e1530200b53
 .agents/skills/gvb-prd-to-ralph/SKILL.md cc5fb728419639efe25b31c0f65a01343efb99d25f01fe12b45907dbe0c1e0cf
 .agents/skills/gvb-speckit-to-prd/SKILL.md bce603b70fc4de1e7acad1232a8deac3f44b524f11cd4e47da5fc179d2b4f276
@@ -133,7 +133,4 @@ presets/self-test/templates/constitution-template.md 70e00709af58ecfb933b5f138ea
 presets/self-test/templates/plan-template.md 513e5b5437b77c0eb0889a65f0a35f5c55e8a0b46134e52adec18d9062edb3f8
 presets/self-test/templates/spec-template.md 63335b93bd58b601c5a619d64ec0d6a87821eb6ae53a88667a616cc2215f7c32
 presets/self-test/templates/tasks-template.md d489949350e1e1111b892d50f384eb76a599280938830effa88d93c186dfeb9a
-scripts/ralph/doctor.sh 9b3ea0980ab0b81634e04206ce885edb831db3880cd9d86be39ca4630ec1ff27
-scripts/ralph/prompt.md cb4783f3a68da621f61585710e0b2042004a4d149f1fce4274792b8d9a438f1a
-scripts/ralph/ralph.sh c84b1cc4b1f469ebc4e9155ccb181a43b603deabfd7293cb3c6834f6adf49f82
 workflows/speckit/workflow.yml 30862b06e500cf482819b8b8db31de86a9d621633110692598e806ba0407b3d1
