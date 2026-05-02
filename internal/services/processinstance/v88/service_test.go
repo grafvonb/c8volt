@@ -525,7 +525,7 @@ func TestService_SearchProcessInstanceIncidents(t *testing.T) {
 		searchProcessInstanceIncidents: func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 			payload := marshalJSON(t, body)
 			assert.Equal(t, "123", key)
-			assert.Contains(t, payload, `"processInstanceKey":"123"`)
+			assert.NotContains(t, payload, "processInstanceKey")
 			assert.Contains(t, payload, `"tenantId":"tenant"`)
 			assert.Contains(t, payload, `"limit":1000`)
 			return &camundav88.SearchProcessInstanceIncidentsResponse{

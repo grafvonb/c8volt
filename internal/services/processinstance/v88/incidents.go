@@ -17,21 +17,18 @@ import (
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
-	processInstanceKeyFilter, err := common.NewProcessInstanceKeyEqFilterPtr(key)
-	if err != nil {
-		return nil, fmt.Errorf("building process-instance-key incident filter: %w", err)
-	}
 	tenantFilter, err := common.NewStringEqFilterPtr(s.cfg.App.Tenant)
 	if err != nil {
 		return nil, fmt.Errorf("building tenant incident filter: %w", err)
 	}
 	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
 	body := camundav88.SearchProcessInstanceIncidentsJSONRequestBody{
-		Filter: &camundav88.IncidentFilter{
-			ProcessInstanceKey: processInstanceKeyFilter,
-			TenantId:           tenantFilter,
-		},
 		Page: &page,
+	}
+	if tenantFilter != nil {
+		body.Filter = &camundav88.IncidentFilter{
+			TenantId: tenantFilter,
+		}
 	}
 	resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
 	if err != nil {

@@ -590,7 +590,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Len(t, incidentBodies, 1)
-	require.Contains(t, incidentBodies[0], `"processInstanceKey":"123"`)
+	require.NotContains(t, incidentBodies[0], "processInstanceKey")
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
