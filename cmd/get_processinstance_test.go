@@ -785,6 +785,21 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(
 	require.Empty(t, incidents)
 }
 
+func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceWithIncidentsUnsupportedV87Helper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "unsupported capability")
+	require.Contains(t, string(output), "not tenant-safe in Camunda 8.7")
+}
+
 func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2779,6 +2794,20 @@ func TestGetProcessInstanceWithIncidentsWithSearchFilterHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incidents-only"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for unsupported v8.7 --with-incidents coverage.
+func TestGetProcessInstanceWithIncidentsUnsupportedV87Helper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents"}
 
 	Execute()
 }

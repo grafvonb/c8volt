@@ -115,17 +115,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T035 [P] [US4] Add `v88` tenant-filter request construction assertions in `internal/services/processinstance/v88/service_test.go`
-- [ ] T036 [P] [US4] Add `v89` tenant-filter request construction assertions in `internal/services/processinstance/v89/service_test.go`
-- [ ] T037 [P] [US4] Add `v87` unsupported incident lookup service test in `internal/services/processinstance/v87/service_test.go`
-- [ ] T038 [P] [US4] Add command unsupported-version test for `--with-incidents` on Camunda 8.7 in `cmd/get_processinstance_test.go`
+- [x] T035 [P] [US4] Add `v88` tenant-filter request construction assertions in `internal/services/processinstance/v88/service_test.go`
+- [x] T036 [P] [US4] Add `v89` tenant-filter request construction assertions in `internal/services/processinstance/v89/service_test.go`
+- [x] T037 [P] [US4] Add `v87` unsupported incident lookup service test in `internal/services/processinstance/v87/service_test.go`
+- [x] T038 [P] [US4] Add command unsupported-version test for `--with-incidents` on Camunda 8.7 in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Include configured tenant in `v88` incident search filters in `internal/services/processinstance/v88/service.go`
-- [ ] T040 [US4] Include configured tenant in `v89` incident search filters in `internal/services/processinstance/v89/service.go`
-- [ ] T041 [US4] Implement `v87` incident lookup as explicit unsupported in `internal/services/processinstance/v87/service.go`
-- [ ] T042 [US4] Ensure unsupported errors map through existing facade and command handlers in `c8volt/process/client.go` and `cmd/get_processinstance.go`
+- [x] T039 [US4] Include configured tenant in `v88` incident search filters in `internal/services/processinstance/v88/service.go`
+- [x] T040 [US4] Include configured tenant in `v89` incident search filters in `internal/services/processinstance/v89/service.go`
+- [x] T041 [US4] Implement `v87` incident lookup as explicit unsupported in `internal/services/processinstance/v87/service.go`
+- [x] T042 [US4] Ensure unsupported errors map through existing facade and command handlers in `c8volt/process/client.go` and `cmd/get_processinstance.go`
 
 **Checkpoint**: All user stories are independently functional.
 

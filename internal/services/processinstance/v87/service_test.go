@@ -256,6 +256,17 @@ func TestService_GetProcessInstance(t *testing.T) {
 	}
 }
 
+func TestService_SearchProcessInstanceIncidentsUnsupported(t *testing.T) {
+	svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+
+	_, err := svc.SearchProcessInstanceIncidents(context.Background(), "123")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, d.ErrUnsupported)
+	assert.Contains(t, err.Error(), "Camunda 8.7")
+	assert.Contains(t, err.Error(), "tenant-safe")
+}
+
 func TestService_SearchForProcessInstances(t *testing.T) {
 	ctx := context.Background()
 

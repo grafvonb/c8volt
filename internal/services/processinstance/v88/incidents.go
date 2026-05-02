@@ -21,10 +21,15 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 	if err != nil {
 		return nil, fmt.Errorf("building process-instance-key incident filter: %w", err)
 	}
+	tenantFilter, err := common.NewStringEqFilterPtr(s.cfg.App.Tenant)
+	if err != nil {
+		return nil, fmt.Errorf("building tenant incident filter: %w", err)
+	}
 	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
 	body := camundav88.SearchProcessInstanceIncidentsJSONRequestBody{
 		Filter: &camundav88.IncidentFilter{
 			ProcessInstanceKey: processInstanceKeyFilter,
+			TenantId:           tenantFilter,
 		},
 		Page: &page,
 	}

@@ -15,5 +15,5 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 	_ = ctx
 	_ = key
 	_ = services.ApplyCallOptions(opts)
-	return nil, fmt.Errorf("%w: process-instance incident lookup", d.ErrUnsupported)
+	return nil, fmt.Errorf("%w: process-instance incident lookup is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }

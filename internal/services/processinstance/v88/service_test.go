@@ -526,6 +526,7 @@ func TestService_SearchProcessInstanceIncidents(t *testing.T) {
 			payload := marshalJSON(t, body)
 			assert.Equal(t, "123", key)
 			assert.Contains(t, payload, `"processInstanceKey":"123"`)
+			assert.Contains(t, payload, `"tenantId":"tenant"`)
 			assert.Contains(t, payload, `"limit":1000`)
 			return &camundav88.SearchProcessInstanceIncidentsResponse{
 				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/incidents/search", http.StatusOK, "200 OK"),
