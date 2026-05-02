@@ -6,6 +6,7 @@ package process
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 
@@ -390,6 +391,38 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 	require.Len(t, got.Items, 2)
 	require.Equal(t, "root", got.Items[0].Item.Key)
 	require.Equal(t, "walked", got.Items[1].Item.Key)
+}
+
+func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lookupErr := errors.New("incident lookup failed")
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, key)
+			if key == "child" {
+				return nil, lookupErr
+			}
+			return nil, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
+		Mode:    TraversalModeDescendants,
+		Outcome: TraversalOutcomeComplete,
+		Keys:    []string{"root", "child"},
+		Chain: map[string]ProcessInstance{
+			"root":  {Key: "root"},
+			"child": {Key: "child"},
+		},
+	})
+
+	require.ErrorIs(t, err, lookupErr)
+	require.Equal(t, []string{"root", "child"}, calls)
+	require.Empty(t, got.Items)
 }
 
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page

@@ -159,7 +159,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				return
-			case RenderModeOneLine:
+			case RenderModeOneLine, RenderModeTree:
 				if err := w.enrichedView(cmd, enriched); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}

@@ -5,8 +5,9 @@ Started: 2026-05-02 12:59:38
 
 ## Codebase Patterns
 
+- Enriched family tree output must branch at `pickMode() == RenderModeTree` inside the enriched family view, preserving the existing plain `renderFamilyTree` path when `--with-incidents` is omitted.
 - Enriched walk JSON should use a dedicated walk payload builder and still render through `renderJSONPayload` so the shared command envelope remains `outcome`/`command`/`payload`.
-- `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes one-line human output plus JSON output through enriched renderers; tree rendering remains on its existing path until its later user-story work unit.
+- `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes one-line, JSON, and family tree output through enriched renderers.
 - Issue #154 incident enrichment is the source of truth for `ProcessInstanceIncidentDetail`, keyed-only incident lookup, tenant-aware v8.8/v8.9 behavior, explicit v8.7 unsupported behavior, and human `incident: <message>` lines.
 - Existing walk JSON uses a shared command envelope with traversal metadata in the payload; enriched walk output should preserve that envelope and only replace plain items with enriched traversal items when requested.
 - Walk command tests commonly use IPv4 HTTP fixture servers and JSON response helpers in `cmd/walk_test.go`; traversal fixture helpers should produce v8.8/v8.9-shaped `hasIncident` process-instance responses and incident search result payloads.
@@ -116,4 +117,37 @@ Started: 2026-05-02 12:59:38
 - Enriched walk JSON must replace plain process-instance `items` with `{item, incidents}` entries while keeping the existing shared command envelope.
 - The existing facade enrichment already returns non-nil empty incident slices for no-incident results, so JSON renders `incidents: []` once command output uses the enriched payload.
 - `process.MissingAncestor` currently serializes with exported Go field names in walk JSON because the public type has no JSON tags; US2 preserves that existing metadata shape.
+---
+---
+## Iteration 5 - 2026-05-02 13:25:40 CEST
+**User Story**: User Story 3 - Preserve Walk Traversal Semantics
+**Tasks Completed**: 
+- [x] T029: Add regression test proving default children human output is unchanged without `--with-incidents`
+- [x] T030: Add regression test proving default walk JSON output is unchanged without `--with-incidents`
+- [x] T031: Add regression test preserving family tree layout when `--with-incidents` is omitted
+- [x] T032: Add enriched tree-output test showing incident lines under the matching tree node
+- [x] T033: Add partial traversal warning test with `--with-incidents`
+- [x] T034: Add key-only combination rejection test
+- [x] T035: Add facade test proving incident lookup failure returns an error instead of an enriched traversal
+- [x] T036: Add command test proving incident lookup failure exits without rendering partial traversal output
+- [x] T037: Keep existing `traversalPayload` path untouched when `--with-incidents` is omitted
+- [x] T038: Keep existing `pathView` and `renderFamilyTree` behavior untouched when enrichment is omitted
+- [x] T039: Implement enriched tree renderer without changing traversal edges or node ordering
+- [x] T040: Preserve traversal warning printing after enriched parent/family output
+- [x] T041: Reject `--keys-only --with-incidents` with a clear validation error
+- [x] T042: Propagate incident lookup errors from traversal enrichment
+- [x] T043: Ensure walk command handles enrichment errors before any traversal rendering occurs
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- c8volt/process/client_test.go
+- cmd/cmd_views_walk.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- specs/157-walk-pi-incidents/tasks.md
+- specs/157-walk-pi-incidents/progress.md
+**Learnings**:
+- The plain traversal payload, path view, and family tree renderer can remain untouched because the command only switches to enriched rendering after successful enrichment and only when `--with-incidents` is requested.
+- Tree incident messages are rendered from enriched traversal items keyed by process-instance key, while traversal edges continue to drive tree order and branch layout.
+- Command-level lookup failure coverage needs a subprocess because the CLI error path exits through the shared command error handler.
 ---

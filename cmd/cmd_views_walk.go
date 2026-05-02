@@ -57,6 +57,12 @@ func incidentEnrichedDescendantsView(cmd *cobra.Command, result process.Incident
 }
 
 func incidentEnrichedFamilyView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
+	if pickMode() == RenderModeTree {
+		if len(result.Keys) == 0 {
+			return nil
+		}
+		return renderIncidentEnrichedFamilyTree(cmd, result.RootKey, result.Edges, result.Items, flagWalkPIKey)
+	}
 	return incidentEnrichedPathView(cmd, result.Items, " ⇄ \n")
 }
 
@@ -88,6 +94,15 @@ func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrich
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
+}
+
+func writeIncidentLines(out *strings.Builder, prefix string, incidents []process.ProcessInstanceIncidentDetail) {
+	for _, incident := range incidents {
+		out.WriteByte('\n')
+		out.WriteString(prefix)
+		out.WriteString("incident: ")
+		out.WriteString(incident.ErrorMessage)
+	}
 }
 
 func pathItems(p KeysPath, c Chain) []process.ProcessInstance {
@@ -192,6 +207,54 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 				marker = " (--key)"
 			}
 			renderOutputLine(cmd, "%s", prefix+branch+oneLinePI(pi)+marker)
+			walk(childKey, nextPrefix)
+		}
+	}
+	walk(rootKey, "")
+	return nil
+}
+
+func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]string, items []process.IncidentEnrichedTraversalItem, markerKey string) error {
+	itemsByKey := make(map[string]process.IncidentEnrichedTraversalItem, len(items))
+	for _, item := range items {
+		itemsByKey[item.Item.Key] = item
+	}
+
+	rootItem, ok := itemsByKey[rootKey]
+	if !ok {
+		return fmt.Errorf("root %s not found in enriched traversal items", rootKey)
+	}
+	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
+	for _, incident := range rootItem.Incidents {
+		renderOutputLine(cmd, "  incident: %s", incident.ErrorMessage)
+	}
+
+	var walk func(parentKey, prefix string)
+	walk = func(parentKey, prefix string) {
+		children := edges[parentKey]
+		for i, childKey := range children {
+			last := i == len(children)-1
+			branch := "├─ "
+			nextPrefix := prefix + "│  "
+			if last {
+				branch = "└─ "
+				nextPrefix = prefix + "   "
+			}
+			item, ok := itemsByKey[childKey]
+			if !ok {
+				continue
+			}
+			marker := ""
+			if childKey == markerKey {
+				marker = " (--key)"
+			}
+			var out strings.Builder
+			out.WriteString(prefix)
+			out.WriteString(branch)
+			out.WriteString(oneLinePI(item.Item))
+			out.WriteString(marker)
+			writeIncidentLines(&out, nextPrefix+"  ", item.Incidents)
+			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
 	}

@@ -93,24 +93,24 @@
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Add regression test proving default children human output is unchanged without `--with-incidents` in `cmd/walk_test.go`
-- [ ] T030 [P] [US3] Add regression test proving default walk JSON output is unchanged without `--with-incidents` in `cmd/walk_test.go`
-- [ ] T031 [P] [US3] Add regression test preserving family tree layout when `--with-incidents` is omitted in `cmd/walk_test.go`
-- [ ] T032 [P] [US3] Add enriched tree-output test showing incident lines under the matching tree node in `cmd/walk_test.go`
-- [ ] T033 [P] [US3] Add partial traversal warning test with `--with-incidents` in `cmd/walk_test.go`
-- [ ] T034 [P] [US3] Add key-only combination rejection test in `cmd/walk_test.go`
-- [ ] T035 [P] [US3] Add facade test proving incident lookup failure returns an error instead of an enriched traversal in `c8volt/process/client_test.go`
-- [ ] T036 [P] [US3] Add command test proving incident lookup failure exits without rendering partial traversal output in `cmd/walk_test.go`
+- [x] T029 [P] [US3] Add regression test proving default children human output is unchanged without `--with-incidents` in `cmd/walk_test.go`
+- [x] T030 [P] [US3] Add regression test proving default walk JSON output is unchanged without `--with-incidents` in `cmd/walk_test.go`
+- [x] T031 [P] [US3] Add regression test preserving family tree layout when `--with-incidents` is omitted in `cmd/walk_test.go`
+- [x] T032 [P] [US3] Add enriched tree-output test showing incident lines under the matching tree node in `cmd/walk_test.go`
+- [x] T033 [P] [US3] Add partial traversal warning test with `--with-incidents` in `cmd/walk_test.go`
+- [x] T034 [P] [US3] Add key-only combination rejection test in `cmd/walk_test.go`
+- [x] T035 [P] [US3] Add facade test proving incident lookup failure returns an error instead of an enriched traversal in `c8volt/process/client_test.go`
+- [x] T036 [P] [US3] Add command test proving incident lookup failure exits without rendering partial traversal output in `cmd/walk_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Keep existing `traversalPayload` path untouched when `--with-incidents` is omitted in `cmd/cmd_views_walk.go`
-- [ ] T038 [US3] Keep existing `pathView` and `renderFamilyTree` behavior untouched when enrichment is omitted in `cmd/cmd_views_walk.go`
-- [ ] T039 [US3] Implement enriched tree renderer without changing traversal edges or node ordering in `cmd/cmd_views_walk.go`
-- [ ] T040 [US3] Preserve traversal warning printing after enriched parent/family output in `cmd/walk_processinstance.go`
-- [ ] T041 [US3] Reject `--keys-only --with-incidents` with a clear validation error in `cmd/walk_processinstance.go`
-- [ ] T042 [US3] Propagate incident lookup errors from traversal enrichment in `c8volt/process/client.go`
-- [ ] T043 [US3] Ensure `cmd/walk_processinstance.go` handles enrichment errors before any human or JSON traversal rendering occurs
+- [x] T037 [US3] Keep existing `traversalPayload` path untouched when `--with-incidents` is omitted in `cmd/cmd_views_walk.go`
+- [x] T038 [US3] Keep existing `pathView` and `renderFamilyTree` behavior untouched when enrichment is omitted in `cmd/cmd_views_walk.go`
+- [x] T039 [US3] Implement enriched tree renderer without changing traversal edges or node ordering in `cmd/cmd_views_walk.go`
+- [x] T040 [US3] Preserve traversal warning printing after enriched parent/family output in `cmd/walk_processinstance.go`
+- [x] T041 [US3] Reject `--keys-only --with-incidents` with a clear validation error in `cmd/walk_processinstance.go`
+- [x] T042 [US3] Propagate incident lookup errors from traversal enrichment in `c8volt/process/client.go`
+- [x] T043 [US3] Ensure `cmd/walk_processinstance.go` handles enrichment errors before any human or JSON traversal rendering occurs
 
 **Checkpoint**: User Stories 1, 2, and 3 are independently functional.
 
