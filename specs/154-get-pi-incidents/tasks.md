@@ -93,15 +93,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Add regression test proving default keyed human output is unchanged without `--with-incidents` in `cmd/get_processinstance_test.go`
-- [ ] T030 [P] [US3] Add regression test proving default keyed JSON output is unchanged without `--with-incidents` in `cmd/get_processinstance_test.go`
-- [ ] T031 [P] [US3] Add regression tests preserving `--incidents-only` and `--no-incidents-only` search filters in `cmd/get_processinstance_test.go`
+- [x] T029 [P] [US3] Add regression test proving default keyed human output is unchanged without `--with-incidents` in `cmd/get_processinstance_test.go`
+- [x] T030 [P] [US3] Add regression test proving default keyed JSON output is unchanged without `--with-incidents` in `cmd/get_processinstance_test.go`
+- [x] T031 [P] [US3] Add regression tests preserving `--incidents-only` and `--no-incidents-only` search filters in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Keep existing `listProcessInstancesView` path untouched when `--with-incidents` is omitted in `cmd/get_processinstance.go`
-- [ ] T033 [US3] Ensure `oneLinePI` remains the default incident-marker-only renderer in `cmd/cmd_views_get.go`
-- [ ] T034 [US3] Verify search-mode population and validation still use existing incident filter behavior in `cmd/get_processinstance.go`
+- [x] T032 [US3] Keep existing `listProcessInstancesView` path untouched when `--with-incidents` is omitted in `cmd/get_processinstance.go`
+- [x] T033 [US3] Ensure `oneLinePI` remains the default incident-marker-only renderer in `cmd/cmd_views_get.go`
+- [x] T034 [US3] Verify search-mode population and validation still use existing incident filter behavior in `cmd/get_processinstance.go`
 
 **Checkpoint**: User Stories 1, 2, and 3 are independently functional.
 

@@ -5,6 +5,7 @@ Started: 2026-05-02 09:54:51
 
 ## Codebase Patterns
 
+- Default keyed process-instance output without `--with-incidents` should perform only the generated key lookup, then flow through `listProcessInstancesView`/`oneLinePI`; default JSON remains the `ProcessInstances` payload rather than the enriched `item`/`incidents` wrapper.
 - Generated v8.8/v8.9 incident results expose BPMN flow-node metadata as `ElementId`/`ElementInstanceKey`; feature-facing models use `FlowNodeId`/`FlowNodeInstanceKey`, so conversion helpers should map element fields into flow-node fields.
 - Existing public process models use `omitempty` broadly, but the incident-enriched JSON wrapper keeps `total`, `items`, `item`, `incidents`, `processInstanceKey`, and `errorMessage` non-omitempty so requested enrichment can render empty incident collections and empty messages explicitly.
 - Process facade methods translate service errors through `ferr.FromDomain`, keep public/domain model mapping in `c8volt/process/convert.go`, and can compose higher-level helpers in `client.go` without leaking internal service types.
@@ -129,4 +130,25 @@ Started: 2026-05-02 09:54:51
 - Enriched JSON output should use the same shared command result envelope as existing process-instance JSON output.
 - `EnrichProcessInstancesWithIncidents` already keeps empty incident results as a non-nil slice, so JSON renders an empty `incidents` collection.
 - Listener-backed command tests skip in this sandbox because local TCP bind is not permitted; the direct renderer test and package tests passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process -count=1`.
+---
+---
+## Iteration 5 - 2026-05-02 10:24:41 CEST
+**User Story**: User Story 3 - Protect Existing Command Semantics
+**Tasks Completed**:
+- [x] T029: Add regression test proving default keyed human output is unchanged without `--with-incidents`
+- [x] T030: Add regression test proving default keyed JSON output is unchanged without `--with-incidents`
+- [x] T031: Add regression tests preserving `--incidents-only` and `--no-incidents-only` search filters
+- [x] T032: Keep existing `listProcessInstancesView` path untouched when `--with-incidents` is omitted
+- [x] T033: Ensure `oneLinePI` remains the default incident-marker-only renderer
+- [x] T034: Verify search-mode population and validation still use existing incident filter behavior
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- Default keyed output avoids the incident search endpoint entirely when `--with-incidents` is omitted.
+- Existing search-mode `--incidents-only` and `--no-incidents-only` flags still populate `hasIncident` search filters and keep output on the default `ProcessInstances` JSON shape.
+- Focused validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd -run 'TestGetProcessInstance(WithoutIncidents|SearchIncidentFilters)|TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists' -count=1`; broader command validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd -count=1`.
 ---

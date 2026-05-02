@@ -785,6 +785,122 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(
 	require.Empty(t, incidents)
 }
 
+func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+	)
+
+	wantItem := process.ProcessInstance{
+		Key:            "123",
+		TenantId:       "tenant",
+		BpmnProcessId:  "demo",
+		ProcessVersion: 3,
+		State:          process.StateActive,
+		StartDate:      "2026-03-23T18:00:00Z",
+		Incident:       true,
+	}
+	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
+	require.Equal(t, strings.TrimSpace(oneLinePI(wantItem))+"\nfound: 1\n", output)
+	require.NotContains(t, output, "  incident:")
+}
+
+func TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get process-instance", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.NotContains(t, payload, "item")
+	require.NotContains(t, payload, "incidents")
+	require.Equal(t, float64(1), payload["total"])
+	items := requireJSONItems(t, payload["items"], 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "123", item["key"])
+	require.Equal(t, true, item["incident"])
+	require.NotContains(t, item, "incidents")
+}
+
+func TestGetProcessInstanceSearchIncidentFilters_PreserveDefaultSearchMode(t *testing.T) {
+	tests := []struct {
+		name         string
+		flag         string
+		wantIncident bool
+		response     string
+	}{
+		{
+			name:         "incidents only",
+			flag:         "--incidents-only",
+			wantIncident: true,
+			response:     `{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		},
+		{
+			name:         "no incidents only",
+			flag:         "--no-incidents-only",
+			wantIncident: false,
+			response:     `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests, tt.response)
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+			output := executeRootForProcessInstanceTest(t,
+				"--config", cfgPath,
+				"--json",
+				"get", "process-instance",
+				tt.flag,
+			)
+
+			filter := decodeCapturedPISearchFilter(t, requests)
+			require.Equal(t, tt.wantIncident, filter["hasIncident"])
+			require.NotContains(t, output, `"incidents"`)
+			require.Contains(t, output, `"total": 1`)
+		})
+	}
+}
+
 // TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch verifies v8.7 search keeps tenant scoping available.
 func TestGetProcessInstanceSearch_V87StillSupportsTenantScopedSearch(t *testing.T) {
 	var requests []string
