@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: specs/152-task-key-pi-lookup/plan.md
+- Active implementation plan: `specs/154-get-pi-incidents/plan.md`
 <!-- SPECKIT END -->
