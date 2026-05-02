@@ -154,9 +154,12 @@ For batch execution:
 ```bash
 ./c8volt walk pi --key 2251799813711967 --family
 ./c8volt walk pi --key 2251799813711967 --family --tree
+./c8volt walk pi --key 2251799813711967 --family --with-incidents
 ```
 
 This is where `c8volt` becomes an operations tool instead of just a resource browser: it helps you see the process-instance structure that explains why a cancellation or deletion may behave the way it does.
+
+For incident diagnosis, add `--with-incidents` to keyed walks to show incident messages under the matching process-instance rows, or combine it with `--json` for structured incident details.
 
 ### Cancel Safely
 

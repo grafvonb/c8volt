@@ -5,6 +5,7 @@ Started: 2026-05-02 12:59:38
 
 ## Codebase Patterns
 
+- `make docs-content` regenerates both command-specific CLI markdown and `docs/index.md`, which mirrors README content and embeds the current dirty build metadata.
 - Enriched family tree output must branch at `pickMode() == RenderModeTree` inside the enriched family view, preserving the existing plain `renderFamilyTree` path when `--with-incidents` is omitted.
 - Enriched walk JSON should use a dedicated walk payload builder and still render through `renderJSONPayload` so the shared command envelope remains `outcome`/`command`/`payload`.
 - `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes one-line, JSON, and family tree output through enriched renderers.
@@ -17,14 +18,14 @@ Started: 2026-05-02 12:59:38
 
 ## Iteration 1 - 2026-05-02 13:02:16 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T001: Review issue #154 incident enrichment behavior and record any field mismatch
 - [x] T002: Add incident-enriched traversal item/result public models
 - [x] T003: Add walk incident enrichment contract notes
 - [x] T004: Add fixture helpers for walked incident details
 **Tasks Remaining in Story**: None - story complete
 **Commit**: No commit - git metadata write blocked by sandbox
-**Files Changed**: 
+**Files Changed**:
 - c8volt/process/model.go
 - cmd/walk_test.go
 - specs/157-walk-pi-incidents/contracts/walk-pi-with-incidents.md
@@ -175,4 +176,30 @@ Started: 2026-05-02 12:59:38
 - Tenant override behavior is visible at the HTTP fixture boundary because v8.9 incident search serializes the effective tenant into the request filter.
 - Existing v8.8 and v8.9 service coverage already protects tenant-filtered, path-key-scoped incident search bodies without a rejected `processInstanceKey` body filter.
 - Validation used `GOCACHE=/tmp/c8volt-go-build` because the default Go build cache was outside the writable sandbox.
+---
+---
+## Iteration 7 - 2026-05-02 13:33:49 CEST
+**User Story**: Phase 7: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T052: Update command help examples and flag description for `--with-incidents`
+- [x] T053: Regenerate CLI documentation with `make docs-content` and verify `docs/cli/c8volt_walk_process-instance.md`
+- [x] T054: Review README walk examples and update `README.md` only if the new flag belongs in existing examples
+- [x] T055: Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, and `internal/services/processinstance/`
+- [x] T056: Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
+- [x] T057: Run full repository validation with `make test` from repository root `.`
+- [x] T058: Confirm `specs/157-walk-pi-incidents/quickstart.md` scenarios match final command behavior
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/walk_processinstance.go
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- specs/157-walk-pi-incidents/tasks.md
+- specs/157-walk-pi-incidents/progress.md
+**Learnings**:
+- Walk command help should describe `--with-incidents` as keyed process-instance walk incident detail enrichment, matching the validation contract and generated CLI reference.
+- README already has a dedicated walk workflow section, so the new flag belongs there rather than only in the existing keyed `get pi --with-incidents` diagnosis section.
+- `make docs-content` syncs the README into `docs/index.md` in addition to regenerating CLI command markdown.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build` for both targeted tests and `make test`.
 ---

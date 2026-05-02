@@ -144,13 +144,13 @@
 
 **Purpose**: Documentation, formatting, and validation across the completed feature.
 
-- [ ] T052 [P] Update command help examples and flag description for `--with-incidents` in `cmd/walk_processinstance.go`
-- [ ] T053 Regenerate CLI documentation with `make docs-content` and verify `docs/cli/c8volt_walk_process-instance.md`
-- [ ] T054 [P] Review README walk examples and update `README.md` only if the new flag belongs in existing examples
-- [ ] T055 [P] Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, and `internal/services/processinstance/`
-- [ ] T056 Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
-- [ ] T057 Run full repository validation with `make test` from repository root `.`
-- [ ] T058 Confirm `specs/157-walk-pi-incidents/quickstart.md` scenarios match final command behavior
+- [x] T052 [P] Update command help examples and flag description for `--with-incidents` in `cmd/walk_processinstance.go`
+- [x] T053 Regenerate CLI documentation with `make docs-content` and verify `docs/cli/c8volt_walk_process-instance.md`
+- [x] T054 [P] Review README walk examples and update `README.md` only if the new flag belongs in existing examples
+- [x] T055 [P] Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, and `internal/services/processinstance/`
+- [x] T056 Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
+- [x] T057 Run full repository validation with `make test` from repository root `.`
+- [x] T058 Confirm `specs/157-walk-pi-incidents/quickstart.md` scenarios match final command behavior
 
 ---
 
