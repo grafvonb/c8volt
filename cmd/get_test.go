@@ -49,7 +49,7 @@ func TestGetHelp(t *testing.T) {
 func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "List process instances by search filters or fetch them by key.")
+	require.Contains(t, output, "Get process instances by key or by search criteria.")
 	require.Contains(t, output, "./c8volt get pi --state active")
 	require.Contains(t, output, "--key")
 	require.Contains(t, output, "--state")

@@ -34,11 +34,16 @@ import (
 func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "get", "process-instance", "--help")
 
-	require.Contains(t, output, "Use --total for the numeric count")
-	require.Contains(t, output, "Direct --key lookups stay strict")
-	require.Contains(t, output, "JSON returns one aggregated result")
+	require.Contains(t, output, "Get process instances by key or by search criteria.")
+	require.Contains(t, output, "Search results support interactive paging, scriptable JSON aggregation, and count-only workflows.")
+	require.Contains(t, output, "matching process instances by process definition")
+	require.Contains(t, output, "Direct key lookup stays strict")
+	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
+	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active")
+	require.Contains(t, output, "./c8volt get pi --key <process-instance-key>")
 	require.Contains(t, output, "./c8volt get pi --state active --total")
-	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --json")
+	require.Contains(t, output, "./c8volt get pi --state active --json")
+	require.Contains(t, output, "./c8volt get pi --state active --limit 25 --auto-confirm")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -53,9 +58,8 @@ func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 
 	require.Contains(t, output, "--has-user-tasks strings")
 	require.Contains(t, output, "user task key(s) whose owning process instances should be fetched")
-	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233")
-	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
-	require.Contains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --json")
+	require.Contains(t, output, "./c8volt get pi --has-user-tasks <user-task-key>")
+	require.NotContains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
 	require.Contains(t, output, "Tasklist or Operate fallback")
 }
 

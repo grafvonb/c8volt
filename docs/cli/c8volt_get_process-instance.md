@@ -10,12 +10,15 @@ List or fetch process instances
 
 ### Synopsis
 
-List process instances by search filters or fetch them by key.
-Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.
+Get process instances by key or by search criteria.
 
-Use --has-user-tasks to resolve owning process instances from user task keys through tenant-aware native user-task search. There is no Tasklist or Operate fallback.
+Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.
 
-Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.
+Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.
+
+User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.
+
+Run `c8volt get pi --help` for the complete flag reference.
 
 ```
 c8volt get process-instance [flags]
@@ -24,15 +27,13 @@ c8volt get process-instance [flags]
 ### Examples
 
 ```
+  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+  ./c8volt get pi --key <process-instance-key>
   ./c8volt get pi --state active
+  ./c8volt get pi --state active --json
   ./c8volt get pi --state active --total
-  ./c8volt get pi --state active --batch-size 250 --limit 25
-  ./c8volt get pi --key 2251799813711967 --json
-  ./c8volt get pi --has-user-tasks 2251799815391233
-  ./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244
-  ./c8volt get pi --has-user-tasks 2251799815391233 --json
-  ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt get pi --key 2251799813711967 --key 2251799813711977
+  ./c8volt get pi --has-user-tasks <user-task-key>
+  ./c8volt get pi --state active --limit 25 --auto-confirm
 ```
 
 ### Options
