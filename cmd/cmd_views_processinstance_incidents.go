@@ -10,12 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const indirectProcessTreeIncidentWarning = "no direct incidents on this process instance; check the process tree with walk pi --family --tree --with-incidents"
+const indirectProcessTreeIncidentWarning = "no direct incidents on this process instance; check the process tree with walk pi --with-incidents"
 
 // incidentEnrichedProcessInstancesView renders direct process-instance incident enrichment.
 func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
 	if pickMode() == RenderModeJSON {
-		return renderJSONPayload(cmd, RenderModeJSON, resp)
+		return renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedProcessInstancesWithAgeMeta(resp))
 	}
 	warnedIndirectIncident := false
 	for _, it := range resp.Items {
@@ -30,6 +30,29 @@ func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Incid
 	}
 	renderOutputLine(cmd, "found: %d", len(resp.Items))
 	return nil
+}
+
+type incidentEnrichedProcessInstancesJSONWithMeta struct {
+	Total int32                                     `json:"total,omitempty"`
+	Items []process.IncidentEnrichedProcessInstance `json:"items,omitempty"`
+	Meta  processInstanceAgeMeta                    `json:"meta"`
+}
+
+func incidentEnrichedProcessInstancesWithAgeMeta(resp process.IncidentEnrichedProcessInstances) incidentEnrichedProcessInstancesJSONWithMeta {
+	meta := processInstanceAgeMeta{WithAge: true, AgeDaysBy: map[string]int{}}
+	for _, it := range resp.Items {
+		if age, ok := processInstanceAgeDays(it.Item.StartDate); ok {
+			meta.AgeDaysBy[it.Item.Key] = age
+		}
+	}
+	if len(meta.AgeDaysBy) == 0 {
+		meta.AgeDaysBy = nil
+	}
+	return incidentEnrichedProcessInstancesJSONWithMeta{
+		Total: resp.Total,
+		Items: resp.Items,
+		Meta:  meta,
+	}
 }
 
 // processInstanceHasIndirectIncidentMarker detects tree-propagated incident markers without direct incident details.

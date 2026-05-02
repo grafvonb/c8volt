@@ -41,8 +41,6 @@ func pickMode() RenderMode {
 		return RenderModeJSON
 	case flagViewKeysOnly:
 		return RenderModeKeysOnly
-	case flagViewAsTree:
-		return RenderModeTree
 	default:
 		return RenderModeOneLine
 	}

@@ -411,7 +411,6 @@ func init() {
 	// flags from get process instance for filtering
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	registerPISharedDateRangeFlags(fs)
-	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to process per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to process across all pages")
 	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")

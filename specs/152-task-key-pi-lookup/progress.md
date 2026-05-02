@@ -219,7 +219,7 @@ Started: 2026-05-01 12:35:04
 **User Story**: User Story 3 - Preserve Existing Single Lookup Rendering Options
 **Tasks Completed**: 
 - [x] T027: Add command test proving `get pi --has-user-tasks=<task-key> --json` matches direct keyed JSON shape
-- [x] T028: Add command tests for `--has-user-tasks` with valid single lookup render flags such as `--with-age` and `--keys-only`
+- [x] T028: Add command tests for `--has-user-tasks` with valid single lookup render behavior such as default age output and `--keys-only`
 - [x] T029: Add missing user task and missing processInstanceKey tests
 - [x] T030: Add command test preserving process-instance not-found behavior after user-task resolution
 - [x] T031: Normalize missing task and missing processInstanceKey errors through repository error conventions
@@ -236,7 +236,7 @@ Started: 2026-05-01 12:35:04
 - specs/152-task-key-pi-lookup/tasks.md
 - specs/152-task-key-pi-lookup/progress.md
 **Learnings**:
-- Task-key lookup continues to use the existing `GetProcessInstances` plus `listProcessInstancesView` flow, so `--json`, `--with-age`, `--keys-only`, and resolved process-instance not-found behavior match direct keyed lookup.
+- Task-key lookup continues to use the existing `GetProcessInstances` plus `listProcessInstancesView` flow, so `--json`, default age output, `--keys-only`, and resolved process-instance not-found behavior match direct keyed lookup.
 - The requested `GOCACHE=/tmp/c8volt-go-build go test ./cmd ./internal/services/usertask/v88 ./internal/services/usertask/v89 -count=1` remains blocked by the unrelated sandbox `httptest` IPv6 bind failure in `TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig`.
 - Passing validation: `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestGetProcessInstanceCommand_HasUserTasks(JSONMatchesDirectKeyedJSON|PreservesSingleLookupRenderFlags|PreservesResolvedProcessInstanceNotFound|LookupUsesNativeUserTaskAndKeyedProcessInstance)' -count=1`, `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run '^$' -count=1`, and `GOCACHE=/tmp/c8volt-go-build go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 -count=1`.
 ---

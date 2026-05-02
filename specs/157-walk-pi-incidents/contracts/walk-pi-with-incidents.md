@@ -11,11 +11,10 @@ c8volt walk pi --key <process-instance-key> --with-incidents
 
 The flag applies to all supported walk modes:
 
-- default children mode
+- default family tree mode
 - `--parent`
 - `--children`
-- `--family`
-- `--family --tree`
+- `--flat`
 
 ## Validation Contract
 
@@ -36,7 +35,7 @@ When `--with-incidents` is provided:
 
 When `--with-incidents` is omitted:
 
-- Existing human, key-only, tree, and JSON output remain unchanged.
+- Existing human, key-only, tree, flat, and JSON output remain unchanged.
 
 ## JSON Output Contract
 

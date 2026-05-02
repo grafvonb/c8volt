@@ -34,7 +34,7 @@ func incidentEnrichedDescendantsView(cmd *cobra.Command, result process.Incident
 
 // incidentEnrichedFamilyView renders enriched family walks as either path or tree output.
 func incidentEnrichedFamilyView(cmd *cobra.Command, result process.IncidentEnrichedTraversalResult) error {
-	if pickMode() == RenderModeTree {
+	if !flagWalkPIFlat {
 		if len(result.Keys) == 0 {
 			return nil
 		}

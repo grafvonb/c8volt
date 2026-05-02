@@ -63,7 +63,7 @@
 
 **Goal**: Preserve current non-`--total` behavior and make conflicting combinations fail clearly rather than producing ambiguous output.
 
-**Independent Test**: Run default `get process-instance` flows before and after the change, and verify detail output is unchanged while `--total` rejects `--key`, `--json`, `--keys-only`, and `--with-age`.
+**Independent Test**: Run default `get process-instance` flows before and after the change, and verify detail output is unchanged while `--total` rejects `--key`, `--json`, and `--keys-only`.
 
 ### Tests for User Story 2
 
@@ -72,7 +72,7 @@
 
 ### Implementation for User Story 2
 
-- [x] T015 [US2] Enforce `--total` validation rules for `--key`, `--json`, `--keys-only`, and `--with-age` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and any adjacent validation helpers under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
+- [x] T015 [US2] Enforce `--total` validation rules for `--key`, `--json`, and `--keys-only` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance.go and any adjacent validation helpers under /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/
 - [x] T016 [US2] Keep command contract and output-mode metadata coherent for the new flag without introducing a new global render mode in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/command_contract.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/cmd_views_rendermode.go
 
 **Checkpoint**: User Story 2 is independently testable: existing detail output remains unchanged, and unsupported `--total` combinations fail clearly.

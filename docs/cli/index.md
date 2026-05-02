@@ -47,7 +47,7 @@ These are the workflows where `c8volt` stands apart from a basic CRUD-oriented C
   Bootstrap a local environment with bundled BPMN fixtures.
 - `run process-instance`
   Start process instances and confirm they are actually active.
-- `walk process-instance --family --tree`
+- `walk process-instance`
   Inspect parent/child structure before changing a live tree.
 - `cancel process-instance --force`
   Escalate from a child process to the root instance that must actually be cancelled.

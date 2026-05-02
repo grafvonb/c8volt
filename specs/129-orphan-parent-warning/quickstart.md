@@ -2,7 +2,7 @@
 
 ## Planned Behavior
 
-- `walk pi --parent`, `walk pi --family`, and `walk pi --family --tree` return partial traversal data plus a warning when a non-start ancestor is missing and at least one actionable process instance was resolved.
+- `walk pi --parent`, `walk pi`, and `walk pi --flat` return partial traversal data plus a warning when a non-start ancestor is missing and at least one actionable process instance was resolved.
 - Cancel/delete preflight and indirect cleanup expansion continue with resolved family keys while also surfacing machine-readable missing ancestor keys.
 - Fully unresolved traversal remains a normal failure.
 - Direct `get process-instance --key ...` remains strict.
@@ -44,7 +44,8 @@ Use a key whose recorded parent no longer exists and compare read-only traversal
 
 ```bash
 ./c8volt walk pi --key 2251799813704187 --parent
-./c8volt walk pi --key 2251799813704187 --family --tree
+./c8volt walk pi --key 2251799813704187
+./c8volt walk pi --key 2251799813704187 --flat
 ./c8volt cancel pi --key 2251799813704187 --force --auto-confirm --no-wait
 ./c8volt delete pi --key 2251799813704187 --auto-confirm --no-wait
 ./c8volt get pi --key 2251799813704187

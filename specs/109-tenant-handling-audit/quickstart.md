@@ -46,7 +46,7 @@ Use one temp config file with a base tenant plus at least one profile override, 
 
 ```bash
 ./c8volt --config /tmp/c8volt.yaml --tenant tenant-a get process-instance --key 2251799813720823
-C8VOLT_APP_TENANT=tenant-a ./c8volt --config /tmp/c8volt.yaml walk pi --key 2251799813720823 --tree
+C8VOLT_APP_TENANT=tenant-a ./c8volt --config /tmp/c8volt.yaml walk pi --key 2251799813720823
 ./c8volt --config /tmp/c8volt.yaml --profile support cancel pi --key 2251799813720823
 ./c8volt --config /tmp/c8volt.yaml delete pi --key 2251799813720823
 ```

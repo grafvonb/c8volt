@@ -8,7 +8,7 @@ c8volt walk pi --key 2251799813711967 --with-incidents
 
 Expected behavior:
 
-- Walks the selected process-instance relationship mode using current defaults.
+- Walks the process-instance family tree using current defaults.
 - Preserves existing process-instance row ordering.
 - Prints returned incident messages as indented `incident <incident-key>:` lines below the matching process-instance row.
 - Prints no incident lines for walked instances with no returned incidents.
@@ -16,7 +16,7 @@ Expected behavior:
 ## Family Tree With Incidents
 
 ```bash
-c8volt walk pi --key 2251799813711967 --family --tree --with-incidents
+c8volt walk pi --key 2251799813711967 --with-incidents
 ```
 
 Expected behavior:

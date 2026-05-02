@@ -15,7 +15,7 @@
 - The owning process-instance keys from user-task results are passed through existing keyed process-instance lookup.
 - Human output matches `get pi --key=<resolved-process-instance-key>` as closely as possible.
 - JSON output matches the existing direct keyed lookup shape.
-- Existing valid keyed lookup render flags, including `--with-age` and `--keys-only` where supported, remain valid with `--has-user-tasks`.
+- Existing valid keyed lookup render behavior, including default age output and `--keys-only`, remains valid with `--has-user-tasks`.
 
 ## Unsupported Version Behavior
 

@@ -31,16 +31,13 @@ func TestProcessInstanceAgeDays(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestOneLinePI_WithAge(t *testing.T) {
+func TestOneLinePI_RendersAge(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {
 		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
 	}
-	prevWithAge := flagGetPIWithAge
-	flagGetPIWithAge = true
 	t.Cleanup(func() {
 		relativeDayNow = prevNow
-		flagGetPIWithAge = prevWithAge
 	})
 
 	line := oneLinePI(process.ProcessInstance{
@@ -57,16 +54,13 @@ func TestOneLinePI_WithAge(t *testing.T) {
 	require.Contains(t, line, "(4 days ago)")
 }
 
-func TestOneLinePI_WithAgeToday(t *testing.T) {
+func TestOneLinePI_RendersAgeToday(t *testing.T) {
 	prevNow := relativeDayNow
 	relativeDayNow = func() time.Time {
 		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
 	}
-	prevWithAge := flagGetPIWithAge
-	flagGetPIWithAge = true
 	t.Cleanup(func() {
 		relativeDayNow = prevNow
-		flagGetPIWithAge = prevWithAge
 	})
 
 	line := oneLinePI(process.ProcessInstance{

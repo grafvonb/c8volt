@@ -36,6 +36,7 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --total
   ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --state active --batch-size 250 --limit 25
+  ./c8volt get pi --state active --limit 25 --auto-confirm
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json
@@ -73,7 +74,6 @@ c8volt get process-instance [flags]
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                       return only the numeric total of matching process instances; capped backend totals are counted by paging
-      --with-age                    include process instance age in one-line output and JSON meta
       --with-incidents              include incident keys and messages for direct --key process-instance lookups
   -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```

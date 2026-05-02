@@ -6,17 +6,15 @@ package cmd
 import (
 	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
 var (
 	flagWalkPIKey           string
-	flagWalkPIMode          string
-	flagWalkPIModeFamily    bool
 	flagWalkPIModeParent    bool
 	flagWalkPIModeChildren  bool
+	flagWalkPIFlat          bool
 	flagWalkPIWithIncidents bool
 )
 
@@ -30,12 +28,12 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
-		"Choose --parent for ancestry, --children for descendants, and --family for the combined view. Add --tree with --family for an ASCII tree.\n\n" +
+		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
 		"Add --with-incidents to keyed walks to show incident keys and messages below matching process-instance rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
-	Example: `  ./c8volt walk pi --key 2251799813711967 --family
-  ./c8volt walk pi --key 2251799813711967 --family --tree
-  ./c8volt walk pi --key 2251799813711967 --family --with-incidents
+	Example: `  ./c8volt walk pi --key 2251799813711967
+  ./c8volt walk pi --key 2251799813711967 --with-incidents
+  ./c8volt walk pi --key 2251799813711967 --flat
   ./c8volt walk pi --key 2251799813711977 --parent
   ./c8volt --json walk pi --key 2251799813711967 --children --with-incidents`,
 	Aliases: []string{"pi", "pis"},
@@ -49,12 +47,6 @@ var walkProcessInstanceCmd = &cobra.Command{
 		}
 		if err := validateWalkPIWithIncidentsUsage(); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-		}
-
-		if flagViewAsTree && (!flagWalkPIModeFamily && flagWalkPIMode != walkPIModeFamily) {
-			flagWalkPIModeFamily = true
-			flagWalkPIModeChildren = false
-			flagWalkPIModeParent = false
 		}
 
 		type walker struct {
@@ -108,8 +100,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 					if pickMode() == RenderModeJSON {
 						return renderJSONPayload(cmd, RenderModeJSON, traversalPayload(result))
 					}
-					mode := pickMode()
-					if mode == RenderModeTree {
+					if !flagWalkPIFlat {
 						if len(result.Keys) == 0 {
 							return nil
 						}
@@ -134,18 +125,14 @@ var walkProcessInstanceCmd = &cobra.Command{
 				},
 			},
 		}
+		selectedMode := walkPIModeFamily
 		switch {
 		case flagWalkPIModeParent:
-			flagWalkPIMode = walkPIModeParent
+			selectedMode = walkPIModeParent
 		case flagWalkPIModeChildren:
-			flagWalkPIMode = walkPIModeChildren
-		case flagWalkPIModeFamily:
-			flagWalkPIMode = walkPIModeFamily
+			selectedMode = walkPIModeChildren
 		}
-		w, ok := walkers[flagWalkPIMode]
-		if !ok {
-			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, invalidFlagValuef("invalid --mode %q (must be %s, %s, or %s)", flagWalkPIMode, walkPIModeParent, walkPIModeChildren, walkPIModeFamily))
-		}
+		w := walkers[selectedMode]
 		result, err := w.fetch()
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -161,7 +148,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				return
-			case RenderModeOneLine, RenderModeTree:
+			case RenderModeOneLine:
 				if err := w.enrichedView(cmd, enriched); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
@@ -181,17 +168,10 @@ func init() {
 	fs.StringVarP(&flagWalkPIKey, "key", "k", "", "start walking from this process instance key")
 	_ = walkProcessInstanceCmd.MarkFlagRequired("key")
 
-	fs.StringVar(&flagWalkPIMode, "mode", walkPIModeChildren, "walk mode: parent, children, family")
-	fs.BoolVar(&flagWalkPIModeParent, "parent", false, "shorthand for --mode=parent")
-	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "shorthand for --mode=children")
-	fs.BoolVar(&flagWalkPIModeFamily, "family", false, "shorthand for --mode=family")
-	fs.BoolVar(&flagViewAsTree, "tree", false, "render family mode as an ASCII tree (only valid with --family)")
+	fs.BoolVar(&flagWalkPIModeParent, "parent", false, "show ancestry from the selected process instance toward the root")
+	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "show descendants from the selected process instance")
+	fs.BoolVar(&flagWalkPIFlat, "flat", false, "render family output as a flat path instead of an ASCII tree")
 	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys and messages for keyed process-instance walks")
-
-	// shell completion for --mode
-	_ = walkProcessInstanceCmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{walkPIModeParent, walkPIModeChildren, walkPIModeFamily}, cobra.ShellCompDirectiveNoFileComp
-	})
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)

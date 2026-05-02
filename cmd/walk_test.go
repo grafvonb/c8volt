@@ -76,16 +76,18 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"walk"}, []string{
 		"Inspect process-instance relationships",
 		"Inspect ancestry, descendants",
-		"./c8volt walk pi --key 2251799813711967 --family --tree",
+		"./c8volt walk pi --key 2251799813711967",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
-		"Choose --parent for ancestry, --children for descendants, and --family",
+		"By default, walk shows the full process-instance family as an ASCII tree",
 		"returns the partial tree plus a warning",
-		"./c8volt walk pi --key 2251799813711967 --family --tree",
+		"./c8volt walk pi --key 2251799813711967 --with-incidents",
 	}, nil)
-	require.Contains(t, output, "--tree")
+	require.Contains(t, output, "--flat")
+	require.NotContains(t, output, "--tree")
+	require.NotContains(t, output, "--family")
 }
 
 // TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
@@ -184,7 +186,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 		"--config", cfgPath,
 		"walk", "process-instance",
 		"--key", "123",
-		"--family",
+		"--flat",
 		"--with-incidents",
 	)
 
@@ -323,7 +325,6 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputAssociatesMultipleKey
 		"--json",
 		"walk", "process-instance",
 		"--key", "123",
-		"--family",
 		"--with-incidents",
 	)
 
@@ -414,7 +415,6 @@ func TestWalkProcessInstanceCommand_WithIncidentsJSONOutputPreservesTraversalMet
 		"--json",
 		"walk", "process-instance",
 		"--key", "123",
-		"--family",
 		"--with-incidents",
 	)
 
@@ -558,8 +558,6 @@ func TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithI
 		"--config", cfgPath,
 		"walk", "process-instance",
 		"--key", "123",
-		"--family",
-		"--tree",
 	)
 
 	root := walkedProcessInstanceModel("123", "", false)
@@ -603,8 +601,6 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUn
 		"--config", cfgPath,
 		"walk", "process-instance",
 		"--key", "123",
-		"--family",
-		"--tree",
 		"--with-incidents",
 	)
 
@@ -644,7 +640,6 @@ func TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarnin
 		"--verbose",
 		"walk", "process-instance",
 		"--key", "123",
-		"--family",
 		"--with-incidents",
 	)
 
@@ -808,8 +803,6 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 			"--verbose",
 			"walk", "process-instance",
 			"--key", "123",
-			"--family",
-			"--tree",
 		)
 
 		require.Contains(t, output, "123")
@@ -824,7 +817,6 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 			"--json",
 			"walk", "process-instance",
 			"--key", "123",
-			"--family",
 		)
 
 		var got map[string]any
@@ -998,22 +990,6 @@ func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
 	require.NotContains(t, string(output), "  incident ")
 }
 
-// Verifies walk process-instance rejects unsupported --mode values.
-func TestWalkProcessInstanceCommand_RejectsInvalidMode(t *testing.T) {
-	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
-
-	output, err := testx.RunCmdSubprocess(t, "TestWalkProcessInstanceCommand_RejectsInvalidModeHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
-	require.Contains(t, string(output), "invalid input")
-	require.Contains(t, string(output), "invalid --mode")
-}
-
 func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -1087,19 +1063,6 @@ func TestWalkProcessInstanceCommand_RejectsAutomationMode(t *testing.T) {
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "unsupported capability")
 	require.Contains(t, string(output), "walk process-instance does not support --automation")
-}
-
-// Helper-process entrypoint for invalid walk-mode validation.
-func TestWalkProcessInstanceCommand_RejectsInvalidModeHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "walk", "process-instance", "--key", "2251799813685255", "--mode", "broken"})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
 }
 
 func TestWalkProcessInstanceCommand_EnvBaseURLOverridesProfileAndBaseConfigHelper(t *testing.T) {

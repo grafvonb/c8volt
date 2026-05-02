@@ -9,7 +9,7 @@
 - **Invariants**:
   - `TotalOnly` is only valid for search/list mode and must not coexist with direct `--key` lookup intent.
   - `TotalOnly` is output-focused and must not change filter semantics or matching rules.
-  - `TotalOnly` must reject conflicting detail-output modifiers such as `--json`, `--keys-only`, and `--with-age`.
+  - `TotalOnly` must reject conflicting detail-output modifiers such as `--json` and `--keys-only`.
 
 ## Process-Instance Search Result Page
 
@@ -59,7 +59,6 @@
   - `--total` + `--key`
   - `--total` + `--json`
   - `--total` + `--keys-only`
-  - `--total` + `--with-age`
 
 ## Documentation Contract Input
 

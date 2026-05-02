@@ -145,12 +145,12 @@ For batch execution:
 ### Walk Before You Change
 
 ```bash
-./c8volt walk pi --key 2251799813711967 --family
-./c8volt walk pi --key 2251799813711967 --family --tree
-./c8volt walk pi --key 2251799813711967 --family --with-incidents
+./c8volt walk pi --key 2251799813711967
+./c8volt walk pi --key 2251799813711967 --with-incidents
+./c8volt walk pi --key 2251799813711967 --flat
 ```
 
-This is where `c8volt` becomes an operations tool instead of just a resource browser: it helps you see the process-instance structure that explains why a cancellation or deletion may behave the way it does.
+This is where `c8volt` becomes an operations tool instead of just a resource browser: it shows the process-instance family tree that explains why a cancellation or deletion may behave the way it does.
 
 For incident diagnosis, add `--with-incidents` to keyed walks to show incident keys and messages under the matching process-instance rows, or combine it with `--json` for structured incident details.
 
@@ -216,7 +216,7 @@ When a script only needs the count of matching process instances, `./c8volt get 
 ./c8volt get pi --has-user-tasks <user-task-key> --json
 ```
 
-`--has-user-tasks` resolves owning process instances through tenant-aware native Camunda user-task search, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--with-age`, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+`--has-user-tasks` resolves owning process instances through tenant-aware native Camunda user-task search, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
 
 c8volt does not use Tasklist or Operate fallback APIs for user-task resolution.
 
@@ -236,7 +236,7 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
-./c8volt get pi --roots-only --with-age
+./c8volt get pi --roots-only
 ./c8volt get pi --children-only
 ./c8volt get pi --orphan-children-only
 ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
@@ -457,14 +457,15 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt run pi -b <bpmn-process-id> -n 25 --workers 5
 
 # Find active work, incidents, and exact instance details.
-./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --with-age
-./c8volt get pi --state active --incidents-only --with-age
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --state active --total
 
 # Inspect parent/child relationships before taking action.
-./c8volt walk pi --key <process-instance-key> --family --tree
-./c8volt walk pi --key <process-instance-key> --family --with-incidents
+./c8volt walk pi --key <process-instance-key>
+./c8volt walk pi --key <process-instance-key> --with-incidents
+./c8volt walk pi --key <process-instance-key> --flat
 
 # Wait for automation-visible outcomes.
 ./c8volt expect pi --key <process-instance-key> --state active

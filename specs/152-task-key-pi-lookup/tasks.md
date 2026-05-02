@@ -98,7 +98,7 @@
 ### Tests for User Story 3
 
 - [x] T027 [P] [US3] Add command test proving `get pi --has-user-tasks=<task-key> --json` matches direct keyed JSON shape in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
-- [x] T028 [P] [US3] Add command tests for `--has-user-tasks` with valid single lookup render flags such as `--with-age` and `--keys-only` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
+- [x] T028 [P] [US3] Add command tests for `--has-user-tasks` with valid single lookup render behavior such as default age output and `--keys-only` in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 - [x] T029 [P] [US3] Add missing user task and missing processInstanceKey tests in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v88/service_test.go and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/internal/services/usertask/v89/service_test.go
 - [x] T030 [P] [US3] Add command test preserving process-instance not-found behavior after user-task resolution in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/cmd/get_processinstance_test.go
 

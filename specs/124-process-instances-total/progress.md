@@ -2,7 +2,7 @@
 
 - `get process-instance --total` stays command-local: `cmd/get_processinstance.go` should ask `SearchProcessInstancesPage` for the first page, trust `ReportedTotal` only when no command-local post-filtering is active, and otherwise keep counting through the existing paged search seam instead of widening the shared render-mode contract.
 - `cmd/get_processinstance.go` owns process-instance search validation, keyed-vs-search branching, pagination orchestration, and the final handoff to `listProcessInstancesView`, so command-specific output changes belong there before shared render helpers are widened.
-- `cmd/cmd_views_get.go` keeps process-instance detail rendering mode-agnostic through `listOrJSON`, with `--with-age` as a narrow JSON/one-line decoration; count-only output should short-circuit before this renderer to avoid creating a new global render mode.
+- `cmd/cmd_views_get.go` keeps process-instance detail rendering mode-agnostic through `listOrJSON`, with age included in JSON/one-line details; count-only output should short-circuit before this renderer to avoid creating a new global render mode.
 - Shared process-instance page models in `internal/domain/processinstance.go` and `c8volt/process/model.go` now expose optional `ReportedTotal{Count, Kind}` metadata alongside `Request`, `Items`, and `OverflowState`, and `c8volt/process/convert.go` mirrors that seam directly so command code can stay version-agnostic once services populate it.
 - Versioned search services already see backend total signals: `v87` trims Operate results with an optional `payload.Total`, while `v88` and `v89` compute overflow from `Page.TotalItems` and `HasMoreTotalItems`; the command layer currently loses that data because services only return `OverflowState`.
 - Existing regression anchors are already close to the needed feature seams: `cmd/get_processinstance_test.go` covers command help and search request behavior, `cmd/cmd_processinstance_test.go` provides reusable process-instance search fixtures, `c8volt/process/client_test.go` covers cross-version page conversion, and versioned service tests assert paging metadata behavior around `OverflowState` and capped totals.
@@ -84,7 +84,7 @@
 **Tasks Completed**:
 - [x] T013: Add command regressions for invalid `--total` combinations and preserved default output behavior
 - [x] T014: Add service-level regressions proving reported-total metadata stays consistent without changing non-`--total` page behavior
-- [x] T015: Enforce `--total` validation rules for `--key`, `--json`, `--keys-only`, and `--with-age`
+- [x] T015: Enforce `--total` validation rules for `--key`, `--json`, and `--keys-only`
 - [x] T016: Keep command contract and output-mode metadata coherent for the new flag without introducing a new global render mode
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration

@@ -111,9 +111,7 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	for _, want := range []string{
 		"--has-user-tasks strings",
 		"user task key(s) whose owning process instances should be fetched",
-		"./c8volt get pi --has-user-tasks 2251799815391233",
-		"./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244",
-		"./c8volt get pi --has-user-tasks 2251799815391233 --json",
+		"./c8volt get pi --has-user-tasks \u003cuser-task-key\u003e",
 		"Tasklist or Operate fallback",
 	} {
 		if !strings.Contains(got, want) {

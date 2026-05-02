@@ -6,7 +6,7 @@ Started: 2026-05-02 12:59:38
 ## Codebase Patterns
 
 - `make docs-content` regenerates both command-specific CLI markdown and `docs/index.md`, which mirrors README content and embeds the current dirty build metadata.
-- Enriched family tree output must branch at `pickMode() == RenderModeTree` inside the enriched family view, preserving the existing plain `renderFamilyTree` path when `--with-incidents` is omitted.
+- Enriched family tree output branches on the walk command's default tree view, preserving the existing plain `renderFamilyTree` path when `--with-incidents` is omitted.
 - Enriched walk JSON should use a dedicated walk payload builder and still render through `renderJSONPayload` so the shared command envelope remains `outcome`/`command`/`payload`.
 - `walk process-instance --with-incidents` now performs facade traversal enrichment after traversal fetch and routes one-line, JSON, and family tree output through enriched renderers.
 - Issue #154 incident enrichment is the source of truth for `ProcessInstanceIncidentDetail`, keyed-only incident lookup, tenant-aware v8.8/v8.9 behavior, explicit v8.7 unsupported behavior, and human `incident <incident-key>: <message>` lines.

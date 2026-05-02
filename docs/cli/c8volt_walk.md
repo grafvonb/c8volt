@@ -21,8 +21,8 @@ c8volt walk [flags]
 ### Examples
 
 ```
-  ./c8volt walk pi --key 2251799813711967 --family
-  ./c8volt walk pi --key 2251799813711967 --family --tree
+  ./c8volt walk pi --key 2251799813711967
+  ./c8volt walk pi --key 2251799813711967 --with-incidents
   ./c8volt walk pi --key 2251799813711967 --children
 ```
 

@@ -92,8 +92,8 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
-// TestGetProcessInstanceJSONWithAge_AddsMetaField verifies --with-age decorates JSON rows with age metadata.
-func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
+// TestGetProcessInstanceJSON_AddsAgeMetaField verifies JSON rows include age metadata.
+func TestGetProcessInstanceJSON_AddsAgeMetaField(t *testing.T) {
 	var requests []string
 	srv := newProcessInstanceSearchCaptureServer(t, &requests)
 	t.Cleanup(srv.Close)
@@ -104,7 +104,6 @@ func TestGetProcessInstanceJSONWithAge_AddsMetaField(t *testing.T) {
 		"--config", cfgPath,
 		"--json",
 		"get", "process-instance",
-		"--with-age",
 	)
 
 	require.NotEmpty(t, requests)
@@ -289,11 +288,6 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 			name:   "keys-only output is rejected",
 			helper: "TestGetProcessInstanceTotalWithKeysOnlyHelper",
 			want:   "--total cannot be combined with --keys-only",
-		},
-		{
-			name:   "with-age output is rejected",
-			helper: "TestGetProcessInstanceTotalWithAgeHelper",
-			want:   "--total cannot be combined with --with-age",
 		},
 	}
 
@@ -655,7 +649,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			}
 			if len(tt.wantMessages) == 0 {
 				require.NotContains(t, output, "  incident ")
-				require.Contains(t, output, "no direct incidents on this process instance; check the process tree with walk pi --family --tree --with-incidents")
+				require.Contains(t, output, "no direct incidents on this process instance; check the process tree with walk pi --with-incidents")
 			}
 		})
 	}
@@ -1157,8 +1151,8 @@ func TestGetProcessInstanceCommand_HasUserTasksPreservesSingleLookupRenderFlags(
 		want string
 	}{
 		{
-			name: "with age",
-			args: []string{"--with-age"},
+			name: "default age",
+			args: nil,
 			want: "(2 days ago)",
 		},
 		{
@@ -2455,7 +2449,6 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIStartBeforeDays = -1
 	flagGetPIEndAfterDays = -1
 	flagGetPIEndBeforeDays = -1
-	flagGetPIWithAge = false
 	flagGetPITotal = false
 	flagGetPIState = "all"
 	flagGetPIParentKey = ""
@@ -2468,10 +2461,9 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
 	flagWalkPIKey = ""
-	flagWalkPIMode = walkPIModeChildren
-	flagWalkPIModeFamily = false
 	flagWalkPIModeParent = false
 	flagWalkPIModeChildren = false
+	flagWalkPIFlat = false
 	flagWalkPIWithIncidents = false
 	flagCmdAutoConfirm = false
 	flagVerbose = false
@@ -2768,20 +2760,6 @@ func TestGetProcessInstanceTotalWithKeysOnlyHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--keys-only", "--total"}
-
-	Execute()
-}
-
-// Helper-process entrypoint for --total with --with-age validation.
-func TestGetProcessInstanceTotalWithAgeHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-	applyRelativeDayNowOverrideFromEnv(t)
-
-	prevArgs := os.Args
-	t.Cleanup(func() { os.Args = prevArgs })
-	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-age", "--total"}
 
 	Execute()
 }

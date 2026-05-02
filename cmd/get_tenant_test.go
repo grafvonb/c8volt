@@ -404,19 +404,16 @@ func resetTenantRenderFlags(t *testing.T) {
 	t.Helper()
 	prevJSON := flagViewAsJson
 	prevKeysOnly := flagViewKeysOnly
-	prevTree := flagViewAsTree
 	prevTenantKey := flagGetTenantKey
 	prevTenantFilter := flagGetTenantFilter
 	t.Cleanup(func() {
 		flagViewAsJson = prevJSON
 		flagViewKeysOnly = prevKeysOnly
-		flagViewAsTree = prevTree
 		flagGetTenantKey = prevTenantKey
 		flagGetTenantFilter = prevTenantFilter
 	})
 	flagViewAsJson = false
 	flagViewKeysOnly = false
-	flagViewAsTree = false
 	flagGetTenantKey = ""
 	flagGetTenantFilter = ""
 }

@@ -21,7 +21,7 @@
 
 ## Decision: Reuse direct process-instance lookup after resolution
 
-**Rationale**: Existing keyed lookup already owns strict not-found behavior, tenant-aware lookup semantics, output modes, `--with-age`, `--keys-only`, and JSON rendering. Reusing it avoids parallel formatting and preserves user-visible behavior. Multiple user task keys resolve to multiple process-instance keys and then reuse the same multi-key process-instance lookup path.
+**Rationale**: Existing keyed lookup already owns strict not-found behavior, tenant-aware lookup semantics, output modes, default age output, `--keys-only`, and JSON rendering. Reusing it avoids parallel formatting and preserves user-visible behavior. Multiple user task keys resolve to multiple process-instance keys and then reuse the same multi-key process-instance lookup path.
 
 **Alternatives considered**:
 

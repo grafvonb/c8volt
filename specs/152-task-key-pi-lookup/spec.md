@@ -63,7 +63,7 @@ As a CLI operator, I want has-user-tasks lookup to work with output flags alread
 **Acceptance Scenarios**:
 
 1. **Given** direct keyed lookup supports `--keys-only`, **When** the operator runs `get pi --has-user-tasks=<task-key> --keys-only`, **Then** output follows the same keys-only behavior for the resolved process instance.
-2. **Given** direct keyed lookup supports `--with-age`, **When** the operator runs `get pi --has-user-tasks=<task-key> --with-age`, **Then** output follows the same age-rendering behavior for the resolved process instance.
+2. **Given** direct keyed lookup includes age output, **When** the operator runs `get pi --has-user-tasks=<task-key>`, **Then** output follows the same age-rendering behavior for the resolved process instance.
 3. **Given** a resolved user task lacks a usable owning process-instance key, **When** has-user-tasks lookup runs, **Then** the command fails with a clear resolution error instead of rendering incomplete process-instance data.
 
 ---

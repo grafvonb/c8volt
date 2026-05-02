@@ -22,11 +22,9 @@ func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *test
 
 // Verifies completion requests work without config bootstrap and stay focused on candidates.
 func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
-	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
-	require.Contains(t, output, "parent")
-	require.Contains(t, output, "children")
-	require.Contains(t, output, "family")
+	require.Contains(t, output, "--key")
 	require.NotContains(t, output, "configuration is invalid")
 	require.NotContains(t, output, "Usage:")
 }
@@ -64,12 +62,10 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 
 // Verifies value completion output stays clean when descriptions are intentionally absent.
 func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
-	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
-	require.Contains(t, output, "parent\n")
-	require.Contains(t, output, "children\n")
-	require.Contains(t, output, "family\n")
-	require.NotContains(t, output, "\t")
+	require.Contains(t, output, "--key")
+	require.NotContains(t, output, "--mode")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 

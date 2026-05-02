@@ -36,7 +36,6 @@ var (
 	flagGetPIStartBeforeDays      int
 	flagGetPIEndAfterDays         int
 	flagGetPIEndBeforeDays        int
-	flagGetPIWithAge              bool
 	flagGetPITotal                bool
 	flagGetPIState                string
 	flagGetPIParentKey            string
@@ -70,6 +69,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --state active --total
   ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --state active --batch-size 250 --limit 25
+  ./c8volt get pi --state active --limit 25 --auto-confirm
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json
@@ -215,7 +215,6 @@ func init() {
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
-	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
@@ -314,10 +313,6 @@ func registerPISharedProcessDefinitionFilterFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-}
-
-func registerPISharedRenderFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(&flagGetPIWithAge, "with-age", false, "include process instance age in one-line output and JSON meta")
 }
 
 func populatePISearchFilterOpts() process.ProcessInstanceFilter {
@@ -872,8 +867,6 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
 		case flagViewKeysOnly:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
-		case flagGetPIWithAge:
-			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-age")
 		case flagGetPIWithIncidents:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		}
