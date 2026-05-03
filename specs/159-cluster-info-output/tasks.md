@@ -112,17 +112,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T032 [P] [US4] Update required-field license command test to expect flat output in `cmd/get_test.go`
-- [ ] T033 [P] [US4] Update optional-field license command test to expect flat output in `cmd/get_test.go`
-- [ ] T034 [P] [US4] Add `licence` alias behavior test in `cmd/get_test.go`
-- [ ] T035 [P] [US4] Add license `--json` alias test for `licence --json` in `cmd/get_test.go`
+- [x] T032 [P] [US4] Update required-field license command test to expect flat output in `cmd/get_test.go`
+- [x] T033 [P] [US4] Update optional-field license command test to expect flat output in `cmd/get_test.go`
+- [x] T034 [P] [US4] Add `licence` alias behavior test in `cmd/get_test.go`
+- [x] T035 [P] [US4] Add license `--json` alias test for `licence --json` in `cmd/get_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Implement flat license renderer in `cmd/cmd_views_cluster.go`
-- [ ] T037 [US4] Wire `runGetClusterLicense` to render flat output when `pickMode()` is not JSON in `cmd/get_cluster_license.go`
-- [ ] T038 [US4] Add `licence` alias to the license command in `cmd/get_cluster_license.go`
-- [ ] T039 [US4] Update license help text and examples for flat default, `--json`, and alias behavior in `cmd/get_cluster_license.go`
+- [x] T036 [US4] Implement flat license renderer in `cmd/cmd_views_cluster.go`
+- [x] T037 [US4] Wire `runGetClusterLicense` to render flat output when `pickMode()` is not JSON in `cmd/get_cluster_license.go`
+- [x] T038 [US4] Add `licence` alias to the license command in `cmd/get_cluster_license.go`
+- [x] T039 [US4] Update license help text and examples for flat default, `--json`, and alias behavior in `cmd/get_cluster_license.go`
 
 **Checkpoint**: All user stories are independently functional.
 

@@ -168,9 +168,11 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
 	require.Contains(t, output, "Show connected cluster license")
-	require.Contains(t, output, "license payload returned by the configured Camunda cluster")
+	require.Contains(t, output, "flat human-readable fields")
+	require.Contains(t, output, "Use --json for the structured license payload")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
+	require.Contains(t, output, "./c8volt get cluster licence")
 }
 
 // Verifies `get cluster topology --help` describes the human default and JSON escape hatch.
@@ -467,12 +469,12 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
 
-	require.Contains(t, output, `"LicenseType": "SaaS"`)
-	require.Contains(t, output, `"ValidLicense": true`)
-	require.NotContains(t, output, `"ExpiresAt": null`)
-	require.NotContains(t, output, `"IsCommercial": null`)
-	require.NotContains(t, output, `"ExpiresAt"`)
-	require.NotContains(t, output, `"IsCommercial"`)
+	require.Contains(t, output, "ValidLicense: true")
+	require.Contains(t, output, "LicenseType: SaaS")
+	require.NotContains(t, output, "ExpiresAt:")
+	require.NotContains(t, output, "IsCommercial:")
+	require.NotContains(t, output, `"ValidLicense"`)
+	require.NotContains(t, output, `"LicenseType"`)
 }
 
 // Verifies optional license fields are rendered when the API returns them.
@@ -489,10 +491,11 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
 
-	require.Contains(t, output, `"ExpiresAt": "2030-01-02T03:04:05Z"`)
-	require.Contains(t, output, `"IsCommercial": true`)
-	require.Contains(t, output, `"LicenseType": "Enterprise"`)
-	require.Contains(t, output, `"ValidLicense": true`)
+	require.Contains(t, output, "ValidLicense: true")
+	require.Contains(t, output, "LicenseType: Enterprise")
+	require.Contains(t, output, "ExpiresAt: 2030-01-02T03:04:05Z")
+	require.Contains(t, output, "IsCommercial: true")
+	require.NotContains(t, output, `"ValidLicense"`)
 }
 
 // Verifies nested `get cluster license --json` preserves structured JSON output.
@@ -515,6 +518,49 @@ func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
 	require.True(t, license.ValidLicense)
 	require.NotNil(t, license.ExpiresAt)
 	require.NotNil(t, license.IsCommercial)
+	require.Contains(t, output, `"LicenseType": "Enterprise"`)
+	require.Contains(t, output, `"ValidLicense": true`)
+	require.NotContains(t, output, "LicenseType:")
+	require.NotContains(t, output, "ValidLicense:")
+}
+
+// Verifies British spelling reaches the same flat license behavior as the canonical command.
+func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(requiredClusterLicenseFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence")
+
+	require.Contains(t, output, "ValidLicense: true")
+	require.Contains(t, output, "LicenseType: SaaS")
+	require.NotContains(t, output, `"ValidLicense"`)
+}
+
+// Verifies British spelling preserves the structured license JSON behavior.
+func TestGetClusterLicenceAliasNestedCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(optionalClusterLicenseFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence", "--json")
+
+	var license cluster.License
+	require.NoError(t, json.Unmarshal([]byte(output), &license))
+	require.Equal(t, "Enterprise", license.LicenseType)
+	require.True(t, license.ValidLicense)
 	require.Contains(t, output, `"LicenseType": "Enterprise"`)
 	require.Contains(t, output, `"ValidLicense": true`)
 	require.NotContains(t, output, "LicenseType:")

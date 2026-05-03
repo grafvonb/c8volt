@@ -86,6 +86,18 @@ func renderClusterVersion(cmd *cobra.Command, topology cluster.Topology, withBro
 	return nil
 }
 
+func renderClusterLicenseFlat(cmd *cobra.Command, license cluster.License) error {
+	renderOutputLine(cmd, "ValidLicense: %t", license.ValidLicense)
+	renderOutputLine(cmd, "LicenseType: %s", license.LicenseType)
+	if license.ExpiresAt != nil {
+		renderOutputLine(cmd, "ExpiresAt: %s", license.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"))
+	}
+	if license.IsCommercial != nil {
+		renderOutputLine(cmd, "IsCommercial: %t", *license.IsCommercial)
+	}
+	return nil
+}
+
 func formatClusterBrokerLine(broker cluster.Broker) string {
 	parts := []string{fmt.Sprintf("Broker %d", broker.NodeId)}
 

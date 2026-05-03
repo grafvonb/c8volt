@@ -5,6 +5,7 @@ Started: 2026-05-03 07:40:25
 
 ## Codebase Patterns
 
+- Flat cluster license output should use command-facing `c8volt/cluster` facade field names, omit nil optional pointer fields, and format `ExpiresAt` with an RFC3339-compatible layout.
 - Parent commands with runnable help handlers can accept unknown positionals unless they declare `cobra.NoArgs`; removing a legacy direct subcommand may require tightening the parent command to get a real command-not-found error.
 - Cluster view helpers should copy domain slices before sorting so later renderers get deterministic output without mutating service-returned topology data.
 - Cluster command tests use `newIPv4Server`, `writeTestConfigForVersion`, and `executeRootForTest`; failure-path command exit assertions run through helper subprocesses in `testx`.
@@ -140,4 +141,30 @@ Started: 2026-05-03 07:40:25
 - The version command can share the topology service call and existing sorted broker helper without adding a service method or extra upstream request.
 - Gateway-only output is intentionally just the version string; `--with-brokers` switches to labeled gateway and sorted broker lines.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-03 08:05:23 CEST
+**User Story**: User Story 4 - Read Cluster License As Flat Information
+**Tasks Completed**:
+- [x] T032: Update required-field license command test to expect flat output
+- [x] T033: Update optional-field license command test to expect flat output
+- [x] T034: Add `licence` alias behavior test
+- [x] T035: Add license `--json` alias test for `licence --json`
+- [x] T036: Implement flat license renderer
+- [x] T037: Wire `runGetClusterLicense` to render flat output when `pickMode()` is not JSON
+- [x] T038: Add `licence` alias to the license command
+- [x] T039: Update license help text and examples for flat default, `--json`, and alias behavior
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_cluster.go
+- cmd/get_cluster_license.go
+- cmd/get_test.go
+- specs/159-cluster-info-output/progress.md
+- specs/159-cluster-info-output/tasks.md
+**Learnings**:
+- License output follows the facade model field names exactly and omits nil optional fields instead of rendering placeholders.
+- `licence` can be a Cobra alias on the canonical `license` command, preserving both flat default output and explicit `--json` behavior without a second command.
+- Validation passed with focused license tests and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---
