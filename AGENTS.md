@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/159-cluster-info-output/plan.md](specs/159-cluster-info-output/plan.md)
+- Active plan: [specs/162-tasklist-v1-fallback/plan.md](specs/162-tasklist-v1-fallback/plan.md)
 <!-- SPECKIT END -->
