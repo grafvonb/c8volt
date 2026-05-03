@@ -3,28 +3,46 @@
 
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"strings"
+
+	"github.com/spf13/cobra"
+)
 
 var completionCommands = map[string]struct{}{
 	"__complete":       {},
 	"__completeNoDesc": {},
 }
 
-var utilityCommands = map[string]struct{}{
+var utilityCommandPaths = map[string]struct{}{
 	"capabilities": {},
 	"help":         {},
 	"version":      {},
 	"completion":   {},
 	"config":       {},
-	"show":         {},
+	"config show":  {},
 }
 
 func isUtilityCommand(cmd *cobra.Command) bool {
 	if cmd == nil {
 		return false
 	}
-	_, ok := utilityCommands[cmd.Name()]
+	_, ok := utilityCommandPaths[bootstrapCommandPath(cmd)]
 	return ok
+}
+
+func bootstrapCommandPath(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	path := cmd.CommandPath()
+	if root := cmd.Root(); root != nil && root != cmd {
+		path = strings.TrimSpace(strings.TrimPrefix(path, root.Name()))
+	}
+	if path == "" {
+		return cmd.Name()
+	}
+	return strings.TrimSpace(path)
 }
 
 func isCompletionCommand(cmd *cobra.Command) bool {

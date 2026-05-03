@@ -17,7 +17,10 @@ func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *test
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__complete"}))
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__completeNoDesc"}))
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "completion"}))
-	require.False(t, bypassRootBootstrap(&cobra.Command{Use: "get"}))
+	require.True(t, bypassRootBootstrap(versionCmd))
+	require.True(t, bypassRootBootstrap(configShowCmd))
+	require.False(t, bypassRootBootstrap(getCmd))
+	require.False(t, bypassRootBootstrap(getClusterVersionCmd))
 }
 
 // Verifies completion requests work without config bootstrap and stay focused on candidates.
