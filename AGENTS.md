@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- No active Speckit implementation plan has been recorded yet.
+- Active plan: [specs/159-cluster-info-output/plan.md](specs/159-cluster-info-output/plan.md)
 <!-- SPECKIT END -->

@@ -186,3 +186,26 @@ func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *tes
 	require.NotContains(t, paths, "help")
 	require.NotContains(t, paths, "__complete")
 }
+
+func TestCapabilityDocumentForRoot_ExcludesRemovedClusterTopologyCommand(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	paths := commandCapabilityPaths(doc.Commands)
+	require.NotContains(t, paths, "get cluster-topology")
+	require.NotContains(t, paths, "get ct")
+	require.NotContains(t, paths, "get cluster-info")
+	require.NotContains(t, paths, "get ci")
+	require.Contains(t, paths, "get cluster topology")
+}
+
+func commandCapabilityPaths(commands []CommandCapability) []string {
+	var paths []string
+	for _, command := range commands {
+		paths = append(paths, command.Path)
+		paths = append(paths, commandCapabilityPaths(command.Children)...)
+	}
+	return paths
+}

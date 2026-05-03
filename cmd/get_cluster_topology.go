@@ -10,17 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var getClusterTopologyCmd = &cobra.Command{
-	Use:   "cluster-topology",
-	Short: "Show connected cluster topology",
-	Long: "Show connected cluster topology.\n\n" +
-		"This legacy command reports brokers, partitions, and gateway metadata. Prefer `c8volt get cluster topology` for new usage.",
-	Example: `  ./c8volt get cluster-topology
-  ./c8volt get cluster topology --json`,
-	Aliases: []string{"ct", "cluster-info", "ci"},
-	Run:     runGetClusterTopology,
-}
-
 var getClusterTopologyNestedCmd = &cobra.Command{
 	Use:   "topology",
 	Short: "Show connected cluster topology",
@@ -32,18 +21,7 @@ var getClusterTopologyNestedCmd = &cobra.Command{
 }
 
 func init() {
-	getCmd.AddCommand(getClusterTopologyCmd)
 	getClusterCmd.AddCommand(getClusterTopologyNestedCmd)
-
-	setCommandMutation(getClusterTopologyCmd, CommandMutationReadOnly)
-	setContractSupport(getClusterTopologyCmd, ContractSupportLimited)
-	setOutputModes(getClusterTopologyCmd,
-		OutputModeContract{
-			Name:             RenderModeJSON.String(),
-			Supported:        true,
-			MachinePreferred: true,
-		},
-	)
 
 	setCommandMutation(getClusterTopologyNestedCmd, CommandMutationReadOnly)
 	setContractSupport(getClusterTopologyNestedCmd, ContractSupportLimited)

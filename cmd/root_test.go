@@ -49,6 +49,7 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 	assertHelpOutputOmitsAll(t, output,
 		"__complete",
 		"__completeNoDesc",
+		"cluster-topology",
 	)
 }
 
