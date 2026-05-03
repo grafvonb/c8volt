@@ -16,6 +16,7 @@ Started: 2026-05-03 11:10:33
 - v88/v89 `GetUserTask` methods already return immediately on primary success before fallback eligibility checks, so US2 implementation is preserved behavior verified by tests rather than new service code.
 - v88/v89 fallback error tests should assert domain classes with `require.ErrorIs`/`require.NotErrorIs`: empty fallback results remain `domain.ErrNotFound`, missing fallback ownership remains `domain.ErrMalformedResponse`, and HTTP 500 fallback responses remain `domain.ErrInternal`.
 - Process-instance CLI docs are generated from Cobra command metadata in `cmd/get_processinstance.go`; README changes flow into `docs/index.md` through `make docs-content`, while `docsgen/main_test.go` protects generated command-doc wording.
+- Final feature validation follows the quickstart's two focused `go test` commands before repository-wide `make test`, and traceability is sourced from `spec.md` issue metadata plus the active plan link in `AGENTS.md`.
 
 ---
 
@@ -170,4 +171,24 @@ Started: 2026-05-03 11:10:33
 - `make docs-content` regenerates `docs/cli/c8volt_get_process-instance.md` from Cobra command help and syncs `docs/index.md` from `README.md`.
 - Generated docs tests belong in `docsgen/main_test.go`, which can assert both the new fallback wording and the absence of the obsolete no-fallback statement.
 - Validation passed with `go test ./cmd -run 'Help|Contract|HasUserTasks' -count=1` and `go test ./docsgen -run 'GeneratedProcessInstanceDocsDocumentHasUserTasksLookup|RewriteDocsIndexLinks|FormatDocsBuildInfo' -count=1`.
+---
+
+---
+## Iteration 7 - 2026-05-03 11:41:32 CEST
+**User Story**: Phase 7: Polish & Cross-Cutting Validation
+**Tasks Completed**:
+- [x] T040: Run `gofmt` on changed Go files under `internal/services/usertask/` and `cmd/`
+- [x] T041: Review issue traceability and active plan links in `specs/162-tasklist-v1-fallback/spec.md`, `specs/162-tasklist-v1-fallback/plan.md`, and `AGENTS.md`
+- [x] T042: Run targeted validation from `specs/162-tasklist-v1-fallback/quickstart.md`
+- [x] T043: Run `make test`
+- [x] T044: Record implementation progress and any validation notes in `specs/162-tasklist-v1-fallback/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/162-tasklist-v1-fallback/tasks.md
+- specs/162-tasklist-v1-fallback/progress.md
+**Learnings**:
+- `gofmt` on the feature's changed Go files produced no source diff.
+- Traceability is explicit in `spec.md` as issue 162, and `AGENTS.md` links the active plan for this feature.
+- Validation passed with `go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./internal/services/usertask/v87 -count=1`, `go test ./cmd -run 'HasUserTasks|Tasklist|UserTask' -count=1`, and `make test`.
 ---

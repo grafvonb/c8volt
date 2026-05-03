@@ -128,11 +128,11 @@
 
 **Purpose**: Final cleanup, consistency, and required repository validation.
 
-- [ ] T040 [P] Run `gofmt` on changed Go files under `internal/services/usertask/` and `cmd/`
-- [ ] T041 [P] Review issue traceability and active plan links in `specs/162-tasklist-v1-fallback/spec.md`, `specs/162-tasklist-v1-fallback/plan.md`, and `AGENTS.md`
-- [ ] T042 Run targeted validation from `specs/162-tasklist-v1-fallback/quickstart.md`
-- [ ] T043 Run `make test`
-- [ ] T044 Record implementation progress and any validation notes in `specs/162-tasklist-v1-fallback/progress.md`
+- [x] T040 [P] Run `gofmt` on changed Go files under `internal/services/usertask/` and `cmd/`
+- [x] T041 [P] Review issue traceability and active plan links in `specs/162-tasklist-v1-fallback/spec.md`, `specs/162-tasklist-v1-fallback/plan.md`, and `AGENTS.md`
+- [x] T042 Run targeted validation from `specs/162-tasklist-v1-fallback/quickstart.md`
+- [x] T043 Run `make test`
+- [x] T044 Record implementation progress and any validation notes in `specs/162-tasklist-v1-fallback/progress.md`
 
 ---
 
