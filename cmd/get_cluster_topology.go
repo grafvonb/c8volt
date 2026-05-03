@@ -24,7 +24,7 @@ func init() {
 	getClusterCmd.AddCommand(getClusterTopologyNestedCmd)
 
 	setCommandMutation(getClusterTopologyNestedCmd, CommandMutationReadOnly)
-	setContractSupport(getClusterTopologyNestedCmd, ContractSupportLimited)
+	setContractSupport(getClusterTopologyNestedCmd, ContractSupportFull)
 	setOutputModes(getClusterTopologyNestedCmd,
 		OutputModeContract{
 			Name:             RenderModeJSON.String(),

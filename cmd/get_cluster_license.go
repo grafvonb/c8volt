@@ -27,7 +27,7 @@ func init() {
 	getClusterCmd.AddCommand(getClusterLicenseCmd)
 
 	setCommandMutation(getClusterLicenseCmd, CommandMutationReadOnly)
-	setContractSupport(getClusterLicenseCmd, ContractSupportLimited)
+	setContractSupport(getClusterLicenseCmd, ContractSupportFull)
 	setOutputModes(getClusterLicenseCmd,
 		OutputModeContract{
 			Name:             RenderModeJSON.String(),

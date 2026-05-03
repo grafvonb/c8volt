@@ -122,7 +122,7 @@ func init() {
 	fs.BoolVar(&flagGetPDAsXML, "xml", false, "output the selected process definition as raw XML (requires --key and no other filters)")
 
 	setCommandMutation(getProcessDefinitionCmd, CommandMutationReadOnly)
-	setContractSupport(getProcessDefinitionCmd, ContractSupportLimited)
+	setContractSupport(getProcessDefinitionCmd, ContractSupportFull)
 	setOutputModes(getProcessDefinitionCmd,
 		OutputModeContract{
 			Name:             RenderModeJSON.String(),

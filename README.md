@@ -381,6 +381,7 @@ Machine-first discovery:
 ```
 
 The discovery document reports public command paths, visible flags, output modes, mutation behavior, contract support, and whether a command explicitly supports `--automation`.
+Operational commands that support `--json` return one shared result envelope with `outcome`, `command`, and command-specific `payload` fields.
 
 For supported command paths, combine `--automation` with `--json` when you need deterministic unattended execution and machine-readable stdout:
 

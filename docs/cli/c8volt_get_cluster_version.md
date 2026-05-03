@@ -12,7 +12,7 @@ Show connected cluster version
 
 Show connected cluster version.
 
-This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id.
+This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id. Use --json for the structured version payload.
 
 ```
 c8volt get cluster version [flags]
