@@ -11,11 +11,12 @@ import (
 
 func fromTopologyResponse(r camundav88.TopologyResponse) d.Topology {
 	return d.Topology{
-		Brokers:           toolx.MapSlice(r.Brokers, fromBrokerInfo),
-		ClusterSize:       r.ClusterSize,
-		GatewayVersion:    r.GatewayVersion,
-		PartitionsCount:   r.PartitionsCount,
-		ReplicationFactor: r.ReplicationFactor,
+		Brokers:               toolx.MapSlice(r.Brokers, fromBrokerInfo),
+		ClusterSize:           r.ClusterSize,
+		GatewayVersion:        r.GatewayVersion,
+		LastCompletedChangeId: r.LastCompletedChangeId,
+		PartitionsCount:       r.PartitionsCount,
+		ReplicationFactor:     r.ReplicationFactor,
 	}
 }
 
