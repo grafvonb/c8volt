@@ -110,3 +110,88 @@ func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item,
 	}
 	return nil
 }
+
+type flatRow []string
+
+// listOrJSONFlat keeps machine modes unchanged while letting human list views align columns from the whole result set.
+func listOrJSONFlat[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, rowOf func(Item) flatRow, keyOf func(Item) string) error {
+	switch mode {
+	case RenderModeJSON:
+		return renderJSONPayload(cmd, mode, resp)
+	case RenderModeKeysOnly:
+		for _, it := range items {
+			renderOutputLine(cmd, "%s", keyOf(it))
+		}
+	default: // RenderModeOneLine
+		rows := make([]flatRow, 0, len(items))
+		for _, it := range items {
+			rows = append(rows, rowOf(it))
+		}
+		for _, line := range formatFlatRows(rows) {
+			renderOutputLine(cmd, "%s", line)
+		}
+		renderOutputLine(cmd, "found: %d", len(items))
+	}
+	return nil
+}
+
+// formatFlatRows preserves row order and field order while padding only to widths observed in the current list.
+func formatFlatRows(rows []flatRow) []string {
+	widths := flatColumnWidths(rows)
+	out := make([]string, 0, len(rows))
+	for _, row := range rows {
+		parts := make([]string, 0, len(row))
+		for i, col := range row {
+			if widths[i] == 0 {
+				continue
+			}
+			part := col
+			if hasVisibleColumnAfter(widths, i) {
+				part += strings.Repeat(" ", widths[i]-len(col))
+			}
+			parts = append(parts, part)
+		}
+		out = append(out, strings.TrimRight(strings.Join(parts, " "), " "))
+	}
+	return out
+}
+
+// hasVisibleColumnAfter prevents all-empty trailing optional columns from creating scan-hostile gaps.
+func hasVisibleColumnAfter(widths []int, index int) bool {
+	for i := index + 1; i < len(widths); i++ {
+		if widths[i] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// flatColumnWidths derives display widths without truncating long values such as BPMN process IDs.
+func flatColumnWidths(rows []flatRow) []int {
+	maxCols := 0
+	for _, row := range rows {
+		if len(row) > maxCols {
+			maxCols = len(row)
+		}
+	}
+	widths := make([]int, maxCols)
+	for _, row := range rows {
+		for i, col := range row {
+			if len(col) > widths[i] {
+				widths[i] = len(col)
+			}
+		}
+	}
+	return widths
+}
+
+// compactFlatRow is used by single-row and walk views where alignment padding would obscure the path shape.
+func compactFlatRow(row flatRow) string {
+	parts := make([]string, 0, len(row))
+	for _, col := range row {
+		if col != "" {
+			parts = append(parts, col)
+		}
+	}
+	return strings.Join(parts, " ")
+}

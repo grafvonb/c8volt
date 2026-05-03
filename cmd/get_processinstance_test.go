@@ -116,6 +116,54 @@ func TestGetProcessInstanceJSON_AddsAgeMetaField(t *testing.T) {
 	require.Equal(t, true, meta["withAge"])
 }
 
+// Protects default paged search output, which renders incrementally before the final collected list path can align rows.
+func TestGetProcessInstanceSearch_HumanOutputAlignsIncrementalPage(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 3, 23, 19, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	var requests []string
+	srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"hasIncident":false,"processDefinitionId":"Short","processDefinitionKey":"9001","processDefinitionName":"Short","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":false,"processDefinitionId":"MuchLongerProcess","processDefinitionKey":"9002","processDefinitionName":"MuchLongerProcess","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--batch-size", "2",
+	)
+
+	require.NotEmpty(t, requests)
+	expectedLines := formatProcessInstanceFlatRows([]process.ProcessInstance{
+		{
+			Key:            "123",
+			TenantId:       "tenant",
+			BpmnProcessId:  "Short",
+			ProcessVersion: 3,
+			State:          process.StateActive,
+			StartDate:      "2026-03-23T18:00:00Z",
+		},
+		{
+			Key:            "124",
+			TenantId:       "tenant",
+			BpmnProcessId:  "MuchLongerProcess",
+			ProcessVersion: 3,
+			State:          process.StateCompleted,
+			StartDate:      "2026-03-23T18:00:00Z",
+		},
+	})
+	require.Equal(t, strings.Join(append(expectedLines, "found: 2", ""), "\n"), output)
+	require.Contains(t, output, "Short             v3 ACTIVE")
+}
+
 // TestGetProcessInstanceTotalOutput verifies --total output uses exact fallback counting when backend totals are capped.
 func TestGetProcessInstanceTotalOutput(t *testing.T) {
 	t.Run("reported total prints only the numeric count without fetching later pages", func(t *testing.T) {

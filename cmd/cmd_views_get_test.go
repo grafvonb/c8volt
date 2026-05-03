@@ -78,6 +78,117 @@ func TestOneLinePI_RendersAgeToday(t *testing.T) {
 	require.NotContains(t, line, "day ago")
 }
 
+// Protects walk/path readability by keeping standalone process-instance rows free of alignment padding.
+func TestOneLinePI_UsesSingleSpacesBetweenRenderedTokens(t *testing.T) {
+	line := oneLinePI(process.ProcessInstance{
+		Key:            "2251799813758959",
+		TenantId:       "<default>",
+		BpmnProcessId:  "Process_18qgpch",
+		ProcessVersion: 6,
+		State:          process.StateActive,
+		StartDate:      "2026-02-01T07:00:00.000Z",
+	})
+
+	require.NotContains(t, line, "  ")
+	require.Contains(t, line, "Process_18qgpch v6 ACTIVE")
+}
+
+// Protects the shared flat-list contract: align from observed values, but preserve every character.
+func TestFormatFlatRows_AlignsColumnsWithoutTruncating(t *testing.T) {
+	got := formatFlatRows([]flatRow{
+		{"1", "tenant", "Short", "v1"},
+		{"22", "t", "MuchLongerProcess", "v12"},
+	})
+
+	require.Equal(t, []string{
+		"1  tenant Short             v1",
+		"22 t      MuchLongerProcess v12",
+	}, got)
+}
+
+// Verifies flat process-instance lists align BPMN IDs dynamically while preserving existing field order.
+func TestListProcessInstancesView_AlignsFlatRowsDynamically(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := listProcessInstancesView(cmd, process.ProcessInstances{
+		Items: []process.ProcessInstance{
+			{
+				Key:            "1",
+				TenantId:       "tenant",
+				BpmnProcessId:  "Short",
+				ProcessVersion: 1,
+				State:          process.StateActive,
+				StartDate:      "2026-02-01T07:00:00.000Z",
+			},
+			{
+				Key:               "22",
+				TenantId:          "tenant",
+				BpmnProcessId:     "MuchLongerProcess",
+				ProcessVersion:    12,
+				ProcessVersionTag: "stable",
+				State:             process.StateCompleted,
+				StartDate:         "2026-01-30T07:00:00.000Z",
+				ParentKey:         "1",
+				Incident:          true,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, ""+
+		"1  tenant Short             v1         ACTIVE    s:2026-02-01T07:00:00.000Z p:<root>      (today)\n"+
+		"22 tenant MuchLongerProcess v12/stable COMPLETED s:2026-01-30T07:00:00.000Z p:1      inc! (2 days ago)\n"+
+		"found: 2\n", buf.String())
+}
+
+// Verifies process-definition scan output uses the same dynamic alignment as process-instance lists.
+func TestListProcessDefinitionsView_AlignsFlatRowsDynamically(t *testing.T) {
+	cmd := &cobra.Command{Use: "process-definition"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := listProcessDefinitionsView(cmd, process.ProcessDefinitions{
+		Items: []process.ProcessDefinition{
+			{
+				Key:            "1",
+				TenantId:       "tenant",
+				BpmnProcessId:  "Short",
+				ProcessVersion: 1,
+			},
+			{
+				Key:               "22",
+				TenantId:          "tenant",
+				BpmnProcessId:     "MuchLongerDefinition",
+				ProcessVersion:    12,
+				ProcessVersionTag: "stable",
+				Statistics: &process.ProcessDefinitionStatistics{
+					Active:                 4,
+					Completed:              9,
+					Canceled:               2,
+					Incidents:              3,
+					IncidentCountSupported: true,
+				},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, ""+
+		"1  tenant Short                v1\n"+
+		"22 tenant MuchLongerDefinition v12/stable [ac:4 cp:9 cx:2 inc:3]\n"+
+		"found: 2\n", buf.String())
+}
+
 func TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists(t *testing.T) {
 	base := process.ProcessInstance{
 		Key:            "2251799813758959",

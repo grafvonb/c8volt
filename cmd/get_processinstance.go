@@ -489,9 +489,15 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Items = limitPIItems(filtered.Items, processedTotal)
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
-			for _, item := range filtered.Items {
-				if err := processInstanceView(cmd, item); err != nil {
+			if pickMode() == RenderModeOneLine {
+				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err
+				}
+			} else {
+				for _, item := range filtered.Items {
+					if err := processInstanceView(cmd, item); err != nil {
+						return process.ProcessInstances{}, false, err
+					}
 				}
 			}
 		} else {

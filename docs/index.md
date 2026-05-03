@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-253-gd978c82-dirty`, commit `d978c82`, built `2026-05-02T15:11:45Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-256-g2971359-dirty`, commit `2971359`, built `2026-05-03T06:31:52Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -254,6 +254,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ```
 
 Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
+
+Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
 
 For direct keyed diagnosis, add `--with-incidents` to show incident keys and messages below the process-instance row, or combine it with `--json` for structured incident details. The flag is scoped to `--key` lookups; search filters such as `--incidents-only` keep their existing list-filter behavior.
 
