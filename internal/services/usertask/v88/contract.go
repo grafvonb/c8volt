@@ -21,7 +21,7 @@ type GenUserTaskClientCamunda interface {
 }
 
 type GenUserTaskClientTasklist interface {
-	SearchTasksWithResponse(ctx context.Context, body tasklistv88.SearchTasksJSONRequestBody, reqEditors ...tasklistv88.RequestEditorFn) (*tasklistv88.SearchTasksResponse, error)
+	GetTaskByIdWithResponse(ctx context.Context, taskId string, reqEditors ...tasklistv88.RequestEditorFn) (*tasklistv88.GetTaskByIdResponse, error)
 }
 
 var _ API = (*Service)(nil)

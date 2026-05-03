@@ -18,8 +18,6 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
-const fallbackTaskSearchPageSize int32 = 2
-
 type Service struct {
 	cc  GenUserTaskClientCamunda
 	ct  GenUserTaskClientTasklist
@@ -44,6 +42,7 @@ func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	}
 }
 
+// WithClientTasklist injects the Tasklist V1 client used only after the primary v2 lookup misses.
 func WithClientTasklist(c GenUserTaskClientTasklist) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -131,23 +130,30 @@ func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.User
 	return task, nil
 }
 
+// searchFallbackTask resolves legacy Tasklist URL ids; the fallback endpoint does not accept tenant filters.
 func (s *Service) searchFallbackTask(ctx context.Context, key string) (d.UserTask, error) {
 	if s.ct == nil {
-		return d.UserTask{}, fmt.Errorf("search fallback task: %w", common.ErrNoClientConfigured)
+		return d.UserTask{}, fmt.Errorf("get fallback task: %w", common.ErrNoClientConfigured)
 	}
-	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated tasklist client fallback", key))
-	body := searchFallbackTaskRequest(common.EffectiveTenant(s.cfg), key)
-	resp, err := s.ct.SearchTasksWithResponse(ctx, body)
+	s.log.Debug(fmt.Sprintf("getting user task with key %s using generated tasklist client fallback", key))
+	resp, err := s.ct.GetTaskByIdWithResponse(ctx, key)
 	if err != nil {
-		return d.UserTask{}, fmt.Errorf("search fallback task: %w", err)
+		return d.UserTask{}, fmt.Errorf("get fallback task: %w", err)
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return d.UserTask{}, fmt.Errorf("search fallback task: %w", err)
+		if errors.Is(err, d.ErrNotFound) {
+			return d.UserTask{}, fmt.Errorf("%w: fallback user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
+		}
+		return d.UserTask{}, fmt.Errorf("get fallback task: %w", err)
 	}
-	task, err := requireSingleFallbackTask(*payload, key)
-	if err != nil {
-		return d.UserTask{}, err
+	task := fromTaskResponse(*payload)
+	tenantID := common.EffectiveTenant(s.cfg)
+	if tenantID != "" && task.TenantId != tenantID {
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
+	}
+	if task.Key != key {
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s returned mismatched task %s", d.ErrMalformedResponse, key, task.Key)
 	}
 	if task.ProcessInstanceKey == "" {
 		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s has no process instance key", d.ErrMalformedResponse, key)
@@ -170,20 +176,6 @@ func searchUserTaskRequest(tenantID, key string) (camundav88.SearchUserTasksJSON
 	}, nil
 }
 
-// searchFallbackTaskRequest builds the Tasklist V1 fallback search body used after the primary lookup misses.
-func searchFallbackTaskRequest(tenantID, key string) tasklistv88.SearchTasksJSONRequestBody {
-	implementation := tasklistv88.TaskSearchRequestImplementationJOBWORKER
-	body := tasklistv88.SearchTasksJSONRequestBody{
-		Implementation:     &implementation,
-		PageSize:           ptr(fallbackTaskSearchPageSize),
-		ProcessInstanceKey: &key,
-	}
-	if tenantID != "" {
-		body.TenantIds = &[]string{tenantID}
-	}
-	return body
-}
-
 // requireSingleUserTask turns the search response into lookup semantics, preserving missing and duplicate matches as domain errors.
 func requireSingleUserTask(items []camundav88.UserTaskResult, key string) (d.UserTask, error) {
 	switch len(items) {
@@ -194,27 +186,4 @@ func requireSingleUserTask(items []camundav88.UserTaskResult, key string) (d.Use
 	default:
 		return d.UserTask{}, fmt.Errorf("%w: user task %s returned %d matches", d.ErrMalformedResponse, key, len(items))
 	}
-}
-
-// requireSingleFallbackTask turns the Tasklist fallback response into lookup semantics.
-func requireSingleFallbackTask(items []tasklistv88.TaskSearchResponse, key string) (d.UserTask, error) {
-	matches := make([]d.UserTask, 0, len(items))
-	for _, item := range items {
-		task := fromTaskSearchResponse(item)
-		if task.Key == key {
-			matches = append(matches, task)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
-	case 1:
-		return matches[0], nil
-	default:
-		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s returned %d matches", d.ErrMalformedResponse, key, len(matches))
-	}
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

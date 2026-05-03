@@ -1079,9 +1079,9 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackUsesTasklistAndKeyedProce
 				case "/v2/user-tasks/search":
 					requireUserTaskSearchRequest(t, r, "2251799815391233", "")
 					_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-				case "/v1/tasks/search":
-					requireTasklistFallbackSearchRequest(t, r, "2251799815391233", "")
-					_, _ = w.Write([]byte(`[{"id":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant","implementation":"JOB_WORKER"}]`))
+				case "/v1/tasks/2251799815391233":
+					requireTasklistFallbackTaskRequest(t, r, "2251799815391233")
+					_, _ = w.Write([]byte(`{"id":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant","implementation":"JOB_WORKER"}`))
 				case "/v2/process-instances/2251799813711967":
 					require.Equal(t, http.MethodGet, r.Method)
 					_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
@@ -1101,7 +1101,7 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackUsesTasklistAndKeyedProce
 
 			require.Equal(t, []string{
 				"/v2/user-tasks/search",
-				"/v1/tasks/search",
+				"/v1/tasks/2251799815391233",
 				"/v2/process-instances/2251799813711967",
 			}, requests)
 			require.Contains(t, output, "2251799813711967")
@@ -1205,9 +1205,9 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupMixesPrimaryAndFallbackKeys
 			default:
 				t.Fatalf("unexpected user task search body: %v", body)
 			}
-		case "/v1/tasks/search":
-			requireTasklistFallbackSearchRequest(t, r, "2251799815391244", "")
-			_, _ = w.Write([]byte(`[{"id":"2251799815391244","processInstanceKey":"2251799813711977","tenantId":"tenant","implementation":"JOB_WORKER"}]`))
+		case "/v1/tasks/2251799815391244":
+			requireTasklistFallbackTaskRequest(t, r, "2251799815391244")
+			_, _ = w.Write([]byte(`{"id":"2251799815391244","processInstanceKey":"2251799813711977","tenantId":"tenant","implementation":"JOB_WORKER"}`))
 		case "/v2/process-instances/2251799813711967":
 			require.Equal(t, http.MethodGet, r.Method)
 			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
@@ -1233,7 +1233,7 @@ func TestGetProcessInstanceCommand_HasUserTasksLookupMixesPrimaryAndFallbackKeys
 	require.Equal(t, []string{
 		"/v2/user-tasks/search",
 		"/v2/user-tasks/search",
-		"/v1/tasks/search",
+		"/v1/tasks/2251799815391244",
 		"/v2/process-instances/2251799813711967",
 		"/v2/process-instances/2251799813711977",
 	}, requests)
@@ -1293,9 +1293,9 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackJSONMatchesDirectKeyedJSO
 		case "/v2/user-tasks/search":
 			requireUserTaskSearchRequest(t, r, "2251799815391233", "")
 			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-		case "/v1/tasks/search":
-			requireTasklistFallbackSearchRequest(t, r, "2251799815391233", "")
-			_, _ = w.Write([]byte(`[{"id":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant","implementation":"JOB_WORKER"}]`))
+		case "/v1/tasks/2251799815391233":
+			requireTasklistFallbackTaskRequest(t, r, "2251799815391233")
+			_, _ = w.Write([]byte(`{"id":"2251799815391233","processInstanceKey":"2251799813711967","tenantId":"tenant","implementation":"JOB_WORKER"}`))
 		case "/v2/process-instances/2251799813711967":
 			require.Equal(t, http.MethodGet, r.Method)
 			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
@@ -1322,7 +1322,7 @@ func TestGetProcessInstanceCommand_HasUserTasksFallbackJSONMatchesDirectKeyedJSO
 
 	require.Equal(t, []string{
 		"/v2/user-tasks/search",
-		"/v1/tasks/search",
+		"/v1/tasks/2251799815391233",
 		"/v2/process-instances/2251799813711967",
 		"/v2/process-instances/2251799813711967",
 	}, requests)
@@ -1437,9 +1437,10 @@ func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShor
 		case "/v2/user-tasks/search":
 			requireUserTaskSearchRequest(t, r, "225179981539123", "")
 			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-		case "/v1/tasks/search":
-			requireTasklistFallbackSearchRequest(t, r, "225179981539123", "")
-			_, _ = w.Write([]byte(`[]`))
+		case "/v1/tasks/225179981539123":
+			requireTasklistFallbackTaskRequest(t, r, "225179981539123")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"not found"}`))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -1458,7 +1459,7 @@ func TestGetProcessInstanceCommand_HasUserTasksMissingTaskReturnsNotFoundForShor
 	require.Contains(t, output, "resource not found")
 	require.Contains(t, output, "fallback user task 225179981539123 was not found or is not visible to the configured tenant")
 	require.NotContains(t, output, "invalid input")
-	require.Equal(t, []string{"/v2/user-tasks/search", "/v1/tasks/search"}, requests)
+	require.Equal(t, []string{"/v2/user-tasks/search", "/v1/tasks/225179981539123"}, requests)
 }
 
 // Verifies malformed has-user-tasks values fail validation before any network lookup is attempted.
@@ -1591,22 +1592,11 @@ func requireUserTaskSearchRequest(t *testing.T, r *http.Request, taskKey, tenant
 	return body
 }
 
-// requireTasklistFallbackSearchRequest validates the Tasklist V1 fallback search request and returns its decoded body.
-func requireTasklistFallbackSearchRequest(t *testing.T, r *http.Request, taskKey, tenantID string) map[string]any {
+// requireTasklistFallbackTaskRequest protects the contract that legacy Tasklist URL ids are looked up directly.
+func requireTasklistFallbackTaskRequest(t *testing.T, r *http.Request, taskKey string) {
 	t.Helper()
-	require.Equal(t, http.MethodPost, r.Method)
-	require.Equal(t, "/v1/tasks/search", r.URL.Path)
-	raw, err := io.ReadAll(r.Body)
-	require.NoError(t, err)
-	var body map[string]any
-	require.NoError(t, json.Unmarshal(raw, &body))
-	require.Equal(t, taskKey, body["processInstanceKey"])
-	require.Equal(t, "JOB_WORKER", body["implementation"])
-	require.EqualValues(t, 2, body["pageSize"])
-	if tenantID != "" {
-		require.Equal(t, []any{tenantID}, body["tenantIds"])
-	}
-	return body
+	require.Equal(t, http.MethodGet, r.Method)
+	require.Equal(t, "/v1/tasks/"+taskKey, r.URL.Path)
 }
 
 // Verifies get process-instance date filters map to expected API query fields and invalid combinations are rejected.

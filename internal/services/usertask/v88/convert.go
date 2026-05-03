@@ -18,7 +18,8 @@ func fromUserTaskResult(r camundav88.UserTaskResult) d.UserTask {
 	}
 }
 
-func fromTaskSearchResponse(r tasklistv88.TaskSearchResponse) d.UserTask {
+// fromTaskResponse normalizes a legacy Tasklist task so callers can reuse process-instance lookup.
+func fromTaskResponse(r tasklistv88.TaskResponse) d.UserTask {
 	return d.UserTask{
 		Key:                toolx.Deref(r.Id, ""),
 		ProcessInstanceKey: toolx.Deref(r.ProcessInstanceKey, ""),
