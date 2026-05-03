@@ -248,6 +248,31 @@ func TestGetClusterTopologyNestedCommand_DefaultTreeOutput(t *testing.T) {
 	require.NotContains(t, output, `"GatewayVersion"`)
 }
 
+// Verifies nested `get cluster topology --json` preserves structured JSON output.
+func TestGetClusterTopologyNestedCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology", "--json")
+
+	var topology cluster.Topology
+	require.NoError(t, json.Unmarshal([]byte(output), &topology))
+	require.Equal(t, "8.8.2", topology.GatewayVersion)
+	require.Len(t, topology.Brokers, 3)
+	require.Contains(t, output, `"GatewayVersion": "8.8.2"`)
+	require.Contains(t, output, `"Brokers"`)
+	require.NotContains(t, output, "Cluster:")
+	require.NotContains(t, output, "├─")
+	require.NotContains(t, output, "└─")
+}
+
 // Verifies topology tree rendering remains well-formed for empty broker and partition lists.
 func TestGetClusterTopologyNestedCommand_DefaultTreeOutputHandlesEmptyBrokerData(t *testing.T) {
 	t.Run("zero brokers", func(t *testing.T) {
@@ -409,6 +434,50 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 	require.Contains(t, output, `"IsCommercial": true`)
 	require.Contains(t, output, `"LicenseType": "Enterprise"`)
 	require.Contains(t, output, `"ValidLicense": true`)
+}
+
+// Verifies nested `get cluster license --json` preserves structured JSON output.
+func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(optionalClusterLicenseFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license", "--json")
+
+	var license cluster.License
+	require.NoError(t, json.Unmarshal([]byte(output), &license))
+	require.Equal(t, "Enterprise", license.LicenseType)
+	require.True(t, license.ValidLicense)
+	require.NotNil(t, license.ExpiresAt)
+	require.NotNil(t, license.IsCommercial)
+	require.Contains(t, output, `"LicenseType": "Enterprise"`)
+	require.Contains(t, output, `"ValidLicense": true`)
+	require.NotContains(t, output, "LicenseType:")
+	require.NotContains(t, output, "ValidLicense:")
+}
+
+// Verifies cluster topology and license commands advertise JSON as the machine-preferred mode.
+func TestGetClusterCommands_JSONOutputModeMetadata(t *testing.T) {
+	require.Equal(t, []OutputModeContract{
+		{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	}, outputModesForCommand(getClusterTopologyNestedCmd))
+	require.Equal(t, []OutputModeContract{
+		{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	}, outputModesForCommand(getClusterLicenseCmd))
 }
 
 // Verifies cluster license HTTP failures map to unavailable exit behavior.

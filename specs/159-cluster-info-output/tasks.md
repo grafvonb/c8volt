@@ -66,15 +66,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Add or update topology `--json` command test in `cmd/get_test.go`
-- [ ] T019 [P] [US2] Add or update license `--json` command test in `cmd/get_test.go`
-- [ ] T020 [P] [US2] Add assertion that JSON output excludes tree connector and flat license lines in `cmd/get_test.go`
+- [x] T018 [P] [US2] Add or update topology `--json` command test in `cmd/get_test.go`
+- [x] T019 [P] [US2] Add or update license `--json` command test in `cmd/get_test.go`
+- [x] T020 [P] [US2] Add assertion that JSON output excludes tree connector and flat license lines in `cmd/get_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Preserve `renderJSONPayload` path for topology when `pickMode()` is JSON in `cmd/get_cluster_topology.go`
-- [ ] T022 [US2] Preserve `renderJSONPayload` path for license when `pickMode()` is JSON in `cmd/get_cluster_license.go`
-- [ ] T023 [US2] Confirm output mode metadata keeps JSON as machine-preferred for topology and license in `cmd/get_cluster_topology.go` and `cmd/get_cluster_license.go`
+- [x] T021 [US2] Preserve `renderJSONPayload` path for topology when `pickMode()` is JSON in `cmd/get_cluster_topology.go`
+- [x] T022 [US2] Preserve `renderJSONPayload` path for license when `pickMode()` is JSON in `cmd/get_cluster_license.go`
+- [x] T023 [US2] Confirm output mode metadata keeps JSON as machine-preferred for topology and license in `cmd/get_cluster_topology.go` and `cmd/get_cluster_license.go`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

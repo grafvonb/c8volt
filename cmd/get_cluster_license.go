@@ -44,6 +44,12 @@ func runGetClusterLicense(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster license: %w", err))
 	}
+	if pickMode() == RenderModeJSON {
+		if err := renderJSONPayload(cmd, RenderModeJSON, license); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster license: %w", err))
+		}
+		return
+	}
 	if err := renderJSONPayload(cmd, RenderModeJSON, license); err != nil {
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster license: %w", err))
 	}

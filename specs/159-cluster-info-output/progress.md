@@ -11,6 +11,7 @@ Started: 2026-05-03 07:40:25
 - Current cluster topology and license handlers still render successful output through `renderJSONPayload`; upcoming human renderers should live in `cmd/cmd_views_cluster.go` and keep command wiring in adjacent `get_cluster*.go` files.
 - Generated CLI docs come from `make docs-content`, which runs `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown`; stale generated pages such as `docs/cli/c8volt_get_cluster-topology.md` may need explicit deletion after command removal.
 - Cluster command view helpers should use the command-facing `c8volt/cluster` facade models, because `NewCli(cmd).GetClusterTopology` returns facade types rather than `internal/domain` types.
+- Cluster topology and license commands are marked `ContractSupportLimited`; `renderJSONPayload` currently emits the facade payload directly for their JSON mode rather than wrapping it in the shared full-contract result envelope.
 
 ---
 
@@ -86,5 +87,28 @@ Started: 2026-05-03 07:40:25
 **Learnings**:
 - Topology tree rendering can reuse the existing summary/sorting helpers, but those helpers need facade `cluster` models to match command handler return types.
 - Default topology output no longer contains JSON field names; JSON-specific assertions should use `--json` in the next story.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
+---
+
+---
+## Iteration 4 - 2026-05-03 07:57:45 CEST
+**User Story**: User Story 2 - Preserve Machine-Readable Cluster Responses
+**Tasks Completed**:
+- [x] T018: Add or update topology `--json` command test
+- [x] T019: Add or update license `--json` command test
+- [x] T020: Add assertion that JSON output excludes tree connector and flat license lines
+- [x] T021: Preserve `renderJSONPayload` path for topology when `pickMode()` is JSON
+- [x] T022: Preserve `renderJSONPayload` path for license when `pickMode()` is JSON
+- [x] T023: Confirm output mode metadata keeps JSON as machine-preferred for topology and license
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_cluster_license.go
+- cmd/get_test.go
+- specs/159-cluster-info-output/progress.md
+- specs/159-cluster-info-output/tasks.md
+**Learnings**:
+- Topology already had the dedicated JSON branch after the tree renderer work; license now has the same explicit branch while retaining current non-JSON behavior until the flat-license story changes it.
+- JSON preservation tests should unmarshal into the command-facing `c8volt/cluster` facade models and also assert that human-only tree or flat labels are absent.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---
