@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -30,10 +31,32 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
 	}
-	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
+	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPI, func(it process.ProcessInstance) string { return it.Key })
+}
+
+// renderProcessInstanceFlatRows shares aligned human output between collected lists and incremental search pages.
+func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
+	for _, line := range formatProcessInstanceFlatRows(items) {
+		renderOutputLine(cmd, "%s", line)
+	}
+	return nil
+}
+
+// formatProcessInstanceFlatRows keeps process-instance page rendering list-aware without changing machine modes.
+func formatProcessInstanceFlatRows(items []process.ProcessInstance) []string {
+	rows := make([]flatRow, 0, len(items))
+	for _, it := range items {
+		rows = append(rows, flatRowPI(it))
+	}
+	return formatFlatRows(rows)
 }
 
 func oneLinePI(it process.ProcessInstance) string {
+	return compactFlatRow(flatRowPI(it))
+}
+
+// flatRowPI defines the process-instance scan order, keeping BPMN IDs before operational state columns.
+func flatRowPI(it process.ProcessInstance) flatRow {
 	pTag := " p:<root>"
 	if it.ParentKey != "" {
 		pTag = " p:" + it.ParentKey
@@ -58,10 +81,18 @@ func oneLinePI(it process.ProcessInstance) string {
 	if it.Incident {
 		incidentTag = " inc!"
 	}
-	return fmt.Sprintf(
-		"%-16s %s %s v%d%s %-10s s:%-20s%s%s%s%s",
-		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag, it.State, processInstanceTimestampMillis(it.StartDate), eTag, pTag, incidentTag, ageTag,
-	)
+	return flatRow{
+		it.Key,
+		it.TenantId,
+		it.BpmnProcessId,
+		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
+		string(it.State),
+		"s:" + processInstanceTimestampMillis(it.StartDate),
+		strings.TrimSpace(eTag),
+		strings.TrimSpace(pTag),
+		strings.TrimSpace(incidentTag),
+		strings.TrimSpace(ageTag),
+	}
 }
 
 func processInstanceTimestampMillis(value string) string {
@@ -140,32 +171,34 @@ func processDefinitionView(cmd *cobra.Command, item process.ProcessDefinition) e
 }
 
 func listProcessDefinitionsView(cmd *cobra.Command, resp process.ProcessDefinitions) error {
-	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLinePD, func(it process.ProcessDefinition) string { return it.Key })
+	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPD, func(it process.ProcessDefinition) string { return it.Key })
 }
 
 func oneLinePD(it process.ProcessDefinition) string {
+	return compactFlatRow(flatRowPD(it))
+}
+
+// flatRowPD mirrors the process-definition human order while allowing statistics to remain an optional tail column.
+func flatRowPD(it process.ProcessDefinition) flatRow {
 	vTag := ""
 	if it.ProcessVersionTag != "" {
 		vTag = "/" + it.ProcessVersionTag
 	}
-	core := fmt.Sprintf("%-16s %s %s v%d%s",
-		it.Key, it.TenantId, it.BpmnProcessId, it.ProcessVersion, vTag,
-	)
+	row := flatRow{it.Key, it.TenantId, it.BpmnProcessId, fmt.Sprintf("v%d%s", it.ProcessVersion, vTag)}
 	if it.Statistics != nil {
 		stats := it.Statistics
 		incidentTag := ""
 		if stats.IncidentCountSupported {
 			incidentTag = fmt.Sprintf(" inc:%s", zeroAsMinus(stats.Incidents))
 		}
-		return fmt.Sprintf("%s [ac:%s cp:%s cx:%s%s]",
-			core,
+		row = append(row, fmt.Sprintf("[ac:%s cp:%s cx:%s%s]",
 			zeroAsMinus(stats.Active),
 			zeroAsMinus(stats.Completed),
 			zeroAsMinus(stats.Canceled),
 			incidentTag,
-		)
+		))
 	}
-	return core
+	return row
 }
 
 func resourceView(cmd *cobra.Command, item resource.Resource) error {
@@ -177,18 +210,21 @@ func resourceItemView(cmd *cobra.Command, item resource.Resource, mode RenderMod
 }
 
 func oneLineResource(it resource.Resource) string {
+	return compactFlatRow(flatRowResource(it))
+}
+
+// flatRowResource keeps resource names in the same human position while aligning IDs and keys in list output.
+func flatRowResource(it resource.Resource) flatRow {
 	vTag := ""
 	if it.VersionTag != "" {
 		vTag = "/" + it.VersionTag
 	}
-	return fmt.Sprintf("%-24s k:%-16s %s %s v%d%s",
-		it.ID, it.Key, it.TenantId, it.Name, it.Version, vTag,
-	)
+	return flatRow{it.ID, "k:" + it.Key, it.TenantId, it.Name, fmt.Sprintf("v%d%s", it.Version, vTag)}
 }
 
 // listTenantsView renders tenant discovery output through the shared list, keys-only, and JSON modes.
 func listTenantsView(cmd *cobra.Command, resp tenant.Tenants) error {
-	return listOrJSON(cmd, resp, resp.Items, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
+	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
 // tenantView renders a single tenant through the same mode contract as other get commands.
@@ -196,14 +232,17 @@ func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
 	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
-const tenantNameColumnWidth = 32
-
 // oneLineTenant formats tenant rows for compact human output.
 func oneLineTenant(it tenant.Tenant) string {
+	return compactFlatRow(flatRowTenant(it))
+}
+
+// flatRowTenant omits the description column when absent so sparse tenant lists stay compact.
+func flatRowTenant(it tenant.Tenant) flatRow {
 	if it.Description == "" {
-		return fmt.Sprintf("%-24s %-*s", it.TenantId, tenantNameColumnWidth, it.Name)
+		return flatRow{it.TenantId, it.Name}
 	}
-	return fmt.Sprintf("%-24s %-*s %s", it.TenantId, tenantNameColumnWidth, it.Name, it.Description)
+	return flatRow{it.TenantId, it.Name, it.Description}
 }
 
 func zeroAsMinus(v int64) string {

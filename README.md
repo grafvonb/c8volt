@@ -69,8 +69,12 @@ Useful setup commands:
 
 ```bash
 ./c8volt get cluster topology
+./c8volt get cluster version
 ./c8volt get cluster license
+./c8volt get cluster licence
 ```
+
+Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
 
 ### 4. Get A Runnable Environment
 
@@ -246,6 +250,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 
 Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
 
+Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
+
 For direct keyed diagnosis, add `--with-incidents` to show incident keys and messages below the process-instance row, or combine it with `--json` for structured incident details. The flag is scoped to `--key` lookups; search filters such as `--incidents-only` keep their existing list-filter behavior.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
@@ -355,6 +361,7 @@ profiles:
 ```bash
 ./c8volt --profile local get cluster topology
 ./c8volt --profile prod get cluster topology
+./c8volt --profile prod get cluster version --with-brokers
 ```
 
 ## Automation And Pipelines
@@ -425,7 +432,8 @@ c8volt
 |-- expect                    Wait until resources reach a target state
 |   `-- pi                    Wait for active, completed, canceled, terminated, or absent
 |-- get                       Read state, metadata, and resources
-|   |-- cluster topology      Show connected Camunda cluster topology
+|   |-- cluster topology      Show connected Camunda cluster topology as a tree
+|   |-- cluster version       Show gateway and optional broker versions
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances

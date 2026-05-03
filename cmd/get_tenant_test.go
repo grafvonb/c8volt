@@ -49,7 +49,7 @@ func TestGetTenantListOutput_SortsAndRendersCompactRows(t *testing.T) {
 	require.Less(t, strings.Index(output, "tenant-a"), strings.Index(output, "tenant-b"))
 }
 
-// Verifies tenant list columns remain aligned when IDs, names, and descriptions vary in length.
+// Verifies tenant list columns use the current result set for dynamic alignment.
 func TestGetTenantListOutput_AlignsTenantIDAndNameColumns(t *testing.T) {
 	resetTenantRenderFlags(t)
 	cmd := newTenantListTestCommand()
@@ -68,9 +68,9 @@ func TestGetTenantListOutput_AlignsTenantIDAndNameColumns(t *testing.T) {
 	output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 	require.Equal(t, strings.Join([]string{
-		"<default>                Default",
-		"dev01                    Dev 01 - Development Stage 01    shared development stage",
-		"dev02                    Dev 02",
+		"<default> Default",
+		"dev01     Dev 01 - Development Stage 01 shared development stage",
+		"dev02     Dev 02",
 		"found: 3",
 		"",
 	}, "\n"), output)

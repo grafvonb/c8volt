@@ -16,12 +16,21 @@ func processDefinitionDeploymentView(cmd *cobra.Command, item resource.ProcessDe
 }
 
 func listProcessDefinitionDeploymentsView(cmd *cobra.Command, resp []resource.ProcessDefinitionDeployment) error {
-	return listOrJSON(cmd, resp, resp, pickMode(), oneLinePDDeploy, func(it resource.ProcessDefinitionDeployment) string { return it.DefinitionKey })
+	return listOrJSONFlat(cmd, resp, resp, pickMode(), flatRowPDDeploy, func(it resource.ProcessDefinitionDeployment) string { return it.DefinitionKey })
 }
 
 func oneLinePDDeploy(it resource.ProcessDefinitionDeployment) string {
-	return fmt.Sprintf(
-		"%-16s %s %s v%d %s (deployId: %s)",
-		it.DefinitionKey, it.TenantId, it.DefinitionId, it.DefinitionVersion, it.ResourceName, it.Key,
-	)
+	return compactFlatRow(flatRowPDDeploy(it))
+}
+
+// flatRowPDDeploy aligns deployment summaries without moving the deployed BPMN definition away from the front.
+func flatRowPDDeploy(it resource.ProcessDefinitionDeployment) flatRow {
+	return flatRow{
+		it.DefinitionKey,
+		it.TenantId,
+		it.DefinitionId,
+		fmt.Sprintf("v%d", it.DefinitionVersion),
+		it.ResourceName,
+		fmt.Sprintf("(deployId: %s)", it.Key),
+	}
 }

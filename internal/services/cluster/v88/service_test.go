@@ -64,10 +64,11 @@ func TestService_GetClusterTopology(t *testing.T) {
 	ctx := context.Background()
 
 	validTopology := camundav88.TopologyResponse{
-		ClusterSize:       3,
-		GatewayVersion:    "8.8.0",
-		PartitionsCount:   3,
-		ReplicationFactor: 3,
+		ClusterSize:           3,
+		GatewayVersion:        "8.8.0",
+		LastCompletedChangeId: "change-42",
+		PartitionsCount:       3,
+		ReplicationFactor:     3,
 		Brokers: []camundav88.BrokerInfo{
 			{
 				Host:   "broker-0",
@@ -96,6 +97,7 @@ func TestService_GetClusterTopology(t *testing.T) {
 			},
 			validateResp: func(t *testing.T, top d.Topology) {
 				assert.Equal(t, "8.8.0", top.GatewayVersion)
+				assert.Equal(t, "change-42", top.LastCompletedChangeId)
 				assert.Equal(t, int32(3), top.ClusterSize)
 				assert.Equal(t, 1, len(top.Brokers))
 				assert.Equal(t, int32(0), top.Brokers[0].NodeId)

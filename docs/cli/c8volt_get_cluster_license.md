@@ -12,7 +12,7 @@ Show connected cluster license
 
 Show connected cluster license.
 
-This command prints the license payload returned by the configured Camunda cluster.
+This command prints flat human-readable fields returned by the configured Camunda cluster. Use --json for the structured license payload.
 
 ```
 c8volt get cluster license [flags]
@@ -23,6 +23,7 @@ c8volt get cluster license [flags]
 ```
   ./c8volt get cluster license
   ./c8volt get cluster license --json
+  ./c8volt get cluster licence
 ```
 
 ### Options
@@ -51,5 +52,5 @@ c8volt get cluster license [flags]
 
 ### SEE ALSO
 
-* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology and license information
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
 

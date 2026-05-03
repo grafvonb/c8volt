@@ -1,34 +1,35 @@
 ---
-title: "c8volt get cluster-topology"
+title: "c8volt get cluster version"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt get cluster-topology
+## c8volt get cluster version
 
-Show connected cluster topology
+Show connected cluster version
 
 ### Synopsis
 
-Show connected cluster topology.
+Show connected cluster version.
 
-This legacy command reports brokers, partitions, and gateway metadata. Prefer `c8volt get cluster topology` for new usage.
+This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id.
 
 ```
-c8volt get cluster-topology [flags]
+c8volt get cluster version [flags]
 ```
 
 ### Examples
 
 ```
-  ./c8volt get cluster-topology
-  ./c8volt get cluster topology --json
+  ./c8volt get cluster version
+  ./c8volt get cluster version --with-brokers
 ```
 
 ### Options
 
 ```
-  -h, --help   help for cluster-topology
+  -h, --help           help for version
+      --with-brokers   include broker versions
 ```
 
 ### Options inherited from parent commands
@@ -51,5 +52,5 @@ c8volt get cluster-topology [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
 

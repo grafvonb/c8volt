@@ -7,12 +7,15 @@ import "github.com/spf13/cobra"
 
 var getClusterCmd = &cobra.Command{
 	Use:   "cluster",
-	Short: "Inspect cluster-wide topology and license information",
-	Long: `Inspect cluster-wide topology and license information.
+	Short: "Inspect cluster-wide topology, version, and license information",
+	Long: `Inspect cluster-wide topology, version, and license information.
 
 Use ` + "`get cluster topology`" + ` to check brokers, partitions, and gateway details.
+Use ` + "`get cluster version`" + ` to check gateway and broker versions.
 Use ` + "`get cluster license`" + ` to inspect the connected cluster's license payload.`,
 	Example: `  ./c8volt get cluster topology
+  ./c8volt get cluster version
+  ./c8volt get cluster version --with-brokers
   ./c8volt get cluster license`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
