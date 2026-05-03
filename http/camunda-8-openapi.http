@@ -6,13 +6,24 @@ grant_type=client_credentials&client_secret={{client_secret}}&client_id={{client
 
 > {% client.global.set("access_token", response.body.access_token); %}
 
-### Retrieve process definitions
-POST {{zeebe_broker_rest_address}}/v2/deployments
-Content-Type: multipart/form-data
+### Retrieve tenants
+POST {{zeebe_broker_rest_address}}/v2/tenants/search
+Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{access_token}}
 
-{"size":1000}
+{
+  "sort": [
+    {
+      "field": "name",
+      "order": "ASC"
+    }
+  ],
+  "page": {
+    "from": 0,
+    "limit": 100
+  }
+}
 
 ### Get cluster topology over operate
 GET {{operate_base_url}}/v1/topology

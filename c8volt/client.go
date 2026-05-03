@@ -10,11 +10,14 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
 	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
+	tsvc "github.com/grafvonb/c8volt/internal/services/tenant"
+	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -72,11 +75,20 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	tAPI, err := tsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
+	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
 
 	cl := client{
 		ClusterAPI: cluster.New(cAPI, c.log),
 		ProcessAPI: process.New(pdAPI, piAPI, c.log),
-		TaskAPI:    task.New(pdAPI, piAPI, c.log),
+		TaskAPI:    task.New(pdAPI, piAPI, utAPI, c.log),
+		TenantAPI:  tenant.New(tAPI, c.log),
 		capsFunc: func(context.Context) (Capabilities, error) {
 			return Capabilities{
 				CamundaVersion: string(c.cfg.App.CamundaVersion),
@@ -98,6 +110,7 @@ type ClusterAPI = cluster.API
 type ProcessAPI = process.API
 type TaskAPI = task.API
 type ResourceAPI = resource.API
+type TenantAPI = tenant.API
 
 var _ API = (*client)(nil)
 
@@ -106,6 +119,7 @@ type client struct {
 	ProcessAPI
 	TaskAPI
 	ResourceAPI
+	TenantAPI
 
 	capsFunc func(context.Context) (Capabilities, error)
 }

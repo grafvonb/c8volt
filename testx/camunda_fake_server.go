@@ -140,8 +140,11 @@ type FakeServer struct {
 
 func NewFakeServer(t *testing.T) *FakeServer {
 	t.Helper()
+
+	listener := newIPv4Listener(t)
+	usedListener := false
 	onceFS.Do(func() {
-		fs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fs := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				if resp, ok := collectionResponses[r.URL.Path]; ok {
@@ -173,11 +176,17 @@ func NewFakeServer(t *testing.T) *FakeServer {
 				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			}
 		}))
+		fs.Listener = listener
+		fs.Start()
+		usedListener = true
 		sharedFS = &FakeServer{
 			FS:      fs,
 			BaseURL: fs.URL,
 		}
 	})
+	if !usedListener {
+		_ = listener.Close()
+	}
 
 	require.NotNil(t, sharedFS)
 	return sharedFS

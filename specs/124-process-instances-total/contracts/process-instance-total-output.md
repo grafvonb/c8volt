@@ -10,7 +10,6 @@
 | `get pi --total --key ...` | Reject as invalid |
 | `get pi --total --json` | Reject as invalid |
 | `get pi --total --keys-only` | Reject as invalid |
-| `get pi --total --with-age` | Reject as invalid |
 
 ## Output Contract
 

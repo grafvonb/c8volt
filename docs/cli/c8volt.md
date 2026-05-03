@@ -62,7 +62,7 @@ c8volt [flags]
 * [c8volt deploy](c8volt_deploy)	 - Deploy BPMN resources to Camunda
 * [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
 * [c8volt expect](c8volt_expect)	 - Wait for process instances to reach a state
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
 * [c8volt run](c8volt_run)	 - Start process instances
 * [c8volt version](c8volt_version)	 - Print version information
 * [c8volt walk](c8volt_walk)	 - Inspect process-instance relationships

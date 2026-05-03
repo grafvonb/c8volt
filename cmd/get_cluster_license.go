@@ -11,13 +11,16 @@ import (
 )
 
 var getClusterLicenseCmd = &cobra.Command{
-	Use:   "license",
-	Short: "Show connected cluster license",
+	Use:     "license",
+	Aliases: []string{"licence"},
+	Short:   "Show connected cluster license",
 	Long: "Show connected cluster license.\n\n" +
-		"This command prints the license payload returned by the configured Camunda cluster.",
+		"This command prints flat human-readable fields returned by the configured Camunda cluster. Use --json for the structured license payload.",
 	Example: `  ./c8volt get cluster license
-  ./c8volt get cluster license --json`,
-	Run: runGetClusterLicense,
+  ./c8volt get cluster license --json
+  ./c8volt get cluster licence`,
+	Args: cobra.NoArgs,
+	Run:  runGetClusterLicense,
 }
 
 func init() {
@@ -44,7 +47,13 @@ func runGetClusterLicense(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster license: %w", err))
 	}
-	if err := renderJSONPayload(cmd, RenderModeJSON, license); err != nil {
+	if pickMode() == RenderModeJSON {
+		if err := renderJSONPayload(cmd, RenderModeJSON, license); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster license: %w", err))
+		}
+		return
+	}
+	if err := renderClusterLicenseFlat(cmd, license); err != nil {
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster license: %w", err))
 	}
 }

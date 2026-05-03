@@ -32,7 +32,7 @@ As a CLI operator, I want tree and family traversal to return the process instan
 **Acceptance Scenarios**:
 
 1. **Given** an investigated process instance exists and its recorded parent no longer exists, **When** the operator runs `walk pi --parent`, **Then** the command returns the resolved ancestry it could collect and a warning that one or more parent process instances were not found.
-2. **Given** an investigated process instance exists and an ancestor in its family chain is missing, **When** the operator runs `walk pi --family`, **Then** the command returns the reachable family data instead of failing the entire traversal.
+2. **Given** an investigated process instance exists and an ancestor in its family chain is missing, **When** the operator runs `walk pi`, **Then** the command returns the reachable family data instead of failing the entire traversal.
 3. **Given** a family traversal includes a missing ancestor boundary, **When** the operator requests tree rendering, **Then** the CLI renders the partial tree and surfaces that the tree is incomplete because a parent process instance was missing.
 
 ---
@@ -83,7 +83,7 @@ As a maintainer, I want direct single-resource lookups and absent-state waiting 
 - **FR-001**: The system MUST treat a missing non-start parent encountered during process-instance traversal as a warning and partial-result condition for traversal and dependency-expansion flows rather than as an automatic command failure.
 - **FR-002**: The system MUST return every investigated or related process-instance key that was successfully resolved before traversal stopped at a missing parent boundary.
 - **FR-003**: The system MUST return the missing parent key or keys as machine-readable metadata associated with an incomplete traversal so callers can report, reason about, and act on the orphaned boundary explicitly.
-- **FR-004**: The system MUST allow `walk pi --parent`, `walk pi --family`, and `walk pi --family --tree` to continue rendering partial ancestry or family output when a non-start parent is missing.
+- **FR-004**: The system MUST allow `walk pi --parent`, `walk pi`, and `walk pi --flat` to continue rendering partial ancestry or family output when a non-start parent is missing.
 - **FR-005**: The system MUST emit a user-facing warning that the returned tree or family data is incomplete because one or more parent process instances were not found.
 - **FR-005a**: The system MUST keep affected traversal and dependency-expansion flows non-fatal when at least one actionable result was resolved, while still emitting the incomplete-tree warning and missing-ancestor metadata.
 - **FR-005b**: The system MUST return a normal failure for an affected traversal or preflight flow when no process-instance data could be resolved at all.

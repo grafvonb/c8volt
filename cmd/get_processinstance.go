@@ -16,12 +16,14 @@ import (
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 var (
 	flagGetPIKeys                 []string
+	flagGetPIHasUserTasks         []string
 	flagGetPIBpmnProcessID        string
 	flagGetPIProcessVersion       int32
 	flagGetPIProcessVersionTag    string
@@ -34,12 +36,12 @@ var (
 	flagGetPIStartBeforeDays      int
 	flagGetPIEndAfterDays         int
 	flagGetPIEndBeforeDays        int
-	flagGetPIWithAge              bool
 	flagGetPITotal                bool
 	flagGetPIState                string
 	flagGetPIParentKey            string
 	flagGetPISize                 int32
 	flagGetPILimit                int32
+	flagGetPIWithIncidents        bool
 )
 
 // command options
@@ -54,13 +56,23 @@ var (
 var getProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "List or fetch process instances",
-	Long: "List process instances by search filters or fetch them by key.\n" +
-		"Use --total for the numeric count. Direct --key lookups stay strict: missing keys return not-found.\n\n" +
-		"Paged human output prompts unless --auto-confirm or --json is set. JSON returns one aggregated result.",
-	Example: `  ./c8volt get pi --state active
+	Long: "Get process instances by key or by search criteria.\n\n" +
+		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
+		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
+		"Use --with-incidents with --key to include incident keys and messages for the returned process instance.\n\n" +
+		"User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.\n\n" +
+		"Run `c8volt get pi --help` for the complete flag reference.",
+	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+  ./c8volt get pi --key <process-instance-key>
+  ./c8volt get pi --state active
+  ./c8volt get pi --state active --json
   ./c8volt get pi --state active --total
+  ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --state active --batch-size 250 --limit 25
+  ./c8volt get pi --state active --limit 25 --auto-confirm
+  ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --json
+  ./c8volt get pi --key 2251799813711967 --with-incidents --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
   ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
 	Aliases: []string{"process-instances", "pi", "pis"},
@@ -94,7 +106,18 @@ var getProcessInstanceCmd = &cobra.Command{
 		keys := mergeAndValidateKeys(flagGetPIKeys, stdinKeys, log, cfg)
 		ukeys := keys.Unique()
 		lk := len(ukeys)
-		if lk == 0 {
+		taskKeys, err := normalizeHasUserTasks(types.Keys(flagGetPIHasUserTasks))
+		if err != nil {
+			fail(err)
+		}
+		ltk := len(taskKeys)
+		if err := validatePIHasUserTasksMode(cmd, ltk, lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
+		if err := validatePIWithIncidentsUsage(lk, filterFlagsSet); err != nil {
+			fail(err)
+		}
+		if lk == 0 && ltk == 0 {
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				fail(err)
 			}
@@ -103,6 +126,21 @@ var getProcessInstanceCmd = &cobra.Command{
 		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
 		var pis process.ProcessInstances
 		switch {
+		case ltk > 0:
+			log.Debug(fmt.Sprintf("resolving process instance key(s) from user task key(s) [%s]", taskKeys))
+			processInstanceKeys, err := cli.ResolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("resolve process instance key(s) from user task key(s): %w", err))
+			}
+			processInstanceKeys = processInstanceKeys.Unique()
+			wantedWorkers := len(processInstanceKeys)
+			if cmd.Flags().Changed("workers") {
+				wantedWorkers = flagWorkers
+			}
+			pis, err = cli.GetProcessInstances(ctx, processInstanceKeys, wantedWorkers, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("get process instance(s) resolved from user task key(s) [%s]: %w", taskKeys, err))
+			}
 		case lk > 0:
 			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
@@ -128,6 +166,16 @@ var getProcessInstanceCmd = &cobra.Command{
 					msg = fmt.Errorf("get process instances for key(s) [%s]: %w", ukeys, err)
 				}
 				fail(msg)
+			}
+			if flagGetPIWithIncidents {
+				enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+				if err != nil {
+					fail(fmt.Errorf("get process instance incidents: %w", err))
+				}
+				if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
+					fail(fmt.Errorf("render process instances with incidents: %w", err))
+				}
+				return
 			}
 		default:
 			filter := populatePISearchFilterOpts()
@@ -163,13 +211,14 @@ func init() {
 
 	fs := getProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "process instance key(s) to fetch")
+	fs.StringSliceVar(&flagGetPIHasUserTasks, "has-user-tasks", nil, "user task key(s) whose owning process instances should be fetched")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)
-	registerPISharedRenderFlags(fs)
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
+	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident keys and messages for direct --key process-instance lookups")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -264,10 +313,6 @@ func registerPISharedProcessDefinitionFilterFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&flagGetPIBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter process instances")
 	fs.Int32Var(&flagGetPIProcessVersion, "pd-version", 0, "process definition version")
 	fs.StringVar(&flagGetPIProcessVersionTag, "pd-version-tag", "", "process definition version tag")
-}
-
-func registerPISharedRenderFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(&flagGetPIWithAge, "with-age", false, "include process instance age in one-line output and JSON meta")
 }
 
 func populatePISearchFilterOpts() process.ProcessInstanceFilter {
@@ -444,9 +489,15 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Items = limitPIItems(filtered.Items, processedTotal)
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
-			for _, item := range filtered.Items {
-				if err := processInstanceView(cmd, item); err != nil {
+			if pickMode() == RenderModeOneLine {
+				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err
+				}
+			} else {
+				for _, item := range filtered.Items {
+					if err := processInstanceView(cmd, item); err != nil {
+						return process.ProcessInstances{}, false, err
+					}
 				}
 			}
 		} else {
@@ -822,8 +873,8 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
 		case flagViewKeysOnly:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
-		case flagGetPIWithAge:
-			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-age")
+		case flagGetPIWithIncidents:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		}
 	}
 	if flagGetPIProcessDefinitionKey != "" &&
@@ -891,6 +942,20 @@ func isPILimitFlagChanged(cmd *cobra.Command) bool {
 func validatePIKeyedModeLimit(keyCount int) error {
 	if keyCount > 0 && flagGetPILimit > 0 {
 		return mutuallyExclusiveFlagsf("--limit cannot be combined with --key")
+	}
+	return nil
+}
+
+// validatePIWithIncidentsUsage keeps incident enrichment scoped to direct keyed lookups where the output can attach details unambiguously.
+func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
+	if !flagGetPIWithIncidents {
+		return nil
+	}
+	if keyCount == 0 {
+		return missingDependentFlagsf("--with-incidents requires --key")
+	}
+	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal {
+		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with search-mode filters")
 	}
 	return nil
 }

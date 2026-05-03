@@ -16,7 +16,7 @@ Started: 2026-04-19 06:53:03
 ## Iteration 1 - 2026-04-19 09:09 CEST
 **User Story**: Phase 1 Setup
 **Tasks Completed**:
-- [x] T001: inventoried root flags, config bindings, and machine-facing guidance in `cmd/root.go`, `README.md`, and `docs/use-cases.md`
+- [x] T001: inventoried root flags, config bindings, and machine-facing guidance in `cmd/root.go`, `README.md`, and `docs/index.md`
 - [x] T002: inventoried prompt, paging, and result-envelope seams in `cmd/cmd_cli.go`, `cmd/cmd_views_contract.go`, `cmd/get_processinstance.go`, `cmd/delete_processinstance.go`, and `cmd/cancel_processinstance.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -122,7 +122,7 @@ Started: 2026-04-19 06:53:03
 - [x] T016: added human-mode regression assertions proving root/get help and representative paged cancel/delete flows stay prompt-driven without `--automation`
 - [x] T017: added discovery/help-text regression coverage for the documented automation contract in `cmd/capabilities_test.go` and `cmd/root_test.go`
 - [x] T018: updated root and representative command help text for the automation contract in `cmd/root.go`, `cmd/capabilities.go`, `cmd/run_processinstance.go`, and `cmd/get_processinstance.go`
-- [x] T019: updated user-facing automation guidance in `README.md` and `docs/use-cases.md`
+- [x] T019: updated user-facing automation guidance in `README.md` and `docs/index.md`
 - [x] T020: regenerated CLI reference docs under `docs/cli/` and synced `docs/index.md` from README-backed content
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -138,7 +138,7 @@ Started: 2026-04-19 06:53:03
 - cmd/delete_test.go
 - cmd/cancel_test.go
 - cmd/run_processinstance.go
-- docs/use-cases.md
+- docs/index.md
 - docs/index.md
 - docs/cli/
 - specs/079-non-interactive-automation-mode/progress.md

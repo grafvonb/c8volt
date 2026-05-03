@@ -17,6 +17,8 @@ import (
 	"github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	v88 "github.com/grafvonb/c8volt/internal/services/processdefinition/v88"
+	"github.com/grafvonb/c8volt/testx/activitysink"
+	activitylogging "github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -220,6 +222,36 @@ func TestService_SearchProcessDefinitions(t *testing.T) {
 			m.AssertExpectations(t)
 		})
 	}
+}
+
+// TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator verifies stats retrieval exposes progress activity.
+func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testing.T) {
+	sink := &activitysink.Sink{}
+	ctx := activitylogging.ToActivityContext(context.Background(), sink)
+	m := &mockProcessDefinitionClient{}
+	resp := &camundav88.SearchProcessDefinitionsResponse{
+		HTTPResponse: newHTTPResponse(http.MethodPost, "https://example.com/v2/process-definitions", http.StatusOK, "200"),
+		JSON200: &camundav88.ProcessDefinitionSearchQueryResult{
+			Items: []camundav88.ProcessDefinitionResult{makeProcessDefinitionResult("proc", "123", 2)},
+		},
+	}
+	m.On("SearchProcessDefinitionsWithResponse", mock.Anything, mock.Anything).Return(resp, nil)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnumACTIVE, 11)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnumCOMPLETED, 22)
+	mockProcessInstanceStateCount(m, t, "123", "", camundav88.ProcessInstanceStateEnum(domain.StateTerminated), 33)
+	mockProcessInstanceIncidentCount(m, t, "123", "", 2)
+
+	svc, err := v88.New(testConfig(), &http.Client{}, slog.New(slog.NewTextHandler(io.Discard, nil)), v88.WithClientCamunda(m))
+	require.NoError(t, err)
+
+	_, err = svc.SearchProcessDefinitions(ctx, domain.ProcessDefinitionFilter{BpmnProcessId: "proc"}, 25, services.WithStat())
+
+	require.NoError(t, err)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"retrieving process definition stats for proc (123)"}, msgs)
+	m.AssertExpectations(t)
 }
 
 func TestService_SearchProcessDefinitionsLatestForcesLatest(t *testing.T) {

@@ -4,10 +4,13 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/cmd"
+	"github.com/spf13/cobra/doc"
 )
 
 func TestFormatDocsBuildInfoRelease(t *testing.T) {
@@ -79,6 +82,41 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected rewritten body to contain %q, got %q", want, got)
+		}
+	}
+}
+
+// TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup protects generated command docs for the task-key lookup surface.
+func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(out, "c8volt_get_process-instance.md"))
+	if err != nil {
+		t.Fatalf("read generated process-instance docs: %v", err)
+	}
+	got := string(b)
+
+	for _, want := range []string{
+		"--has-user-tasks strings",
+		"user task key(s) whose owning process instances should be fetched",
+		"./c8volt get pi --has-user-tasks \u003cuser-task-key\u003e",
+		"Tasklist or Operate fallback",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected generated docs to contain %q, got %q", want, got)
 		}
 	}
 }

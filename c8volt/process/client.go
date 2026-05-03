@@ -73,6 +73,75 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 	return fromDomainProcessInstance(pi), nil
 }
 
+// SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.
+func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
+	incidents, err := c.piApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return nil, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstanceIncidentDetails(incidents), nil
+}
+
+// EnrichProcessInstancesWithIncidents attaches direct incident details to keyed process-instance results without reordering them.
+func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
+	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
+	for _, pi := range pis.Items {
+		incidents, err := c.SearchProcessInstanceIncidents(ctx, pi.Key, opts...)
+		if err != nil {
+			return IncidentEnrichedProcessInstances{}, err
+		}
+		items = append(items, IncidentEnrichedProcessInstance{
+			Item:      pi,
+			Incidents: incidentsForProcessInstance(pi.Key, incidents),
+		})
+	}
+	return IncidentEnrichedProcessInstances{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
+// EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.
+func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error) {
+	items := make([]IncidentEnrichedTraversalItem, 0, len(result.Keys))
+	for _, key := range result.Keys {
+		pi, ok := result.Chain[key]
+		if !ok {
+			continue
+		}
+		incidents, err := c.SearchProcessInstanceIncidents(ctx, key, opts...)
+		if err != nil {
+			return IncidentEnrichedTraversalResult{}, err
+		}
+		items = append(items, IncidentEnrichedTraversalItem{
+			Item:      pi,
+			Incidents: incidentsForProcessInstance(key, incidents),
+		})
+	}
+	return IncidentEnrichedTraversalResult{
+		Mode:             result.Mode,
+		Outcome:          result.Outcome,
+		StartKey:         result.StartKey,
+		RootKey:          result.RootKey,
+		Keys:             append([]string(nil), result.Keys...),
+		Edges:            result.Edges,
+		Items:            items,
+		MissingAncestors: append([]MissingAncestor(nil), result.MissingAncestors...),
+		Warning:          result.Warning,
+	}, nil
+}
+
+// incidentsForProcessInstance keeps only details owned by the requested key, guarding against broad backend incident responses.
+func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncidentDetail) []ProcessInstanceIncidentDetail {
+	out := make([]ProcessInstanceIncidentDetail, 0, len(incidents))
+	for _, incident := range incidents {
+		if incident.ProcessInstanceKey == key {
+			out = append(out, incident)
+		}
+	}
+	return out
+}
+
 func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
 	got, pi, err := pisvc.LookupProcessInstanceStateByKey(ctx, c.piApi, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	pgot, _ := ParseState(got.String())

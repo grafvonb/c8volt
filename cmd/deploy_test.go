@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
@@ -52,7 +51,7 @@ func TestDeployProcessDefinitionCommand_TenantFlagOverridesEnvProfileAndConfig(t
 	t.Setenv("C8VOLT_APP_TENANT", "env-tenant")
 
 	var sawDeploy bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -95,7 +94,7 @@ profiles:
 func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T) {
 	var sawDeploy bool
 	var sawRun bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
@@ -134,7 +133,7 @@ func TestDeployProcessDefinitionCommand_RunFallsBackToBPMNIDForV87(t *testing.T)
 
 func TestDeployProcessDefinitionCommand_V89NoWait(t *testing.T) {
 	var sawDeploy bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true

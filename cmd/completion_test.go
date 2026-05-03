@@ -12,21 +12,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Verifies completion bootstrap bypass detection treats internal completion seams as safe bootstrap exceptions.
+// Protects bootstrap bypass from matching only by leaf command name; nested commands like
+// `get cluster version` still need the full service bootstrap.
 func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *testing.T) {
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__complete"}))
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__completeNoDesc"}))
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "completion"}))
-	require.False(t, bypassRootBootstrap(&cobra.Command{Use: "get"}))
+	require.True(t, bypassRootBootstrap(versionCmd))
+	require.True(t, bypassRootBootstrap(configShowCmd))
+	require.False(t, bypassRootBootstrap(getCmd))
+	require.False(t, bypassRootBootstrap(getClusterVersionCmd))
 }
 
 // Verifies completion requests work without config bootstrap and stay focused on candidates.
 func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
-	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
-	require.Contains(t, output, "parent")
-	require.Contains(t, output, "children")
-	require.Contains(t, output, "family")
+	require.Contains(t, output, "--key")
 	require.NotContains(t, output, "configuration is invalid")
 	require.NotContains(t, output, "Usage:")
 }
@@ -35,7 +37,7 @@ func TestCompletionCommandsBypassBootstrapWithoutConfig(t *testing.T) {
 func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "")
 
-	require.Contains(t, output, "get\tInspect cluster, process, and resource state\n")
+	require.Contains(t, output, "get\tInspect cluster, process, tenant, and resource state\n")
 	require.Contains(t, output, "embed\tUse bundled BPMN fixtures\n")
 	require.Contains(t, output, "walk\tInspect process-instance relationships\n")
 	require.Contains(t, output, "run\tStart process instances\n")
@@ -48,7 +50,7 @@ func TestRootCompletion_TopLevelSuggestionsStayReadable(t *testing.T) {
 func TestRootCompletion_PartialTopLevelSuggestionsStayReadable(t *testing.T) {
 	output := executeCompletionForTest(t, "g")
 
-	require.Contains(t, output, "get\tInspect cluster, process, and resource state\n")
+	require.Contains(t, output, "get\tInspect cluster, process, tenant, and resource state\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
@@ -58,17 +60,16 @@ func TestNestedCompletion_SubcommandsStayUserFacing(t *testing.T) {
 
 	require.Contains(t, output, "process-definition\tList or fetch deployed process definitions\n")
 	require.Contains(t, output, "process-instance\tList or fetch process instances\n")
+	require.Contains(t, output, "tenant\tList tenants\n")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 
 // Verifies value completion output stays clean when descriptions are intentionally absent.
 func TestCompletionSuggestionsWithoutDescriptionsStayClean(t *testing.T) {
-	output := executeCompletionForTest(t, "walk", "process-instance", "--mode", "")
+	output := executeCompletionForTest(t, "walk", "process-instance", "")
 
-	require.Contains(t, output, "parent\n")
-	require.Contains(t, output, "children\n")
-	require.Contains(t, output, "family\n")
-	require.NotContains(t, output, "\t")
+	require.Contains(t, output, "--key")
+	require.NotContains(t, output, "--mode")
 	requireCompletionOutputStaysUserFacing(t, output)
 }
 

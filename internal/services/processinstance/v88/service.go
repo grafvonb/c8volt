@@ -494,9 +494,13 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	}
 
 	s.log.Debug(fmt.Sprintf("checking children of process instance with key %s before deletion", key))
-	_, edges, _, err := s.Descendants(ctx, key, opts...)
+	scope, edges, chain, err := s.Descendants(ctx, key, opts...)
 	if err != nil {
 		return d.DeleteResponse{}, err
+	}
+	if !cCfg.Force && len(scope) > 1 && !deleteScopeIsFinal(scope, chain) {
+		logging.InfoIfVerbose(fmt.Sprintf("cannot delete, process instance %s has one or more affected process instances not in one of terminated states; use --force flag to cancel and then delete the process instance tree", key), s.log, cCfg.Verbose)
+		return d.DeleteResponse{StatusCode: http.StatusConflict}, nil
 	}
 	children := edges[key]
 	if len(children) > 0 {
@@ -555,6 +559,17 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		Ok:         true,
 		StatusCode: resp.StatusCode(),
 	}, nil
+}
+
+// deleteScopeIsFinal reports whether every resolved process instance is already terminal.
+func deleteScopeIsFinal(keys []string, chain map[string]d.ProcessInstance) bool {
+	for _, key := range keys {
+		pi, ok := chain[key]
+		if !ok || !pi.State.IsTerminal() {
+			return false
+		}
+	}
+	return true
 }
 
 func isDeleteWrongStateResponse(resp *operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse) bool {

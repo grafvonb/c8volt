@@ -42,7 +42,7 @@
 
 **Goal**: Let operators inspect partial ancestry and family trees when a non-start ancestor is missing instead of failing the whole walk command.
 
-**Independent Test**: Run `walk pi --parent`, `walk pi --family`, and `walk pi --family --tree` against an orphan-parent scenario and verify the commands render resolved data plus warnings when actionable results exist, while fully unresolved traversal still fails.
+**Independent Test**: Run `walk pi --parent`, `walk pi`, and `walk pi --flat` against an orphan-parent scenario and verify the commands render resolved data plus warnings when actionable results exist, while fully unresolved traversal still fails.
 
 ### Tests for User Story 1
 

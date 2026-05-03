@@ -10,6 +10,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/task"
+	"github.com/grafvonb/c8volt/c8volt/tenant"
 )
 
 type API interface {
@@ -18,6 +19,7 @@ type API interface {
 	task.API
 	cluster.API
 	resource.API
+	tenant.API
 }
 
 type Capabilities struct {

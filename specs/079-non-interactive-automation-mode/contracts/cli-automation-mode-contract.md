@@ -101,7 +101,7 @@ User-facing documentation for automation mode must be updated in:
 
 - command help text for the root flag and affected commands
 - `README.md`
-- `docs/use-cases.md`
+- `docs/index.md`
 - generated CLI docs under `docs/cli/`
 
 Generated CLI docs must be refreshed from Cobra metadata rather than edited by hand.

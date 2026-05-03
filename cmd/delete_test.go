@@ -100,9 +100,8 @@ func TestDeleteProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireDeleteDryRunPreviewPayload(t, payload, want)
 }
 
-// TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope verifies
-// human dry-run output includes selected, root, and in-scope keys.
-func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *testing.T) {
+// TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose verifies human dry-run output keeps key lists verbose-only.
+func TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -125,6 +124,18 @@ func TestDeleteProcessInstanceDryRun_HumanOutputIncludesInspectableScope(t *test
 	require.Contains(t, output, "process-instance trees to delete: 1")
 	require.Contains(t, output, "process instances in scope: 3")
 	require.Contains(t, output, "scope: complete")
+	require.NotContains(t, output, "selected process-instance keys")
+	require.NotContains(t, output, "root process-instance tree keys")
+	require.NotContains(t, output, "in-scope process-instance keys")
+	require.NotContains(t, output, "root-human")
+	require.NotContains(t, output, "child-human")
+	require.NotContains(t, output, "sibling-human")
+	require.NotContains(t, output, "no mutation submitted")
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderProcessInstanceDryRunPreview(cmd, preview))
+	output = buf.String()
 	require.Contains(t, output, "selected process-instance keys: child-human")
 	require.Contains(t, output, "root process-instance tree keys: root-human")
 	require.Contains(t, output, "in-scope process-instance keys: root-human, child-human, sibling-human")
@@ -156,6 +167,7 @@ func TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInst
 	require.Contains(t, buf.String(), "process instances not in final state: 1 (states: ACTIVE; delete cannot remove them directly; use --force to cancel before delete; use --verbose to list keys)")
 	require.NotContains(t, buf.String(), "done-1=TERMINATED")
 	require.NotContains(t, buf.String(), "active-1=ACTIVE")
+	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 
 	buf.Reset()
 	flagVerbose = true
@@ -241,9 +253,9 @@ func TestDeleteProcessInstanceDryRun_KeyedChildEscalatesToRootWithoutMutation(t 
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "dry run: delete process-instance")
-	require.Contains(t, buf.String(), "selected process-instance keys: child-1")
-	require.Contains(t, buf.String(), "root process-instance tree keys: root-1")
-	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1")
+	require.NotContains(t, buf.String(), "selected process-instance keys")
+	require.NotContains(t, buf.String(), "root process-instance tree keys")
+	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 	started, stopped, msgs := sink.Snapshot()
 	require.Equal(t, 1, started)
@@ -292,7 +304,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "process instances in scope: 3")
 	require.Contains(t, buf.String(), "scope: complete")
-	require.Contains(t, buf.String(), "in-scope process-instance keys: root-1, child-1, child-2")
+	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
@@ -628,8 +640,9 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	require.Contains(t, output, "process-definition")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-instance"}, []string{
-		"validates the affected tree",
-		"Use --force when active instances should be cancelled",
+		"validates the complete affected tree before submitting any delete request",
+		"the whole delete batch is refused before mutation",
+		"Use --force to cancel the affected scope first",
 		"Use --auto-confirm for unattended destructive runs",
 		"Add --no-wait to verify later with `get pi` or `expect pi --state absent`",
 		"number of process instances to process per page",
@@ -998,6 +1011,121 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
+// TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation verifies
+// delete is all-or-nothing when the expanded scope includes non-final instances.
+func TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(_ bool, _ string) error {
+		t.Fatal("unexpected confirmation prompt before force preflight failure")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"6755399442315265"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"6755399442312837"},
+				Collected: typex.Keys{"6755399442312837", "6755399442312860", "6755399442313287", "6755399442315265"},
+				RequiresCancelBeforeDelete: []process.ProcessInstance{
+					{Key: "6755399442312837", State: process.StateActive},
+					{Key: "6755399442312860", State: process.StateActive},
+					{Key: "6755399442315265", State: process.StateActive},
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	got, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"6755399442315265"}, true)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "refusing to delete process-instance scope")
+	require.Contains(t, err.Error(), "no delete request was submitted")
+	require.Empty(t, got.Reports)
+	require.NotContains(t, buf.String(), "waiting for process instance")
+}
+
+// TestDeleteProcessInstanceSearchPages_RequiresForceBeforeAnyMutation verifies
+// filter-based delete plans all selected pages before submitting any deletion.
+func TestDeleteProcessInstanceSearchPages_RequiresForceBeforeAnyMutation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagVerbose = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	searchCalls := 0
+	cli := stubProcessAPI{
+		searchProcessInstancesPage: func(_ context.Context, _ process.ProcessInstanceFilter, req process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			searchCalls++
+			switch searchCalls {
+			case 1:
+				return process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "401", State: process.StateCompleted}},
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateHasMore,
+				}, nil
+			case 2:
+				return process.ProcessInstancePage{
+					Items:         []process.ProcessInstance{{Key: "402", State: process.StateActive}},
+					Request:       req,
+					OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				}, nil
+			default:
+				t.Fatalf("unexpected search page call %d", searchCalls)
+				return process.ProcessInstancePage{}, nil
+			}
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			switch keys.String() {
+			case "401":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"401"},
+					Collected: typex.Keys{"401"},
+					Outcome:   process.TraversalOutcomeComplete,
+				}, nil
+			case "402":
+				return process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"402"},
+					Collected: typex.Keys{"402"},
+					RequiresCancelBeforeDelete: []process.ProcessInstance{
+						{Key: "402", State: process.StateActive},
+					},
+					Outcome: process.TraversalOutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected dry-run plan keys %v", keys)
+				return process.DryRunPIKeyExpansion{}, nil
+			}
+		},
+		deleteProcessInstances: dryRunDeleteMutationGuard(t),
+	}
+
+	got, err := deleteProcessInstanceSearchPages(cmd, cli, nil, process.ProcessInstanceFilter{})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "refusing to delete process-instance scope")
+	require.Equal(t, 2, searchCalls)
+	require.Empty(t, got.Reports)
+	require.Len(t, got.DryRunPreviews, 0)
+	require.Contains(t, buf.String(), "next step: auto-continue")
+}
+
 // TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight verifies paged preflight warnings are printed.
 func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
@@ -1159,8 +1287,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"/v1/process-instances/403",
 	}, deleted.Snapshot())
 	require.Len(t, prompts, 2)
-	require.Contains(t, prompts[0], "You are about to delete 2 process instance(s)")
-	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
+	require.Contains(t, prompts[0], "Checked 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue preflight?")
+	require.Contains(t, prompts[1], "You are about to delete 3 process instance(s)")
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 	require.NotContains(t, output, "next step: auto-continue")
@@ -1625,9 +1753,6 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 	prevConfirm := confirmCmdOrAbortFn
 	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
 		callCount++
-		if callCount == 1 {
-			return nil
-		}
 		return ErrCmdAborted
 	}
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
@@ -1644,10 +1769,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 
 	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
-	require.ElementsMatch(t, []string{
-		"/v1/process-instances/511",
-		"/v1/process-instances/512",
-	}, deleted.Snapshot())
+	require.Equal(t, 1, callCount)
+	require.Empty(t, deleted.Snapshot())
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: partial-complete")
 	require.Contains(t, output, "detail: stopped after 2 processed process instance(s); remaining matches were left untouched")
 }

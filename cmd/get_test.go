@@ -6,14 +6,15 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/cluster"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
@@ -21,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Verifies get command-local backoff flags participate in the shared configuration precedence chain.
 func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t *testing.T) {
 	t.Setenv("C8VOLT_APP_BACKOFF_TIMEOUT", "21s")
 
@@ -31,18 +33,31 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
 }
 
-// Verifies `get --help` lists supported get subcommands.
+// Verifies `get --help` keeps supported resources discoverable without the removed topology shortcut.
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
-	require.Contains(t, output, "Inspect cluster, process, and resource state")
+	require.Contains(t, output, "Inspect cluster, process, tenant, and resource state")
 	require.Contains(t, output, "cluster")
-	require.Contains(t, output, "cluster-topology")
+	require.NotContains(t, output, "cluster-topology")
+	require.Contains(t, output, "tenant")
 	require.Contains(t, output, "resource")
 	require.Contains(t, output, "Check cluster health")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get pi --state active")
+	require.Contains(t, output, "./c8volt get tenant")
 	require.NotContains(t, output, "canonical non-interactive contract")
+}
+
+// Verifies process-instance help remains discoverable from the get command family.
+func TestGetCommand_PreservesExistingProcessInstanceHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "process-instance", "--help")
+
+	require.Contains(t, output, "Get process instances by key or by search criteria.")
+	require.Contains(t, output, "./c8volt get pi --state active")
+	require.Contains(t, output, "--key")
+	require.Contains(t, output, "--state")
+	require.Contains(t, output, "--json")
 }
 
 // Verifies root help advertises the finalized v8.9 runtime support contract.
@@ -131,36 +146,56 @@ func TestGetResourceHelp(t *testing.T) {
 	require.Contains(t, output, "--keys-only")
 }
 
-// Verifies `get cluster --help` exposes nested cluster resource commands.
+// Verifies `get cluster --help` exposes the nested topology, version, and license commands.
 func TestGetClusterHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "--help")
 
-	require.Contains(t, output, "Inspect cluster-wide topology and license information")
+	require.Contains(t, output, "Inspect cluster-wide topology, version, and license information")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt get cluster")
 	require.Contains(t, output, "license")
 	require.Contains(t, output, "topology")
+	require.Contains(t, output, "version")
 	require.Contains(t, output, "brokers, partitions, and gateway details")
+	require.Contains(t, output, "gateway and broker versions")
+	require.Contains(t, output, "./c8volt get cluster version")
+	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
 	require.Contains(t, output, "./c8volt get cluster license")
 }
 
-// Verifies `get cluster license --help` describes license retrieval usage.
+// Verifies license help advertises the human default and structured JSON escape hatch.
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
 	require.Contains(t, output, "Show connected cluster license")
-	require.Contains(t, output, "license payload returned by the configured Camunda cluster")
+	require.Contains(t, output, "flat human-readable fields")
+	require.Contains(t, output, "Use --json for the structured license payload")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
+	require.Contains(t, output, "./c8volt get cluster licence")
 }
 
-// Verifies legacy `get cluster-topology --help` remains available with deprecation guidance.
-func TestGetClusterTopologyLegacyHelp(t *testing.T) {
-	output := executeRootForTest(t, "get", "cluster-topology", "--help")
+// Verifies `get cluster topology --help` describes the human default and JSON escape hatch.
+func TestGetClusterTopologyHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
 
-	require.Contains(t, output, "Show connected cluster topology")
-	require.Contains(t, output, "Prefer `c8volt get cluster topology` for new usage.")
+	require.Contains(t, output, "Show connected cluster topology as a sorted human-readable tree")
+	require.Contains(t, output, "sorted human-readable tree")
+	require.Contains(t, output, "Use --json for the structured topology payload")
+	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
+}
+
+// Verifies `get cluster version --help` describes gateway-only and broker-inclusive output.
+func TestGetClusterVersionHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "cluster", "version", "--help")
+
+	require.Contains(t, output, "Show connected cluster version")
+	require.Contains(t, output, "gateway version by default")
+	require.Contains(t, output, "include broker versions")
+	require.Contains(t, output, "./c8volt get cluster version")
+	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
+	require.Contains(t, output, "--with-brokers")
 }
 
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
@@ -179,7 +214,7 @@ func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 	t.Setenv("C8VOLT_AUTH_OAUTH2_SCOPES_CAMUNDA_API", "env-scope")
 
-	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tokenSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/token", r.URL.Path)
 		require.NoError(t, r.ParseForm())
@@ -190,12 +225,12 @@ func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 	}))
 	t.Cleanup(tokenSrv.Close)
 
-	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	apiSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		require.Equal(t, "Bearer env-token", r.Header.Get("Authorization"))
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"brokers":[],"clusterSize":1,"gatewayVersion":"8.8.0","partitionsCount":1,"replicationFactor":1,"lastCompletedChangeId":""}`))
+		_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
 	}))
 	t.Cleanup(apiSrv.Close)
 
@@ -203,115 +238,200 @@ func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
 
-	require.Contains(t, output, `"ClusterSize": 1`)
+	require.Contains(t, output, "Cluster: GatewayVersion=8.8.0 Brokers=1 Partitions=1 ReplicationFactor=1 LastCompletedChangeId=-")
+	require.NotContains(t, output, `"ClusterSize"`)
 }
 
-// Verifies nested `get cluster topology` succeeds and renders topology fields.
-func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// Verifies nested `get cluster topology` renders a sorted default tree.
+func TestGetClusterTopologyNestedCommand_DefaultTreeOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-  "brokers": [
-    {
-      "host": "camunda-platform-c88-zeebe-0.camunda-platform-c88-zeebe",
-      "nodeId": 0,
-      "partitions": [
-        {
-          "health": "healthy",
-          "partitionId": 1,
-          "role": "leader"
-        }
-      ],
-      "port": 26501,
-      "version": "8.8.0"
-    }
-  ],
-  "clusterSize": 1,
-  "gatewayVersion": "8.8.0",
-  "partitionsCount": 1,
-  "replicationFactor": 1,
-  "lastCompletedChangeId": ""
-}`))
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
 
-	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
-	require.Contains(t, output, `"ClusterSize": 1`)
+	require.Equal(t, "Cluster: GatewayVersion=8.8.2 Brokers=3 Partitions=3 ReplicationFactor=3 LastCompletedChangeId=change-42\n"+
+		"├─ Broker 1: broker-a.internal:26501 version=8.8.1\n"+
+		"│  ├─ Partition 1: role=leader health=healthy\n"+
+		"│  └─ Partition 3: role=follower health=unhealthy\n"+
+		"├─ Broker 2: broker-b.internal:26502 version=8.8.2\n"+
+		"│  └─ Partition 2: role=leader health=healthy\n"+
+		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", output)
+	require.NotContains(t, output, `"GatewayVersion"`)
 }
 
-// Verifies legacy `get cluster-topology` command still succeeds without deprecation noise in output.
-func TestGetClusterTopologyLegacyCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// Verifies nested `get cluster version` renders only the gateway version by default.
+func TestGetClusterVersionCommand_DefaultGatewayOnlyOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-  "brokers": [
-    {
-      "host": "camunda-platform-c88-zeebe-0.camunda-platform-c88-zeebe",
-      "nodeId": 0,
-      "partitions": [
-        {
-          "health": "healthy",
-          "partitionId": 1,
-          "role": "leader"
-        }
-      ],
-      "port": 26501,
-      "version": "8.8.0"
-    }
-  ],
-  "clusterSize": 1,
-  "gatewayVersion": "8.8.0",
-  "partitionsCount": 1,
-  "replicationFactor": 1,
-  "lastCompletedChangeId": ""
-}`))
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster-topology")
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "version")
 
-	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
-	require.Contains(t, output, `"ClusterSize": 1`)
-	require.NotContains(t, output, "Deprecated:")
+	require.Equal(t, "8.8.2\n", output)
+	require.NotContains(t, output, "Broker")
+	require.NotContains(t, output, `"GatewayVersion"`)
 }
 
-// Verifies legacy `ct` alias resolves to cluster-topology retrieval.
-func TestGetClusterTopologyLegacyAlias_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// Verifies nested `get cluster version --with-brokers` renders sorted broker versions.
+func TestGetClusterVersionCommand_WithBrokersOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-  "brokers": [],
-  "clusterSize": 0,
-  "gatewayVersion": "8.8.0",
-  "partitionsCount": 0,
-  "replicationFactor": 0,
-  "lastCompletedChangeId": ""
-}`))
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output := executeRootForTest(t, "--config", cfgPath, "get", "ct")
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "version", "--with-brokers")
 
-	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
-	require.NotContains(t, output, "Deprecated:")
+	require.Equal(t, "GatewayVersion: 8.8.2\n\n"+
+		"Brokers:\n"+
+		"Broker 1: 8.8.1 (broker-a.internal)\n"+
+		"Broker 2: 8.8.2 (broker-b.internal)\n"+
+		"Broker 3: 8.8.0 (broker-c.internal)\n", output)
+	require.NotContains(t, output, "Cluster:")
+	require.NotContains(t, output, "├─")
+	require.NotContains(t, output, "Partition")
+}
+
+// Verifies nested `get cluster topology --json` preserves structured JSON output.
+func TestGetClusterTopologyNestedCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology", "--json")
+
+	var topology cluster.Topology
+	require.NoError(t, json.Unmarshal([]byte(output), &topology))
+	require.Equal(t, "8.8.2", topology.GatewayVersion)
+	require.Len(t, topology.Brokers, 3)
+	require.Contains(t, output, `"GatewayVersion": "8.8.2"`)
+	require.Contains(t, output, `"Brokers"`)
+	require.NotContains(t, output, "Cluster:")
+	require.NotContains(t, output, "├─")
+	require.NotContains(t, output, "└─")
+}
+
+// Verifies topology tree rendering remains well-formed for empty broker and partition lists.
+func TestGetClusterTopologyNestedCommand_DefaultTreeOutputHandlesEmptyBrokerData(t *testing.T) {
+	t.Run("zero brokers", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(0, "8.8.0", 0, 0)))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
+
+		require.Equal(t, "Cluster: GatewayVersion=8.8.0 Brokers=0 Partitions=0 ReplicationFactor=0 LastCompletedChangeId=-\n", output)
+	})
+
+	t.Run("broker with empty partitions", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(singleBrokerEmptyPartitionsClusterTopologyFixtureJSON()))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
+
+		require.Equal(t, "Cluster: GatewayVersion=8.8.0 Brokers=1 Partitions=0 ReplicationFactor=1 LastCompletedChangeId=-\n"+
+			"└─ Broker 1: broker-a.internal:26501 version=8.8.0\n", output)
+		require.NotContains(t, output, "│")
+	})
+}
+
+// Verifies the helper-level topology renderer sorts rows without mutating source topology data.
+func TestRenderClusterTopologyTree_SortsBrokersAndPartitions(t *testing.T) {
+	topology := cluster.Topology{
+		ClusterSize:           2,
+		GatewayVersion:        "8.8.2",
+		PartitionsCount:       2,
+		ReplicationFactor:     2,
+		LastCompletedChangeId: "change-42",
+		Brokers: []cluster.Broker{
+			{
+				NodeId:  2,
+				Host:    "broker-b.internal",
+				Port:    26502,
+				Version: "8.8.2",
+				Partitions: []cluster.Partition{
+					{PartitionId: 4, Role: "follower", Health: "healthy"},
+					{PartitionId: 2, Role: "leader", Health: "healthy"},
+				},
+			},
+			{
+				NodeId:  1,
+				Host:    "broker-a.internal",
+				Port:    26501,
+				Version: "8.8.1",
+			},
+		},
+	}
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	require.NoError(t, renderClusterTopologyTree(cmd, topology))
+
+	require.Equal(t, "Cluster: GatewayVersion=8.8.2 Brokers=2 Partitions=2 ReplicationFactor=2 LastCompletedChangeId=change-42\n"+
+		"├─ Broker 1: broker-a.internal:26501 version=8.8.1\n"+
+		"└─ Broker 2: broker-b.internal:26502 version=8.8.2\n"+
+		"   ├─ Partition 2: role=leader health=healthy\n"+
+		"   └─ Partition 4: role=follower health=healthy\n", buf.String())
+	require.Equal(t, int32(2), topology.Brokers[0].NodeId)
+	require.Equal(t, int32(4), topology.Brokers[0].Partitions[0].PartitionId)
+}
+
+// Protects removal of the old direct topology path from both command execution and aliases.
+func TestGetClusterTopologyLegacyCommand_NotFound(t *testing.T) {
+	for _, args := range [][]string{
+		{"get", "cluster-topology"},
+		{"get", "ct"},
+		{"get", "cluster-info"},
+		{"get", "ci"},
+	} {
+		output, err := executeRootExpectErrorForTest(t, args...)
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown command")
+		require.Contains(t, output, "Usage:")
+	}
 }
 
 func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -335,16 +455,13 @@ func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
 	require.NotContains(t, output, `"command"`)
 }
 
-// Verifies nested `get cluster license` succeeds with required license fields.
+// Verifies the human license default omits optional fields that the API did not send.
 func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-  "licenseType": "SaaS",
-  "validLicense": true
-}`))
+		_, _ = w.Write([]byte(requiredClusterLicenseFixtureJSON()))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -352,26 +469,21 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
 
-	require.Contains(t, output, `"LicenseType": "SaaS"`)
-	require.Contains(t, output, `"ValidLicense": true`)
-	require.NotContains(t, output, `"ExpiresAt": null`)
-	require.NotContains(t, output, `"IsCommercial": null`)
-	require.NotContains(t, output, `"ExpiresAt"`)
-	require.NotContains(t, output, `"IsCommercial"`)
+	require.Contains(t, output, "ValidLicense: true")
+	require.Contains(t, output, "LicenseType: SaaS")
+	require.NotContains(t, output, "ExpiresAt:")
+	require.NotContains(t, output, "IsCommercial:")
+	require.NotContains(t, output, `"ValidLicense"`)
+	require.NotContains(t, output, `"LicenseType"`)
 }
 
-// Verifies optional license fields are rendered when the API returns them.
+// Verifies optional license fields are rendered only when the API returns them.
 func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-  "expiresAt": "2030-01-02T03:04:05Z",
-  "isCommercial": true,
-  "licenseType": "Enterprise",
-  "validLicense": true
-}`))
+		_, _ = w.Write([]byte(optionalClusterLicenseFixtureJSON()))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -379,15 +491,103 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license")
 
-	require.Contains(t, output, `"ExpiresAt": "2030-01-02T03:04:05Z"`)
-	require.Contains(t, output, `"IsCommercial": true`)
+	require.Contains(t, output, "ValidLicense: true")
+	require.Contains(t, output, "LicenseType: Enterprise")
+	require.Contains(t, output, "ExpiresAt: 2030-01-02T03:04:05Z")
+	require.Contains(t, output, "IsCommercial: true")
+	require.NotContains(t, output, `"ValidLicense"`)
+}
+
+// Verifies nested `get cluster license --json` preserves structured JSON output.
+func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(optionalClusterLicenseFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license", "--json")
+
+	var license cluster.License
+	require.NoError(t, json.Unmarshal([]byte(output), &license))
+	require.Equal(t, "Enterprise", license.LicenseType)
+	require.True(t, license.ValidLicense)
+	require.NotNil(t, license.ExpiresAt)
+	require.NotNil(t, license.IsCommercial)
 	require.Contains(t, output, `"LicenseType": "Enterprise"`)
 	require.Contains(t, output, `"ValidLicense": true`)
+	require.NotContains(t, output, "LicenseType:")
+	require.NotContains(t, output, "ValidLicense:")
+}
+
+// Verifies British spelling reaches the same flat license behavior as the canonical command.
+func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(requiredClusterLicenseFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence")
+
+	require.Contains(t, output, "ValidLicense: true")
+	require.Contains(t, output, "LicenseType: SaaS")
+	require.NotContains(t, output, `"ValidLicense"`)
+}
+
+// Verifies British spelling preserves the structured license JSON behavior.
+func TestGetClusterLicenceAliasNestedCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/license", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(optionalClusterLicenseFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence", "--json")
+
+	var license cluster.License
+	require.NoError(t, json.Unmarshal([]byte(output), &license))
+	require.Equal(t, "Enterprise", license.LicenseType)
+	require.True(t, license.ValidLicense)
+	require.Contains(t, output, `"LicenseType": "Enterprise"`)
+	require.Contains(t, output, `"ValidLicense": true`)
+	require.NotContains(t, output, "LicenseType:")
+	require.NotContains(t, output, "ValidLicense:")
+}
+
+// Verifies cluster topology and license commands advertise JSON as the machine-preferred mode.
+func TestGetClusterCommands_JSONOutputModeMetadata(t *testing.T) {
+	require.Equal(t, []OutputModeContract{
+		{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	}, outputModesForCommand(getClusterTopologyNestedCmd))
+	require.Equal(t, []OutputModeContract{
+		{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	}, outputModesForCommand(getClusterLicenseCmd))
 }
 
 // Verifies cluster license HTTP failures map to unavailable exit behavior.
 func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/license", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
@@ -410,7 +610,7 @@ func TestGetClusterLicenseNestedCommand_Failure(t *testing.T) {
 
 // Verifies nested cluster topology HTTP failures map to unavailable exit behavior.
 func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
 	}))
@@ -430,13 +630,35 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "fetch cluster topology")
 }
 
+// Verifies version failures keep the user-facing command context while reusing topology errors.
+func TestGetClusterVersionCommand_Failure(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		http.Error(w, "boom", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetClusterVersionCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "get cluster version")
+	require.NotContains(t, string(output), "error fetching topology")
+	require.NotContains(t, string(output), "fetch cluster topology")
+}
+
 func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T) {
 	t.Run("cluster topology", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/topology", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"brokers":[],"clusterSize":1,"gatewayVersion":"8.9.0","partitionsCount":1,"replicationFactor":1,"lastCompletedChangeId":""}`))
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.9.0", 1, 1)))
 		}))
 		t.Cleanup(srv.Close)
 
@@ -448,7 +670,7 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 	})
 
 	t.Run("process definition lookup", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -465,7 +687,7 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 	})
 
 	t.Run("resource lookup", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, http.MethodGet, r.Method)
 			require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
@@ -482,32 +704,9 @@ func TestGetCommand_V89SupportsClusterProcessDefinitionAndResource(t *testing.T)
 	})
 }
 
-// Verifies legacy cluster-topology HTTP failures map to unavailable exit behavior.
-func TestGetClusterTopologyLegacyCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/v2/topology", r.URL.Path)
-		http.Error(w, "boom", http.StatusServiceUnavailable)
-	}))
-	t.Cleanup(srv.Close)
-	cfgPath := writeTestConfig(t, srv.URL)
-
-	output, err := testx.RunCmdSubprocess(t, "TestGetClusterTopologyLegacyCommand_FailureHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
-	require.Error(t, err)
-
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
-	require.Contains(t, string(output), "get cluster topology")
-	require.NotContains(t, string(output), "error fetching topology")
-	require.NotContains(t, string(output), "Deprecated:")
-	require.NotContains(t, string(output), "fetch cluster topology")
-}
-
 // Verifies malformed successful license responses are classified as malformed-response failures.
 func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/license", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -530,7 +729,7 @@ func TestGetClusterLicenseNestedCommand_MalformedResponse(t *testing.T) {
 
 // Verifies `get process-definition --xml` returns raw XML content by key.
 func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		w.Header().Set("Content-Type", "application/xml")
@@ -547,7 +746,7 @@ func TestGetProcessDefinitionXMLCommand_Success(t *testing.T) {
 
 // Verifies XML output preserves formatting and line breaks from the API payload.
 func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		w.Header().Set("Content-Type", "application/xml")
@@ -564,7 +763,7 @@ func TestGetProcessDefinitionXMLCommand_PreservesFormattedXMLBody(t *testing.T) 
 
 // Verifies process-definition key lookup renders model output instead of XML.
 func TestGetProcessDefinitionByKeyCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -702,7 +901,7 @@ func TestOneLinePD_IncidentCountRenderingByVersionBoundary(t *testing.T) {
 
 // Verifies `get resource --id` succeeds and renders default table output.
 func TestGetResourceCommand_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -730,7 +929,7 @@ func TestGetResourceCommand_Success(t *testing.T) {
 
 // Verifies resource lookup JSON view uses serialized model field keys.
 func TestGetResourceCommand_JSONOutput(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -759,7 +958,7 @@ func TestGetResourceCommand_JSONOutput(t *testing.T) {
 
 // Verifies keys-only mode emits only the resource id.
 func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -783,7 +982,7 @@ func TestGetResourceCommand_KeysOnlyOutput(t *testing.T) {
 
 // Verifies resource lookup HTTP failures map to not-found exit behavior.
 func TestGetResourceCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -806,7 +1005,7 @@ func TestGetResourceCommand_Failure(t *testing.T) {
 }
 
 func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -833,7 +1032,7 @@ func TestGetResourceCommand_JSONFailureUsesEnvelope(t *testing.T) {
 
 // Verifies `--no-err-codes` preserves failure output while returning success exit status.
 func TestGetResourceCommand_NoErrCodesKeepsFailureOutputButReturnsSuccessExit(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/missing-resource", r.URL.Path)
 		http.Error(w, "missing", http.StatusNotFound)
@@ -962,7 +1161,7 @@ func TestGetResourceCommand_RejectsWhitespaceID_UsesInvalidArgsExit(t *testing.T
 
 // Verifies malformed successful resource payloads are treated as malformed-response failures.
 func TestGetResourceCommand_MalformedResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/resource-id-123", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
@@ -988,7 +1187,7 @@ func TestGetResourceCommand_MalformedResponse(t *testing.T) {
 
 // Verifies gateway timeout responses map to timeout exit behavior.
 func TestGetResourceCommand_GatewayTimeoutUsesTimeoutExitCode(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/resources/timeout-resource", r.URL.Path)
 		http.Error(w, "slow", http.StatusGatewayTimeout)
@@ -1044,7 +1243,7 @@ func TestGetProcessDefinitionXMLCommand_RejectsIncompatibleFlags(t *testing.T) {
 
 // Verifies process-definition XML HTTP failures map to unavailable exit behavior.
 func TestGetProcessDefinitionXMLCommand_Failure(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/process-definitions/2251799813685255/xml", r.URL.Path)
 		http.Error(w, "boom", http.StatusServiceUnavailable)
@@ -1080,15 +1279,15 @@ func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	_ = root.Execute()
 }
 
-// Helper-process entrypoint for legacy cluster-topology failure-path coverage.
-func TestGetClusterTopologyLegacyCommand_FailureHelper(t *testing.T) {
+// Helper-process entrypoint for nested cluster-version failure-path coverage.
+func TestGetClusterVersionCommand_FailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
 
 	root := Root()
 	resetCommandTreeFlags(root)
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster-topology"})
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "version"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
@@ -1346,6 +1545,129 @@ func executeCompletionNoDescForTest(t *testing.T, args ...string) string {
 
 func resetCommandTreeFlags(cmd *cobra.Command) {
 	testx.ResetCommandTreeFlags(cmd)
+}
+
+// The cluster fixtures below pin API edge cases without repeating long JSON payloads in
+// each test that exercises human, JSON, and version-specific output.
+func singleBrokerClusterTopologyFixtureJSON() string {
+	return `{
+  "brokers": [
+    {
+      "host": "camunda-platform-c88-zeebe-0.camunda-platform-c88-zeebe",
+      "nodeId": 0,
+      "partitions": [
+        {
+          "health": "healthy",
+          "partitionId": 1,
+          "role": "leader"
+        }
+      ],
+      "port": 26501,
+      "version": "8.8.0"
+    }
+  ],
+  "clusterSize": 1,
+  "gatewayVersion": "8.8.0",
+  "partitionsCount": 1,
+  "replicationFactor": 1,
+  "lastCompletedChangeId": ""
+}`
+}
+
+func unsortedClusterTopologyFixtureJSON() string {
+	return `{
+  "brokers": [
+    {
+      "host": "broker-b.internal",
+      "nodeId": 2,
+      "partitions": [
+        {
+          "health": "healthy",
+          "partitionId": 2,
+          "role": "leader"
+        }
+      ],
+      "port": 26502,
+      "version": "8.8.2"
+    },
+    {
+      "host": "broker-a.internal",
+      "nodeId": 1,
+      "partitions": [
+        {
+          "health": "unhealthy",
+          "partitionId": 3,
+          "role": "follower"
+        },
+        {
+          "health": "healthy",
+          "partitionId": 1,
+          "role": "leader"
+        }
+      ],
+      "port": 26501,
+      "version": "8.8.1"
+    },
+    {
+      "host": "broker-c.internal",
+      "nodeId": 3,
+      "partitions": [],
+      "port": 26503,
+      "version": "8.8.0"
+    }
+  ],
+  "clusterSize": 3,
+  "gatewayVersion": "8.8.2",
+  "partitionsCount": 3,
+  "replicationFactor": 3,
+  "lastCompletedChangeId": "change-42"
+}`
+}
+
+func singleBrokerEmptyPartitionsClusterTopologyFixtureJSON() string {
+	return `{
+  "brokers": [
+    {
+      "host": "broker-a.internal",
+      "nodeId": 1,
+      "partitions": [],
+      "port": 26501,
+      "version": "8.8.0"
+    }
+  ],
+  "clusterSize": 1,
+  "gatewayVersion": "8.8.0",
+  "partitionsCount": 0,
+  "replicationFactor": 1,
+  "lastCompletedChangeId": ""
+}`
+}
+
+func emptyClusterTopologyFixtureJSON(clusterSize int, gatewayVersion string, partitionsCount int, replicationFactor int) string {
+	return fmt.Sprintf(`{
+  "brokers": [],
+  "clusterSize": %d,
+  "gatewayVersion": %q,
+  "partitionsCount": %d,
+  "replicationFactor": %d,
+  "lastCompletedChangeId": ""
+}`, clusterSize, gatewayVersion, partitionsCount, replicationFactor)
+}
+
+func requiredClusterLicenseFixtureJSON() string {
+	return `{
+  "licenseType": "SaaS",
+  "validLicense": true
+}`
+}
+
+func optionalClusterLicenseFixtureJSON() string {
+	return `{
+  "expiresAt": "2030-01-02T03:04:05Z",
+  "isCommercial": true,
+  "licenseType": "Enterprise",
+  "validLicense": true
+}`
 }
 
 func writeTestConfig(t *testing.T, baseURL string) string {

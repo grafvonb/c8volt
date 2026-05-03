@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster topology
 
-Show connected cluster topology
+Show connected cluster topology as a tree
 
 ### Synopsis
 
-Show connected cluster topology.
+Show connected cluster topology as a sorted human-readable tree.
 
-This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster.
+This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster. Use --json for the structured topology payload.
 
 ```
 c8volt get cluster topology [flags]
@@ -51,5 +51,5 @@ c8volt get cluster topology [flags]
 
 ### SEE ALSO
 
-* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology and license information
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
 

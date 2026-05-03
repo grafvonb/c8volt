@@ -26,7 +26,6 @@ import (
 var (
 	flagViewAsJson        bool
 	flagViewKeysOnly      bool
-	flagViewAsTree        bool
 	flagQuiet             bool
 	flagVerbose           bool
 	flagDebug             bool

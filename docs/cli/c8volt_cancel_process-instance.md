@@ -64,7 +64,6 @@ c8volt cancel process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-      --with-age                    include process instance age in one-line output and JSON meta
   -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```
 

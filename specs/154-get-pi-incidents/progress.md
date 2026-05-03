@@ -1,0 +1,211 @@
+# Ralph Progress Log
+
+Feature: 154-get-pi-incidents
+Started: 2026-05-02 09:54:51
+
+## Codebase Patterns
+
+- `make docs-content` regenerates command markdown from Cobra metadata and syncs README content into `docs/index.md`, including generated build metadata changes.
+- Supported v8.8/v8.9 process-instance incident searches build tenant filters in the versioned `incidents.go` seams, using the same string filter helpers as process-instance search and omitting the field when no tenant is configured.
+- v8.7 process-instance incident enrichment stays explicitly unsupported in the versioned incident lookup seam; command-level failures rely on existing facade/domain error normalization to render `unsupported capability`.
+- Default keyed process-instance output without `--with-incidents` should perform only the generated key lookup, then flow through `listProcessInstancesView`/`oneLinePI`; default JSON remains the `ProcessInstances` payload rather than the enriched `item`/`incidents` wrapper.
+- Generated v8.8/v8.9 incident results expose BPMN flow-node metadata as `ElementId`/`ElementInstanceKey`; feature-facing models use `FlowNodeId`/`FlowNodeInstanceKey`, so conversion helpers should map element fields into flow-node fields.
+- Existing public process models use `omitempty` broadly, but the incident-enriched JSON wrapper keeps `total`, `items`, `item`, `incidents`, `processInstanceKey`, and `errorMessage` non-omitempty so requested enrichment can render empty incident collections and empty messages explicitly.
+- Process facade methods translate service errors through `ferr.FromDomain`, keep public/domain model mapping in `c8volt/process/convert.go`, and can compose higher-level helpers in `client.go` without leaking internal service types.
+- Process-instance command validation happens after stdin/flag keys are merged and before lookup/search requests; use command-local helpers like `missingDependentFlagsf` and `mutuallyExclusiveFlagsf` so failures stay in the invalid-input path.
+- Versioned process-instance incident lookup has dedicated `incidents.go` files; replace those stubs there and keep generated-client incident contract methods in the versioned `contract.go` interface.
+- Keyed `--with-incidents` rendering is an opt-in command branch after strict keyed lookup; it should render and return before the default `listProcessInstancesView` path so default output remains untouched.
+- Enriched process-instance views must branch on `pickMode() == RenderModeJSON` and use `renderJSONPayload` so full-contract commands keep the shared result envelope in machine output.
+
+---
+
+## Iteration 1 - 2026-05-02 09:56:52 CEST
+**User Story**: Phase 1: Setup (Shared Infrastructure)
+**Tasks Completed**:
+- [x] T001: Review generated incident search shapes and record any field mismatch in `specs/154-get-pi-incidents/research.md`
+- [x] T002: Add domain incident detail model in `internal/domain/processinstance.go`
+- [x] T003: Add public incident detail and enriched output models in `c8volt/process/model.go`
+- [x] T004: Add incident-enrichment contract notes to `specs/154-get-pi-incidents/contracts/get-pi-with-incidents.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/model.go
+- internal/domain/processinstance.go
+- specs/154-get-pi-incidents/contracts/get-pi-with-incidents.md
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/research.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- `SearchProcessInstanceIncidentsWithResponse` exists for both generated supported clients and returns the same incident result fields needed for later service conversion.
+- Focused validation passed with `go test ./internal/domain ./c8volt/process -count=1`.
+---
+---
+## Iteration 2 - 2026-05-02 10:04:34 CEST
+**User Story**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T005: Extend `internal/services/processinstance.API` with tenant-aware incident lookup in `internal/services/processinstance/api.go`
+- [x] T006: Extend public `process.API` with process-instance incident lookup/enrichment in `c8volt/process/api.go`
+- [x] T007: Add conversion helpers between domain and public incident models in `c8volt/process/convert.go`
+- [x] T008: Implement facade incident lookup and keyed result enrichment helpers in `c8volt/process/client.go`
+- [x] T009: Add `--with-incidents` flag storage and registration in `cmd/get_processinstance.go`
+- [x] T010: Add early validation for keyed-only `--with-incidents` usage in `cmd/get_processinstance.go`
+- [x] T011: Add foundational facade tests for incident conversion/enrichment in `c8volt/process/client_test.go`
+- [x] T012: Add command validation tests for `--with-incidents` without `--key` and with search-mode filters in `cmd/get_processinstance_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/api.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/resource/client_test.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/process_api_stub_test.go
+- internal/services/processinstance/api.go
+- internal/services/processinstance/v87/contract.go
+- internal/services/processinstance/v87/incidents.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/incidents.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/incidents.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- `--with-incidents` validation should stay independent of the later render path so unsupported or unimplemented enrichment work is not reached for invalid flag combinations.
+- Versioned process-instance services now expose the incident lookup seam, with concrete supported-version request construction left to the US1 service tasks.
+- Validation passed with `go test ./c8volt/process ./cmd ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and adjacent API checks passed with `go test ./c8volt/resource ./c8volt/variable ./c8volt/task -count=1`.
+---
+---
+## Iteration 3 - 2026-05-02 10:15:42 CEST
+**User Story**: User Story 1 - Show Incident Messages for Keyed Lookup
+**Tasks Completed**:
+- [x] T013: Add `v88` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v88/service_test.go`
+- [x] T014: Add `v89` service tests for process-instance incident search and error-message conversion in `internal/services/processinstance/v89/service_test.go`
+- [x] T015: Add command human-output test for one indented `incident <incident-key>:` message in `cmd/get_processinstance_test.go`
+- [x] T016: Add command human-output tests for multiple indented `incident <incident-key>:` lines and no incidents in `cmd/get_processinstance_test.go`
+- [x] T017: Add generated incident search method to `internal/services/processinstance/v88/contract.go`
+- [x] T018: Implement `v88` incident search request and conversion in `internal/services/processinstance/v88/service.go` and `internal/services/processinstance/v88/convert.go`
+- [x] T019: Add generated incident search method to `internal/services/processinstance/v89/contract.go`
+- [x] T020: Implement `v89` incident search request and conversion in `internal/services/processinstance/v89/service.go` and `internal/services/processinstance/v89/convert.go`
+- [x] T021: Call facade enrichment after keyed process-instance lookup when `--with-incidents` is set in `cmd/get_processinstance.go`
+- [x] T022: Add enriched human renderer for indented `incident <incident-key>:` message lines in `cmd/cmd_views_processinstance_incidents.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/convert.go
+- internal/services/processinstance/v88/incidents.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/convert.go
+- internal/services/processinstance/v89/incidents.go
+- internal/services/processinstance/v89/service_test.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- Supported-version incident lookup should be implemented in the existing `incidents.go` seam, not as an additional method in `service.go`.
+- Human `--with-incidents` output preserves the existing process-instance row and appends one indented key/message line for each returned incident.
+- Validation passed with `GOCACHE=/tmp/codex-gocache go test ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./cmd -count=1`.
+---
+---
+## Iteration 4 - 2026-05-02 10:21:13 CEST
+**User Story**: User Story 2 - Consume Incident Details in JSON
+**Tasks Completed**:
+- [x] T023: Add JSON command test for one key with incident details in `cmd/get_processinstance_test.go`
+- [x] T024: Add JSON command test for multiple keys with per-key incident association in `cmd/get_processinstance_test.go`
+- [x] T025: Add JSON command test for an empty incidents collection in `cmd/get_processinstance_test.go`
+- [x] T026: Add enriched JSON renderer that emits `total` and per-item `incidents` in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T027: Ensure enriched JSON output preserves existing command envelope behavior in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T028: Ensure empty incident results render as an empty collection when enrichment was requested in `c8volt/process/client.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/cmd_views_get_test.go
+- cmd/get_processinstance_test.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- Enriched JSON output should use the same shared command result envelope as existing process-instance JSON output.
+- `EnrichProcessInstancesWithIncidents` already keeps empty incident results as a non-nil slice, so JSON renders an empty `incidents` collection.
+- Listener-backed command tests skip in this sandbox because local TCP bind is not permitted; the direct renderer test and package tests passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process -count=1`.
+---
+---
+## Iteration 5 - 2026-05-02 10:24:41 CEST
+**User Story**: User Story 3 - Protect Existing Command Semantics
+**Tasks Completed**:
+- [x] T029: Add regression test proving default keyed human output is unchanged without `--with-incidents`
+- [x] T030: Add regression test proving default keyed JSON output is unchanged without `--with-incidents`
+- [x] T031: Add regression tests preserving `--incidents-only` and `--no-incidents-only` search filters
+- [x] T032: Keep existing `listProcessInstancesView` path untouched when `--with-incidents` is omitted
+- [x] T033: Ensure `oneLinePI` remains the default incident-marker-only renderer
+- [x] T034: Verify search-mode population and validation still use existing incident filter behavior
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- Default keyed output avoids the incident search endpoint entirely when `--with-incidents` is omitted.
+- Existing search-mode `--incidents-only` and `--no-incidents-only` flags still populate `hasIncident` search filters and keep output on the default `ProcessInstances` JSON shape.
+- Focused validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd -run 'TestGetProcessInstance(WithoutIncidents|SearchIncidentFilters)|TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists' -count=1`; broader command validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd -count=1`.
+---
+---
+## Iteration 6 - 2026-05-02 10:28:47 CEST
+**User Story**: User Story 4 - Respect Tenant and Version Boundaries
+**Tasks Completed**:
+- [x] T035: Add `v88` tenant-filter request construction assertions in `internal/services/processinstance/v88/service_test.go`
+- [x] T036: Add `v89` tenant-filter request construction assertions in `internal/services/processinstance/v89/service_test.go`
+- [x] T037: Add `v87` unsupported incident lookup service test in `internal/services/processinstance/v87/service_test.go`
+- [x] T038: Add command unsupported-version test for `--with-incidents` on Camunda 8.7 in `cmd/get_processinstance_test.go`
+- [x] T039: Include configured tenant in `v88` incident search filters in `internal/services/processinstance/v88/service.go`
+- [x] T040: Include configured tenant in `v89` incident search filters in `internal/services/processinstance/v89/service.go`
+- [x] T041: Implement `v87` incident lookup as explicit unsupported in `internal/services/processinstance/v87/service.go`
+- [x] T042: Ensure unsupported errors map through existing facade and command handlers in `c8volt/process/client.go` and `cmd/get_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- internal/services/processinstance/v87/incidents.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v88/incidents.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/incidents.go
+- internal/services/processinstance/v89/service_test.go
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- Supported-version incident lookups should include the configured tenant in the incident search filter alongside the process-instance-key filter.
+- v8.7 `--with-incidents` fails through existing unsupported-capability handling before any tenant-unsafe incident lookup is attempted.
+- Focused validation passed with `GOCACHE=/tmp/codex-gocache go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 ./internal/services/processinstance/v87 ./cmd -run 'TestService_SearchProcessInstanceIncidents|TestService_SearchProcessInstanceIncidentsUnsupported|TestGetProcessInstanceWithIncidents_V87ReportsUnsupported' -count=1`; broader validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+---
+---
+## Iteration 7 - 2026-05-02 10:32:20 CEST
+**User Story**: Phase 7: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T043: Update command help examples and flag description for `--with-incidents` in `cmd/get_processinstance.go`
+- [x] T044: Regenerate CLI documentation with `make docs-content`
+- [x] T045: Review README process-instance examples and update `README.md` only if the new flag belongs in existing examples
+- [x] T046: Run `gofmt` on changed Go files in `cmd/`, `c8volt/process/`, `internal/domain/`, and `internal/services/processinstance/`
+- [x] T047: Run targeted validation with `go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`
+- [x] T048: Run full repository validation with `make test`
+- [x] T049: Confirm `specs/154-get-pi-incidents/quickstart.md` scenarios match final command behavior
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/get_processinstance.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- specs/154-get-pi-incidents/progress.md
+- specs/154-get-pi-incidents/tasks.md
+**Learnings**:
+- `--with-incidents` belongs in README's process-instance narrowing/diagnosis examples because it complements `--incidents-only` without changing search-filter behavior.
+- Quickstart scenarios already matched the final command behavior after help and generated docs were refreshed.
+- Targeted validation passed with `GOCACHE=/tmp/codex-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`; full validation passed with `GOCACHE=/tmp/codex-gocache make test`.
+---

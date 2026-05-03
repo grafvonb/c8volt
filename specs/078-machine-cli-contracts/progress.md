@@ -178,7 +178,7 @@ Started: 2026-04-17 18:14:53
 - docs/cli/c8volt_version.md
 - docs/cli/c8volt_walk_process-instance.md
 - docs/index.md
-- docs/use-cases.md
+- docs/index.md
 - specs/078-machine-cli-contracts/progress.md
 - specs/078-machine-cli-contracts/tasks.md
 **Learnings**:

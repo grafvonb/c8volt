@@ -6,13 +6,14 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get cluster
 
-Inspect cluster-wide topology and license information
+Inspect cluster-wide topology, version, and license information
 
 ### Synopsis
 
-Inspect cluster-wide topology and license information.
+Inspect cluster-wide topology, version, and license information.
 
 Use `get cluster topology` to check brokers, partitions, and gateway details.
+Use `get cluster version` to check gateway and broker versions.
 Use `get cluster license` to inspect the connected cluster's license payload.
 
 ```
@@ -23,6 +24,8 @@ c8volt get cluster [flags]
 
 ```
   ./c8volt get cluster topology
+  ./c8volt get cluster version
+  ./c8volt get cluster version --with-brokers
   ./c8volt get cluster license
 ```
 
@@ -52,7 +55,8 @@ c8volt get cluster [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
 * [c8volt get cluster license](c8volt_get_cluster_license)	 - Show connected cluster license
-* [c8volt get cluster topology](c8volt_get_cluster_topology)	 - Show connected cluster topology
+* [c8volt get cluster topology](c8volt_get_cluster_topology)	 - Show connected cluster topology as a tree
+* [c8volt get cluster version](c8volt_get_cluster_version)	 - Show connected cluster version
 

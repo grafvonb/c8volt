@@ -61,7 +61,7 @@ func StartAuthServerXSRF(t testing.TB, opts XsrfAuthOpts) *AuthServerXsrf {
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	})
 	t.Log("trying to start AuthServerXsrf...")
-	ts := httptest.NewTLSServer(mux)
+	ts := NewIPv4TLSServer(t, mux)
 	t.Log("AuthServerXsrf started")
 	return &AuthServerXsrf{TS: ts, BaseURL: ts.URL}
 }

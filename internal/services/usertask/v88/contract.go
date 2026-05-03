@@ -7,11 +7,17 @@ import (
 	"context"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 )
 
-type GenUserTaskClientCamunda interface {
-	GetVariableWithResponse(ctx context.Context, variableKey string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetVariableResponse, error)
-	SearchUserTaskVariablesWithResponse(ctx context.Context, userTaskKey string, params *camundav88.SearchUserTaskVariablesParams, body camundav88.SearchUserTaskVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTaskVariablesResponse, error)
+type API interface {
+	GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error)
 }
 
+type GenUserTaskClientCamunda interface {
+	SearchUserTasksWithResponse(ctx context.Context, body camundav88.SearchUserTasksJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchUserTasksResponse, error)
+}
+
+var _ API = (*Service)(nil)
 var _ GenUserTaskClientCamunda = (*camundav88.ClientWithResponses)(nil)

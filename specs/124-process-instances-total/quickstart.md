@@ -6,7 +6,7 @@
 - `./c8volt get pi --state active --total` returns a single numeric result with no instance-detail lines.
 - `./c8volt get pi --state completed --total` returns `0` when nothing matches.
 - When the backend exposes a capped total, `--total` still returns that numeric lower-bound value unchanged.
-- `--total` is search/list-only and should reject `--key`, `--json`, `--keys-only`, and `--with-age`.
+- `--total` is search/list-only and should reject `--key`, `--json`, and `--keys-only`.
 
 ## Implementation Notes
 
@@ -22,7 +22,7 @@
 1. Confirm `--total` prints only a number for search/list invocations.
 2. Confirm zero-match searches print `0`.
 3. Confirm capped totals on `v8.8` and `v8.9` remain numeric lower bounds instead of triggering recounts or failures.
-4. Confirm `--total` is rejected with `--key`, `--json`, `--keys-only`, and `--with-age`.
+4. Confirm `--total` is rejected with `--key`, `--json`, and `--keys-only`.
 5. Confirm default non-`--total` detail output remains unchanged.
 6. Confirm README and generated CLI docs both reflect the new flag.
 

@@ -46,7 +46,7 @@ Run the focused suites first so any regression is isolated to shared classificat
 Reproduce the reported family-style failure after implementation with a wrong or missing process-instance key:
 
 ```bash
-./c8volt --config /tmp/c8volt.yaml walk pi --key 2251799813720823 --tree --tenant tenant-a
+./c8volt --config /tmp/c8volt.yaml walk pi --key 2251799813720823 --tenant tenant-a
 ```
 
 Check that the result:

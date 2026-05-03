@@ -91,7 +91,7 @@
 
 ### Implementation for User Story 3
 
-- [x] T018 [US3] Update top-level workflow and discovery guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/use-cases.md
+- [x] T018 [US3] Update top-level workflow and discovery guidance in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/README.md and /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md
 - [x] T019 [US3] Regenerate the public CLI reference pages in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/cli using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 - [x] T020 [US3] Sync README-derived documentation content in /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/docs/index.md using /Users/adam.boczek/Development/Workspace/Boczek/Projects/c8volt/c8volt/Makefile
 
@@ -177,7 +177,7 @@ Task: "T016 Refresh verification and tree-inspection follow-up guidance in cmd/e
 ```bash
 # Launch doc-parity test work and top-level guidance updates together:
 Task: "T017 Add doc-parity regression coverage for public help anchors in cmd/root_test.go and cmd/capabilities_test.go"
-Task: "T018 Update top-level workflow and discovery guidance in README.md and docs/use-cases.md"
+Task: "T018 Update top-level workflow and discovery guidance in README.md and docs/index.md"
 ```
 
 ---

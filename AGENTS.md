@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/138-pi-dry-run-scope/plan.md`
+- Active plan: [specs/159-cluster-info-output/plan.md](specs/159-cluster-info-output/plan.md)
 <!-- SPECKIT END -->

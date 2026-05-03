@@ -18,6 +18,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
 type Service struct {
@@ -148,8 +149,12 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 	return *payload, nil
 }
 
+// retrieveProcessDefinitionStats populates exact process-instance statistics for one process definition.
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
 	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
+	stopActivity := logging.StartActivity(ctx, common.ProcessDefinitionStatsActivity(pd.BpmnProcessId, pd.Key))
+	defer stopActivity()
+
 	active, err := s.countProcessInstancesForProcessDefinitionState(ctx, *pd, "active", camundav88.ProcessInstanceStateEnumACTIVE)
 	if err != nil {
 		return err
@@ -177,6 +182,7 @@ func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.Proc
 	return nil
 }
 
+// countProcessInstancesForProcessDefinitionState counts instances for one process-definition state bucket.
 func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Context, pd d.ProcessDefinition, label string, state camundav88.ProcessInstanceStateEnum) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
@@ -188,6 +194,7 @@ func (s *Service) countProcessInstancesForProcessDefinitionState(ctx context.Con
 	return s.countProcessInstancesForDefinitionSearch(ctx, pd, label, req)
 }
 
+// countProcessInstancesWithIncidentsForProcessDefinition counts incident-bearing instances for one process definition.
 func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx context.Context, pd d.ProcessDefinition) (int64, error) {
 	if pd.Key == "" {
 		return 0, nil
@@ -199,6 +206,7 @@ func (s *Service) countProcessInstancesWithIncidentsForProcessDefinition(ctx con
 	return s.countProcessInstancesForDefinitionSearch(ctx, pd, "incidents", req)
 }
 
+// countProcessInstancesForDefinitionSearch returns an exact count, paging when Camunda reports a capped total.
 func (s *Service) countProcessInstancesForDefinitionSearch(ctx context.Context, pd d.ProcessDefinition, label string, req camundav88.SearchProcessInstancesJSONRequestBody) (int64, error) {
 	resp, err := s.searchProcessInstancesForDefinitionStatsPage(ctx, req)
 	if err != nil {
@@ -238,6 +246,7 @@ func (s *Service) countProcessInstancesForDefinitionSearch(ctx context.Context, 
 	return total, nil
 }
 
+// logProcessDefinitionStatsPage records debug details for one stats-count page.
 func (s *Service) logProcessDefinitionStatsPage(ctx context.Context, pd d.ProcessDefinition, label string, req camundav88.SearchProcessInstancesJSONRequestBody, resp *camundav88.SearchProcessInstancesResponse, totalBefore int64) {
 	if s.log == nil || resp == nil || resp.JSON200 == nil {
 		return
@@ -263,6 +272,7 @@ func (s *Service) logProcessDefinitionStatsPage(ctx context.Context, pd d.Proces
 	))
 }
 
+// describeProcessDefinitionStatsPageRequest extracts stable debug fields from the stats page request.
 func describeProcessDefinitionStatsPageRequest(page *camundav88.SearchQueryPageRequest) (string, int32, string, int32) {
 	if page == nil {
 		return "none", 0, "", 0
@@ -276,6 +286,7 @@ func describeProcessDefinitionStatsPageRequest(page *camundav88.SearchQueryPageR
 	return "unknown", 0, "", 0
 }
 
+// searchProcessInstancesForDefinitionStatsPage fetches and validates one stats-count process-instance page.
 func (s *Service) searchProcessInstancesForDefinitionStatsPage(ctx context.Context, req camundav88.SearchProcessInstancesJSONRequestBody) (*camundav88.SearchProcessInstancesResponse, error) {
 	resp, err := s.cc.SearchProcessInstancesWithResponse(ctx, req)
 	if err != nil {
@@ -290,6 +301,7 @@ func (s *Service) searchProcessInstancesForDefinitionStatsPage(ctx context.Conte
 	return resp, nil
 }
 
+// processDefinitionStatsNextPage builds the next stats-count page request from cursor or offset progress.
 func processDefinitionStatsNextPage(after string, offset int32) *camundav88.SearchQueryPageRequest {
 	limit := consts.MaxPISearchSize
 	page := camundav88.SearchQueryPageRequest{}
@@ -307,6 +319,7 @@ func processDefinitionStatsNextPage(after string, offset int32) *camundav88.Sear
 	return &page
 }
 
+// processDefinitionStatsEndCursor returns the page cursor used to continue stats-count paging.
 func processDefinitionStatsEndCursor(page camundav88.SearchQueryPageResponse) string {
 	if page.EndCursor == nil {
 		return ""
