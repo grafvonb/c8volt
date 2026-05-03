@@ -36,18 +36,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add v89 service test for primary miss followed by Tasklist fallback success in `internal/services/usertask/v89/service_test.go`
-- [ ] T009 [P] [US1] Add v88 service test for primary miss followed by Tasklist fallback success in `internal/services/usertask/v88/service_test.go`
-- [ ] T010 [US1] Add command integration test for fallback-resolved process-instance output in `cmd/get_processinstance_test.go`
-- [ ] T011 [US1] Add command integration test for fallback-resolved JSON output matching direct keyed JSON in `cmd/get_processinstance_test.go`
+- [x] T008 [P] [US1] Add v89 service test for primary miss followed by Tasklist fallback success in `internal/services/usertask/v89/service_test.go`
+- [x] T009 [P] [US1] Add v88 service test for primary miss followed by Tasklist fallback success in `internal/services/usertask/v88/service_test.go`
+- [x] T010 [US1] Add command integration test for fallback-resolved process-instance output in `cmd/get_processinstance_test.go`
+- [x] T011 [US1] Add command integration test for fallback-resolved JSON output matching direct keyed JSON in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement v89 Tasklist fallback search after primary not-found in `internal/services/usertask/v89/service.go`
-- [ ] T013 [US1] Implement v88 Tasklist fallback search after primary not-found in `internal/services/usertask/v88/service.go`
-- [ ] T014 [US1] Wire v89 Tasklist client construction from `config.APIs.Tasklist.BaseURL` in `internal/services/usertask/v89/service.go`
-- [ ] T015 [US1] Wire v88 Tasklist client construction from `config.APIs.Tasklist.BaseURL` in `internal/services/usertask/v88/service.go`
-- [ ] T016 [US1] Verify fallback-resolved command behavior with `go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./cmd -run 'HasUserTasks|GetUserTask' -count=1`
+- [x] T012 [US1] Implement v89 Tasklist fallback search after primary not-found in `internal/services/usertask/v89/service.go`
+- [x] T013 [US1] Implement v88 Tasklist fallback search after primary not-found in `internal/services/usertask/v88/service.go`
+- [x] T014 [US1] Wire v89 Tasklist client construction from `config.APIs.Tasklist.BaseURL` in `internal/services/usertask/v89/service.go`
+- [x] T015 [US1] Wire v88 Tasklist client construction from `config.APIs.Tasklist.BaseURL` in `internal/services/usertask/v88/service.go`
+- [x] T016 [US1] Verify fallback-resolved command behavior with `go test ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./cmd -run 'HasUserTasks|GetUserTask' -count=1`
 
 **Checkpoint**: Legacy task-key fallback works for 8.8 and 8.9 and renders through existing process-instance lookup.
 

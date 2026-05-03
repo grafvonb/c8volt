@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
+	tasklistv89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/tasklist"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	v89 "github.com/grafvonb/c8volt/internal/services/usertask/v89"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,16 @@ func (m *mockUserTaskCamundaClient) SearchUserTasksWithResponse(ctx context.Cont
 }
 
 var _ v89.GenUserTaskClientCamunda = (*mockUserTaskCamundaClient)(nil)
+
+type mockUserTaskTasklistClient struct {
+	searchTasksWithResponse func(context.Context, tasklistv89.SearchTasksJSONRequestBody, ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error)
+}
+
+func (m *mockUserTaskTasklistClient) SearchTasksWithResponse(ctx context.Context, body tasklistv89.SearchTasksJSONRequestBody, reqEditors ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+	return m.searchTasksWithResponse(ctx, body, reqEditors...)
+}
+
+var _ v89.GenUserTaskClientTasklist = (*mockUserTaskTasklistClient)(nil)
 
 // TestService_GetUserTask_ResolvesProcessInstanceKey verifies task lookup returns the owning process-instance key from the native search result.
 func TestService_GetUserTask_ResolvesProcessInstanceKey(t *testing.T) {
@@ -47,6 +58,38 @@ func TestService_GetUserTask_ResolvesProcessInstanceKey(t *testing.T) {
 			}, nil
 		},
 	})
+
+	task, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.NoError(t, err)
+	require.Equal(t, "2251799815391233", task.Key)
+	require.Equal(t, "2251799813711967", task.ProcessInstanceKey)
+	require.Equal(t, "tenant-a", task.TenantId)
+}
+
+// TestService_GetUserTask_FallsBackToTasklistAfterPrimaryMiss verifies a native lookup miss can resolve through Tasklist V1.
+func TestService_GetUserTask_FallsBackToTasklistAfterPrimaryMiss(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav89.SearchUserTasksJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "tenant-a")
+			return &camundav89.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav89.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		searchTasksWithResponse: func(_ context.Context, body tasklistv89.SearchTasksJSONRequestBody, _ ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+			requireFallbackTaskSearchBody(t, body, "2251799815391233", "tenant-a")
+			return &tasklistv89.SearchTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://tasklist.local/v1/tasks/search", http.StatusOK, "200 OK"),
+				JSON200: &[]tasklistv89.TaskSearchResponse{{
+					Id:                 ptr("2251799815391233"),
+					ProcessInstanceKey: ptr("2251799813711967"),
+					TenantId:           ptr("tenant-a"),
+				}},
+			}, nil
+		},
+	}, "tenant-a")
 
 	task, err := svc.GetUserTask(context.Background(), "2251799815391233")
 
@@ -81,12 +124,20 @@ func TestService_GetUserTask_IncludesConfiguredTenantFilter(t *testing.T) {
 
 // TestService_GetUserTask_ReturnsNotFoundForMissingTask keeps empty tenant-scoped search results mapped to a lookup-style not-found error.
 func TestService_GetUserTask_ReturnsNotFoundForMissingTask(t *testing.T) {
-	svc := newTestService(t, &mockUserTaskCamundaClient{
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
 		searchUserTasksWithResponse: func(_ context.Context, body camundav89.SearchUserTasksJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
 			requireUserTaskSearchBody(t, body, "2251799815391233", "")
 			return &camundav89.SearchUserTasksResponse{
 				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
 				JSON200:      &camundav89.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		searchTasksWithResponse: func(_ context.Context, body tasklistv89.SearchTasksJSONRequestBody, _ ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+			requireFallbackTaskSearchBody(t, body, "2251799815391233", "")
+			return &tasklistv89.SearchTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://tasklist.local/v1/tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &[]tasklistv89.TaskSearchResponse{},
 			}, nil
 		},
 	})
@@ -95,7 +146,7 @@ func TestService_GetUserTask_ReturnsNotFoundForMissingTask(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, d.ErrNotFound)
-	require.Contains(t, err.Error(), "user task 2251799815391233 was not found or is not visible to the configured tenant")
+	require.Contains(t, err.Error(), "fallback user task 2251799815391233 was not found or is not visible to the configured tenant")
 }
 
 // TestService_GetUserTask_RejectsMissingProcessInstanceKey protects the command path from rendering a task lookup with no owning process instance.
@@ -124,16 +175,25 @@ func TestService_GetUserTask_RejectsMissingProcessInstanceKey(t *testing.T) {
 
 func newTestService(t *testing.T, camundaClient *mockUserTaskCamundaClient, tenantID ...string) *v89.Service {
 	t.Helper()
+	return newTestServiceWithTasklist(t, camundaClient, nil, tenantID...)
+}
+
+func newTestServiceWithTasklist(t *testing.T, camundaClient *mockUserTaskCamundaClient, tasklistClient *mockUserTaskTasklistClient, tenantID ...string) *v89.Service {
+	t.Helper()
 
 	cfg := testConfig()
 	if len(tenantID) > 0 {
 		cfg.App.Tenant = tenantID[0]
 	}
+	opts := []v89.Option{v89.WithClientCamunda(camundaClient)}
+	if tasklistClient != nil {
+		opts = append(opts, v89.WithClientTasklist(tasklistClient))
+	}
 	svc, err := v89.New(
 		cfg,
 		&http.Client{},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
-		v89.WithClientCamunda(camundaClient),
+		opts...,
 	)
 	require.NoError(t, err)
 	return svc
@@ -149,6 +209,20 @@ func requireUserTaskSearchBody(t *testing.T, body camundav89.SearchUserTasksJSON
 		return
 	}
 	require.Contains(t, string(raw), fmt.Sprintf(`"tenantId":"%s"`, tenantID))
+}
+
+func requireFallbackTaskSearchBody(t *testing.T, body tasklistv89.SearchTasksJSONRequestBody, taskKey, tenantID string) {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), fmt.Sprintf(`"processInstanceKey":"%s"`, taskKey))
+	require.Contains(t, string(raw), `"implementation":"JOB_WORKER"`)
+	require.Contains(t, string(raw), `"pageSize":2`)
+	if tenantID == "" {
+		require.NotContains(t, string(raw), `"tenantIds"`)
+		return
+	}
+	require.Contains(t, string(raw), fmt.Sprintf(`"tenantIds":["%s"]`, tenantID))
 }
 
 func testConfig() *config.Config {
@@ -174,4 +248,8 @@ func newHTTPResponse(method, rawURL string, statusCode int, status string) *http
 			URL:    u,
 		},
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

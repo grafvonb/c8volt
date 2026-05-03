@@ -5,6 +5,7 @@ package v89
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -71,7 +72,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{cc: c, cfg: deps.Config, log: deps.Logger}
+	var t GenUserTaskClientTasklist
+	if deps.Config.APIs.Tasklist.BaseURL != "" {
+		t, err = tasklistv89.NewClientWithResponses(
+			deps.Config.APIs.Tasklist.BaseURL,
+			tasklistv89.WithHTTPClient(deps.HTTPClient),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	s := &Service{cc: c, ct: t, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -86,6 +97,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 // GetUserTask resolves a Camunda user task through search so tenant scoping and generated v8.9 filter shapes stay explicit.
 func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
 	_ = services.ApplyCallOptions(opts)
+	task, err := s.searchPrimaryUserTask(ctx, key)
+	if err == nil {
+		return task, nil
+	}
+	if !errors.Is(err, d.ErrNotFound) {
+		return d.UserTask{}, err
+	}
+	return s.searchFallbackTask(ctx, key)
+}
+
+func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.UserTask, error) {
 	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated camunda client", key))
 	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)
 	if err != nil {
@@ -105,6 +127,30 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 	}
 	if task.ProcessInstanceKey == "" {
 		return d.UserTask{}, fmt.Errorf("%w: user task %s has no process instance key", d.ErrMalformedResponse, key)
+	}
+	return task, nil
+}
+
+func (s *Service) searchFallbackTask(ctx context.Context, key string) (d.UserTask, error) {
+	if s.ct == nil {
+		return d.UserTask{}, fmt.Errorf("search fallback task: %w", common.ErrNoClientConfigured)
+	}
+	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated tasklist client fallback", key))
+	body := searchFallbackTaskRequest(common.EffectiveTenant(s.cfg), key)
+	resp, err := s.ct.SearchTasksWithResponse(ctx, body)
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("search fallback task: %w", err)
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("search fallback task: %w", err)
+	}
+	task, err := requireSingleFallbackTask(*payload, key)
+	if err != nil {
+		return d.UserTask{}, err
+	}
+	if task.ProcessInstanceKey == "" {
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s has no process instance key", d.ErrMalformedResponse, key)
 	}
 	return task, nil
 }
@@ -147,6 +193,25 @@ func requireSingleUserTask(items []camundav89.UserTaskResult, key string) (d.Use
 		return fromUserTaskResult(items[0]), nil
 	default:
 		return d.UserTask{}, fmt.Errorf("%w: user task %s returned %d matches", d.ErrMalformedResponse, key, len(items))
+	}
+}
+
+// requireSingleFallbackTask turns the Tasklist fallback response into lookup semantics.
+func requireSingleFallbackTask(items []tasklistv89.TaskSearchResponse, key string) (d.UserTask, error) {
+	matches := make([]d.UserTask, 0, len(items))
+	for _, item := range items {
+		task := fromTaskSearchResponse(item)
+		if task.Key == key {
+			matches = append(matches, task)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
+	case 1:
+		return matches[0], nil
+	default:
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s returned %d matches", d.ErrMalformedResponse, key, len(matches))
 	}
 }
 
