@@ -9,9 +9,9 @@
 
 **Purpose**: Establish the exact generated-client and service surfaces before editing behavior.
 
-- [ ] T001 Review Tasklist V1 generated request/response fields in `internal/clients/camunda/v88/tasklist/client.gen.go` and `internal/clients/camunda/v89/tasklist/client.gen.go`
-- [ ] T002 Review current task-key lookup tests and helper server routes in `internal/services/usertask/v88/service_test.go`, `internal/services/usertask/v89/service_test.go`, and `cmd/get_processinstance_test.go`
-- [ ] T003 Confirm current help/docs wording that mentions no Tasklist fallback in `cmd/get_processinstance.go`, `README.md`, and generated files under `docs/`
+- [x] T001 Review Tasklist V1 generated request/response fields in `internal/clients/camunda/v88/tasklist/client.gen.go` and `internal/clients/camunda/v89/tasklist/client.gen.go`
+- [x] T002 Review current task-key lookup tests and helper server routes in `internal/services/usertask/v88/service_test.go`, `internal/services/usertask/v89/service_test.go`, and `cmd/get_processinstance_test.go`
+- [x] T003 Confirm current help/docs wording that mentions no Tasklist fallback in `cmd/get_processinstance.go`, `README.md`, and generated files under `docs/`
 
 ---
 
@@ -19,10 +19,10 @@
 
 **Purpose**: Add shared seams that all fallback stories depend on.
 
-- [ ] T004 Add Tasklist V1 client interfaces and constructor options for v88 fallback in `internal/services/usertask/v88/contract.go` and `internal/services/usertask/v88/service.go`
-- [ ] T005 Add Tasklist V1 client interfaces and constructor options for v89 fallback in `internal/services/usertask/v89/contract.go` and `internal/services/usertask/v89/service.go`
-- [ ] T006 Add fallback Tasklist result conversion helpers in `internal/services/usertask/v88/convert.go` and `internal/services/usertask/v89/convert.go`
-- [ ] T007 Add fallback request builder helpers that include task key, page size, and effective tenant when available in `internal/services/usertask/v88/service.go` and `internal/services/usertask/v89/service.go`
+- [x] T004 Add Tasklist V1 client interfaces and constructor options for v88 fallback in `internal/services/usertask/v88/contract.go` and `internal/services/usertask/v88/service.go`
+- [x] T005 Add Tasklist V1 client interfaces and constructor options for v89 fallback in `internal/services/usertask/v89/contract.go` and `internal/services/usertask/v89/service.go`
+- [x] T006 Add fallback Tasklist result conversion helpers in `internal/services/usertask/v88/convert.go` and `internal/services/usertask/v89/convert.go`
+- [x] T007 Add fallback request builder helpers that include task key, page size, and effective tenant when available in `internal/services/usertask/v88/service.go` and `internal/services/usertask/v89/service.go`
 
 **Checkpoint**: Versioned user-task services can accept both primary Camunda clients and Tasklist fallback clients without changing the public command contract.
 

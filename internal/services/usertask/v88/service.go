@@ -11,20 +11,27 @@ import (
 
 	"github.com/grafvonb/c8volt/config"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	tasklistv88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/tasklist"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
+const fallbackTaskSearchPageSize int32 = 2
+
 type Service struct {
 	cc  GenUserTaskClientCamunda
+	ct  GenUserTaskClientTasklist
 	cfg *config.Config
 	log *slog.Logger
 }
 
 func (s *Service) ClientCamunda() GenUserTaskClientCamunda { return s.cc }
-func (s *Service) Config() *config.Config                  { return s.cfg }
-func (s *Service) Logger() *slog.Logger                    { return s.log }
+func (s *Service) ClientTasklist() GenUserTaskClientTasklist {
+	return s.ct
+}
+func (s *Service) Config() *config.Config { return s.cfg }
+func (s *Service) Logger() *slog.Logger   { return s.log }
 
 type Option func(*Service)
 
@@ -32,6 +39,14 @@ func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	return func(s *Service) {
 		if c != nil {
 			s.cc = c
+		}
+	}
+}
+
+func WithClientTasklist(c GenUserTaskClientTasklist) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.ct = c
 		}
 	}
 }
@@ -109,6 +124,20 @@ func searchUserTaskRequest(tenantID, key string) (camundav88.SearchUserTasksJSON
 	}, nil
 }
 
+// searchFallbackTaskRequest builds the Tasklist V1 fallback search body used after the primary lookup misses.
+func searchFallbackTaskRequest(tenantID, key string) tasklistv88.SearchTasksJSONRequestBody {
+	implementation := tasklistv88.TaskSearchRequestImplementationJOBWORKER
+	body := tasklistv88.SearchTasksJSONRequestBody{
+		Implementation:     &implementation,
+		PageSize:           ptr(fallbackTaskSearchPageSize),
+		ProcessInstanceKey: &key,
+	}
+	if tenantID != "" {
+		body.TenantIds = &[]string{tenantID}
+	}
+	return body
+}
+
 // requireSingleUserTask turns the search response into lookup semantics, preserving missing and duplicate matches as domain errors.
 func requireSingleUserTask(items []camundav88.UserTaskResult, key string) (d.UserTask, error) {
 	switch len(items) {
@@ -119,4 +148,8 @@ func requireSingleUserTask(items []camundav88.UserTaskResult, key string) (d.Use
 	default:
 		return d.UserTask{}, fmt.Errorf("%w: user task %s returned %d matches", d.ErrMalformedResponse, key, len(items))
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
