@@ -60,7 +60,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
 		"Use --with-incidents with --key to include incident keys and messages for the returned process instance.\n\n" +
-		"User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.\n\n" +
+		"User-task based lookup resolves owning process instances through tenant-aware Camunda v2 user-task search first. On Camunda 8.8 and 8.9, not-found user-task results fall back to deprecated Tasklist V1 lookup for legacy user-task compatibility; Camunda 8.7 remains unsupported.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
 	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
   ./c8volt get pi --key <process-instance-key>

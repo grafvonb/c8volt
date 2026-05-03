@@ -99,6 +99,36 @@ func TestService_GetUserTask_FallsBackToTasklistAfterPrimaryMiss(t *testing.T) {
 	require.Equal(t, "tenant-a", task.TenantId)
 }
 
+// TestService_GetUserTask_DoesNotCallFallbackAfterPrimarySuccess verifies native lookup remains the first and terminal success path.
+func TestService_GetUserTask_DoesNotCallFallbackAfterPrimarySuccess(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav89.SearchUserTasksJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "")
+			return &camundav89.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200: &camundav89.UserTaskSearchQueryResult{
+					Items: []camundav89.UserTaskResult{{
+						UserTaskKey:        "2251799815391233",
+						ProcessInstanceKey: "2251799813711967",
+						TenantId:           "tenant-a",
+					}},
+				},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		searchTasksWithResponse: func(context.Context, tasklistv89.SearchTasksJSONRequestBody, ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+			t.Fatal("Tasklist fallback should not be called after primary success")
+			return nil, nil
+		},
+	})
+
+	task, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.NoError(t, err)
+	require.Equal(t, "2251799815391233", task.Key)
+	require.Equal(t, "2251799813711967", task.ProcessInstanceKey)
+}
+
 // TestService_GetUserTask_IncludesConfiguredTenantFilter verifies task lookup stays scoped to the configured tenant.
 func TestService_GetUserTask_IncludesConfiguredTenantFilter(t *testing.T) {
 	svc := newTestService(t, &mockUserTaskCamundaClient{
@@ -147,6 +177,90 @@ func TestService_GetUserTask_ReturnsNotFoundForMissingTask(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, d.ErrNotFound)
 	require.Contains(t, err.Error(), "fallback user task 2251799815391233 was not found or is not visible to the configured tenant")
+}
+
+// TestService_GetUserTask_RejectsFallbackMissingProcessInstanceKey protects fallback lookup from returning unresolved ownership.
+func TestService_GetUserTask_RejectsFallbackMissingProcessInstanceKey(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav89.SearchUserTasksJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "")
+			return &camundav89.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav89.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		searchTasksWithResponse: func(_ context.Context, body tasklistv89.SearchTasksJSONRequestBody, _ ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+			requireFallbackTaskSearchBody(t, body, "2251799815391233", "")
+			return &tasklistv89.SearchTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://tasklist.local/v1/tasks/search", http.StatusOK, "200 OK"),
+				JSON200: &[]tasklistv89.TaskSearchResponse{{
+					Id: ptr("2251799815391233"),
+				}},
+			}, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrMalformedResponse)
+	require.Contains(t, err.Error(), "fallback user task 2251799815391233 has no process instance key")
+}
+
+// TestService_GetUserTask_SurfacesFallbackServerFailure verifies fallback operational failures are not collapsed into not found.
+func TestService_GetUserTask_SurfacesFallbackServerFailure(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav89.SearchUserTasksJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "")
+			return &camundav89.SearchUserTasksResponse{
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav89.UserTaskSearchQueryResult{},
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		searchTasksWithResponse: func(_ context.Context, body tasklistv89.SearchTasksJSONRequestBody, _ ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+			requireFallbackTaskSearchBody(t, body, "2251799815391233", "")
+			return &tasklistv89.SearchTasksResponse{
+				Body:         []byte(`{"message":"tasklist unavailable"}`),
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://tasklist.local/v1/tasks/search", http.StatusInternalServerError, "500 Internal Server Error"),
+			}, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrInternal)
+	require.NotErrorIs(t, err, d.ErrNotFound)
+	require.Contains(t, err.Error(), "search fallback task")
+	require.Contains(t, err.Error(), "tasklist unavailable")
+}
+
+// TestService_GetUserTask_DoesNotFallbackAfterPrimaryServerFailure keeps non-not-found primary errors terminal.
+func TestService_GetUserTask_DoesNotFallbackAfterPrimaryServerFailure(t *testing.T) {
+	svc := newTestServiceWithTasklist(t, &mockUserTaskCamundaClient{
+		searchUserTasksWithResponse: func(_ context.Context, body camundav89.SearchUserTasksJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error) {
+			requireUserTaskSearchBody(t, body, "2251799815391233", "")
+			return &camundav89.SearchUserTasksResponse{
+				Body:         []byte(`{"message":"camunda unavailable"}`),
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/user-tasks/search", http.StatusInternalServerError, "500 Internal Server Error"),
+			}, nil
+		},
+	}, &mockUserTaskTasklistClient{
+		searchTasksWithResponse: func(context.Context, tasklistv89.SearchTasksJSONRequestBody, ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error) {
+			t.Fatal("Tasklist fallback should not be called after primary server failure")
+			return nil, nil
+		},
+	})
+
+	_, err := svc.GetUserTask(context.Background(), "2251799815391233")
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrInternal)
+	require.NotErrorIs(t, err, d.ErrNotFound)
+	require.Contains(t, err.Error(), "search user task")
+	require.Contains(t, err.Error(), "camunda unavailable")
 }
 
 // TestService_GetUserTask_RejectsMissingProcessInstanceKey protects the command path from rendering a task lookup with no owning process instance.

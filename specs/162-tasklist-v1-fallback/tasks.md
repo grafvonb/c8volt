@@ -61,15 +61,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Add v89 service test proving Tasklist fallback is not called when primary lookup succeeds in `internal/services/usertask/v89/service_test.go`
-- [ ] T018 [P] [US2] Add v88 service test proving Tasklist fallback is not called when primary lookup succeeds in `internal/services/usertask/v88/service_test.go`
-- [ ] T019 [US2] Add multi-task command test where one key resolves through primary lookup and one through fallback in `cmd/get_processinstance_test.go`
+- [x] T017 [P] [US2] Add v89 service test proving Tasklist fallback is not called when primary lookup succeeds in `internal/services/usertask/v89/service_test.go`
+- [x] T018 [P] [US2] Add v88 service test proving Tasklist fallback is not called when primary lookup succeeds in `internal/services/usertask/v88/service_test.go`
+- [x] T019 [US2] Add multi-task command test where one key resolves through primary lookup and one through fallback in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Preserve short-circuit behavior after primary success in `internal/services/usertask/v89/service.go`
-- [ ] T021 [US2] Preserve short-circuit behavior after primary success in `internal/services/usertask/v88/service.go`
-- [ ] T022 [US2] Verify mixed primary/fallback lookup ordering with `go test ./cmd ./internal/services/usertask/v88 ./internal/services/usertask/v89 -run 'HasUserTasks|GetUserTask' -count=1`
+- [x] T020 [US2] Preserve short-circuit behavior after primary success in `internal/services/usertask/v89/service.go`
+- [x] T021 [US2] Preserve short-circuit behavior after primary success in `internal/services/usertask/v88/service.go`
+- [x] T022 [US2] Verify mixed primary/fallback lookup ordering with `go test ./cmd ./internal/services/usertask/v88 ./internal/services/usertask/v89 -run 'HasUserTasks|GetUserTask' -count=1`
 
 **Checkpoint**: Primary lookup remains the first and preferred path for every supported task key.
 
@@ -83,20 +83,20 @@
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Add v89 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure in `internal/services/usertask/v89/service_test.go`
-- [ ] T024 [P] [US3] Add v88 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure in `internal/services/usertask/v88/service_test.go`
-- [ ] T025 [US3] Add command failure test for both-lookups-missing not-found output in `cmd/get_processinstance_test.go`
-- [ ] T026 [US3] Confirm 8.7 unsupported tests still prove no fallback attempt in `internal/services/usertask/v87/service_test.go` and `cmd/get_processinstance_test.go`
+- [x] T023 [P] [US3] Add v89 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure in `internal/services/usertask/v89/service_test.go`
+- [x] T024 [P] [US3] Add v88 service tests for both-lookups-missing, fallback missing process-instance key, and fallback server failure in `internal/services/usertask/v88/service_test.go`
+- [x] T025 [US3] Add command failure test for both-lookups-missing not-found output in `cmd/get_processinstance_test.go`
+- [x] T026 [US3] Confirm 8.7 unsupported tests still prove no fallback attempt in `internal/services/usertask/v87/service_test.go` and `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Restrict fallback eligibility to primary `domain.ErrNotFound` outcomes in `internal/services/usertask/v89/service.go`
-- [ ] T028 [US3] Restrict fallback eligibility to primary `domain.ErrNotFound` outcomes in `internal/services/usertask/v88/service.go`
-- [ ] T029 [US3] Return final not-found only after both primary and fallback lookup miss in `internal/services/usertask/v89/service.go`
-- [ ] T030 [US3] Return final not-found only after both primary and fallback lookup miss in `internal/services/usertask/v88/service.go`
-- [ ] T031 [US3] Surface fallback malformed response and server failures distinctly from not found in `internal/services/usertask/v89/service.go`
-- [ ] T032 [US3] Surface fallback malformed response and server failures distinctly from not found in `internal/services/usertask/v88/service.go`
-- [ ] T033 [US3] Verify failure behavior with `go test ./internal/services/usertask/v87 ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./cmd -run 'HasUserTasks|GetUserTask|Unsupported' -count=1`
+- [x] T027 [US3] Restrict fallback eligibility to primary `domain.ErrNotFound` outcomes in `internal/services/usertask/v89/service.go`
+- [x] T028 [US3] Restrict fallback eligibility to primary `domain.ErrNotFound` outcomes in `internal/services/usertask/v88/service.go`
+- [x] T029 [US3] Return final not-found only after both primary and fallback lookup miss in `internal/services/usertask/v89/service.go`
+- [x] T030 [US3] Return final not-found only after both primary and fallback lookup miss in `internal/services/usertask/v88/service.go`
+- [x] T031 [US3] Surface fallback malformed response and server failures distinctly from not found in `internal/services/usertask/v89/service.go`
+- [x] T032 [US3] Surface fallback malformed response and server failures distinctly from not found in `internal/services/usertask/v88/service.go`
+- [x] T033 [US3] Verify failure behavior with `go test ./internal/services/usertask/v87 ./internal/services/usertask/v88 ./internal/services/usertask/v89 ./cmd -run 'HasUserTasks|GetUserTask|Unsupported' -count=1`
 
 **Checkpoint**: Missing tasks and operational failures are distinguishable and 8.7 remains unsupported.
 
@@ -110,15 +110,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T034 [US4] Update help text test expectations for fallback wording in `cmd/get_processinstance_test.go`
-- [ ] T035 [P] [US4] Add or update docs content checks for fallback wording in `cmd/command_contract_test.go` or the existing generated-doc test location
+- [x] T034 [US4] Update help text test expectations for fallback wording in `cmd/get_processinstance_test.go`
+- [x] T035 [P] [US4] Add or update docs content checks for fallback wording in `cmd/command_contract_test.go` or the existing generated-doc test location
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Update command long help and examples for `--has-user-tasks` fallback behavior in `cmd/get_processinstance.go`
-- [ ] T037 [US4] Update user-facing examples and caveats in `README.md`
-- [ ] T038 [US4] Regenerate CLI documentation with `make docs-content`
-- [ ] T039 [US4] Verify documentation behavior with `go test ./cmd -run 'Help|Contract|HasUserTasks' -count=1`
+- [x] T036 [US4] Update command long help and examples for `--has-user-tasks` fallback behavior in `cmd/get_processinstance.go`
+- [x] T037 [US4] Update user-facing examples and caveats in `README.md`
+- [x] T038 [US4] Regenerate CLI documentation with `make docs-content`
+- [x] T039 [US4] Verify documentation behavior with `go test ./cmd -run 'Help|Contract|HasUserTasks' -count=1`
 
 **Checkpoint**: User-facing documentation no longer contradicts the fallback behavior.
 
