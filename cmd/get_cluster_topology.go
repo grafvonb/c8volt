@@ -12,9 +12,9 @@ import (
 
 var getClusterTopologyNestedCmd = &cobra.Command{
 	Use:   "topology",
-	Short: "Show connected cluster topology",
-	Long: "Show connected cluster topology.\n\n" +
-		"This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster.",
+	Short: "Show connected cluster topology as a tree",
+	Long: "Show connected cluster topology as a sorted human-readable tree.\n\n" +
+		"This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster. Use --json for the structured topology payload.",
 	Example: `  ./c8volt get cluster topology
   ./c8volt get cluster topology --json`,
 	Run: runGetClusterTopology,
@@ -44,7 +44,13 @@ func runGetClusterTopology(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster topology: %w", err))
 	}
-	if err := renderJSONPayload(cmd, RenderModeJSON, topology); err != nil {
+	if pickMode() == RenderModeJSON {
+		if err := renderJSONPayload(cmd, RenderModeJSON, topology); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster topology: %w", err))
+		}
+		return
+	}
+	if err := renderClusterTopologyTree(cmd, topology); err != nil {
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster topology: %w", err))
 	}
 }

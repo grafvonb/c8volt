@@ -44,15 +44,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add command test for default topology tree output with sorted brokers and partitions in `cmd/get_test.go`
-- [ ] T013 [P] [US1] Add command test for topology tree output with zero brokers or empty partitions in `cmd/get_test.go`
-- [ ] T014 [P] [US1] Add helper-level test for cluster topology tree rendering in `cmd/get_test.go`
+- [x] T012 [P] [US1] Add command test for default topology tree output with sorted brokers and partitions in `cmd/get_test.go`
+- [x] T013 [P] [US1] Add command test for topology tree output with zero brokers or empty partitions in `cmd/get_test.go`
+- [x] T014 [P] [US1] Add helper-level test for cluster topology tree rendering in `cmd/get_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement topology tree renderer in `cmd/cmd_views_cluster.go`
-- [ ] T016 [US1] Wire `runGetClusterTopology` to render topology tree when `pickMode()` is not JSON in `cmd/get_cluster_topology.go`
-- [ ] T017 [US1] Update `get cluster topology` help text and examples for human default and `--json` in `cmd/get_cluster_topology.go`
+- [x] T015 [US1] Implement topology tree renderer in `cmd/cmd_views_cluster.go`
+- [x] T016 [US1] Wire `runGetClusterTopology` to render topology tree when `pickMode()` is not JSON in `cmd/get_cluster_topology.go`
+- [x] T017 [US1] Update `get cluster topology` help text and examples for human default and `--json` in `cmd/get_cluster_topology.go`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/cluster"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
@@ -168,6 +169,17 @@ func TestGetClusterLicenseHelp(t *testing.T) {
 	require.Contains(t, output, "./c8volt get cluster license --json")
 }
 
+// Verifies `get cluster topology --help` describes the human default and JSON escape hatch.
+func TestGetClusterTopologyHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
+
+	require.Contains(t, output, "Show connected cluster topology as a sorted human-readable tree")
+	require.Contains(t, output, "sorted human-readable tree")
+	require.Contains(t, output, "Use --json for the structured topology payload")
+	require.Contains(t, output, "./c8volt get cluster topology")
+	require.Contains(t, output, "./c8volt get cluster topology --json")
+}
+
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
 	output := executeRootForTest(t, "get", "process-definition", "--help")
 
@@ -208,25 +220,112 @@ func TestGetClusterTopologyCommand_UsesEnvOAuth2ScopeOverride(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
 
-	require.Contains(t, output, `"ClusterSize": 1`)
+	require.Contains(t, output, "Cluster: GatewayVersion=8.8.0 Brokers=1 Partitions=1 ReplicationFactor=1 LastCompletedChangeId=-")
+	require.NotContains(t, output, `"ClusterSize"`)
 }
 
-// Verifies nested `get cluster topology` succeeds and renders topology fields.
-func TestGetClusterTopologyNestedCommand_Success(t *testing.T) {
+// Verifies nested `get cluster topology` renders a sorted default tree.
+func TestGetClusterTopologyNestedCommand_DefaultTreeOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/v2/topology", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(singleBrokerClusterTopologyFixtureJSON()))
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
 	}))
 	t.Cleanup(srv.Close)
 
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
 
-	require.Contains(t, output, `"GatewayVersion": "8.8.0"`)
-	require.Contains(t, output, `"ClusterSize": 1`)
+	require.Equal(t, "Cluster: GatewayVersion=8.8.2 Brokers=3 Partitions=3 ReplicationFactor=3 LastCompletedChangeId=change-42\n"+
+		"├─ Broker 1: broker-a.internal:26501 version=8.8.1\n"+
+		"│  ├─ Partition 1: role=leader health=healthy\n"+
+		"│  └─ Partition 3: role=follower health=unhealthy\n"+
+		"├─ Broker 2: broker-b.internal:26502 version=8.8.2\n"+
+		"│  └─ Partition 2: role=leader health=healthy\n"+
+		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", output)
+	require.NotContains(t, output, `"GatewayVersion"`)
+}
+
+// Verifies topology tree rendering remains well-formed for empty broker and partition lists.
+func TestGetClusterTopologyNestedCommand_DefaultTreeOutputHandlesEmptyBrokerData(t *testing.T) {
+	t.Run("zero brokers", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(0, "8.8.0", 0, 0)))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
+
+		require.Equal(t, "Cluster: GatewayVersion=8.8.0 Brokers=0 Partitions=0 ReplicationFactor=0 LastCompletedChangeId=-\n", output)
+	})
+
+	t.Run("broker with empty partitions", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(singleBrokerEmptyPartitionsClusterTopologyFixtureJSON()))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology")
+
+		require.Equal(t, "Cluster: GatewayVersion=8.8.0 Brokers=1 Partitions=0 ReplicationFactor=1 LastCompletedChangeId=-\n"+
+			"└─ Broker 1: broker-a.internal:26501 version=8.8.0\n", output)
+		require.NotContains(t, output, "│")
+	})
+}
+
+// Verifies the helper-level topology renderer sorts rows without mutating source topology data.
+func TestRenderClusterTopologyTree_SortsBrokersAndPartitions(t *testing.T) {
+	topology := cluster.Topology{
+		ClusterSize:           2,
+		GatewayVersion:        "8.8.2",
+		PartitionsCount:       2,
+		ReplicationFactor:     2,
+		LastCompletedChangeId: "change-42",
+		Brokers: []cluster.Broker{
+			{
+				NodeId:  2,
+				Host:    "broker-b.internal",
+				Port:    26502,
+				Version: "8.8.2",
+				Partitions: []cluster.Partition{
+					{PartitionId: 4, Role: "follower", Health: "healthy"},
+					{PartitionId: 2, Role: "leader", Health: "healthy"},
+				},
+			},
+			{
+				NodeId:  1,
+				Host:    "broker-a.internal",
+				Port:    26501,
+				Version: "8.8.1",
+			},
+		},
+	}
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	require.NoError(t, renderClusterTopologyTree(cmd, topology))
+
+	require.Equal(t, "Cluster: GatewayVersion=8.8.2 Brokers=2 Partitions=2 ReplicationFactor=2 LastCompletedChangeId=change-42\n"+
+		"├─ Broker 1: broker-a.internal:26501 version=8.8.1\n"+
+		"└─ Broker 2: broker-b.internal:26502 version=8.8.2\n"+
+		"   ├─ Partition 2: role=leader health=healthy\n"+
+		"   └─ Partition 4: role=follower health=healthy\n", buf.String())
+	require.Equal(t, int32(2), topology.Brokers[0].NodeId)
+	require.Equal(t, int32(4), topology.Brokers[0].Partitions[0].PartitionId)
 }
 
 // Verifies the removed direct cluster-topology command path and aliases no longer resolve.
@@ -1258,6 +1357,75 @@ func singleBrokerClusterTopologyFixtureJSON() string {
   "clusterSize": 1,
   "gatewayVersion": "8.8.0",
   "partitionsCount": 1,
+  "replicationFactor": 1,
+  "lastCompletedChangeId": ""
+}`
+}
+
+func unsortedClusterTopologyFixtureJSON() string {
+	return `{
+  "brokers": [
+    {
+      "host": "broker-b.internal",
+      "nodeId": 2,
+      "partitions": [
+        {
+          "health": "healthy",
+          "partitionId": 2,
+          "role": "leader"
+        }
+      ],
+      "port": 26502,
+      "version": "8.8.2"
+    },
+    {
+      "host": "broker-a.internal",
+      "nodeId": 1,
+      "partitions": [
+        {
+          "health": "unhealthy",
+          "partitionId": 3,
+          "role": "follower"
+        },
+        {
+          "health": "healthy",
+          "partitionId": 1,
+          "role": "leader"
+        }
+      ],
+      "port": 26501,
+      "version": "8.8.1"
+    },
+    {
+      "host": "broker-c.internal",
+      "nodeId": 3,
+      "partitions": [],
+      "port": 26503,
+      "version": "8.8.0"
+    }
+  ],
+  "clusterSize": 3,
+  "gatewayVersion": "8.8.2",
+  "partitionsCount": 3,
+  "replicationFactor": 3,
+  "lastCompletedChangeId": "change-42"
+}`
+}
+
+func singleBrokerEmptyPartitionsClusterTopologyFixtureJSON() string {
+	return `{
+  "brokers": [
+    {
+      "host": "broker-a.internal",
+      "nodeId": 1,
+      "partitions": [],
+      "port": 26501,
+      "version": "8.8.0"
+    }
+  ],
+  "clusterSize": 1,
+  "gatewayVersion": "8.8.0",
+  "partitionsCount": 0,
   "replicationFactor": 1,
   "lastCompletedChangeId": ""
 }`
