@@ -69,8 +69,12 @@ Useful setup commands:
 
 ```bash
 ./c8volt get cluster topology
+./c8volt get cluster version
 ./c8volt get cluster license
+./c8volt get cluster licence
 ```
+
+Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
 
 ### 4. Get A Runnable Environment
 
@@ -357,6 +361,7 @@ profiles:
 ```bash
 ./c8volt --profile local get cluster topology
 ./c8volt --profile prod get cluster topology
+./c8volt --profile prod get cluster version --with-brokers
 ```
 
 ## Automation And Pipelines
@@ -427,7 +432,8 @@ c8volt
 |-- expect                    Wait until resources reach a target state
 |   `-- pi                    Wait for active, completed, canceled, terminated, or absent
 |-- get                       Read state, metadata, and resources
-|   |-- cluster topology      Show connected Camunda cluster topology
+|   |-- cluster topology      Show connected Camunda cluster topology as a tree
+|   |-- cluster version       Show gateway and optional broker versions
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List or fetch process instances

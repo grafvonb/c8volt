@@ -63,9 +63,11 @@ The following implemented commands are also especially useful:
 - [show config](./c8volt_config_show)
   Render sanitized effective `c8volt` config, validate it, or print a copy-paste-ready template.
 - [get cluster topology](./c8volt_get_cluster_topology)
-  Verify the connected Camunda cluster shape quickly.
+  Verify the connected Camunda cluster shape quickly as a human-readable tree.
+- [get cluster version](./c8volt_get_cluster_version)
+  Show the gateway version, optionally including sorted broker versions.
 - [get cluster license](./c8volt_get_cluster_license)
-  Inspect license details from the connected cluster.
+  Inspect license details from the connected cluster; `licence` works as an alias.
 - [get process definition](./c8volt_get_process-definition)
   List definitions, fetch latest versions, or retrieve raw XML for one key.
 - [get resource](./c8volt_get_resource)

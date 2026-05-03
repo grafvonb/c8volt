@@ -56,8 +56,7 @@ c8volt get [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology and license information
-* [c8volt get cluster-topology](c8volt_get_cluster-topology)	 - Show connected cluster topology
+* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
 * [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
 * [c8volt get resource](c8volt_get_resource)	 - Get a resource by id

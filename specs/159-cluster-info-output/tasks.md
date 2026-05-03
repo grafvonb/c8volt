@@ -132,14 +132,14 @@
 
 **Purpose**: Documentation, generated artifacts, formatting, and validation across all cluster command changes.
 
-- [ ] T040 [P] Update README cluster examples and command tree references in `README.md`
-- [ ] T041 [P] Update docs homepage cluster examples and command tree references in `docs/index.md`
-- [ ] T042 Regenerate CLI reference docs with `make docs-content`
-- [ ] T043 Remove generated legacy topology doc page `docs/cli/c8volt_get_cluster-topology.md` if docs generation no longer creates it
-- [ ] T044 [P] Run `gofmt` on changed Go files in `cmd/`
-- [ ] T045 Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`
-- [ ] T046 Run full repository validation with `make test`
-- [ ] T047 Confirm `specs/159-cluster-info-output/quickstart.md` scenarios match final command behavior
+- [x] T040 [P] Update README cluster examples and command tree references in `README.md`
+- [x] T041 [P] Update docs homepage cluster examples and command tree references in `docs/index.md`
+- [x] T042 Regenerate CLI reference docs with `make docs-content`
+- [x] T043 Remove generated legacy topology doc page `docs/cli/c8volt_get_cluster-topology.md` if docs generation no longer creates it
+- [x] T044 [P] Run `gofmt` on changed Go files in `cmd/`
+- [x] T045 Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`
+- [x] T046 Run full repository validation with `make test`
+- [x] T047 Confirm `specs/159-cluster-info-output/quickstart.md` scenarios match final command behavior
 
 ---
 
