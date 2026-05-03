@@ -71,6 +71,21 @@ func renderClusterTopologyTree(cmd *cobra.Command, topology cluster.Topology) er
 	return nil
 }
 
+func renderClusterVersion(cmd *cobra.Command, topology cluster.Topology, withBrokers bool) error {
+	if !withBrokers {
+		renderOutputLine(cmd, "%s", topology.GatewayVersion)
+		return nil
+	}
+
+	renderOutputLine(cmd, "GatewayVersion: %s", topology.GatewayVersion)
+	renderOutputLine(cmd, "")
+	renderOutputLine(cmd, "Brokers:")
+	for _, broker := range sortedClusterBrokers(topology) {
+		renderOutputLine(cmd, "%s", formatClusterBrokerVersionLine(broker))
+	}
+	return nil
+}
+
 func formatClusterBrokerLine(broker cluster.Broker) string {
 	parts := []string{fmt.Sprintf("Broker %d", broker.NodeId)}
 
@@ -92,6 +107,17 @@ func formatClusterBrokerLine(broker cluster.Broker) string {
 		parts = append(parts, strings.Join(details, " "))
 	}
 	return strings.Join(parts, ": ")
+}
+
+func formatClusterBrokerVersionLine(broker cluster.Broker) string {
+	version := broker.Version
+	if version == "" {
+		version = "-"
+	}
+	if broker.Host == "" {
+		return fmt.Sprintf("Broker %d: %s", broker.NodeId, version)
+	}
+	return fmt.Sprintf("Broker %d: %s (%s)", broker.NodeId, version, broker.Host)
 }
 
 func formatClusterPartitionLine(partition cluster.Partition) string {

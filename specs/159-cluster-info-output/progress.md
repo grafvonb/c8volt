@@ -12,6 +12,7 @@ Started: 2026-05-03 07:40:25
 - Generated CLI docs come from `make docs-content`, which runs `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown`; stale generated pages such as `docs/cli/c8volt_get_cluster-topology.md` may need explicit deletion after command removal.
 - Cluster command view helpers should use the command-facing `c8volt/cluster` facade models, because `NewCli(cmd).GetClusterTopology` returns facade types rather than `internal/domain` types.
 - Cluster topology and license commands are marked `ContractSupportLimited`; `renderJSONPayload` currently emits the facade payload directly for their JSON mode rather than wrapping it in the shared full-contract result envelope.
+- `get cluster version` should reuse `NewCli(cmd).GetClusterTopology` and the shared sorted broker helper, keeping version output in `cmd/cmd_views_cluster.go` and command wiring in `cmd/get_cluster_version.go`.
 
 ---
 
@@ -110,5 +111,33 @@ Started: 2026-05-03 07:40:25
 **Learnings**:
 - Topology already had the dedicated JSON branch after the tree renderer work; license now has the same explicit branch while retaining current non-JSON behavior until the flat-license story changes it.
 - JSON preservation tests should unmarshal into the command-facing `c8volt/cluster` facade models and also assert that human-only tree or flat labels are absent.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
+---
+
+---
+## Iteration 5 - 2026-05-03 08:02:20 CEST
+**User Story**: User Story 3 - Check Gateway And Broker Versions
+**Tasks Completed**:
+- [x] T024: Add `get cluster version --help` command test
+- [x] T025: Add default gateway-only version output test
+- [x] T026: Add `--with-brokers` version output test with sorted brokers
+- [x] T027: Add version command failure-path test reusing topology failure behavior
+- [x] T028: Add `getClusterVersionCmd` with `--with-brokers` flag
+- [x] T029: Implement cluster version renderer
+- [x] T030: Register version command under `getClusterCmd` and set command metadata
+- [x] T031: Update `get cluster` parent help examples to include version
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_cluster.go
+- cmd/command_contract_test.go
+- cmd/get_cluster.go
+- cmd/get_cluster_version.go
+- cmd/get_test.go
+- specs/159-cluster-info-output/progress.md
+- specs/159-cluster-info-output/tasks.md
+**Learnings**:
+- The version command can share the topology service call and existing sorted broker helper without adding a service method or extra upstream request.
+- Gateway-only output is intentionally just the version string; `--with-brokers` switches to labeled gateway and sorted broker lines.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---

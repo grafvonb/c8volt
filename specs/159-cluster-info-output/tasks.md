@@ -88,17 +88,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Add `get cluster version --help` command test in `cmd/get_test.go`
-- [ ] T025 [P] [US3] Add default gateway-only version output test in `cmd/get_test.go`
-- [ ] T026 [P] [US3] Add `--with-brokers` version output test with sorted brokers in `cmd/get_test.go`
-- [ ] T027 [P] [US3] Add version command failure-path test reusing topology failure behavior in `cmd/get_test.go`
+- [x] T024 [P] [US3] Add `get cluster version --help` command test in `cmd/get_test.go`
+- [x] T025 [P] [US3] Add default gateway-only version output test in `cmd/get_test.go`
+- [x] T026 [P] [US3] Add `--with-brokers` version output test with sorted brokers in `cmd/get_test.go`
+- [x] T027 [P] [US3] Add version command failure-path test reusing topology failure behavior in `cmd/get_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Add `getClusterVersionCmd` with `--with-brokers` flag in `cmd/get_cluster_version.go`
-- [ ] T029 [US3] Implement cluster version renderer in `cmd/cmd_views_cluster.go`
-- [ ] T030 [US3] Register version command under `getClusterCmd` and set command metadata in `cmd/get_cluster_version.go`
-- [ ] T031 [US3] Update `get cluster` parent help examples to include version in `cmd/get_cluster.go`
+- [x] T028 [US3] Add `getClusterVersionCmd` with `--with-brokers` flag in `cmd/get_cluster_version.go`
+- [x] T029 [US3] Implement cluster version renderer in `cmd/cmd_views_cluster.go`
+- [x] T030 [US3] Register version command under `getClusterCmd` and set command metadata in `cmd/get_cluster_version.go`
+- [x] T031 [US3] Update `get cluster` parent help examples to include version in `cmd/get_cluster.go`
 
 **Checkpoint**: User Stories 1, 2, and 3 are independently functional.
 

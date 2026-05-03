@@ -199,6 +199,7 @@ func TestCapabilityDocumentForRoot_ExcludesRemovedClusterTopologyCommand(t *test
 	require.NotContains(t, paths, "get cluster-info")
 	require.NotContains(t, paths, "get ci")
 	require.Contains(t, paths, "get cluster topology")
+	require.Contains(t, paths, "get cluster version")
 }
 
 func commandCapabilityPaths(commands []CommandCapability) []string {

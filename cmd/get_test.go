@@ -150,12 +150,16 @@ func TestGetResourceHelp(t *testing.T) {
 func TestGetClusterHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "--help")
 
-	require.Contains(t, output, "Inspect cluster-wide topology and license information")
+	require.Contains(t, output, "Inspect cluster-wide topology, version, and license information")
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt get cluster")
 	require.Contains(t, output, "license")
 	require.Contains(t, output, "topology")
+	require.Contains(t, output, "version")
 	require.Contains(t, output, "brokers, partitions, and gateway details")
+	require.Contains(t, output, "gateway and broker versions")
+	require.Contains(t, output, "./c8volt get cluster version")
+	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
 	require.Contains(t, output, "./c8volt get cluster license")
 }
 
@@ -178,6 +182,18 @@ func TestGetClusterTopologyHelp(t *testing.T) {
 	require.Contains(t, output, "Use --json for the structured topology payload")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
+}
+
+// Verifies `get cluster version --help` describes gateway-only and broker-inclusive output.
+func TestGetClusterVersionHelp(t *testing.T) {
+	output := executeRootForTest(t, "get", "cluster", "version", "--help")
+
+	require.Contains(t, output, "Show connected cluster version")
+	require.Contains(t, output, "gateway version by default")
+	require.Contains(t, output, "include broker versions")
+	require.Contains(t, output, "./c8volt get cluster version")
+	require.Contains(t, output, "./c8volt get cluster version --with-brokers")
+	require.Contains(t, output, "--with-brokers")
 }
 
 func TestGetProcessDefinitionHelp_DocumentsJSONAndXMLModes(t *testing.T) {
@@ -246,6 +262,49 @@ func TestGetClusterTopologyNestedCommand_DefaultTreeOutput(t *testing.T) {
 		"│  └─ Partition 2: role=leader health=healthy\n"+
 		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", output)
 	require.NotContains(t, output, `"GatewayVersion"`)
+}
+
+// Verifies nested `get cluster version` renders only the gateway version by default.
+func TestGetClusterVersionCommand_DefaultGatewayOnlyOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "version")
+
+	require.Equal(t, "8.8.2\n", output)
+	require.NotContains(t, output, "Broker")
+	require.NotContains(t, output, `"GatewayVersion"`)
+}
+
+// Verifies nested `get cluster version --with-brokers` renders sorted broker versions.
+func TestGetClusterVersionCommand_WithBrokersOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "version", "--with-brokers")
+
+	require.Equal(t, "GatewayVersion: 8.8.2\n\n"+
+		"Brokers:\n"+
+		"Broker 1: 8.8.1 (broker-a.internal)\n"+
+		"Broker 2: 8.8.2 (broker-b.internal)\n"+
+		"Broker 3: 8.8.0 (broker-c.internal)\n", output)
+	require.NotContains(t, output, "Cluster:")
+	require.NotContains(t, output, "├─")
+	require.NotContains(t, output, "Partition")
 }
 
 // Verifies nested `get cluster topology --json` preserves structured JSON output.
@@ -521,6 +580,28 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
 	require.Contains(t, string(output), "get cluster topology")
+	require.NotContains(t, string(output), "error fetching topology")
+	require.NotContains(t, string(output), "fetch cluster topology")
+}
+
+// Verifies nested cluster version HTTP failures reuse topology failure behavior.
+func TestGetClusterVersionCommand_Failure(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		http.Error(w, "boom", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetClusterVersionCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "get cluster version")
 	require.NotContains(t, string(output), "error fetching topology")
 	require.NotContains(t, string(output), "fetch cluster topology")
 }
@@ -1147,6 +1228,20 @@ func TestGetClusterTopologyNestedCommand_FailureHelper(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "topology"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+// Helper-process entrypoint for nested cluster-version failure-path coverage.
+func TestGetClusterVersionCommand_FailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "cluster", "version"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
