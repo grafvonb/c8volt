@@ -5,26 +5,34 @@ package v88
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	tasklistv88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/tasklist"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
+const fallbackTaskSearchPageSize int32 = 2
+
 type Service struct {
 	cc  GenUserTaskClientCamunda
+	ct  GenUserTaskClientTasklist
 	cfg *config.Config
 	log *slog.Logger
 }
 
 func (s *Service) ClientCamunda() GenUserTaskClientCamunda { return s.cc }
-func (s *Service) Config() *config.Config                  { return s.cfg }
-func (s *Service) Logger() *slog.Logger                    { return s.log }
+func (s *Service) ClientTasklist() GenUserTaskClientTasklist {
+	return s.ct
+}
+func (s *Service) Config() *config.Config { return s.cfg }
+func (s *Service) Logger() *slog.Logger   { return s.log }
 
 type Option func(*Service)
 
@@ -32,6 +40,14 @@ func WithClientCamunda(c GenUserTaskClientCamunda) Option {
 	return func(s *Service) {
 		if c != nil {
 			s.cc = c
+		}
+	}
+}
+
+func WithClientTasklist(c GenUserTaskClientTasklist) Option {
+	return func(s *Service) {
+		if c != nil {
+			s.ct = c
 		}
 	}
 }
@@ -56,7 +72,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{cc: c, cfg: deps.Config, log: deps.Logger}
+	var t GenUserTaskClientTasklist
+	if deps.Config.APIs.Tasklist.BaseURL != "" {
+		t, err = tasklistv88.NewClientWithResponses(
+			deps.Config.APIs.Tasklist.BaseURL,
+			tasklistv88.WithHTTPClient(deps.HTTPClient),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	s := &Service{cc: c, ct: t, cfg: deps.Config, log: deps.Logger}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -71,6 +97,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 // GetUserTask resolves a Camunda user task through search so tenant scoping and generated v8.8 filter shapes stay explicit.
 func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.CallOption) (d.UserTask, error) {
 	_ = services.ApplyCallOptions(opts)
+	task, err := s.searchPrimaryUserTask(ctx, key)
+	if err == nil {
+		return task, nil
+	}
+	if !errors.Is(err, d.ErrNotFound) {
+		return d.UserTask{}, err
+	}
+	return s.searchFallbackTask(ctx, key)
+}
+
+func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.UserTask, error) {
 	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated camunda client", key))
 	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)
 	if err != nil {
@@ -94,6 +131,30 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 	return task, nil
 }
 
+func (s *Service) searchFallbackTask(ctx context.Context, key string) (d.UserTask, error) {
+	if s.ct == nil {
+		return d.UserTask{}, fmt.Errorf("search fallback task: %w", common.ErrNoClientConfigured)
+	}
+	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated tasklist client fallback", key))
+	body := searchFallbackTaskRequest(common.EffectiveTenant(s.cfg), key)
+	resp, err := s.ct.SearchTasksWithResponse(ctx, body)
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("search fallback task: %w", err)
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.UserTask{}, fmt.Errorf("search fallback task: %w", err)
+	}
+	task, err := requireSingleFallbackTask(*payload, key)
+	if err != nil {
+		return d.UserTask{}, err
+	}
+	if task.ProcessInstanceKey == "" {
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s has no process instance key", d.ErrMalformedResponse, key)
+	}
+	return task, nil
+}
+
 // searchUserTaskRequest builds the v8.8 user-task search body used to find one task within the effective tenant.
 func searchUserTaskRequest(tenantID, key string) (camundav88.SearchUserTasksJSONRequestBody, error) {
 	tenantIDFilter, err := common.NewStringEqFilterPtr(tenantID)
@@ -109,6 +170,20 @@ func searchUserTaskRequest(tenantID, key string) (camundav88.SearchUserTasksJSON
 	}, nil
 }
 
+// searchFallbackTaskRequest builds the Tasklist V1 fallback search body used after the primary lookup misses.
+func searchFallbackTaskRequest(tenantID, key string) tasklistv88.SearchTasksJSONRequestBody {
+	implementation := tasklistv88.TaskSearchRequestImplementationJOBWORKER
+	body := tasklistv88.SearchTasksJSONRequestBody{
+		Implementation:     &implementation,
+		PageSize:           ptr(fallbackTaskSearchPageSize),
+		ProcessInstanceKey: &key,
+	}
+	if tenantID != "" {
+		body.TenantIds = &[]string{tenantID}
+	}
+	return body
+}
+
 // requireSingleUserTask turns the search response into lookup semantics, preserving missing and duplicate matches as domain errors.
 func requireSingleUserTask(items []camundav88.UserTaskResult, key string) (d.UserTask, error) {
 	switch len(items) {
@@ -119,4 +194,27 @@ func requireSingleUserTask(items []camundav88.UserTaskResult, key string) (d.Use
 	default:
 		return d.UserTask{}, fmt.Errorf("%w: user task %s returned %d matches", d.ErrMalformedResponse, key, len(items))
 	}
+}
+
+// requireSingleFallbackTask turns the Tasklist fallback response into lookup semantics.
+func requireSingleFallbackTask(items []tasklistv88.TaskSearchResponse, key string) (d.UserTask, error) {
+	matches := make([]d.UserTask, 0, len(items))
+	for _, item := range items {
+		task := fromTaskSearchResponse(item)
+		if task.Key == key {
+			matches = append(matches, task)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
+	case 1:
+		return matches[0], nil
+	default:
+		return d.UserTask{}, fmt.Errorf("%w: fallback user task %s returned %d matches", d.ErrMalformedResponse, key, len(matches))
+	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

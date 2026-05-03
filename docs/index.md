@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-265-gb638ce3`, commit `b638ce3`, built `2026-05-03T07:56:11Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-271-g4e1d50e-dirty`, commit `4e1d50e`, built `2026-05-03T09:37:28Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -229,9 +229,9 @@ When a script only needs the count of matching process instances, `./c8volt get 
 ./c8volt get pi --has-user-tasks <user-task-key> --json
 ```
 
-`--has-user-tasks` resolves owning process instances through tenant-aware native Camunda user-task search, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+`--has-user-tasks` resolves owning process instances through tenant-aware Camunda v2 user-task search first, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
 
-c8volt does not use Tasklist or Operate fallback APIs for user-task resolution.
+On Camunda `8.8` and `8.9`, a not-found v2 user-task result falls back to deprecated Tasklist V1 lookup for legacy user-task compatibility. Camunda `8.7` remains unsupported for `--has-user-tasks`, and non-not-found lookup failures are surfaced instead of being retried as fallback misses.
 
 ### Pull Exact Artifacts
 

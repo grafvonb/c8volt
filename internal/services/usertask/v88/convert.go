@@ -5,7 +5,9 @@ package v88
 
 import (
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
+	tasklistv88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/tasklist"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/toolx"
 )
 
 func fromUserTaskResult(r camundav88.UserTaskResult) d.UserTask {
@@ -13,5 +15,13 @@ func fromUserTaskResult(r camundav88.UserTaskResult) d.UserTask {
 		Key:                r.UserTaskKey,
 		ProcessInstanceKey: r.ProcessInstanceKey,
 		TenantId:           r.TenantId,
+	}
+}
+
+func fromTaskSearchResponse(r tasklistv88.TaskSearchResponse) d.UserTask {
+	return d.UserTask{
+		Key:                toolx.Deref(r.Id, ""),
+		ProcessInstanceKey: toolx.Deref(r.ProcessInstanceKey, ""),
+		TenantId:           toolx.Deref(r.TenantId, ""),
 	}
 }

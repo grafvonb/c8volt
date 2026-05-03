@@ -7,6 +7,7 @@ import (
 	"context"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
+	tasklistv89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/tasklist"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 )
@@ -19,5 +20,10 @@ type GenUserTaskClientCamunda interface {
 	SearchUserTasksWithResponse(ctx context.Context, body camundav89.SearchUserTasksJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchUserTasksResponse, error)
 }
 
+type GenUserTaskClientTasklist interface {
+	SearchTasksWithResponse(ctx context.Context, body tasklistv89.SearchTasksJSONRequestBody, reqEditors ...tasklistv89.RequestEditorFn) (*tasklistv89.SearchTasksResponse, error)
+}
+
 var _ API = (*Service)(nil)
 var _ GenUserTaskClientCamunda = (*camundav89.ClientWithResponses)(nil)
+var _ GenUserTaskClientTasklist = (*tasklistv89.ClientWithResponses)(nil)
