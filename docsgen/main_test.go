@@ -113,10 +113,16 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 		"--has-user-tasks strings",
 		"user task key(s) whose owning process instances should be fetched",
 		"./c8volt get pi --has-user-tasks \u003cuser-task-key\u003e",
-		"Tasklist or Operate fallback",
+		"Camunda v2 user-task search first",
+		"Tasklist V1 lookup for legacy user-task compatibility",
+		"Camunda 8.7 remains unsupported",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected generated docs to contain %q, got %q", want, got)
 		}
+	}
+
+	if strings.Contains(got, "There is no Tasklist or Operate fallback") {
+		t.Fatalf("expected generated docs to remove obsolete no-fallback wording, got %q", got)
 	}
 }

@@ -18,7 +18,7 @@ Search results support interactive paging, scriptable JSON aggregation, and coun
 
 Use --with-incidents with --key to include incident keys and messages for the returned process instance.
 
-User-task based lookup resolves owning process instances through tenant-aware native user-task search. There is no Tasklist or Operate fallback.
+User-task based lookup resolves owning process instances through tenant-aware Camunda v2 user-task search first. On Camunda 8.8 and 8.9, not-found user-task results fall back to deprecated Tasklist V1 lookup for legacy user-task compatibility; Camunda 8.7 remains unsupported.
 
 Run `c8volt get pi --help` for the complete flag reference.
 
