@@ -63,7 +63,7 @@ func init() {
 	embedCmd.AddCommand(embedListCmd)
 	embedListCmd.Flags().BoolVar(&flagEmbedListDetails, "details", false, "show full embedded file paths")
 	setCommandMutation(embedListCmd, CommandMutationReadOnly)
-	setContractSupport(embedListCmd, ContractSupportLimited)
+	setContractSupport(embedListCmd, ContractSupportFull)
 	setOutputModes(embedListCmd,
 		OutputModeContract{
 			Name:             RenderModeJSON.String(),

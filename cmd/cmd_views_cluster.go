@@ -92,6 +92,37 @@ func renderClusterVersion(cmd *cobra.Command, topology cluster.Topology, withBro
 	return nil
 }
 
+type clusterVersionView struct {
+	GatewayVersion string                     `json:"GatewayVersion"`
+	Brokers        []clusterBrokerVersionView `json:"Brokers,omitempty"`
+}
+
+type clusterBrokerVersionView struct {
+	NodeId  int32  `json:"NodeId"`
+	Version string `json:"Version"`
+	Host    string `json:"Host,omitempty"`
+}
+
+func newClusterVersionView(topology cluster.Topology, withBrokers bool) clusterVersionView {
+	view := clusterVersionView{
+		GatewayVersion: topology.GatewayVersion,
+	}
+	if !withBrokers {
+		return view
+	}
+
+	brokers := sortedClusterBrokers(topology)
+	view.Brokers = make([]clusterBrokerVersionView, 0, len(brokers))
+	for _, broker := range brokers {
+		view.Brokers = append(view.Brokers, clusterBrokerVersionView{
+			NodeId:  broker.NodeId,
+			Version: broker.Version,
+			Host:    broker.Host,
+		})
+	}
+	return view
+}
+
 // renderClusterLicenseFlat omits absent optional fields so missing API values stay distinct
 // from explicit false or zero values in human output.
 func renderClusterLicenseFlat(cmd *cobra.Command, license cluster.License) error {

@@ -16,7 +16,7 @@ var getClusterVersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show connected cluster version",
 	Long: "Show connected cluster version.\n\n" +
-		"This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id.",
+		"This command prints the gateway version by default. Use --with-brokers to include broker versions sorted by broker node id. Use --json for the structured version payload.",
 	Example: `  ./c8volt get cluster version
   ./c8volt get cluster version --with-brokers`,
 	Args: cobra.NoArgs,
@@ -30,11 +30,16 @@ func init() {
 	fs.BoolVar(&flagGetClusterVersionWithBrokers, "with-brokers", false, "include broker versions")
 
 	setCommandMutation(getClusterVersionCmd, CommandMutationReadOnly)
-	setContractSupport(getClusterVersionCmd, ContractSupportLimited)
+	setContractSupport(getClusterVersionCmd, ContractSupportFull)
 	setOutputModes(getClusterVersionCmd,
 		OutputModeContract{
 			Name:      RenderModeOneLine.String(),
 			Supported: true,
+		},
+		OutputModeContract{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
 		},
 	)
 }
@@ -50,6 +55,12 @@ func runGetClusterVersion(cmd *cobra.Command, args []string) {
 	topology, err := cli.GetClusterTopology(cmd.Context())
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster version: %w", err))
+	}
+	if pickMode() == RenderModeJSON {
+		if err := renderJSONPayload(cmd, RenderModeJSON, newClusterVersionView(topology, flagGetClusterVersionWithBrokers)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster version: %w", err))
+		}
+		return
 	}
 	if err := renderClusterVersion(cmd, topology, flagGetClusterVersionWithBrokers); err != nil {
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render cluster version: %w", err))

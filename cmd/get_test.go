@@ -309,7 +309,66 @@ func TestGetClusterVersionCommand_WithBrokersOutput(t *testing.T) {
 	require.NotContains(t, output, "Partition")
 }
 
-// Verifies nested `get cluster topology --json` preserves structured JSON output.
+// Verifies nested `get cluster version --json` returns an enveloped version-specific JSON payload.
+func TestGetClusterVersionCommand_JSONGatewayOnlyOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "version", "--json")
+
+	var envelope ResultEnvelope[clusterVersionView]
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, "get cluster version", envelope.Command)
+	version := envelope.Payload
+	require.Equal(t, "8.8.2", version.GatewayVersion)
+	require.Empty(t, version.Brokers)
+	require.Contains(t, output, `"GatewayVersion": "8.8.2"`)
+	require.NotContains(t, output, `"Brokers"`)
+	require.NotContains(t, output, "GatewayVersion:")
+	require.NotContains(t, output, "Broker 1:")
+}
+
+// Verifies nested `get cluster version --with-brokers --json` keeps broker versions enveloped, structured, and sorted.
+func TestGetClusterVersionCommand_JSONWithBrokersOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "version", "--with-brokers", "--json")
+
+	var envelope ResultEnvelope[clusterVersionView]
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, "get cluster version", envelope.Command)
+	version := envelope.Payload
+	require.Equal(t, "8.8.2", version.GatewayVersion)
+	require.Equal(t, []clusterBrokerVersionView{
+		{NodeId: 1, Version: "8.8.1", Host: "broker-a.internal"},
+		{NodeId: 2, Version: "8.8.2", Host: "broker-b.internal"},
+		{NodeId: 3, Version: "8.8.0", Host: "broker-c.internal"},
+	}, version.Brokers)
+	require.Contains(t, output, `"Brokers"`)
+	require.Contains(t, output, `"NodeId": 1`)
+	require.NotContains(t, output, "GatewayVersion:")
+	require.NotContains(t, output, "Broker 1:")
+	require.NotContains(t, output, "Partition")
+}
+
+// Verifies nested `get cluster topology --json` preserves structured JSON output inside the shared envelope.
 func TestGetClusterTopologyNestedCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -323,8 +382,11 @@ func TestGetClusterTopologyNestedCommand_JSONOutput(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "topology", "--json")
 
-	var topology cluster.Topology
-	require.NoError(t, json.Unmarshal([]byte(output), &topology))
+	var envelope ResultEnvelope[cluster.Topology]
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, "get cluster topology", envelope.Command)
+	topology := envelope.Payload
 	require.Equal(t, "8.8.2", topology.GatewayVersion)
 	require.Len(t, topology.Brokers, 3)
 	require.Contains(t, output, `"GatewayVersion": "8.8.2"`)
@@ -498,7 +560,7 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 	require.NotContains(t, output, `"ValidLicense"`)
 }
 
-// Verifies nested `get cluster license --json` preserves structured JSON output.
+// Verifies nested `get cluster license --json` preserves structured JSON output inside the shared envelope.
 func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -512,8 +574,11 @@ func TestGetClusterLicenseNestedCommand_JSONOutput(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "license", "--json")
 
-	var license cluster.License
-	require.NoError(t, json.Unmarshal([]byte(output), &license))
+	var envelope ResultEnvelope[cluster.License]
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, "get cluster license", envelope.Command)
+	license := envelope.Payload
 	require.Equal(t, "Enterprise", license.LicenseType)
 	require.True(t, license.ValidLicense)
 	require.NotNil(t, license.ExpiresAt)
@@ -543,7 +608,7 @@ func TestGetClusterLicenceAliasNestedCommand_Success(t *testing.T) {
 	require.NotContains(t, output, `"ValidLicense"`)
 }
 
-// Verifies British spelling preserves the structured license JSON behavior.
+// Verifies British spelling preserves the structured license JSON behavior inside the shared envelope.
 func TestGetClusterLicenceAliasNestedCommand_JSONOutput(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -557,8 +622,11 @@ func TestGetClusterLicenceAliasNestedCommand_JSONOutput(t *testing.T) {
 
 	output := executeRootForTest(t, "--config", cfgPath, "get", "cluster", "licence", "--json")
 
-	var license cluster.License
-	require.NoError(t, json.Unmarshal([]byte(output), &license))
+	var envelope ResultEnvelope[cluster.License]
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, OutcomeSucceeded, envelope.Outcome)
+	require.Equal(t, "get cluster license", envelope.Command)
+	license := envelope.Payload
 	require.Equal(t, "Enterprise", license.LicenseType)
 	require.True(t, license.ValidLicense)
 	require.Contains(t, output, `"LicenseType": "Enterprise"`)
@@ -567,7 +635,7 @@ func TestGetClusterLicenceAliasNestedCommand_JSONOutput(t *testing.T) {
 	require.NotContains(t, output, "ValidLicense:")
 }
 
-// Verifies cluster topology and license commands advertise JSON as the machine-preferred mode.
+// Verifies cluster commands advertise JSON as the machine-preferred mode when they support structured output.
 func TestGetClusterCommands_JSONOutputModeMetadata(t *testing.T) {
 	require.Equal(t, []OutputModeContract{
 		{
@@ -576,6 +644,17 @@ func TestGetClusterCommands_JSONOutputModeMetadata(t *testing.T) {
 			MachinePreferred: true,
 		},
 	}, outputModesForCommand(getClusterTopologyNestedCmd))
+	require.Equal(t, []OutputModeContract{
+		{
+			Name:      RenderModeOneLine.String(),
+			Supported: true,
+		},
+		{
+			Name:             RenderModeJSON.String(),
+			Supported:        true,
+			MachinePreferred: true,
+		},
+	}, outputModesForCommand(getClusterVersionCmd))
 	require.Equal(t, []OutputModeContract{
 		{
 			Name:             RenderModeJSON.String(),
