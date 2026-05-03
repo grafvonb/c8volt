@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// sortedClusterBrokers gives renderers stable output without mutating service payloads.
 func sortedClusterBrokers(topology cluster.Topology) []cluster.Broker {
 	brokers := append([]cluster.Broker(nil), topology.Brokers...)
 	sort.SliceStable(brokers, func(i, j int) bool {
@@ -20,6 +21,7 @@ func sortedClusterBrokers(topology cluster.Topology) []cluster.Broker {
 	return brokers
 }
 
+// sortedBrokerPartitions keeps partition rows deterministic while preserving the source broker.
 func sortedBrokerPartitions(broker cluster.Broker) []cluster.Partition {
 	partitions := append([]cluster.Partition(nil), broker.Partitions...)
 	sort.SliceStable(partitions, func(i, j int) bool {
@@ -43,6 +45,8 @@ func formatClusterSummary(topology cluster.Topology) string {
 	)
 }
 
+// renderClusterTopologyTree mirrors the existing tree-style CLI output while making
+// broker and partition order independent of the API response order.
 func renderClusterTopologyTree(cmd *cobra.Command, topology cluster.Topology) error {
 	renderOutputLine(cmd, "%s", formatClusterSummary(topology))
 
@@ -71,6 +75,8 @@ func renderClusterTopologyTree(cmd *cobra.Command, topology cluster.Topology) er
 	return nil
 }
 
+// renderClusterVersion intentionally reads from topology because the version command
+// shares the cluster endpoint and only expands broker details on request.
 func renderClusterVersion(cmd *cobra.Command, topology cluster.Topology, withBrokers bool) error {
 	if !withBrokers {
 		renderOutputLine(cmd, "%s", topology.GatewayVersion)
@@ -86,6 +92,8 @@ func renderClusterVersion(cmd *cobra.Command, topology cluster.Topology, withBro
 	return nil
 }
 
+// renderClusterLicenseFlat omits absent optional fields so missing API values stay distinct
+// from explicit false or zero values in human output.
 func renderClusterLicenseFlat(cmd *cobra.Command, license cluster.License) error {
 	renderOutputLine(cmd, "ValidLicense: %t", license.ValidLicense)
 	renderOutputLine(cmd, "LicenseType: %s", license.LicenseType)

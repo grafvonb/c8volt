@@ -187,6 +187,7 @@ func TestCapabilityDocumentForRoot_ExcludesHiddenAndShellInternalCommands(t *tes
 	require.NotContains(t, paths, "__complete")
 }
 
+// Protects the discovery contract after removing the direct topology command and aliases.
 func TestCapabilityDocumentForRoot_ExcludesRemovedClusterTopologyCommand(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -202,6 +203,7 @@ func TestCapabilityDocumentForRoot_ExcludesRemovedClusterTopologyCommand(t *test
 	require.Contains(t, paths, "get cluster version")
 }
 
+// commandCapabilityPaths flattens nested discovery output so removed aliases cannot hide under `get`.
 func commandCapabilityPaths(commands []CommandCapability) []string {
 	var paths []string
 	for _, command := range commands {

@@ -39,6 +39,8 @@ func init() {
 	)
 }
 
+// runGetClusterVersion uses topology as the source of truth because Camunda exposes
+// gateway and broker versions through the topology API.
 func runGetClusterVersion(cmd *cobra.Command, args []string) {
 	cli, log, cfg, err := NewCli(cmd)
 	if err != nil {

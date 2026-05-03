@@ -12,7 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Verifies completion bootstrap bypass detection treats internal completion seams as safe bootstrap exceptions.
+// Protects bootstrap bypass from matching only by leaf command name; nested commands like
+// `get cluster version` still need the full service bootstrap.
 func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *testing.T) {
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__complete"}))
 	require.True(t, bypassRootBootstrap(&cobra.Command{Use: "__completeNoDesc"}))

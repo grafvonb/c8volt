@@ -31,6 +31,8 @@ func isUtilityCommand(cmd *cobra.Command) bool {
 	return ok
 }
 
+// bootstrapCommandPath keeps bootstrap bypass keyed by the user-facing path, so nested
+// commands like `get cluster version` do not collide with top-level utilities.
 func bootstrapCommandPath(cmd *cobra.Command) string {
 	if cmd == nil {
 		return ""

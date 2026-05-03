@@ -33,7 +33,7 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 	require.Equal(t, 45*time.Second, cfg.App.Backoff.Timeout)
 }
 
-// Verifies `get --help` lists supported get subcommands.
+// Verifies `get --help` keeps supported resources discoverable without the removed topology shortcut.
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
@@ -146,7 +146,7 @@ func TestGetResourceHelp(t *testing.T) {
 	require.Contains(t, output, "--keys-only")
 }
 
-// Verifies `get cluster --help` exposes nested cluster resource commands.
+// Verifies `get cluster --help` exposes the nested topology, version, and license commands.
 func TestGetClusterHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "--help")
 
@@ -163,7 +163,7 @@ func TestGetClusterHelp(t *testing.T) {
 	require.Contains(t, output, "./c8volt get cluster license")
 }
 
-// Verifies `get cluster license --help` describes license retrieval usage.
+// Verifies license help advertises the human default and structured JSON escape hatch.
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
@@ -414,7 +414,7 @@ func TestRenderClusterTopologyTree_SortsBrokersAndPartitions(t *testing.T) {
 	require.Equal(t, int32(4), topology.Brokers[0].Partitions[0].PartitionId)
 }
 
-// Verifies the removed direct cluster-topology command path and aliases no longer resolve.
+// Protects removal of the old direct topology path from both command execution and aliases.
 func TestGetClusterTopologyLegacyCommand_NotFound(t *testing.T) {
 	for _, args := range [][]string{
 		{"get", "cluster-topology"},
@@ -455,7 +455,7 @@ func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
 	require.NotContains(t, output, `"command"`)
 }
 
-// Verifies nested `get cluster license` succeeds with required license fields.
+// Verifies the human license default omits optional fields that the API did not send.
 func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -477,7 +477,7 @@ func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	require.NotContains(t, output, `"LicenseType"`)
 }
 
-// Verifies optional license fields are rendered when the API returns them.
+// Verifies optional license fields are rendered only when the API returns them.
 func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
@@ -630,7 +630,7 @@ func TestGetClusterTopologyNestedCommand_Failure(t *testing.T) {
 	require.NotContains(t, string(output), "fetch cluster topology")
 }
 
-// Verifies nested cluster version HTTP failures reuse topology failure behavior.
+// Verifies version failures keep the user-facing command context while reusing topology errors.
 func TestGetClusterVersionCommand_Failure(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v2/topology", r.URL.Path)
@@ -1547,6 +1547,8 @@ func resetCommandTreeFlags(cmd *cobra.Command) {
 	testx.ResetCommandTreeFlags(cmd)
 }
 
+// The cluster fixtures below pin API edge cases without repeating long JSON payloads in
+// each test that exercises human, JSON, and version-specific output.
 func singleBrokerClusterTopologyFixtureJSON() string {
 	return `{
   "brokers": [
