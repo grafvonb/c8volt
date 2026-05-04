@@ -18,6 +18,7 @@ Started: 2026-05-04 11:53:07
 - Dedicated local-only config diagnostic commands such as `config validate` should be listed in `utilityCommandPaths` so root bootstrap loads config into context without full validation/auth setup; the leaf command then owns shared helper execution.
 - `config template` is a local-only diagnostic command that should stay in `utilityCommandPaths` and reuse `renderBlankConfigTemplateYAML` so it never depends on the active effective configuration.
 - `config test-connection` is also a utility command: root loads normalized config and source metadata into context, then the leaf command validates locally, installs remote HTTP/auth services through `installRemoteCommandServices`, and calls `NewCli` for topology retrieval.
+- Capability contract tests assert generated Cobra flag descriptions exactly, so help text changes such as compatibility shortcut wording must be mirrored in `cmd/command_contract_test.go`.
 
 ---
 ## Iteration 1 - 2026-05-04 11:54:47 CEST
@@ -196,4 +197,25 @@ Started: 2026-05-04 11:53:07
 - Generated config command docs now protect the new subcommand pages and legacy shortcut wording through `docsgen` tests instead of relying only on checked-in markdown diffs.
 - `make docs-content` syncs the docs homepage from README and refreshes `docs/cli/`; no tracked `docs/_site/` artifacts exist for this repository.
 - Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestConfigHelp|TestCommandContract' -count=1`, `GOCACHE=/tmp/c8volt-go-build go test ./docsgen -count=1`, and `GOCACHE=/tmp/c8volt-go-build make docs-content`.
+---
+---
+## Iteration 8 - 2026-05-04 12:30:44 CEST
+**User Story**: Phase 8: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T049: Run `gofmt -w cmd/config.go cmd/config_show.go cmd/config_validate.go cmd/config_template.go cmd/config_test_connection.go cmd/config_test.go cmd/root.go cmd/command_contract_test.go`
+- [x] T050: Run `go test ./cmd -count=1` and fix any command-package regressions
+- [x] T051: Run `make test` and fix any repository validation failures
+- [x] T052: Review `specs/166-config-diagnostics-subcommands/quickstart.md` against implemented behavior and update if command examples changed
+- [x] T053: Verify `git diff` contains only issue #166 implementation, docs, generated docs, and Speckit artifacts before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/command_contract_test.go
+- specs/166-config-diagnostics-subcommands/tasks.md
+- specs/166-config-diagnostics-subcommands/progress.md
+**Learnings**:
+- `gofmt` produced no code changes across the config command files, confirming prior implementation formatting was stable.
+- `go test ./cmd -count=1` exposed a stale generated command contract expectation for the `config show` compatibility flag descriptions; updating that assertion aligned it with the US5 help and docs wording.
+- Quickstart examples already matched the implemented `config validate`, `config template`, and `config test-connection` behavior, so no quickstart content update was required.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -count=1` and `GOCACHE=/tmp/c8volt-go-build make test`.
 ---

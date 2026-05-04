@@ -163,11 +163,11 @@
 
 **Purpose**: Final cleanup, validation, and repository-wide proof.
 
-- [ ] T049 [P] Run `gofmt -w cmd/config.go cmd/config_show.go cmd/config_validate.go cmd/config_template.go cmd/config_test_connection.go cmd/config_test.go cmd/root.go cmd/command_contract_test.go`
-- [ ] T050 Run `go test ./cmd -count=1` and fix any command-package regressions
-- [ ] T051 Run `make test` and fix any repository validation failures
-- [ ] T052 [P] Review `specs/166-config-diagnostics-subcommands/quickstart.md` against implemented behavior and update if command examples changed
-- [ ] T053 Verify `git diff` contains only issue #166 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T049 [P] Run `gofmt -w cmd/config.go cmd/config_show.go cmd/config_validate.go cmd/config_template.go cmd/config_test_connection.go cmd/config_test.go cmd/root.go cmd/command_contract_test.go`
+- [x] T050 Run `go test ./cmd -count=1` and fix any command-package regressions
+- [x] T051 Run `make test` and fix any repository validation failures
+- [x] T052 [P] Review `specs/166-config-diagnostics-subcommands/quickstart.md` against implemented behavior and update if command examples changed
+- [x] T053 Verify `git diff` contains only issue #166 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 

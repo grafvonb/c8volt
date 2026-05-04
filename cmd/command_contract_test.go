@@ -217,14 +217,14 @@ func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "validate the effective configuration and exit with an error code if invalid",
+		Description: "compatibility shortcut: validate the effective configuration and exit with an error code if invalid",
 	})
 	require.Contains(t, show.Flags, FlagContract{
 		Name:        "template",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "print a blank configuration template",
+		Description: "compatibility shortcut: print a blank configuration template",
 	})
 
 	for _, path := range []string{
