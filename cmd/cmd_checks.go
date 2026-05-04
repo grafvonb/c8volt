@@ -15,12 +15,14 @@ var completionCommands = map[string]struct{}{
 }
 
 var utilityCommandPaths = map[string]struct{}{
-	"capabilities": {},
-	"help":         {},
-	"version":      {},
-	"completion":   {},
-	"config":       {},
-	"config show":  {},
+	"capabilities":    {},
+	"help":            {},
+	"version":         {},
+	"completion":      {},
+	"config":          {},
+	"config show":     {},
+	"config template": {},
+	"config validate": {},
 }
 
 func isUtilityCommand(cmd *cobra.Command) bool {

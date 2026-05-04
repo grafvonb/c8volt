@@ -26,7 +26,9 @@ func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
 	require.Contains(t, output, "Inspect and validate c8volt configuration")
 	require.Contains(t, output, "view effective settings")
 	require.Contains(t, output, "`config show`")
+	require.Contains(t, output, "`config validate`")
 	require.Contains(t, output, "./c8volt config show")
+	require.Contains(t, output, "./c8volt --config ./config.yaml config validate")
 	require.Contains(t, output, "./c8volt config show --template")
 }
 
@@ -36,6 +38,24 @@ func TestConfigShowHelp_ExplainsEffectiveConfigExamples(t *testing.T) {
 	require.Contains(t, output, "Show effective configuration with sensitive values sanitized")
 	require.Contains(t, output, "flag > env > profile > base config > default")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config show --validate")
+}
+
+func TestConfigValidateHelp_ExplainsDirectValidation(t *testing.T) {
+	output := executeRootForTest(t, "config", "validate", "--help")
+
+	require.Contains(t, output, "Validate effective configuration")
+	require.Contains(t, output, "same validation behavior as `config show --validate`")
+	require.Contains(t, output, "./c8volt --config ./config.yaml config validate")
+	require.NotContains(t, output, "--template")
+}
+
+func TestConfigTemplateHelp_ExplainsDirectTemplateRendering(t *testing.T) {
+	output := executeRootForTest(t, "config", "template", "--help")
+
+	require.Contains(t, output, "Print a blank configuration template")
+	require.Contains(t, output, "same blank configuration template as `config show --template`")
+	require.Contains(t, output, "./c8volt config template")
+	require.NotContains(t, output, "--validate")
 }
 
 func TestConfigShowCommand_PrintsSanitizedEffectiveConfigAndWarnings(t *testing.T) {
@@ -83,6 +103,25 @@ apis:
 	require.Contains(t, string(output), "INFO configuration is valid")
 }
 
+func TestConfigValidateCommand_PreservesValidOutcome(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: https://camunda.example.test
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestConfigDiagnosticValidateHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":            cfgPath,
+		"C8VOLT_TEST_CONFIG_DIAGNOSTIC": "validate",
+	})
+	require.NoError(t, err)
+	require.Contains(t, string(output), "INFO configuration is valid")
+	require.NotContains(t, string(output), "tenant: tenant-a")
+}
+
 func TestConfigShowCommand_ValidatePreservesInvalidOutcome(t *testing.T) {
 	cfgPath := writeRawTestConfig(t, `auth:
   mode: none
@@ -101,6 +140,75 @@ func TestConfigShowCommand_ValidatePreservesInvalidOutcome(t *testing.T) {
 	require.Contains(t, string(output), "apis.camunda_api.base_url: base_url is required")
 }
 
+func TestConfigValidateCommand_PreservesInvalidOutcome(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `auth:
+  mode: none
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestConfigDiagnosticValidateHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":            cfgPath,
+		"C8VOLT_TEST_CONFIG_DIAGNOSTIC": "validate",
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "local precondition failed")
+	require.Contains(t, string(output), "configuration is invalid")
+	require.Contains(t, string(output), "apis.camunda_api.base_url: base_url is required")
+}
+
+func TestConfigValidateCommand_MatchesShowValidateOutcomes(t *testing.T) {
+	validCfgPath := writeRawTestConfig(t, `app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: https://camunda.example.test
+`)
+
+	showValidOutput, showValidErr := testx.RunCmdSubprocess(t, "TestConfigDiagnosticValidateHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":            validCfgPath,
+		"C8VOLT_TEST_CONFIG_DIAGNOSTIC": "show-validate",
+	})
+	validateValidOutput, validateValidErr := testx.RunCmdSubprocess(t, "TestConfigDiagnosticValidateHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":            validCfgPath,
+		"C8VOLT_TEST_CONFIG_DIAGNOSTIC": "validate",
+	})
+	require.NoError(t, showValidErr)
+	require.NoError(t, validateValidErr)
+	require.Contains(t, string(showValidOutput), "INFO configuration is valid")
+	require.Contains(t, string(validateValidOutput), "INFO configuration is valid")
+
+	invalidCfgPath := writeRawTestConfig(t, `auth:
+  mode: none
+`)
+
+	showInvalidOutput, showInvalidErr := testx.RunCmdSubprocess(t, "TestConfigDiagnosticValidateHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":            invalidCfgPath,
+		"C8VOLT_TEST_CONFIG_DIAGNOSTIC": "show-validate",
+	})
+	validateInvalidOutput, validateInvalidErr := testx.RunCmdSubprocess(t, "TestConfigDiagnosticValidateHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":            invalidCfgPath,
+		"C8VOLT_TEST_CONFIG_DIAGNOSTIC": "validate",
+	})
+	require.Error(t, showInvalidErr)
+	require.Error(t, validateInvalidErr)
+
+	showExitErr, ok := showInvalidErr.(*exec.ExitError)
+	require.True(t, ok)
+	validateExitErr, ok := validateInvalidErr.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, showExitErr.ExitCode(), validateExitErr.ExitCode())
+	for _, output := range [][]byte{showInvalidOutput, validateInvalidOutput} {
+		require.Contains(t, string(output), "local precondition failed")
+		require.Contains(t, string(output), "configuration is invalid")
+		require.Contains(t, string(output), "apis.camunda_api.base_url: base_url is required")
+	}
+}
+
 func TestConfigShowCommand_TemplatePreservesBlankTemplateOutput(t *testing.T) {
 	_, expected, err := renderBlankConfigTemplateYAML()
 	require.NoError(t, err)
@@ -111,6 +219,16 @@ func TestConfigShowCommand_TemplatePreservesBlankTemplateOutput(t *testing.T) {
 	require.Contains(t, output, "mode: oauth2|cookie|none")
 	require.Contains(t, output, "format: text|json|plain")
 	require.NotContains(t, output, "'*****'")
+}
+
+func TestConfigTemplateCommand_MatchesShowTemplateOutput(t *testing.T) {
+	showOutput := executeRootForTest(t, "config", "show", "--template")
+	templateOutput := executeRootForTest(t, "config", "template")
+
+	require.Equal(t, showOutput, templateOutput)
+	require.Contains(t, templateOutput, "mode: oauth2|cookie|none")
+	require.Contains(t, templateOutput, "format: text|json|plain")
+	require.NotContains(t, templateOutput, "'*****'")
 }
 
 func TestConfigShowCommand_RejectsValidateAndTemplateTogether(t *testing.T) {
@@ -444,6 +562,25 @@ func TestConfigShowCommand_ValidatePreservesInvalidOutcomeHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "show", "--validate"}
+
+	Execute()
+}
+
+func TestConfigDiagnosticValidateHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	switch os.Getenv("C8VOLT_TEST_CONFIG_DIAGNOSTIC") {
+	case "show-validate":
+		os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "show", "--validate"}
+	case "validate":
+		os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "validate"}
+	default:
+		t.Fatalf("unsupported config diagnostic helper command: %q", os.Getenv("C8VOLT_TEST_CONFIG_DIAGNOSTIC"))
+	}
 
 	Execute()
 }

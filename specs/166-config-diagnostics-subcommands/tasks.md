@@ -69,16 +69,16 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Add help/discovery tests for `config validate` in `cmd/config_test.go`
-- [ ] T016 [P] [US2] Add valid and invalid `config validate` command tests in `cmd/config_test.go`
-- [ ] T017 [P] [US2] Add equivalence tests comparing `config validate` and `config show --validate` outcomes in `cmd/config_test.go`
+- [x] T015 [P] [US2] Add help/discovery tests for `config validate` in `cmd/config_test.go`
+- [x] T016 [P] [US2] Add valid and invalid `config validate` command tests in `cmd/config_test.go`
+- [x] T017 [P] [US2] Add equivalence tests comparing `config validate` and `config show --validate` outcomes in `cmd/config_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Add `configValidateCmd` under `configCmd` in `cmd/config_validate.go`
-- [ ] T019 [US2] Wire `config validate` to load the effective config from context and call the shared validation helper in `cmd/config_validate.go`
-- [ ] T020 [US2] Update `configCmd` long text and examples for `config validate` in `cmd/config.go`
-- [ ] T021 [US2] Run `go test ./cmd -run 'TestConfig.*Validate|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_validate.go`, `cmd/config.go`, or `cmd/config_test.go`
+- [x] T018 [US2] Add `configValidateCmd` under `configCmd` in `cmd/config_validate.go`
+- [x] T019 [US2] Wire `config validate` to load the effective config from context and call the shared validation helper in `cmd/config_validate.go`
+- [x] T020 [US2] Update `configCmd` long text and examples for `config validate` in `cmd/config.go`
+- [x] T021 [US2] Run `go test ./cmd -run 'TestConfig.*Validate|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_validate.go`, `cmd/config.go`, or `cmd/config_test.go`
 
 **Checkpoint**: User Story 2 is independently complete when `config validate` validates through the same observable path as the legacy flag.
 
@@ -92,15 +92,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T022 [P] [US3] Add help/discovery tests for `config template` in `cmd/config_test.go`
-- [ ] T023 [P] [US3] Add template output equivalence tests for `config template` and `config show --template` in `cmd/config_test.go`
+- [x] T022 [P] [US3] Add help/discovery tests for `config template` in `cmd/config_test.go`
+- [x] T023 [P] [US3] Add template output equivalence tests for `config template` and `config show --template` in `cmd/config_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Add `configTemplateCmd` under `configCmd` in `cmd/config_template.go`
-- [ ] T025 [US3] Wire `config template` to call the shared template rendering helper in `cmd/config_template.go`
-- [ ] T026 [US3] Update `configCmd` long text and examples for `config template` in `cmd/config.go`
-- [ ] T027 [US3] Run `go test ./cmd -run 'TestConfig.*Template|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_template.go`, `cmd/config.go`, or `cmd/config_test.go`
+- [x] T024 [US3] Add `configTemplateCmd` under `configCmd` in `cmd/config_template.go`
+- [x] T025 [US3] Wire `config template` to call the shared template rendering helper in `cmd/config_template.go`
+- [x] T026 [US3] Update `configCmd` long text and examples for `config template` in `cmd/config.go`
+- [x] T027 [US3] Run `go test ./cmd -run 'TestConfig.*Template|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_template.go`, `cmd/config.go`, or `cmd/config_test.go`
 
 **Checkpoint**: User Story 3 is independently complete when dedicated and compatibility template commands render equivalent output.
 
