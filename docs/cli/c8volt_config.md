@@ -13,7 +13,9 @@ Inspect and validate c8volt configuration
 Inspect and validate c8volt configuration.
 
 Use `config show` to view effective settings, validate configuration, or print
-a blank template.
+a blank template. Use `config validate` to check the effective configuration
+directly, `config template` to print a starter configuration file, or
+`config test-connection` to validate configuration and test Camunda reachability.
 
 ```
 c8volt config [flags]
@@ -23,8 +25,11 @@ c8volt config [flags]
 
 ```
   ./c8volt config show
-  ./c8volt config show --template
+  ./c8volt --config ./config.yaml config validate
+  ./c8volt config template
+  ./c8volt --config ./config.yaml config test-connection
   ./c8volt --config ./config.yaml config show --validate
+  ./c8volt config show --template
   ./c8volt --profile prod config show
 ```
 
@@ -56,4 +61,7 @@ c8volt config [flags]
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 * [c8volt config show](c8volt_config_show)	 - Show effective configuration
+* [c8volt config template](c8volt_config_template)	 - Print a blank configuration template
+* [c8volt config test-connection](c8volt_config_test-connection)	 - Test configured Camunda connection
+* [c8volt config validate](c8volt_config_validate)	 - Validate effective configuration
 

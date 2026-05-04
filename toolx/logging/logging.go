@@ -75,13 +75,21 @@ func New(cfg LoggerConfig) *slog.Logger {
 	}
 	writer = ensureSynchronizedWriter(writer)
 	var handler slog.Handler
-	switch strings.ToLower(cfg.Format) {
+	format := strings.ToLower(strings.TrimSpace(cfg.Format))
+	if format == "" {
+		format = "plain-time"
+	}
+	switch format {
 	case "json":
 		handler = slog.NewJSONHandler(writer, opts)
 	case "plain":
 		handler = NewPlainHandler(writer, opts.Level).
 			WithSource(cfg.WithSource).
-			WithTimestamp(lv < slog.LevelInfo)
+			WithTimestampLayout(PlainTimestampLayout)
+	case "plain-time":
+		handler = NewPlainHandler(writer, opts.Level).
+			WithSource(cfg.WithSource).
+			WithTimestampLayout(PlainTimeTimestampLayout)
 	default:
 		handler = slog.NewTextHandler(writer, opts)
 	}

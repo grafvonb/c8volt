@@ -451,7 +451,7 @@ func (c *Config) toYaml(opts yamlExportOptions) (string, error) {
 
 var templateHints = map[string]string{
 	"mode":     "oauth2|cookie|none",
-	"format":   "text|json|plain",
+	"format":   "plain-time|plain|text|json",
 	"level":    "debug|info|warn|error",
 	"strategy": "exponential|fixed",
 }

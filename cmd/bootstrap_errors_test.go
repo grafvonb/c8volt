@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -88,6 +89,8 @@ auth:
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "local precondition failed: normalize config:")
+	require.NotContains(t, string(output), "Error: local precondition failed")
+	require.Equal(t, 1, strings.Count(string(output), "local precondition failed: normalize config:"))
 }
 
 // Verifies v8.9 command execution now proceeds past bootstrap and surfaces downstream runtime failures normally.

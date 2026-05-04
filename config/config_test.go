@@ -460,6 +460,20 @@ func TestHTTPValidate_RejectsInvalidAndNonPositiveTimeouts(t *testing.T) {
 	require.NoError(t, (&HTTP{Timeout: "30s"}).Validate())
 }
 
+func TestLogNormalize_DefaultsToPlainTimeFormat(t *testing.T) {
+	log := Log{}
+
+	log.Normalize()
+
+	require.Equal(t, "plain-time", log.Format)
+	require.Equal(t, "info", log.Level)
+	require.NoError(t, log.Validate())
+}
+
+func TestLogValidate_AcceptsPlainTimeFormat(t *testing.T) {
+	require.NoError(t, (&Log{Level: "info", Format: "plain-time"}).Validate())
+}
+
 func TestResolveEffectiveConfig_UnknownProfileReturnsSentinel(t *testing.T) {
 	v := viper.New()
 	v.SetConfigType("yaml")

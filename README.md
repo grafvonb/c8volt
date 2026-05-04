@@ -1,4 +1,4 @@
-<img src="./docs/logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
+<img src="./docs/logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
@@ -9,84 +9,6 @@
 > If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you.
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results.
-
-## Fast Start
-
-### 1. Install
-
-Download the appropriate archive from [c8volt Releases](https://github.com/grafvonb/c8volt/releases), unpack it, then verify the binary:
-
-```bash
-./c8volt version
-```
-
-Each release archive includes a ready-to-edit `config.example.yaml` next to the binary. Copy or edit it into `config.yaml` for your environment.
-
-### 2. Configure
-
-For local Camunda 8 Run or another unsecured development cluster, the smallest useful config is:
-
-```yaml
-app:
-  camunda_version: "8.9"
-apis:
-  camunda_api:
-    base_url: "http://localhost:8080"
-auth:
-  mode: none
-log:
-  level: info
-```
-
-For the normal case, set only `apis.camunda_api.base_url`. `c8volt` derives:
-
-- Camunda API as `.../v2`
-- Operate API as `.../v1`
-- Tasklist API as `.../v1`
-
-Common config locations:
-
-- `./config.yaml`
-- `$HOME/.c8volt/config.yaml`
-- `$HOME/.config/c8volt/config.yaml`
-
-You can also point to a file explicitly:
-
-```bash
-./c8volt --config ./config.yaml config show --validate
-```
-
-Useful setup commands:
-
-```bash
-./c8volt config show
-./c8volt config show --validate
-./c8volt config show --template
-./c8volt --profile prod config show
-```
-
-### 3. Verify Connectivity
-
-```bash
-./c8volt get cluster topology
-./c8volt get cluster version
-./c8volt get cluster license
-./c8volt get cluster licence
-```
-
-Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
-
-### 4. Get A Runnable Environment
-
-Deploy bundled BPMN fixtures directly from the binary:
-
-```bash
-./c8volt embed list
-./c8volt embed deploy --all
-./c8volt embed deploy --all --run
-```
-
-This is the quickest path from a clean environment to real process instances you can inspect, wait for, cancel, and delete.
 
 ## Why c8volt
 
@@ -116,6 +38,120 @@ That is the gap `c8volt` closes.
 - validate config and inspect cluster metadata when setting up or troubleshooting
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
+
+## Fast Start
+
+This path is intentionally boring: copy one file, edit two values, validate, test the connection, then run one harmless read command.
+
+```bash
+# 1. Copy the starter config. Pick the path that matches how you got c8volt.
+# Release archive:
+cp config.example.yaml config.yaml
+
+# Source checkout:
+cp config/templates/config.example.yaml config.yaml
+
+# 2. Edit config.yaml:
+# - app.camunda_version: "8.9"
+# - apis.camunda_api.base_url: "http://localhost:8080"
+# - auth.mode: none for local/dev, oauth2 for protected clusters
+
+# 3. Check local config shape before touching Camunda.
+./c8volt --config ./config.yaml config validate
+
+# 4. Test the real connection and confirm the profile/base URL/version.
+./c8volt --config ./config.yaml config test-connection
+
+# 5. Run one safe read command.
+./c8volt --config ./config.yaml get cluster version
+```
+
+For scripts or CI, keep stdout machine-readable and logs on stderr:
+
+```bash
+./c8volt --config ./config.yaml config test-connection --json
+```
+
+### 1. Install
+
+Download the appropriate archive from [c8volt Releases](https://github.com/grafvonb/c8volt/releases), unpack it, then verify the binary:
+
+```bash
+./c8volt version
+```
+
+Each release archive includes a ready-to-edit `config.example.yaml` next to the binary. Source checkouts keep the same starter file at `config/templates/config.example.yaml`.
+
+### 2. Configure
+
+For local Camunda 8 Run, Docker Compose, Kind, or another unsecured development cluster, the smallest useful config is:
+
+```yaml
+app:
+  camunda_version: "8.9"
+apis:
+  camunda_api:
+    base_url: "http://localhost:8080"
+auth:
+  mode: none
+log:
+  level: info
+```
+
+For most environments, set only `apis.camunda_api.base_url`. `c8volt` derives:
+
+- Camunda API as `.../v2`
+- Operate API as `.../v1`
+- Tasklist API as `.../v1`
+
+Common config locations:
+
+- `./config.yaml`
+- `$HOME/.c8volt/config.yaml`
+- `$HOME/.config/c8volt/config.yaml`
+
+You can also point to a file explicitly:
+
+```bash
+./c8volt --config ./config.yaml config validate
+```
+
+Useful setup commands, in the order you normally need them:
+
+```bash
+./c8volt config template
+./c8volt --config ./config.yaml config show
+./c8volt --config ./config.yaml config validate
+./c8volt --config ./config.yaml config test-connection
+./c8volt --config ./config.yaml config test-connection --json
+./c8volt --profile prod config show
+```
+
+`config show --validate` and `config show --template` remain supported compatibility shortcuts for existing scripts.
+
+### 3. Verify Connectivity
+
+```bash
+./c8volt config test-connection
+./c8volt get cluster topology
+./c8volt get cluster version
+./c8volt get cluster license
+./c8volt get cluster licence
+```
+
+`config test-connection` logs the config source, selected profile, tested Camunda base URL, and warns when the configured Camunda version differs from the gateway version. Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
+
+### 4. Get A Runnable Environment
+
+Deploy bundled BPMN fixtures directly from the binary:
+
+```bash
+./c8volt embed list
+./c8volt embed deploy --all
+./c8volt embed deploy --all --run
+```
+
+This is the quickest path from a clean environment to real process instances you can inspect, wait for, cancel, and delete.
 
 ## Supported Camunda Versions
 
@@ -269,6 +305,30 @@ flag > env > profile > base config > default
 That applies to root persistent flags such as `--tenant` and `--profile`, command-local config-backed flags, API base URLs, auth mode, and auth credentials/scopes. When `c8volt` cannot determine a safe winner, it fails explicitly instead of guessing.
 
 Use `./c8volt config show` to inspect the effective configuration that a command will use, or `./c8volt config show --validate` to confirm the resolved config before running changes against a cluster.
+Prefer `./c8volt config validate` for direct validation, `./c8volt config template` for a starter file, and `./c8volt config test-connection` to validate local config before retrieving cluster topology. The `config show --validate` and `config show --template` flags remain supported compatibility shortcuts.
+
+### Configuration Flow
+
+Use the setup commands as three small gates:
+
+```bash
+# 1. Shape: is config.yaml valid YAML with supported values?
+./c8volt --config ./config.yaml config validate
+
+# 2. Effective config: what will c8volt actually use after flags/env/profiles?
+./c8volt --config ./config.yaml config show
+
+# 3. Network: can c8volt reach Camunda with that exact config?
+./c8volt --config ./config.yaml config test-connection
+```
+
+When the network gate succeeds, `config test-connection` reports the selected profile, the tested Camunda base URL, and the cluster gateway version. If the configured Camunda version and gateway version differ by major/minor version, fix the config unless you have a very good reason not to; Camunda APIs can differ between versions.
+
+For automation:
+
+```bash
+./c8volt --config ./config.yaml config test-connection --json
+```
 
 ### Process-Instance Page Size
 
@@ -326,7 +386,7 @@ Sensitive values are safer in environment variables than in committed config fil
 ```bash
 export C8VOLT_AUTH_OAUTH2_CLIENT_SECRET='super-secret'
 export C8VOLT_AUTH_OAUTH2_CLIENT_ID='c8volt'
-./c8volt --profile prod config show --validate
+./c8volt --profile prod config validate
 ```
 
 Use profiles when you need to switch environments without copying files:
@@ -443,6 +503,10 @@ c8volt
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
 |-- config                    Inspect and validate c8volt configuration
+|   |-- show                  Show effective configuration
+|   |-- validate              Validate effective configuration
+|   |-- template              Print a blank configuration template
+|   `-- test-connection       Test configured Camunda connection
 `-- version                   Print build and compatibility information
 ```
 
