@@ -17,6 +17,8 @@ validates local configuration before retrieving cluster topology, then warns
 when the configured Camunda version differs from the gateway version by
 major/minor version.
 
+Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
+
 ```
 c8volt config test-connection [flags]
 ```
@@ -25,6 +27,7 @@ c8volt config test-connection [flags]
 
 ```
   ./c8volt --config ./config.yaml config test-connection
+  ./c8volt --config ./config.yaml config test-connection --json
   ./c8volt --profile prod config test-connection
 ```
 

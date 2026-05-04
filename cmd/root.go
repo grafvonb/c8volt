@@ -94,7 +94,7 @@ command contract.`,
 		v := viper.New()
 		bindings, err := initViper(v, cmd)
 		if err != nil {
-			return bootstrapLocalPrecondition(err)
+			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
 		}
 		if hasHelpFlag(cmd) {
 			return nil
@@ -109,16 +109,16 @@ command contract.`,
 		cfg, err := retrieveAndNormalizeConfig(v, bindings)
 		if err != nil {
 			if errors.Is(err, config.ErrProfileNotFound) {
-				return normalizeBootstrapError(err)
+				return silenceUsageForError(cmd, normalizeBootstrapError(err))
 			}
-			return bootstrapLocalPrecondition(err)
+			return silenceUsageForError(cmd, bootstrapLocalPrecondition(err))
 		}
 		activityWriter := logging.NewActivityWriterEnabled(cmd.ErrOrStderr(), indicatorEnabled(cmd, cfg))
 		ctx := cfg.ToContextWithLogWriter(cmd.Context(), activityWriter)
 		ctx = logging.ToActivityContext(ctx, activityWriter)
 		log, err := logging.FromContext(ctx)
 		if err != nil {
-			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
+			return silenceUsageForError(cmd, bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err)))
 		}
 		configSource := configSourceDescription{loadedPath: v.ConfigFileUsed()}
 		ctx = configSource.ToContext(ctx)
@@ -147,7 +147,7 @@ command contract.`,
 		}
 
 		if err = cfg.Validate(); err != nil {
-			return bootstrapLocalPrecondition(config.FormatValidationError("configuration is invalid", err))
+			return silenceUsageForError(cmd, bootstrapLocalPrecondition(config.FormatValidationError("configuration is invalid", err)))
 		}
 		if cfg.ActiveProfile != "" {
 			log.Debug("using configuration profile: " + cfg.ActiveProfile)
@@ -159,7 +159,7 @@ command contract.`,
 
 		ctx, err = installRemoteCommandServices(ctx, cfg, log)
 		if err != nil {
-			return err
+			return silenceUsageForError(cmd, err)
 		}
 		cmd.SetContext(ctx)
 
@@ -169,7 +169,14 @@ command contract.`,
 		return cmd.Help()
 	},
 	SilenceUsage:  false,
-	SilenceErrors: false,
+	SilenceErrors: true,
+}
+
+func silenceUsageForError(cmd *cobra.Command, err error) error {
+	if cmd != nil && err != nil {
+		cmd.SilenceUsage = true
+	}
+	return err
 }
 
 func (s configSourceDescription) InfoMessage() string {
@@ -248,7 +255,7 @@ func init() {
 	pf.Var(toolx.NewDurationStringValue("30s", &flagHTTPTimeout), "timeout", "HTTP request timeout")
 
 	pf.String("log-level", "info", "log level (debug, info, warn, error)")
-	pf.String("log-format", "plain", "log format (json, plain, text)")
+	pf.String("log-format", "plain-time", "log format (plain-time, plain, json, text)")
 	pf.Bool("log-with-source", false, "include source file and line number in logs")
 
 	pf.String("tenant", "", "tenant ID for tenant-aware command flows (overrides env, profile, and base config)")
@@ -285,7 +292,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	bindCommandLocalConfigFlags(v, bindings, fs)
 
 	v.SetDefault("log.level", "info")
-	v.SetDefault("log.format", "plain")
+	v.SetDefault("log.format", "plain-time")
 	v.SetDefault("log.with_source", false)
 	v.SetDefault("log.with_request_body", false)
 	v.SetDefault("http.timeout", "30s")

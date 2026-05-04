@@ -1137,7 +1137,7 @@ func TestGetResourceCommand_RequiresID(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
-	require.Contains(t, output, "resource lookup requires a non-empty --id")
+	require.Contains(t, output, "Usage:")
 }
 
 // Verifies resource command rejects whitespace-only `--id` values.
@@ -1148,7 +1148,7 @@ func TestGetResourceCommand_RejectsWhitespaceID(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "resource lookup requires a non-empty --id")
-	require.Contains(t, output, "resource lookup requires a non-empty --id")
+	require.Contains(t, output, "Usage:")
 }
 
 func TestGetProcessInstanceKeyLookup_WrongTenantLooksLikeNotFound(t *testing.T) {

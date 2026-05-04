@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"os/exec"
@@ -241,7 +242,7 @@ func TestConfigShowCommand_TemplatePreservesBlankTemplateOutput(t *testing.T) {
 
 	require.Equal(t, expected+"\n", output)
 	require.Contains(t, output, "mode: oauth2|cookie|none")
-	require.Contains(t, output, "format: text|json|plain")
+	require.Contains(t, output, "format: plain-time|plain|text|json")
 	require.NotContains(t, output, "'*****'")
 }
 
@@ -251,7 +252,7 @@ func TestConfigTemplateCommand_MatchesShowTemplateOutput(t *testing.T) {
 
 	require.Equal(t, showOutput, templateOutput)
 	require.Contains(t, templateOutput, "mode: oauth2|cookie|none")
-	require.Contains(t, templateOutput, "format: text|json|plain")
+	require.Contains(t, templateOutput, "format: plain-time|plain|text|json")
 	require.NotContains(t, templateOutput, "'*****'")
 }
 
@@ -305,8 +306,82 @@ func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) 
 		"│  └─ Partition 2: role=leader health=healthy\n"+
 		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", stdout)
 	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
-	require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded")
+	require.Contains(t, stderr, "INFO no active profile provided in configuration, using default settings")
+	require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded base_url="+srv.URL+"/v2")
 	require.NotContains(t, stderr, "WARN")
+}
+
+func TestConfigTestConnectionCommand_JSONOutput(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `active_profile: dev
+app:
+  camunda_version: "8.8"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  dev:
+    apis:
+      camunda_api:
+        base_url: `+srv.URL+`
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection", "--json")
+
+	var result configTestConnectionView
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	require.True(t, result.OK)
+	require.Equal(t, cfgPath, result.ConfigFile)
+	require.Equal(t, "dev", result.Profile)
+	require.Equal(t, srv.URL+"/v2", result.BaseURL)
+	require.Equal(t, "8.8.2", result.Cluster.GatewayVersion)
+	require.Equal(t, int32(3), result.Cluster.Brokers)
+	require.Equal(t, int32(3), result.Cluster.Partitions)
+	require.Equal(t, int32(3), result.Cluster.ReplicationFactor)
+	require.Equal(t, "change-42", result.Cluster.LastCompletedChangeID)
+	require.Empty(t, result.Warnings)
+	require.Len(t, result.Cluster.BrokerDetails, 3)
+	require.Equal(t, int32(1), result.Cluster.BrokerDetails[0].ID)
+	require.Equal(t, "broker-a.internal:26501", result.Cluster.BrokerDetails[0].Address)
+	require.Equal(t, int32(1), result.Cluster.BrokerDetails[0].Partitions[0].ID)
+	require.NotContains(t, stdout, "Cluster:")
+	require.NotContains(t, stdout, "├─")
+	require.NotContains(t, stdout, "INFO")
+	require.Contains(t, stdout, `"ok": true`)
+	require.Contains(t, stdout, `"base_url": "`+srv.URL+`/v2"`)
+	require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded base_url="+srv.URL+"/v2")
+}
+
+func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.9.0", 1, 1)))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection", "--json")
+
+	var result configTestConnectionView
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	require.Len(t, result.Warnings, 1)
+	require.Contains(t, result.Warnings[0], "configured Camunda version 8.8 differs from gateway version 8.9.0")
+	require.Contains(t, result.Warnings[0], "this can cause unexpected errors")
+	require.Contains(t, stderr, "WARN "+result.Warnings[0])
+	require.NotContains(t, stdout, "WARN")
+	require.NotContains(t, stdout, "Cluster:")
 }
 
 func TestConfigTestConnectionCommand_RemoteFailureUsesStandardErrorPath(t *testing.T) {
@@ -345,6 +420,37 @@ func TestConfigTestConnectionCommand_LogsConfigSource(t *testing.T) {
 		_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
+		require.Contains(t, stderr, "INFO no active profile provided in configuration, using default settings")
+	})
+
+	t.Run("active profile", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeRawTestConfig(t, `active_profile: dev
+app:
+  camunda_version: "8.8"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+profiles:
+  prod:
+    apis:
+      camunda_api:
+        base_url: `+srv.URL+`
+`)
+
+		_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "--profile", "prod", "config", "test-connection")
+
+		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
+		require.Contains(t, stderr, "INFO using configuration profile: prod")
+		require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded base_url="+srv.URL+"/v2")
 	})
 
 	t.Run("no config file loaded", func(t *testing.T) {
@@ -357,10 +463,13 @@ func TestConfigTestConnectionCommand_LogsConfigSource(t *testing.T) {
 		t.Setenv("C8VOLT_AUTH_MODE", "none")
 		t.Setenv("C8VOLT_APIS_CAMUNDA_API_BASE_URL", srv.URL)
 		t.Setenv("C8VOLT_APP_CAMUNDA_VERSION", "8.8")
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 		_, stderr := executeRootWithSeparateOutputsForTest(t, "config", "test-connection")
 
 		require.Contains(t, stderr, "INFO no config file loaded, using defaults and environment variables")
+		require.Contains(t, stderr, "INFO no active profile provided in configuration, using default settings")
 	})
 }
 
@@ -390,7 +499,7 @@ func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 			_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 			if tc.wantWarning {
-				require.Contains(t, stderr, "WARN configured Camunda version "+tc.configuredVersion+" differs from gateway version "+tc.gatewayVersion+" by major/minor version")
+				require.Contains(t, stderr, "WARN configured Camunda version "+tc.configuredVersion+" differs from gateway version "+tc.gatewayVersion+" by major/minor version; this can cause unexpected errors because Camunda APIs can differ between versions; correct the configured version unless there is a very good reason to keep this mismatch")
 				return
 			}
 			require.NotContains(t, stderr, "differs from gateway version")
@@ -399,11 +508,32 @@ func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
 	}
 }
 
+func TestConfigCommand_BootstrapConfigErrorsDoNotPrintUsage(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: "86"
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	output, err := executeRootExpectErrorForTest(t, "--config", cfgPath, "config", "test-connection")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown Camunda version: 86")
+	require.Contains(t, err.Error(), "local precondition failed")
+	require.NotContains(t, output, "Usage:")
+	require.NotContains(t, output, "Examples:")
+	require.NotContains(t, output, "Global Flags:")
+}
+
 func TestConfigShowCommand_RejectsValidateAndTemplateTogether(t *testing.T) {
 	output, err := executeRootExpectErrorForTest(t, "config", "show", "--validate", "--template")
 
 	require.Error(t, err)
-	require.Contains(t, output, `if any flags in the group [validate template] are set none of the others can be; [template validate] were all set`)
+	require.Contains(t, err.Error(), `if any flags in the group [validate template] are set none of the others can be; [template validate] were all set`)
+	require.Contains(t, output, "Usage:")
 }
 
 // Verifies config show surfaces invalid effective configuration through the shared failure model.

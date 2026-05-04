@@ -10,7 +10,38 @@
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results.
 
-## Fast Start
+## Small Steps To Run
+
+This path is intentionally boring: copy one file, edit two values, validate, test the connection, then run one harmless read command.
+
+```bash
+# 1. Copy the starter config. Pick the path that matches how you got c8volt.
+# Release archive:
+cp config.example.yaml config.yaml
+
+# Source checkout:
+cp config/templates/config.example.yaml config.yaml
+
+# 2. Edit config.yaml:
+# - app.camunda_version: "8.9"
+# - apis.camunda_api.base_url: "http://localhost:8080"
+# - auth.mode: none for local/dev, oauth2 for protected clusters
+
+# 3. Check local config shape before touching Camunda.
+./c8volt --config ./config.yaml config validate
+
+# 4. Test the real connection and confirm the profile/base URL/version.
+./c8volt --config ./config.yaml config test-connection
+
+# 5. Run one safe read command.
+./c8volt --config ./config.yaml get cluster version
+```
+
+For scripts or CI, keep stdout machine-readable and logs on stderr:
+
+```bash
+./c8volt --config ./config.yaml config test-connection --json
+```
 
 ### 1. Install
 
@@ -20,11 +51,11 @@ Download the appropriate archive from [c8volt Releases](https://github.com/grafv
 ./c8volt version
 ```
 
-Each release archive includes a ready-to-edit `config.example.yaml` next to the binary. Copy or edit it into `config.yaml` for your environment.
+Each release archive includes a ready-to-edit `config.example.yaml` next to the binary. Source checkouts keep the same starter file at `config/templates/config.example.yaml`.
 
 ### 2. Configure
 
-For local Camunda 8 Run or another unsecured development cluster, the smallest useful config is:
+For local Camunda 8 Run, Docker Compose, Kind, or another unsecured development cluster, the smallest useful config is:
 
 ```yaml
 app:
@@ -38,7 +69,7 @@ log:
   level: info
 ```
 
-For the normal case, set only `apis.camunda_api.base_url`. `c8volt` derives:
+For most environments, set only `apis.camunda_api.base_url`. `c8volt` derives:
 
 - Camunda API as `.../v2`
 - Operate API as `.../v1`
@@ -56,13 +87,14 @@ You can also point to a file explicitly:
 ./c8volt --config ./config.yaml config validate
 ```
 
-Useful setup commands:
+Useful setup commands, in the order you normally need them:
 
 ```bash
-./c8volt config show
-./c8volt config validate
 ./c8volt config template
+./c8volt --config ./config.yaml config show
+./c8volt --config ./config.yaml config validate
 ./c8volt --config ./config.yaml config test-connection
+./c8volt --config ./config.yaml config test-connection --json
 ./c8volt --profile prod config show
 ```
 
@@ -78,7 +110,7 @@ Useful setup commands:
 ./c8volt get cluster licence
 ```
 
-Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
+`config test-connection` logs the config source, selected profile, tested Camunda base URL, and warns when the configured Camunda version differs from the gateway version. Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
 
 ### 4. Get A Runnable Environment
 
@@ -274,6 +306,29 @@ That applies to root persistent flags such as `--tenant` and `--profile`, comman
 
 Use `./c8volt config show` to inspect the effective configuration that a command will use, or `./c8volt config show --validate` to confirm the resolved config before running changes against a cluster.
 Prefer `./c8volt config validate` for direct validation, `./c8volt config template` for a starter file, and `./c8volt config test-connection` to validate local config before retrieving cluster topology. The `config show --validate` and `config show --template` flags remain supported compatibility shortcuts.
+
+### Configuration Flow
+
+Use the setup commands as three small gates:
+
+```bash
+# 1. Shape: is config.yaml valid YAML with supported values?
+./c8volt --config ./config.yaml config validate
+
+# 2. Effective config: what will c8volt actually use after flags/env/profiles?
+./c8volt --config ./config.yaml config show
+
+# 3. Network: can c8volt reach Camunda with that exact config?
+./c8volt --config ./config.yaml config test-connection
+```
+
+When the network gate succeeds, `config test-connection` reports the selected profile, the tested Camunda base URL, and the cluster gateway version. If the configured Camunda version and gateway version differ by major/minor version, fix the config unless you have a very good reason not to; Camunda APIs can differ between versions.
+
+For automation:
+
+```bash
+./c8volt --config ./config.yaml config test-connection --json
+```
 
 ### Process-Instance Page Size
 

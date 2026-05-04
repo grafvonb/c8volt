@@ -3,6 +3,8 @@
 
 app:
   # Supported values: 8.7, 8.8, 8.9
+  # Keep this aligned with the cluster gateway version reported by
+  # `c8volt config test-connection`.
   camunda_version: "8.9"
   # Optional default tenant for tenant-aware commands
   tenant: ""
@@ -38,4 +40,7 @@ apis:
   # tasklist_api:
   #   base_url: "https://tasklist.example.com"
 log:
+  # Default CLI format is "plain-time" (HH:MM:SS.mmm INFO message).
+  # Other supported values: plain, text, json.
+  format: "plain-time"
   level: "info"
