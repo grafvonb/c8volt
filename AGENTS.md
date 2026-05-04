@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/162-tasklist-v1-fallback/plan.md](specs/162-tasklist-v1-fallback/plan.md)
+- Active plan: [specs/166-config-diagnostics-subcommands/plan.md](specs/166-config-diagnostics-subcommands/plan.md)
 <!-- SPECKIT END -->
