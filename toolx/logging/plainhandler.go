@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	PlainTimestampLayout     = "2006-01-02T15:04:05.000Z07:00"
+	PlainTimestampLayout     = "2006-01-02T15:04:05.000-07:00"
 	PlainTimeTimestampLayout = "15:04:05.000"
 )
 
