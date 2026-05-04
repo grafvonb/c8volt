@@ -22,6 +22,7 @@ func TestBypassRootBootstrap_TreatsCompletionCommandsAsSharedUtilitySeam(t *test
 	require.True(t, bypassRootBootstrap(configShowCmd))
 	require.True(t, bypassRootBootstrap(configTemplateCmd))
 	require.True(t, bypassRootBootstrap(configValidateCmd))
+	require.True(t, bypassRootBootstrap(configTestConnectionCmd))
 	require.False(t, bypassRootBootstrap(getCmd))
 	require.False(t, bypassRootBootstrap(getClusterVersionCmd))
 }

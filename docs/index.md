@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-271-g4e1d50e-dirty`, commit `4e1d50e`, built `2026-05-03T09:37:28Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-281-g0b40028-dirty`, commit `0b40028`, built `2026-05-04T10:26:40Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -62,21 +62,25 @@ Common config locations:
 You can also point to a file explicitly:
 
 ```bash
-./c8volt --config ./config.yaml config show --validate
+./c8volt --config ./config.yaml config validate
 ```
 
 Useful setup commands:
 
 ```bash
 ./c8volt config show
-./c8volt config show --validate
-./c8volt config show --template
+./c8volt config validate
+./c8volt config template
+./c8volt --config ./config.yaml config test-connection
 ./c8volt --profile prod config show
 ```
+
+`config show --validate` and `config show --template` remain supported compatibility shortcuts for existing scripts.
 
 ### 3. Verify Connectivity
 
 ```bash
+./c8volt config test-connection
 ./c8volt get cluster topology
 ./c8volt get cluster version
 ./c8volt get cluster license
@@ -278,6 +282,7 @@ flag > env > profile > base config > default
 That applies to root persistent flags such as `--tenant` and `--profile`, command-local config-backed flags, API base URLs, auth mode, and auth credentials/scopes. When `c8volt` cannot determine a safe winner, it fails explicitly instead of guessing.
 
 Use `./c8volt config show` to inspect the effective configuration that a command will use, or `./c8volt config show --validate` to confirm the resolved config before running changes against a cluster.
+Prefer `./c8volt config validate` for direct validation, `./c8volt config template` for a starter file, and `./c8volt config test-connection` to validate local config before retrieving cluster topology. The `config show --validate` and `config show --template` flags remain supported compatibility shortcuts.
 
 ### Process-Instance Page Size
 
@@ -335,7 +340,7 @@ Sensitive values are safer in environment variables than in committed config fil
 ```bash
 export C8VOLT_AUTH_OAUTH2_CLIENT_SECRET='super-secret'
 export C8VOLT_AUTH_OAUTH2_CLIENT_ID='c8volt'
-./c8volt --profile prod config show --validate
+./c8volt --profile prod config validate
 ```
 
 Use profiles when you need to switch environments without copying files:
@@ -452,6 +457,10 @@ c8volt
 |-- capabilities              Describe the public CLI contract for automation and discovery
 |-- completion                Generate shell completion scripts
 |-- config                    Inspect and validate c8volt configuration
+|   |-- show                  Show effective configuration
+|   |-- validate              Validate effective configuration
+|   |-- template              Print a blank configuration template
+|   `-- test-connection       Test configured Camunda connection
 `-- version                   Print build and compatibility information
 ```
 

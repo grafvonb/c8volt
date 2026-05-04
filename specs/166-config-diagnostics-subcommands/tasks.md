@@ -114,22 +114,22 @@
 
 ### Tests for User Story 4
 
-- [ ] T028 [P] [US4] Add `config test-connection` help/discovery tests in `cmd/config_test.go`
-- [ ] T029 [P] [US4] Add invalid configuration test proving `config test-connection` fails before remote topology retrieval in `cmd/config_test.go`
-- [ ] T030 [P] [US4] Add successful topology test proving `config test-connection` logs success and prints human-readable topology output in `cmd/config_test.go`
-- [ ] T031 [P] [US4] Add remote connection failure test proving the standard error path and non-zero exit in `cmd/config_test.go`
-- [ ] T032 [P] [US4] Add loaded config file and no-file-loaded `INFO` logging tests in `cmd/config_test.go`
-- [ ] T033 [P] [US4] Add version comparison tests for exact/patch-only match and major/minor warning in `cmd/config_test.go`
+- [x] T028 [P] [US4] Add `config test-connection` help/discovery tests in `cmd/config_test.go`
+- [x] T029 [P] [US4] Add invalid configuration test proving `config test-connection` fails before remote topology retrieval in `cmd/config_test.go`
+- [x] T030 [P] [US4] Add successful topology test proving `config test-connection` logs success and prints human-readable topology output in `cmd/config_test.go`
+- [x] T031 [P] [US4] Add remote connection failure test proving the standard error path and non-zero exit in `cmd/config_test.go`
+- [x] T032 [P] [US4] Add loaded config file and no-file-loaded `INFO` logging tests in `cmd/config_test.go`
+- [x] T033 [P] [US4] Add version comparison tests for exact/patch-only match and major/minor warning in `cmd/config_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T034 [US4] Add a config source description helper or context value in `cmd/root.go` that preserves loaded config path versus no-file-loaded state for command use
-- [ ] T035 [US4] Add `configTestConnectionCmd` under `configCmd` in `cmd/config_test_connection.go`
-- [ ] T036 [US4] Implement `config test-connection` local validation, config-source `INFO` logging, topology retrieval through `NewCli`, and standard error handling in `cmd/config_test_connection.go`
-- [ ] T037 [US4] Reuse `renderClusterTopologyTree` for successful topology output in `cmd/config_test_connection.go`
-- [ ] T038 [US4] Add major/minor version normalization and warning behavior in `cmd/config_test_connection.go`
-- [ ] T039 [US4] Update `configCmd` long text and examples for `config test-connection` in `cmd/config.go`
-- [ ] T040 [US4] Run `go test ./cmd -run 'TestConfig.*Connection|TestGetClusterTopology|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_test_connection.go`, `cmd/root.go`, or `cmd/config_test.go`
+- [x] T034 [US4] Add a config source description helper or context value in `cmd/root.go` that preserves loaded config path versus no-file-loaded state for command use
+- [x] T035 [US4] Add `configTestConnectionCmd` under `configCmd` in `cmd/config_test_connection.go`
+- [x] T036 [US4] Implement `config test-connection` local validation, config-source `INFO` logging, topology retrieval through `NewCli`, and standard error handling in `cmd/config_test_connection.go`
+- [x] T037 [US4] Reuse `renderClusterTopologyTree` for successful topology output in `cmd/config_test_connection.go`
+- [x] T038 [US4] Add major/minor version normalization and warning behavior in `cmd/config_test_connection.go`
+- [x] T039 [US4] Update `configCmd` long text and examples for `config test-connection` in `cmd/config.go`
+- [x] T040 [US4] Run `go test ./cmd -run 'TestConfig.*Connection|TestGetClusterTopology|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_test_connection.go`, `cmd/root.go`, or `cmd/config_test.go`
 
 **Checkpoint**: User Story 4 is independently complete when `config test-connection` proves local validation and remote topology connectivity with required logging and warning semantics.
 
@@ -143,17 +143,17 @@
 
 ### Tests for User Story 5
 
-- [ ] T041 [P] [US5] Add config command help tests covering new subcommands and compatibility shortcut text in `cmd/config_test.go`
-- [ ] T042 [P] [US5] Add generated-doc or docs-content expectation tests where applicable in `docsgen/` or `cmd/config_test.go`
+- [x] T041 [P] [US5] Add config command help tests covering new subcommands and compatibility shortcut text in `cmd/config_test.go`
+- [x] T042 [P] [US5] Add generated-doc or docs-content expectation tests where applicable in `docsgen/` or `cmd/config_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T043 [US5] Update setup and configuration examples in `README.md`
-- [ ] T044 [US5] Update mirrored documentation content in `docs/index.md`
-- [ ] T045 [US5] Regenerate CLI documentation under `docs/cli/` with the repository docs generation command
-- [ ] T046 [US5] Update generated site/search artifacts under `docs/_site/` if the repository docs generation command refreshes them
-- [ ] T047 [US5] Run `make docs-content` and fix documentation generation issues
-- [ ] T048 [US5] Run `go test ./cmd -run 'TestConfigHelp|TestCommandContract' -count=1` and fix help or docs-related regressions
+- [x] T043 [US5] Update setup and configuration examples in `README.md`
+- [x] T044 [US5] Update mirrored documentation content in `docs/index.md`
+- [x] T045 [US5] Regenerate CLI documentation under `docs/cli/` with the repository docs generation command
+- [x] T046 [US5] Update generated site/search artifacts under `docs/_site/` if the repository docs generation command refreshes them
+- [x] T047 [US5] Run `make docs-content` and fix documentation generation issues
+- [x] T048 [US5] Run `go test ./cmd -run 'TestConfigHelp|TestCommandContract' -count=1` and fix help or docs-related regressions
 
 **Checkpoint**: User Story 5 is independently complete when the new command family is discoverable in help and docs while legacy flags remain documented.
 

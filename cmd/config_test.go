@@ -5,10 +5,12 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,8 +29,16 @@ func TestConfigHelp_ExplainsEffectiveConfigurationWorkflow(t *testing.T) {
 	require.Contains(t, output, "view effective settings")
 	require.Contains(t, output, "`config show`")
 	require.Contains(t, output, "`config validate`")
+	require.Contains(t, output, "`config template`")
+	require.Contains(t, output, "`config test-connection`")
+	require.Contains(t, output, "show")
+	require.Contains(t, output, "validate")
+	require.Contains(t, output, "template")
+	require.Contains(t, output, "test-connection")
 	require.Contains(t, output, "./c8volt config show")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config validate")
+	require.Contains(t, output, "./c8volt config template")
+	require.Contains(t, output, "./c8volt --config ./config.yaml config test-connection")
 	require.Contains(t, output, "./c8volt config show --template")
 }
 
@@ -37,7 +47,12 @@ func TestConfigShowHelp_ExplainsEffectiveConfigExamples(t *testing.T) {
 
 	require.Contains(t, output, "Show effective configuration with sensitive values sanitized")
 	require.Contains(t, output, "flag > env > profile > base config > default")
+	require.Contains(t, output, "compatibility shortcuts")
 	require.Contains(t, output, "./c8volt --config ./config.yaml config show --validate")
+	require.Contains(t, output, "--validate")
+	require.Contains(t, output, "compatibility shortcut: validate the effective configuration")
+	require.Contains(t, output, "--template")
+	require.Contains(t, output, "compatibility shortcut: print a blank configuration template")
 }
 
 func TestConfigValidateHelp_ExplainsDirectValidation(t *testing.T) {
@@ -56,6 +71,15 @@ func TestConfigTemplateHelp_ExplainsDirectTemplateRendering(t *testing.T) {
 	require.Contains(t, output, "same blank configuration template as `config show --template`")
 	require.Contains(t, output, "./c8volt config template")
 	require.NotContains(t, output, "--validate")
+}
+
+func TestConfigTestConnectionHelp_ExplainsConnectionDiagnostic(t *testing.T) {
+	output := executeRootForTest(t, "config", "test-connection", "--help")
+
+	require.Contains(t, output, "Test configured Camunda connection")
+	require.Contains(t, output, "validates local configuration before retrieving cluster topology")
+	require.Contains(t, output, "./c8volt --config ./config.yaml config test-connection")
+	require.NotContains(t, output, "--template")
 }
 
 func TestConfigShowCommand_PrintsSanitizedEffectiveConfigAndWarnings(t *testing.T) {
@@ -229,6 +253,150 @@ func TestConfigTemplateCommand_MatchesShowTemplateOutput(t *testing.T) {
 	require.Contains(t, templateOutput, "mode: oauth2|cookie|none")
 	require.Contains(t, templateOutput, "format: text|json|plain")
 	require.NotContains(t, templateOutput, "'*****'")
+}
+
+func TestConfigTestConnectionCommand_InvalidConfigStopsBeforeRemoteTopology(t *testing.T) {
+	var topologyRequests atomic.Int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		topologyRequests.Add(1)
+		http.Error(w, "unexpected request", http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `auth:
+  mode: oauth2
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestConfigTestConnectionCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":                       cfgPath,
+		"C8VOLT_TEST_CONFIG_CONNECTION_DIAGNOSTIC": "test-connection",
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, int32(0), topologyRequests.Load())
+	require.Contains(t, string(output), "configuration is invalid")
+	require.Contains(t, string(output), "auth.oauth2.token_url")
+}
+
+func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(unsortedClusterTopologyFixtureJSON()))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
+
+	require.Equal(t, "Cluster: GatewayVersion=8.8.2 Brokers=3 Partitions=3 ReplicationFactor=3 LastCompletedChangeId=change-42\n"+
+		"├─ Broker 1: broker-a.internal:26501 version=8.8.1\n"+
+		"│  ├─ Partition 1: role=leader health=healthy\n"+
+		"│  └─ Partition 3: role=follower health=unhealthy\n"+
+		"├─ Broker 2: broker-b.internal:26502 version=8.8.2\n"+
+		"│  └─ Partition 2: role=leader health=healthy\n"+
+		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", stdout)
+	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
+	require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded")
+	require.NotContains(t, stderr, "WARN")
+}
+
+func TestConfigTestConnectionCommand_RemoteFailureUsesStandardErrorPath(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/topology", r.URL.Path)
+		http.Error(w, "boom", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	output, err := testx.RunCmdSubprocess(t, "TestConfigTestConnectionCommand_FailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":                       cfgPath,
+		"C8VOLT_TEST_CONFIG_CONNECTION_DIAGNOSTIC": "test-connection",
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "config test-connection")
+	require.NotContains(t, string(output), "configuration is invalid")
+}
+
+func TestConfigTestConnectionCommand_LogsConfigSource(t *testing.T) {
+	t.Run("loaded config file", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfig(t, srv.URL)
+
+		_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
+
+		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
+	})
+
+	t.Run("no config file loaded", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/v2/topology", r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, "8.8.0", 1, 1)))
+		}))
+		t.Cleanup(srv.Close)
+		t.Setenv("C8VOLT_AUTH_MODE", "none")
+		t.Setenv("C8VOLT_APIS_CAMUNDA_API_BASE_URL", srv.URL)
+		t.Setenv("C8VOLT_APP_CAMUNDA_VERSION", "8.8")
+
+		_, stderr := executeRootWithSeparateOutputsForTest(t, "config", "test-connection")
+
+		require.Contains(t, stderr, "INFO no config file loaded, using defaults and environment variables")
+	})
+}
+
+func TestConfigTestConnectionCommand_VersionComparisonWarnings(t *testing.T) {
+	testCases := []struct {
+		name              string
+		configuredVersion string
+		gatewayVersion    string
+		wantWarning       bool
+	}{
+		{name: "exact match", configuredVersion: "8.8", gatewayVersion: "8.8", wantWarning: false},
+		{name: "patch only difference", configuredVersion: "8.8", gatewayVersion: "8.8.2", wantWarning: false},
+		{name: "major minor mismatch", configuredVersion: "8.8", gatewayVersion: "8.9.0", wantWarning: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, "/v2/topology", r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(emptyClusterTopologyFixtureJSON(1, tc.gatewayVersion, 1, 1)))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, tc.configuredVersion)
+
+			_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
+
+			if tc.wantWarning {
+				require.Contains(t, stderr, "WARN configured Camunda version "+tc.configuredVersion+" differs from gateway version "+tc.gatewayVersion+" by major/minor version")
+				return
+			}
+			require.NotContains(t, stderr, "differs from gateway version")
+			require.NotContains(t, stderr, "WARN")
+		})
+	}
 }
 
 func TestConfigShowCommand_RejectsValidateAndTemplateTogether(t *testing.T) {
@@ -580,6 +748,23 @@ func TestConfigDiagnosticValidateHelper(t *testing.T) {
 		os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "validate"}
 	default:
 		t.Fatalf("unsupported config diagnostic helper command: %q", os.Getenv("C8VOLT_TEST_CONFIG_DIAGNOSTIC"))
+	}
+
+	Execute()
+}
+
+func TestConfigTestConnectionCommand_FailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	switch os.Getenv("C8VOLT_TEST_CONFIG_CONNECTION_DIAGNOSTIC") {
+	case "test-connection":
+		os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "test-connection"}
+	default:
+		t.Fatalf("unsupported config connection diagnostic helper command: %q", os.Getenv("C8VOLT_TEST_CONFIG_CONNECTION_DIAGNOSTIC"))
 	}
 
 	Execute()

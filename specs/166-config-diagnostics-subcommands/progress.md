@@ -13,9 +13,11 @@ Started: 2026-05-04 11:53:07
 - `get cluster topology` retrieves topology through `NewCli` and `cli.GetClusterTopology`, then reuses `renderClusterTopologyTree` for deterministic human output.
 - Command tests use `executeRootForTest` for in-process help/output checks and `testx.RunCmdSubprocess` for exit-code paths that call `HandleAndExit`.
 - Docs content is mirrored between `README.md`, `docs/index.md`, and generated `docs/cli/*` pages; generated CLI docs should be refreshed from command metadata after help text changes.
+- `make docs-content` runs `docsgen` and syncs `docs/index.md` from `README.md`; it does not update `docs/_site/` in this repository because no tracked site output exists.
 - `config show --validate` remains a compatibility path that prints sanitized effective configuration before exiting through `HandleAndExitOK` or the standard local precondition error path; cover it with subprocess tests because both paths call `os.Exit`.
 - Dedicated local-only config diagnostic commands such as `config validate` should be listed in `utilityCommandPaths` so root bootstrap loads config into context without full validation/auth setup; the leaf command then owns shared helper execution.
 - `config template` is a local-only diagnostic command that should stay in `utilityCommandPaths` and reuse `renderBlankConfigTemplateYAML` so it never depends on the active effective configuration.
+- `config test-connection` is also a utility command: root loads normalized config and source metadata into context, then the leaf command validates locally, installs remote HTTP/auth services through `installRemoteCommandServices`, and calls `NewCli` for topology retrieval.
 
 ---
 ## Iteration 1 - 2026-05-04 11:54:47 CEST
@@ -127,4 +129,71 @@ Started: 2026-05-04 11:53:07
 - `config template` can avoid config bootstrap entirely by being listed as a utility command, matching the legacy `config show --template` local-only behavior.
 - Template equivalence is covered with an in-process command test because both success paths render without calling `os.Exit`.
 - Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestConfig.*Template|TestConfigHelp|TestCommandContract' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestBypassRootBootstrap|TestConfig.*Template|TestConfigHelp|TestCommandContract' -count=1`.
+---
+---
+## Iteration 6 - 2026-05-04 12:19:59 CEST
+**User Story**: User Story 4 - Test Configured Camunda Connection
+**Tasks Completed**:
+- [x] T028: Add `config test-connection` help/discovery tests in `cmd/config_test.go`
+- [x] T029: Add invalid configuration test proving `config test-connection` fails before remote topology retrieval in `cmd/config_test.go`
+- [x] T030: Add successful topology test proving `config test-connection` logs success and prints human-readable topology output in `cmd/config_test.go`
+- [x] T031: Add remote connection failure test proving the standard error path and non-zero exit in `cmd/config_test.go`
+- [x] T032: Add loaded config file and no-file-loaded `INFO` logging tests in `cmd/config_test.go`
+- [x] T033: Add version comparison tests for exact/patch-only match and major/minor warning in `cmd/config_test.go`
+- [x] T034: Add a config source description helper or context value in `cmd/root.go` that preserves loaded config path versus no-file-loaded state for command use
+- [x] T035: Add `configTestConnectionCmd` under `configCmd` in `cmd/config_test_connection.go`
+- [x] T036: Implement `config test-connection` local validation, config-source `INFO` logging, topology retrieval through `NewCli`, and standard error handling in `cmd/config_test_connection.go`
+- [x] T037: Reuse `renderClusterTopologyTree` for successful topology output in `cmd/config_test_connection.go`
+- [x] T038: Add major/minor version normalization and warning behavior in `cmd/config_test_connection.go`
+- [x] T039: Update `configCmd` long text and examples for `config test-connection` in `cmd/config.go`
+- [x] T040: Run `go test ./cmd -run 'TestConfig.*Connection|TestGetClusterTopology|TestConfigHelp|TestCommandContract' -count=1` and fix regressions in `cmd/config_test_connection.go`, `cmd/root.go`, or `cmd/config_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: No commit - Git metadata writes blocked by sandbox (`.git/index.lock`: operation not permitted)
+**Files Changed**:
+- cmd/cmd_checks.go
+- cmd/command_contract_test.go
+- cmd/completion_test.go
+- cmd/config.go
+- cmd/config_test.go
+- cmd/config_test_connection.go
+- cmd/root.go
+- specs/166-config-diagnostics-subcommands/tasks.md
+- specs/166-config-diagnostics-subcommands/progress.md
+**Learnings**:
+- `config test-connection` must be a bootstrap utility so invalid config stops before HTTP/auth setup and remote topology retrieval, while successful paths can install remote services only after explicit local validation.
+- Config source reporting is now captured once during root config loading and reused at DEBUG for root bootstrap and INFO for `config test-connection`.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestConfig.*Connection|TestGetClusterTopology|TestConfigHelp|TestCommandContract|TestBypassRootBootstrap' -count=1` and `GOCACHE=/tmp/c8volt-go-build go test ./cmd -count=1`.
+- Commit attempt failed because the environment cannot create files under `.git`; intended commit subject was `feat(config): add test connection diagnostic command #166`.
+---
+---
+## Iteration 7 - 2026-05-04 12:27:22 CEST
+**User Story**: User Story 5 - Discover The Split Commands In Help And Docs
+**Tasks Completed**:
+- [x] T041: Add config command help tests covering new subcommands and compatibility shortcut text in `cmd/config_test.go`
+- [x] T042: Add generated-doc or docs-content expectation tests where applicable in `docsgen/` or `cmd/config_test.go`
+- [x] T043: Update setup and configuration examples in `README.md`
+- [x] T044: Update mirrored documentation content in `docs/index.md`
+- [x] T045: Regenerate CLI documentation under `docs/cli/` with the repository docs generation command
+- [x] T046: Update generated site/search artifacts under `docs/_site/` if the repository docs generation command refreshes them
+- [x] T047: Run `make docs-content` and fix documentation generation issues
+- [x] T048: Run `go test ./cmd -run 'TestConfigHelp|TestCommandContract' -count=1` and fix help or docs-related regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/config_show.go
+- cmd/config_test.go
+- docs/cli/c8volt_config.md
+- docs/cli/c8volt_config_show.md
+- docs/cli/c8volt_config_template.md
+- docs/cli/c8volt_config_test-connection.md
+- docs/cli/c8volt_config_validate.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/166-config-diagnostics-subcommands/tasks.md
+- specs/166-config-diagnostics-subcommands/progress.md
+**Learnings**:
+- Generated config command docs now protect the new subcommand pages and legacy shortcut wording through `docsgen` tests instead of relying only on checked-in markdown diffs.
+- `make docs-content` syncs the docs homepage from README and refreshes `docs/cli/`; no tracked `docs/_site/` artifacts exist for this repository.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestConfigHelp|TestCommandContract' -count=1`, `GOCACHE=/tmp/c8volt-go-build go test ./docsgen -count=1`, and `GOCACHE=/tmp/c8volt-go-build make docs-content`.
 ---

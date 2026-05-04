@@ -233,9 +233,7 @@ func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
 		"config test-connection",
 	} {
 		capability, ok := findCommandCapability(doc.Commands, path)
-		if !ok {
-			continue
-		}
+		require.True(t, ok, "missing command capability for %s", path)
 		require.Equal(t, CommandMutationReadOnly, capability.Mutation)
 	}
 }

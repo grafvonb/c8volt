@@ -1,40 +1,35 @@
 ---
-title: "c8volt config show"
+title: "c8volt config validate"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt config show
+## c8volt config validate
 
-Show effective configuration
+Validate effective configuration
 
 ### Synopsis
 
-Show effective configuration with sensitive values sanitized.
+Validate effective configuration.
 
-Precedence: flag > env > profile > base config > default.
-The --validate and --template flags remain supported as compatibility shortcuts
-for validation and template rendering.
+Loads the effective configuration through the normal config resolver and uses
+the same validation behavior as `config show --validate`.
 
 ```
-c8volt config show [flags]
+c8volt config validate [flags]
 ```
 
 ### Examples
 
 ```
-  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile prod config show
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt config show --template
+  ./c8volt --config ./config.yaml config validate
+  ./c8volt --profile prod config validate
 ```
 
 ### Options
 
 ```
-  -h, --help       help for show
-      --template   compatibility shortcut: print a blank configuration template
-      --validate   compatibility shortcut: validate the effective configuration and exit with an error code if invalid
+  -h, --help   help for validate
 ```
 
 ### Options inherited from parent commands

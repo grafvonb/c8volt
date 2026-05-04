@@ -24,7 +24,8 @@ var configShowCmd = &cobra.Command{
 	Long: `Show effective configuration with sensitive values sanitized.
 
 Precedence: flag > env > profile > base config > default.
-Use --validate to check the effective config, or --template for a blank template.`,
+The --validate and --template flags remain supported as compatibility shortcuts
+for validation and template rendering.`,
 	Example: `  ./c8volt config show
   ./c8volt --config ./config.yaml --profile prod config show
   ./c8volt --config ./config.yaml config show --validate
@@ -78,7 +79,7 @@ func renderBlankConfigTemplateYAML() (*config.Config, string, error) {
 func init() {
 	configCmd.AddCommand(configShowCmd)
 
-	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "validate the effective configuration and exit with an error code if invalid")
-	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "print a blank configuration template")
+	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "compatibility shortcut: validate the effective configuration and exit with an error code if invalid")
+	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "compatibility shortcut: print a blank configuration template")
 	configShowCmd.MarkFlagsMutuallyExclusive("validate", "template")
 }

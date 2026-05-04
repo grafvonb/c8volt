@@ -1,40 +1,37 @@
 ---
-title: "c8volt config show"
+title: "c8volt config test-connection"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt config show
+## c8volt config test-connection
 
-Show effective configuration
+Test configured Camunda connection
 
 ### Synopsis
 
-Show effective configuration with sensitive values sanitized.
+Test configured Camunda connection.
 
-Precedence: flag > env > profile > base config > default.
-The --validate and --template flags remain supported as compatibility shortcuts
-for validation and template rendering.
+Loads the effective configuration and logs the config source. The command
+validates local configuration before retrieving cluster topology, then warns
+when the configured Camunda version differs from the gateway version by
+major/minor version.
 
 ```
-c8volt config show [flags]
+c8volt config test-connection [flags]
 ```
 
 ### Examples
 
 ```
-  ./c8volt config show
-  ./c8volt --config ./config.yaml --profile prod config show
-  ./c8volt --config ./config.yaml config show --validate
-  ./c8volt config show --template
+  ./c8volt --config ./config.yaml config test-connection
+  ./c8volt --profile prod config test-connection
 ```
 
 ### Options
 
 ```
-  -h, --help       help for show
-      --template   compatibility shortcut: print a blank configuration template
-      --validate   compatibility shortcut: validate the effective configuration and exit with an error code if invalid
+  -h, --help   help for test-connection
 ```
 
 ### Options inherited from parent commands

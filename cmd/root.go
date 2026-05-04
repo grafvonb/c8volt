@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -36,6 +38,12 @@ var (
 	flagAllowInconsistent bool
 	flagHTTPTimeout       = "30s"
 )
+
+type configSourceDescription struct {
+	loadedPath string
+}
+
+type configSourceContextKey struct{}
 
 func Root() *cobra.Command { return rootCmd }
 
@@ -112,11 +120,13 @@ command contract.`,
 		if err != nil {
 			return bootstrapLocalPrecondition(fmt.Errorf("retrieve logger from context: %w", err))
 		}
+		configSource := configSourceDescription{loadedPath: v.ConfigFileUsed()}
+		ctx = configSource.ToContext(ctx)
 
-		if pathcfg := v.ConfigFileUsed(); pathcfg != "" {
-			log.Debug("config loaded: " + pathcfg)
+		if configSource.loadedPath != "" {
+			log.Debug(configSource.InfoMessage())
 		} else {
-			log.Debug("no config file loaded, using defaults and environment variables")
+			log.Debug(configSource.InfoMessage())
 			var configKeys = []string{
 				"app.camunda_version",
 				"app.process_instance_page_size",
@@ -147,20 +157,10 @@ command contract.`,
 		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
 		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
 
-		httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar(), httpc.WithActivitySink(activityWriter))
+		ctx, err = installRemoteCommandServices(ctx, cfg, log)
 		if err != nil {
-			return bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
+			return err
 		}
-		ator, err := auth.BuildAuthenticator(cfg, httpSvc.Client(), log)
-		if err != nil {
-			return bootstrapLocalPrecondition(fmt.Errorf("create authenticator: %w", err))
-		}
-		if err := ator.Init(ctx); err != nil {
-			return normalizeBootstrapError(fmt.Errorf("initialize authenticator: %w", err))
-		}
-		httpSvc.InstallAuthEditor(ator.Editor())
-		ctx = httpSvc.ToContext(ctx)
-		ctx = authenticator.ToContext(ctx, ator)
 		cmd.SetContext(ctx)
 
 		return nil
@@ -170,6 +170,44 @@ command contract.`,
 	},
 	SilenceUsage:  false,
 	SilenceErrors: false,
+}
+
+func (s configSourceDescription) InfoMessage() string {
+	if s.loadedPath != "" {
+		return "config loaded: " + s.loadedPath
+	}
+	return "no config file loaded, using defaults and environment variables"
+}
+
+func (s configSourceDescription) ToContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, configSourceContextKey{}, s)
+}
+
+func configSourceDescriptionFromContext(ctx context.Context) configSourceDescription {
+	if ctx == nil {
+		return configSourceDescription{}
+	}
+	source, _ := ctx.Value(configSourceContextKey{}).(configSourceDescription)
+	return source
+}
+
+func installRemoteCommandServices(ctx context.Context, cfg *config.Config, log *slog.Logger) (context.Context, error) {
+	activity := logging.ActivityFromContext(ctx)
+	httpSvc, err := httpc.New(cfg, log, httpc.WithCookieJar(), httpc.WithActivitySink(activity))
+	if err != nil {
+		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create http service: %w", err))
+	}
+	ator, err := auth.BuildAuthenticator(cfg, httpSvc.Client(), log)
+	if err != nil {
+		return ctx, bootstrapLocalPrecondition(fmt.Errorf("create authenticator: %w", err))
+	}
+	if err := ator.Init(ctx); err != nil {
+		return ctx, normalizeBootstrapError(fmt.Errorf("initialize authenticator: %w", err))
+	}
+	httpSvc.InstallAuthEditor(ator.Editor())
+	ctx = httpSvc.ToContext(ctx)
+	ctx = authenticator.ToContext(ctx, ator)
+	return ctx, nil
 }
 
 func missingConfigHint() string {
