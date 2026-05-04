@@ -15,7 +15,7 @@ import (
 
 type Log struct {
 	Level           string `mapstructure:"level" json:"level" yaml:"level"`
-	Format          string `mapstructure:"format" json:"format" yaml:"format"` // "text", "json" or "plain"
+	Format          string `mapstructure:"format" json:"format" yaml:"format"` // "plain-time", "plain", "text" or "json"
 	WithSource      bool   `mapstructure:"with_source" json:"with_source" yaml:"with_source"`
 	WithRequestBody bool   `mapstructure:"with_request_body" json:"with_request_body" yaml:"with_request_body"`
 }
@@ -23,7 +23,7 @@ type Log struct {
 func (l *Log) Normalize() {
 	l.Format = strings.ToLower(strings.TrimSpace(l.Format))
 	if l.Format == "" {
-		l.Format = "plain"
+		l.Format = "plain-time"
 	}
 	l.Level = strings.ToLower(strings.TrimSpace(l.Level))
 	if l.Level == "" {
@@ -47,9 +47,9 @@ func (l *Log) Validate() error {
 		errs = append(errs, fmt.Errorf("%w: %q (allowed: debug|info|warn|error)", ErrInvalidLogLevel, l.Level))
 	}
 	switch l.Format {
-	case "text", "json", "plain":
+	case "plain-time", "plain", "text", "json":
 	default:
-		errs = append(errs, fmt.Errorf("%w: %q (allowed: text|json|plain)", ErrInvalidLogFormat, l.Format))
+		errs = append(errs, fmt.Errorf("%w: %q (allowed: plain-time|plain|text|json)", ErrInvalidLogFormat, l.Format))
 	}
 	return errors.Join(errs...)
 }

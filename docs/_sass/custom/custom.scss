@@ -1,5 +1,5 @@
 .site-logo {
-  background-image: url("/logo/c8volt_logo_transparent_w_shadow_400x244.png");
+  background-image: url("/logo/c8volt_logo_transparent_w_shadow_400x244_dim.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -10,18 +10,165 @@
 }
 
 .main-content blockquote {
-  border-left: 4px solid #d97706;
-  background: #fff8ef;
+  border-left: 3px solid #9f5a2d;
+  background: #141a22;
+  color: #b1bdca;
 }
 
 .main-content code {
   border-radius: 4px;
 }
 
+.main-content :not(pre) > code {
+  background: #101823;
+  color: #8fa8c2;
+}
+
 .main-content pre code {
   font-size: 0.9rem;
+  color: #b5c0ce;
+}
+
+div.highlighter-rouge div.highlight,
+div.listingblock div.content,
+figure.highlight pre,
+figure.highlight :not(pre) > code {
+  border-color: #26313d;
+}
+
+.highlight .hll {
+  background-color: #1b2430;
+}
+
+.highlight,
+.highlight .n,
+.highlight .p,
+.highlight .pm,
+.highlight .w,
+.highlight .nn {
+  color: #b5c0ce;
+}
+
+.highlight .c,
+.highlight .ch,
+.highlight .cm,
+.highlight .cp,
+.highlight .cpf,
+.highlight .c1,
+.highlight .cs {
+  color: #7f8c9d;
+}
+
+.highlight .k,
+.highlight .kc,
+.highlight .kd,
+.highlight .kn,
+.highlight .kp,
+.highlight .kr,
+.highlight .kt,
+.highlight .o,
+.highlight .ow,
+.highlight .nt,
+.highlight .ni,
+.highlight .err,
+.highlight .gr {
+  color: #9f5a2d;
+}
+
+.highlight .c8volt-command-token {
+  color: #9f5a2d;
+}
+
+.highlight .l,
+.highlight .m,
+.highlight .s,
+.highlight .na,
+.highlight .nb,
+.highlight .nc,
+.highlight .no,
+.highlight .nd,
+.highlight .ne,
+.highlight .nf,
+.highlight .nl,
+.highlight .nx,
+.highlight .py,
+.highlight .nv,
+.highlight .mb,
+.highlight .mf,
+.highlight .mh,
+.highlight .mi,
+.highlight .mo,
+.highlight .sa,
+.highlight .sb,
+.highlight .sc,
+.highlight .dl,
+.highlight .sd,
+.highlight .s2,
+.highlight .se,
+.highlight .sh,
+.highlight .si,
+.highlight .sx,
+.highlight .sr,
+.highlight .s1,
+.highlight .ss,
+.highlight .bp,
+.highlight .fm,
+.highlight .vc,
+.highlight .vg,
+.highlight .vi,
+.highlight .vm,
+.highlight .il,
+.highlight .gd,
+.highlight .gh,
+.highlight .gu {
+  color: #b16a36;
+}
+
+.site-nav .nav-list-link {
+  color: #a8b5c4;
+}
+
+.site-nav .nav-list-link:hover,
+.site-nav .nav-list-link.active {
+  background: #18212b;
+  color: #cbd7e3;
+}
+
+.site-nav li.external .nav-list-link svg {
+  color: #7f8c9d;
+}
+
+.aux-nav .site-button {
+  border-color: #26313d;
+  background: #141a22;
+  color: #a8b5c4;
+}
+
+.aux-nav .site-button:hover {
+  background: #18212b;
+  color: #cbd7e3;
 }
 
 .search-input {
   border-radius: 8px;
+  border-color: #26313d;
+  color: #b5c0ce;
+}
+
+.search-input::placeholder {
+  color: #7f8c9d;
+}
+
+.main-content table {
+  border-color: #26313d;
+}
+
+.main-content th,
+.main-content td {
+  border-color: #26313d;
+}
+
+.main-content th {
+  background: #18212b;
+  color: #b5c0ce;
 }

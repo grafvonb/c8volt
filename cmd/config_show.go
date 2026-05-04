@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/config"
@@ -23,7 +24,8 @@ var configShowCmd = &cobra.Command{
 	Long: `Show effective configuration with sensitive values sanitized.
 
 Precedence: flag > env > profile > base config > default.
-Use --validate to check the effective config, or --template for a blank template.`,
+The --validate and --template flags remain supported as compatibility shortcuts
+for validation and template rendering.`,
 	Example: `  ./c8volt config show
   ./c8volt --config ./config.yaml --profile prod config show
   ./c8volt --config ./config.yaml config show --validate
@@ -45,28 +47,39 @@ Use --validate to check the effective config, or --template for a blank template
 				cmd.PrintErrf("warning: %s\n", warning)
 			}
 			if flagShowConfigValidate {
-				err = cfg.Validate()
-				if err != nil {
-					ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(config.FormatValidationError("configuration is invalid", err)))
-				}
-				ferrors.HandleAndExitOK(log, "configuration is valid")
+				validateConfigForCommand(log, cfg)
 			}
 		} else {
-			cfg := config.New()
-			_ = cfg.Normalize()
-			yCfg, err := cfg.ToTemplateYAML()
+			templateCfg, yCfg, err := renderBlankConfigTemplateYAML()
 			if err != nil {
-				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML template: %w", err))
+				ferrors.HandleAndExit(log, templateCfg.App.NoErrCodes, err)
 			}
 			cmd.Println(yCfg)
 		}
 	},
 }
 
+func validateConfigForCommand(log *slog.Logger, cfg *config.Config) {
+	if err := cfg.Validate(); err != nil {
+		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(config.FormatValidationError("configuration is invalid", err)))
+	}
+	ferrors.HandleAndExitOK(log, "configuration is valid")
+}
+
+func renderBlankConfigTemplateYAML() (*config.Config, string, error) {
+	cfg := config.New()
+	_ = cfg.Normalize()
+	yCfg, err := cfg.ToTemplateYAML()
+	if err != nil {
+		return cfg, "", fmt.Errorf("marshaling configuration to YAML template: %w", err)
+	}
+	return cfg, yCfg, nil
+}
+
 func init() {
 	configCmd.AddCommand(configShowCmd)
 
-	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "validate the effective configuration and exit with an error code if invalid")
-	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "print a blank configuration template")
+	configShowCmd.Flags().BoolVar(&flagShowConfigValidate, "validate", false, "compatibility shortcut: validate the effective configuration and exit with an error code if invalid")
+	configShowCmd.Flags().BoolVar(&flagShowConfigTemplate, "template", false, "compatibility shortcut: print a blank configuration template")
 	configShowCmd.MarkFlagsMutuallyExclusive("validate", "template")
 }

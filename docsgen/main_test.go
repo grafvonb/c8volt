@@ -126,3 +126,62 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 		t.Fatalf("expected generated docs to remove obsolete no-fallback wording, got %q", got)
 	}
 }
+
+// TestGeneratedConfigDocsDocumentSplitDiagnostics protects generated command docs for config diagnostics.
+func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	configDoc := readGeneratedDocForTest(t, out, "c8volt_config.md")
+	for _, want := range []string{
+		"`config validate`",
+		"`config template`",
+		"`config test-connection`",
+		"./c8volt --config ./config.yaml config validate",
+		"./c8volt config template",
+		"./c8volt --config ./config.yaml config test-connection",
+		"[c8volt config show](c8volt_config_show)",
+		"[c8volt config validate](c8volt_config_validate)",
+		"[c8volt config template](c8volt_config_template)",
+		"[c8volt config test-connection](c8volt_config_test-connection)",
+	} {
+		if !strings.Contains(configDoc, want) {
+			t.Fatalf("expected generated config docs to contain %q, got %q", want, configDoc)
+		}
+	}
+
+	showDoc := readGeneratedDocForTest(t, out, "c8volt_config_show.md")
+	for _, want := range []string{
+		"compatibility shortcuts",
+		"--validate",
+		"compatibility shortcut: validate the effective configuration",
+		"--template",
+		"compatibility shortcut: print a blank configuration template",
+	} {
+		if !strings.Contains(showDoc, want) {
+			t.Fatalf("expected generated config show docs to contain %q, got %q", want, showDoc)
+		}
+	}
+}
+
+func readGeneratedDocForTest(t *testing.T, out string, name string) string {
+	t.Helper()
+
+	b, err := os.ReadFile(filepath.Join(out, name))
+	if err != nil {
+		t.Fatalf("read generated docs %s: %v", name, err)
+	}
+	return string(b)
+}

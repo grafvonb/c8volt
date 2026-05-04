@@ -9,14 +9,18 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
-	"time"
+)
+
+const (
+	PlainTimestampLayout     = "2006-01-02T15:04:05.000-07:00"
+	PlainTimeTimestampLayout = "15:04:05.000"
 )
 
 type PlainHandler struct {
-	w             io.Writer
-	level         slog.Leveler
-	withTimestamp bool
-	withSource    bool
+	w               io.Writer
+	level           slog.Leveler
+	timestampLayout string
+	withSource      bool
 }
 
 func NewPlainHandler(w io.Writer, level slog.Leveler) *PlainHandler {
@@ -30,8 +34,8 @@ func (h *PlainHandler) Enabled(_ context.Context, lvl slog.Level) bool {
 func (h *PlainHandler) Handle(_ context.Context, r slog.Record) error {
 	level := r.Level.String()
 	line := fmt.Sprintf("%s %s", level, r.Message)
-	if h.withTimestamp {
-		ts := r.Time.Format(time.RFC3339)
+	if h.timestampLayout != "" {
+		ts := r.Time.Format(h.timestampLayout)
 		line = fmt.Sprintf("%s %s", ts, line)
 	}
 	if h.withSource && r.PC != 0 {
@@ -43,7 +47,16 @@ func (h *PlainHandler) Handle(_ context.Context, r slog.Record) error {
 }
 
 func (h *PlainHandler) WithTimestamp(b bool) *PlainHandler {
-	h.withTimestamp = b
+	if b {
+		h.timestampLayout = PlainTimestampLayout
+	} else {
+		h.timestampLayout = ""
+	}
+	return h
+}
+
+func (h *PlainHandler) WithTimestampLayout(layout string) *PlainHandler {
+	h.timestampLayout = layout
 	return h
 }
 
