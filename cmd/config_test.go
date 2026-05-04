@@ -38,6 +38,88 @@ func TestConfigShowHelp_ExplainsEffectiveConfigExamples(t *testing.T) {
 	require.Contains(t, output, "./c8volt --config ./config.yaml config show --validate")
 }
 
+func TestConfigShowCommand_PrintsSanitizedEffectiveConfigAndWarnings(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  tenant: tenant-a
+auth:
+  mode: oauth2
+  oauth2:
+    token_url: https://auth.example.test/oauth/token
+    client_id: client-id
+    client_secret: super-secret
+    scopes:
+      camunda_api: camunda.scope
+apis:
+  camunda_api:
+    base_url: https://camunda.example.test/v1
+    require_scope: true
+`)
+
+	output := executeRootForTest(t, "--config", cfgPath, "config", "show")
+
+	require.Contains(t, output, "tenant: tenant-a")
+	require.Contains(t, output, "client_id: client-id")
+	require.Contains(t, output, "client_secret: '*****'")
+	require.NotContains(t, output, "super-secret")
+	require.Contains(t, output, "warning: apis.camunda_api.base_url")
+	require.Contains(t, output, `corrected "https://camunda.example.test/v1" to "https://camunda.example.test/v2"`)
+}
+
+func TestConfigShowCommand_ValidatePreservesValidOutcome(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `app:
+  tenant: tenant-a
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: https://camunda.example.test
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestConfigShowCommand_ValidatePreservesValidOutcomeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.NoError(t, err)
+	require.Contains(t, string(output), "tenant: tenant-a")
+	require.Contains(t, string(output), "INFO configuration is valid")
+}
+
+func TestConfigShowCommand_ValidatePreservesInvalidOutcome(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `auth:
+  mode: none
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestConfigShowCommand_ValidatePreservesInvalidOutcomeHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "local precondition failed")
+	require.Contains(t, string(output), "configuration is invalid")
+	require.Contains(t, string(output), "apis.camunda_api.base_url: base_url is required")
+}
+
+func TestConfigShowCommand_TemplatePreservesBlankTemplateOutput(t *testing.T) {
+	_, expected, err := renderBlankConfigTemplateYAML()
+	require.NoError(t, err)
+
+	output := executeRootForTest(t, "config", "show", "--template")
+
+	require.Equal(t, expected+"\n", output)
+	require.Contains(t, output, "mode: oauth2|cookie|none")
+	require.Contains(t, output, "format: text|json|plain")
+	require.NotContains(t, output, "'*****'")
+}
+
+func TestConfigShowCommand_RejectsValidateAndTemplateTogether(t *testing.T) {
+	output, err := executeRootExpectErrorForTest(t, "config", "show", "--validate", "--template")
+
+	require.Error(t, err)
+	require.Contains(t, output, `if any flags in the group [validate template] are set none of the others can be; [template validate] were all set`)
+}
+
 // Verifies config show surfaces invalid effective configuration through the shared failure model.
 func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfig(t *testing.T) {
 	output, err := testx.RunCmdSubprocess(t, "TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper", nil)
@@ -340,6 +422,30 @@ func TestConfigShowCommand_UsesSharedFailureModelForInvalidEffectiveConfigHelper
 	configShowCmd.SetOut(os.Stdout)
 	configShowCmd.SetErr(os.Stderr)
 	configShowCmd.Run(configShowCmd, nil)
+}
+
+func TestConfigShowCommand_ValidatePreservesValidOutcomeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "show", "--validate"}
+
+	Execute()
+}
+
+func TestConfigShowCommand_ValidatePreservesInvalidOutcomeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "config", "show", "--validate"}
+
+	Execute()
 }
 
 func TestExecute_ProfileFlagMissingProfileUsesInvalidInputFailureModelHelper(t *testing.T) {

@@ -13,6 +13,7 @@ Started: 2026-05-04 11:53:07
 - `get cluster topology` retrieves topology through `NewCli` and `cli.GetClusterTopology`, then reuses `renderClusterTopologyTree` for deterministic human output.
 - Command tests use `executeRootForTest` for in-process help/output checks and `testx.RunCmdSubprocess` for exit-code paths that call `HandleAndExit`.
 - Docs content is mirrored between `README.md`, `docs/index.md`, and generated `docs/cli/*` pages; generated CLI docs should be refreshed from command metadata after help text changes.
+- `config show --validate` remains a compatibility path that prints sanitized effective configuration before exiting through `HandleAndExitOK` or the standard local precondition error path; cover it with subprocess tests because both paths call `os.Exit`.
 
 ---
 ## Iteration 1 - 2026-05-04 11:54:47 CEST
@@ -51,4 +52,25 @@ Started: 2026-05-04 11:53:07
 - `config show --template` previously handled template rendering errors with a fresh default config's `NoErrCodes` setting, so the shared template helper returns both the template config and rendered YAML.
 - The command contract can lock current compatibility flags now and assert future split diagnostics stay read-only as they are introduced.
 - Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -count=1`.
+---
+---
+## Iteration 3 - 2026-05-04 12:03:52 CEST
+**User Story**: User Story 1 - Preserve Config Show Compatibility
+**Tasks Completed**:
+- [x] T008: Add regression tests for sanitized `config show` output and warnings in `cmd/config_test.go`
+- [x] T009: Add regression tests for `config show --validate` valid and invalid outcomes in `cmd/config_test.go`
+- [x] T010: Add regression tests for `config show --template` output in `cmd/config_test.go`
+- [x] T011: Preserve `config show` sanitized output and warning behavior while using shared helpers in `cmd/config_show.go`
+- [x] T012: Preserve `config show --validate` exit and error behavior while using shared helpers in `cmd/config_show.go`
+- [x] T013: Preserve `config show --template` rendering and mutually exclusive flag behavior in `cmd/config_show.go`
+- [x] T014: Run `go test ./cmd -run 'TestConfigShow|TestConfigHelp' -count=1` and fix regressions in `cmd/config_show.go` or `cmd/config_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/config_test.go
+- specs/166-config-diagnostics-subcommands/tasks.md
+- specs/166-config-diagnostics-subcommands/progress.md
+**Learnings**:
+- `config show` compatibility is protected with command-level tests for sanitized secrets, API correction warnings, validation success/failure exit paths, blank template equivalence, and mutual exclusion of `--validate` with `--template`.
+- Validation passed with `GOCACHE=/tmp/c8volt-go-build go test ./cmd -run 'TestConfigShow|TestConfigHelp' -count=1`.
 ---

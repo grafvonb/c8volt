@@ -46,16 +46,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add regression tests for sanitized `config show` output and warnings in `cmd/config_test.go`
-- [ ] T009 [P] [US1] Add regression tests for `config show --validate` valid and invalid outcomes in `cmd/config_test.go`
-- [ ] T010 [P] [US1] Add regression tests for `config show --template` output in `cmd/config_test.go`
+- [x] T008 [P] [US1] Add regression tests for sanitized `config show` output and warnings in `cmd/config_test.go`
+- [x] T009 [P] [US1] Add regression tests for `config show --validate` valid and invalid outcomes in `cmd/config_test.go`
+- [x] T010 [P] [US1] Add regression tests for `config show --template` output in `cmd/config_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Preserve `config show` sanitized output and warning behavior while using shared helpers in `cmd/config_show.go`
-- [ ] T012 [US1] Preserve `config show --validate` exit and error behavior while using shared helpers in `cmd/config_show.go`
-- [ ] T013 [US1] Preserve `config show --template` rendering and mutually exclusive flag behavior in `cmd/config_show.go`
-- [ ] T014 [US1] Run `go test ./cmd -run 'TestConfigShow|TestConfigHelp' -count=1` and fix regressions in `cmd/config_show.go` or `cmd/config_test.go`
+- [x] T011 [US1] Preserve `config show` sanitized output and warning behavior while using shared helpers in `cmd/config_show.go`
+- [x] T012 [US1] Preserve `config show --validate` exit and error behavior while using shared helpers in `cmd/config_show.go`
+- [x] T013 [US1] Preserve `config show --template` rendering and mutually exclusive flag behavior in `cmd/config_show.go`
+- [x] T014 [US1] Run `go test ./cmd -run 'TestConfigShow|TestConfigHelp' -count=1` and fix regressions in `cmd/config_show.go` or `cmd/config_test.go`
 
 **Checkpoint**: User Story 1 is independently complete when legacy config show commands pass their focused tests.
 
