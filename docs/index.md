@@ -5,9 +5,9 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-283-gd0199b9-dirty`, commit `d0199b9`, built `2026-05-04T15:25:58Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v2.1.0-286-ga4748a4-dirty`, commit `a4748a4`, built `2026-05-04T19:14:30Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
-<img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
+<img src="./logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
@@ -19,7 +19,36 @@ has_toc: true
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results.
 
-## Small Steps To Run
+## Why c8volt
+
+Many CLIs stop at "request accepted." `c8volt` is shaped around the next questions:
+
+- Did the process instance actually reach `ACTIVE`?
+- Where is the incident, and what else is in the same process tree?
+- Did the cancellation hit the root that really matters?
+- Did deletion remove the whole family, not just one visible node?
+- Can a script or agent discover the right command path without parsing help text?
+- Can unattended execution fail explicitly instead of hanging on prompts or mixing logs into stdout?
+
+That is the gap `c8volt` closes.
+
+## At A Glance
+
+- deploy BPMN and use it immediately
+- run process instances and confirm they are active
+- inspect process-instance trees before changing them
+- cancel safely, including root escalation with `--force`
+- delete process-instance families thoroughly
+- wait for the state you actually need
+- triage incidents in direct lookups and process-instance walks
+- page through large process-instance result sets safely
+- return only the numeric process-instance match count with `get pi --total`
+- scope commands by profile and tenant when operating shared clusters
+- validate config and inspect cluster metadata when setting up or troubleshooting
+- discover the public command surface with `capabilities --json`
+- run supported commands non-interactively with `--automation`
+
+## Fast Start
 
 This path is intentionally boring: copy one file, edit two values, validate, test the connection, then run one harmless read command.
 
@@ -132,35 +161,6 @@ Deploy bundled BPMN fixtures directly from the binary:
 ```
 
 This is the quickest path from a clean environment to real process instances you can inspect, wait for, cancel, and delete.
-
-## Why c8volt
-
-Many CLIs stop at "request accepted." `c8volt` is shaped around the next questions:
-
-- Did the process instance actually reach `ACTIVE`?
-- Where is the incident, and what else is in the same process tree?
-- Did the cancellation hit the root that really matters?
-- Did deletion remove the whole family, not just one visible node?
-- Can a script or agent discover the right command path without parsing help text?
-- Can unattended execution fail explicitly instead of hanging on prompts or mixing logs into stdout?
-
-That is the gap `c8volt` closes.
-
-## At A Glance
-
-- deploy BPMN and use it immediately
-- run process instances and confirm they are active
-- inspect process-instance trees before changing them
-- cancel safely, including root escalation with `--force`
-- delete process-instance families thoroughly
-- wait for the state you actually need
-- triage incidents in direct lookups and process-instance walks
-- page through large process-instance result sets safely
-- return only the numeric process-instance match count with `get pi --total`
-- scope commands by profile and tenant when operating shared clusters
-- validate config and inspect cluster metadata when setting up or troubleshooting
-- discover the public command surface with `capabilities --json`
-- run supported commands non-interactively with `--automation`
 
 ## Supported Camunda Versions
 
