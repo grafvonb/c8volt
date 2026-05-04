@@ -17,9 +17,9 @@
 
 **Purpose**: Confirm current command behavior and identify reusable helper seams before changing the command surface.
 
-- [ ] T001 Inspect current `config show`, config bootstrap, and topology rendering behavior in `cmd/config_show.go`, `cmd/root.go`, `cmd/cmd_cli.go`, `cmd/get_cluster_topology.go`, and `cmd/cmd_views_cluster.go`
-- [ ] T002 [P] Inspect existing config and cluster command tests in `cmd/config_test.go` and `cmd/get_test.go`
-- [ ] T003 [P] Inspect current user-facing config docs in `README.md`, `docs/index.md`, `docs/cli/c8volt_config.md`, and `docs/cli/c8volt_config_show.md`
+- [x] T001 Inspect current `config show`, config bootstrap, and topology rendering behavior in `cmd/config_show.go`, `cmd/root.go`, `cmd/cmd_cli.go`, `cmd/get_cluster_topology.go`, and `cmd/cmd_views_cluster.go`
+- [x] T002 [P] Inspect existing config and cluster command tests in `cmd/config_test.go` and `cmd/get_test.go`
+- [x] T003 [P] Inspect current user-facing config docs in `README.md`, `docs/index.md`, `docs/cli/c8volt_config.md`, and `docs/cli/c8volt_config_show.md`
 
 ---
 
