@@ -9,10 +9,66 @@
   margin-top: 0.25rem;
 }
 
+@media (min-width: 50rem) {
+  .side-bar {
+    width: 16.5rem;
+    min-width: 16.5rem;
+  }
+
+  .side-bar + .main {
+    max-width: none;
+    margin-left: 16.5rem;
+  }
+
+  .main-content-wrap {
+    max-width: 96rem;
+    padding-right: clamp(2rem, 4vw, 4rem);
+    padding-left: clamp(2rem, 4vw, 4rem);
+  }
+
+  .main-content > p,
+  .main-content > ul,
+  .main-content > ol,
+  .main-content > blockquote {
+    max-width: 74rem;
+  }
+}
+
 .main-content blockquote {
   border-left: 3px solid #9f5a2d;
   background: #141a22;
   color: #b1bdca;
+  margin-top: 0.65rem;
+  margin-bottom: 0.9rem;
+  padding: 0.55rem 0.9rem;
+}
+
+.main-content blockquote:first-child {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.main-content blockquote > :first-child {
+  margin-top: 0;
+}
+
+.main-content blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.main-content blockquote p {
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.main-content blockquote .table-wrapper {
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
+.main-content blockquote td,
+.main-content blockquote th {
+  padding: 0.35rem 0.65rem;
 }
 
 .main-content code {
@@ -27,6 +83,12 @@
 .main-content pre code {
   font-size: 0.9rem;
   color: #b5c0ce;
+}
+
+.language-bash.highlighter-rouge pre.highlight,
+.language-bash.highlighter-rouge code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 div.highlighter-rouge div.highlight,
