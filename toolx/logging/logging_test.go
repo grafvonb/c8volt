@@ -21,7 +21,7 @@ func TestNewPlainLoggerIncludesFullLocalTimestampWithMilliseconds(t *testing.T) 
 
 	log.Info("config loaded")
 
-	require.Regexp(t, regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2} INFO config loaded\n$`), buf.String())
+	require.Regexp(t, regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2}) INFO config loaded\n$`), buf.String())
 }
 
 func TestNewPlainTimeLoggerIncludesTimeWithMilliseconds(t *testing.T) {
