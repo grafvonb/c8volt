@@ -203,6 +203,43 @@ func TestCapabilityDocumentForRoot_ExcludesRemovedClusterTopologyCommand(t *test
 	require.Contains(t, paths, "get cluster version")
 }
 
+func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	show, ok := findCommandCapability(doc.Commands, "config show")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationReadOnly, show.Mutation)
+	require.Contains(t, show.Flags, FlagContract{
+		Name:        "validate",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "validate the effective configuration and exit with an error code if invalid",
+	})
+	require.Contains(t, show.Flags, FlagContract{
+		Name:        "template",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "print a blank configuration template",
+	})
+
+	for _, path := range []string{
+		"config validate",
+		"config template",
+		"config test-connection",
+	} {
+		capability, ok := findCommandCapability(doc.Commands, path)
+		if !ok {
+			continue
+		}
+		require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	}
+}
+
 // commandCapabilityPaths flattens nested discovery output so removed aliases cannot hide under `get`.
 func commandCapabilityPaths(commands []CommandCapability) []string {
 	var paths []string
@@ -211,4 +248,16 @@ func commandCapabilityPaths(commands []CommandCapability) []string {
 		paths = append(paths, commandCapabilityPaths(command.Children)...)
 	}
 	return paths
+}
+
+func findCommandCapability(commands []CommandCapability, path string) (CommandCapability, bool) {
+	for _, command := range commands {
+		if command.Path == path {
+			return command, true
+		}
+		if child, ok := findCommandCapability(command.Children, path); ok {
+			return child, true
+		}
+	}
+	return CommandCapability{}, false
 }

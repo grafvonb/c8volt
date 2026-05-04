@@ -29,10 +29,10 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T004 Add shared config validation helper in `cmd/config_show.go` that validates a `config.Config` through the existing standard error/local precondition path
-- [ ] T005 Add shared config template rendering helper in `cmd/config_show.go` that renders the existing blank template and returns standard rendering errors
-- [ ] T006 Refactor `configShowCmd` in `cmd/config_show.go` to call the shared validation and template helpers without changing `config show`, `config show --validate`, or `config show --template` behavior
-- [ ] T007 [P] Add command-contract expectations for the new config subcommands in `cmd/command_contract_test.go`
+- [x] T004 Add shared config validation helper in `cmd/config_show.go` that validates a `config.Config` through the existing standard error/local precondition path
+- [x] T005 Add shared config template rendering helper in `cmd/config_show.go` that renders the existing blank template and returns standard rendering errors
+- [x] T006 Refactor `configShowCmd` in `cmd/config_show.go` to call the shared validation and template helpers without changing `config show`, `config show --validate`, or `config show --template` behavior
+- [x] T007 [P] Add command-contract expectations for the new config subcommands in `cmd/command_contract_test.go`
 
 **Checkpoint**: Shared helpers exist and legacy `config show` behavior is still the single compatibility baseline.
 
