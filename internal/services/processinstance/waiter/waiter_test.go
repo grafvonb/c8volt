@@ -74,6 +74,37 @@ func TestWaitForProcessInstanceExpectation_IncidentTrueWaitsAcrossPolling(t *tes
 	assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateActive, Incident: true}, pi)
 }
 
+func TestWaitForProcessInstanceExpectation_IncidentFalseRequiresPresentInstance(t *testing.T) {
+	t.Parallel()
+
+	wantIncident := false
+	attempts := 0
+	waiter := stubPIWaiter{
+		getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+			attempts++
+			return d.ProcessInstance{}, d.ErrNotFound
+		},
+	}
+
+	got, pi, err := WaitForProcessInstanceExpectation(
+		context.Background(),
+		waiter,
+		testConfig(time.Millisecond, 2, 100*time.Millisecond),
+		testLogger(),
+		"missing",
+		d.ProcessInstanceExpectationRequest{Incident: &wantIncident},
+	)
+
+	require.Error(t, err)
+	assert.Equal(t, 2, attempts)
+	assert.False(t, got.Ok)
+	assert.Equal(t, "missing", got.Key)
+	assert.Equal(t, d.StateUnknown, got.State)
+	assert.Nil(t, got.Incident)
+	assert.Contains(t, got.Status, "exceeded max_retries (2)")
+	assert.Equal(t, d.ProcessInstance{}, pi)
+}
+
 // TestWaitForProcessInstanceState verifies single-instance wait behavior across success, retry, timeout, and activity paths.
 func TestWaitForProcessInstanceState(t *testing.T) {
 	t.Run("returns immediately when desired state is already present", func(t *testing.T) {

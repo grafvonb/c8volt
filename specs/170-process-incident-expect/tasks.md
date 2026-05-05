@@ -77,15 +77,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Add command test for `c8volt expect pi --key <key> --incident false` succeeding for a present incident-free instance in `cmd/expect_test.go`
-- [ ] T024 [P] [US2] Add waiter test proving a missing process instance does not satisfy `--incident false` in `internal/services/processinstance/waiter/waiter_test.go`
-- [ ] T025 [P] [US2] Add facade test proving incident false expectation preserves present-instance semantics in `c8volt/process/client_test.go`
+- [x] T023 [P] [US2] Add command test for `c8volt expect pi --key <key> --incident false` succeeding for a present incident-free instance in `cmd/expect_test.go`
+- [x] T024 [P] [US2] Add waiter test proving a missing process instance does not satisfy `--incident false` in `internal/services/processinstance/waiter/waiter_test.go`
+- [x] T025 [P] [US2] Add facade test proving incident false expectation preserves present-instance semantics in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Update incident matcher behavior so false requires a present process instance in `internal/services/processinstance/waiter/waiter.go`
-- [ ] T027 [US2] Ensure facade report mapping preserves observed incident false status in `c8volt/process/client.go` and `c8volt/process/model.go`
-- [ ] T028 [US2] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1` and fix regressions
+- [x] T026 [US2] Update incident matcher behavior so false requires a present process instance in `internal/services/processinstance/waiter/waiter.go`
+- [x] T027 [US2] Ensure facade report mapping preserves observed incident false status in `c8volt/process/client.go` and `c8volt/process/model.go`
+- [x] T028 [US2] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1` and fix regressions
 
 **Checkpoint**: User Story 2 is independently complete when `--incident false` succeeds only for present incident-free process instances.
 

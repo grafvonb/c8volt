@@ -18,6 +18,8 @@ Started: 2026-05-05 08:05:19
 - Incident expectation waits use full `GetProcessInstance` polling through the shared waiter so the matcher can evaluate both state and the observed incident marker from the same fetched instance.
 - `expect pi --incident true` must bypass Cobra's old unconditional required `--state` flag and instead rely on explicit "at least one expectation" validation before reading/merging keys.
 - Command-level incident waits route through `WaitForProcessInstancesExpectation`; state-only waits still use `WaitForProcessInstancesState` to preserve existing report shape and state-only behavior.
+- Incident false semantics are enforced by requiring a present process instance before `processInstanceExpectationMatches` can succeed; missing instances retry until timeout/max-retries instead of mapping to incident-free.
+- Facade incident reports preserve observed `false` values through non-nil incident pointers in `fromDomainIncidentExpectation`, so JSON output can distinguish `false` from an omitted incident observation.
 
 ---
 
@@ -109,4 +111,27 @@ Started: 2026-05-05 08:05:19
 - Versioned v8.7/v8.8/v8.9 services already delegate combined expectation waits to the shared waiter, so US1 needed the shared waiter behavior rather than version-specific loops.
 - Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1`.
 - Additional compile proof: `GOCACHE=/tmp/c8volt-go-build-cache go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+---
+
+---
+## Iteration 4 - 2026-05-05 08:25:47 CEST
+**User Story**: User Story 2 - Wait For Incident Absence
+**Tasks Completed**:
+- [x] T023: Add command test for `c8volt expect pi --key <key> --incident false` succeeding for a present incident-free instance
+- [x] T024: Add waiter test proving a missing process instance does not satisfy `--incident false`
+- [x] T025: Add facade test proving incident false expectation preserves present-instance semantics
+- [x] T026: Update incident matcher behavior so false requires a present process instance
+- [x] T027: Ensure facade report mapping preserves observed incident false status
+- [x] T028: Run targeted US2 Go tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/expect_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/170-process-incident-expect/tasks.md
+- specs/170-process-incident-expect/progress.md
+**Learnings**:
+- The existing combined expectation matcher already blocks missing instances for `--incident false`; US2 locked that behavior with explicit command, waiter, and facade tests.
+- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1`.
 ---

@@ -493,6 +493,37 @@ func TestClient_WaitForProcessInstancesExpectation_MapsIncidentTrueRequestAndRep
 	assert.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: StateActive, Incident: &wantIncident, Status: "process instance 123 satisfied expectation(s)"}, got.Items[0])
 }
 
+func TestClient_WaitForProcessInstancesExpectation_MapsIncidentFalseRequestAndReports(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	wantIncident := IncidentExpectationFalse
+	domainIncident := false
+	piAPI := stubProcessInstanceAPI{
+		waitForProcessInstancesExpectation: func(_ context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.Equal(t, typex.Keys{"123"}, keys)
+			require.Empty(t, request.States)
+			require.NotNil(t, request.Incident)
+			require.False(t, *request.Incident)
+			require.Equal(t, 1, workers)
+			require.True(t, cfg.Verbose)
+			return d.ProcessInstanceExpectationResponses{
+				Items: []d.ProcessInstanceExpectationResponse{
+					{Key: "123", Ok: true, State: d.StateActive, Incident: &domainIncident, Status: "process instance 123 satisfied expectation(s)"},
+				},
+			}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+
+	got, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123", "123"}, ProcessInstanceExpectationRequest{Incident: &wantIncident}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: StateActive, Incident: &wantIncident, Status: "process instance 123 satisfied expectation(s)"}, got.Items[0])
+}
+
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
 // contract: request echoing, overflow state, reported total kind, and item
 // mapping all need to survive the facade boundary.
