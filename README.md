@@ -219,16 +219,18 @@ With `--dry-run`, `c8volt` previews the selected process instances, process-inst
 
 Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. Delete is all-or-nothing for the affected scope: if any selected or dependency-expanded process instance is not in a final state, c8volt refuses the whole delete batch before submitting any delete request. Use `--force` when the affected scope must be canceled first and then deleted.
 
-### Wait For A Known State
+### Wait For A Known State Or Incident
 
 ```bash
 ./c8volt expect pi --key <process-instance-key> --state active
+./c8volt expect pi --key <process-instance-key> --incident true
+./c8volt expect pi --key <process-instance-key> --state active --incident false
 ./c8volt expect pi --key <process-instance-key> --state completed --state absent
 ./c8volt expect pi --key <process-instance-key> --state canceled
-./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
+./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -
 ```
 
-`expect` waits for `active`, `completed`, `canceled`, `terminated`, or `absent`, and works naturally with piped keys for bulk verification flows.
+`expect` waits for `active`, `completed`, `canceled`, `terminated`, or `absent`; it can also wait for `--incident true|false`, alone or with `--state`. Piped keys work for bulk verification flows.
 
 ### Search And Page Process Instances
 
@@ -542,6 +544,8 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Wait for automation-visible outcomes.
 ./c8volt expect pi --key <process-instance-key> --state active
+./c8volt expect pi --key <process-instance-key> --incident true
+./c8volt expect pi --key <process-instance-key> --state active --incident false
 ./c8volt expect pi --key <process-instance-key> --state completed --state absent
 
 # Preview and perform cancellation.

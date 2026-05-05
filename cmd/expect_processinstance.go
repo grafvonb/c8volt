@@ -19,14 +19,16 @@ var (
 
 var expectProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
-	Short: "Wait for process instances to reach states",
-	Long: "Wait for process instances to reach one of the requested states.\n\n" +
-		"Use after `run`, `cancel`, or `delete` when a command returns before the final state is visible.\n\n" +
+	Short: "Wait for process instances to satisfy expectations",
+	Long: "Wait for process instances to satisfy requested state and incident expectations.\n\n" +
+		"Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.\n\n" +
 		"On Camunda 8.8/8.9, canceled waits also match terminated.",
 	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --incident true
+  ./c8volt expect pi --key <process-instance-key> --state active --incident false
   ./c8volt expect pi --key <process-instance-key> --state completed --state absent
   ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -`,
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -42,9 +44,12 @@ var expectProcessInstanceCmd = &cobra.Command{
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
 		}
-		states, err := process.ParseStates(flagExpectPIStates)
-		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
+		var states process.States
+		if cmd.Flags().Changed("state") {
+			states, err = process.ParseStates(flagExpectPIStates)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
+			}
 		}
 		incident, incidentSet, err := parseExpectPIIncidentFlag(cmd)
 		if err != nil {
@@ -127,7 +132,7 @@ func init() {
 	fs := expectProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to watch")
 	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated")
-	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are: [true, false]")
+	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are true|false")
 
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")

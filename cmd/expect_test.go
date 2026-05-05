@@ -28,19 +28,22 @@ func TestExpectCommand_CommandLocalBackoffTimeoutEnvOverridesProfileAndConfig(t 
 
 func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"expect"}, []string{
-		"Wait for process instances to reach a state",
+		"Wait for process instances to satisfy expectations",
 		"success depends on an",
 		"./c8volt expect pi --key <process-instance-key> --state absent",
+		"./c8volt expect pi --key <process-instance-key> --incident true",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{
 		"Use after `run`, `cancel`, or `delete`",
-		"final state is visible",
+		"final state or incident marker is visible",
 		"canceled waits also match terminated",
-		"./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -",
+		"valid values are true|false",
+		"./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -",
 	}, nil)
 	require.Contains(t, output, "--state")
+	require.Contains(t, output, "--incident")
 }
 
 // Verifies expect process-instance rejects unsupported state values through invalid-input handling.
@@ -75,6 +78,37 @@ func TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelope(t *testing.T)
 	require.NoError(t, json.Unmarshal(output, &got))
 	require.Equal(t, string(OutcomeInvalid), got["outcome"])
 	require.Equal(t, "expect process-instance", got["command"])
+}
+
+func TestExpectProcessInstanceCommand_RejectsInvalidIncident(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestExpectProcessInstanceCommand_RejectsInvalidIncidentHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), `invalid value for --incident: "maybe"`)
+	require.Contains(t, string(output), "valid values")
+}
+
+func TestExpectProcessInstanceCommand_RequiresAtLeastOneExpectation(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestExpectProcessInstanceCommand_RequiresAtLeastOneExpectationHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "at least one process instance expectation flag is required: --state or --incident")
+	require.NotContains(t, string(output), `required flag(s) "state" not set`)
 }
 
 func TestExpectProcessInstanceCommand_RejectsAutomationMode(t *testing.T) {
@@ -328,6 +362,32 @@ func TestExpectProcessInstanceCommand_JSONInvalidStateUsesEnvelopeHelper(t *test
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--key", "2251799813685255", "--state", "broken"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestExpectProcessInstanceCommand_RejectsInvalidIncidentHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--key", "2251799813685255", "--incident", "maybe"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestExpectProcessInstanceCommand_RequiresAtLeastOneExpectationHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "pi", "--key", "2251799813685255"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

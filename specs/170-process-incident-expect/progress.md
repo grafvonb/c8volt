@@ -22,6 +22,8 @@ Started: 2026-05-05 08:05:19
 - Facade incident reports preserve observed `false` values through non-nil incident pointers in `fromDomainIncidentExpectation`, so JSON output can distinguish `false` from an omitted incident observation.
 - Combined state and incident waits require both expectations to match on the same present process-instance fetch; canceled/terminated compatibility still flows through `stateIn`/`statesEquivalent`, while state-only command execution remains on `WaitForProcessInstancesState`.
 - Dash stdin command tests should use helper subprocesses with `os.Pipe` assigned to `os.Stdin`; this exercises `term.IsTerminal` and the real `readKeysIfDash` path instead of only command argument validation.
+- Optional state parsing in `cmd/expect_processinstance.go` must be guarded by `cmd.Flags().Changed("state")`; otherwise incident-only invocations can be masked by empty `StringSlice` state defaults before `--incident` validation runs.
+- `make docs-content` regenerates `docs/cli/` from Cobra metadata and rewrites `docs/index.md` from `README.md`, including the build information header.
 
 ---
 
@@ -181,4 +183,40 @@ Started: 2026-05-05 08:05:19
 **Learnings**:
 - Existing command wiring already reads and validates stdin keys before choosing the incident expectation wait path, so US4 required regression coverage rather than production code changes.
 - Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd -run 'TestExpectProcessInstanceCommand_.*Dash|TestHelperExpectProcessInstanceCommand_.*Dash' -count=1`.
+---
+
+---
+## Iteration 7 - 2026-05-05 08:38:22 CEST
+**User Story**: User Story 5 - Validate Expectation Input And Help
+**Tasks Completed**:
+- [x] T040: Add invalid `--incident maybe` command test through invalid-input handling
+- [x] T041: Add no-expectation flag command test for `c8volt expect pi --key <key>`
+- [x] T042: Add help/discovery test for `--incident true|false` and examples
+- [x] T043: Add command contract expectation for the new `--incident` flag
+- [x] T044: Remove required `--state` marking and enforce at-least-one expectation validation
+- [x] T045: Register and document `--incident true|false` on `expectProcessInstanceCmd`
+- [x] T046: Update parent expect command examples
+- [x] T047: Update process-instance expectation examples in README and docs index
+- [x] T048: Regenerate CLI documentation under `docs/cli/`
+- [x] T049: Run targeted expect and command contract tests
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- cmd/expect.go
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- cmd/get_processinstance_test.go
+- docs/cli/c8volt.md
+- docs/cli/c8volt_expect.md
+- docs/cli/c8volt_expect_process-instance.md
+- docs/index.md
+- specs/170-process-incident-expect/tasks.md
+- specs/170-process-incident-expect/progress.md
+**Learnings**:
+- Incident-only and invalid-incident paths need state parsing to skip entirely when `--state` was not set, so the strict `--incident true|false` validation remains the first relevant expectation input check.
+- The no-expectation path intentionally reports the repository's local precondition failure while avoiding Cobra's old required-state error.
+- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd -run 'TestExpect|TestCommandContract' -count=1`.
+- Documentation run: `GOCACHE=/tmp/c8volt-go-build-cache make docs-content`.
 ---

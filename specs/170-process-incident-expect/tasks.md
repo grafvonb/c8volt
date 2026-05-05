@@ -142,19 +142,19 @@
 
 ### Tests for User Story 5
 
-- [ ] T040 [P] [US5] Add invalid `--incident maybe` command test through invalid-input handling in `cmd/expect_test.go`
-- [ ] T041 [P] [US5] Add no-expectation flag command test for `c8volt expect pi --key <key>` in `cmd/expect_test.go`
-- [ ] T042 [P] [US5] Add help/discovery test for `--incident true|false` and examples in `cmd/expect_test.go`
-- [ ] T043 [P] [US5] Add command contract expectation for the new `--incident` flag in `cmd/command_contract_test.go`
+- [x] T040 [P] [US5] Add invalid `--incident maybe` command test through invalid-input handling in `cmd/expect_test.go`
+- [x] T041 [P] [US5] Add no-expectation flag command test for `c8volt expect pi --key <key>` in `cmd/expect_test.go`
+- [x] T042 [P] [US5] Add help/discovery test for `--incident true|false` and examples in `cmd/expect_test.go`
+- [x] T043 [P] [US5] Add command contract expectation for the new `--incident` flag in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T044 [US5] Remove required `--state` marking and enforce at-least-one expectation validation in `cmd/expect_processinstance.go`
-- [ ] T045 [US5] Register and document `--incident true|false` on `expectProcessInstanceCmd` in `cmd/expect_processinstance.go`
-- [ ] T046 [US5] Update parent expect command examples in `cmd/expect.go`
-- [ ] T047 [US5] Update process-instance expectation examples in `README.md` and `docs/index.md`
-- [ ] T048 [US5] Regenerate CLI documentation under `docs/cli/` with `make docs-content`
-- [ ] T049 [US5] Run `go test ./cmd -run 'TestExpect|TestCommandContract' -count=1` and fix help or validation regressions
+- [x] T044 [US5] Remove required `--state` marking and enforce at-least-one expectation validation in `cmd/expect_processinstance.go`
+- [x] T045 [US5] Register and document `--incident true|false` on `expectProcessInstanceCmd` in `cmd/expect_processinstance.go`
+- [x] T046 [US5] Update parent expect command examples in `cmd/expect.go`
+- [x] T047 [US5] Update process-instance expectation examples in `README.md` and `docs/index.md`
+- [x] T048 [US5] Regenerate CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T049 [US5] Run `go test ./cmd -run 'TestExpect|TestCommandContract' -count=1` and fix help or validation regressions
 
 **Checkpoint**: User Story 5 is independently complete when invalid inputs fail clearly and users can discover `--incident true|false` in help and docs.
 

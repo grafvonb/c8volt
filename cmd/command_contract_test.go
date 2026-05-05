@@ -238,6 +238,30 @@ func TestCapabilityDocumentForRoot_ConfigDiagnosticsContract(t *testing.T) {
 	}
 }
 
+func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(expectProcessInstanceCmd)
+
+	require.Equal(t, "expect process-instance", capability.Path)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "state",
+		Shorthand:   "s",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "incident",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "incident expectation; valid values are true|false",
+	})
+}
+
 // commandCapabilityPaths flattens nested discovery output so removed aliases cannot hide under `get`.
 func commandCapabilityPaths(commands []CommandCapability) []string {
 	var paths []string

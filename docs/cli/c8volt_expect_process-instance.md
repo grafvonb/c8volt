@@ -6,13 +6,13 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt expect process-instance
 
-Wait for process instances to reach states
+Wait for process instances to satisfy expectations
 
 ### Synopsis
 
-Wait for process instances to reach one of the requested states.
+Wait for process instances to satisfy requested state and incident expectations.
 
-Use after `run`, `cancel`, or `delete` when a command returns before the final state is visible.
+Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.
 
 On Camunda 8.8/8.9, canceled waits also match terminated.
 
@@ -24,9 +24,11 @@ c8volt expect process-instance [flags]
 
 ```
   ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --incident true
+  ./c8volt expect pi --key <process-instance-key> --state active --incident false
   ./c8volt expect pi --key <process-instance-key> --state completed --state absent
   ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -
 ```
 
 ### Options
@@ -34,6 +36,7 @@ c8volt expect process-instance [flags]
 ```
       --fail-fast         stop scheduling new instances after the first error
   -h, --help              help for process-instance
+      --incident string   incident expectation; valid values are true|false
   -k, --key strings       process instance key(s) to watch
       --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
   -s, --state strings     state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated
@@ -60,5 +63,5 @@ c8volt expect process-instance [flags]
 
 ### SEE ALSO
 
-* [c8volt expect](c8volt_expect)	 - Wait for process instances to reach a state
+* [c8volt expect](c8volt_expect)	 - Wait for process instances to satisfy expectations
 

@@ -2682,6 +2682,9 @@ func resetProcessInstanceCommandGlobals() {
 	flagWorkers = 0
 	flagNoWorkerLimit = false
 	flagFailFast = false
+	flagExpectPIKeys = nil
+	flagExpectPIStates = nil
+	flagExpectPIIncident = ""
 	confirmCmdOrAbortFn = confirmCmdOrAbort
 }
 

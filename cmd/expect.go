@@ -9,14 +9,16 @@ import (
 
 var expectCmd = &cobra.Command{
 	Use:   "expect",
-	Short: "Wait for process instances to reach a state",
-	Long: `Wait for process instances to reach a state.
+	Short: "Wait for process instances to satisfy expectations",
+	Long: `Wait for process instances to satisfy state or incident expectations.
 
 Use after run, cancel, or delete when success depends on an observed
-process-instance state.`,
+process-instance state or incident marker.`,
 	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --incident true
+  ./c8volt expect pi --key <process-instance-key> --state active --incident false
   ./c8volt expect pi --key <process-instance-key> --state absent
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -`,
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -`,
 	Aliases: []string{"e", "exp"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
