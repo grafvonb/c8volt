@@ -15,6 +15,9 @@ Started: 2026-05-05 08:05:19
 - Public process facade expansion requires matching methods on command and facade test stubs (`cmd/process_api_stub_test.go`, `c8volt/process/client_test.go`) because both assert full API conformance.
 - Combined process-instance expectation contracts now use public request/report types in `c8volt/process` and mirrored domain request/response types in `internal/domain` because internal service APIs cannot import the public facade package.
 - Foundational combined waiter scaffolding delegates state-only expectation requests to the existing state waiter and returns unsupported for incident requests until the US1 wait loop is implemented.
+- Incident expectation waits use full `GetProcessInstance` polling through the shared waiter so the matcher can evaluate both state and the observed incident marker from the same fetched instance.
+- `expect pi --incident true` must bypass Cobra's old unconditional required `--state` flag and instead rely on explicit "at least one expectation" validation before reading/merging keys.
+- Command-level incident waits route through `WaitForProcessInstancesExpectation`; state-only waits still use `WaitForProcessInstancesState` to preserve existing report shape and state-only behavior.
 
 ---
 
@@ -76,4 +79,34 @@ Started: 2026-05-05 08:05:19
 - Registering a new facade method requires test stub updates in every package that asserts the full facade or service API.
 - The `--incident` flag can be parsed strictly now, but the command should not switch away from the existing state wait path until US1 wires the combined waiter behavior.
 - Use `GOCACHE=/tmp/c8volt-go-build-cache` for Go tests in this sandbox; the default macOS Go build cache is outside the writable roots.
+---
+
+---
+## Iteration 3 - 2026-05-05 08:22:40 CEST
+**User Story**: User Story 1 - Wait For Incident Presence
+**Tasks Completed**:
+- [x] T014: Add command test for `c8volt expect pi --key <key> --incident true` waiting until incident true
+- [x] T015: Add facade test proving incident true expectation maps through the process client
+- [x] T016: Add waiter test proving incident true waits across false-to-true polling
+- [x] T017: Implement combined expectation waiting for a single process instance
+- [x] T018: Implement combined expectation waiting for multiple process instances with existing worker controls
+- [x] T019: Delegate versioned services to the shared combined waiter
+- [x] T020: Map combined expectation wait results through the public process facade
+- [x] T021: Wire `expect process-instance` to call the combined expectation wait path when `--incident true` is provided
+- [x] T022: Run targeted US1 Go tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/waiter/waiter.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/170-process-incident-expect/tasks.md
+- specs/170-process-incident-expect/progress.md
+**Learnings**:
+- Full process-instance polling is required for incident expectations; state-only polling cannot observe the incident marker directly.
+- Versioned v8.7/v8.8/v8.9 services already delegate combined expectation waits to the shared waiter, so US1 needed the shared waiter behavior rather than version-specific loops.
+- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1`.
+- Additional compile proof: `GOCACHE=/tmp/c8volt-go-build-cache go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
 ---

@@ -5,8 +5,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -102,6 +105,45 @@ func TestExpectProcessInstanceCommand_DashDoesNotRequireKeyFlag(t *testing.T) {
 	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "invalid input")
 	require.NotContains(t, string(output), `required flag(s) "key" not set`)
+}
+
+func TestExpectProcessInstanceCommand_IncidentTrueWaitsUntilMatched(t *testing.T) {
+	var attempts atomic.Int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/123", r.URL.Path)
+
+		incident := attempts.Add(1) >= 2
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"hasIncident":%t,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, incident)))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"expect", "pi",
+		"--key", "123",
+		"--incident", "true",
+	)
+
+	require.Equal(t, int32(2), attempts.Load())
+	require.Contains(t, output, `"incident": true`)
+	require.Contains(t, output, `"ok": true`)
 }
 
 // Helper-process entrypoint for invalid expect-state validation.

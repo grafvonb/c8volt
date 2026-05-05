@@ -52,18 +52,18 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add command test for `c8volt expect pi --key <key> --incident true` waiting until incident true in `cmd/expect_test.go`
-- [ ] T015 [P] [US1] Add facade test proving incident true expectation maps through the process client in `c8volt/process/client_test.go`
-- [ ] T016 [P] [US1] Add waiter test proving incident true waits across false-to-true polling in `internal/services/processinstance/waiter/waiter_test.go`
+- [x] T014 [P] [US1] Add command test for `c8volt expect pi --key <key> --incident true` waiting until incident true in `cmd/expect_test.go`
+- [x] T015 [P] [US1] Add facade test proving incident true expectation maps through the process client in `c8volt/process/client_test.go`
+- [x] T016 [P] [US1] Add waiter test proving incident true waits across false-to-true polling in `internal/services/processinstance/waiter/waiter_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Implement combined expectation waiting for a single process instance in `internal/services/processinstance/waiter/waiter.go`
-- [ ] T018 [US1] Implement combined expectation waiting for multiple process instances with existing worker controls in `internal/services/processinstance/waiter/waiter.go`
-- [ ] T019 [US1] Delegate versioned services to the shared combined waiter in `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
-- [ ] T020 [US1] Map combined expectation wait results through the public process facade in `c8volt/process/client.go` and `c8volt/process/bulk.go`
-- [ ] T021 [US1] Wire `cmd/expect_processinstance.go` to call the combined expectation wait path when `--incident true` is provided
-- [ ] T022 [US1] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1` and fix regressions
+- [x] T017 [US1] Implement combined expectation waiting for a single process instance in `internal/services/processinstance/waiter/waiter.go`
+- [x] T018 [US1] Implement combined expectation waiting for multiple process instances with existing worker controls in `internal/services/processinstance/waiter/waiter.go`
+- [x] T019 [US1] Delegate versioned services to the shared combined waiter in `internal/services/processinstance/v87/service.go`, `internal/services/processinstance/v88/service.go`, and `internal/services/processinstance/v89/service.go`
+- [x] T020 [US1] Map combined expectation wait results through the public process facade in `c8volt/process/client.go` and `c8volt/process/bulk.go`
+- [x] T021 [US1] Wire `cmd/expect_processinstance.go` to call the combined expectation wait path when `--incident true` is provided
+- [x] T022 [US1] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when direct `--incident true` waits through the command, facade, and waiter tests.
 

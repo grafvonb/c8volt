@@ -462,6 +462,37 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 	require.Empty(t, got.Items)
 }
 
+func TestClient_WaitForProcessInstancesExpectation_MapsIncidentTrueRequestAndReports(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	wantIncident := IncidentExpectationTrue
+	domainIncident := true
+	piAPI := stubProcessInstanceAPI{
+		waitForProcessInstancesExpectation: func(_ context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.Equal(t, typex.Keys{"123"}, keys)
+			require.Empty(t, request.States)
+			require.NotNil(t, request.Incident)
+			require.True(t, *request.Incident)
+			require.Equal(t, 1, workers)
+			require.True(t, cfg.Verbose)
+			return d.ProcessInstanceExpectationResponses{
+				Items: []d.ProcessInstanceExpectationResponse{
+					{Key: "123", Ok: true, State: d.StateActive, Incident: &domainIncident, Status: "process instance 123 satisfied expectation(s)"},
+				},
+			}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+
+	got, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123", "123"}, ProcessInstanceExpectationRequest{Incident: &wantIncident}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: StateActive, Incident: &wantIncident, Status: "process instance 123 satisfied expectation(s)"}, got.Items[0])
+}
+
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
 // contract: request echoing, overflow state, reported total kind, and item
 // mapping all need to survive the facade boundary.
@@ -1051,16 +1082,18 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
-	searchForProcessInstances      func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
-	searchForProcessInstancesPage  func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
-	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
-	ancestry                       func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
-	descendants                    func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
-	cancelProcessInstance          func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
-	deleteProcessInstance          func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
-	ancestryResult                 func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
-	descendantsResult              func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
-	familyResult                   func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
+	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+	searchProcessInstanceIncidents     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	ancestry                           func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
+	descendants                        func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+	cancelProcessInstance              func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	deleteProcessInstance              func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
+	ancestryResult                     func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	descendantsResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	familyResult                       func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	waitForProcessInstanceExpectation  func(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error)
+	waitForProcessInstancesExpectation func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
 
 // CreateProcessInstance panics when a facade test accidentally starts a process instance.
@@ -1146,9 +1179,12 @@ func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, strin
 	panic("unexpected call")
 }
 
-// WaitForProcessInstanceExpectation panics when a facade test accidentally waits for one process-instance expectation.
-func (stubProcessInstanceAPI) WaitForProcessInstanceExpectation(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
-	panic("unexpected call")
+// WaitForProcessInstanceExpectation delegates to the per-test callback and panics on unexpected single expectation waits.
+func (s stubProcessInstanceAPI) WaitForProcessInstanceExpectation(ctx context.Context, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	if s.waitForProcessInstanceExpectation == nil {
+		panic("unexpected call")
+	}
+	return s.waitForProcessInstanceExpectation(ctx, key, request, opts...)
 }
 
 // Ancestry delegates the legacy traversal tuple used by older dry-run helpers.
@@ -1216,9 +1252,12 @@ func (stubProcessInstanceAPI) WaitForProcessInstancesState(context.Context, type
 	panic("unexpected call")
 }
 
-// WaitForProcessInstancesExpectation panics when a facade test accidentally waits for bulk process-instance expectations.
-func (stubProcessInstanceAPI) WaitForProcessInstancesExpectation(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
-	panic("unexpected call")
+// WaitForProcessInstancesExpectation delegates to the per-test callback and panics on unexpected bulk expectation waits.
+func (s stubProcessInstanceAPI) WaitForProcessInstancesExpectation(ctx context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	if s.waitForProcessInstancesExpectation == nil {
+		panic("unexpected call")
+	}
+	return s.waitForProcessInstancesExpectation(ctx, keys, request, workers, opts...)
 }
 
 var _ pisvc.API = stubProcessInstanceAPI{}

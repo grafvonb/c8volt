@@ -23,15 +23,55 @@ import (
 )
 
 type stubPIWaiter struct {
-	getStateByKey func(ctx context.Context, key string) (d.State, d.ProcessInstance, error)
+	getProcessInstance func(ctx context.Context, key string) (d.ProcessInstance, error)
+	getStateByKey      func(ctx context.Context, key string) (d.State, d.ProcessInstance, error)
 }
 
 func (s stubPIWaiter) GetProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstance, error) {
-	panic("unexpected GetProcessInstance call")
+	if s.getProcessInstance == nil {
+		panic("unexpected GetProcessInstance call")
+	}
+	return s.getProcessInstance(ctx, key)
 }
 
 func (s stubPIWaiter) GetProcessInstanceStateByKey(ctx context.Context, key string, _ ...services.CallOption) (d.State, d.ProcessInstance, error) {
 	return s.getStateByKey(ctx, key)
+}
+
+func TestWaitForProcessInstanceExpectation_IncidentTrueWaitsAcrossPolling(t *testing.T) {
+	t.Parallel()
+
+	wantIncident := true
+	attempts := 0
+	waiter := stubPIWaiter{
+		getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+			attempts++
+			return d.ProcessInstance{
+				Key:      key,
+				State:    d.StateActive,
+				Incident: attempts >= 2,
+			}, nil
+		},
+	}
+
+	got, pi, err := WaitForProcessInstanceExpectation(
+		context.Background(),
+		waiter,
+		testConfig(time.Millisecond, 3, 100*time.Millisecond),
+		testLogger(),
+		"123",
+		d.ProcessInstanceExpectationRequest{Incident: &wantIncident},
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, attempts)
+	assert.True(t, got.Ok)
+	assert.Equal(t, "123", got.Key)
+	assert.Equal(t, d.StateActive, got.State)
+	require.NotNil(t, got.Incident)
+	assert.True(t, *got.Incident)
+	assert.Contains(t, got.Status, "satisfied expectation(s)")
+	assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateActive, Incident: true}, pi)
 }
 
 // TestWaitForProcessInstanceState verifies single-instance wait behavior across success, retry, timeout, and activity paths.
