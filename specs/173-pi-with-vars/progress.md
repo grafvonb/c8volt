@@ -18,6 +18,7 @@ Started: 2026-05-05 21:28:44
 - `cmd/cmd_views_processinstance_vars.go` follows the incident-enriched renderer shape: align base process-instance rows first, render child details underneath, then emit a single `found:` line.
 - Human variable value display stays in `cmd/cmd_views_processinstance_vars.go`: compact object/array JSON with `json.Compact`, apply rune-safe `--var-value-limit` shortening only for positive limits, and append ordered truncation labels in square brackets.
 - `--var-value-limit` follows `--incident-message-limit` command patterns: package-global flag storage, reset coverage, help text, and validation in `validatePISearchFlags` for non-negative values plus `--with-vars` dependency.
+- Variable-enriched JSON follows the incident-enriched envelope pattern: render through `renderJSONPayload`, include process-instance age metadata, preserve received variable values, and keep human-only value limits out of JSON.
 
 ---
 
@@ -152,4 +153,29 @@ Started: 2026-05-05 21:28:44
 - `--var-value-limit` validation belongs beside process-instance search flag validation so Cobra flag-change state is available for the `--with-vars` dependency check.
 - Full `./cmd` validation requires tenant-specific variable-search assertions to pass an explicit `--tenant` flag; otherwise read commands intentionally leave tenant filters unset for Camunda 8.8+.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Var.*(Limit|Trunc|Compact|Validation)' -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
+---
+---
+## Iteration 5 - 2026-05-05 22:01:49 CEST
+**User Story**: User Story 3 - Provide Enriched JSON Output
+**Tasks Completed**:
+- [x] T036: Add command JSON test for `get pi --key <key> --with-vars --json` enriched payload shape in `cmd/get_processinstance_test.go`
+- [x] T037: Add JSON test proving `--var-value-limit` does not alter JSON variable values in `cmd/get_processinstance_test.go`
+- [x] T038: Add JSON test proving variable metadata includes name, value, variable key, process instance key, scope key, tenant ID, and API truncation state when available in `cmd/get_processinstance_test.go`
+- [x] T039: Add facade test proving JSON-order variables are sorted by name in `c8volt/process/client_test.go`
+- [x] T040: Add JSON envelope and age metadata compatibility for variable-enriched process instances in `cmd/cmd_views_processinstance_vars.go`
+- [x] T041: Route `--json --with-vars` through variable-enriched JSON rendering in `cmd/get_processinstance.go`
+- [x] T042: Ensure facade/service variable models preserve received values and API truncation state in `c8volt/process/convert.go` and versioned service converters
+- [x] T043: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*Var.*JSON|TestClient_.*Var' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- cmd/cmd_views_get_test.go
+- cmd/get_processinstance_test.go
+- specs/173-pi-with-vars/tasks.md
+- specs/173-pi-with-vars/progress.md
+**Learnings**:
+- The existing variable-enriched renderer already used the shared JSON envelope and age metadata; US3 primarily needed command/view/facade coverage to lock the contract.
+- JSON output keeps received values unchanged even when `--var-value-limit` is set, because shortening stays isolated in the human-line renderer.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*Var.*JSON|TestClient_.*Var' -count=1`.
 ---

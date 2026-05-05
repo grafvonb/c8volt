@@ -443,6 +443,61 @@ func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVaria
 	require.Less(t, strings.Index(output, "  zeta = 2"), strings.Index(output, "found: 1"))
 }
 
+func TestVariableEnrichedProcessInstancesView_JSONUsesSharedEnvelopeAndAgeMeta(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := variableEnrichedProcessInstancesView(cmd, process.VariableEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.VariableEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:       "2251799813758959",
+				StartDate: "2026-01-28T12:27:33.233Z",
+			},
+			Variables: []process.ProcessInstanceVariable{{
+				Name:               "customerId",
+				Value:              `"C-123"`,
+				VariableKey:        "901",
+				ProcessInstanceKey: "2251799813758959",
+				ScopeKey:           "2251799813758959",
+				TenantId:           "tenant-a",
+				APITruncated:       true,
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	ageDaysBy := requireJSONObject(t, meta["ageDaysByKey"])
+	require.Equal(t, float64(4), ageDaysBy["2251799813758959"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	variables := requireJSONItems(t, first["variables"], 1)
+	variable := requireJSONObject(t, variables[0])
+	require.Equal(t, `"C-123"`, variable["value"])
+	require.Equal(t, true, variable["apiTruncated"])
+}
+
 func TestProcessInstanceVariableHumanLine_CompactsJSONLikeObjectsAndArrays(t *testing.T) {
 	prevLimit := flagGetPIVarValueLimit
 	flagGetPIVarValueLimit = 0

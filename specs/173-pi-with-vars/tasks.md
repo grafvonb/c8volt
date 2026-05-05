@@ -106,17 +106,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Add command JSON test for `get pi --key <key> --with-vars --json` enriched payload shape in `cmd/get_processinstance_test.go`
-- [ ] T037 [P] [US3] Add JSON test proving `--var-value-limit` does not alter JSON variable values in `cmd/get_processinstance_test.go`
-- [ ] T038 [P] [US3] Add JSON test proving variable metadata includes name, value, variable key, process instance key, scope key, tenant ID, and API truncation state when available in `cmd/get_processinstance_test.go`
-- [ ] T039 [P] [US3] Add facade test proving JSON-order variables are sorted by name in `c8volt/process/client_test.go`
+- [x] T036 [P] [US3] Add command JSON test for `get pi --key <key> --with-vars --json` enriched payload shape in `cmd/get_processinstance_test.go`
+- [x] T037 [P] [US3] Add JSON test proving `--var-value-limit` does not alter JSON variable values in `cmd/get_processinstance_test.go`
+- [x] T038 [P] [US3] Add JSON test proving variable metadata includes name, value, variable key, process instance key, scope key, tenant ID, and API truncation state when available in `cmd/get_processinstance_test.go`
+- [x] T039 [P] [US3] Add facade test proving JSON-order variables are sorted by name in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Add JSON envelope and age metadata compatibility for variable-enriched process instances in `cmd/cmd_views_processinstance_vars.go`
-- [ ] T041 [US3] Route `--json --with-vars` through variable-enriched JSON rendering in `cmd/get_processinstance.go`
-- [ ] T042 [US3] Ensure facade/service variable models preserve received values and API truncation state in `c8volt/process/convert.go` and versioned service converters
-- [ ] T043 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*Var.*JSON|TestClient_.*Var' -count=1` and fix regressions
+- [x] T040 [US3] Add JSON envelope and age metadata compatibility for variable-enriched process instances in `cmd/cmd_views_processinstance_vars.go`
+- [x] T041 [US3] Route `--json --with-vars` through variable-enriched JSON rendering in `cmd/get_processinstance.go`
+- [x] T042 [US3] Ensure facade/service variable models preserve received values and API truncation state in `c8volt/process/convert.go` and versioned service converters
+- [x] T043 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*Var.*JSON|TestClient_.*Var' -count=1` and fix regressions
 
 **Checkpoint**: User Story 3 is independently complete when JSON consumers can read process instances and variables together without human-display mutation.
 

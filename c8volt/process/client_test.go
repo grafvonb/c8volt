@@ -347,6 +347,33 @@ func TestClient_EnrichProcessInstancesWithVariables_PreservesOrderAndPerKeyAssoc
 	require.NotNil(t, got.Items[1].Variables)
 }
 
+func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJSONMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			return []d.ProcessInstanceVariable{
+				{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
+				{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
+		Total: 1,
+		Items: []ProcessInstance{{Key: "123", BpmnProcessId: "order-process"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []ProcessInstanceVariable{
+		{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
+	}, got.Items[0].Variables)
+}
+
 // TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
 func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()

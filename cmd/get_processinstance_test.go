@@ -1040,6 +1040,96 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.Less(t, strings.Index(output, "  alpha = 1"), strings.Index(output, "  zeta = 2"))
 }
 
+func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetadata(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
+			_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant","isTruncated":false},{"name":"alpha","value":"\"C-123\"","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant","isTruncated":true}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-vars",
+	)
+
+	payload := requireProcessInstanceVariableJSONPayload(t, output)
+	require.Equal(t, float64(1), payload["total"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	item := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", item["key"])
+	require.Equal(t, "tenant", item["tenantId"])
+
+	variables := requireJSONItems(t, first["variables"], 2)
+	alpha := requireJSONObject(t, variables[0])
+	require.Equal(t, "alpha", alpha["name"])
+	require.Equal(t, `"C-123"`, alpha["value"])
+	require.Equal(t, "901", alpha["variableKey"])
+	require.Equal(t, "123", alpha["processInstanceKey"])
+	require.Equal(t, "123", alpha["scopeKey"])
+	require.Equal(t, "tenant", alpha["tenantId"])
+	require.Equal(t, true, alpha["apiTruncated"])
+
+	zeta := requireJSONObject(t, variables[1])
+	require.Equal(t, "zeta", zeta["name"])
+	require.Equal(t, false, zeta["apiTruncated"])
+}
+
+func TestGetProcessInstanceWithVars_JSONOutputKeepsReceivedValuesWhenVarValueLimitSet(t *testing.T) {
+	fullValue := "abcdefghijklmnopqrstuvwxyz"
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"name":"payload","value":"` + fullValue + `","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant","isTruncated":false}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-vars",
+		"--var-value-limit", "3",
+	)
+
+	payload := requireProcessInstanceVariableJSONPayload(t, output)
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	variables := requireJSONItems(t, first["variables"], 1)
+	variable := requireJSONObject(t, variables[0])
+	require.Equal(t, fullValue, variable["value"])
+	require.NotEqual(t, "abc...", variable["value"])
+}
+
 // TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents covers both direct incident rendering and tree-propagated incident warnings.
 func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(t *testing.T) {
 	tests := []struct {
@@ -3137,6 +3227,17 @@ func decodeSingleRequestJSON(t *testing.T, requests []string) map[string]any {
 
 // requireProcessInstanceIncidentJSONPayload unwraps the shared JSON envelope used by incident-enriched keyed lookups.
 func requireProcessInstanceIncidentJSONPayload(t *testing.T, output string) map[string]any {
+	t.Helper()
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "get process-instance", envelope["command"])
+	return requireJSONObject(t, envelope["payload"])
+}
+
+// requireProcessInstanceVariableJSONPayload unwraps the shared JSON envelope used by variable-enriched keyed lookups.
+func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[string]any {
 	t.Helper()
 
 	var envelope map[string]any
