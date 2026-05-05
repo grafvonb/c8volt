@@ -276,6 +276,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 
 ```bash
 ./c8volt get pi --state active --incidents-only
+./c8volt get pi --incidents-only --with-incidents
+./c8volt get pi --with-incidents --incident-message-limit 80
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
 ./c8volt get pi --roots-only
@@ -290,7 +292,7 @@ Human process-instance lists mark only incident-bearing instances with `inc!`; i
 
 Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
 
-For direct keyed diagnosis, add `--with-incidents` to show incident keys and messages below the process-instance row, or combine it with `--json` for structured incident details. The flag is scoped to `--key` lookups; search filters such as `--incidents-only` keep their existing list-filter behavior.
+For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output to show direct incident keys and messages below each matching process-instance row. Rows marked `inc!` with no direct incident details include a short note and one follow-up warning to inspect the tree with `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` to shorten human incident messages; JSON incident output keeps full messages.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 

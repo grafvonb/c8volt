@@ -51,17 +51,22 @@ func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrich
 			out.WriteString(sep)
 		}
 		out.WriteString(oneLinePI(item.Item))
-		writeIncidentLines(&out, "  ", item.Incidents)
+		writeIncidentLines(&out, "", item.Incidents)
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
 }
 
-// writeIncidentLines appends formatted incident lines using the caller's indentation prefix.
+// writeIncidentLines appends formatted incident lines as tree children.
 func writeIncidentLines(out *strings.Builder, prefix string, incidents []process.ProcessInstanceIncidentDetail) {
-	for _, incident := range incidents {
+	writeIncidentTreeLines(out, prefix, incidents, 0)
+}
+
+func writeIncidentTreeLines(out *strings.Builder, prefix string, incidents []process.ProcessInstanceIncidentDetail, followingChildren int) {
+	for i, incident := range incidents {
 		out.WriteByte('\n')
 		out.WriteString(prefix)
+		out.WriteString(incidentTreeBranch(i, len(incidents)+followingChildren))
 		out.WriteString(incidentHumanLine(incident))
 	}
 }
@@ -101,8 +106,9 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 		return fmt.Errorf("root %s not found in enriched traversal items", rootKey)
 	}
 	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
-	for _, incident := range rootItem.Incidents {
-		renderOutputLine(cmd, "  %s", incidentHumanLine(incident))
+	rootChildren := edges[rootKey]
+	for i, incident := range rootItem.Incidents {
+		renderOutputLine(cmd, "%s%s", incidentTreeBranch(i, len(rootItem.Incidents)+len(rootChildren)), incidentHumanLine(incident))
 	}
 
 	var walk func(parentKey, prefix string)
@@ -129,7 +135,7 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 			out.WriteString(branch)
 			out.WriteString(oneLinePI(item.Item))
 			out.WriteString(marker)
-			writeIncidentLines(&out, nextPrefix+"  ", item.Incidents)
+			writeIncidentTreeLines(&out, nextPrefix, item.Incidents, len(edges[childKey]))
 			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}

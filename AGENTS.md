@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/170-process-incident-expect/plan.md](specs/170-process-incident-expect/plan.md)
+- Active plan: [specs/171-pi-incident-list-output/plan.md](specs/171-pi-incident-list-output/plan.md)
 <!-- SPECKIT END -->

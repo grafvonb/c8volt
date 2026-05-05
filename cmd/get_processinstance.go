@@ -42,6 +42,7 @@ var (
 	flagGetPISize                 int32
 	flagGetPILimit                int32
 	flagGetPIWithIncidents        bool
+	flagGetPIIncidentMessageLimit int
 )
 
 // command options
@@ -59,8 +60,8 @@ var getProcessInstanceCmd = &cobra.Command{
 	Long: "Get process instances by key or by search criteria.\n\n" +
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
-		"Use --with-incidents with --key to include incident keys and messages for the returned process instance.\n\n" +
-		"User-task based lookup resolves owning process instances through tenant-aware Camunda v2 user-task search first. On Camunda 8.8 and 8.9, not-found user-task results fall back to deprecated Tasklist V1 lookup for legacy user-task compatibility; Camunda 8.7 remains unsupported.\n\n" +
+		"Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.\n\n" +
+		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
 	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
   ./c8volt get pi --key <process-instance-key>
@@ -70,6 +71,8 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --has-user-tasks <user-task-key>
   ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --state active --limit 25 --auto-confirm
+  ./c8volt get pi --incidents-only --with-incidents
+  ./c8volt get pi --with-incidents --incident-message-limit 80
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json
@@ -168,7 +171,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				fail(msg)
 			}
 			if flagGetPIWithIncidents {
-				enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
@@ -199,6 +202,16 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 		}
+		if flagGetPIWithIncidents {
+			enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+			if err != nil {
+				fail(fmt.Errorf("get process instance incidents: %w", err))
+			}
+			if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
+				fail(fmt.Errorf("render process instances with incidents: %w", err))
+			}
+			return
+		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
 			fail(fmt.Errorf("render process instances: %w", err))
 		}
@@ -218,7 +231,8 @@ func init() {
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
-	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident keys and messages for direct --key process-instance lookups")
+	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys and messages for keyed or list/search process-instance output")
+	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -463,9 +477,13 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	incremental := shouldRenderPISearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinuePISearchPages(cmd)
 	processedTotal := 0
+	needsIndirectIncidentWarning := false
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine {
+				if needsIndirectIncidentWarning {
+					renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
+				}
 				renderOutputLine(cmd, "found: %d", processedTotal)
 			}
 			return process.ProcessInstances{}, true, nil
@@ -489,7 +507,17 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Items = limitPIItems(filtered.Items, processedTotal)
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
-			if pickMode() == RenderModeOneLine {
+			if flagGetPIWithIncidents && pickMode() == RenderModeOneLine {
+				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, filtered)
+				if err != nil {
+					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
+				}
+				pageNeedsIndirectIncidentWarning, err := renderIncidentEnrichedProcessInstanceRows(cmd, enriched)
+				if err != nil {
+					return process.ProcessInstances{}, false, err
+				}
+				needsIndirectIncidentWarning = needsIndirectIncidentWarning || pageNeedsIndirectIncidentWarning
+			} else if pickMode() == RenderModeOneLine {
 				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err
 				}
@@ -577,6 +605,15 @@ func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli proce
 		}
 		pageReq = nextPISearchPageRequest(cmd, cfg, pageReq, page)
 	}
+}
+
+func enrichProcessInstancesWithIncidentActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.IncidentEnrichedProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectOptions()...)
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading incident details for %d process instance(s)", len(pis.Items)))
+	defer stopActivity()
+	return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectOptions()...)
 }
 
 func logPITotalPage(cmd *cobra.Command, log *slog.Logger, req process.ProcessInstancePageRequest, page process.ProcessInstancePage, totalBefore int64) {
@@ -877,6 +914,12 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		}
 	}
+	if flagGetPIIncidentMessageLimit < 0 {
+		return invalidFlagValuef("invalid value for --incident-message-limit: %d, expected non-negative integer", flagGetPIIncidentMessageLimit)
+	}
+	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagGetPIWithIncidents {
+		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||
@@ -939,6 +982,10 @@ func isPILimitFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("limit")
 }
 
+func isPIIncidentMessageLimitFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("incident-message-limit")
+}
+
 func validatePIKeyedModeLimit(keyCount int) error {
 	if keyCount > 0 && flagGetPILimit > 0 {
 		return mutuallyExclusiveFlagsf("--limit cannot be combined with --key")
@@ -946,15 +993,12 @@ func validatePIKeyedModeLimit(keyCount int) error {
 	return nil
 }
 
-// validatePIWithIncidentsUsage keeps incident enrichment scoped to direct keyed lookups where the output can attach details unambiguously.
+// validatePIWithIncidentsUsage keeps incident enrichment out of modes that cannot attach details unambiguously.
 func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
 	if !flagGetPIWithIncidents {
 		return nil
 	}
-	if keyCount == 0 {
-		return missingDependentFlagsf("--with-incidents requires --key")
-	}
-	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal {
+	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
 		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with search-mode filters")
 	}
 	return nil
