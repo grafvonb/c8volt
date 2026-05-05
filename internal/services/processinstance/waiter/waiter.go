@@ -43,6 +43,35 @@ func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.C
 	return r, err
 }
 
+func WaitForProcessInstancesExpectation(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, keys typex.Keys, request d.ProcessInstanceExpectationRequest, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	cCfg := services.ApplyCallOptions(opts)
+	ukeys := keys.Unique()
+	lk := len(ukeys)
+	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d process instance(s) to satisfy expectation(s)", lk))
+	defer stopActivity()
+
+	rs, err := pool.ExecuteSlice[string, d.ProcessInstanceExpectationResponse](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.ProcessInstanceExpectationResponse, error) {
+		resp, _, werr := WaitForProcessInstanceExpectation(ctx, s, cfg, log, key, request, opts...)
+		return resp, werr
+	})
+	return d.ProcessInstanceExpectationResponses{Items: rs}, err
+}
+
+func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	if request.Incident == nil {
+		sr, pi, err := WaitForProcessInstanceState(ctx, s, cfg, log, key, request.States, opts...)
+		return d.ProcessInstanceExpectationResponse{
+			Key:    key,
+			Ok:     sr.Ok,
+			State:  sr.State,
+			Status: sr.Status,
+		}, pi, err
+	}
+	status := fmt.Sprintf("process instance %s incident expectation waits are not implemented yet", key)
+	return d.ProcessInstanceExpectationResponse{Key: key, Ok: false, Status: status}, d.ProcessInstance{}, fmt.Errorf("%w: %s", d.ErrUnsupported, status)
+}
+
 func WaitForProcessInstanceState(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for process instance %s to reach desired state(s)", key))
@@ -136,6 +165,27 @@ func stateIn(st d.State, set d.States) bool {
 		}
 	}
 	return false
+}
+
+func stateExpectationMatches(state d.State, present bool, desired d.States) bool {
+	if !present {
+		state = d.StateAbsent
+	}
+	return len(desired) == 0 || stateIn(state, desired)
+}
+
+func incidentExpectationMatches(pi d.ProcessInstance, present bool, desired *bool) bool {
+	if desired == nil {
+		return true
+	}
+	return present && pi.Incident == *desired
+}
+
+func processInstanceExpectationMatches(pi d.ProcessInstance, present bool, request d.ProcessInstanceExpectationRequest) bool {
+	if !stateExpectationMatches(pi.State, present, request.States) {
+		return false
+	}
+	return incidentExpectationMatches(pi, present, request.Incident)
 }
 
 func statesEquivalent(left, right d.State) bool {

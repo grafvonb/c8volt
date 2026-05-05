@@ -220,6 +220,10 @@ func (stubProcessAPI) WaitForProcessInstanceState(context.Context, string, proce
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) WaitForProcessInstanceExpectation(context.Context, string, process.ProcessInstanceExpectationRequest, ...options.FacadeOption) (process.ProcessInstanceExpectationReport, process.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) Ancestry(context.Context, string, ...options.FacadeOption) (string, []string, map[string]process.ProcessInstance, error) {
 	panic("unexpected call")
 }
@@ -267,6 +271,10 @@ func (s stubProcessAPI) DeleteProcessInstances(ctx context.Context, keys types.K
 }
 
 func (stubProcessAPI) WaitForProcessInstancesState(context.Context, types.Keys, process.States, int, ...options.FacadeOption) (process.StateReports, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) WaitForProcessInstancesExpectation(context.Context, types.Keys, process.ProcessInstanceExpectationRequest, int, ...options.FacadeOption) (process.ProcessInstanceExpectationReports, error) {
 	panic("unexpected call")
 }
 

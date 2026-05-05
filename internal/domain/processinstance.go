@@ -126,6 +126,27 @@ type StateResponses struct {
 	Items []StateResponse
 }
 
+type ProcessInstanceExpectationRequest struct {
+	States   States
+	Incident *bool
+}
+
+func (r ProcessInstanceExpectationRequest) HasExpectations() bool {
+	return len(r.States) > 0 || r.Incident != nil
+}
+
+type ProcessInstanceExpectationResponse struct {
+	Key      string
+	Ok       bool
+	State    State
+	Incident *bool
+	Status   string
+}
+
+type ProcessInstanceExpectationResponses struct {
+	Items []ProcessInstanceExpectationResponse
+}
+
 type ProcessInstanceData struct {
 	BpmnProcessId               string // ProcessDefinitionId in API
 	ProcessDefinitionSpecificId string // ProcessDefinitionKey in API

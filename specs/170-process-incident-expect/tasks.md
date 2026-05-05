@@ -32,13 +32,13 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T007 Add an incident expectation value type and strict parser accepting only `true` and `false` in `c8volt/process/model.go`
-- [ ] T008 Add combined process-instance expectation request/report types for optional state and incident expectations in `c8volt/process/model.go`
-- [ ] T009 Extend the public process facade API with a combined process-instance expectation wait method in `c8volt/process/api.go`
-- [ ] T010 Extend the internal process-instance service API with a combined expectation wait method in `internal/services/processinstance/api.go`
-- [ ] T011 Extend versioned service contracts to include the combined expectation wait method in `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
-- [ ] T012 Add shared matcher helpers for state and incident expectations in `internal/services/processinstance/waiter/waiter.go`
-- [ ] T013 Add command-level flag storage and strict validation scaffolding for `--incident` without changing runtime behavior yet in `cmd/expect_processinstance.go`
+- [x] T007 Add an incident expectation value type and strict parser accepting only `true` and `false` in `c8volt/process/model.go`
+- [x] T008 Add combined process-instance expectation request/report types for optional state and incident expectations in `c8volt/process/model.go`
+- [x] T009 Extend the public process facade API with a combined process-instance expectation wait method in `c8volt/process/api.go`
+- [x] T010 Extend the internal process-instance service API with a combined expectation wait method in `internal/services/processinstance/api.go`
+- [x] T011 Extend versioned service contracts to include the combined expectation wait method in `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
+- [x] T012 Add shared matcher helpers for state and incident expectations in `internal/services/processinstance/waiter/waiter.go`
+- [x] T013 Add command-level flag storage and strict validation scaffolding for `--incident` without changing runtime behavior yet in `cmd/expect_processinstance.go`
 
 **Checkpoint**: Shared types, contracts, and strict parser exist before story behavior is wired.
 

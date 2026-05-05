@@ -1146,6 +1146,11 @@ func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, strin
 	panic("unexpected call")
 }
 
+// WaitForProcessInstanceExpectation panics when a facade test accidentally waits for one process-instance expectation.
+func (stubProcessInstanceAPI) WaitForProcessInstanceExpectation(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
 // Ancestry delegates the legacy traversal tuple used by older dry-run helpers.
 func (s stubProcessInstanceAPI) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
 	if s.ancestry == nil {
@@ -1208,6 +1213,11 @@ func (stubProcessInstanceAPI) GetProcessInstances(context.Context, typex.Keys, i
 
 // WaitForProcessInstancesState panics when a facade test accidentally waits for bulk state changes.
 func (stubProcessInstanceAPI) WaitForProcessInstancesState(context.Context, typex.Keys, d.States, int, ...services.CallOption) (d.StateResponses, error) {
+	panic("unexpected call")
+}
+
+// WaitForProcessInstancesExpectation panics when a facade test accidentally waits for bulk process-instance expectations.
+func (stubProcessInstanceAPI) WaitForProcessInstancesExpectation(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
 	panic("unexpected call")
 }
 

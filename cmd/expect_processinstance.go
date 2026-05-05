@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	flagExpectPIKeys   []string
-	flagExpectPIStates []string
+	flagExpectPIKeys     []string
+	flagExpectPIStates   []string
+	flagExpectPIIncident string
 )
 
 var expectProcessInstanceCmd = &cobra.Command{
@@ -44,6 +45,9 @@ var expectProcessInstanceCmd = &cobra.Command{
 		states, err := process.ParseStates(flagExpectPIStates)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("error parsing states: %v; valid values are: %s", err, process.ValidStateStrings()))
+		}
+		if _, _, err := parseExpectPIIncidentFlag(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
 		stdinKeys, err := readKeysIfDash(args) // only reads when args == []{"-"}
@@ -86,6 +90,7 @@ func init() {
 	fs := expectProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to watch")
 	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated")
+	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are: [true, false]")
 	_ = expectProcessInstanceCmd.MarkFlagRequired("state")
 
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
@@ -95,4 +100,15 @@ func init() {
 	setCommandMutation(expectProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(expectProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(expectProcessInstanceCmd, AutomationSupportUnsupported, "automation mode is not supported for wait commands")
+}
+
+func parseExpectPIIncidentFlag(cmd *cobra.Command) (process.IncidentExpectation, bool, error) {
+	if cmd == nil || !cmd.Flags().Changed("incident") {
+		return false, false, nil
+	}
+	incident, err := process.ParseIncidentExpectation(flagExpectPIIncident)
+	if err != nil {
+		return false, true, invalidFlagValuef("invalid value for --incident: %q; valid values are: %v", flagExpectPIIncident, process.ValidIncidentExpectationStrings())
+	}
+	return incident, true, nil
 }

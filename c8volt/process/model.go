@@ -3,7 +3,12 @@
 
 package process
 
-import "github.com/grafvonb/c8volt/toolx"
+import (
+	"fmt"
+
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/toolx"
+)
 
 type ProcessDefinition struct {
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
@@ -238,4 +243,59 @@ type StateReport struct {
 
 type StateReports struct {
 	Items []StateReport `json:"items,omitempty"`
+}
+
+type IncidentExpectation bool
+
+const (
+	IncidentExpectationFalse IncidentExpectation = false
+	IncidentExpectationTrue  IncidentExpectation = true
+)
+
+func (e IncidentExpectation) Bool() bool {
+	return bool(e)
+}
+
+func ParseIncidentExpectation(in string) (IncidentExpectation, error) {
+	switch in {
+	case "true":
+		return IncidentExpectationTrue, nil
+	case "false":
+		return IncidentExpectationFalse, nil
+	default:
+		return false, fmt.Errorf("%w: %s", ferr.ErrInvalidInput, in)
+	}
+}
+
+func ValidIncidentExpectationStrings() []string {
+	return []string{"true", "false"}
+}
+
+type ProcessInstanceExpectationRequest struct {
+	States   States               `json:"states,omitempty"`
+	Incident *IncidentExpectation `json:"incident,omitempty"`
+}
+
+func (r ProcessInstanceExpectationRequest) HasExpectations() bool {
+	return len(r.States) > 0 || r.Incident != nil
+}
+
+type ProcessInstanceExpectationReport struct {
+	Key      string               `json:"key,omitempty"`
+	Ok       bool                 `json:"ok,omitempty"`
+	State    State                `json:"state,omitempty"`
+	Incident *IncidentExpectation `json:"incident,omitempty"`
+	Status   string               `json:"status,omitempty"`
+}
+
+func (r ProcessInstanceExpectationReport) OK() bool {
+	return r.Ok
+}
+
+type ProcessInstanceExpectationReports struct {
+	Items []ProcessInstanceExpectationReport `json:"items,omitempty"`
+}
+
+func (r ProcessInstanceExpectationReports) Totals() (total int, oks int, noks int) {
+	return TotalsOf(r.Items)
 }
