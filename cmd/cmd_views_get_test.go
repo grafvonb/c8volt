@@ -402,6 +402,94 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  incident incident-124"))
 }
 
+func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkerRendersRowNote(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.IncidentEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-03-23T18:00:00Z",
+				Incident:       true,
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "  "+indirectProcessTreeIncidentNote)
+	require.Contains(t, output, indirectProcessTreeIncidentWarning)
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "  "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(output, "  "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 1"))
+}
+
+func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkersRenderMultipleNotesAndOneWarning(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 2,
+		Items: []process.IncidentEnrichedProcessInstance{
+			{
+				Item: process.ProcessInstance{
+					Key:            "123",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-a",
+					ProcessVersion: 3,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:00:00Z",
+					Incident:       true,
+				},
+			},
+			{
+				Item: process.ProcessInstance{
+					Key:            "124",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-b",
+					ProcessVersion: 4,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:05:00Z",
+					Incident:       true,
+				},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
+	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
+	require.Equal(t, 2, strings.Count(output, "  "+indirectProcessTreeIncidentNote))
+	require.Equal(t, 1, strings.Count(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.LastIndex(output, "  "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.LastIndex(output, "  "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 2"))
+}
+
 func TestTruncateIncidentHumanMessage(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -10,38 +10,45 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const indirectProcessTreeIncidentWarning = "no direct incidents on this process instance; check the process tree with walk pi --with-incidents"
+const (
+	indirectProcessTreeIncidentNote    = "no direct incidents found for this process instance"
+	indirectProcessTreeIncidentWarning = "warning: one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
+)
 
 // incidentEnrichedProcessInstancesView renders direct process-instance incident enrichment.
 func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedProcessInstancesWithAgeMeta(resp))
 	}
-	if err := renderIncidentEnrichedProcessInstanceRows(cmd, resp); err != nil {
+	needsIndirectIncidentWarning, err := renderIncidentEnrichedProcessInstanceRows(cmd, resp)
+	if err != nil {
 		return err
+	}
+	if needsIndirectIncidentWarning {
+		renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
 	}
 	renderOutputLine(cmd, "found: %d", len(resp.Items))
 	return nil
 }
 
-func renderIncidentEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
+func renderIncidentEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) (bool, error) {
 	rows := make([]flatRow, 0, len(resp.Items))
 	for _, it := range resp.Items {
 		rows = append(rows, flatRowPI(it.Item))
 	}
 	lines := formatFlatRows(rows)
-	warnedIndirectIncident := false
+	needsIndirectIncidentWarning := false
 	for i, it := range resp.Items {
 		renderOutputLine(cmd, "%s", lines[i])
 		for _, incident := range it.Incidents {
 			renderOutputLine(cmd, "  %s", incidentHumanLine(incident))
 		}
-		if processInstanceHasIndirectIncidentMarker(it) && !warnedIndirectIncident {
-			renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
-			warnedIndirectIncident = true
+		if processInstanceHasIndirectIncidentMarker(it) {
+			renderOutputLine(cmd, "  %s", indirectProcessTreeIncidentNote)
+			needsIndirectIncidentWarning = true
 		}
 	}
-	return nil
+	return needsIndirectIncidentWarning, nil
 }
 
 type incidentEnrichedProcessInstancesJSONWithMeta struct {

@@ -95,16 +95,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Add view test for a single indirect marker row rendering a short indented note in `cmd/cmd_views_get_test.go`
-- [ ] T026 [P] [US3] Add view test for multiple indirect marker rows rendering multiple short notes and one warning after the list in `cmd/cmd_views_get_test.go`
-- [ ] T027 [P] [US3] Add command test proving list-mode indirect marker behavior appears after incident enrichment returns empty direct incidents in `cmd/get_processinstance_test.go`
+- [x] T025 [P] [US3] Add view test for a single indirect marker row rendering a short indented note in `cmd/cmd_views_get_test.go`
+- [x] T026 [P] [US3] Add view test for multiple indirect marker rows rendering multiple short notes and one warning after the list in `cmd/cmd_views_get_test.go`
+- [x] T027 [P] [US3] Add command test proving list-mode indirect marker behavior appears after incident enrichment returns empty direct incidents in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Change `incidentEnrichedProcessInstancesView` to render row-local indirect notes and defer the tree-inspection warning until after all rows in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T029 [US3] Update indirect marker note and warning text to be short per row and de-duplicated per list output in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T030 [US3] Preserve `found: <n>` placement and stderr/stdout behavior for warnings according to existing rendering helpers in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T031 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Indirect.*Incident|TestIncidentEnrichedProcessInstancesView' -count=1` and fix regressions
+- [x] T028 [US3] Change `incidentEnrichedProcessInstancesView` to render row-local indirect notes and defer the tree-inspection warning until after all rows in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T029 [US3] Update indirect marker note and warning text to be short per row and de-duplicated per list output in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T030 [US3] Preserve `found: <n>` placement and stderr/stdout behavior for warnings according to existing rendering helpers in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T031 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Indirect.*Incident|TestIncidentEnrichedProcessInstancesView' -count=1` and fix regressions
 
 **Checkpoint**: User Story 3 is independently complete when indirect marker rows are locally explained and list-level guidance is printed once.
 

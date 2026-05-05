@@ -475,9 +475,13 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 	incremental := shouldRenderPISearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinuePISearchPages(cmd)
 	processedTotal := 0
+	needsIndirectIncidentWarning := false
 	printFoundAndReturn := func() (process.ProcessInstances, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine {
+				if needsIndirectIncidentWarning {
+					renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
+				}
 				renderOutputLine(cmd, "found: %d", processedTotal)
 			}
 			return process.ProcessInstances{}, true, nil
@@ -506,9 +510,11 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 				if err != nil {
 					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
 				}
-				if err := renderIncidentEnrichedProcessInstanceRows(cmd, enriched); err != nil {
+				pageNeedsIndirectIncidentWarning, err := renderIncidentEnrichedProcessInstanceRows(cmd, enriched)
+				if err != nil {
 					return process.ProcessInstances{}, false, err
 				}
+				needsIndirectIncidentWarning = needsIndirectIncidentWarning || pageNeedsIndirectIncidentWarning
 			} else if pickMode() == RenderModeOneLine {
 				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err

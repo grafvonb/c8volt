@@ -483,6 +483,54 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 	require.Contains(t, output, "found: 1")
 }
 
+// TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDirectIncidents verifies list rows marked inc! stay explainable when direct lookup is empty.
+func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDirectIncidents(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[
+				{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
+				{"hasIncident":true,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search", "/v2/process-instances/124/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--incidents-only",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/123/incidents/search",
+		"POST /v2/process-instances/124/incidents/search",
+	}, requests)
+	require.Contains(t, stdout, "123 tenant demo-a v3 ACTIVE")
+	require.Contains(t, stdout, "124 tenant demo-b v4 ACTIVE")
+	require.Equal(t, 2, strings.Count(stdout, "  "+indirectProcessTreeIncidentNote))
+	require.Contains(t, stdout, "found: 2")
+	require.NotContains(t, stdout, indirectProcessTreeIncidentWarning)
+	require.Equal(t, 1, strings.Count(stderr, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(stdout, "123 tenant demo-a"), strings.Index(stdout, "  "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(stdout, "124 tenant demo-b"), strings.LastIndex(stdout, "  "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.LastIndex(stdout, "  "+indirectProcessTreeIncidentNote), strings.Index(stdout, "found: 2"))
+}
+
 // TestGetProcessInstanceIncidentMessageLimitValidation rejects unsafe incident message limit usage.
 func TestGetProcessInstanceIncidentMessageLimitValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
@@ -830,7 +878,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			}
 			if len(tt.wantMessages) == 0 {
 				require.NotContains(t, output, "  incident ")
-				require.Contains(t, output, "no direct incidents on this process instance; check the process tree with walk pi --with-incidents")
+				require.Contains(t, output, indirectProcessTreeIncidentNote)
+				require.Contains(t, output, indirectProcessTreeIncidentWarning)
 			}
 		})
 	}

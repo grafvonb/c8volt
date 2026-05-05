@@ -5,9 +5,11 @@ Started: 2026-05-05 09:49:53
 
 ## Codebase Patterns
 
+- Indirect incident marker rendering now separates row-local notes from the de-duplicated list warning: `renderIncidentEnrichedProcessInstanceRows` returns whether a warning is needed, and callers decide when to print it.
+- Root command executions route `renderHumanWarningLine` through the configured logger to stderr, while direct view tests without logger context write warnings to the command output buffer.
 - `--incident-message-limit` state lives in `cmd/get_processinstance.go`, is reset through `resetProcessInstanceCommandGlobals`, and validation uses `cmd.Flags().Changed("incident-message-limit")` so the default `0` remains accepted without `--with-incidents`.
 - Human-only incident message truncation is applied in `incidentHumanLine` through `truncateIncidentHumanMessage`; domain incident data and JSON payload helpers keep full messages.
-- `cmd/get_processinstance.go` keeps `--with-incidents` validation in `validatePIWithIncidentsUsage`, currently requiring keyed mode and rejecting search filters plus `--total`.
+- `cmd/get_processinstance.go` keeps keyed `--with-incidents` validation in `validatePIWithIncidentsUsage`, rejecting mixed keyed/search filters while list/search `--with-incidents` is allowed and `--total` is rejected by search flag validation.
 - List/search process-instance paging splits collected output from incremental rendering in `searchProcessInstancesWithPaging`; incremental human pages render before returning with a separate `found: <n>` line.
 - Incident-enriched get output is centralized in `incidentEnrichedProcessInstancesView`, with JSON routed through `renderJSONPayload` and `incidentEnrichedProcessInstancesWithAgeMeta`.
 - Incremental list/search incident rendering uses `renderIncidentEnrichedProcessInstanceRows` so pages can print enriched rows without duplicating the final `found: <n>` line.
@@ -104,4 +106,28 @@ Started: 2026-05-05 09:49:53
 - List/search JSON incident enrichment was already wired through the collected output path; US2 primarily needed regression coverage for the enriched envelope, keyed shape, full messages, and age metadata.
 - `--incident-message-limit` remains human-only because JSON rendering receives the full facade incident details before any human formatter is involved.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*JSON.*Incident|TestIncidentEnrichedProcessInstancesView_JSON' -count=1`.
+---
+## Iteration 5 - 2026-05-05 10:11:55 CEST
+**User Story**: User Story 3 - Explain Indirect Incident Markers
+**Tasks Completed**:
+- [x] T025: Add view test for a single indirect marker row rendering a short indented note in `cmd/cmd_views_get_test.go`
+- [x] T026: Add view test for multiple indirect marker rows rendering multiple short notes and one warning after the list in `cmd/cmd_views_get_test.go`
+- [x] T027: Add command test proving list-mode indirect marker behavior appears after incident enrichment returns empty direct incidents in `cmd/get_processinstance_test.go`
+- [x] T028: Change `incidentEnrichedProcessInstancesView` to render row-local indirect notes and defer the tree-inspection warning until after all rows in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T029: Update indirect marker note and warning text to be short per row and de-duplicated per list output in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T030: Preserve `found: <n>` placement and stderr/stdout behavior for warnings according to existing rendering helpers in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T031: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Indirect.*Incident|TestIncidentEnrichedProcessInstancesView' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/cmd_views_get_test.go
+- specs/171-pi-incident-list-output/tasks.md
+- specs/171-pi-incident-list-output/progress.md
+**Learnings**:
+- Incremental human list rendering needs to accumulate indirect-marker warning state across pages so the warning is emitted once before the final `found: <n>` summary.
+- Row-local indirect notes belong on stdout with process-instance rows, while the de-duplicated warning follows the existing human warning renderer and is routed to stderr during full command execution.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Indirect.*Incident|TestIncidentEnrichedProcessInstancesView' -count=1` and a broader nearby incident regression run.
 ---
