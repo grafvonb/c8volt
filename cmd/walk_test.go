@@ -84,8 +84,10 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 		"By default, walk shows the full process-instance family as an ASCII tree",
 		"returns the partial tree plus a warning",
 		"./c8volt walk pi --key 2251799813711967 --with-incidents",
+		"./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80",
 	}, nil)
 	require.Contains(t, output, "--flat")
+	require.Contains(t, output, "--incident-message-limit int")
 	require.NotContains(t, output, "--tree")
 	require.NotContains(t, output, "--family")
 }
@@ -126,7 +128,7 @@ func TestWalkIncidentLines_UseCompactIncidentPrefix(t *testing.T) {
 		JobKey:              "job-123",
 	}})
 
-	require.Equal(t, "\n  inc: key=incident-1 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=Root job failed", out.String())
+	require.Equal(t, "\n  └─ inc: key=incident-1 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=Root job failed", out.String())
 	require.NotContains(t, out.String(), "incident incident-1:")
 }
 
@@ -161,12 +163,14 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 		"--key", "123",
 		"--children",
 		"--with-incidents",
+		"--incident-message-limit", "7",
 	)
 
 	require.Equal(t, []string{"/v2/process-instances/123/incidents/search"}, incidentRequests)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  inc: key=incident-1 errorType=JOB_NO_RETRIES message=Root job failed")
+	require.Contains(t, output, "└─ inc: key=incident-1 errorType=JOB_NO_RETRIES message=Root jo...")
+	require.NotContains(t, output, "Root job failed")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents keeps incidents attached to their walked owners.
@@ -217,9 +221,9 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 	}, incidentRequests)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "124")
-	require.Contains(t, output, "  inc: key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
-	require.Contains(t, output, "  inc: key=incident-1 errorType=JOB_NO_RETRIES message=Child failed")
-	require.Contains(t, output, "  inc: key=incident-2 errorType=JOB_NO_RETRIES message=Child timed out")
+	require.Contains(t, output, "└─ inc: key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
+	require.Contains(t, output, "├─ inc: key=incident-1 errorType=JOB_NO_RETRIES message=Child failed")
+	require.Contains(t, output, "└─ inc: key=incident-2 errorType=JOB_NO_RETRIES message=Child timed out")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned avoids implying missing details exist.
@@ -626,10 +630,10 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUn
 	)
 
 	require.Contains(t, output, "123")
-	require.Contains(t, output, "  inc: key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
+	require.Contains(t, output, "├─ inc: key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
 	require.Contains(t, output, "└─ ")
 	require.Contains(t, output, "124")
-	require.Contains(t, output, "     inc: key=incident-1 errorType=JOB_NO_RETRIES message=Child failed")
+	require.Contains(t, output, "   └─ inc: key=incident-1 errorType=JOB_NO_RETRIES message=Child failed")
 	require.Less(t, strings.Index(output, "123"), strings.Index(output, "Root failed"))
 	require.Less(t, strings.Index(output, "124"), strings.Index(output, "Child failed"))
 }

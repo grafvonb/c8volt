@@ -33,6 +33,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key 2251799813711967
   ./c8volt walk pi --key 2251799813711967 --with-incidents
+  ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80
   ./c8volt walk pi --key 2251799813711967 --flat
   ./c8volt walk pi --key 2251799813711977 --parent
   ./c8volt --json walk pi --key 2251799813711967 --children --with-incidents`,
@@ -45,7 +46,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if err := validateWalkPIWithIncidentsUsage(); err != nil {
+		if err := validateWalkPIWithIncidentsUsage(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
@@ -172,6 +173,7 @@ func init() {
 	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "show descendants from the selected process instance")
 	fs.BoolVar(&flagWalkPIFlat, "flat", false, "render family output as a flat path instead of an ASCII tree")
 	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys and messages for keyed process-instance walks")
+	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
@@ -179,7 +181,13 @@ func init() {
 }
 
 // validateWalkPIWithIncidentsUsage keeps walk incident enrichment in render modes that can show incident detail rows.
-func validateWalkPIWithIncidentsUsage() error {
+func validateWalkPIWithIncidentsUsage(cmd *cobra.Command) error {
+	if flagGetPIIncidentMessageLimit < 0 {
+		return invalidFlagValuef("invalid value for --incident-message-limit: %d, expected non-negative integer", flagGetPIIncidentMessageLimit)
+	}
+	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagWalkPIWithIncidents {
+		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
+	}
 	if !flagWalkPIWithIncidents {
 		return nil
 	}

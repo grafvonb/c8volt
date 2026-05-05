@@ -41,15 +41,22 @@ func renderIncidentEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.
 	needsIndirectIncidentWarning := false
 	for i, it := range resp.Items {
 		renderOutputLine(cmd, "%s", lines[i])
-		for _, incident := range it.Incidents {
-			renderOutputLine(cmd, "  %s", incidentHumanLine(incident))
+		for j, incident := range it.Incidents {
+			renderOutputLine(cmd, "%s%s", incidentTreeBranch(j, len(it.Incidents)), incidentHumanLine(incident))
 		}
 		if processInstanceHasIndirectIncidentMarker(it) {
-			renderOutputLine(cmd, "  %s", indirectProcessTreeIncidentNote)
+			renderOutputLine(cmd, "└─ %s", indirectProcessTreeIncidentNote)
 			needsIndirectIncidentWarning = true
 		}
 	}
 	return needsIndirectIncidentWarning, nil
+}
+
+func incidentTreeBranch(index, total int) string {
+	if index == total-1 {
+		return "└─ "
+	}
+	return "├─ "
 }
 
 type incidentEnrichedProcessInstancesJSONWithMeta struct {

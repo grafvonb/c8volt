@@ -393,13 +393,13 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "  inc: key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ inc: key=incident-123 message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "  inc: key=incident-124 message=Second key failed")
+	require.Contains(t, output, "└─ inc: key=incident-124 message=Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc: key=incident-123"))
-	require.Less(t, strings.Index(output, "  inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc: key=incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "└─ inc: key=incident-123"))
+	require.Less(t, strings.Index(output, "└─ inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "└─ inc: key=incident-124"))
 }
 
 func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
@@ -451,11 +451,11 @@ func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkerRendersRowNote(
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "  "+indirectProcessTreeIncidentNote)
+	require.Contains(t, output, "└─ "+indirectProcessTreeIncidentNote)
 	require.Contains(t, output, indirectProcessTreeIncidentWarning)
 	require.Contains(t, output, "found: 1")
-	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "  "+indirectProcessTreeIncidentNote))
-	require.Less(t, strings.Index(output, "  "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(output, "└─ "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
 	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 1"))
 }
 
@@ -502,11 +502,11 @@ func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkersRenderMultiple
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Equal(t, 2, strings.Count(output, "  "+indirectProcessTreeIncidentNote))
+	require.Equal(t, 2, strings.Count(output, "└─ "+indirectProcessTreeIncidentNote))
 	require.Equal(t, 1, strings.Count(output, indirectProcessTreeIncidentWarning))
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  "+indirectProcessTreeIncidentNote))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.LastIndex(output, "  "+indirectProcessTreeIncidentNote))
-	require.Less(t, strings.LastIndex(output, "  "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.LastIndex(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.LastIndex(output, "└─ "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
 	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 2"))
 }
 

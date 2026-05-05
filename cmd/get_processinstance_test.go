@@ -467,13 +467,13 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "  inc: key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ inc: key=incident-123 message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "  inc: key=incident-124 message=Second key failed")
+	require.Contains(t, output, "└─ inc: key=incident-124 message=Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc: key=incident-123"))
-	require.Less(t, strings.Index(output, "  inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc: key=incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "└─ inc: key=incident-123"))
+	require.Less(t, strings.Index(output, "└─ inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "└─ inc: key=incident-124"))
 }
 
 // TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
@@ -516,7 +516,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "  inc: key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ inc: key=incident-123 message=First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -560,13 +560,13 @@ func TestGetProcessInstanceListWithIncidents_HumanIndirectMarkerExplainsEmptyDir
 	}, requests)
 	require.Contains(t, stdout, "123 tenant demo-a v3 ACTIVE")
 	require.Contains(t, stdout, "124 tenant demo-b v4 ACTIVE")
-	require.Equal(t, 2, strings.Count(stdout, "  "+indirectProcessTreeIncidentNote))
+	require.Equal(t, 2, strings.Count(stdout, "└─ "+indirectProcessTreeIncidentNote))
 	require.Contains(t, stdout, "found: 2")
 	require.NotContains(t, stdout, indirectProcessTreeIncidentWarning)
 	require.Equal(t, 1, strings.Count(stderr, indirectProcessTreeIncidentWarning))
-	require.Less(t, strings.Index(stdout, "123 tenant demo-a"), strings.Index(stdout, "  "+indirectProcessTreeIncidentNote))
-	require.Less(t, strings.Index(stdout, "124 tenant demo-b"), strings.LastIndex(stdout, "  "+indirectProcessTreeIncidentNote))
-	require.Less(t, strings.LastIndex(stdout, "  "+indirectProcessTreeIncidentNote), strings.Index(stdout, "found: 2"))
+	require.Less(t, strings.Index(stdout, "123 tenant demo-a"), strings.Index(stdout, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(stdout, "124 tenant demo-b"), strings.LastIndex(stdout, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.LastIndex(stdout, "└─ "+indirectProcessTreeIncidentNote), strings.Index(stdout, "found: 2"))
 }
 
 // TestGetProcessInstanceIncidentMessageLimitValidation rejects unsafe incident message limit usage.
@@ -890,7 +890,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
+	require.Contains(t, output, "└─ inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -924,7 +924,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
-	require.Contains(t, output, "  inc: key=incident-123 message=No retr...")
+	require.Contains(t, output, "└─ inc: key=incident-123 message=No retr...")
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
@@ -954,7 +954,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "  inc: key=incident-123 message="+fullMessage)
+	require.Contains(t, output, "└─ inc: key=incident-123 message="+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
@@ -972,8 +972,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
-				"  inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES message=No retries left",
-				"  inc: key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 errorType=EXTRACT_VALUE_ERROR message=Gateway failed",
+				"├─ inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES message=No retries left",
+				"└─ inc: key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 errorType=EXTRACT_VALUE_ERROR message=Gateway failed",
 			},
 		},
 		{
