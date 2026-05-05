@@ -393,13 +393,13 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "  inc incident-123: First key failed")
+	require.Contains(t, output, "  inc: key=incident-123 message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "  inc incident-124: Second key failed")
+	require.Contains(t, output, "  inc: key=incident-124 message=Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc incident-123"))
-	require.Less(t, strings.Index(output, "  inc incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc: key=incident-123"))
+	require.Less(t, strings.Index(output, "  inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc: key=incident-124"))
 }
 
 func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
@@ -410,11 +410,15 @@ func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
 	})
 
 	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
-		IncidentKey:  "incident-123",
-		ErrorMessage: "No retries left",
+		IncidentKey:         "incident-123",
+		ErrorMessage:        "No retries left",
+		FlowNodeId:          "task-a",
+		FlowNodeInstanceKey: "element-123",
+		ErrorType:           "JOB_NO_RETRIES",
+		JobKey:              "job-123",
 	})
 
-	require.Equal(t, "inc incident-123: No retries left", got)
+	require.Equal(t, "inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
 	require.NotContains(t, got, "incident incident-123:")
 }
 

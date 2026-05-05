@@ -171,7 +171,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				fail(msg)
 			}
 			if flagGetPIWithIncidents {
-				enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
 				if err != nil {
 					fail(fmt.Errorf("get process instance incidents: %w", err))
 				}
@@ -203,7 +203,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 		}
 		if flagGetPIWithIncidents {
-			enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+			enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
 			if err != nil {
 				fail(fmt.Errorf("get process instance incidents: %w", err))
 			}
@@ -508,7 +508,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
 			if flagGetPIWithIncidents && pickMode() == RenderModeOneLine {
-				enriched, err := cli.EnrichProcessInstancesWithIncidents(cmd.Context(), filtered, collectOptions()...)
+				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, filtered)
 				if err != nil {
 					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
 				}
@@ -605,6 +605,15 @@ func searchProcessInstancesTotal(cmd *cobra.Command, log *slog.Logger, cli proce
 		}
 		pageReq = nextPISearchPageRequest(cmd, cfg, pageReq, page)
 	}
+}
+
+func enrichProcessInstancesWithIncidentActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.IncidentEnrichedProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectOptions()...)
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading incident details for %d process instance(s)", len(pis.Items)))
+	defer stopActivity()
+	return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectOptions()...)
 }
 
 func logPITotalPage(cmd *cobra.Command, log *slog.Logger, req process.ProcessInstancePageRequest, page process.ProcessInstancePage, totalBefore int64) {

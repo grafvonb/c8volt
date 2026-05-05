@@ -467,13 +467,13 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "  inc incident-123: First key failed")
+	require.Contains(t, output, "  inc: key=incident-123 message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "  inc incident-124: Second key failed")
+	require.Contains(t, output, "  inc: key=incident-124 message=Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc incident-123"))
-	require.Less(t, strings.Index(output, "  inc incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc: key=incident-123"))
+	require.Less(t, strings.Index(output, "  inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc: key=incident-124"))
 }
 
 // TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
@@ -516,7 +516,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "  inc incident-123: First key failed")
+	require.Contains(t, output, "  inc: key=incident-123 message=First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -682,6 +682,39 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	require.Equal(t, 1, started)
 	require.Equal(t, 1, stopped)
 	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, msgs)
+}
+
+func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testing.T) {
+	sink := &activitysink.Sink{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(logging.ToActivityContext(context.Background(), sink))
+
+	enrichCalls := 0
+	cli := stubProcessAPI{enrichProcessInstances: func(_ context.Context, pis process.ProcessInstances, _ ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error) {
+		enrichCalls++
+		require.Equal(t, []process.ProcessInstance{{Key: "123"}, {Key: "124"}}, pis.Items)
+		return process.IncidentEnrichedProcessInstances{
+			Total: pis.Total,
+			Items: []process.IncidentEnrichedProcessInstance{
+				{Item: pis.Items[0]},
+				{Item: pis.Items[1]},
+			},
+		}, nil
+	}}
+
+	got, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, process.ProcessInstances{
+		Total: 2,
+		Items: []process.ProcessInstance{{Key: "123"}, {Key: "124"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, enrichCalls)
+	require.Len(t, got.Items, 2)
+
+	started, stopped, msgs := sink.Snapshot()
+	require.Equal(t, 1, started)
+	require.Equal(t, 1, stopped)
+	require.Equal(t, []string{"loading incident details for 2 process instance(s)"}, msgs)
 }
 
 // TestGetProcessInstanceKeyLookup_UsesGeneratedLookupEndpoint verifies direct key lookup uses the versioned generated endpoint.
@@ -857,7 +890,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  inc incident-123: No retries left")
+	require.Contains(t, output, "  inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -891,7 +924,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
-	require.Contains(t, output, "  inc incident-123: No retr...")
+	require.Contains(t, output, "  inc: key=incident-123 message=No retr...")
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
@@ -921,7 +954,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "  inc incident-123: "+fullMessage)
+	require.Contains(t, output, "  inc: key=incident-123 message="+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
@@ -938,7 +971,10 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
 				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
-			wantMessages: []string{"  inc incident-123: No retries left", "  inc incident-124: Gateway failed"},
+			wantMessages: []string{
+				"  inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES message=No retries left",
+				"  inc: key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 errorType=EXTRACT_VALUE_ERROR message=Gateway failed",
+			},
 		},
 		{
 			name:             "no incident lines",

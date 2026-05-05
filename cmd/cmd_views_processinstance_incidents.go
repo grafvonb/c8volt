@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -80,13 +81,33 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 	return item.Item.Incident && len(item.Incidents) == 0
 }
 
-// incidentHumanLine formats a human-readable incident detail line with a compact incident key prefix.
+// incidentHumanLine formats a human-readable incident detail line with compact attributes.
 func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
 	}
-	return fmt.Sprintf("inc %s: %s", key, truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit))
+	message := truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit)
+	fields := incidentHumanFields(incident, key)
+	return fmt.Sprintf("inc: %s message=%s", fields, message)
+}
+
+func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {
+	fields := make([]string, 0, 5)
+	fields = append(fields, "key="+key)
+	if incident.FlowNodeId != "" {
+		fields = append(fields, "flowNodeId="+incident.FlowNodeId)
+	}
+	if incident.FlowNodeInstanceKey != "" {
+		fields = append(fields, "flowNodeInstanceKey="+incident.FlowNodeInstanceKey)
+	}
+	if incident.ErrorType != "" {
+		fields = append(fields, "errorType="+incident.ErrorType)
+	}
+	if incident.JobKey != "" {
+		fields = append(fields, "jobKey="+incident.JobKey)
+	}
+	return strings.Join(fields, " ")
 }
 
 // truncateIncidentHumanMessage applies the human-only incident message display limit.
