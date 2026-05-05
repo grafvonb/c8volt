@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0ty5i8n" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.40.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0ty5i8n" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.46.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
   <bpmn:process id="C88_SimpleUserTaskWithIncident_Process" name="C88 Simple User Task with Incident Process" isExecutable="true">
+    <bpmn:documentation>v1.1.0 - update incident assertion to depend on process variable</bpmn:documentation>
     <bpmn:extensionElements>
-      <zeebe:versionTag value="v1.0.0" />
+      <zeebe:versionTag value="v1.1.0" />
     </bpmn:extensionElements>
     <bpmn:startEvent id="SimpleUserTaskRequested_StartEvent" name="Simple User Task requested">
+      <bpmn:extensionElements>
+        <zeebe:ioMapping>
+          <zeebe:output source="=true" target="hasIncident" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
       <bpmn:outgoing>Flow_1b6a1ym</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_1b6a1ym" sourceRef="SimpleUserTaskRequested_StartEvent" targetRef="SimpleUserTaskWithIncident_UserTask" />
@@ -12,7 +18,7 @@
       <bpmn:extensionElements>
         <zeebe:userTask />
         <zeebe:ioMapping>
-          <zeebe:input source="=assert(1, false, &#34;intentional test failure&#34;)" target="incident" />
+          <zeebe:input source="=assert(1, not(hasIncident), &#34;intentional incident creation if hasIncident process variable is true&#34;)" target="incident" />
         </zeebe:ioMapping>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1b6a1ym</bpmn:incoming>
