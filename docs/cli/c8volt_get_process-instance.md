@@ -16,9 +16,9 @@ Use direct lookup when you know a process-instance key, or combine search filter
 
 Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.
 
-Use --with-incidents with keyed or list/search output to include direct incident keys and messages under matching process-instance rows. Add --incident-message-limit <chars> to shorten human incident messages; JSON keeps full incident messages.
+Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.
 
-User-task based lookup resolves owning process instances through tenant-aware Camunda v2 user-task search first. On Camunda 8.8 and 8.9, not-found user-task results fall back to deprecated Tasklist V1 lookup for legacy user-task compatibility; Camunda 8.7 remains unsupported.
+Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
 Run `c8volt get pi --help` for the complete flag reference.
 

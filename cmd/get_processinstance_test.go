@@ -38,6 +38,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "Search results support interactive paging, scriptable JSON aggregation, and count-only workflows.")
 	require.Contains(t, output, "matching process instances by process definition")
 	require.Contains(t, output, "Direct key lookup stays strict")
+	require.Contains(t, output, "Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.")
+	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten human incident messages")
 	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key>")
@@ -67,9 +69,10 @@ func TestGetProcessInstanceHelp_DocumentsHasUserTasksLookup(t *testing.T) {
 	require.Contains(t, output, "user task key(s) whose owning process instances should be fetched")
 	require.Contains(t, output, "./c8volt get pi --has-user-tasks <user-task-key>")
 	require.NotContains(t, output, "./c8volt get pi --has-user-tasks 2251799815391233 --has-user-tasks 2251799815391244")
-	require.Contains(t, output, "Camunda v2 user-task search first")
-	require.Contains(t, output, "Tasklist V1 lookup for legacy user-task compatibility")
-	require.Contains(t, output, "Camunda 8.7 remains unsupported")
+	require.Contains(t, output, "Use --has-user-tasks to fetch process instances by their owning user-task keys.")
+	require.NotContains(t, output, "Camunda v2 user-task search first")
+	require.NotContains(t, output, "Tasklist V1 lookup for legacy user-task compatibility")
+	require.NotContains(t, output, "Camunda 8.7 remains unsupported")
 	require.NotContains(t, output, "There is no Tasklist or Operate fallback")
 }
 
