@@ -164,12 +164,12 @@
 
 **Purpose**: Final cleanup, validation, and repository-wide proof.
 
-- [ ] T050 [P] Run `gofmt -w cmd/expect.go cmd/expect_processinstance.go cmd/expect_test.go cmd/command_contract_test.go cmd/process_api_stub_test.go c8volt/process/api.go c8volt/process/bulk.go c8volt/process/client.go c8volt/process/model.go c8volt/process/client_test.go internal/services/processinstance/api.go internal/services/processinstance/waiter/waiter.go internal/services/processinstance/waiter/waiter_test.go internal/services/processinstance/v87/contract.go internal/services/processinstance/v87/service.go internal/services/processinstance/v88/contract.go internal/services/processinstance/v88/service.go internal/services/processinstance/v89/contract.go internal/services/processinstance/v89/service.go`
-- [ ] T051 Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
-- [ ] T052 Run `make docs-content` and fix documentation generation issues
-- [ ] T053 Run `make test` and fix repository validation failures
-- [ ] T054 [P] Review `specs/170-process-incident-expect/quickstart.md` against implemented behavior and update if command examples changed
-- [ ] T055 Verify `git diff` contains only issue #170 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T050 [P] Run `gofmt -w cmd/expect.go cmd/expect_processinstance.go cmd/expect_test.go cmd/command_contract_test.go cmd/process_api_stub_test.go c8volt/process/api.go c8volt/process/bulk.go c8volt/process/client.go c8volt/process/model.go c8volt/process/client_test.go internal/services/processinstance/api.go internal/services/processinstance/waiter/waiter.go internal/services/processinstance/waiter/waiter_test.go internal/services/processinstance/v87/contract.go internal/services/processinstance/v87/service.go internal/services/processinstance/v88/contract.go internal/services/processinstance/v88/service.go internal/services/processinstance/v89/contract.go internal/services/processinstance/v89/service.go`
+- [x] T051 Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
+- [x] T052 Run `make docs-content` and fix documentation generation issues
+- [x] T053 Run `make test` and fix repository validation failures
+- [x] T054 [P] Review `specs/170-process-incident-expect/quickstart.md` against implemented behavior and update if command examples changed
+- [x] T055 Verify `git diff` contains only issue #170 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 

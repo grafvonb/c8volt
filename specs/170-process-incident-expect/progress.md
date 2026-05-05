@@ -24,6 +24,7 @@ Started: 2026-05-05 08:05:19
 - Dash stdin command tests should use helper subprocesses with `os.Pipe` assigned to `os.Stdin`; this exercises `term.IsTerminal` and the real `readKeysIfDash` path instead of only command argument validation.
 - Optional state parsing in `cmd/expect_processinstance.go` must be guarded by `cmd.Flags().Changed("state")`; otherwise incident-only invocations can be masked by empty `StringSlice` state defaults before `--incident` validation runs.
 - `make docs-content` regenerates `docs/cli/` from Cobra metadata and rewrites `docs/index.md` from `README.md`, including the build information header.
+- Resource facade tests define their own `process.API` compile guard in `c8volt/resource/client_test.go`; public process facade method additions need matching panic-only methods there as well as command/process stubs.
 
 ---
 
@@ -218,5 +219,29 @@ Started: 2026-05-05 08:05:19
 - Incident-only and invalid-incident paths need state parsing to skip entirely when `--state` was not set, so the strict `--incident true|false` validation remains the first relevant expectation input check.
 - The no-expectation path intentionally reports the repository's local precondition failure while avoiding Cobra's old required-state error.
 - Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd -run 'TestExpect|TestCommandContract' -count=1`.
+- Documentation run: `GOCACHE=/tmp/c8volt-go-build-cache make docs-content`.
+---
+
+---
+## Iteration 8 - 2026-05-05 08:42:55 CEST
+**User Story**: Phase 8: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T050: Run gofmt over touched command, facade, waiter, and versioned service files
+- [x] T051: Run targeted process-instance expectation package tests
+- [x] T052: Run `make docs-content`
+- [x] T053: Run `make test`
+- [x] T054: Review `quickstart.md` against implemented behavior
+- [x] T055: Verify final diff scope before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/resource/client_test.go
+- docs/index.md
+- specs/170-process-incident-expect/tasks.md
+- specs/170-process-incident-expect/progress.md
+**Learnings**:
+- Full `make test` found one remaining compile-only API conformance stub in `c8volt/resource/client_test.go`; adding panic-only expectation wait methods kept the resource tests aligned with the expanded public process facade.
+- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`.
+- Repository validation run: `GOCACHE=/tmp/c8volt-go-build-cache make test`.
 - Documentation run: `GOCACHE=/tmp/c8volt-go-build-cache make docs-content`.
 ---
