@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -288,6 +289,67 @@ func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.
 	incidents, ok := first["incidents"].([]any)
 	require.True(t, ok)
 	require.Len(t, incidents, 1)
+}
+
+func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssociation(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 2,
+		Items: []process.IncidentEnrichedProcessInstance{
+			{
+				Item: process.ProcessInstance{
+					Key:            "123",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-a",
+					ProcessVersion: 3,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:00:00Z",
+					Incident:       true,
+				},
+				Incidents: []process.ProcessInstanceIncidentDetail{{
+					IncidentKey:        "incident-123",
+					ProcessInstanceKey: "123",
+					ErrorMessage:       "First key failed",
+				}},
+			},
+			{
+				Item: process.ProcessInstance{
+					Key:            "124",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-b",
+					ProcessVersion: 4,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:05:00Z",
+					Incident:       true,
+				},
+				Incidents: []process.ProcessInstanceIncidentDetail{{
+					IncidentKey:        "incident-124",
+					ProcessInstanceKey: "124",
+					ErrorMessage:       "Second key failed",
+				}},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
+	require.Contains(t, output, "  incident incident-123: First key failed")
+	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
+	require.Contains(t, output, "  incident incident-124: Second key failed")
+	require.Contains(t, output, "found: 2")
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  incident incident-123"))
+	require.Less(t, strings.Index(output, "  incident incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  incident incident-124"))
 }
 
 func TestTruncateIncidentHumanMessage(t *testing.T) {

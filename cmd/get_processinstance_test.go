@@ -355,7 +355,7 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 	}
 }
 
-// TestGetProcessInstanceWithIncidentsValidation rejects enrichment outside direct keyed lookups.
+// TestGetProcessInstanceWithIncidentsValidation rejects enrichment combinations that cannot render incident details safely.
 func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -364,11 +364,6 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 		helper string
 		want   string
 	}{
-		{
-			name:   "requires keyed lookup",
-			helper: "TestGetProcessInstanceWithIncidentsWithoutKeyHelper",
-			want:   "--with-incidents requires --key",
-		},
 		{
 			name:   "rejects search-mode incident filters",
 			helper: "TestGetProcessInstanceWithIncidentsWithSearchFilterHelper",
@@ -385,6 +380,107 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			require.Contains(t, output, tt.want)
 		})
 	}
+}
+
+// TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines verifies list/search incident enrichment keeps incidents under their owning rows.
+func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			var got map[string]any
+			require.NoError(t, json.Unmarshal(body, &got))
+			filter := requireJSONObject(t, got["filter"])
+			require.Equal(t, true, filter["hasIncident"])
+			_, _ = w.Write([]byte(`{"items":[
+				{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
+				{"hasIncident":true,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"First key failed","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/124/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"Second key failed","incidentKey":"incident-124","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--incidents-only",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/123/incidents/search",
+		"POST /v2/process-instances/124/incidents/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
+	require.Contains(t, output, "  incident incident-123: First key failed")
+	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
+	require.Contains(t, output, "  incident incident-124: Second key failed")
+	require.Contains(t, output, "found: 2")
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  incident incident-123"))
+	require.Less(t, strings.Index(output, "  incident incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  incident incident-124"))
+}
+
+// TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
+func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[
+				{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
+				{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"First key failed","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/124/incidents/search":
+			t.Fatalf("incident lookup should not run for rows outside --limit: %s", r.URL.Path)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--batch-size", "2",
+		"--limit", "1",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/123/incidents/search",
+	}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "  incident incident-123: First key failed")
+	require.NotContains(t, output, "124 tenant")
+	require.Contains(t, output, "found: 1")
 }
 
 // TestGetProcessInstanceIncidentMessageLimitValidation rejects unsafe incident message limit usage.

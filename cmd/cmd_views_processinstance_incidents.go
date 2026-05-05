@@ -17,6 +17,14 @@ func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Incid
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedProcessInstancesWithAgeMeta(resp))
 	}
+	if err := renderIncidentEnrichedProcessInstanceRows(cmd, resp); err != nil {
+		return err
+	}
+	renderOutputLine(cmd, "found: %d", len(resp.Items))
+	return nil
+}
+
+func renderIncidentEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
 	rows := make([]flatRow, 0, len(resp.Items))
 	for _, it := range resp.Items {
 		rows = append(rows, flatRowPI(it.Item))
@@ -33,7 +41,6 @@ func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Incid
 			warnedIndirectIncident = true
 		}
 	}
-	renderOutputLine(cmd, "found: %d", len(resp.Items))
 	return nil
 }
 

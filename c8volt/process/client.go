@@ -82,7 +82,7 @@ func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string,
 	return fromDomainProcessInstanceIncidentDetails(incidents), nil
 }
 
-// EnrichProcessInstancesWithIncidents attaches direct incident details to keyed process-instance results without reordering them.
+// EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
 	for _, pi := range pis.Items {

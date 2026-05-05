@@ -49,17 +49,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Add command test for `get pi --incidents-only --with-incidents` rendering direct incident lines below matching rows in `cmd/get_processinstance_test.go`
-- [ ] T012 [P] [US1] Add command test proving direct incident lookup runs only for listed or limited process instances in `cmd/get_processinstance_test.go`
-- [ ] T013 [P] [US1] Add view test for multiple enriched process-instance rows preserving per-row incident association in `cmd/cmd_views_get_test.go`
+- [x] T011 [P] [US1] Add command test for `get pi --incidents-only --with-incidents` rendering direct incident lines below matching rows in `cmd/get_processinstance_test.go`
+- [x] T012 [P] [US1] Add command test proving direct incident lookup runs only for listed or limited process instances in `cmd/get_processinstance_test.go`
+- [x] T013 [P] [US1] Add view test for multiple enriched process-instance rows preserving per-row incident association in `cmd/cmd_views_get_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Relax `validatePIWithIncidentsUsage` to allow list/search mode while keeping `--total` invalid in `cmd/get_processinstance.go`
-- [ ] T015 [US1] Enrich non-incremental list/search `ProcessInstances` with incidents before rendering in `cmd/get_processinstance.go`
-- [ ] T016 [US1] Support incident-enriched rendering for incremental human list/search pages without changing paging prompts or found counts in `cmd/get_processinstance.go`
-- [ ] T017 [US1] Preserve incident lookup options, tenant handling, and per-key association through existing facade enrichment in `c8volt/process/client.go`
-- [ ] T018 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(GetProcessInstance.*Incident|IncidentEnriched|Client_EnrichProcessInstances)' -count=1` and fix regressions
+- [x] T014 [US1] Relax `validatePIWithIncidentsUsage` to allow list/search mode while keeping `--total` invalid in `cmd/get_processinstance.go`
+- [x] T015 [US1] Enrich non-incremental list/search `ProcessInstances` with incidents before rendering in `cmd/get_processinstance.go`
+- [x] T016 [US1] Support incident-enriched rendering for incremental human list/search pages without changing paging prompts or found counts in `cmd/get_processinstance.go`
+- [x] T017 [US1] Preserve incident lookup options, tenant handling, and per-key association through existing facade enrichment in `c8volt/process/client.go`
+- [x] T018 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(GetProcessInstance.*Incident|IncidentEnriched|Client_EnrichProcessInstances)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when list/search human output shows direct incidents below the correct rows and keyed behavior still passes.
 

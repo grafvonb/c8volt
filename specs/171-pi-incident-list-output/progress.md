@@ -10,6 +10,7 @@ Started: 2026-05-05 09:49:53
 - `cmd/get_processinstance.go` keeps `--with-incidents` validation in `validatePIWithIncidentsUsage`, currently requiring keyed mode and rejecting search filters plus `--total`.
 - List/search process-instance paging splits collected output from incremental rendering in `searchProcessInstancesWithPaging`; incremental human pages render before returning with a separate `found: <n>` line.
 - Incident-enriched get output is centralized in `incidentEnrichedProcessInstancesView`, with JSON routed through `renderJSONPayload` and `incidentEnrichedProcessInstancesWithAgeMeta`.
+- Incremental list/search incident rendering uses `renderIncidentEnrichedProcessInstanceRows` so pages can print enriched rows without duplicating the final `found: <n>` line.
 - Human incident formatting is centralized in `incidentHumanLine`; `cmd/cmd_views_walk_incidents.go` reuses it through `writeIncidentLines` and tree rendering.
 - Facade incident enrichment is handled by `EnrichProcessInstancesWithIncidents`, which preserves order, filters incidents by process-instance key, and forwards facade options to incident lookup.
 - Generated CLI docs come from Cobra metadata through `make docs-content`, which runs `docsgen` and syncs `docs/index.md` from `README.md`.
@@ -55,4 +56,30 @@ Started: 2026-05-05 09:49:53
 - The new flag can be validated before keyed/list mode branching because `validatePISearchFlags` already receives the Cobra command and can distinguish an explicit `0` from the default through `Flags().Changed`.
 - `incidentHumanLine` remains the shared path for get and walk incident details, so truncation support is now centralized while later stories can still change the prefix once.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestIncident|TestGetProcessInstance.*Incident|TestValidatePI' -count=1` and the additional focused flag/reset/truncation test run.
+---
+## Iteration 3 - 2026-05-05 10:01:11 CEST
+**User Story**: User Story 1 - Show Direct Incidents In List Output
+**Tasks Completed**:
+- [x] T011: Add command test for `get pi --incidents-only --with-incidents` rendering direct incident lines below matching rows in `cmd/get_processinstance_test.go`
+- [x] T012: Add command test proving direct incident lookup runs only for listed or limited process instances in `cmd/get_processinstance_test.go`
+- [x] T013: Add view test for multiple enriched process-instance rows preserving per-row incident association in `cmd/cmd_views_get_test.go`
+- [x] T014: Relax `validatePIWithIncidentsUsage` to allow list/search mode while keeping `--total` invalid in `cmd/get_processinstance.go`
+- [x] T015: Enrich non-incremental list/search `ProcessInstances` with incidents before rendering in `cmd/get_processinstance.go`
+- [x] T016: Support incident-enriched rendering for incremental human list/search pages without changing paging prompts or found counts in `cmd/get_processinstance.go`
+- [x] T017: Preserve incident lookup options, tenant handling, and per-key association through existing facade enrichment in `c8volt/process/client.go`
+- [x] T018: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(GetProcessInstance.*Incident|IncidentEnriched|Client_EnrichProcessInstances)' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/cmd_views_get_test.go
+- c8volt/process/client.go
+- specs/171-pi-incident-list-output/tasks.md
+- specs/171-pi-incident-list-output/progress.md
+**Learnings**:
+- List/search `--with-incidents` can reuse `EnrichProcessInstancesWithIncidents` after paging filters and `--limit` are applied, keeping incident lookup scoped to rows selected for output.
+- Human list/search output normally renders incrementally, so incident row rendering needs a page-row helper that omits the final count while `searchProcessInstancesWithPaging` preserves the single `found: <n>` line.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(GetProcessInstance.*Incident|IncidentEnriched|Client_EnrichProcessInstances)' -count=1`.
 ---

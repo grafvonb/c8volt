@@ -200,6 +200,16 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 		}
+		if flagGetPIWithIncidents {
+			enriched, err := cli.EnrichProcessInstancesWithIncidents(ctx, pis, collectOptions()...)
+			if err != nil {
+				fail(fmt.Errorf("get process instance incidents: %w", err))
+			}
+			if err := incidentEnrichedProcessInstancesView(cmd, enriched); err != nil {
+				fail(fmt.Errorf("render process instances with incidents: %w", err))
+			}
+			return
+		}
 		if err := listProcessInstancesView(cmd, pis); err != nil {
 			fail(fmt.Errorf("render process instances: %w", err))
 		}
@@ -491,7 +501,15 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Items = limitPIItems(filtered.Items, processedTotal)
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
-			if pickMode() == RenderModeOneLine {
+			if flagGetPIWithIncidents && pickMode() == RenderModeOneLine {
+				enriched, err := cli.EnrichProcessInstancesWithIncidents(cmd.Context(), filtered, collectOptions()...)
+				if err != nil {
+					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
+				}
+				if err := renderIncidentEnrichedProcessInstanceRows(cmd, enriched); err != nil {
+					return process.ProcessInstances{}, false, err
+				}
+			} else if pickMode() == RenderModeOneLine {
 				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err
 				}
@@ -958,15 +976,12 @@ func validatePIKeyedModeLimit(keyCount int) error {
 	return nil
 }
 
-// validatePIWithIncidentsUsage keeps incident enrichment scoped to direct keyed lookups where the output can attach details unambiguously.
+// validatePIWithIncidentsUsage keeps incident enrichment out of modes that cannot attach details unambiguously.
 func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
 	if !flagGetPIWithIncidents {
 		return nil
 	}
-	if keyCount == 0 {
-		return missingDependentFlagsf("--with-incidents requires --key")
-	}
-	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal {
+	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
 		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with search-mode filters")
 	}
 	return nil
