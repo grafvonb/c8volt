@@ -142,19 +142,19 @@
 
 ### Tests for User Story 5
 
-- [ ] T040 [P] [US5] Update validation tests so `get pi --with-incidents` without `--key` is accepted in list/search mode in `cmd/get_processinstance_test.go`
-- [ ] T041 [P] [US5] Add validation test for `--with-incidents` remaining invalid with `--total` in `cmd/get_processinstance_test.go`
-- [ ] T042 [P] [US5] Add validation tests for `--incident-message-limit` without `--with-incidents` and negative values in `cmd/get_processinstance_test.go`
-- [ ] T043 [P] [US5] Add help or command contract test for `--incident-message-limit` and updated `--with-incidents` help text in `cmd/command_contract_test.go` or `cmd/get_processinstance_test.go`
-- [ ] T044 [P] [US5] Add regression test proving output without `--with-incidents` does not perform incident lookups and remains unchanged in `cmd/get_processinstance_test.go`
+- [x] T040 [P] [US5] Update validation tests so `get pi --with-incidents` without `--key` is accepted in list/search mode in `cmd/get_processinstance_test.go`
+- [x] T041 [P] [US5] Add validation test for `--with-incidents` remaining invalid with `--total` in `cmd/get_processinstance_test.go`
+- [x] T042 [P] [US5] Add validation tests for `--incident-message-limit` without `--with-incidents` and negative values in `cmd/get_processinstance_test.go`
+- [x] T043 [P] [US5] Add help or command contract test for `--incident-message-limit` and updated `--with-incidents` help text in `cmd/command_contract_test.go` or `cmd/get_processinstance_test.go`
+- [x] T044 [P] [US5] Add regression test proving output without `--with-incidents` does not perform incident lookups and remains unchanged in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T045 [US5] Update `--with-incidents` help text and examples to describe keyed and list/search enrichment in `cmd/get_processinstance.go`
-- [ ] T046 [US5] Update README process-instance incident examples and wording in `README.md`
-- [ ] T047 [US5] Update site documentation source examples in `docs/index.md`
-- [ ] T048 [US5] Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
-- [ ] T049 [US5] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*(WithIncidents|IncidentMessageLimit|Help|Contract|Default)' -count=1` and fix regressions
+- [x] T045 [US5] Update `--with-incidents` help text and examples to describe keyed and list/search enrichment in `cmd/get_processinstance.go`
+- [x] T046 [US5] Update README process-instance incident examples and wording in `README.md`
+- [x] T047 [US5] Update site documentation source examples in `docs/index.md`
+- [x] T048 [US5] Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T049 [US5] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*(WithIncidents|IncidentMessageLimit|Help|Contract|Default)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 5 is independently complete when invalid inputs fail clearly, valid list/search incident commands are accepted, and docs match behavior.
 

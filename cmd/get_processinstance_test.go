@@ -44,6 +44,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --state active --total")
 	require.Contains(t, output, "./c8volt get pi --state active --json")
 	require.Contains(t, output, "./c8volt get pi --state active --limit 25 --auto-confirm")
+	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents")
+	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-message-limit 80")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -52,6 +54,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "maximum characters to show for human incident messages when --with-incidents is set")
 	require.Contains(t, output, "--limit int32")
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
+	require.Contains(t, output, "--with-incidents")
+	require.Contains(t, output, "include direct incident keys and messages for keyed or list/search process-instance output")
 	require.NotContains(t, output, "--count")
 }
 
@@ -369,6 +373,11 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			helper: "TestGetProcessInstanceWithIncidentsWithSearchFilterHelper",
 			want:   "--with-incidents cannot be combined with search-mode filters",
 		},
+		{
+			name:   "rejects total output",
+			helper: "TestGetProcessInstanceWithIncidentsWithTotalHelper",
+			want:   "--total cannot be combined with --with-incidents",
+		},
 	}
 
 	for _, tt := range tests {
@@ -380,6 +389,32 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			require.Contains(t, output, tt.want)
 		})
 	}
+}
+
+// TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted verifies list/search incident enrichment is no longer keyed-only.
+func TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--state", "active",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{"POST /v2/process-instances/search"}, requests)
+	require.Equal(t, "found: 0\n", output)
 }
 
 // TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines verifies list/search incident enrichment keeps incidents under their owning rows.
@@ -1264,6 +1299,47 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 		Incident:       true,
 	}
 	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
+	require.Equal(t, strings.TrimSpace(oneLinePI(wantItem))+"\nfound: 1\n", output)
+	require.NotContains(t, output, "  inc ")
+}
+
+// TestGetProcessInstanceWithoutIncidents_ListSearchPreservesDefaultAndSkipsIncidentLookup keeps list output unchanged unless enrichment is requested.
+func TestGetProcessInstanceWithoutIncidents_ListSearchPreservesDefaultAndSkipsIncidentLookup(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			t.Fatalf("incident lookup should not run without --with-incidents")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--incidents-only",
+	)
+
+	wantItem := process.ProcessInstance{
+		Key:            "123",
+		TenantId:       "tenant",
+		BpmnProcessId:  "demo",
+		ProcessVersion: 3,
+		State:          process.StateActive,
+		StartDate:      "2026-03-23T18:00:00Z",
+		Incident:       true,
+	}
+	require.Equal(t, []string{"POST /v2/process-instances/search"}, requests)
 	require.Equal(t, strings.TrimSpace(oneLinePI(wantItem))+"\nfound: 1\n", output)
 	require.NotContains(t, output, "  inc ")
 }
@@ -3389,6 +3465,20 @@ func TestGetProcessInstanceWithIncidentsWithSearchFilterHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incidents-only"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --with-incidents with --total validation.
+func TestGetProcessInstanceWithIncidentsWithTotalHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-incidents", "--total"}
 
 	Execute()
 }

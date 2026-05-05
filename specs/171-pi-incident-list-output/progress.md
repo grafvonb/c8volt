@@ -5,6 +5,8 @@ Started: 2026-05-05 09:49:53
 
 ## Codebase Patterns
 
+- Process-instance command help and generated CLI reference both derive from Cobra metadata in `cmd/get_processinstance.go`; README wording is synced into `docs/index.md` by `make docs-content`.
+- Default list/search output must avoid incident lookup endpoints entirely unless `--with-incidents` is set; tests can assert this by failing on `/v2/process-instances/<key>/incidents/search`.
 - Human incident detail lines now use the compact `inc <incident-key>:` prefix through the shared `incidentHumanLine` helper, so get and walk output stay aligned without command-specific prefix code.
 - Indirect incident marker rendering now separates row-local notes from the de-duplicated list warning: `renderIncidentEnrichedProcessInstanceRows` returns whether a warning is needed, and callers decide when to print it.
 - Root command executions route `renderHumanWarningLine` through the configured logger to stderr, while direct view tests without logger context write warnings to the command output buffer.
@@ -156,4 +158,33 @@ Started: 2026-05-05 09:49:53
 - `cmd/cmd_views_walk_incidents.go` already delegates all human incident lines through `incidentHumanLine`, so compact walk output only needed regression coverage and assertion updates.
 - Human message truncation remains scoped to the message portion because `incidentHumanLine` applies `truncateIncidentHumanMessage` after the compact prefix is chosen.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Incident|Walk).*' -count=1` and a broader nearby incident regression run.
+---
+---
+## Iteration 7 - 2026-05-05 10:21:35 CEST
+**User Story**: User Story 5 - Validate Incident Options Safely
+**Tasks Completed**:
+- [x] T040: Update validation tests so `get pi --with-incidents` without `--key` is accepted in list/search mode
+- [x] T041: Add validation test for `--with-incidents` remaining invalid with `--total`
+- [x] T042: Add validation tests for `--incident-message-limit` without `--with-incidents` and negative values
+- [x] T043: Add help or command contract test for `--incident-message-limit` and updated `--with-incidents` help text
+- [x] T044: Add regression test proving output without `--with-incidents` does not perform incident lookups and remains unchanged
+- [x] T045: Update `--with-incidents` help text and examples to describe keyed and list/search enrichment
+- [x] T046: Update README process-instance incident examples and wording
+- [x] T047: Update site documentation source examples
+- [x] T048: Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T049: Run targeted US5 command tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- README.md
+- docs/index.md
+- docs/cli/c8volt_get_process-instance.md
+- specs/171-pi-incident-list-output/tasks.md
+- specs/171-pi-incident-list-output/progress.md
+**Learnings**:
+- `--with-incidents --total` is rejected in the shared search flag validation path before list/search execution reaches backend paging.
+- `make docs-content` refreshes both generated CLI Markdown and `docs/index.md`, so command metadata plus README changes are the source updates for this story.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*(WithIncidents|IncidentMessageLimit|Help|Contract|Default)' -count=1`.
 ---
