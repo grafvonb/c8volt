@@ -21,6 +21,7 @@ Started: 2026-05-05 08:05:19
 - Incident false semantics are enforced by requiring a present process instance before `processInstanceExpectationMatches` can succeed; missing instances retry until timeout/max-retries instead of mapping to incident-free.
 - Facade incident reports preserve observed `false` values through non-nil incident pointers in `fromDomainIncidentExpectation`, so JSON output can distinguish `false` from an omitted incident observation.
 - Combined state and incident waits require both expectations to match on the same present process-instance fetch; canceled/terminated compatibility still flows through `stateIn`/`statesEquivalent`, while state-only command execution remains on `WaitForProcessInstancesState`.
+- Dash stdin command tests should use helper subprocesses with `os.Pipe` assigned to `os.Stdin`; this exercises `term.IsTerminal` and the real `readKeysIfDash` path instead of only command argument validation.
 
 ---
 
@@ -161,4 +162,23 @@ Started: 2026-05-05 08:05:19
 - The existing combined matcher already enforced all requested expectations, so US3 primarily added regression coverage around mismatched state/incident attempts and compatibility semantics.
 - Command logs now distinguish incident-only waits from combined state and incident waits without changing state-only command output.
 - Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Wait|TestWaitForProcessInstanceState|TestWait.*Expectation' -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-05 08:32:56 CEST
+**User Story**: User Story 4 - Preserve Key Pipelining
+**Tasks Completed**:
+- [x] T036: Add command subprocess test for `c8volt get pi --keys-only | c8volt expect pi --incident true -` behavior
+- [x] T037: Keep or strengthen existing `expect pi --state active -` regression coverage
+- [x] T038: Ensure `cmd/expect_processinstance.go` applies existing `readKeysIfDash` and `mergeAndValidateKeys` behavior before incident expectation waiting
+- [x] T039: Run targeted dash expectation tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/expect_test.go
+- specs/170-process-incident-expect/tasks.md
+- specs/170-process-incident-expect/progress.md
+**Learnings**:
+- Existing command wiring already reads and validates stdin keys before choosing the incident expectation wait path, so US4 required regression coverage rather than production code changes.
+- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd -run 'TestExpectProcessInstanceCommand_.*Dash|TestHelperExpectProcessInstanceCommand_.*Dash' -count=1`.
 ---

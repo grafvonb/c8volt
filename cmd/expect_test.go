@@ -107,6 +107,78 @@ func TestExpectProcessInstanceCommand_DashDoesNotRequireKeyFlag(t *testing.T) {
 	require.NotContains(t, string(output), `required flag(s) "key" not set`)
 }
 
+func TestExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin(t *testing.T) {
+	var attempts atomic.Int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
+
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestHelperExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), attempts.Load())
+	require.Contains(t, string(output), `"key": "2251799813685255"`)
+	require.Contains(t, string(output), `"incident": true`)
+	require.Contains(t, string(output), `"ok": true`)
+}
+
+func TestExpectProcessInstanceCommand_StateDashReadsKeysFromStdin(t *testing.T) {
+	var attempts atomic.Int32
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/process-instances/2251799813685255", r.URL.Path)
+
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813685255","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeRawTestConfig(t, `app:
+  camunda_version: 8.8
+  backoff:
+    strategy: fixed
+    initial_delay: 1ms
+    max_retries: 3
+    timeout: 100ms
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: `+srv.URL+`
+`)
+
+	output, err := testx.RunCmdSubprocess(t, "TestHelperExpectProcessInstanceCommand_StateDashReadsKeysFromStdin", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), attempts.Load())
+	require.Contains(t, string(output), `"key": "2251799813685255"`)
+	require.Contains(t, string(output), `"state": "active"`)
+	require.Contains(t, string(output), `"ok": true`)
+}
+
 func TestExpectProcessInstanceCommand_IncidentTrueWaitsUntilMatched(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -282,6 +354,56 @@ func TestHelperExpectProcessInstanceCommand_DashDoesNotRequireKeyFlag(t *testing
 	root := Root()
 	resetCommandTreeFlags(root)
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--state", "active", "-"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestHelperExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	stdinReader, stdinWriter, err := os.Pipe()
+	require.NoError(t, err)
+	_, err = stdinWriter.WriteString("2251799813685255\n")
+	require.NoError(t, err)
+	require.NoError(t, stdinWriter.Close())
+	prevStdin := os.Stdin
+	os.Stdin = stdinReader
+	t.Cleanup(func() {
+		os.Stdin = prevStdin
+		require.NoError(t, stdinReader.Close())
+	})
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--incident", "true", "-"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestHelperExpectProcessInstanceCommand_StateDashReadsKeysFromStdin(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	stdinReader, stdinWriter, err := os.Pipe()
+	require.NoError(t, err)
+	_, err = stdinWriter.WriteString("2251799813685255\n")
+	require.NoError(t, err)
+	require.NoError(t, stdinWriter.Close())
+	prevStdin := os.Stdin
+	os.Stdin = stdinReader
+	t.Cleanup(func() {
+		os.Stdin = prevStdin
+		require.NoError(t, stdinReader.Close())
+	})
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--state", "active", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

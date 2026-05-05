@@ -122,13 +122,13 @@
 
 ### Tests for User Story 4
 
-- [ ] T036 [P] [US4] Add command subprocess test for `c8volt get pi --keys-only | c8volt expect pi --incident true -` behavior in `cmd/expect_test.go`
-- [ ] T037 [P] [US4] Keep or strengthen existing `expect pi --state active -` regression coverage in `cmd/expect_test.go`
+- [x] T036 [P] [US4] Add command subprocess test for `c8volt get pi --keys-only | c8volt expect pi --incident true -` behavior in `cmd/expect_test.go`
+- [x] T037 [P] [US4] Keep or strengthen existing `expect pi --state active -` regression coverage in `cmd/expect_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T038 [US4] Ensure `cmd/expect_processinstance.go` applies existing `readKeysIfDash` and `mergeAndValidateKeys` behavior before incident expectation waiting
-- [ ] T039 [US4] Run `go test ./cmd -run 'TestExpectProcessInstanceCommand_.*Dash|TestHelperExpectProcessInstanceCommand_.*Dash' -count=1` and fix regressions
+- [x] T038 [US4] Ensure `cmd/expect_processinstance.go` applies existing `readKeysIfDash` and `mergeAndValidateKeys` behavior before incident expectation waiting
+- [x] T039 [US4] Run `go test ./cmd -run 'TestExpectProcessInstanceCommand_.*Dash|TestHelperExpectProcessInstanceCommand_.*Dash' -count=1` and fix regressions
 
 **Checkpoint**: User Story 4 is independently complete when stdin key pipelining works for incident and state expectation paths.
 
