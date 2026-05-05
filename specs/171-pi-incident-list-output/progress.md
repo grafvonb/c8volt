@@ -11,6 +11,7 @@ Started: 2026-05-05 09:49:53
 - List/search process-instance paging splits collected output from incremental rendering in `searchProcessInstancesWithPaging`; incremental human pages render before returning with a separate `found: <n>` line.
 - Incident-enriched get output is centralized in `incidentEnrichedProcessInstancesView`, with JSON routed through `renderJSONPayload` and `incidentEnrichedProcessInstancesWithAgeMeta`.
 - Incremental list/search incident rendering uses `renderIncidentEnrichedProcessInstanceRows` so pages can print enriched rows without duplicating the final `found: <n>` line.
+- JSON process-instance list/search output is collected before rendering because `shouldRenderPISearchPageIncrementally` excludes JSON while `shouldAutoContinuePISearchPages` auto-continues JSON pages; collected `--with-incidents` results therefore reuse `incidentEnrichedProcessInstancesView`.
 - Human incident formatting is centralized in `incidentHumanLine`; `cmd/cmd_views_walk_incidents.go` reuses it through `writeIncidentLines` and tree rendering.
 - Facade incident enrichment is handled by `EnrichProcessInstancesWithIncidents`, which preserves order, filters incidents by process-instance key, and forwards facade options to incident lookup.
 - Generated CLI docs come from Cobra metadata through `make docs-content`, which runs `docsgen` and syncs `docs/index.md` from `README.md`.
@@ -82,4 +83,25 @@ Started: 2026-05-05 09:49:53
 - List/search `--with-incidents` can reuse `EnrichProcessInstancesWithIncidents` after paging filters and `--limit` are applied, keeping incident lookup scoped to rows selected for output.
 - Human list/search output normally renders incrementally, so incident row rendering needs a page-row helper that omits the final count while `searchProcessInstancesWithPaging` preserves the single `found: <n>` line.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(GetProcessInstance.*Incident|IncidentEnriched|Client_EnrichProcessInstances)' -count=1`.
+---
+## Iteration 4 - 2026-05-05 10:05:43 CEST
+**User Story**: User Story 2 - Preserve Enriched JSON Behavior
+**Tasks Completed**:
+- [x] T019: Add command JSON test for list/search `get pi --json --with-incidents` enriched payload shape in `cmd/get_processinstance_test.go`
+- [x] T020: Add command JSON test proving `--incident-message-limit` does not truncate JSON incident messages in `cmd/get_processinstance_test.go`
+- [x] T021: Add keyed JSON regression test showing existing `get pi --key <key> --json --with-incidents` shape remains unchanged in `cmd/get_processinstance_test.go`
+- [x] T022: Route collected list/search JSON results through `incidentEnrichedProcessInstancesView` when `--json --with-incidents` is set in `cmd/get_processinstance.go`
+- [x] T023: Ensure `incidentEnrichedProcessInstancesWithAgeMeta` keeps full incident messages and default process-instance age metadata in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T024: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*JSON.*Incident|TestIncidentEnrichedProcessInstancesView_JSON' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- cmd/cmd_views_get_test.go
+- specs/171-pi-incident-list-output/tasks.md
+- specs/171-pi-incident-list-output/progress.md
+**Learnings**:
+- List/search JSON incident enrichment was already wired through the collected output path; US2 primarily needed regression coverage for the enriched envelope, keyed shape, full messages, and age metadata.
+- `--incident-message-limit` remains human-only because JSON rendering receives the full facade incident details before any human formatter is involved.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*JSON.*Incident|TestIncidentEnrichedProcessInstancesView_JSON' -count=1`.
 ---

@@ -73,15 +73,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Add command JSON test for list/search `get pi --json --with-incidents` enriched payload shape in `cmd/get_processinstance_test.go`
-- [ ] T020 [P] [US2] Add command JSON test proving `--incident-message-limit` does not truncate JSON incident messages in `cmd/get_processinstance_test.go`
-- [ ] T021 [P] [US2] Add keyed JSON regression test showing existing `get pi --key <key> --json --with-incidents` shape remains unchanged in `cmd/get_processinstance_test.go`
+- [x] T019 [P] [US2] Add command JSON test for list/search `get pi --json --with-incidents` enriched payload shape in `cmd/get_processinstance_test.go`
+- [x] T020 [P] [US2] Add command JSON test proving `--incident-message-limit` does not truncate JSON incident messages in `cmd/get_processinstance_test.go`
+- [x] T021 [P] [US2] Add keyed JSON regression test showing existing `get pi --key <key> --json --with-incidents` shape remains unchanged in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Route collected list/search JSON results through `incidentEnrichedProcessInstancesView` when `--json --with-incidents` is set in `cmd/get_processinstance.go`
-- [ ] T023 [US2] Ensure `incidentEnrichedProcessInstancesWithAgeMeta` keeps full incident messages and default process-instance age metadata in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T024 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*JSON.*Incident|TestIncidentEnrichedProcessInstancesView_JSON' -count=1` and fix regressions
+- [x] T022 [US2] Route collected list/search JSON results through `incidentEnrichedProcessInstancesView` when `--json --with-incidents` is set in `cmd/get_processinstance.go`
+- [x] T023 [US2] Ensure `incidentEnrichedProcessInstancesWithAgeMeta` keeps full incident messages and default process-instance age metadata in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T024 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*JSON.*Incident|TestIncidentEnrichedProcessInstancesView_JSON' -count=1` and fix regressions
 
 **Checkpoint**: User Story 2 is independently complete when list/search JSON enrichment matches the keyed enriched shape and full messages are preserved.
 

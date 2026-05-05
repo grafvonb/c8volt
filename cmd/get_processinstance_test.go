@@ -967,6 +967,143 @@ func TestGetProcessInstanceWithIncidents_JSONOutputShowsEmptyIncidentCollection(
 	require.Empty(t, incidents)
 }
 
+func TestGetProcessInstanceJSONWithIncidents_ListSearchUsesEnrichedPayloadShape(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},{"hasIncident":true,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"First direct incident","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","jobKey":"job-123","processDefinitionId":"demo-a","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/124/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"creationTime":"2026-03-23T18:06:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Second direct incident","errorType":"JOB_NO_RETRIES","incidentKey":"incident-124","jobKey":"job-124","processDefinitionId":"demo-b","processDefinitionKey":"9002","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--state", "active",
+		"--with-incidents",
+		"--batch-size", "2",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	require.Equal(t, float64(2), payload["total"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	items := requireJSONItems(t, payload["items"], 2)
+
+	first := requireJSONObject(t, items[0])
+	firstItem := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", firstItem["key"])
+	firstIncidents := requireJSONItems(t, first["incidents"], 1)
+	firstIncident := requireJSONObject(t, firstIncidents[0])
+	require.Equal(t, "incident-123", firstIncident["incidentKey"])
+	require.Equal(t, "123", firstIncident["processInstanceKey"])
+	require.Equal(t, "First direct incident", firstIncident["errorMessage"])
+	require.Equal(t, "task-a", firstIncident["flowNodeId"])
+
+	second := requireJSONObject(t, items[1])
+	secondItem := requireJSONObject(t, second["item"])
+	require.Equal(t, "124", secondItem["key"])
+	secondIncidents := requireJSONItems(t, second["incidents"], 1)
+	secondIncident := requireJSONObject(t, secondIncidents[0])
+	require.Equal(t, "incident-124", secondIncident["incidentKey"])
+	require.Equal(t, "124", secondIncident["processInstanceKey"])
+	require.Equal(t, "Second direct incident", secondIncident["errorMessage"])
+	require.Equal(t, "task-b", secondIncident["flowNodeId"])
+}
+
+func TestGetProcessInstanceJSONWithIncidents_IncidentMessageLimitKeepsFullMessages(t *testing.T) {
+	fullMessage := "This long incident message must remain complete in JSON output"
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"` + fullMessage + `","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--state", "active",
+		"--with-incidents",
+		"--incident-message-limit", "5",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	incidents := requireJSONItems(t, first["incidents"], 1)
+	incident := requireJSONObject(t, incidents[0])
+	require.Equal(t, fullMessage, incident["errorMessage"])
+	require.NotEqual(t, "This ...", incident["errorMessage"])
+}
+
+func TestGetProcessInstanceJSONWithIncidents_KeyedLookupShapeRemainsUnchanged(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"No retries left","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--json",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	payload := requireProcessInstanceIncidentJSONPayload(t, output)
+	require.Equal(t, float64(1), payload["total"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	require.Contains(t, first, "item")
+	require.Contains(t, first, "incidents")
+	item := requireJSONObject(t, first["item"])
+	require.Equal(t, "123", item["key"])
+	incidents := requireJSONItems(t, first["incidents"], 1)
+	incident := requireJSONObject(t, incidents[0])
+	require.Equal(t, "incident-123", incident["incidentKey"])
+	require.Equal(t, "123", incident["processInstanceKey"])
+	require.Equal(t, "No retries left", incident["errorMessage"])
+}
+
 // TestGetProcessInstanceWithIncidents_V87ReportsUnsupported preserves the tenant-safe version boundary.
 func TestGetProcessInstanceWithIncidents_V87ReportsUnsupported(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")

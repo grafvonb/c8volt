@@ -291,6 +291,56 @@ func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.
 	require.Len(t, incidents, 1)
 }
 
+func TestIncidentEnrichedProcessInstancesView_JSONKeepsFullMessagesAndAgeMeta(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	longMessage := "This incident message is intentionally long and must stay complete in JSON"
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.IncidentEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:       "2251799813758959",
+				StartDate: "2026-01-28T12:27:33.233Z",
+			},
+			Incidents: []process.ProcessInstanceIncidentDetail{{
+				IncidentKey:        "incident-123",
+				ProcessInstanceKey: "2251799813758959",
+				ErrorMessage:       longMessage,
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	ageDaysBy := requireJSONObject(t, meta["ageDaysByKey"])
+	require.Equal(t, float64(4), ageDaysBy["2251799813758959"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	incidents := requireJSONItems(t, first["incidents"], 1)
+	incident := requireJSONObject(t, incidents[0])
+	require.Equal(t, longMessage, incident["errorMessage"])
+}
+
 func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssociation(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = false
