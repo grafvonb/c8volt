@@ -2636,6 +2636,11 @@ func executeRootForProcessInstanceTestWithEnv(t *testing.T, env []string, args .
 func resetProcessInstanceCommandGlobals() {
 	flagCancelPIKeys = nil
 	flagDeletePIKeys = nil
+	flagDeletePDKeys = nil
+	flagDeletePDBpmnProcessId = ""
+	flagDeletePDProcessVersion = 0
+	flagDeletePDProcessVersionTag = ""
+	flagDeletePDLatest = false
 	flagGetPIKeys = nil
 	flagGetPIHasUserTasks = nil
 	flagRunPIProcessDefinitionBpmnProcessIds = nil
@@ -2682,6 +2687,9 @@ func resetProcessInstanceCommandGlobals() {
 	flagWorkers = 0
 	flagNoWorkerLimit = false
 	flagFailFast = false
+	flagExpectPIKeys = nil
+	flagExpectPIStates = nil
+	flagExpectPIIncident = ""
 	confirmCmdOrAbortFn = confirmCmdOrAbort
 }
 
@@ -2723,7 +2731,13 @@ func executeProcessInstanceFailureHelperWithEnv(t *testing.T, helperName string,
 	for k, v := range extraEnv {
 		env[k] = v
 	}
-	output, err := testx.RunCmdSubprocess(t, helperName, env)
+	var output []byte
+	var err error
+	if extraEnv["C8VOLT_TEST_HAS_USER_TASKS_CONFLICT"] == "stdin" {
+		output, err = testx.RunCmdSubprocessWithStdin(t, helperName, env, "2251799813711967\n")
+	} else {
+		output, err = testx.RunCmdSubprocess(t, helperName, env)
+	}
 	require.Error(t, err)
 
 	exitErr, ok := err.(*exec.ExitError)
@@ -2745,17 +2759,6 @@ func TestGetProcessInstanceCommand_RejectsHasUserTasksConflictHelper(t *testing.
 	case "key":
 		args = append(args, "--key", "2251799813711967")
 	case "stdin":
-		stdinReader, stdinWriter, err := os.Pipe()
-		require.NoError(t, err)
-		_, err = stdinWriter.WriteString("2251799813711967\n")
-		require.NoError(t, err)
-		require.NoError(t, stdinWriter.Close())
-		prevStdin := os.Stdin
-		os.Stdin = stdinReader
-		t.Cleanup(func() {
-			os.Stdin = prevStdin
-			require.NoError(t, stdinReader.Close())
-		})
 		args = append(args, "-")
 	case "state":
 		args = append(args, "--state", "active")

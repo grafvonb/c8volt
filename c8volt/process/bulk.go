@@ -144,6 +144,21 @@ func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Ke
 	return srs, nil
 }
 
+func (c *client) WaitForProcessInstancesExpectation(ctx context.Context, keys types.Keys, request ProcessInstanceExpectationRequest, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceExpectationReports, error) {
+	cCfg := options.ApplyFacadeOptions(opts)
+	ukeys := keys.Unique()
+	lk := len(ukeys)
+
+	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
+	logging.InfoIfVerbose(fmt.Sprintf("waiting for %d unique process instance(s) to satisfy expectation(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	got, err := c.piApi.WaitForProcessInstancesExpectation(ctx, ukeys, toDomainProcessInstanceExpectationRequest(request), nw, options.MapFacadeOptionsToCallOptions(opts)...)
+	reports := fromDomainProcessInstanceExpectationResponses(got)
+	if err != nil {
+		return reports, ferr.FromDomain(err)
+	}
+	return reports, nil
+}
+
 // GetProcessInstances fetches unique process-instance keys using the internal service bulk lookup path.
 // wantedWorkers is forwarded to the service so version-specific implementations can choose their concurrency strategy.
 func (c *client) GetProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstances, error) {

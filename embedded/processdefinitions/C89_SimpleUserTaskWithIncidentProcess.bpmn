@@ -8,7 +8,7 @@
     <bpmn:startEvent id="SimpleUserTaskRequested_StartEvent" name="Simple User Task requested">
       <bpmn:extensionElements>
         <zeebe:ioMapping>
-          <zeebe:output source="=true" target="hasIncident" />
+          <zeebe:output source="=if hasIncident = null then true else hasIncident" target="hasIncident" />
         </zeebe:ioMapping>
       </bpmn:extensionElements>
       <bpmn:outgoing>Flow_1b6a1ym</bpmn:outgoing>

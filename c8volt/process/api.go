@@ -82,6 +82,7 @@ type API interface {
 	GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstances, error)
 	FilterProcessInstanceWithOrphanParent(ctx context.Context, items []ProcessInstance, opts ...options.FacadeOption) ([]ProcessInstance, error)
 	WaitForProcessInstanceState(ctx context.Context, key string, desired States, opts ...options.FacadeOption) (StateReport, ProcessInstance, error)
+	WaitForProcessInstanceExpectation(ctx context.Context, key string, request ProcessInstanceExpectationRequest, opts ...options.FacadeOption) (ProcessInstanceExpectationReport, ProcessInstance, error)
 	Walker
 
 	GetProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstances, error)
@@ -89,6 +90,7 @@ type API interface {
 	CancelProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (CancelReports, error)
 	DeleteProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error)
 	WaitForProcessInstancesState(ctx context.Context, keys types.Keys, desired States, wantedWorkers int, opts ...options.FacadeOption) (StateReports, error)
+	WaitForProcessInstancesExpectation(ctx context.Context, keys types.Keys, request ProcessInstanceExpectationRequest, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceExpectationReports, error)
 
 	DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (types.Keys, types.Keys, error)
 	DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error)

@@ -234,6 +234,21 @@ func (c *client) WaitForProcessInstanceState(ctx context.Context, key string, de
 	return StateReport{State: pgot, Status: got.Status, Key: pi.Key}, fromDomainProcessInstance(pi), nil
 }
 
+func (c *client) WaitForProcessInstanceExpectation(ctx context.Context, key string, request ProcessInstanceExpectationRequest, opts ...options.FacadeOption) (ProcessInstanceExpectationReport, ProcessInstance, error) {
+	got, pi, err := c.piApi.WaitForProcessInstanceExpectation(ctx, key, toDomainProcessInstanceExpectationRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	report := fromDomainProcessInstanceExpectationResponse(got)
+	if report.Key == "" {
+		report.Key = key
+	}
+	if err != nil {
+		return report, ProcessInstance{}, ferr.FromDomain(err)
+	}
+	if report.Key == "" {
+		report.Key = pi.Key
+	}
+	return report, fromDomainProcessInstance(pi), nil
+}
+
 func MapStateResponseToReport(in d.StateResponse) StateReport {
 	return StateReport{
 		State:  State(in.State.String()),
