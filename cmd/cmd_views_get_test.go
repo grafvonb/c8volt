@@ -402,6 +402,47 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "└─ inc: key=incident-124"))
 }
 
+func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVariables(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := variableEnrichedProcessInstancesView(cmd, process.VariableEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.VariableEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-03-23T18:00:00Z",
+			},
+			Variables: []process.ProcessInstanceVariable{
+				{Name: "alpha", Value: "1", ProcessInstanceKey: "123", ScopeKey: "123"},
+				{Name: "zeta", Value: "2", ProcessInstanceKey: "123", ScopeKey: "123"},
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "  alpha = 1")
+	require.Contains(t, output, "  zeta = 2")
+	require.NotContains(t, output, "var alpha")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "  alpha = 1"))
+	require.Less(t, strings.Index(output, "  alpha = 1"), strings.Index(output, "  zeta = 2"))
+	require.Less(t, strings.Index(output, "  zeta = 2"), strings.Index(output, "found: 1"))
+}
+
 func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
 	prevLimit := flagGetPIIncidentMessageLimit
 	flagGetPIIncidentMessageLimit = 0

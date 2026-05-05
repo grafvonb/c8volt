@@ -14,6 +14,8 @@ Started: 2026-05-05 21:28:44
 - User-facing docs source starts in `README.md`; `docs/index.md` is synced from README by `docsgen`, and `docs/cli/` command reference is generated from Cobra via `make docs-content`.
 - Shared facade API changes require updating test stubs in `cmd/process_api_stub_test.go` and `c8volt/resource/client_test.go` even when the runtime command behavior is not wired yet.
 - v8.8/v8.9 variable raw decoding should read `value` from the response body and accept both `isTruncated` and legacy `truncated` markers when converting to `APITruncated`.
+- v8.8/v8.9 `/variables/search` request construction uses union filters for `processInstanceKey` and `scopeKey`, but `tenantId` is a direct pointer field rather than a string filter.
+- `cmd/cmd_views_processinstance_vars.go` follows the incident-enriched renderer shape: align base process-instance rows first, render child details underneath, then emit a single `found:` line.
 
 ---
 
@@ -75,4 +77,48 @@ Started: 2026-05-05 21:28:44
 - The foundational interface expansion compiles cleanly with placeholder service methods; user-visible command behavior remains unwired for the next work unit.
 - v8.8/v8.9 generated typed variable results still omit value/truncation fields, so service implementation should decode from raw response bodies before mapping variables.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable|Test.*API' -count=1` and a compile-only check for `./cmd ./c8volt/resource`.
+---
+---
+## Iteration 3 - 2026-05-05 21:51:30 CEST
+**User Story**: User Story 1 - Inspect Process Variables
+**Tasks Completed**:
+- [x] T013: Add service tests for v8.8 variable search request filters `processInstanceKey=<key>` and `scopeKey=<key>` in `internal/services/processinstance/v88/service_test.go`
+- [x] T014: Add service tests for v8.9 variable search request filters `processInstanceKey=<key>` and `scopeKey=<key>` in `internal/services/processinstance/v89/service_test.go`
+- [x] T015: Add facade tests proving variable enrichment preserves process-instance order and per-key association in `c8volt/process/client_test.go`
+- [x] T016: Add command/view tests for human `get pi --key <key> --with-vars` output with sorted indented variable lines in `cmd/get_processinstance_test.go` and `cmd/cmd_views_get_test.go`
+- [x] T017: Add command/view tests proving element-scoped variables with a different `scopeKey` are excluded in `cmd/get_processinstance_test.go` or `cmd/cmd_views_get_test.go`
+- [x] T018: Implement v8.8 process-instance variable search in `internal/services/processinstance/v88/variables.go`
+- [x] T019: Implement v8.9 process-instance variable search in `internal/services/processinstance/v89/variables.go`
+- [x] T020: Implement explicit v8.7 behavior for `--with-vars` in `internal/services/processinstance/v87/variables.go`
+- [x] T021: Implement facade-level variable search and enrichment in `c8volt/process/client.go`
+- [x] T022: Add `--with-vars` flag storage, reset behavior, help text, and keyed-mode validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
+- [x] T023: Add human variable-enriched renderer in `cmd/cmd_views_processinstance_vars.go`
+- [x] T024: Route keyed `get pi --with-vars` through variable enrichment and rendering in `cmd/get_processinstance.go`
+- [x] T025: Run targeted US1 validation and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processinstance_vars.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- cmd/process_api_stub_test.go
+- internal/services/common/filter.go
+- internal/services/processinstance/v87/contract.go
+- internal/services/processinstance/v87/service_test.go
+- internal/services/processinstance/v87/variables.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v88/variables.go
+- internal/services/processinstance/v89/convert.go
+- internal/services/processinstance/v89/service_test.go
+- internal/services/processinstance/v89/variables.go
+- specs/173-pi-with-vars/tasks.md
+- specs/173-pi-with-vars/progress.md
+**Learnings**:
+- v8.8/v8.9 variable search needs `truncateValues=false` as a query parameter so human output receives full values by default.
+- The service requests process-instance and scope filters, and the facade also filters by both keys to guard against broad or unexpected backend responses.
+- v8.7 has an Operate variable search endpoint and now maps it explicitly instead of returning unsupported from the service method.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Var|Test.*Variable' -count=1` plus `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v87 -run 'Test.*Variable|TestService_' -count=1`.
 ---

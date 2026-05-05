@@ -6,6 +6,7 @@ package process
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -178,6 +179,9 @@ func variablesForProcessInstance(key string, variables []ProcessInstanceVariable
 			out = append(out, variable)
 		}
 	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Name < out[j].Name
+	})
 	return out
 }
 

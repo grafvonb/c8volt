@@ -379,6 +379,43 @@ func TestService_SearchProcessInstanceIncidents(t *testing.T) {
 	assert.Equal(t, "root-123", incidents[0].RootProcessInstanceKey)
 }
 
+func TestService_SearchProcessInstanceVariables_UsesProcessInstanceAndScopeFilters(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
+		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
+		searchVariablesWithResponse: func(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error) {
+			require.NotNil(t, params)
+			require.NotNil(t, params.TruncateValues)
+			assert.False(t, *params.TruncateValues)
+			payload := marshalJSON(t, body)
+			assert.Contains(t, payload, `"processInstanceKey":"123"`)
+			assert.Contains(t, payload, `"scopeKey":"123"`)
+			assert.Contains(t, payload, `"tenantId":"tenant"`)
+			assert.Contains(t, payload, `"field":"name"`)
+			assert.Contains(t, payload, `"order":"ASC"`)
+			rawBody := []byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant","isTruncated":true}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
+			return &camundav89.SearchVariablesResponse{
+				Body:         rawBody,
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav89.VariableSearchQueryResult{},
+			}, nil
+		},
+		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+	})
+
+	got, err := svc.SearchProcessInstanceVariables(ctx, "123")
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstanceVariable{
+		{Name: "alpha", Value: "1", VariableKey: "901", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+		{Name: "zeta", Value: "2", VariableKey: "902", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant"},
+	}, got)
+}
+
 func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 	ctx := context.Background()
 

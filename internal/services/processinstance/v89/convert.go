@@ -248,6 +248,18 @@ func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyF
 	return new(f), nil
 }
 
+// newScopeKeyEqFilterPtr builds a v8.9 scope-key equality filter when a key is set.
+func newScopeKeyEqFilterPtr(v string) (*camundav89.ScopeKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ScopeKeyFilterProperty
+	if err := f.FromScopeKeyFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
 // newProcessInstanceKeyExistsFilterPtr builds a v8.9 process-instance-key existence filter when explicitly requested.
 func newProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
 	if exists == nil {

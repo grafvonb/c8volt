@@ -51,22 +51,22 @@
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add service tests for v8.8 variable search request filters `processInstanceKey=<key>` and `scopeKey=<key>` in `internal/services/processinstance/v88/service_test.go`
-- [ ] T014 [P] [US1] Add service tests for v8.9 variable search request filters `processInstanceKey=<key>` and `scopeKey=<key>` in `internal/services/processinstance/v89/service_test.go`
-- [ ] T015 [P] [US1] Add facade tests proving variable enrichment preserves process-instance order and per-key association in `c8volt/process/client_test.go`
-- [ ] T016 [P] [US1] Add command/view tests for human `get pi --key <key> --with-vars` output with sorted indented variable lines in `cmd/get_processinstance_test.go` and `cmd/cmd_views_get_test.go`
-- [ ] T017 [P] [US1] Add command/view tests proving element-scoped variables with a different `scopeKey` are excluded in `cmd/get_processinstance_test.go` or `cmd/cmd_views_get_test.go`
+- [x] T013 [P] [US1] Add service tests for v8.8 variable search request filters `processInstanceKey=<key>` and `scopeKey=<key>` in `internal/services/processinstance/v88/service_test.go`
+- [x] T014 [P] [US1] Add service tests for v8.9 variable search request filters `processInstanceKey=<key>` and `scopeKey=<key>` in `internal/services/processinstance/v89/service_test.go`
+- [x] T015 [P] [US1] Add facade tests proving variable enrichment preserves process-instance order and per-key association in `c8volt/process/client_test.go`
+- [x] T016 [P] [US1] Add command/view tests for human `get pi --key <key> --with-vars` output with sorted indented variable lines in `cmd/get_processinstance_test.go` and `cmd/cmd_views_get_test.go`
+- [x] T017 [P] [US1] Add command/view tests proving element-scoped variables with a different `scopeKey` are excluded in `cmd/get_processinstance_test.go` or `cmd/cmd_views_get_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement v8.8 process-instance variable search in `internal/services/processinstance/v88/service.go` or a dedicated `variables.go`
-- [ ] T019 [US1] Implement v8.9 process-instance variable search in `internal/services/processinstance/v89/service.go` or a dedicated `variables.go`
-- [ ] T020 [US1] Implement explicit v8.7 behavior for `--with-vars` in `internal/services/processinstance/v87/service.go` or a dedicated `variables.go`
-- [ ] T021 [US1] Implement facade-level variable search and enrichment in `c8volt/process/client.go`
-- [ ] T022 [US1] Add `--with-vars` flag storage, reset behavior, help text, and keyed-mode validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
-- [ ] T023 [US1] Add human variable-enriched renderer in `cmd/cmd_views_processinstance_vars.go`
-- [ ] T024 [US1] Route keyed `get pi --with-vars` through variable enrichment and rendering in `cmd/get_processinstance.go`
-- [ ] T025 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Var|Test.*Variable' -count=1` and fix regressions
+- [x] T018 [US1] Implement v8.8 process-instance variable search in `internal/services/processinstance/v88/service.go` or a dedicated `variables.go`
+- [x] T019 [US1] Implement v8.9 process-instance variable search in `internal/services/processinstance/v89/service.go` or a dedicated `variables.go`
+- [x] T020 [US1] Implement explicit v8.7 behavior for `--with-vars` in `internal/services/processinstance/v87/service.go` or a dedicated `variables.go`
+- [x] T021 [US1] Implement facade-level variable search and enrichment in `c8volt/process/client.go`
+- [x] T022 [US1] Add `--with-vars` flag storage, reset behavior, help text, and keyed-mode validation in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
+- [x] T023 [US1] Add human variable-enriched renderer in `cmd/cmd_views_processinstance_vars.go`
+- [x] T024 [US1] Route keyed `get pi --with-vars` through variable enrichment and rendering in `cmd/get_processinstance.go`
+- [x] T025 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Var|Test.*Variable' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when keyed human output shows only sorted process-scope variables under the correct rows.
 

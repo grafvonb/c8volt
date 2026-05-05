@@ -22,6 +22,7 @@ type stubProcessAPI struct {
 	filterOrphanParent         func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
 	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 	enrichProcessInstances     func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
+	enrichProcessInstanceVars  func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 }
 
 type stubTaskAPI struct {
@@ -185,8 +186,11 @@ func (s stubProcessAPI) EnrichProcessInstancesWithIncidents(ctx context.Context,
 	return s.enrichProcessInstances(ctx, pis, opts...)
 }
 
-func (stubProcessAPI) EnrichProcessInstancesWithVariables(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) EnrichProcessInstancesWithVariables(ctx context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error) {
+	if s.enrichProcessInstanceVars == nil {
+		panic("unexpected call")
+	}
+	return s.enrichProcessInstanceVars(ctx, pis, opts...)
 }
 
 func (stubProcessAPI) EnrichTraversalWithIncidents(context.Context, process.TraversalResult, ...options.FacadeOption) (process.IncidentEnrichedTraversalResult, error) {

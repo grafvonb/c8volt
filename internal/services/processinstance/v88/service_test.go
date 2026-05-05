@@ -1066,6 +1066,42 @@ func TestService_TraversalResults(t *testing.T) {
 	})
 }
 
+func TestService_SearchProcessInstanceVariables_UsesProcessInstanceAndScopeFilters(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
+		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
+		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+		searchVariablesWithResponse: func(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error) {
+			require.NotNil(t, params)
+			require.NotNil(t, params.TruncateValues)
+			assert.False(t, *params.TruncateValues)
+			payload := marshalJSON(t, body)
+			assert.Contains(t, payload, `"processInstanceKey":"123"`)
+			assert.Contains(t, payload, `"scopeKey":"123"`)
+			assert.Contains(t, payload, `"tenantId":"tenant"`)
+			assert.Contains(t, payload, `"field":"name"`)
+			assert.Contains(t, payload, `"order":"ASC"`)
+			rawBody := []byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant","isTruncated":true}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`)
+			return &camundav88.SearchVariablesResponse{
+				Body:         rawBody,
+				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/variables/search", http.StatusOK, "200 OK"),
+				JSON200:      &camundav88.VariableSearchQueryResult{},
+			}, nil
+		},
+		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+	}, newStrictOperateClient(t))
+
+	got, err := svc.SearchProcessInstanceVariables(ctx, "123")
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstanceVariable{
+		{Name: "alpha", Value: "1", VariableKey: "901", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+		{Name: "zeta", Value: "2", VariableKey: "902", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant"},
+	}, got)
+}
+
 // newStrictCamundaClient returns a v8.8 Camunda client mock that fails on unexpected calls.
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	t.Helper()

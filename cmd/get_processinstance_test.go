@@ -39,6 +39,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "matching process instances by process definition")
 	require.Contains(t, output, "Direct key lookup stays strict")
 	require.Contains(t, output, "Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.")
+	require.Contains(t, output, "Use --with-vars with direct key lookup to include process-instance-scope variables under matching rows.")
 	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten human incident messages")
 	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active")
@@ -48,6 +49,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --state active --limit 25 --auto-confirm")
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-message-limit 80")
+	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-vars")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -58,6 +60,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.Contains(t, output, "--with-incidents")
 	require.Contains(t, output, "include direct incident keys and messages for keyed or list/search process-instance output")
+	require.Contains(t, output, "--with-vars")
+	require.Contains(t, output, "include process-instance-scope variables for keyed process-instance output")
 	require.NotContains(t, output, "--count")
 }
 
@@ -956,6 +960,54 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 
 	require.Contains(t, output, "└─ inc: key=incident-123 message="+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
+}
+
+func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(t *testing.T) {
+	var requests []string
+	var variableBodies []map[string]any
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			variableBodies = append(variableBodies, body)
+			_, _ = w.Write([]byte(`{"items":[{"name":"zeta","value":"2","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"localTask","value":"ignored","variableKey":"903","processInstanceKey":"123","scopeKey":"element-123","tenantId":"tenant"},{"name":"alpha","value":"1","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+		"--with-vars",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/variables/search"}, requests)
+	require.Len(t, variableBodies, 1)
+	filter := variableBodies[0]["filter"].(map[string]any)
+	require.Equal(t, "123", filter["processInstanceKey"])
+	require.Equal(t, "123", filter["scopeKey"])
+	require.Equal(t, "tenant", filter["tenantId"])
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "  alpha = 1")
+	require.Contains(t, output, "  zeta = 2")
+	require.NotContains(t, output, "localTask")
+	require.NotContains(t, output, "var alpha")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "  alpha = 1"))
+	require.Less(t, strings.Index(output, "  alpha = 1"), strings.Index(output, "  zeta = 2"))
 }
 
 // TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents covers both direct incident rendering and tree-propagated incident warnings.
@@ -2413,10 +2465,33 @@ func TestResetProcessInstanceCommandGlobals_ResetsIncidentMessageLimit(t *testin
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	flagGetPIIncidentMessageLimit = 80
+	flagGetPIWithVars = true
 
 	resetProcessInstanceCommandGlobals()
 
 	require.Zero(t, flagGetPIIncidentMessageLimit)
+	require.False(t, flagGetPIWithVars)
+}
+
+func TestValidatePIWithVarsUsage_KeyedModeOnly(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIWithVars = true
+
+	require.NoError(t, validatePIWithVarsUsage(1, 0, false))
+
+	err := validatePIWithVarsUsage(0, 0, false)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--with-vars requires --key")
+
+	err = validatePIWithVarsUsage(0, 1, false)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--with-vars requires --key and cannot be combined with --has-user-tasks")
+
+	err = validatePIWithVarsUsage(1, 0, true)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--with-vars cannot be combined with search-mode filters")
 }
 
 // TestHasPISearchFilterFlags_WithRelativeDaysOnly verifies relative-day flags activate search mode.
@@ -3173,6 +3248,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPILimit = 0
 	flagGetPIWithIncidents = false
 	flagGetPIIncidentMessageLimit = 0
+	flagGetPIWithVars = false
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
