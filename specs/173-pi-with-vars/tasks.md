@@ -80,19 +80,19 @@
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Add renderer tests for compacting JSON-like object and array values to one line in `cmd/cmd_views_get_test.go`
-- [ ] T027 [P] [US2] Add renderer tests proving values are not CLI-shortened when `--var-value-limit` is unset or zero in `cmd/cmd_views_get_test.go`
-- [ ] T028 [P] [US2] Add renderer tests for `--var-value-limit <chars>` applying character-safe human shortening and `cli-truncated` in `cmd/cmd_views_get_test.go`
-- [ ] T029 [P] [US2] Add renderer tests for `api-truncated` and `api-truncated,cli-truncated` labels in `cmd/cmd_views_get_test.go`
-- [ ] T030 [P] [US2] Add validation tests for `--var-value-limit` requiring `--with-vars` and rejecting negative values in `cmd/get_processinstance_test.go`
+- [x] T026 [P] [US2] Add renderer tests for compacting JSON-like object and array values to one line in `cmd/cmd_views_get_test.go`
+- [x] T027 [P] [US2] Add renderer tests proving values are not CLI-shortened when `--var-value-limit` is unset or zero in `cmd/cmd_views_get_test.go`
+- [x] T028 [P] [US2] Add renderer tests for `--var-value-limit <chars>` applying character-safe human shortening and `cli-truncated` in `cmd/cmd_views_get_test.go`
+- [x] T029 [P] [US2] Add renderer tests for `api-truncated` and `api-truncated,cli-truncated` labels in `cmd/cmd_views_get_test.go`
+- [x] T030 [P] [US2] Add validation tests for `--var-value-limit` requiring `--with-vars` and rejecting negative values in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Add `--var-value-limit` flag storage, registration, help text, and reset behavior in `cmd/get_processinstance.go`
-- [ ] T032 [US2] Add `--var-value-limit` validation in `cmd/get_processinstance.go`
-- [ ] T033 [US2] Implement human variable value compaction and optional display shortening helpers in `cmd/cmd_views_processinstance_vars.go`
-- [ ] T034 [US2] Render variable truncation labels as `api-truncated`, `cli-truncated`, or `api-truncated,cli-truncated` in `cmd/cmd_views_processinstance_vars.go`
-- [ ] T035 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Var.*(Limit|Trunc|Compact|Validation)' -count=1` and fix regressions
+- [x] T031 [US2] Add `--var-value-limit` flag storage, registration, help text, and reset behavior in `cmd/get_processinstance.go`
+- [x] T032 [US2] Add `--var-value-limit` validation in `cmd/get_processinstance.go`
+- [x] T033 [US2] Implement human variable value compaction and optional display shortening helpers in `cmd/cmd_views_processinstance_vars.go`
+- [x] T034 [US2] Render variable truncation labels as `api-truncated`, `cli-truncated`, or `api-truncated,cli-truncated` in `cmd/cmd_views_processinstance_vars.go`
+- [x] T035 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Var.*(Limit|Trunc|Compact|Validation)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 2 is independently complete when human values are one-line, full by default, optionally shortened, and precisely labeled.
 

@@ -50,6 +50,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-message-limit 80")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-vars")
+	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120")
 	require.Contains(t, output, "capped backend totals are counted by paging")
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
@@ -58,6 +59,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "maximum characters to show for human incident messages when --with-incidents is set")
 	require.Contains(t, output, "--limit int32")
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
+	require.Contains(t, output, "--var-value-limit int")
+	require.Contains(t, output, "maximum characters to show for human variable values when --with-vars is set")
 	require.Contains(t, output, "--with-incidents")
 	require.Contains(t, output, "include direct incident keys and messages for keyed or list/search process-instance output")
 	require.Contains(t, output, "--with-vars")
@@ -605,6 +608,32 @@ func TestGetProcessInstanceIncidentMessageLimitValidation(t *testing.T) {
 	}
 }
 
+func TestGetProcessInstanceVarValueLimitValidation(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIVarValueLimit = -1
+	err := validatePISearchFlags()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid value for --var-value-limit: -1, expected non-negative integer")
+
+	resetProcessInstanceCommandGlobals()
+	cmd := &cobra.Command{Use: "process-instance"}
+	fs := pflag.NewFlagSet("process-instance", pflag.ContinueOnError)
+	fs.Int("var-value-limit", 0, "")
+	cmd.Flags().AddFlagSet(fs)
+	require.NoError(t, cmd.Flags().Set("var-value-limit", "80"))
+	flagGetPIVarValueLimit = 80
+
+	err = validatePISearchFlags(cmd)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--var-value-limit requires --with-vars")
+
+	flagGetPIWithVars = true
+	err = validatePISearchFlags(cmd)
+	require.NoError(t, err)
+}
+
 // TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags verifies paging flag validation errors stay user-facing.
 func TestGetProcessInstanceCommand_RejectsInvalidLimitAndRemovedCountFlags(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
@@ -989,6 +1018,7 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", cfgPath,
+		"--tenant", "tenant",
 		"get", "process-instance",
 		"--key", "123",
 		"--with-vars",
@@ -2465,11 +2495,13 @@ func TestResetProcessInstanceCommandGlobals_ResetsIncidentMessageLimit(t *testin
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
 	flagGetPIIncidentMessageLimit = 80
+	flagGetPIVarValueLimit = 120
 	flagGetPIWithVars = true
 
 	resetProcessInstanceCommandGlobals()
 
 	require.Zero(t, flagGetPIIncidentMessageLimit)
+	require.Zero(t, flagGetPIVarValueLimit)
 	require.False(t, flagGetPIWithVars)
 }
 
@@ -3249,6 +3281,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIWithIncidents = false
 	flagGetPIIncidentMessageLimit = 0
 	flagGetPIWithVars = false
+	flagGetPIVarValueLimit = 0
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false

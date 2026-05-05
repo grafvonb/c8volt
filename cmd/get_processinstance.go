@@ -44,6 +44,7 @@ var (
 	flagGetPIWithIncidents        bool
 	flagGetPIIncidentMessageLimit int
 	flagGetPIWithVars             bool
+	flagGetPIVarValueLimit        int
 )
 
 // command options
@@ -77,6 +78,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --with-incidents --incident-message-limit 80
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars
+  ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
@@ -260,6 +262,7 @@ func init() {
 	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys and messages for keyed or list/search process-instance output")
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed process-instance output")
+	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -956,6 +959,12 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagGetPIWithIncidents {
 		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
 	}
+	if flagGetPIVarValueLimit < 0 {
+		return invalidFlagValuef("invalid value for --var-value-limit: %d, expected non-negative integer", flagGetPIVarValueLimit)
+	}
+	if isPIVarValueLimitFlagChanged(cmd) && !flagGetPIWithVars {
+		return missingDependentFlagsf("--var-value-limit requires --with-vars")
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||
@@ -1020,6 +1029,10 @@ func isPILimitFlagChanged(cmd *cobra.Command) bool {
 
 func isPIIncidentMessageLimitFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("incident-message-limit")
+}
+
+func isPIVarValueLimitFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("var-value-limit")
 }
 
 func validatePIKeyedModeLimit(keyCount int) error {

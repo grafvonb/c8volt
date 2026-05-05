@@ -16,6 +16,8 @@ Started: 2026-05-05 21:28:44
 - v8.8/v8.9 variable raw decoding should read `value` from the response body and accept both `isTruncated` and legacy `truncated` markers when converting to `APITruncated`.
 - v8.8/v8.9 `/variables/search` request construction uses union filters for `processInstanceKey` and `scopeKey`, but `tenantId` is a direct pointer field rather than a string filter.
 - `cmd/cmd_views_processinstance_vars.go` follows the incident-enriched renderer shape: align base process-instance rows first, render child details underneath, then emit a single `found:` line.
+- Human variable value display stays in `cmd/cmd_views_processinstance_vars.go`: compact object/array JSON with `json.Compact`, apply rune-safe `--var-value-limit` shortening only for positive limits, and append ordered truncation labels in square brackets.
+- `--var-value-limit` follows `--incident-message-limit` command patterns: package-global flag storage, reset coverage, help text, and validation in `validatePISearchFlags` for non-negative values plus `--with-vars` dependency.
 
 ---
 
@@ -121,4 +123,33 @@ Started: 2026-05-05 21:28:44
 - The service requests process-instance and scope filters, and the facade also filters by both keys to guard against broad or unexpected backend responses.
 - v8.7 has an Operate variable search endpoint and now maps it explicitly instead of returning unsupported from the service method.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Var|Test.*Variable' -count=1` plus `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v87 -run 'Test.*Variable|TestService_' -count=1`.
+---
+---
+## Iteration 4 - 2026-05-05 21:57:18 CEST
+**User Story**: User Story 2 - Keep Large Values Usable
+**Tasks Completed**:
+- [x] T026: Add renderer tests for compacting JSON-like object and array values to one line in `cmd/cmd_views_get_test.go`
+- [x] T027: Add renderer tests proving values are not CLI-shortened when `--var-value-limit` is unset or zero in `cmd/cmd_views_get_test.go`
+- [x] T028: Add renderer tests for `--var-value-limit <chars>` applying character-safe human shortening and `cli-truncated` in `cmd/cmd_views_get_test.go`
+- [x] T029: Add renderer tests for `api-truncated` and `api-truncated,cli-truncated` labels in `cmd/cmd_views_get_test.go`
+- [x] T030: Add validation tests for `--var-value-limit` requiring `--with-vars` and rejecting negative values in `cmd/get_processinstance_test.go`
+- [x] T031: Add `--var-value-limit` flag storage, registration, help text, and reset behavior in `cmd/get_processinstance.go`
+- [x] T032: Add `--var-value-limit` validation in `cmd/get_processinstance.go`
+- [x] T033: Implement human variable value compaction and optional display shortening helpers in `cmd/cmd_views_processinstance_vars.go`
+- [x] T034: Render variable truncation labels as `api-truncated`, `cli-truncated`, or `api-truncated,cli-truncated` in `cmd/cmd_views_processinstance_vars.go`
+- [x] T035: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Var.*(Limit|Trunc|Compact|Validation)' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processinstance_vars.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_test.go
+- specs/173-pi-with-vars/tasks.md
+- specs/173-pi-with-vars/progress.md
+**Learnings**:
+- Human variable rendering can stay isolated from JSON output by applying compaction and CLI shortening only in `processInstanceVariableHumanLine`.
+- `--var-value-limit` validation belongs beside process-instance search flag validation so Cobra flag-change state is available for the `--with-vars` dependency check.
+- Full `./cmd` validation requires tenant-specific variable-search assertions to pass an explicit `--tenant` flag; otherwise read commands intentionally leave tenant filters unset for Camunda 8.8+.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Var.*(Limit|Trunc|Compact|Validation)' -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---

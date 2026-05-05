@@ -4,7 +4,10 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -59,5 +62,50 @@ func variableEnrichedProcessInstancesWithAgeMeta(resp process.VariableEnrichedPr
 }
 
 func processInstanceVariableHumanLine(variable process.ProcessInstanceVariable) string {
-	return fmt.Sprintf("%s = %s", variable.Name, variable.Value)
+	value := compactProcessInstanceVariableValue(variable.Value)
+	value, cliTruncated := truncateProcessInstanceVariableHumanValue(value, flagGetPIVarValueLimit)
+	labels := processInstanceVariableTruncationLabels(variable.APITruncated, cliTruncated)
+	if labels != "" {
+		return fmt.Sprintf("%s = %s [%s]", variable.Name, value, labels)
+	}
+	return fmt.Sprintf("%s = %s", variable.Name, value)
+}
+
+func compactProcessInstanceVariableValue(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return value
+	}
+	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+		return value
+	}
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, []byte(trimmed)); err != nil {
+		return value
+	}
+	return buf.String()
+}
+
+func truncateProcessInstanceVariableHumanValue(value string, limit int) (string, bool) {
+	if limit <= 0 {
+		return value, false
+	}
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value, false
+	}
+	return string(runes[:limit]) + "...", true
+}
+
+func processInstanceVariableTruncationLabels(apiTruncated bool, cliTruncated bool) string {
+	switch {
+	case apiTruncated && cliTruncated:
+		return "api-truncated,cli-truncated"
+	case apiTruncated:
+		return "api-truncated"
+	case cliTruncated:
+		return "cli-truncated"
+	default:
+		return ""
+	}
 }

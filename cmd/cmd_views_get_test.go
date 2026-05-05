@@ -443,6 +443,79 @@ func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVaria
 	require.Less(t, strings.Index(output, "  zeta = 2"), strings.Index(output, "found: 1"))
 }
 
+func TestProcessInstanceVariableHumanLine_CompactsJSONLikeObjectsAndArrays(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	flagGetPIVarValueLimit = 0
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	require.Equal(t, `order = {"id":"O-9","amount":42}`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "order",
+		Value: "{\n  \"id\": \"O-9\",\n  \"amount\": 42\n}",
+	}))
+	require.Equal(t, `items = [{"sku":"A"},{"sku":"B"}]`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "items",
+		Value: "[\n  {\"sku\": \"A\"},\n  {\"sku\": \"B\"}\n]",
+	}))
+}
+
+func TestProcessInstanceVariableHumanLine_DoesNotShortenWhenLimitUnsetOrZero(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	longValue := strings.Repeat("a", 120)
+	flagGetPIVarValueLimit = 0
+	require.Equal(t, "payload = "+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "payload",
+		Value: longValue,
+	}))
+
+	flagGetPIVarValueLimit = -1
+	require.Equal(t, "payload = "+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "payload",
+		Value: longValue,
+	}))
+}
+
+func TestProcessInstanceVariableHumanLine_AppliesCharacterSafeLimitAndCliTruncatedLabel(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	flagGetPIVarValueLimit = 3
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	got := processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "payload",
+		Value: "äöüabc",
+	})
+
+	require.Equal(t, "payload = äöü... [cli-truncated]", got)
+}
+
+func TestProcessInstanceVariableHumanLine_RendersAPIAndCombinedTruncationLabels(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	flagGetPIVarValueLimit = 0
+	require.Equal(t, "payload = abc [api-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:         "payload",
+		Value:        "abc",
+		APITruncated: true,
+	}))
+
+	flagGetPIVarValueLimit = 3
+	require.Equal(t, "payload = abc... [api-truncated,cli-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:         "payload",
+		Value:        "abcdef",
+		APITruncated: true,
+	}))
+}
+
 func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
 	prevLimit := flagGetPIIncidentMessageLimit
 	flagGetPIIncidentMessageLimit = 0
