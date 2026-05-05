@@ -17,12 +17,12 @@
 
 **Purpose**: Confirm the current process-instance expectation flow, domain incident field, and documentation generation path before changing behavior.
 
-- [ ] T001 Inspect current process-instance expectation command validation, stdin key handling, and read-only/automation metadata in `cmd/expect_processinstance.go`
-- [ ] T002 [P] Inspect existing expect command tests and helper subprocess patterns in `cmd/expect_test.go` and `cmd/process_api_stub_test.go`
-- [ ] T003 [P] Inspect process facade wait APIs and reports in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/bulk.go`, and `c8volt/process/model.go`
-- [ ] T004 [P] Inspect shared process-instance waiter behavior and tests in `internal/services/processinstance/waiter/waiter.go` and `internal/services/processinstance/waiter/waiter_test.go`
-- [ ] T005 [P] Inspect versioned process-instance service contracts and incident mappings in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
-- [ ] T006 [P] Inspect process-instance expectation docs in `README.md`, `docs/index.md`, and `docs/cli/c8volt_expect_process-instance.md`
+- [x] T001 Inspect current process-instance expectation command validation, stdin key handling, and read-only/automation metadata in `cmd/expect_processinstance.go`
+- [x] T002 [P] Inspect existing expect command tests and helper subprocess patterns in `cmd/expect_test.go` and `cmd/process_api_stub_test.go`
+- [x] T003 [P] Inspect process facade wait APIs and reports in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/bulk.go`, and `c8volt/process/model.go`
+- [x] T004 [P] Inspect shared process-instance waiter behavior and tests in `internal/services/processinstance/waiter/waiter.go` and `internal/services/processinstance/waiter/waiter_test.go`
+- [x] T005 [P] Inspect versioned process-instance service contracts and incident mappings in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/`, `internal/services/processinstance/v88/`, and `internal/services/processinstance/v89/`
+- [x] T006 [P] Inspect process-instance expectation docs in `README.md`, `docs/index.md`, and `docs/cli/c8volt_expect_process-instance.md`
 
 ---
 
