@@ -429,13 +429,13 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "  incident incident-123: First key failed")
+	require.Contains(t, output, "  inc incident-123: First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "  incident incident-124: Second key failed")
+	require.Contains(t, output, "  inc incident-124: Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  incident incident-123"))
-	require.Less(t, strings.Index(output, "  incident incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  incident incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc incident-123"))
+	require.Less(t, strings.Index(output, "  inc incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc incident-124"))
 }
 
 // TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
@@ -478,7 +478,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "  incident incident-123: First key failed")
+	require.Contains(t, output, "  inc incident-123: First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -819,8 +819,72 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  incident incident-123: No retries left")
+	require.Contains(t, output, "  inc incident-123: No retries left")
 	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessageOnly(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo-process","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"No retries left after worker failure","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+		"--incident-message-limit", "7",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
+	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
+	require.Contains(t, output, "  inc incident-123: No retr...")
+	require.NotContains(t, output, "No retries left after worker failure")
+}
+
+func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesMessageUnchanged(t *testing.T) {
+	fullMessage := "No retries left after worker failure"
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"` + fullMessage + `","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+	)
+
+	require.Contains(t, output, "  inc incident-123: "+fullMessage)
+	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
 // TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents covers both direct incident rendering and tree-propagated incident warnings.
@@ -836,7 +900,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"},
 				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
-			wantMessages: []string{"  incident incident-123: No retries left", "  incident incident-124: Gateway failed"},
+			wantMessages: []string{"  inc incident-123: No retries left", "  inc incident-124: Gateway failed"},
 		},
 		{
 			name:             "no incident lines",
@@ -877,7 +941,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				require.Contains(t, output, msg)
 			}
 			if len(tt.wantMessages) == 0 {
-				require.NotContains(t, output, "  incident ")
+				require.NotContains(t, output, "  inc ")
 				require.Contains(t, output, indirectProcessTreeIncidentNote)
 				require.Contains(t, output, indirectProcessTreeIncidentWarning)
 			}
@@ -1201,7 +1265,7 @@ func TestGetProcessInstanceWithoutIncidents_HumanOutputPreservesDefault(t *testi
 	}
 	require.Equal(t, []string{"GET /v2/process-instances/123"}, requests)
 	require.Equal(t, strings.TrimSpace(oneLinePI(wantItem))+"\nfound: 1\n", output)
-	require.NotContains(t, output, "  incident ")
+	require.NotContains(t, output, "  inc ")
 }
 
 // TestGetProcessInstanceWithoutIncidents_JSONOutputPreservesDefaultShape keeps default JSON free of enrichment wrappers.

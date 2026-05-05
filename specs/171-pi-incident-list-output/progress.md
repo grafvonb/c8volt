@@ -5,6 +5,7 @@ Started: 2026-05-05 09:49:53
 
 ## Codebase Patterns
 
+- Human incident detail lines now use the compact `inc <incident-key>:` prefix through the shared `incidentHumanLine` helper, so get and walk output stay aligned without command-specific prefix code.
 - Indirect incident marker rendering now separates row-local notes from the de-duplicated list warning: `renderIncidentEnrichedProcessInstanceRows` returns whether a warning is needed, and callers decide when to print it.
 - Root command executions route `renderHumanWarningLine` through the configured logger to stderr, while direct view tests without logger context write warnings to the command output buffer.
 - `--incident-message-limit` state lives in `cmd/get_processinstance.go`, is reset through `resetProcessInstanceCommandGlobals`, and validation uses `cmd.Flags().Changed("incident-message-limit")` so the default `0` remains accepted without `--with-incidents`.
@@ -130,4 +131,29 @@ Started: 2026-05-05 09:49:53
 - Incremental human list rendering needs to accumulate indirect-marker warning state across pages so the warning is emitted once before the final `found: <n>` summary.
 - Row-local indirect notes belong on stdout with process-instance rows, while the de-duplicated warning follows the existing human warning renderer and is routed to stderr during full command execution.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Indirect.*Incident|TestIncidentEnrichedProcessInstancesView' -count=1` and a broader nearby incident regression run.
+---
+## Iteration 6 - 2026-05-05 10:17:19 CEST
+**User Story**: User Story 4 - Use Compact Human Incident Lines
+**Tasks Completed**:
+- [x] T032: Add get view test proving `incidentHumanLine` renders `inc <incident-key>:` instead of `incident <incident-key>:` in `cmd/cmd_views_get_test.go`
+- [x] T033: Add walk command or view regression test proving `walk pi --with-incidents` uses `inc <incident-key>:` in `cmd/walk_test.go`
+- [x] T034: Add command test proving `--incident-message-limit <chars>` truncates only human incident messages and appends `...` in `cmd/get_processinstance_test.go`
+- [x] T035: Add command test proving default limit `0` leaves human incident messages unchanged in `cmd/get_processinstance_test.go`
+- [x] T036: Change `incidentHumanLine` to use the `inc <incident-key>:` prefix and apply human message truncation in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T037: Ensure `cmd/cmd_views_walk_incidents.go` continues to call the shared incident human line helper without command-specific prefix logic
+- [x] T038: Update existing tests that assert the old `incident <incident-key>:` prefix in `cmd/` to the new `inc <incident-key>:` behavior
+- [x] T039: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Incident|Walk).*' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/cmd_views_get_test.go
+- cmd/get_processinstance_test.go
+- cmd/walk_test.go
+- specs/171-pi-incident-list-output/tasks.md
+- specs/171-pi-incident-list-output/progress.md
+**Learnings**:
+- `cmd/cmd_views_walk_incidents.go` already delegates all human incident lines through `incidentHumanLine`, so compact walk output only needed regression coverage and assertion updates.
+- Human message truncation remains scoped to the message portion because `incidentHumanLine` applies `truncateIncidentHumanMessage` after the compact prefix is chosen.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Incident|Walk).*' -count=1` and a broader nearby incident regression run.
 ---

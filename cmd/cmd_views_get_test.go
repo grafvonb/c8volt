@@ -393,13 +393,29 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "  incident incident-123: First key failed")
+	require.Contains(t, output, "  inc incident-123: First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "  incident incident-124: Second key failed")
+	require.Contains(t, output, "  inc incident-124: Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  incident incident-123"))
-	require.Less(t, strings.Index(output, "  incident incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  incident incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "  inc incident-123"))
+	require.Less(t, strings.Index(output, "  inc incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "  inc incident-124"))
+}
+
+func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
+	prevLimit := flagGetPIIncidentMessageLimit
+	flagGetPIIncidentMessageLimit = 0
+	t.Cleanup(func() {
+		flagGetPIIncidentMessageLimit = prevLimit
+	})
+
+	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
+		IncidentKey:  "incident-123",
+		ErrorMessage: "No retries left",
+	})
+
+	require.Equal(t, "inc incident-123: No retries left", got)
+	require.NotContains(t, got, "incident incident-123:")
 }
 
 func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkerRendersRowNote(t *testing.T) {

@@ -80,13 +80,13 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 	return item.Item.Incident && len(item.Incidents) == 0
 }
 
-// incidentHumanLine formats a human-readable incident detail line with a stable incident key prefix.
+// incidentHumanLine formats a human-readable incident detail line with a compact incident key prefix.
 func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
 	}
-	return fmt.Sprintf("incident %s: %s", key, truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit))
+	return fmt.Sprintf("inc %s: %s", key, truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit))
 }
 
 // truncateIncidentHumanMessage applies the human-only incident message display limit.

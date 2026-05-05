@@ -118,17 +118,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T032 [P] [US4] Add get view test proving `incidentHumanLine` renders `inc <incident-key>:` instead of `incident <incident-key>:` in `cmd/cmd_views_get_test.go`
-- [ ] T033 [P] [US4] Add walk command or view regression test proving `walk pi --with-incidents` uses `inc <incident-key>:` in `cmd/walk_test.go`
-- [ ] T034 [P] [US4] Add command test proving `--incident-message-limit <chars>` truncates only human incident messages and appends `...` in `cmd/get_processinstance_test.go`
-- [ ] T035 [P] [US4] Add command test proving default limit `0` leaves human incident messages unchanged in `cmd/get_processinstance_test.go`
+- [x] T032 [P] [US4] Add get view test proving `incidentHumanLine` renders `inc <incident-key>:` instead of `incident <incident-key>:` in `cmd/cmd_views_get_test.go`
+- [x] T033 [P] [US4] Add walk command or view regression test proving `walk pi --with-incidents` uses `inc <incident-key>:` in `cmd/walk_test.go`
+- [x] T034 [P] [US4] Add command test proving `--incident-message-limit <chars>` truncates only human incident messages and appends `...` in `cmd/get_processinstance_test.go`
+- [x] T035 [P] [US4] Add command test proving default limit `0` leaves human incident messages unchanged in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Change `incidentHumanLine` to use the `inc <incident-key>:` prefix and apply human message truncation in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T037 [US4] Ensure `cmd/cmd_views_walk_incidents.go` continues to call the shared incident human line helper without command-specific prefix logic
-- [ ] T038 [US4] Update existing tests that assert the old `incident <incident-key>:` prefix in `cmd/` to the new `inc <incident-key>:` behavior
-- [ ] T039 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Incident|Walk).*' -count=1` and fix regressions
+- [x] T036 [US4] Change `incidentHumanLine` to use the `inc <incident-key>:` prefix and apply human message truncation in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T037 [US4] Ensure `cmd/cmd_views_walk_incidents.go` continues to call the shared incident human line helper without command-specific prefix logic
+- [x] T038 [US4] Update existing tests that assert the old `incident <incident-key>:` prefix in `cmd/` to the new `inc <incident-key>:` behavior
+- [x] T039 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Incident|Walk).*' -count=1` and fix regressions
 
 **Checkpoint**: User Story 4 is independently complete when compact prefixes and human-only truncation pass for get and walk.
 
