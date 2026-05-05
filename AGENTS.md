@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/166-config-diagnostics-subcommands/plan.md](specs/166-config-diagnostics-subcommands/plan.md)
+- Active plan: [specs/170-process-incident-expect/plan.md](specs/170-process-incident-expect/plan.md)
 <!-- SPECKIT END -->
