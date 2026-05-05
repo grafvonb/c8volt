@@ -20,6 +20,7 @@ Started: 2026-05-05 08:05:19
 - Command-level incident waits route through `WaitForProcessInstancesExpectation`; state-only waits still use `WaitForProcessInstancesState` to preserve existing report shape and state-only behavior.
 - Incident false semantics are enforced by requiring a present process instance before `processInstanceExpectationMatches` can succeed; missing instances retry until timeout/max-retries instead of mapping to incident-free.
 - Facade incident reports preserve observed `false` values through non-nil incident pointers in `fromDomainIncidentExpectation`, so JSON output can distinguish `false` from an omitted incident observation.
+- Combined state and incident waits require both expectations to match on the same present process-instance fetch; canceled/terminated compatibility still flows through `stateIn`/`statesEquivalent`, while state-only command execution remains on `WaitForProcessInstancesState`.
 
 ---
 
@@ -134,4 +135,30 @@ Started: 2026-05-05 08:05:19
 **Learnings**:
 - The existing combined expectation matcher already blocks missing instances for `--incident false`; US2 locked that behavior with explicit command, waiter, and facade tests.
 - Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Incident|TestWait.*Incident' -count=1`.
+---
+
+---
+## Iteration 5 - 2026-05-05 08:30:04 CEST
+**User Story**: User Story 3 - Combine State And Incident Expectations
+**Tasks Completed**:
+- [x] T029: Add command test for combined `--state active --incident true` waiting until both match
+- [x] T030: Add waiter tests preserving `--state absent` and canceled/terminated compatibility with combined expectation matching
+- [x] T031: Add facade test for combined state and incident expectation requests
+- [x] T032: Update combined matcher logic to require all requested expectations for each selected instance
+- [x] T033: Preserve state-only wait delegation and reporting compatibility
+- [x] T034: Update command status/log messages for incident-only and combined expectations
+- [x] T035: Run targeted US3 Go tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/expect_processinstance.go
+- cmd/expect_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/waiter/waiter_test.go
+- specs/170-process-incident-expect/tasks.md
+- specs/170-process-incident-expect/progress.md
+**Learnings**:
+- The existing combined matcher already enforced all requested expectations, so US3 primarily added regression coverage around mismatched state/incident attempts and compatibility semantics.
+- Command logs now distinguish incident-only waits from combined state and incident waits without changing state-only command output.
+- Validation run: `GOCACHE=/tmp/c8volt-go-build-cache go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Wait|TestWaitForProcessInstanceState|TestWait.*Expectation' -count=1`.
 ---

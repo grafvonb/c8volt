@@ -105,6 +105,111 @@ func TestWaitForProcessInstanceExpectation_IncidentFalseRequiresPresentInstance(
 	assert.Equal(t, d.ProcessInstance{}, pi)
 }
 
+func TestWaitForProcessInstanceExpectation_StateAndIncidentCompatibility(t *testing.T) {
+	t.Run("requires state and incident to match on the same present instance", func(t *testing.T) {
+		t.Parallel()
+
+		wantIncident := true
+		attempts := 0
+		waiter := stubPIWaiter{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				attempts++
+				switch attempts {
+				case 1:
+					return d.ProcessInstance{Key: key, State: d.StateActive, Incident: false}, nil
+				case 2:
+					return d.ProcessInstance{Key: key, State: d.StateCompleted, Incident: true}, nil
+				default:
+					return d.ProcessInstance{Key: key, State: d.StateActive, Incident: true}, nil
+				}
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceExpectation(
+			context.Background(),
+			waiter,
+			testConfig(time.Millisecond, 4, 100*time.Millisecond),
+			testLogger(),
+			"123",
+			d.ProcessInstanceExpectationRequest{
+				States:   d.States{d.StateActive},
+				Incident: &wantIncident,
+			},
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, attempts)
+		assert.True(t, got.Ok)
+		assert.Equal(t, d.StateActive, got.State)
+		require.NotNil(t, got.Incident)
+		assert.True(t, *got.Incident)
+		assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateActive, Incident: true}, pi)
+	})
+
+	t.Run("preserves canceled and terminated compatibility", func(t *testing.T) {
+		t.Parallel()
+
+		wantIncident := true
+		waiter := stubPIWaiter{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				return d.ProcessInstance{Key: key, State: d.StateTerminated, Incident: true}, nil
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceExpectation(
+			context.Background(),
+			waiter,
+			testConfig(time.Millisecond, 2, 100*time.Millisecond),
+			testLogger(),
+			"123",
+			d.ProcessInstanceExpectationRequest{
+				States:   d.States{d.StateCanceled},
+				Incident: &wantIncident,
+			},
+		)
+
+		require.NoError(t, err)
+		assert.True(t, got.Ok)
+		assert.Equal(t, d.StateTerminated, got.State)
+		require.NotNil(t, got.Incident)
+		assert.True(t, *got.Incident)
+		assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateTerminated, Incident: true}, pi)
+	})
+
+	t.Run("does not let state absent satisfy an incident expectation", func(t *testing.T) {
+		t.Parallel()
+
+		wantIncident := false
+		attempts := 0
+		waiter := stubPIWaiter{
+			getProcessInstance: func(ctx context.Context, key string) (d.ProcessInstance, error) {
+				attempts++
+				return d.ProcessInstance{}, d.ErrNotFound
+			},
+		}
+
+		got, pi, err := WaitForProcessInstanceExpectation(
+			context.Background(),
+			waiter,
+			testConfig(time.Millisecond, 2, 100*time.Millisecond),
+			testLogger(),
+			"missing",
+			d.ProcessInstanceExpectationRequest{
+				States:   d.States{d.StateAbsent},
+				Incident: &wantIncident,
+			},
+		)
+
+		require.Error(t, err)
+		assert.Equal(t, 2, attempts)
+		assert.False(t, got.Ok)
+		assert.Equal(t, d.StateUnknown, got.State)
+		assert.Nil(t, got.Incident)
+		assert.Contains(t, got.Status, "exceeded max_retries (2)")
+		assert.Equal(t, d.ProcessInstance{}, pi)
+	})
+}
+
 // TestWaitForProcessInstanceState verifies single-instance wait behavior across success, retry, timeout, and activity paths.
 func TestWaitForProcessInstanceState(t *testing.T) {
 	t.Run("returns immediately when desired state is already present", func(t *testing.T) {

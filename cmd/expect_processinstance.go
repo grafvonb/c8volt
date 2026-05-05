@@ -68,9 +68,10 @@ var expectProcessInstanceCmd = &cobra.Command{
 		}
 		if !commandUsesSharedEnvelope(cmd, pickMode()) {
 			if incidentSet {
+				expectationLabel := processInstanceExpectationLogLabel(len(states) > 0)
 				logging.InfoOrVerbose(
-					fmt.Sprintf("waiting for %d process instance(s) to satisfy expectation(s)", len(keys)),
-					fmt.Sprintf("waiting for %d process instance(s) [%s] to satisfy expectation(s)", len(keys), keys),
+					fmt.Sprintf("waiting for %d process instance(s) to satisfy %s", len(keys), expectationLabel),
+					fmt.Sprintf("waiting for %d process instance(s) [%s] to satisfy %s", len(keys), keys, expectationLabel),
 					log,
 					flagVerbose,
 				)
@@ -92,9 +93,10 @@ var expectProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render expect result: %w", err))
 			}
 			if !commandUsesSharedEnvelope(cmd, pickMode()) {
+				expectationLabel := processInstanceExpectationLogLabel(len(states) > 0)
 				logging.InfoOrVerbose(
-					fmt.Sprintf("%d process instance(s) satisfied expectation(s)", len(keys)),
-					fmt.Sprintf("%d process instance(s) [%s] satisfied expectation(s)", len(keys), keys),
+					fmt.Sprintf("%d process instance(s) satisfied %s", len(keys), expectationLabel),
+					fmt.Sprintf("%d process instance(s) [%s] satisfied %s", len(keys), keys, expectationLabel),
 					log,
 					flagVerbose,
 				)
@@ -145,4 +147,11 @@ func parseExpectPIIncidentFlag(cmd *cobra.Command) (process.IncidentExpectation,
 		return false, true, invalidFlagValuef("invalid value for --incident: %q; valid values are: %v", flagExpectPIIncident, process.ValidIncidentExpectationStrings())
 	}
 	return incident, true, nil
+}
+
+func processInstanceExpectationLogLabel(hasState bool) string {
+	if hasState {
+		return "state and incident expectations"
+	}
+	return "incident expectation"
 }

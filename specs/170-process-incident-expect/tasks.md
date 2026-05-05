@@ -99,16 +99,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Add command test for combined `--state active --incident true` waiting until both match in `cmd/expect_test.go`
-- [ ] T030 [P] [US3] Add waiter tests preserving `--state absent` and canceled/terminated compatibility with combined expectation matching in `internal/services/processinstance/waiter/waiter_test.go`
-- [ ] T031 [P] [US3] Add facade test for combined state and incident expectation requests in `c8volt/process/client_test.go`
+- [x] T029 [P] [US3] Add command test for combined `--state active --incident true` waiting until both match in `cmd/expect_test.go`
+- [x] T030 [P] [US3] Add waiter tests preserving `--state absent` and canceled/terminated compatibility with combined expectation matching in `internal/services/processinstance/waiter/waiter_test.go`
+- [x] T031 [P] [US3] Add facade test for combined state and incident expectation requests in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Update combined matcher logic to require all requested expectations for each selected instance in `internal/services/processinstance/waiter/waiter.go`
-- [ ] T033 [US3] Preserve state-only wait delegation and reporting compatibility in `c8volt/process/client.go`, `c8volt/process/bulk.go`, and `internal/services/processinstance/waiter/waiter.go`
-- [ ] T034 [US3] Update command status/log messages for incident-only and combined expectations in `cmd/expect_processinstance.go`
-- [ ] T035 [US3] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Wait|TestWaitForProcessInstanceState|TestWait.*Expectation' -count=1` and fix regressions
+- [x] T032 [US3] Update combined matcher logic to require all requested expectations for each selected instance in `internal/services/processinstance/waiter/waiter.go`
+- [x] T033 [US3] Preserve state-only wait delegation and reporting compatibility in `c8volt/process/client.go`, `c8volt/process/bulk.go`, and `internal/services/processinstance/waiter/waiter.go`
+- [x] T034 [US3] Update command status/log messages for incident-only and combined expectations in `cmd/expect_processinstance.go`
+- [x] T035 [US3] Run `go test ./cmd ./c8volt/process ./internal/services/processinstance/waiter -run 'TestExpect|TestClient_.*Wait|TestWaitForProcessInstanceState|TestWait.*Expectation' -count=1` and fix regressions
 
 **Checkpoint**: User Story 3 is independently complete when combined expectations pass and state-only behavior remains stable.
 
