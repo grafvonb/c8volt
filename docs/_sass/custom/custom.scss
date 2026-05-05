@@ -26,6 +26,31 @@
     padding-left: clamp(2rem, 4vw, 4rem);
   }
 
+  .main-header {
+    box-sizing: border-box;
+    max-width: 96rem;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-right: clamp(2rem, 4vw, 4rem);
+    padding-left: clamp(2rem, 4vw, 4rem);
+  }
+
+  .main-header .search {
+    flex: 0 1 33.5rem;
+    min-width: 16rem;
+    max-width: 33.5rem;
+  }
+
+  .main-header .search-input-wrap {
+    max-width: none;
+  }
+
+  .main-header .aux-nav {
+    flex: 0 0 auto;
+    padding-right: 0;
+    overflow-x: visible;
+  }
+
   .main-content > p,
   .main-content > ul,
   .main-content > ol,
