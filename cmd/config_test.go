@@ -256,6 +256,36 @@ func TestConfigTemplateCommand_MatchesShowTemplateOutput(t *testing.T) {
 	require.NotContains(t, templateOutput, "'*****'")
 }
 
+func TestConfigShowCommand_LogsConfigSourceForEffectiveConfig(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "show")
+
+	require.Contains(t, stdout, "base_url: http://127.0.0.1:1/v2")
+	require.NotContains(t, stdout, "config loaded")
+	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
+}
+
+func TestConfigShowCommand_TemplateDoesNotLogConfigSource(t *testing.T) {
+	cfgPath := writeRawTestConfig(t, `auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://127.0.0.1:1
+`)
+
+	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "show", "--template")
+
+	require.Contains(t, stdout, "mode: oauth2|cookie|none")
+	require.NotContains(t, stdout, "config loaded")
+	require.NotContains(t, stderr, "config loaded")
+}
+
 func TestConfigTestConnectionCommand_InvalidConfigStopsBeforeRemoteTopology(t *testing.T) {
 	var topologyRequests atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -402,6 +432,7 @@ func TestConfigTestConnectionCommand_RemoteFailureUsesStandardErrorPath(t *testi
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Unavailable, exitErr.ExitCode())
+	require.Contains(t, string(output), "INFO config loaded: "+cfgPath)
 	require.Contains(t, string(output), "config test-connection")
 	require.NotContains(t, string(output), "configuration is invalid")
 }
