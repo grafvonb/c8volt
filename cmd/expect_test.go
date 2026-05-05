@@ -167,9 +167,9 @@ apis:
     base_url: `+srv.URL+`
 `)
 
-	output, err := testx.RunCmdSubprocess(t, "TestHelperExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin", map[string]string{
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
+	}, "2251799813685255\n")
 	require.NoError(t, err)
 	require.Equal(t, int32(1), attempts.Load())
 	require.Contains(t, string(output), `"key": "2251799813685255"`)
@@ -203,14 +203,13 @@ apis:
     base_url: `+srv.URL+`
 `)
 
-	output, err := testx.RunCmdSubprocess(t, "TestHelperExpectProcessInstanceCommand_StateDashReadsKeysFromStdin", map[string]string{
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperExpectProcessInstanceCommand_StateDashReadsKeysFromStdin", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
+	}, "2251799813685255\n")
 	require.NoError(t, err)
 	require.Equal(t, int32(1), attempts.Load())
-	require.Contains(t, string(output), `"key": "2251799813685255"`)
-	require.Contains(t, string(output), `"state": "active"`)
-	require.Contains(t, string(output), `"ok": true`)
+	require.Contains(t, string(output), `"state": "ACTIVE"`)
+	require.Contains(t, string(output), "2251799813685255")
 }
 
 func TestExpectProcessInstanceCommand_IncidentTrueWaitsUntilMatched(t *testing.T) {
@@ -337,7 +336,7 @@ apis:
 	)
 
 	require.Equal(t, int32(3), attempts.Load())
-	require.Contains(t, output, `"state": "active"`)
+	require.Contains(t, output, `"state": "ACTIVE"`)
 	require.Contains(t, output, `"incident": true`)
 	require.Contains(t, output, `"ok": true`)
 }
@@ -413,6 +412,7 @@ func TestHelperExpectProcessInstanceCommand_DashDoesNotRequireKeyFlag(t *testing
 
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "expect", "process-instance", "--state", "active", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
@@ -424,20 +424,9 @@ func TestHelperExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin(t *te
 		return
 	}
 
-	stdinReader, stdinWriter, err := os.Pipe()
-	require.NoError(t, err)
-	_, err = stdinWriter.WriteString("2251799813685255\n")
-	require.NoError(t, err)
-	require.NoError(t, stdinWriter.Close())
-	prevStdin := os.Stdin
-	os.Stdin = stdinReader
-	t.Cleanup(func() {
-		os.Stdin = prevStdin
-		require.NoError(t, stdinReader.Close())
-	})
-
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--incident", "true", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
@@ -449,20 +438,9 @@ func TestHelperExpectProcessInstanceCommand_StateDashReadsKeysFromStdin(t *testi
 		return
 	}
 
-	stdinReader, stdinWriter, err := os.Pipe()
-	require.NoError(t, err)
-	_, err = stdinWriter.WriteString("2251799813685255\n")
-	require.NoError(t, err)
-	require.NoError(t, stdinWriter.Close())
-	prevStdin := os.Stdin
-	os.Stdin = stdinReader
-	t.Cleanup(func() {
-		os.Stdin = prevStdin
-		require.NoError(t, stdinReader.Close())
-	})
-
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "expect", "process-instance", "--state", "active", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

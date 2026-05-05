@@ -1951,9 +1951,9 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	output, err := testx.RunCmdSubprocess(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
+	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
 	require.Contains(t, string(output), "preparation for deleting")
@@ -2255,21 +2255,9 @@ func TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t
 		return
 	}
 
-	oldStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-	_, _ = w.WriteString("2251799813692357\n")
-	_ = w.Close()
-	os.Stdin = r
-	defer func() {
-		os.Stdin = oldStdin
-		_ = r.Close()
-	}()
-
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-definition", "--auto-confirm", "--no-state-check", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
