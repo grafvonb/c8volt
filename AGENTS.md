@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/171-pi-incident-list-output/plan.md](specs/171-pi-incident-list-output/plan.md)
+- Active plan: [specs/173-pi-with-vars/plan.md](specs/173-pi-with-vars/plan.md)
 <!-- SPECKIT END -->
