@@ -82,6 +82,15 @@ func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string,
 	return fromDomainProcessInstanceIncidentDetails(incidents), nil
 }
 
+// SearchProcessInstanceVariables exposes the tenant-safe service variable lookup through the facade error model.
+func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceVariable, error) {
+	variables, err := c.piApi.SearchProcessInstanceVariables(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return nil, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstanceVariables(variables), nil
+}
+
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
@@ -96,6 +105,25 @@ func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis Pr
 		})
 	}
 	return IncidentEnrichedProcessInstances{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
+// EnrichProcessInstancesWithVariables attaches process-scope variables to selected process-instance results without reordering them.
+func (c *client) EnrichProcessInstancesWithVariables(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (VariableEnrichedProcessInstances, error) {
+	items := make([]VariableEnrichedProcessInstance, 0, len(pis.Items))
+	for _, pi := range pis.Items {
+		variables, err := c.SearchProcessInstanceVariables(ctx, pi.Key, opts...)
+		if err != nil {
+			return VariableEnrichedProcessInstances{}, err
+		}
+		items = append(items, VariableEnrichedProcessInstance{
+			Item:      pi,
+			Variables: variablesForProcessInstance(pi.Key, variables),
+		})
+	}
+	return VariableEnrichedProcessInstances{
 		Total: int32(len(items)),
 		Items: items,
 	}, nil
@@ -137,6 +165,17 @@ func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncident
 	for _, incident := range incidents {
 		if incident.ProcessInstanceKey == key {
 			out = append(out, incident)
+		}
+	}
+	return out
+}
+
+// variablesForProcessInstance keeps only process-scope variables owned by the requested key.
+func variablesForProcessInstance(key string, variables []ProcessInstanceVariable) []ProcessInstanceVariable {
+	out := make([]ProcessInstanceVariable, 0, len(variables))
+	for _, variable := range variables {
+		if variable.ProcessInstanceKey == key && variable.ScopeKey == key {
+			out = append(out, variable)
 		}
 	}
 	return out

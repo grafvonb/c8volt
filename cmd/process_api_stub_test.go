@@ -174,11 +174,19 @@ func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ..
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) EnrichProcessInstancesWithIncidents(ctx context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error) {
 	if s.enrichProcessInstances == nil {
 		panic("unexpected call")
 	}
 	return s.enrichProcessInstances(ctx, pis, opts...)
+}
+
+func (stubProcessAPI) EnrichProcessInstancesWithVariables(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error) {
+	panic("unexpected call")
 }
 
 func (stubProcessAPI) EnrichTraversalWithIncidents(context.Context, process.TraversalResult, ...options.FacadeOption) (process.IncidentEnrichedTraversalResult, error) {

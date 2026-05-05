@@ -89,6 +89,16 @@ type ProcessInstanceIncidentDetail struct {
 	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
 }
 
+type ProcessInstanceVariable struct {
+	Name               string `json:"name"`
+	Value              string `json:"value"`
+	VariableKey        string `json:"variableKey,omitempty"`
+	ProcessInstanceKey string `json:"processInstanceKey"`
+	ScopeKey           string `json:"scopeKey"`
+	TenantId           string `json:"tenantId,omitempty"`
+	APITruncated       bool   `json:"apiTruncated"`
+}
+
 type IncidentEnrichedProcessInstance struct {
 	Item      ProcessInstance                 `json:"item"`
 	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`
@@ -97,6 +107,16 @@ type IncidentEnrichedProcessInstance struct {
 type IncidentEnrichedProcessInstances struct {
 	Total int32                             `json:"total"`
 	Items []IncidentEnrichedProcessInstance `json:"items"`
+}
+
+type VariableEnrichedProcessInstance struct {
+	Item      ProcessInstance           `json:"item"`
+	Variables []ProcessInstanceVariable `json:"variables"`
+}
+
+type VariableEnrichedProcessInstances struct {
+	Total int32                             `json:"total"`
+	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
 type IncidentEnrichedTraversalItem struct {

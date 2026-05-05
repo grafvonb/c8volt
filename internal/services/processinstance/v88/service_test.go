@@ -29,6 +29,7 @@ type mockCamundaClient struct {
 	getProcessInstanceWithResponse    func(ctx context.Context, key string, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetProcessInstanceResponse, error)
 	searchProcessInstanceIncidents    func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error)
 	searchProcessInstancesWithResp    func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error)
+	searchVariablesWithResponse       func(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error)
 	cancelProcessInstanceWithResponse func(ctx context.Context, key string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error)
 }
 
@@ -46,6 +47,10 @@ func (m *mockCamundaClient) SearchProcessInstanceIncidentsWithResponse(ctx conte
 
 func (m *mockCamundaClient) SearchProcessInstancesWithResponse(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
 	return m.searchProcessInstancesWithResp(ctx, body, reqEditors...)
+}
+
+func (m *mockCamundaClient) SearchVariablesWithResponse(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error) {
+	return m.searchVariablesWithResponse(ctx, params, body, reqEditors...)
 }
 
 func (m *mockCamundaClient) CancelProcessInstanceWithResponse(ctx context.Context, key string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error) {
@@ -1069,6 +1074,7 @@ func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
 		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+		searchVariablesWithResponse:       unexpectedSearchVariables(t),
 		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 	}
 }
@@ -1112,6 +1118,14 @@ func unexpectedSearchProcessInstanceIncidents(t *testing.T) func(context.Context
 	t.Helper()
 	return func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 		t.Fatalf("unexpected incident search call")
+		return nil, nil
+	}
+}
+
+func unexpectedSearchVariables(t *testing.T) func(context.Context, *camundav88.SearchVariablesParams, camundav88.SearchVariablesJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error) {
+	t.Helper()
+	return func(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error) {
+		t.Fatalf("unexpected variable search call")
 		return nil, nil
 	}
 }

@@ -29,6 +29,7 @@ type mockCamundaClient struct {
 	createProcessInstanceWithResponse func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error)
 	searchProcessInstancesWithResp    func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error)
 	searchProcessInstanceIncidents    func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error)
+	searchVariablesWithResponse       func(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error)
 	cancelProcessInstanceWithResponse func(ctx context.Context, key string, body camundav89.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CancelProcessInstanceResponse, error)
 	deleteProcessInstanceWithResponse func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.DeleteProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteProcessInstanceResponse, error)
 	getProcessInstanceWithResponse    func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error)
@@ -46,6 +47,10 @@ func (m *mockCamundaClient) SearchProcessInstancesWithBodyWithResponse(ctx conte
 
 func (m *mockCamundaClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
 	return m.searchProcessInstanceIncidents(ctx, key, body, reqEditors...)
+}
+
+func (m *mockCamundaClient) SearchVariablesWithResponse(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error) {
+	return m.searchVariablesWithResponse(ctx, params, body, reqEditors...)
 }
 
 func (m *mockCamundaClient) CancelProcessInstanceWithResponse(ctx context.Context, key string, body camundav89.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CancelProcessInstanceResponse, error) {
@@ -749,6 +754,7 @@ func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
+		searchVariablesWithResponse:       unexpectedSearchVariables(t),
 		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 		deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
 		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
@@ -775,6 +781,14 @@ func unexpectedSearchProcessInstanceIncidents(t *testing.T) func(context.Context
 	t.Helper()
 	return func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
 		t.Fatalf("unexpected incident search call")
+		return nil, nil
+	}
+}
+
+func unexpectedSearchVariables(t *testing.T) func(context.Context, *camundav89.SearchVariablesParams, camundav89.SearchVariablesJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error) {
+	t.Helper()
+	return func(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error) {
+		t.Fatalf("unexpected variable search call")
 		return nil, nil
 	}
 }

@@ -31,13 +31,13 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T006 Add `ProcessInstanceVariable`, `VariableEnrichedProcessInstance`, and `VariableEnrichedProcessInstances` facade models in `c8volt/process/model.go`
-- [ ] T007 Add matching domain variable models in `internal/domain/processinstance.go`
-- [ ] T008 Add process-instance service API method signatures for searching process-instance variables in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
-- [ ] T009 Add process facade API methods for searching and enriching process instances with variables in `c8volt/process/api.go`
-- [ ] T010 Add domain/facade conversion helpers for process-instance variables in `c8volt/process/convert.go`
-- [ ] T011 Add v8.8/v8.9 variable conversion helpers and raw value/truncation decoding support in `internal/services/processinstance/v88/convert.go` and `internal/services/processinstance/v89/convert.go`
-- [ ] T012 Run `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable|Test.*API' -count=1` and fix foundational compile/test failures
+- [x] T006 Add `ProcessInstanceVariable`, `VariableEnrichedProcessInstance`, and `VariableEnrichedProcessInstances` facade models in `c8volt/process/model.go`
+- [x] T007 Add matching domain variable models in `internal/domain/processinstance.go`
+- [x] T008 Add process-instance service API method signatures for searching process-instance variables in `internal/services/processinstance/api.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, and `internal/services/processinstance/v89/contract.go`
+- [x] T009 Add process facade API methods for searching and enriching process instances with variables in `c8volt/process/api.go`
+- [x] T010 Add domain/facade conversion helpers for process-instance variables in `c8volt/process/convert.go`
+- [x] T011 Add v8.8/v8.9 variable conversion helpers and raw value/truncation decoding support in `internal/services/processinstance/v88/convert.go` and `internal/services/processinstance/v89/convert.go`
+- [x] T012 Run `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable|Test.*API' -count=1` and fix foundational compile/test failures
 
 **Checkpoint**: Shared variable types and contracts compile before command behavior is wired.
 
