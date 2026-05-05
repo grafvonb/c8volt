@@ -17,11 +17,11 @@
 
 **Purpose**: Confirm the current process-instance get, generated variable client, service, facade, rendering, and documentation paths before changing behavior.
 
-- [ ] T001 Inspect keyed process-instance lookup, validation, and render dispatch in `cmd/get_processinstance.go`
-- [ ] T002 [P] Inspect incident enrichment facade and command patterns in `c8volt/process/client.go`, `c8volt/process/model.go`, and `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T003 [P] Inspect v8.8/v8.9 generated `/variables/search` request and response types in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
-- [ ] T004 [P] Inspect v8.7 process-instance API surface and decide whether variable search is unsupported or available through an existing client in `internal/services/processinstance/v87/contract.go`
-- [ ] T005 [P] Inspect process-instance command docs and generated documentation paths in `README.md`, `docs/index.md`, `docs/cli/`, and `docsgen/`
+- [x] T001 Inspect keyed process-instance lookup, validation, and render dispatch in `cmd/get_processinstance.go`
+- [x] T002 [P] Inspect incident enrichment facade and command patterns in `c8volt/process/client.go`, `c8volt/process/model.go`, and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T003 [P] Inspect v8.8/v8.9 generated `/variables/search` request and response types in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
+- [x] T004 [P] Inspect v8.7 process-instance API surface and decide whether variable search is unsupported or available through an existing client in `internal/services/processinstance/v87/contract.go`
+- [x] T005 [P] Inspect process-instance command docs and generated documentation paths in `README.md`, `docs/index.md`, `docs/cli/`, and `docsgen/`
 
 ---
 
