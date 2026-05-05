@@ -5,6 +5,7 @@ Started: 2026-05-05 09:49:53
 
 ## Codebase Patterns
 
+- `make docs-content` can refresh only the generated build metadata in `docs/index.md` when Cobra docs content is otherwise unchanged.
 - Process-instance command help and generated CLI reference both derive from Cobra metadata in `cmd/get_processinstance.go`; README wording is synced into `docs/index.md` by `make docs-content`.
 - Default list/search output must avoid incident lookup endpoints entirely unless `--with-incidents` is set; tests can assert this by failing on `/v2/process-instances/<key>/incidents/search`.
 - Human incident detail lines now use the compact `inc <incident-key>:` prefix through the shared `incidentHumanLine` helper, so get and walk output stay aligned without command-specific prefix code.
@@ -187,4 +188,26 @@ Started: 2026-05-05 09:49:53
 - `--with-incidents --total` is rejected in the shared search flag validation path before list/search execution reaches backend paging.
 - `make docs-content` refreshes both generated CLI Markdown and `docs/index.md`, so command metadata plus README changes are the source updates for this story.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*(WithIncidents|IncidentMessageLimit|Help|Contract|Default)' -count=1`.
+---
+---
+## Iteration 8 - 2026-05-05 10:25:14 CEST
+**User Story**: Phase 8: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T050: Run `gofmt -w cmd/get_processinstance.go cmd/get_processinstance_test.go cmd/cmd_views_processinstance_incidents.go cmd/cmd_views_get_test.go cmd/cmd_views_walk_incidents.go cmd/walk_test.go cmd/command_contract_test.go c8volt/process/client.go c8volt/process/client_test.go c8volt/process/model.go`
+- [x] T051: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -count=1` and fix regressions
+- [x] T052: Run `make docs-content` and fix documentation generation issues
+- [x] T053: Run `make test` and fix repository validation failures
+- [x] T054: Review `quickstart.md` against implemented behavior and update if command examples or validation commands changed
+- [x] T055: Verify `git diff` contains only issue #171 implementation, docs, generated docs, and Speckit artifacts before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/171-pi-incident-list-output/tasks.md
+- specs/171-pi-incident-list-output/progress.md
+**Learnings**:
+- `gofmt` made no source changes, confirming the implementation files were already formatted before final polish.
+- `make docs-content` completed successfully and only refreshed `docs/index.md` build metadata during this iteration.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -count=1`; repository validation passed with `make test`.
+- The quickstart command examples still match the implemented behavior, so no quickstart content update was needed.
 ---

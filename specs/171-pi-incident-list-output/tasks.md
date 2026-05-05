@@ -164,12 +164,12 @@
 
 **Purpose**: Final cleanup, formatting, and repository-wide proof.
 
-- [ ] T050 [P] Run `gofmt -w cmd/get_processinstance.go cmd/get_processinstance_test.go cmd/cmd_views_processinstance_incidents.go cmd/cmd_views_get_test.go cmd/cmd_views_walk_incidents.go cmd/walk_test.go cmd/command_contract_test.go c8volt/process/client.go c8volt/process/client_test.go c8volt/process/model.go`
-- [ ] T051 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -count=1` and fix regressions
-- [ ] T052 Run `make docs-content` and fix documentation generation issues
-- [ ] T053 Run `make test` and fix repository validation failures
-- [ ] T054 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
-- [ ] T055 Verify `git diff` contains only issue #171 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T050 [P] Run `gofmt -w cmd/get_processinstance.go cmd/get_processinstance_test.go cmd/cmd_views_processinstance_incidents.go cmd/cmd_views_get_test.go cmd/cmd_views_walk_incidents.go cmd/walk_test.go cmd/command_contract_test.go c8volt/process/client.go c8volt/process/client_test.go c8volt/process/model.go`
+- [x] T051 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -count=1` and fix regressions
+- [x] T052 Run `make docs-content` and fix documentation generation issues
+- [x] T053 Run `make test` and fix repository validation failures
+- [x] T054 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
+- [x] T055 Verify `git diff` contains only issue #171 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 
