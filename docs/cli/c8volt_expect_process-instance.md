@@ -14,8 +14,6 @@ Wait for process instances to satisfy requested state and incident expectations.
 
 Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.
 
-On Camunda 8.8/8.9, canceled waits also match terminated.
-
 ```
 c8volt expect process-instance [flags]
 ```
@@ -36,10 +34,10 @@ c8volt expect process-instance [flags]
 ```
       --fail-fast         stop scheduling new instances after the first error
   -h, --help              help for process-instance
-      --incident string   incident expectation; valid values are true|false
+      --incident string   incident expectation; valid values are: [true, false]
   -k, --key strings       process instance key(s) to watch
       --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
-  -s, --state strings     state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated
+  -s, --state strings     state expectation; valid values are: [active, completed, canceled, terminated, absent]
   -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
 ```
 

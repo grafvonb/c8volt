@@ -251,14 +251,14 @@ func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testin
 		Type:        "stringSlice",
 		Required:    false,
 		Repeated:    true,
-		Description: "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated",
+		Description: "state expectation; valid values are: [active, completed, canceled, terminated, absent]",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "incident",
 		Type:        "string",
 		Required:    false,
 		Repeated:    false,
-		Description: "incident expectation; valid values are true|false",
+		Description: "incident expectation; valid values are: [true, false]",
 	})
 }
 

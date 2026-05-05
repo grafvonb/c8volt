@@ -38,8 +38,8 @@ func TestExpectHelp_DocumentsWaitVerificationUsage(t *testing.T) {
 	output = assertCommandHelpOutput(t, []string{"expect", "process-instance"}, []string{
 		"Use after `run`, `cancel`, or `delete`",
 		"final state or incident marker is visible",
-		"canceled waits also match terminated",
-		"valid values are true|false",
+		"state expectation; valid values are: [active, completed, canceled, terminated, absent]",
+		"incident expectation; valid values are: [true, false]",
 		"./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -",
 	}, nil)
 	require.Contains(t, output, "--state")

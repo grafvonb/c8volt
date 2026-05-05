@@ -21,8 +21,7 @@ var expectProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Wait for process instances to satisfy expectations",
 	Long: "Wait for process instances to satisfy requested state and incident expectations.\n\n" +
-		"Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.\n\n" +
-		"On Camunda 8.8/8.9, canceled waits also match terminated.",
+		"Use after `run`, `cancel`, or `delete` when a command returns before the final state or incident marker is visible.",
 	Example: `  ./c8volt expect pi --key <process-instance-key> --state active
   ./c8volt expect pi --key <process-instance-key> --incident true
   ./c8volt expect pi --key <process-instance-key> --state active --incident false
@@ -131,8 +130,8 @@ func init() {
 
 	fs := expectProcessInstanceCmd.Flags()
 	fs.StringSliceVarP(&flagExpectPIKeys, "key", "k", nil, "process instance key(s) to watch")
-	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state of a process instance; valid values are: [active, completed, canceled, terminated, absent]. On Camunda 8.8/8.9, canceled waits also match terminated")
-	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are true|false")
+	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state expectation; valid values are: [active, completed, canceled, terminated, absent]")
+	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are: [true, false]")
 
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
