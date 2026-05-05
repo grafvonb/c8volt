@@ -126,14 +126,14 @@
 
 **Purpose**: Finish user-facing docs, generated docs, and repository-wide proof.
 
-- [ ] T044 [P] Update process-instance examples and `--with-vars`/`--var-value-limit` wording in `README.md`
-- [ ] T045 [P] Update site documentation source examples in `docs/index.md`
-- [ ] T046 Add or update command contract/help tests for `--with-vars` and `--var-value-limit` in `cmd/command_contract_test.go` or `cmd/get_processinstance_test.go`
-- [ ] T047 Run `make docs-content` and fix generated documentation issues under `docs/cli/`
-- [ ] T048 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
-- [ ] T049 Run `make test` and fix repository validation failures
-- [ ] T050 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
-- [ ] T051 Verify `git diff` contains only issue #173 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T044 [P] Update process-instance examples and `--with-vars`/`--var-value-limit` wording in `README.md`
+- [x] T045 [P] Update site documentation source examples in `docs/index.md`
+- [x] T046 Add or update command contract/help tests for `--with-vars` and `--var-value-limit` in `cmd/command_contract_test.go` or `cmd/get_processinstance_test.go`
+- [x] T047 Run `make docs-content` and fix generated documentation issues under `docs/cli/`
+- [x] T048 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
+- [x] T049 Run `make test` and fix repository validation failures
+- [x] T050 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
+- [x] T051 Verify `git diff` contains only issue #173 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 

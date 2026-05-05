@@ -5,6 +5,7 @@ Started: 2026-05-05 21:28:44
 
 ## Codebase Patterns
 
+- `make docs-content` is the source-driven documentation path: it regenerates `docs/cli/` from Cobra command definitions and syncs `docs/index.md` from `README.md`, so process-instance docs changes should start in README/Cobra and then regenerate.
 - `cmd/get_processinstance.go` routes direct keyed lookup through `mergeAndValidateKeys`, `GetProcessInstances`, keyed-only validation, optional incident enrichment, then `listProcessInstancesView`; `--with-vars` should follow that keyed branch and preserve default output when unset.
 - Process-instance command tests reset package globals in `resetProcessInstanceCommandGlobals`; any new process-instance flags need reset coverage there to avoid cross-test leakage.
 - Incident enrichment is the nearest pattern: facade methods `SearchProcessInstanceIncidents` and `EnrichProcessInstancesWithIncidents` preserve item order, filter details back to the owning process-instance key, and render via a dedicated `cmd/cmd_views_processinstance_incidents.go` file with an age-meta JSON wrapper.
@@ -178,4 +179,31 @@ Started: 2026-05-05 21:28:44
 - The existing variable-enriched renderer already used the shared JSON envelope and age metadata; US3 primarily needed command/view/facade coverage to lock the contract.
 - JSON output keeps received values unchanged even when `--var-value-limit` is set, because shortening stays isolated in the human-line renderer.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*Var.*JSON|TestClient_.*Var' -count=1`.
+---
+---
+## Iteration 6 - 2026-05-05 22:06:12 CEST
+**User Story**: Phase 6: Documentation & Validation
+**Tasks Completed**:
+- [x] T044: Update process-instance examples and `--with-vars`/`--var-value-limit` wording in `README.md`
+- [x] T045: Update site documentation source examples in `docs/index.md`
+- [x] T046: Add command contract/help tests for `--with-vars` and `--var-value-limit`
+- [x] T047: Run `make docs-content` and fix generated documentation issues under `docs/cli/`
+- [x] T048: Run targeted command, facade, and versioned process-instance service validation
+- [x] T049: Run `make test` and fix repository validation failures
+- [x] T050: Review `quickstart.md` against implemented behavior and update validation commands
+- [x] T051: Verify `git diff` contains only issue #173 docs, generated docs, command contract coverage, and Speckit artifacts
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/index.md
+- specs/173-pi-with-vars/quickstart.md
+- specs/173-pi-with-vars/tasks.md
+- specs/173-pi-with-vars/progress.md
+**Learnings**:
+- `docs/index.md` should not be hand-maintained independently for README-derived content; `make docs-content` syncs it after README edits.
+- `docs/cli/c8volt_get_process-instance.md` is generated from Cobra help, so flag wording belongs in `cmd/get_processinstance.go` and can be protected through command capability/help tests.
+- Validation passed with `make docs-content`, `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1`, and `make test`.
 ---

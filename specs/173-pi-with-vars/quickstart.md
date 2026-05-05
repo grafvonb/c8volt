@@ -51,7 +51,7 @@
 ```bash
 GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*Var|TestVariableEnriched' -count=1
 GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -run 'TestClient_.*Var' -count=1
-GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable' -count=1
+GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test.*Variable' -count=1
 make docs-content
 make test
 ```
