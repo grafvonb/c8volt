@@ -48,6 +48,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--auto-confirm")
 	require.Contains(t, output, "--batch-size int32")
 	require.Contains(t, output, "number of process instances to fetch per page")
+	require.Contains(t, output, "--incident-message-limit int")
+	require.Contains(t, output, "maximum characters to show for human incident messages when --with-incidents is set")
 	require.Contains(t, output, "--limit int32")
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.NotContains(t, output, "--count")
@@ -371,6 +373,38 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			name:   "rejects search-mode incident filters",
 			helper: "TestGetProcessInstanceWithIncidentsWithSearchFilterHelper",
 			want:   "--with-incidents cannot be combined with search-mode filters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+// TestGetProcessInstanceIncidentMessageLimitValidation rejects unsafe incident message limit usage.
+func TestGetProcessInstanceIncidentMessageLimitValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "requires with-incidents",
+			helper: "TestGetProcessInstanceIncidentMessageLimitWithoutIncidentsHelper",
+			want:   "--incident-message-limit requires --with-incidents",
+		},
+		{
+			name:   "rejects negative limit",
+			helper: "TestGetProcessInstanceIncidentMessageLimitNegativeHelper",
+			want:   "invalid value for --incident-message-limit: -1, expected non-negative integer",
 		},
 	}
 
@@ -1913,6 +1947,17 @@ func TestValidatePISearchFlags_RejectsMixedAbsoluteAndRelativeInputs(t *testing.
 	require.Contains(t, err.Error(), "start-date absolute and relative day filters cannot be combined")
 }
 
+func TestResetProcessInstanceCommandGlobals_ResetsIncidentMessageLimit(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	flagGetPIIncidentMessageLimit = 80
+
+	resetProcessInstanceCommandGlobals()
+
+	require.Zero(t, flagGetPIIncidentMessageLimit)
+}
+
 // TestHasPISearchFilterFlags_WithRelativeDaysOnly verifies relative-day flags activate search mode.
 func TestHasPISearchFilterFlags_WithRelativeDaysOnly(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
@@ -2666,6 +2711,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPISize = consts.MaxPISearchSize
 	flagGetPILimit = 0
 	flagGetPIWithIncidents = false
+	flagGetPIIncidentMessageLimit = 0
 	flagGetPIRootsOnly = false
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
@@ -2997,6 +3043,34 @@ func TestGetProcessInstanceWithIncidentsWithSearchFilterHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incidents-only"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --incident-message-limit without --with-incidents validation.
+func TestGetProcessInstanceIncidentMessageLimitWithoutIncidentsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--incident-message-limit", "80"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for negative --incident-message-limit validation.
+func TestGetProcessInstanceIncidentMessageLimitNegativeHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incident-message-limit", "-1"}
 
 	Execute()
 }

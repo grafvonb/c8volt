@@ -72,5 +72,17 @@ func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 	if key == "" {
 		key = "unknown"
 	}
-	return fmt.Sprintf("incident %s: %s", key, incident.ErrorMessage)
+	return fmt.Sprintf("incident %s: %s", key, truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit))
+}
+
+// truncateIncidentHumanMessage applies the human-only incident message display limit.
+func truncateIncidentHumanMessage(message string, limit int) string {
+	if limit <= 0 {
+		return message
+	}
+	runes := []rune(message)
+	if len(runes) <= limit {
+		return message
+	}
+	return string(runes[:limit]) + "..."
 }

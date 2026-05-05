@@ -42,6 +42,7 @@ var (
 	flagGetPISize                 int32
 	flagGetPILimit                int32
 	flagGetPIWithIncidents        bool
+	flagGetPIIncidentMessageLimit int
 )
 
 // command options
@@ -219,6 +220,7 @@ func init() {
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
 	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include incident keys and messages for direct --key process-instance lookups")
+	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -877,6 +879,12 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
 		}
 	}
+	if flagGetPIIncidentMessageLimit < 0 {
+		return invalidFlagValuef("invalid value for --incident-message-limit: %d, expected non-negative integer", flagGetPIIncidentMessageLimit)
+	}
+	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagGetPIWithIncidents {
+		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
+	}
 	if flagGetPIProcessDefinitionKey != "" &&
 		(flagGetPIBpmnProcessID != "" ||
 			flagGetPIProcessVersion != 0 ||
@@ -937,6 +945,10 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 
 func isPILimitFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("limit")
+}
+
+func isPIIncidentMessageLimitFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("incident-message-limit")
 }
 
 func validatePIKeyedModeLimit(keyCount int) error {

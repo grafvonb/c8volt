@@ -289,3 +289,43 @@ func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.
 	require.True(t, ok)
 	require.Len(t, incidents, 1)
 }
+
+func TestTruncateIncidentHumanMessage(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+		limit   int
+		want    string
+	}{
+		{
+			name:    "unlimited",
+			message: "No retries left",
+			limit:   0,
+			want:    "No retries left",
+		},
+		{
+			name:    "exact limit",
+			message: "No retries left",
+			limit:   15,
+			want:    "No retries left",
+		},
+		{
+			name:    "truncated",
+			message: "No retries left",
+			limit:   2,
+			want:    "No...",
+		},
+		{
+			name:    "multi-byte",
+			message: "äöü failed",
+			limit:   2,
+			want:    "äö...",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, truncateIncidentHumanMessage(tt.message, tt.limit))
+		})
+	}
+}

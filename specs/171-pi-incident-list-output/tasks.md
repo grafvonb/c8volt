@@ -17,11 +17,11 @@
 
 **Purpose**: Confirm the current process-instance get, incident enrichment, paging, and documentation paths before changing behavior.
 
-- [ ] T001 Inspect keyed `--with-incidents` validation and list/search paging flow in `cmd/get_processinstance.go`
-- [ ] T002 [P] Inspect incident-enriched get rendering and JSON envelope behavior in `cmd/cmd_views_processinstance_incidents.go` and `cmd/cmd_views_get_test.go`
-- [ ] T003 [P] Inspect walk incident rendering reuse of `incidentHumanLine` in `cmd/cmd_views_walk_incidents.go` and `cmd/walk_test.go`
-- [ ] T004 [P] Inspect facade enrichment association tests in `c8volt/process/client.go`, `c8volt/process/model.go`, and `c8volt/process/client_test.go`
-- [ ] T005 [P] Inspect process-instance command docs and generated documentation paths in `README.md`, `docs/index.md`, `docs/cli/`, and `docsgen/`
+- [x] T001 Inspect keyed `--with-incidents` validation and list/search paging flow in `cmd/get_processinstance.go`
+- [x] T002 [P] Inspect incident-enriched get rendering and JSON envelope behavior in `cmd/cmd_views_processinstance_incidents.go` and `cmd/cmd_views_get_test.go`
+- [x] T003 [P] Inspect walk incident rendering reuse of `incidentHumanLine` in `cmd/cmd_views_walk_incidents.go` and `cmd/walk_test.go`
+- [x] T004 [P] Inspect facade enrichment association tests in `c8volt/process/client.go`, `c8volt/process/model.go`, and `c8volt/process/client_test.go`
+- [x] T005 [P] Inspect process-instance command docs and generated documentation paths in `README.md`, `docs/index.md`, `docs/cli/`, and `docsgen/`
 
 ---
 
@@ -31,11 +31,11 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T006 Add `--incident-message-limit` flag storage, registration, help text, and reset behavior in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
-- [ ] T007 Add validation for `--incident-message-limit` dependency and non-negative values in `cmd/get_processinstance.go`
-- [ ] T008 Add human incident message truncation helper tests for unlimited, exact-limit, truncated, and multi-byte messages in `cmd/cmd_views_get_test.go`
-- [ ] T009 Implement reusable human incident message truncation support used by `incidentHumanLine` in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T010 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestIncident|TestGetProcessInstance.*Incident|TestValidatePI' -count=1` and fix foundational regressions
+- [x] T006 Add `--incident-message-limit` flag storage, registration, help text, and reset behavior in `cmd/get_processinstance.go` and `cmd/get_processinstance_test.go`
+- [x] T007 Add validation for `--incident-message-limit` dependency and non-negative values in `cmd/get_processinstance.go`
+- [x] T008 Add human incident message truncation helper tests for unlimited, exact-limit, truncated, and multi-byte messages in `cmd/cmd_views_get_test.go`
+- [x] T009 Implement reusable human incident message truncation support used by `incidentHumanLine` in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T010 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestIncident|TestGetProcessInstance.*Incident|TestValidatePI' -count=1` and fix foundational regressions
 
 **Checkpoint**: Shared flag state, validation, and truncation helpers exist before story behavior is wired.
 
