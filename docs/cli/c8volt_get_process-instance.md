@@ -18,7 +18,7 @@ Search results support interactive paging, scriptable JSON aggregation, and coun
 
 Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.
 
-Use --with-vars with direct key lookup to include process-instance-scope variables under matching rows.
+Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
 
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
@@ -41,6 +41,7 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --limit 25 --auto-confirm
   ./c8volt get pi --incidents-only --with-incidents
   ./c8volt get pi --with-incidents --incident-message-limit 80
+  ./c8volt get pi --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars
   ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
@@ -84,7 +85,7 @@ c8volt get process-instance [flags]
       --total                        return only the numeric total of matching process instances; capped backend totals are counted by paging
       --var-value-limit int          maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
       --with-incidents               include direct incident keys and messages for keyed or list/search process-instance output
-      --with-vars                    include process-instance-scope variables for keyed process-instance output
+      --with-vars                    include process-instance-scope variables for keyed or list/search process-instance output
   -w, --workers int                  maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```
 

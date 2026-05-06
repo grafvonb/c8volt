@@ -274,7 +274,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "include process-instance-scope variables for keyed process-instance output",
+		Description: "include process-instance-scope variables for keyed or list/search process-instance output",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "var-value-limit",

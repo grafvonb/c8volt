@@ -63,7 +63,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
 		"Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.\n\n" +
-		"Use --with-vars with direct key lookup to include process-instance-scope variables under matching rows.\n\n" +
+		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
 	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
@@ -76,6 +76,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --state active --limit 25 --auto-confirm
   ./c8volt get pi --incidents-only --with-incidents
   ./c8volt get pi --with-incidents --incident-message-limit 80
+  ./c8volt get pi --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars
   ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
@@ -126,7 +127,7 @@ var getProcessInstanceCmd = &cobra.Command{
 		if err := validatePIWithIncidentsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
-		if err := validatePIWithVarsUsage(lk, ltk, filterFlagsSet); err != nil {
+		if err := validatePIWithVarsUsage(lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
 		if lk == 0 && ltk == 0 {
@@ -290,7 +291,7 @@ func init() {
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
 	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys and messages for keyed or list/search process-instance output")
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
-	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed process-instance output")
+	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed or list/search process-instance output")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation")
 
 	// filtering options
@@ -566,7 +567,18 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 		filtered.Items = limitPIItems(filtered.Items, processedTotal)
 		filtered.Total = int32(len(filtered.Items))
 		if incremental {
-			if flagGetPIWithIncidents && pickMode() == RenderModeOneLine {
+			if flagGetPIWithIncidents && flagGetPIWithVars && pickMode() == RenderModeOneLine {
+				incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, filtered)
+				if err != nil {
+					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
+				}
+				variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, filtered)
+				if err != nil {
+					return process.ProcessInstances{}, false, fmt.Errorf("get process instance variables: %w", err)
+				}
+				pageNeedsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, mergeIncidentAndVariableActivity(incidentEnriched, variableEnriched).Items)
+				needsIndirectIncidentWarning = needsIndirectIncidentWarning || pageNeedsIndirectIncidentWarning
+			} else if flagGetPIWithIncidents && pickMode() == RenderModeOneLine {
 				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, filtered)
 				if err != nil {
 					return process.ProcessInstances{}, false, fmt.Errorf("get process instance incidents: %w", err)
@@ -576,6 +588,12 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 					return process.ProcessInstances{}, false, err
 				}
 				needsIndirectIncidentWarning = needsIndirectIncidentWarning || pageNeedsIndirectIncidentWarning
+			} else if flagGetPIWithVars && pickMode() == RenderModeOneLine {
+				enriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, filtered)
+				if err != nil {
+					return process.ProcessInstances{}, false, fmt.Errorf("get process instance variables: %w", err)
+				}
+				renderProcessInstanceActivityRows(cmd, activityFromVariableEnriched(enriched).Items)
 			} else if pickMode() == RenderModeOneLine {
 				if err := renderProcessInstanceFlatRows(cmd, filtered.Items); err != nil {
 					return process.ProcessInstances{}, false, err
@@ -980,6 +998,8 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
 		case flagGetPIWithIncidents:
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-incidents")
+		case flagGetPIWithVars:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --with-vars")
 		}
 	}
 	if flagGetPIIncidentMessageLimit < 0 {
@@ -1082,18 +1102,12 @@ func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
 	return nil
 }
 
-// validatePIWithVarsUsage keeps variable enrichment scoped to direct keyed lookup.
-func validatePIWithVarsUsage(keyCount int, userTaskKeyCount int, filterFlagsSet bool) error {
+// validatePIWithVarsUsage keeps variable enrichment out of keyed/filter combinations that cannot attach details unambiguously.
+func validatePIWithVarsUsage(keyCount int, filterFlagsSet bool) error {
 	if !flagGetPIWithVars {
 		return nil
 	}
-	if userTaskKeyCount > 0 {
-		return mutuallyExclusiveFlagsf("--with-vars requires --key and cannot be combined with --has-user-tasks")
-	}
-	if keyCount == 0 {
-		return invalidFlagValuef("--with-vars requires --key")
-	}
-	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal {
+	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
 		return mutuallyExclusiveFlagsf("--with-vars cannot be combined with search-mode filters")
 	}
 	return nil

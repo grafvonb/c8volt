@@ -281,6 +281,7 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --with-incidents --incident-message-limit 80
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
+./c8volt get pi --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
@@ -299,7 +300,7 @@ Use `--json` when a script needs stable fields and `--keys-only` when piping pro
 
 For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output to show direct incident keys and messages in a grouped `incidents:` section below each matching process-instance row. Rows marked `inc!` with no direct incident details include a short note and one follow-up warning to inspect the tree with `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` to shorten human incident messages; JSON incident output keeps full messages.
 
-For variable inspection, add `--with-vars` to keyed `get pi` or `walk pi` output to show process-instance-scope variables in a grouped `vars:` section below each matching row. It can be combined with `--with-incidents` for one inspection view. c8volt filters variables by both `processInstanceKey` and `scopeKey`, sorts them by name, and keeps human values full by default. Add `--var-value-limit <chars>` to shorten only human display values; JSON variable output keeps received values and metadata intact.
+For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output, to show process-instance-scope variables in a grouped `vars:` section below each matching row. It can be combined with `--with-incidents` for one inspection view. c8volt filters variables by both `processInstanceKey` and `scopeKey`, sorts them by name, and keeps human values full by default. Add `--var-value-limit <chars>` to shorten only human display values; JSON variable output keeps received values and metadata intact.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
@@ -544,6 +545,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get pi --state active --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --state active --total
 
