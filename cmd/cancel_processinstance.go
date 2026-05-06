@@ -22,6 +22,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: "Cancel process instances by key or search filters.\n\n" +
 		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation. A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi`.",
 	Example: `  ./c8volt cancel pi --key <process-instance-key>

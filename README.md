@@ -247,6 +247,10 @@ Deletion in real environments often means preview the family scope, cancel-first
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Human-oriented modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
 
+When a process-instance command uses `--bpmn-process-id`, `c8volt` first validates that a matching process definition is visible with the same version, version tag, and tenant context. A missing or invisible selector fails before process-instance search, cancellation, deletion, or start work, so a typo does not look like a valid `found: 0` result. Interactive human output may offer to list visible process definitions; `--json`, `--automation`, `--keys-only`, `--auto-confirm`, and non-TTY execution fail clearly without that recovery prompt.
+
+For `run pi`, all BPMN process IDs are validated before any process instance is created. If one ID is missing in a multi-ID run, the whole request fails and no partial process instances are started.
+
 Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
 When a script only needs the count of matching process instances, `./c8volt get pi --total` prints only the numeric total. If Camunda reports a capped search total, c8volt keeps paging and counts the matching process instances instead of returning the capped lower bound.
@@ -543,6 +547,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --state active --with-vars

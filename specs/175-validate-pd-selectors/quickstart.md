@@ -49,6 +49,7 @@ Expected result:
 ./c8volt --json get pi --bpmn-process-id MissingProcess
 ./c8volt --automation get pi --bpmn-process-id MissingProcess
 ./c8volt get pi --bpmn-process-id MissingProcess --keys-only
+./c8volt cancel pi --bpmn-process-id MissingProcess --state active --auto-confirm
 ```
 
 Expected result:

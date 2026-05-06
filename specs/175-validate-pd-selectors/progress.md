@@ -5,6 +5,7 @@ Started: 2026-05-06 12:15:57
 
 ## Codebase Patterns
 
+- `make docs-content` regenerates `docs/cli/*` from Cobra command metadata and rewrites `docs/index.md` from `README.md`, so user-facing command help belongs in command `Long` text and site workflow copy belongs in `README.md`.
 - `run pi` now builds a run-specific process-definition selector validation request from `flagRunPIProcessDefinitionBpmnProcessIds` and `flagRunPIProcessDefinitionVersion`; it uses latest-definition validation when no version is supplied and exact-version search when `--pd-version` is present.
 - BPMN-based `run pi` validates selectors before constructing `ProcessInstanceData`, so mixed visible/missing multi-ID starts fail without submitting any `/v2/process-instances` create request.
 - Existing `run pi` command tests that start by BPMN process ID need a visible process-definition search fixture before the create fixture because validation now precedes starts.
@@ -173,4 +174,39 @@ Started: 2026-05-06 12:15:57
 - `run pi` must validate all normalized BPMN IDs before data construction to guarantee no partial start happens when any selector is missing.
 - Latest-mode validation reaches the same `/v2/process-definitions/search` endpoint with `isLatestVersion: true`; exact `--pd-version` validation uses the normal search path with `version` and no latest filter.
 - Broader `run process-instance` fixtures need process-definition visibility responses because BPMN starts now perform selector validation before create calls.
+---
+
+---
+## Iteration 7 - 2026-05-06 12:51:11 CEST
+**User Story**: Phase 7: Documentation & Validation
+**Tasks Completed**:
+- [x] T043: Update process-instance examples and missing BPMN selector wording in `README.md`
+- [x] T044: Update site documentation source examples in `docs/index.md`
+- [x] T045: Add or update command contract/help tests for selector diagnostics and prompt policy in `cmd/command_contract_test.go`
+- [x] T046: Run `make docs-content` and fix generated documentation issues under `docs/cli/`
+- [x] T047: Run targeted command, facade, and process-definition service validation
+- [x] T048: Run `make test` and fix repository validation failures
+- [x] T049: Review `quickstart.md` against implemented behavior and update command examples
+- [x] T050: Verify `git diff` contains only issue #175 implementation, docs, generated docs, and Speckit artifacts before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/cancel_processinstance.go
+- cmd/command_contract_test.go
+- cmd/delete_processinstance.go
+- cmd/get_processinstance.go
+- cmd/run_processinstance.go
+- docs/cli/c8volt_cancel_process-instance.md
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_run_process-instance.md
+- docs/index.md
+- specs/175-validate-pd-selectors/quickstart.md
+- specs/175-validate-pd-selectors/tasks.md
+- specs/175-validate-pd-selectors/progress.md
+**Learnings**:
+- Command help is the source for generated CLI reference wording, so selector diagnostics and prompt policy should be documented in Cobra `Long` descriptions.
+- The docs homepage source is `README.md`; `docs/index.md` should be regenerated through `make docs-content`.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processdefinition/v87 ./internal/services/processdefinition/v88 ./internal/services/processdefinition/v89 -count=1` and `make test`.
 ---

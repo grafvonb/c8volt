@@ -285,6 +285,58 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 	})
 }
 
+func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
+	tests := []struct {
+		name  string
+		args  []string
+		wants []string
+	}{
+		{
+			name: "get pi",
+			args: []string{"get", "pi", "--help"},
+			wants: []string{
+				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances.",
+				"A missing selector fails with a local diagnostic instead of looking like a valid empty result",
+				"--json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.",
+			},
+		},
+		{
+			name: "cancel pi",
+			args: []string{"cancel", "pi", "--help"},
+			wants: []string{
+				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation.",
+				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+			},
+		},
+		{
+			name: "delete pi",
+			args: []string{"delete", "pi", "--help"},
+			wants: []string{
+				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning deletion.",
+				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+			},
+		},
+		{
+			name: "run pi",
+			args: []string{"run", "pi", "--help"},
+			wants: []string{
+				"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything.",
+				"Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started",
+				"automation-oriented modes never prompt for recovery output.",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := executeRootForTest(t, tt.args...)
+			for _, want := range tt.wants {
+				require.Contains(t, output, want)
+			}
+		})
+	}
+}
+
 // commandCapabilityPaths flattens nested discovery output so removed aliases cannot hide under `get`.
 func commandCapabilityPaths(commands []CommandCapability) []string {
 	var paths []string
