@@ -1748,13 +1748,3 @@ func optionalClusterLicenseFixtureJSON() string {
   "validLicense": true
 }`
 }
-
-func writeTestConfig(t *testing.T, baseURL string) string {
-	t.Helper()
-	return testx.WriteTestConfig(t, baseURL)
-}
-
-func writeTestConfigForVersion(t *testing.T, baseURL string, camundaVersion string) string {
-	t.Helper()
-	return testx.WriteTestConfigForVersion(t, baseURL, camundaVersion)
-}

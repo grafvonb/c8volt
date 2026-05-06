@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -987,11 +985,4 @@ func resolveCommandConfigForTest(t *testing.T, cmd *cobra.Command, cfgPath strin
 	cfg, err := retrieveAndNormalizeConfig(v, bindings)
 	require.NoError(t, err)
 	return cfg
-}
-
-func writeRawTestConfig(t *testing.T, content string) string {
-	t.Helper()
-	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(strings.TrimLeft(content, "\n")), 0o600))
-	return cfgPath
 }

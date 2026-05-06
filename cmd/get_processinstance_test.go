@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -3453,8 +3452,9 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 	})
 }
 
-// TestPIContinuationHelpers verifies paging progress summary and continuation decisions.
-func TestPIContinuationHelpers(t *testing.T) {
+// TestPIContinuationProgress protects the translation from backend overflow
+// metadata to the prompt/auto-continue/warning states shown in verbose output.
+func TestPIContinuationProgress(t *testing.T) {
 	t.Run("auto-confirm chooses auto-continue for overflow", func(t *testing.T) {
 		page := process.ProcessInstancePage{
 			Request:       process.ProcessInstancePageRequest{Size: 50},
@@ -3513,29 +3513,6 @@ func requireProcessInstanceVariableJSONPayload(t *testing.T, output string) map[
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "get process-instance", envelope["command"])
 	return requireJSONObject(t, envelope["payload"])
-}
-
-func requireJSONObject(t *testing.T, value any) map[string]any {
-	t.Helper()
-
-	got, ok := value.(map[string]any)
-	require.True(t, ok, "expected JSON object")
-	return got
-}
-
-func requireJSONItems(t *testing.T, value any, wantLen int) []any {
-	t.Helper()
-
-	items, ok := value.([]any)
-	require.True(t, ok, "expected JSON array")
-	require.Len(t, items, wantLen)
-	return items
-}
-
-// newIPv4Server creates an IPv4-only test server for command tests that must avoid IPv6 listeners.
-func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
-	t.Helper()
-	return testx.NewIPv4Server(t, handler)
 }
 
 // executeRootForProcessInstanceTest runs the root command with process-instance globals reset.
