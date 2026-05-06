@@ -122,6 +122,66 @@ func TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBounda
 	assert.False(t, items.Items[0].Statistics.IncidentCountSupported)
 }
 
+// TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter
+// verifies BPMN process ID, exact version, and version tag selectors reach the
+// process-definition service unchanged.
+func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(_ context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{
+				BpmnProcessId:     "order-process",
+				ProcessVersion:    7,
+				ProcessVersionTag: "stable",
+			}, filter)
+			assert.Equal(t, pdsvc.MaxResultSize, size)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	items, err := cli.SearchProcessDefinitions(ctx, ProcessDefinitionFilter{
+		BpmnProcessId:     "order-process",
+		ProcessVersion:    7,
+		ProcessVersionTag: "stable",
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, items.Items, 1)
+	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+}
+
+// TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter
+// extends facade coverage to latest-definition searches used by BPMN starts.
+func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitionsLatest: func(_ context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{
+				BpmnProcessId:     "order-process",
+				ProcessVersionTag: "stable",
+			}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	items, err := cli.SearchProcessDefinitionsLatest(ctx, ProcessDefinitionFilter{
+		BpmnProcessId:     "order-process",
+		ProcessVersionTag: "stable",
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, items.Items, 1)
+	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+}
+
 // TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter verifies that
 // facade filters, presence booleans, and verbose options reach the domain layer
 // without losing exact date-bound strings.
@@ -1189,9 +1249,10 @@ func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScop
 }
 
 type stubProcessDefinitionAPI struct {
-	searchProcessDefinitions func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
-	getProcessDefinition     func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
-	getProcessDefinitionXML  func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
+	searchProcessDefinitions       func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+	searchProcessDefinitionsLatest func(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+	getProcessDefinition           func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
+	getProcessDefinitionXML        func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
 
 // SearchProcessDefinitions delegates to the per-test callback and panics when a
@@ -1203,9 +1264,13 @@ func (s *stubProcessDefinitionAPI) SearchProcessDefinitions(ctx context.Context,
 	return s.searchProcessDefinitions(ctx, filter, size, opts...)
 }
 
-// SearchProcessDefinitionsLatest panics when a facade test accidentally takes the latest-definition path.
-func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(context.Context, d.ProcessDefinitionFilter, ...services.CallOption) ([]d.ProcessDefinition, error) {
-	panic("unexpected call")
+// SearchProcessDefinitionsLatest delegates to the per-test callback and panics
+// when a test did not authorize this service method.
+func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+	if s.searchProcessDefinitionsLatest == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessDefinitionsLatest(ctx, filter, opts...)
 }
 
 // GetProcessDefinition delegates to the per-test callback and panics on

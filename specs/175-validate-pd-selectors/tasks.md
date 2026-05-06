@@ -32,13 +32,13 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T007 Add shared process-definition selector validation request/result types and helper skeletons in `cmd/get_processinstance.go` or a new `cmd/process_definition_selector_validation.go`
-- [ ] T008 Add helper logic that maps process-instance BPMN/version/tag flags to `process.ProcessDefinitionFilter` in `cmd/get_processinstance.go` or `cmd/process_definition_selector_validation.go`
-- [ ] T009 Add helper logic that validates one or more BPMN process IDs through `process.API.SearchProcessDefinitions` or `SearchProcessDefinitionsLatest` in `cmd/process_definition_selector_validation.go`
-- [ ] T010 Add reusable missing-selector diagnostic formatting and no-prompt error behavior in `cmd/process_definition_selector_validation.go`
-- [ ] T011 [P] Add process facade tests proving `SearchProcessDefinitions` receives BPMN process ID, version, and version tag filters in `c8volt/process/client_test.go`
-- [ ] T012 [P] Add command unit tests for selector-to-filter construction and missing selector formatting in `cmd/get_processinstance_test.go` or a new `cmd/process_definition_selector_validation_test.go`
-- [ ] T013 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*ProcessDefinitionSelector|TestClient_SearchProcessDefinitions' -count=1` and fix foundational compile/test failures
+- [x] T007 Add shared process-definition selector validation request/result types and helper skeletons in `cmd/get_processinstance.go` or a new `cmd/process_definition_selector_validation.go`
+- [x] T008 Add helper logic that maps process-instance BPMN/version/tag flags to `process.ProcessDefinitionFilter` in `cmd/get_processinstance.go` or `cmd/process_definition_selector_validation.go`
+- [x] T009 Add helper logic that validates one or more BPMN process IDs through `process.API.SearchProcessDefinitions` or `SearchProcessDefinitionsLatest` in `cmd/process_definition_selector_validation.go`
+- [x] T010 Add reusable missing-selector diagnostic formatting and no-prompt error behavior in `cmd/process_definition_selector_validation.go`
+- [x] T011 [P] Add process facade tests proving `SearchProcessDefinitions` receives BPMN process ID, version, and version tag filters in `c8volt/process/client_test.go`
+- [x] T012 [P] Add command unit tests for selector-to-filter construction and missing selector formatting in `cmd/get_processinstance_test.go` or a new `cmd/process_definition_selector_validation_test.go`
+- [x] T013 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test.*ProcessDefinitionSelector|TestClient_SearchProcessDefinitions' -count=1` and fix foundational compile/test failures
 
 **Checkpoint**: Shared validation compiles, maps selector fields correctly, and can report missing selectors without touching process-instance work.
 
