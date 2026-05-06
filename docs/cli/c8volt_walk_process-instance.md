@@ -14,7 +14,7 @@ Inspect the parent/child tree of process instances.
 
 By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.
 
-Add --with-incidents to keyed walks to show incident keys and messages below matching process-instance rows.
+Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.
 
 When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.
 
@@ -27,6 +27,8 @@ c8volt walk process-instance [flags]
 ```
   ./c8volt walk pi --key 2251799813711967
   ./c8volt walk pi --key 2251799813711967 --with-incidents
+  ./c8volt walk pi --key 2251799813711967 --with-vars
+  ./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
   ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80
   ./c8volt walk pi --key 2251799813711967 --flat
   ./c8volt walk pi --key 2251799813711977 --parent
@@ -42,7 +44,9 @@ c8volt walk process-instance [flags]
       --incident-message-limit int   maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation
   -k, --key string                   start walking from this process instance key
       --parent                       show ancestry from the selected process instance toward the root
+      --var-value-limit int          maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
       --with-incidents               show incident keys and messages for keyed process-instance walks
+      --with-vars                    show process-instance-scope variables for keyed process-instance walks
 ```
 
 ### Options inherited from parent commands

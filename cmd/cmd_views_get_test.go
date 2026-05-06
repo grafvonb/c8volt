@@ -393,13 +393,13 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "└─ inc: key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "└─ inc: key=incident-124 message=Second key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 message=Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "└─ inc: key=incident-123"))
-	require.Less(t, strings.Index(output, "└─ inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "└─ inc: key=incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
+	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "key=incident-124"))
 }
 
 func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVariables(t *testing.T) {
@@ -434,13 +434,63 @@ func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVaria
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "  alpha = 1")
-	require.Contains(t, output, "  zeta = 2")
+	require.Contains(t, output, "└─ vars:")
+	require.Contains(t, output, "├─ alpha=1")
+	require.Contains(t, output, "└─ zeta=2")
 	require.NotContains(t, output, "var alpha")
 	require.Contains(t, output, "found: 1")
-	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "  alpha = 1"))
-	require.Less(t, strings.Index(output, "  alpha = 1"), strings.Index(output, "  zeta = 2"))
-	require.Less(t, strings.Index(output, "  zeta = 2"), strings.Index(output, "found: 1"))
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
+	require.Less(t, strings.Index(output, "└─ vars:"), strings.Index(output, "alpha=1"))
+	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
+	require.Less(t, strings.Index(output, "zeta=2"), strings.Index(output, "found: 1"))
+}
+
+func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := processInstanceActivityInstancesView(cmd, processInstanceActivityInstances{
+		Total: 1,
+		Items: []processInstanceActivityItem{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-03-23T18:00:00Z",
+				Incident:       true,
+			},
+			Variables: []process.ProcessInstanceVariable{{
+				Name:               "businessKey",
+				Value:              "2234809392328",
+				ProcessInstanceKey: "123",
+				ScopeKey:           "123",
+			}},
+			Incidents: []process.ProcessInstanceIncidentDetail{{
+				IncidentKey:         "incident-123",
+				ProcessInstanceKey:  "123",
+				FlowNodeId:          "task-a",
+				FlowNodeInstanceKey: "element-123",
+				ErrorType:           "IO_MAPPING_ERROR",
+				ErrorMessage:        "failed",
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ vars:\n│  └─ businessKey=2234809392328")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=IO_MAPPING_ERROR message=failed")
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
 func TestVariableEnrichedProcessInstancesView_JSONUsesSharedEnvelopeAndAgeMeta(t *testing.T) {
@@ -505,11 +555,11 @@ func TestProcessInstanceVariableHumanLine_CompactsJSONLikeObjectsAndArrays(t *te
 		flagGetPIVarValueLimit = prevLimit
 	})
 
-	require.Equal(t, `order = {"id":"O-9","amount":42}`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+	require.Equal(t, `order={"id":"O-9","amount":42}`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
 		Name:  "order",
 		Value: "{\n  \"id\": \"O-9\",\n  \"amount\": 42\n}",
 	}))
-	require.Equal(t, `items = [{"sku":"A"},{"sku":"B"}]`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+	require.Equal(t, `items=[{"sku":"A"},{"sku":"B"}]`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
 		Name:  "items",
 		Value: "[\n  {\"sku\": \"A\"},\n  {\"sku\": \"B\"}\n]",
 	}))
@@ -523,13 +573,13 @@ func TestProcessInstanceVariableHumanLine_DoesNotShortenWhenLimitUnsetOrZero(t *
 
 	longValue := strings.Repeat("a", 120)
 	flagGetPIVarValueLimit = 0
-	require.Equal(t, "payload = "+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+	require.Equal(t, "payload="+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
 		Name:  "payload",
 		Value: longValue,
 	}))
 
 	flagGetPIVarValueLimit = -1
-	require.Equal(t, "payload = "+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+	require.Equal(t, "payload="+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
 		Name:  "payload",
 		Value: longValue,
 	}))
@@ -547,7 +597,7 @@ func TestProcessInstanceVariableHumanLine_AppliesCharacterSafeLimitAndCliTruncat
 		Value: "äöüabc",
 	})
 
-	require.Equal(t, "payload = äöü... [cli-truncated]", got)
+	require.Equal(t, "payload=äöü... [cli-truncated]", got)
 }
 
 func TestProcessInstanceVariableHumanLine_RendersAPIAndCombinedTruncationLabels(t *testing.T) {
@@ -557,21 +607,21 @@ func TestProcessInstanceVariableHumanLine_RendersAPIAndCombinedTruncationLabels(
 	})
 
 	flagGetPIVarValueLimit = 0
-	require.Equal(t, "payload = abc [api-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+	require.Equal(t, "payload=abc [api-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
 		Name:         "payload",
 		Value:        "abc",
 		APITruncated: true,
 	}))
 
 	flagGetPIVarValueLimit = 3
-	require.Equal(t, "payload = abc... [api-truncated,cli-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+	require.Equal(t, "payload=abc... [api-truncated,cli-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
 		Name:         "payload",
 		Value:        "abcdef",
 		APITruncated: true,
 	}))
 }
 
-func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
+func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 	prevLimit := flagGetPIIncidentMessageLimit
 	flagGetPIIncidentMessageLimit = 0
 	t.Cleanup(func() {
@@ -587,7 +637,7 @@ func TestIncidentHumanLine_UsesCompactPrefix(t *testing.T) {
 		JobKey:              "job-123",
 	})
 
-	require.Equal(t, "inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
+	require.Equal(t, "key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
 	require.NotContains(t, got, "incident incident-123:")
 }
 

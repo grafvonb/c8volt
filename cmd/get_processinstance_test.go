@@ -474,13 +474,13 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "└─ inc: key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "└─ inc: key=incident-124 message=Second key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 message=Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "└─ inc: key=incident-123"))
-	require.Less(t, strings.Index(output, "└─ inc: key=incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "└─ inc: key=incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
+	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "key=incident-124"))
 }
 
 // TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
@@ -523,7 +523,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "└─ inc: key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -923,7 +923,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -957,7 +957,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
-	require.Contains(t, output, "└─ inc: key=incident-123 message=No retr...")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=No retr...")
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
@@ -987,7 +987,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "└─ inc: key=incident-123 message="+fullMessage)
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message="+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
@@ -1031,13 +1031,57 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.Equal(t, "123", filter["scopeKey"])
 	require.Equal(t, "tenant", filter["tenantId"])
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "  alpha = 1")
-	require.Contains(t, output, "  zeta = 2")
+	require.Contains(t, output, "└─ vars:")
+	require.Contains(t, output, "├─ alpha=1")
+	require.Contains(t, output, "└─ zeta=2")
 	require.NotContains(t, output, "localTask")
 	require.NotContains(t, output, "var alpha")
 	require.Contains(t, output, "found: 1")
-	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "  alpha = 1"))
-	require.Less(t, strings.Index(output, "  alpha = 1"), strings.Index(output, "  zeta = 2"))
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
+	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
+}
+
+func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"elementId":"task-a","elementInstanceKey":"element-123","errorMessage":"No retries left","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"hasIncident","value":"true","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--key", "123",
+		"--with-vars",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search", "POST /v2/variables/search"}, requests)
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ vars:")
+	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
+	require.Contains(t, output, "│  └─ hasIncident=true")
+	require.Contains(t, output, "└─ incidents:")
+	require.Contains(t, output, "   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=IO_MAPPING_ERROR message=No retries left")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
 func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetadata(t *testing.T) {
@@ -1144,8 +1188,9 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				{"creationTime":"2026-03-23T18:02:00Z","elementId":"task-b","elementInstanceKey":"element-124","errorMessage":"Gateway failed","errorType":"EXTRACT_VALUE_ERROR","incidentKey":"incident-124","processDefinitionId":"demo","processDefinitionKey":"9001","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
-				"├─ inc: key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES message=No retries left",
-				"└─ inc: key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 errorType=EXTRACT_VALUE_ERROR message=Gateway failed",
+				"└─ incidents:",
+				"├─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES message=No retries left",
+				"└─ key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 errorType=EXTRACT_VALUE_ERROR message=Gateway failed",
 			},
 		},
 		{
@@ -1187,7 +1232,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 				require.Contains(t, output, msg)
 			}
 			if len(tt.wantMessages) == 0 {
-				require.NotContains(t, output, "  inc ")
+				require.NotContains(t, output, "key=incident-")
 				require.Contains(t, output, indirectProcessTreeIncidentNote)
 				require.Contains(t, output, indirectProcessTreeIncidentWarning)
 			}
@@ -2603,6 +2648,10 @@ func TestValidatePIWithVarsUsage_KeyedModeOnly(t *testing.T) {
 
 	require.NoError(t, validatePIWithVarsUsage(1, 0, false))
 
+	flagGetPIWithIncidents = true
+	require.NoError(t, validatePIWithVarsUsage(1, 0, false))
+	flagGetPIWithIncidents = false
+
 	err := validatePIWithVarsUsage(0, 0, false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--with-vars requires --key")
@@ -3393,6 +3442,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagWalkPIModeChildren = false
 	flagWalkPIFlat = false
 	flagWalkPIWithIncidents = false
+	flagWalkPIWithVars = false
 	flagCmdAutoConfirm = false
 	flagVerbose = false
 	flagViewAsJson = false

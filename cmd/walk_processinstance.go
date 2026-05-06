@@ -16,6 +16,7 @@ var (
 	flagWalkPIModeChildren  bool
 	flagWalkPIFlat          bool
 	flagWalkPIWithIncidents bool
+	flagWalkPIWithVars      bool
 )
 
 const (
@@ -29,10 +30,12 @@ var walkProcessInstanceCmd = &cobra.Command{
 	Short: "Inspect the parent/child tree of process instances",
 	Long: "Inspect the parent/child tree of process instances.\n\n" +
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
-		"Add --with-incidents to keyed walks to show incident keys and messages below matching process-instance rows.\n\n" +
+		"Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
 	Example: `  ./c8volt walk pi --key 2251799813711967
   ./c8volt walk pi --key 2251799813711967 --with-incidents
+  ./c8volt walk pi --key 2251799813711967 --with-vars
+  ./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
   ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80
   ./c8volt walk pi --key 2251799813711967 --flat
   ./c8volt walk pi --key 2251799813711977 --parent
@@ -47,6 +50,9 @@ var walkProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validateWalkPIWithIncidentsUsage(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateWalkPIWithVarsUsage(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 
@@ -138,19 +144,45 @@ var walkProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if flagWalkPIWithIncidents {
-			enriched, err := cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectOptions()...)
+		if flagWalkPIWithIncidents || flagWalkPIWithVars {
+			var incidentEnriched process.IncidentEnrichedTraversalResult
+			if flagWalkPIWithIncidents {
+				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+			}
+			var variableEnriched process.VariableEnrichedProcessInstances
+			if flagWalkPIWithVars {
+				variableEnriched, err = cli.EnrichProcessInstancesWithVariables(cmd.Context(), processInstancesFromTraversal(result), collectOptions()...)
+				if err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+			}
+			activityItems := activityItemsFromTraversal(result, incidentEnriched, variableEnriched)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			switch pickMode() {
 			case RenderModeJSON:
-				if err := renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedTraversalPayload(enriched)); err != nil {
+				if flagWalkPIWithIncidents && !flagWalkPIWithVars {
+					if err := renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedTraversalPayload(incidentEnriched)); err != nil {
+						handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					}
+					return
+				}
+				if err := renderJSONPayload(cmd, RenderModeJSON, activityTraversalPayload(result, activityItems)); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				return
 			case RenderModeOneLine:
-				if err := w.enrichedView(cmd, enriched); err != nil {
+				if flagWalkPIWithIncidents && !flagWalkPIWithVars {
+					if err := w.enrichedView(cmd, incidentEnriched); err != nil {
+						handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					}
+					return
+				}
+				if err := walkActivityView(cmd, selectedMode, result, activityItems); err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
 				return
@@ -174,10 +206,32 @@ func init() {
 	fs.BoolVar(&flagWalkPIFlat, "flat", false, "render family output as a flat path instead of an ASCII tree")
 	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys and messages for keyed process-instance walks")
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
+	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for keyed process-instance walks")
+	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(walkProcessInstanceCmd, AutomationSupportUnsupported, "automation mode is not supported for traversal commands")
+}
+
+// validateWalkPIWithVarsUsage keeps walk variable enrichment in render modes that can show variable detail rows.
+func validateWalkPIWithVarsUsage(cmd *cobra.Command) error {
+	if flagGetPIVarValueLimit < 0 {
+		return invalidFlagValuef("invalid value for --var-value-limit: %d, expected non-negative integer", flagGetPIVarValueLimit)
+	}
+	if isPIVarValueLimitFlagChanged(cmd) && !flagWalkPIWithVars {
+		return missingDependentFlagsf("--var-value-limit requires --with-vars")
+	}
+	if !flagWalkPIWithVars {
+		return nil
+	}
+	if strings.TrimSpace(flagWalkPIKey) == "" {
+		return invalidFlagValuef("--with-vars requires --key")
+	}
+	if flagViewKeysOnly {
+		return mutuallyExclusiveFlagsf("--with-vars cannot be combined with --keys-only")
+	}
+	return nil
 }
 
 // validateWalkPIWithIncidentsUsage keeps walk incident enrichment in render modes that can show incident detail rows.

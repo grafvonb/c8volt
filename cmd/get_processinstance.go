@@ -78,6 +78,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --with-incidents --incident-message-limit 80
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars
+  ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json
@@ -178,6 +179,20 @@ var getProcessInstanceCmd = &cobra.Command{
 				}
 				fail(msg)
 			}
+			if flagGetPIWithIncidents && flagGetPIWithVars {
+				incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+				if err != nil {
+					fail(fmt.Errorf("get process instance incidents: %w", err))
+				}
+				variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+				if err != nil {
+					fail(fmt.Errorf("get process instance variables: %w", err))
+				}
+				if err := processInstanceActivityInstancesView(cmd, mergeIncidentAndVariableActivity(incidentEnriched, variableEnriched)); err != nil {
+					fail(fmt.Errorf("render process instances with variables and incidents: %w", err))
+				}
+				return
+			}
 			if flagGetPIWithIncidents {
 				enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
 				if err != nil {
@@ -219,6 +234,20 @@ var getProcessInstanceCmd = &cobra.Command{
 			if renderedIncrementally {
 				return
 			}
+		}
+		if flagGetPIWithIncidents && flagGetPIWithVars {
+			incidentEnriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
+			if err != nil {
+				fail(fmt.Errorf("get process instance incidents: %w", err))
+			}
+			variableEnriched, err := enrichProcessInstancesWithVariableActivity(cmd, cli, pis)
+			if err != nil {
+				fail(fmt.Errorf("get process instance variables: %w", err))
+			}
+			if err := processInstanceActivityInstancesView(cmd, mergeIncidentAndVariableActivity(incidentEnriched, variableEnriched)); err != nil {
+				fail(fmt.Errorf("render process instances with variables and incidents: %w", err))
+			}
+			return
 		}
 		if flagGetPIWithIncidents {
 			enriched, err := enrichProcessInstancesWithIncidentActivity(cmd, cli, pis)
@@ -1057,9 +1086,6 @@ func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
 func validatePIWithVarsUsage(keyCount int, userTaskKeyCount int, filterFlagsSet bool) error {
 	if !flagGetPIWithVars {
 		return nil
-	}
-	if flagGetPIWithIncidents {
-		return mutuallyExclusiveFlagsf("--with-vars cannot be combined with --with-incidents")
 	}
 	if userTaskKeyCount > 0 {
 		return mutuallyExclusiveFlagsf("--with-vars requires --key and cannot be combined with --has-user-tasks")

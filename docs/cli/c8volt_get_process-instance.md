@@ -43,6 +43,7 @@ c8volt get process-instance [flags]
   ./c8volt get pi --with-incidents --incident-message-limit 80
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars
+  ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json

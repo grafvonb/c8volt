@@ -18,7 +18,7 @@ func variableEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Varia
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, variableEnrichedProcessInstancesWithAgeMeta(resp))
 	}
-	renderVariableEnrichedProcessInstanceRows(cmd, resp)
+	renderProcessInstanceActivityRows(cmd, activityFromVariableEnriched(resp).Items)
 	renderOutputLine(cmd, "found: %d", len(resp.Items))
 	return nil
 }
@@ -66,9 +66,9 @@ func processInstanceVariableHumanLine(variable process.ProcessInstanceVariable) 
 	value, cliTruncated := truncateProcessInstanceVariableHumanValue(value, flagGetPIVarValueLimit)
 	labels := processInstanceVariableTruncationLabels(variable.APITruncated, cliTruncated)
 	if labels != "" {
-		return fmt.Sprintf("%s = %s [%s]", variable.Name, value, labels)
+		return fmt.Sprintf("%s=%s [%s]", variable.Name, value, labels)
 	}
-	return fmt.Sprintf("%s = %s", variable.Name, value)
+	return fmt.Sprintf("%s=%s", variable.Name, value)
 }
 
 func compactProcessInstanceVariableValue(value string) string {
