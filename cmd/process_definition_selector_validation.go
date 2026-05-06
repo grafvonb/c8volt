@@ -86,6 +86,7 @@ func (r processDefinitionSelectorValidationRequest) filterForBpmnProcessID(bpmnP
 	}
 }
 
+// validateProcessDefinitionSelectors proves BPMN selectors are visible before PI commands turn typos into empty searches or no-op mutations.
 func validateProcessDefinitionSelectors(ctx context.Context, cli process.API, req processDefinitionSelectorValidationRequest, opts ...options.FacadeOption) (processDefinitionSelectorValidationResult, error) {
 	ids := normalizeSelectorBpmnProcessIDs(req.BpmnProcessIds)
 	result := processDefinitionSelectorValidationResult{
@@ -153,6 +154,7 @@ func processDefinitionSelectorValidationError(result processDefinitionSelectorVa
 	return newProcessDefinitionSelectorMissingError(result)
 }
 
+// handleProcessDefinitionSelectorValidationError keeps machine modes non-interactive while giving TTY users one recovery listing.
 func handleProcessDefinitionSelectorValidationError(cmd *cobra.Command, log *slog.Logger, noErrCodes bool, cli process.API, result processDefinitionSelectorValidationResult) {
 	err := processDefinitionSelectorValidationError(result)
 	if err == nil {
@@ -171,6 +173,7 @@ func handleProcessDefinitionSelectorValidationError(cmd *cobra.Command, log *slo
 	os.Exit(ferrors.ResolveExitCode(noErrCodes, err))
 }
 
+// processDefinitionSelectorRecovery reuses existing process-definition list rendering instead of introducing a second diagnostic format.
 func processDefinitionSelectorRecovery(cmd *cobra.Command, cli process.API, result processDefinitionSelectorValidationResult) error {
 	prompt := "List visible process definitions?"
 	if result.HasNearMatches() {
@@ -191,6 +194,7 @@ func processDefinitionSelectorRecovery(cmd *cobra.Command, cli process.API, resu
 	return nil
 }
 
+// processDefinitionSelectorPromptAllowed is stricter than normal confirmation because selector diagnostics must never surprise pipelines with listings.
 func processDefinitionSelectorPromptAllowed(cmd *cobra.Command) bool {
 	if cmd == nil || flagCmdAutoConfirm || flagViewAsJson || flagViewKeysOnly || automationModeEnabled(cmd) {
 		return false
@@ -307,6 +311,7 @@ func normalizeSelectorBpmnProcessIDs(ids []string) []string {
 	return out
 }
 
+// confirmCmdOrAbortDefaultYes is scoped to selector recovery; command launch behavior still uses the shared confirmation helpers.
 func confirmCmdOrAbortDefaultYes(autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil

@@ -61,6 +61,7 @@ func variableEnrichedProcessInstancesWithAgeMeta(resp process.VariableEnrichedPr
 	}
 }
 
+// processInstanceVariableHumanLine keeps values one-line while preserving explicit API/CLI truncation markers.
 func processInstanceVariableHumanLine(variable process.ProcessInstanceVariable) string {
 	value := compactProcessInstanceVariableValue(variable.Value)
 	value, cliTruncated := truncateProcessInstanceVariableHumanValue(value, flagGetPIVarValueLimit)

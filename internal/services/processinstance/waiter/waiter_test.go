@@ -38,6 +38,7 @@ func (s stubPIWaiter) GetProcessInstanceStateByKey(ctx context.Context, key stri
 	return s.getStateByKey(ctx, key)
 }
 
+// Incident=true requires polling full PI details because the state endpoint cannot prove the incident marker.
 func TestWaitForProcessInstanceExpectation_IncidentTrueWaitsAcrossPolling(t *testing.T) {
 	t.Parallel()
 
@@ -74,6 +75,7 @@ func TestWaitForProcessInstanceExpectation_IncidentTrueWaitsAcrossPolling(t *tes
 	assert.Equal(t, d.ProcessInstance{Key: "123", State: d.StateActive, Incident: true}, pi)
 }
 
+// Missing process instances must keep retrying for incident=false instead of being treated as incident-free.
 func TestWaitForProcessInstanceExpectation_IncidentFalseRequiresPresentInstance(t *testing.T) {
 	t.Parallel()
 
@@ -105,6 +107,7 @@ func TestWaitForProcessInstanceExpectation_IncidentFalseRequiresPresentInstance(
 	assert.Equal(t, d.ProcessInstance{}, pi)
 }
 
+// Combined expectations protect against separately observed state and incident matches on different polls.
 func TestWaitForProcessInstanceExpectation_StateAndIncidentCompatibility(t *testing.T) {
 	t.Run("requires state and incident to match on the same present instance", func(t *testing.T) {
 		t.Parallel()

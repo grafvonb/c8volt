@@ -43,6 +43,7 @@ func WaitForProcessInstancesState(ctx context.Context, s PIWaiter, cfg *config.C
 	return r, err
 }
 
+// WaitForProcessInstancesExpectation fans out combined expectations while preserving the existing worker/fail-fast controls.
 func WaitForProcessInstancesExpectation(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, keys typex.Keys, request d.ProcessInstanceExpectationRequest, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	ukeys := keys.Unique()
@@ -58,6 +59,7 @@ func WaitForProcessInstancesExpectation(ctx context.Context, s PIWaiter, cfg *co
 	return d.ProcessInstanceExpectationResponses{Items: rs}, err
 }
 
+// WaitForProcessInstanceExpectation delegates state-only waits to the legacy path and fetches full instances only when incident state is needed.
 func WaitForProcessInstanceExpectation(ctx context.Context, s PIWaiter, cfg *config.Config, log *slog.Logger, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
 	if request.Incident == nil {
 		sr, pi, err := WaitForProcessInstanceState(ctx, s, cfg, log, key, request.States, opts...)
@@ -247,6 +249,7 @@ func incidentExpectationMatches(pi d.ProcessInstance, present bool, desired *boo
 	if desired == nil {
 		return true
 	}
+	// Missing instances never satisfy incident=false; absence is state semantics, not incident-free evidence.
 	return present && pi.Incident == *desired
 }
 

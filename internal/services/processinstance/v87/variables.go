@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// SearchProcessInstanceVariables uses Operate for v8.7 so variable inspection stays available before the v2 endpoint exists.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using operate client", key))

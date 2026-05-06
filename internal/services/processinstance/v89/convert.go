@@ -76,6 +76,7 @@ func fromVariableSearchResult(r variableSearchResult) d.ProcessInstanceVariable 
 	}
 }
 
+// decodeSearchVariablesResponse reads raw JSON because the generated v8.9 model drops value and truncation fields.
 func decodeSearchVariablesResponse(body []byte, page *camundav89.VariableSearchQueryResult) (variableSearchQueryResult, error) {
 	if len(bytesTrimSpace(body)) == 0 {
 		return variableSearchQueryResult{}, d.ErrMalformedResponse
@@ -90,6 +91,7 @@ func decodeSearchVariablesResponse(body []byte, page *camundav89.VariableSearchQ
 	return result, nil
 }
 
+// variableAPITruncated accepts both observed field names so older and newer API payloads keep the same display contract.
 func variableAPITruncated(r variableSearchResult) bool {
 	if r.IsTruncated != nil {
 		return *r.IsTruncated

@@ -276,6 +276,7 @@ func (e IncidentExpectation) Bool() bool {
 	return bool(e)
 }
 
+// ParseIncidentExpectation accepts only the CLI contract values so invalid input fails before waiting starts.
 func ParseIncidentExpectation(in string) (IncidentExpectation, error) {
 	switch in {
 	case "true":
@@ -287,6 +288,7 @@ func ParseIncidentExpectation(in string) (IncidentExpectation, error) {
 	}
 }
 
+// ValidIncidentExpectationStrings keeps help, validation, and tests aligned on the public boolean surface.
 func ValidIncidentExpectationStrings() []string {
 	return []string{"true", "false"}
 }

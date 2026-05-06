@@ -87,6 +87,7 @@ func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *te
 	require.Equal(t, 1, latestCalls)
 }
 
+// This protects the preflight contract that a mixed visible/missing selector reports all misses without hiding valid matches.
 func TestProcessDefinitionSelectorValidation_CollectsMissingSelectors(t *testing.T) {
 	cli := stubProcessAPI{
 		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
@@ -108,6 +109,7 @@ func TestProcessDefinitionSelectorValidation_CollectsMissingSelectors(t *testing
 	require.Contains(t, result.MatchesByBpmnProcessID, "visible")
 }
 
+// Version/tag misses get a second broad lookup so interactive recovery can show nearby definitions.
 func TestProcessDefinitionSelectorValidation_SearchesByIDOnlyWhenVersionSelectorMisses(t *testing.T) {
 	var gotFilters []process.ProcessDefinitionFilter
 	cli := stubProcessAPI{
@@ -144,6 +146,7 @@ func TestProcessDefinitionSelectorValidation_SearchesByIDOnlyWhenVersionSelector
 	require.Equal(t, "pd-order-v2", result.NearMatchesByBpmnProcessID["order"].Items[0].Key)
 }
 
+// Machine diagnostics intentionally stay compact and single-line for stderr and JSON envelopes.
 func TestProcessDefinitionSelectorMissingFormatting_UsesSingleLineBracketedSelectors(t *testing.T) {
 	result := processDefinitionSelectorValidationResult{
 		Request: processDefinitionSelectorValidationRequest{
@@ -207,6 +210,7 @@ func TestProcessDefinitionSelectorNoPromptError_ReturnsNilForValidResult(t *test
 	require.NoError(t, processDefinitionSelectorNoPromptError(processDefinitionSelectorValidationResult{}))
 }
 
+// Interactive diagnostics may offer recovery, but the primary error must remain terse and parseable.
 func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersListing(t *testing.T) {
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
@@ -235,6 +239,7 @@ func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersLis
 	require.NotContains(t, prompt, "\n\n")
 }
 
+// Multiple misses use one prompt and one compact error instead of printing a help-style explanation per selector.
 func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffersListing(t *testing.T) {
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
@@ -263,6 +268,7 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 	require.NotContains(t, prompt, "\n\n")
 }
 
+// Non-human modes must fail without launching the recovery listing path.
 func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotPrompt(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -318,6 +324,7 @@ func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotProm
 	}
 }
 
+// Accepted recovery prompts reuse the normal process-definition table so users see familiar rows.
 func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefinitions(t *testing.T) {
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
@@ -364,6 +371,7 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 	require.Contains(t, output.String(), "found: 2")
 }
 
+// Near-match recovery uses the validation result instead of issuing another broad listing request.
 func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsNearMatches(t *testing.T) {
 	resetProcessDefinitionSelectorPromptTestState(t)
 	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }

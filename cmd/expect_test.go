@@ -141,6 +141,7 @@ func TestExpectProcessInstanceCommand_DashDoesNotRequireKeyFlag(t *testing.T) {
 	require.NotContains(t, string(output), `required flag(s) "key" not set`)
 }
 
+// Dash input remains the pipeline contract for incident waits; --key must not become mandatory again.
 func TestExpectProcessInstanceCommand_IncidentDashReadsKeysFromStdin(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +213,7 @@ apis:
 	require.Contains(t, string(output), "2251799813685255")
 }
 
+// Incident waits must poll the full process instance until the marker changes, not only inspect state.
 func TestExpectProcessInstanceCommand_IncidentTrueWaitsUntilMatched(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +253,7 @@ apis:
 	require.Contains(t, output, `"ok": true`)
 }
 
+// Incident=false is only satisfied by a present instance, which keeps missing instances from looking healthy.
 func TestExpectProcessInstanceCommand_IncidentFalseSucceedsForPresentIncidentFreeInstance(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +293,7 @@ apis:
 	require.Contains(t, output, `"ok": true`)
 }
 
+// State and incident expectations must match on the same poll result.
 func TestExpectProcessInstanceCommand_StateAndIncidentWaitUntilBothMatch(t *testing.T) {
 	var attempts atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

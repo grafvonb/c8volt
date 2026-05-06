@@ -15,6 +15,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// SearchProcessInstanceVariables requests untruncated process-scope values so human limits stay a display choice.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using generated camunda client", key))

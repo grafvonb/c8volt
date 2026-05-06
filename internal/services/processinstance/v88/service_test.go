@@ -1066,6 +1066,7 @@ func TestService_TraversalResults(t *testing.T) {
 	})
 }
 
+// Variable lookup must request process-scope values and decode fields missing from the generated model.
 func TestService_SearchProcessInstanceVariables_UsesProcessInstanceAndScopeFilters(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestService(t, testConfig(), &mockCamundaClient{

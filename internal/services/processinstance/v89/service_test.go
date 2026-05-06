@@ -379,6 +379,7 @@ func TestService_SearchProcessInstanceIncidents(t *testing.T) {
 	assert.Equal(t, "root-123", incidents[0].RootProcessInstanceKey)
 }
 
+// Variable lookup must request process-scope values and decode fields missing from the generated model.
 func TestService_SearchProcessInstanceVariables_UsesProcessInstanceAndScopeFilters(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestService(t, testConfig(), &mockCamundaClient{

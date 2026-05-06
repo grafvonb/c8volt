@@ -144,6 +144,7 @@ func (c *client) WaitForProcessInstancesState(ctx context.Context, keys types.Ke
 	return srs, nil
 }
 
+// WaitForProcessInstancesExpectation keeps bulk incident waits on the same unique-key and worker path as state waits.
 func (c *client) WaitForProcessInstancesExpectation(ctx context.Context, keys types.Keys, request ProcessInstanceExpectationRequest, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceExpectationReports, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()

@@ -112,6 +112,7 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+// A missing BPMN selector should fail before process-instance search can masquerade as a real empty result.
 func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +141,7 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	require.NotContains(t, string(output), "found: 0")
 }
 
+// Visible definitions with no instances still use the normal empty-list path.
 func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +172,7 @@ func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 	require.Equal(t, "found: 0\n", output)
 }
 
+// Selector preflight must use the same version, tag, and tenant context as the PI search itself.
 func TestGetProcessInstanceBpmnSelectorValidationIncludesVersionTagAndTenant(t *testing.T) {
 	var pdSearchBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -599,6 +602,7 @@ func TestGetProcessInstanceListWithVars_HumanOutputShowsProcessScopeVariables(t 
 	require.Less(t, strings.Index(output, "zeta=2"), strings.Index(output, "124 tenant demo-b"))
 }
 
+// Combined enrichment keeps variables before incidents so runtime context leads the failure detail.
 func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSections(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1207,6 +1211,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
+// Keyed variable lookup is limited to process-scope variables and preserves the normal PI row.
 func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(t *testing.T) {
 	var requests []string
 	var variableBodies []map[string]any
@@ -1302,6 +1307,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
+// JSON enrichment keeps variable metadata stable for automation even when human output has compact formatting.
 func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1355,6 +1361,7 @@ func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetada
 	require.Equal(t, false, zeta["apiTruncated"])
 }
 
+// Human value limits must not alter the received API value in machine-readable output.
 func TestGetProcessInstanceWithVars_JSONOutputKeepsReceivedValuesWhenVarValueLimitSet(t *testing.T) {
 	fullValue := "abcdefghijklmnopqrstuvwxyz"
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
