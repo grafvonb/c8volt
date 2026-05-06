@@ -72,6 +72,16 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			if !hasPISearchFilterFlags() {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to delete"))
 			}
+			if err := validatePISearchVersionSupport(cfg); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if err := processDefinitionSelectorValidationError(cmd, cli, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)
 			if err != nil {

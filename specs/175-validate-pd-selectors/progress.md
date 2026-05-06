@@ -5,6 +5,9 @@ Started: 2026-05-06 12:15:57
 
 ## Codebase Patterns
 
+- `cancel pi` and `delete pi` search-selected paths now run `validatePISearchVersionSupport` before process-definition selector preflight so Camunda 8.7 unsupported date-filter errors stay local and avoid network calls.
+- Mutating process-instance selector guards live at the start of the keyless search branch, after sufficient-filter validation and before `populatePISearchFilterOpts`, preserving keyed `--key` paths and non-BPMN searches.
+- Shared process-instance command tests that use `newProcessInstanceSearchCaptureServerWithResponses` now provide a visible `order-process` process-definition response while continuing to capture only process-instance search request bodies.
 - Process-definition selector failures now route through `processDefinitionSelectorValidationError`, which keeps the existing local-precondition error text but can optionally ask interactive human users whether to list visible process definitions.
 - Selector listing prompt eligibility is stricter than shared confirmation: it is disabled for `--auto-confirm`, `--json`, `--keys-only`, `--automation`, and non-TTY stdin/stdout as checked by `processDefinitionSelectorInteractiveTerminalFn`.
 - Accepted selector listing prompts search visible process definitions with an empty `process.ProcessDefinitionFilter` and render through `listProcessDefinitionsView`, preserving the existing flat process-definition rows and `found: <n>` summary.
@@ -113,4 +116,32 @@ Started: 2026-05-06 12:15:57
 - Recovery listing should reuse the existing process-definition flat list renderer directly instead of duplicating output formatting.
 - Prompt eligibility needs its own TTY hook because the shared confirmation helper auto-confirms non-TTY stdin, which would make recovery listing unsafe for piped or automated execution.
 - `--auto-confirm` should suppress selector recovery prompts so unattended commands do not emit extra listing output after validation failures.
+---
+
+---
+## Iteration 5 - 2026-05-06 12:40:08 CEST
+**User Story**: User Story 3 - Guard Mutating Process-Instance Commands
+**Tasks Completed**:
+- [x] T028: Add `cancel pi --bpmn-process-id <missing>` validation test in `cmd/cancel_test.go`
+- [x] T029: Add `delete pi --bpmn-process-id <missing>` validation test in `cmd/delete_test.go`
+- [x] T030: Add tests proving visible process definition with zero matching process instances preserves existing searched no-op behavior in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T031: Invoke shared selector validation before `cancel pi` search-selected paging when `--bpmn-process-id` is set in `cmd/cancel_processinstance.go`
+- [x] T032: Invoke shared selector validation before `delete pi` search-selected paging when `--bpmn-process-id` is set in `cmd/delete_processinstance.go`
+- [x] T033: Verify keyed `--key` cancellation/deletion paths and non-BPMN searches remain unchanged in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T034: Run targeted `cancel`/`delete` selector validation tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cancel_processinstance.go
+- cmd/cancel_test.go
+- cmd/cmd_processinstance_test.go
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/get_processinstance.go
+- specs/175-validate-pd-selectors/tasks.md
+- specs/175-validate-pd-selectors/progress.md
+**Learnings**:
+- Capability checks that previously came from process-instance search services must happen before selector preflight, otherwise unsupported Camunda 8.7 date-filter runs can fail on process-definition network validation first.
+- Search-selected mutation tests need a visible process-definition fixture whenever `--bpmn-process-id` is part of the command under test.
+- `--auto-confirm` is useful in missing-selector subprocess tests because it guarantees the recovery listing prompt stays suppressed while still exercising command-level validation.
 ---

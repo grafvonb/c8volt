@@ -75,6 +75,16 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if !hasPISearchFilterFlags() {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
+			if err := validatePISearchVersionSupport(cfg); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if err := processDefinitionSelectorValidationError(cmd, cli, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))

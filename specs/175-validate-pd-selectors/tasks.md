@@ -98,16 +98,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add `cancel pi --bpmn-process-id <missing>` validation test in `cmd/cancel_test.go`
-- [ ] T029 [P] [US3] Add `delete pi --bpmn-process-id <missing>` validation test in `cmd/delete_test.go`
-- [ ] T030 [P] [US3] Add tests proving visible process definition with zero matching process instances preserves existing searched no-op behavior in `cmd/cancel_test.go` and `cmd/delete_test.go`
+- [x] T028 [P] [US3] Add `cancel pi --bpmn-process-id <missing>` validation test in `cmd/cancel_test.go`
+- [x] T029 [P] [US3] Add `delete pi --bpmn-process-id <missing>` validation test in `cmd/delete_test.go`
+- [x] T030 [P] [US3] Add tests proving visible process definition with zero matching process instances preserves existing searched no-op behavior in `cmd/cancel_test.go` and `cmd/delete_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Invoke shared selector validation before `cancel pi` search-selected paging when `--bpmn-process-id` is set in `cmd/cancel_processinstance.go`
-- [ ] T032 [US3] Invoke shared selector validation before `delete pi` search-selected paging when `--bpmn-process-id` is set in `cmd/delete_processinstance.go`
-- [ ] T033 [US3] Verify keyed `--key` cancellation/deletion paths and non-BPMN searches remain unchanged in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
-- [ ] T034 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Cancel|Delete).*ProcessDefinitionSelector|Test(Cancel|Delete).*Bpmn' -count=1` and fix regressions
+- [x] T031 [US3] Invoke shared selector validation before `cancel pi` search-selected paging when `--bpmn-process-id` is set in `cmd/cancel_processinstance.go`
+- [x] T032 [US3] Invoke shared selector validation before `delete pi` search-selected paging when `--bpmn-process-id` is set in `cmd/delete_processinstance.go`
+- [x] T033 [US3] Verify keyed `--key` cancellation/deletion paths and non-BPMN searches remain unchanged in `cmd/cancel_processinstance.go` and `cmd/delete_processinstance.go`
+- [x] T034 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Cancel|Delete).*ProcessDefinitionSelector|Test(Cancel|Delete).*Bpmn' -count=1` and fix regressions
 
 **Checkpoint**: User Story 3 is independently complete when mutating process-instance commands fail before mutation for missing BPMN selectors.
 
