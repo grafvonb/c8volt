@@ -38,6 +38,9 @@ for validation and template rendering.`,
 			ferrors.HandleAndExit(log, noErrCodes, normalizeBootstrapError(fmt.Errorf("loading configuration: %w", err)))
 		}
 		if !flagShowConfigTemplate {
+			configSource := configSourceDescriptionFromContext(cmd.Context())
+			log.Info(configSource.InfoMessage())
+
 			yCfg, err := cfg.ToSanitizedYAML()
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("marshaling configuration to YAML: %w", err))

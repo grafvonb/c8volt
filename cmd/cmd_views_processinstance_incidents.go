@@ -5,36 +5,39 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
-const indirectProcessTreeIncidentWarning = "no direct incidents on this process instance; check the process tree with walk pi --with-incidents"
+const (
+	indirectProcessTreeIncidentNote    = "process instance is marked as having incidents, but no direct incidents were found; inspect the process tree for child incident details"
+	indirectProcessTreeIncidentWarning = "warning: one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
+)
 
 // incidentEnrichedProcessInstancesView renders direct process-instance incident enrichment.
 func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedProcessInstancesWithAgeMeta(resp))
 	}
-	rows := make([]flatRow, 0, len(resp.Items))
-	for _, it := range resp.Items {
-		rows = append(rows, flatRowPI(it.Item))
-	}
-	lines := formatFlatRows(rows)
-	warnedIndirectIncident := false
-	for i, it := range resp.Items {
-		renderOutputLine(cmd, "%s", lines[i])
-		for _, incident := range it.Incidents {
-			renderOutputLine(cmd, "  %s", incidentHumanLine(incident))
-		}
-		if processInstanceHasIndirectIncidentMarker(it) && !warnedIndirectIncident {
-			renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
-			warnedIndirectIncident = true
-		}
+	needsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, activityFromIncidentEnriched(resp).Items)
+	if needsIndirectIncidentWarning {
+		renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
 	}
 	renderOutputLine(cmd, "found: %d", len(resp.Items))
 	return nil
+}
+
+func renderIncidentEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) (bool, error) {
+	return renderProcessInstanceActivityRows(cmd, activityFromIncidentEnriched(resp).Items), nil
+}
+
+func incidentTreeBranch(index, total int) string {
+	if index == total-1 {
+		return "└─ "
+	}
+	return "├─ "
 }
 
 type incidentEnrichedProcessInstancesJSONWithMeta struct {
@@ -66,11 +69,43 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 	return item.Item.Incident && len(item.Incidents) == 0
 }
 
-// incidentHumanLine formats a human-readable incident detail line with a stable incident key prefix.
+// incidentHumanLine formats a human-readable incident detail line with compact attributes.
 func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
 	}
-	return fmt.Sprintf("incident %s: %s", key, incident.ErrorMessage)
+	message := truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit)
+	fields := incidentHumanFields(incident, key)
+	return fmt.Sprintf("%s message=%s", fields, message)
+}
+
+func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {
+	fields := make([]string, 0, 5)
+	fields = append(fields, "key="+key)
+	if incident.FlowNodeId != "" {
+		fields = append(fields, "flowNodeId="+incident.FlowNodeId)
+	}
+	if incident.FlowNodeInstanceKey != "" {
+		fields = append(fields, "flowNodeInstanceKey="+incident.FlowNodeInstanceKey)
+	}
+	if incident.ErrorType != "" {
+		fields = append(fields, "errorType="+incident.ErrorType)
+	}
+	if incident.JobKey != "" {
+		fields = append(fields, "jobKey="+incident.JobKey)
+	}
+	return strings.Join(fields, " ")
+}
+
+// truncateIncidentHumanMessage applies the human-only incident message display limit.
+func truncateIncidentHumanMessage(message string, limit int) string {
+	if limit <= 0 {
+		return message
+	}
+	runes := []rune(message)
+	if len(runes) <= limit {
+		return message
+	}
+	return string(runes[:limit]) + "..."
 }

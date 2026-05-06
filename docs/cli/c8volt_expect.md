@@ -6,14 +6,14 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt expect
 
-Wait for process instances to reach a state
+Wait for process instances to satisfy expectations
 
 ### Synopsis
 
-Wait for process instances to reach a state.
+Wait for process instances to satisfy state or incident expectations.
 
 Use after run, cancel, or delete when success depends on an observed
-process-instance state.
+process-instance state or incident marker.
 
 ```
 c8volt expect [flags]
@@ -23,8 +23,10 @@ c8volt expect [flags]
 
 ```
   ./c8volt expect pi --key <process-instance-key> --state active
+  ./c8volt expect pi --key <process-instance-key> --incident true
+  ./c8volt expect pi --key <process-instance-key> --state active --incident false
   ./c8volt expect pi --key <process-instance-key> --state absent
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -
 ```
 
 ### Options
@@ -54,5 +56,5 @@ c8volt expect [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt expect process-instance](c8volt_expect_process-instance)	 - Wait for process instances to reach states
+* [c8volt expect process-instance](c8volt_expect_process-instance)	 - Wait for process instances to satisfy expectations
 

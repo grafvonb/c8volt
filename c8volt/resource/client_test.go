@@ -284,7 +284,15 @@ func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ..
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) EnrichProcessInstancesWithIncidents(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) EnrichProcessInstancesWithVariables(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error) {
 	panic("unexpected call")
 }
 
@@ -322,6 +330,10 @@ func (stubProcessAPI) FilterProcessInstanceWithOrphanParent(context.Context, []p
 }
 
 func (stubProcessAPI) WaitForProcessInstanceState(context.Context, string, process.States, ...options.FacadeOption) (process.StateReport, process.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) WaitForProcessInstanceExpectation(context.Context, string, process.ProcessInstanceExpectationRequest, ...options.FacadeOption) (process.ProcessInstanceExpectationReport, process.ProcessInstance, error) {
 	panic("unexpected call")
 }
 
@@ -371,6 +383,10 @@ func (stubProcessAPI) DeleteProcessInstances(context.Context, typex.Keys, int, .
 }
 
 func (stubProcessAPI) WaitForProcessInstancesState(context.Context, typex.Keys, process.States, int, ...options.FacadeOption) (process.StateReports, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) WaitForProcessInstancesExpectation(context.Context, typex.Keys, process.ProcessInstanceExpectationRequest, int, ...options.FacadeOption) (process.ProcessInstanceExpectationReports, error) {
 	panic("unexpected call")
 }
 

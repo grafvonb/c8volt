@@ -75,7 +75,11 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 
 func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	body, err := searchProcessDefinitionsRequest(common.EffectiveTenant(s.cfg), filter, size)
+	tenantID := common.EffectiveTenant(s.cfg)
+	if cCfg.IgnoreTenant {
+		tenantID = ""
+	}
+	body, err := searchProcessDefinitionsRequest(tenantID, filter, size)
 	if err != nil {
 		return nil, fmt.Errorf("building process definition search request: %w", err)
 	}

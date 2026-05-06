@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -288,4 +289,485 @@ func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.
 	incidents, ok := first["incidents"].([]any)
 	require.True(t, ok)
 	require.Len(t, incidents, 1)
+}
+
+func TestIncidentEnrichedProcessInstancesView_JSONKeepsFullMessagesAndAgeMeta(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	longMessage := "This incident message is intentionally long and must stay complete in JSON"
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.IncidentEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:       "2251799813758959",
+				StartDate: "2026-01-28T12:27:33.233Z",
+			},
+			Incidents: []process.ProcessInstanceIncidentDetail{{
+				IncidentKey:        "incident-123",
+				ProcessInstanceKey: "2251799813758959",
+				ErrorMessage:       longMessage,
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	ageDaysBy := requireJSONObject(t, meta["ageDaysByKey"])
+	require.Equal(t, float64(4), ageDaysBy["2251799813758959"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	incidents := requireJSONItems(t, first["incidents"], 1)
+	incident := requireJSONObject(t, incidents[0])
+	require.Equal(t, longMessage, incident["errorMessage"])
+}
+
+func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssociation(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 2,
+		Items: []process.IncidentEnrichedProcessInstance{
+			{
+				Item: process.ProcessInstance{
+					Key:            "123",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-a",
+					ProcessVersion: 3,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:00:00Z",
+					Incident:       true,
+				},
+				Incidents: []process.ProcessInstanceIncidentDetail{{
+					IncidentKey:        "incident-123",
+					ProcessInstanceKey: "123",
+					ErrorMessage:       "First key failed",
+				}},
+			},
+			{
+				Item: process.ProcessInstance{
+					Key:            "124",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-b",
+					ProcessVersion: 4,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:05:00Z",
+					Incident:       true,
+				},
+				Incidents: []process.ProcessInstanceIncidentDetail{{
+					IncidentKey:        "incident-124",
+					ProcessInstanceKey: "124",
+					ErrorMessage:       "Second key failed",
+				}},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
+	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 message=Second key failed")
+	require.Contains(t, output, "found: 2")
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
+	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "key=incident-124"))
+}
+
+func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVariables(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := variableEnrichedProcessInstancesView(cmd, process.VariableEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.VariableEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-03-23T18:00:00Z",
+				Incident:       true,
+			},
+			Variables: []process.ProcessInstanceVariable{
+				{Name: "alpha", Value: "1", ProcessInstanceKey: "123", ScopeKey: "123"},
+				{Name: "zeta", Value: "2", ProcessInstanceKey: "123", ScopeKey: "123"},
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "└─ vars:")
+	require.Contains(t, output, "├─ alpha=1")
+	require.Contains(t, output, "└─ zeta=2")
+	require.NotContains(t, output, "var alpha")
+	require.NotContains(t, output, "incidents:")
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
+	require.Less(t, strings.Index(output, "└─ vars:"), strings.Index(output, "alpha=1"))
+	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))
+	require.Less(t, strings.Index(output, "zeta=2"), strings.Index(output, "found: 1"))
+}
+
+func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := processInstanceActivityInstancesView(cmd, processInstanceActivityInstances{
+		Total: 1,
+		Items: []processInstanceActivityItem{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-03-23T18:00:00Z",
+				Incident:       true,
+			},
+			Variables: []process.ProcessInstanceVariable{{
+				Name:               "businessKey",
+				Value:              "2234809392328",
+				ProcessInstanceKey: "123",
+				ScopeKey:           "123",
+			}},
+			Incidents: []process.ProcessInstanceIncidentDetail{{
+				IncidentKey:         "incident-123",
+				ProcessInstanceKey:  "123",
+				FlowNodeId:          "task-a",
+				FlowNodeInstanceKey: "element-123",
+				ErrorType:           "IO_MAPPING_ERROR",
+				ErrorMessage:        "failed",
+			}},
+			ShowIncidents: true,
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "├─ vars:\n│  └─ businessKey=2234809392328")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=IO_MAPPING_ERROR message=failed")
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
+}
+
+func TestVariableEnrichedProcessInstancesView_JSONUsesSharedEnvelopeAndAgeMeta(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = true
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := variableEnrichedProcessInstancesView(cmd, process.VariableEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.VariableEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:       "2251799813758959",
+				StartDate: "2026-01-28T12:27:33.233Z",
+			},
+			Variables: []process.ProcessInstanceVariable{{
+				Name:               "customerId",
+				Value:              `"C-123"`,
+				VariableKey:        "901",
+				ProcessInstanceKey: "2251799813758959",
+				ScopeKey:           "2251799813758959",
+				TenantId:           "tenant-a",
+				APITruncated:       true,
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	meta := requireJSONObject(t, payload["meta"])
+	require.Equal(t, true, meta["withAge"])
+	ageDaysBy := requireJSONObject(t, meta["ageDaysByKey"])
+	require.Equal(t, float64(4), ageDaysBy["2251799813758959"])
+	items := requireJSONItems(t, payload["items"], 1)
+	first := requireJSONObject(t, items[0])
+	variables := requireJSONItems(t, first["variables"], 1)
+	variable := requireJSONObject(t, variables[0])
+	require.Equal(t, `"C-123"`, variable["value"])
+	require.Equal(t, true, variable["apiTruncated"])
+}
+
+func TestProcessInstanceVariableHumanLine_CompactsJSONLikeObjectsAndArrays(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	flagGetPIVarValueLimit = 0
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	require.Equal(t, `order={"id":"O-9","amount":42}`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "order",
+		Value: "{\n  \"id\": \"O-9\",\n  \"amount\": 42\n}",
+	}))
+	require.Equal(t, `items=[{"sku":"A"},{"sku":"B"}]`, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "items",
+		Value: "[\n  {\"sku\": \"A\"},\n  {\"sku\": \"B\"}\n]",
+	}))
+}
+
+func TestProcessInstanceVariableHumanLine_DoesNotShortenWhenLimitUnsetOrZero(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	longValue := strings.Repeat("a", 120)
+	flagGetPIVarValueLimit = 0
+	require.Equal(t, "payload="+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "payload",
+		Value: longValue,
+	}))
+
+	flagGetPIVarValueLimit = -1
+	require.Equal(t, "payload="+longValue, processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "payload",
+		Value: longValue,
+	}))
+}
+
+func TestProcessInstanceVariableHumanLine_AppliesCharacterSafeLimitAndCliTruncatedLabel(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	flagGetPIVarValueLimit = 3
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	got := processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:  "payload",
+		Value: "äöüabc",
+	})
+
+	require.Equal(t, "payload=äöü... [cli-truncated]", got)
+}
+
+func TestProcessInstanceVariableHumanLine_RendersAPIAndCombinedTruncationLabels(t *testing.T) {
+	prevLimit := flagGetPIVarValueLimit
+	t.Cleanup(func() {
+		flagGetPIVarValueLimit = prevLimit
+	})
+
+	flagGetPIVarValueLimit = 0
+	require.Equal(t, "payload=abc [api-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:         "payload",
+		Value:        "abc",
+		APITruncated: true,
+	}))
+
+	flagGetPIVarValueLimit = 3
+	require.Equal(t, "payload=abc... [api-truncated,cli-truncated]", processInstanceVariableHumanLine(process.ProcessInstanceVariable{
+		Name:         "payload",
+		Value:        "abcdef",
+		APITruncated: true,
+	}))
+}
+
+func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
+	prevLimit := flagGetPIIncidentMessageLimit
+	flagGetPIIncidentMessageLimit = 0
+	t.Cleanup(func() {
+		flagGetPIIncidentMessageLimit = prevLimit
+	})
+
+	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
+		IncidentKey:         "incident-123",
+		ErrorMessage:        "No retries left",
+		FlowNodeId:          "task-a",
+		FlowNodeInstanceKey: "element-123",
+		ErrorType:           "JOB_NO_RETRIES",
+		JobKey:              "job-123",
+	})
+
+	require.Equal(t, "key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
+	require.NotContains(t, got, "incident incident-123:")
+}
+
+func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkerRendersRowNote(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 1,
+		Items: []process.IncidentEnrichedProcessInstance{{
+			Item: process.ProcessInstance{
+				Key:            "123",
+				TenantId:       "tenant",
+				BpmnProcessId:  "demo",
+				ProcessVersion: 3,
+				State:          process.StateActive,
+				StartDate:      "2026-03-23T18:00:00Z",
+				Incident:       true,
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "└─ "+indirectProcessTreeIncidentNote)
+	require.Contains(t, output, indirectProcessTreeIncidentWarning)
+	require.Contains(t, output, "found: 1")
+	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(output, "└─ "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 1"))
+}
+
+func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkersRenderMultipleNotesAndOneWarning(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := incidentEnrichedProcessInstancesView(cmd, process.IncidentEnrichedProcessInstances{
+		Total: 2,
+		Items: []process.IncidentEnrichedProcessInstance{
+			{
+				Item: process.ProcessInstance{
+					Key:            "123",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-a",
+					ProcessVersion: 3,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:00:00Z",
+					Incident:       true,
+				},
+			},
+			{
+				Item: process.ProcessInstance{
+					Key:            "124",
+					TenantId:       "tenant",
+					BpmnProcessId:  "demo-b",
+					ProcessVersion: 4,
+					State:          process.StateActive,
+					StartDate:      "2026-03-23T18:05:00Z",
+					Incident:       true,
+				},
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	output := buf.String()
+	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
+	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
+	require.Equal(t, 2, strings.Count(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Equal(t, 1, strings.Count(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.LastIndex(output, "└─ "+indirectProcessTreeIncidentNote))
+	require.Less(t, strings.LastIndex(output, "└─ "+indirectProcessTreeIncidentNote), strings.Index(output, indirectProcessTreeIncidentWarning))
+	require.Less(t, strings.Index(output, indirectProcessTreeIncidentWarning), strings.Index(output, "found: 2"))
+}
+
+func TestTruncateIncidentHumanMessage(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+		limit   int
+		want    string
+	}{
+		{
+			name:    "unlimited",
+			message: "No retries left",
+			limit:   0,
+			want:    "No retries left",
+		},
+		{
+			name:    "exact limit",
+			message: "No retries left",
+			limit:   15,
+			want:    "No retries left",
+		},
+		{
+			name:    "truncated",
+			message: "No retries left",
+			limit:   2,
+			want:    "No...",
+		},
+		{
+			name:    "multi-byte",
+			message: "äöü failed",
+			limit:   2,
+			want:    "äö...",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, truncateIncidentHumanMessage(tt.message, tt.limit))
+		})
+	}
 }

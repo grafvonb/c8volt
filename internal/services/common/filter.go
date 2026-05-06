@@ -31,6 +31,13 @@ func NewProcessInstanceKeyEqFilterPtr(v string) (*camundav88.ProcessInstanceKeyF
 	return newFilterPtr(v, (*camundav88.ProcessInstanceKeyFilterProperty).FromProcessInstanceKeyFilterProperty0)
 }
 
+func NewScopeKeyEqFilterPtr(v string) (*camundav88.ScopeKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	return newFilterPtr(v, (*camundav88.ScopeKeyFilterProperty).FromScopeKeyFilterProperty0)
+}
+
 func NewProcessInstanceKeyExistsFilterPtr(exists *bool) (*camundav88.ProcessInstanceKeyFilterProperty, error) {
 	if exists == nil {
 		return nil, nil

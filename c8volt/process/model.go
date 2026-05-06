@@ -3,7 +3,12 @@
 
 package process
 
-import "github.com/grafvonb/c8volt/toolx"
+import (
+	"fmt"
+
+	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/toolx"
+)
 
 type ProcessDefinition struct {
 	BpmnProcessId     string                       `json:"bpmnProcessId,omitempty"`
@@ -84,6 +89,16 @@ type ProcessInstanceIncidentDetail struct {
 	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
 }
 
+type ProcessInstanceVariable struct {
+	Name               string `json:"name"`
+	Value              string `json:"value"`
+	VariableKey        string `json:"variableKey,omitempty"`
+	ProcessInstanceKey string `json:"processInstanceKey"`
+	ScopeKey           string `json:"scopeKey"`
+	TenantId           string `json:"tenantId,omitempty"`
+	APITruncated       bool   `json:"apiTruncated"`
+}
+
 type IncidentEnrichedProcessInstance struct {
 	Item      ProcessInstance                 `json:"item"`
 	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`
@@ -92,6 +107,16 @@ type IncidentEnrichedProcessInstance struct {
 type IncidentEnrichedProcessInstances struct {
 	Total int32                             `json:"total"`
 	Items []IncidentEnrichedProcessInstance `json:"items"`
+}
+
+type VariableEnrichedProcessInstance struct {
+	Item      ProcessInstance           `json:"item"`
+	Variables []ProcessInstanceVariable `json:"variables"`
+}
+
+type VariableEnrichedProcessInstances struct {
+	Total int32                             `json:"total"`
+	Items []VariableEnrichedProcessInstance `json:"items"`
 }
 
 type IncidentEnrichedTraversalItem struct {
@@ -238,4 +263,61 @@ type StateReport struct {
 
 type StateReports struct {
 	Items []StateReport `json:"items,omitempty"`
+}
+
+type IncidentExpectation bool
+
+const (
+	IncidentExpectationFalse IncidentExpectation = false
+	IncidentExpectationTrue  IncidentExpectation = true
+)
+
+func (e IncidentExpectation) Bool() bool {
+	return bool(e)
+}
+
+// ParseIncidentExpectation accepts only the CLI contract values so invalid input fails before waiting starts.
+func ParseIncidentExpectation(in string) (IncidentExpectation, error) {
+	switch in {
+	case "true":
+		return IncidentExpectationTrue, nil
+	case "false":
+		return IncidentExpectationFalse, nil
+	default:
+		return false, fmt.Errorf("%w: %s", ferr.ErrInvalidInput, in)
+	}
+}
+
+// ValidIncidentExpectationStrings keeps help, validation, and tests aligned on the public boolean surface.
+func ValidIncidentExpectationStrings() []string {
+	return []string{"true", "false"}
+}
+
+type ProcessInstanceExpectationRequest struct {
+	States   States               `json:"states,omitempty"`
+	Incident *IncidentExpectation `json:"incident,omitempty"`
+}
+
+func (r ProcessInstanceExpectationRequest) HasExpectations() bool {
+	return len(r.States) > 0 || r.Incident != nil
+}
+
+type ProcessInstanceExpectationReport struct {
+	Key      string               `json:"key,omitempty"`
+	Ok       bool                 `json:"ok,omitempty"`
+	State    State                `json:"state,omitempty"`
+	Incident *IncidentExpectation `json:"incident,omitempty"`
+	Status   string               `json:"status,omitempty"`
+}
+
+func (r ProcessInstanceExpectationReport) OK() bool {
+	return r.Ok
+}
+
+type ProcessInstanceExpectationReports struct {
+	Items []ProcessInstanceExpectationReport `json:"items,omitempty"`
+}
+
+func (r ProcessInstanceExpectationReports) Totals() (total int, oks int, noks int) {
+	return TotalsOf(r.Items)
 }

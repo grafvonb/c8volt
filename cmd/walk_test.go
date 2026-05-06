@@ -84,8 +84,10 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 		"By default, walk shows the full process-instance family as an ASCII tree",
 		"returns the partial tree plus a warning",
 		"./c8volt walk pi --key 2251799813711967 --with-incidents",
+		"./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80",
 	}, nil)
 	require.Contains(t, output, "--flat")
+	require.Contains(t, output, "--incident-message-limit int")
 	require.NotContains(t, output, "--tree")
 	require.NotContains(t, output, "--family")
 }
@@ -107,6 +109,27 @@ func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), `required flag(s) "key" not set`)
 	require.NotContains(t, buf.String(), "127.0.0.1:1")
+}
+
+func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
+	prevLimit := flagGetPIIncidentMessageLimit
+	flagGetPIIncidentMessageLimit = 0
+	t.Cleanup(func() {
+		flagGetPIIncidentMessageLimit = prevLimit
+	})
+
+	var out strings.Builder
+	writeIncidentLines(&out, "  ", []process.ProcessInstanceIncidentDetail{{
+		IncidentKey:         "incident-1",
+		ErrorMessage:        "Root job failed",
+		FlowNodeId:          "task-a",
+		FlowNodeInstanceKey: "element-123",
+		ErrorType:           "JOB_NO_RETRIES",
+		JobKey:              "job-123",
+	}})
+
+	require.Equal(t, "\n  └─ key=incident-1 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=Root job failed", out.String())
+	require.NotContains(t, out.String(), "incident incident-1:")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsIncident renders incident keys under child-walk rows.
@@ -140,12 +163,112 @@ func TestWalkProcessInstanceCommand_WithIncidentsChildrenHumanOutputShowsInciden
 		"--key", "123",
 		"--children",
 		"--with-incidents",
+		"--incident-message-limit", "7",
 	)
 
 	require.Equal(t, []string{"/v2/process-instances/123/incidents/search"}, incidentRequests)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "  incident incident-1: Root job failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-1 errorType=JOB_NO_RETRIES message=Root jo...")
+	require.NotContains(t, output, "Root job failed")
+}
+
+func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShowsGroupedSections(t *testing.T) {
+	var requests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/123/incidents/search":
+			_, _ = w.Write([]byte(walkedIncidentDetailsJSON(t, "123", "Root job failed")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
+			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
+			_, _ = w.Write([]byte(`{"items":[{"name":"businessKey","value":"2234809392328","variableKey":"901","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"},{"name":"hasIncident","value":"true","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-vars",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/123/incidents/search",
+		"POST /v2/variables/search",
+	}, requests)
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "├─ vars:")
+	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
+	require.Contains(t, output, "│  └─ hasIncident=true")
+	require.Contains(t, output, "└─ incidents:")
+	require.Contains(t, output, "   └─ key=incident-1 errorType=JOB_NO_RETRIES message=Root job failed")
+	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
+}
+
+func TestWalkProcessInstanceCommand_WithVarsOnlyDoesNotShowIncidentSectionForIncidentMarker(t *testing.T) {
+	var requests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
+			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
+			_, _ = w.Write([]byte(`{"items":[{"name":"hasIncident","value":"true","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case strings.Contains(r.URL.Path, "/incidents/search"):
+			t.Fatalf("incident lookup should not run without --with-incidents: %s %s", r.Method, r.URL.Path)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-vars",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/search",
+		"POST /v2/variables/search",
+	}, requests)
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "└─ vars:")
+	require.Contains(t, output, "   └─ hasIncident=true")
+	require.NotContains(t, output, "incidents:")
+	require.NotContains(t, output, "process instance is marked as having incidents")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents keeps incidents attached to their walked owners.
@@ -196,9 +319,9 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleI
 	}, incidentRequests)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "124")
-	require.Contains(t, output, "  incident incident-1: Root failed")
-	require.Contains(t, output, "  incident incident-1: Child failed")
-	require.Contains(t, output, "  incident incident-2: Child timed out")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
+	require.Contains(t, output, "└─ incidents:\n   ├─ key=incident-1 errorType=JOB_NO_RETRIES message=Child failed")
+	require.Contains(t, output, "└─ key=incident-2 errorType=JOB_NO_RETRIES message=Child timed out")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentLinesWhenNoneReturned avoids implying missing details exist.
@@ -240,7 +363,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsParentHumanOutputOmitsIncidentL
 	}, incidentRequests)
 	require.Contains(t, output, "124")
 	require.Contains(t, output, "123")
-	require.NotContains(t, output, "  incident ")
+	require.NotContains(t, output, "  inc ")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsJSONOutputShowsIncidentDetails preserves incident details in traversal JSON.
@@ -473,7 +596,7 @@ func TestWalkProcessInstanceCommand_DefaultChildrenHumanOutputUnchangedWithoutWi
 	child := walkedProcessInstanceModel("124", "123", false)
 	require.Equal(t, oneLinePI(root)+" → \n"+oneLinePI(child)+"\n", output)
 	require.Zero(t, incidentRequests)
-	require.NotContains(t, output, "  incident ")
+	require.NotContains(t, output, "  inc ")
 }
 
 // TestWalkProcessInstanceCommand_DefaultJSONOutputUnchangedWithoutWithIncidents protects the default traversal JSON shape.
@@ -564,7 +687,7 @@ func TestWalkProcessInstanceCommand_DefaultFamilyTreeLayoutUnchangedWithoutWithI
 	firstChild := walkedProcessInstanceModel("124", "123", false)
 	secondChild := walkedProcessInstanceModel("125", "123", false)
 	require.Equal(t, oneLinePI(root)+"\n"+"├─ "+oneLinePI(firstChild)+"\n"+"└─ "+oneLinePI(secondChild)+"\n", output)
-	require.NotContains(t, output, "  incident ")
+	require.NotContains(t, output, "  inc ")
 }
 
 // TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUnderMatchingNode preserves tree ownership and indentation.
@@ -605,10 +728,12 @@ func TestWalkProcessInstanceCommand_WithIncidentsFamilyTreeOutputShowsIncidentUn
 	)
 
 	require.Contains(t, output, "123")
-	require.Contains(t, output, "  incident incident-1: Root failed")
+	require.Contains(t, output, "├─ incidents:")
+	require.Contains(t, output, "│  └─ key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
 	require.Contains(t, output, "└─ ")
 	require.Contains(t, output, "124")
-	require.Contains(t, output, "     incident incident-1: Child failed")
+	require.Contains(t, output, "   └─ incidents:")
+	require.Contains(t, output, "      └─ key=incident-1 errorType=JOB_NO_RETRIES message=Child failed")
 	require.Less(t, strings.Index(output, "123"), strings.Index(output, "Root failed"))
 	require.Less(t, strings.Index(output, "124"), strings.Index(output, "Child failed"))
 }
@@ -938,7 +1063,7 @@ apis:
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "incident incident-1: Root failed")
+	require.Contains(t, output, "key=incident-1 errorType=JOB_NO_RETRIES message=Root failed")
 	require.Len(t, incidentRequests, 1)
 	body := decodeCapturedPISearchRequest(t, incidentRequests[0])
 	filter, ok := body["filter"].(map[string]any)
@@ -987,7 +1112,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsUnsupportedV87(t *testing.T) {
 	require.Equal(t, 2, searchCalls)
 	require.Contains(t, string(output), "unsupported capability")
 	require.Contains(t, string(output), "process-instance incident lookup is not tenant-safe in Camunda 8.7")
-	require.NotContains(t, string(output), "  incident ")
+	require.NotContains(t, string(output), "  inc ")
 }
 
 func TestWalkProcessInstanceCommand_FailureKeepsSingleRootDetail(t *testing.T) {

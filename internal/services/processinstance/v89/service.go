@@ -24,6 +24,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 type Service struct {
@@ -542,6 +543,14 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 
 func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
 	return waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, desired, opts...)
+}
+
+func (s *Service) WaitForProcessInstanceExpectation(ctx context.Context, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	return waiter.WaitForProcessInstanceExpectation(ctx, s, s.cfg, s.log, key, request, opts...)
+}
+
+func (s *Service) WaitForProcessInstancesExpectation(ctx context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, wantedWorkers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	return waiter.WaitForProcessInstancesExpectation(ctx, s, s.cfg, s.log, keys, request, wantedWorkers, opts...)
 }
 
 // deleteScopeIsFinal reports whether every resolved process instance is already terminal.

@@ -14,6 +14,8 @@ Start process instances and confirm activation.
 
 Run by BPMN process ID for the latest version, or by process definition key for an exact definition.
 
+When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.
+
 By default c8volt waits for active instances. Add --no-wait to verify later with `get pi`, `expect pi`, or `walk pi`.
 
 ```

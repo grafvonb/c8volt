@@ -34,6 +34,7 @@ func WithNoWorkerLimit() FacadeOption { return func(c *FacadeCfg) { c.NoWorkerLi
 
 // WithAllowInconsistent opts into eventually consistent or destructive API operations that are otherwise guarded.
 func WithAllowInconsistent() FacadeOption { return func(c *FacadeCfg) { c.AllowInconsistent = true } }
+func WithIgnoreTenant() FacadeOption      { return func(c *FacadeCfg) { c.IgnoreTenant = true } }
 
 // WithAffectedProcessInstanceCount carries preflight expansion metadata for facade-level summaries.
 func WithAffectedProcessInstanceCount(count int) FacadeOption {
@@ -53,6 +54,7 @@ type FacadeCfg struct {
 	DryRun                       bool
 	NoWorkerLimit                bool
 	AllowInconsistent            bool
+	IgnoreTenant                 bool
 	AffectedProcessInstanceCount int
 }
 
@@ -100,6 +102,9 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	}
 	if c.AllowInconsistent {
 		out = append(out, services.WithAllowInconsistent())
+	}
+	if c.IgnoreTenant {
+		out = append(out, services.WithIgnoreTenant())
 	}
 	return out
 }

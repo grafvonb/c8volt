@@ -687,6 +687,64 @@ func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
+func TestDeleteProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearchHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "[missing-process]")
+	require.NotContains(t, string(output), "bpmnProcessId:")
+	require.NotContains(t, string(output), "found: 0")
+}
+
+func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/search":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"delete", "process-instance",
+		"--state", "completed",
+		"--bpmn-process-id", "order-process",
+	)
+
+	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
+	require.Equal(t, "found: 0\n", output)
+}
+
 // Verifies reversed date ranges are rejected when the after-bound is later than the before-bound.
 func TestDeleteProcessInstanceCommand_RejectsInvalidDateFilter(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
@@ -796,6 +854,9 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -853,6 +914,9 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -1951,9 +2015,9 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
-	output, err := testx.RunCmdSubprocess(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
+	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
 	require.Contains(t, string(output), "preparation for deleting")
@@ -2078,6 +2142,19 @@ func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "order-process", "--start-date-after", "2026-01-01", "--end-date-before", "2026-01-31", "--auto-confirm"}
+
+	Execute()
+}
+
+func TestDeleteProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearchHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-instance", "--state", "completed", "--bpmn-process-id", "missing-process", "--auto-confirm"}
 
 	Execute()
 }
@@ -2255,21 +2332,9 @@ func TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t
 		return
 	}
 
-	oldStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-	_, _ = w.WriteString("2251799813692357\n")
-	_ = w.Close()
-	os.Stdin = r
-	defer func() {
-		os.Stdin = oldStdin
-		_ = r.Close()
-	}()
-
 	root := Root()
 	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "delete", "process-definition", "--auto-confirm", "--no-state-check", "-"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

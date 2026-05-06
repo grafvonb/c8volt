@@ -122,6 +122,66 @@ func TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBounda
 	assert.False(t, items.Items[0].Statistics.IncidentCountSupported)
 }
 
+// TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter
+// verifies BPMN process ID, exact version, and version tag selectors reach the
+// process-definition service unchanged.
+func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitions: func(_ context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{
+				BpmnProcessId:     "order-process",
+				ProcessVersion:    7,
+				ProcessVersionTag: "stable",
+			}, filter)
+			assert.Equal(t, pdsvc.MaxResultSize, size)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	items, err := cli.SearchProcessDefinitions(ctx, ProcessDefinitionFilter{
+		BpmnProcessId:     "order-process",
+		ProcessVersion:    7,
+		ProcessVersionTag: "stable",
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, items.Items, 1)
+	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+}
+
+// TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter
+// extends facade coverage to latest-definition searches used by BPMN starts.
+func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pdAPI := &stubProcessDefinitionAPI{
+		searchProcessDefinitionsLatest: func(_ context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+			assert.Equal(t, d.ProcessDefinitionFilter{
+				BpmnProcessId:     "order-process",
+				ProcessVersionTag: "stable",
+			}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessDefinition{{Key: "2251799813685255", BpmnProcessId: "order-process"}}, nil
+		},
+	}
+
+	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	items, err := cli.SearchProcessDefinitionsLatest(ctx, ProcessDefinitionFilter{
+		BpmnProcessId:     "order-process",
+		ProcessVersionTag: "stable",
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, items.Items, 1)
+	assert.Equal(t, "order-process", items.Items[0].BpmnProcessId)
+}
+
 // TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter verifies that
 // facade filters, presence booleans, and verbose options reach the domain layer
 // without losing exact date-bound strings.
@@ -298,6 +358,82 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	require.NotNil(t, got.Items[1].Incidents)
 }
 
+func TestClient_EnrichProcessInstancesWithVariables_PreservesOrderAndPerKeyAssociation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			calls = append(calls, key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			switch key {
+			case "123":
+				return []d.ProcessInstanceVariable{
+					{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123"},
+					{Name: "elementLocal", Value: "ignored", VariableKey: "v-local", ProcessInstanceKey: "123", ScopeKey: "element-1"},
+					{Name: "wrongOwner", Value: "ignored", VariableKey: "v-wrong", ProcessInstanceKey: "999", ScopeKey: "999"},
+					{Name: "alpha", Value: "1", VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123"},
+				}, nil
+			case "124":
+				return nil, nil
+			default:
+				t.Fatalf("unexpected variable lookup for key %s", key)
+				return nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
+		Total: 2,
+		Items: []ProcessInstance{
+			{Key: "123", BpmnProcessId: "order-process"},
+			{Key: "124", BpmnProcessId: "invoice-process"},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"123", "124"}, calls)
+	require.Equal(t, int32(2), got.Total)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, "123", got.Items[0].Item.Key)
+	require.Equal(t, []ProcessInstanceVariable{
+		{Name: "alpha", Value: "1", VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123"},
+		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123"},
+	}, got.Items[0].Variables)
+	require.Equal(t, "124", got.Items[1].Item.Key)
+	require.Empty(t, got.Items[1].Variables)
+	require.NotNil(t, got.Items[1].Variables)
+}
+
+func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJSONMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			return []d.ProcessInstanceVariable{
+				{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
+				{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
+		Total: 1,
+		Items: []ProcessInstance{{Key: "123", BpmnProcessId: "order-process"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []ProcessInstanceVariable{
+		{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
+	}, got.Items[0].Variables)
+}
+
 // TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
 func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
@@ -460,6 +596,108 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 	require.ErrorIs(t, err, lookupErr)
 	require.Equal(t, []string{"root", "child"}, calls)
 	require.Empty(t, got.Items)
+}
+
+func TestClient_WaitForProcessInstancesExpectation_MapsIncidentTrueRequestAndReports(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	wantIncident := IncidentExpectationTrue
+	domainIncident := true
+	piAPI := stubProcessInstanceAPI{
+		waitForProcessInstancesExpectation: func(_ context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.Equal(t, typex.Keys{"123"}, keys)
+			require.Empty(t, request.States)
+			require.NotNil(t, request.Incident)
+			require.True(t, *request.Incident)
+			require.Equal(t, 1, workers)
+			require.True(t, cfg.Verbose)
+			return d.ProcessInstanceExpectationResponses{
+				Items: []d.ProcessInstanceExpectationResponse{
+					{Key: "123", Ok: true, State: d.StateActive, Incident: &domainIncident, Status: "process instance 123 satisfied expectation(s)"},
+				},
+			}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+
+	got, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123", "123"}, ProcessInstanceExpectationRequest{Incident: &wantIncident}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: StateActive, Incident: &wantIncident, Status: "process instance 123 satisfied expectation(s)"}, got.Items[0])
+}
+
+func TestClient_WaitForProcessInstancesExpectation_MapsIncidentFalseRequestAndReports(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	wantIncident := IncidentExpectationFalse
+	domainIncident := false
+	piAPI := stubProcessInstanceAPI{
+		waitForProcessInstancesExpectation: func(_ context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.Equal(t, typex.Keys{"123"}, keys)
+			require.Empty(t, request.States)
+			require.NotNil(t, request.Incident)
+			require.False(t, *request.Incident)
+			require.Equal(t, 1, workers)
+			require.True(t, cfg.Verbose)
+			return d.ProcessInstanceExpectationResponses{
+				Items: []d.ProcessInstanceExpectationResponse{
+					{Key: "123", Ok: true, State: d.StateActive, Incident: &domainIncident, Status: "process instance 123 satisfied expectation(s)"},
+				},
+			}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+
+	got, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123", "123"}, ProcessInstanceExpectationRequest{Incident: &wantIncident}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: StateActive, Incident: &wantIncident, Status: "process instance 123 satisfied expectation(s)"}, got.Items[0])
+}
+
+func TestClient_WaitForProcessInstancesExpectation_MapsStateAndIncidentRequestAndReports(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	wantIncident := IncidentExpectationTrue
+	domainIncident := true
+	piAPI := stubProcessInstanceAPI{
+		waitForProcessInstancesExpectation: func(_ context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.Equal(t, typex.Keys{"123"}, keys)
+			require.Equal(t, d.States{d.StateActive}, request.States)
+			require.NotNil(t, request.Incident)
+			require.True(t, *request.Incident)
+			require.Equal(t, 1, workers)
+			require.True(t, cfg.Verbose)
+			return d.ProcessInstanceExpectationResponses{
+				Items: []d.ProcessInstanceExpectationResponse{
+					{Key: "123", Ok: true, State: d.StateActive, Incident: &domainIncident, Status: "process instance 123 satisfied expectation(s)"},
+				},
+			}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+
+	got, err := cli.WaitForProcessInstancesExpectation(
+		ctx,
+		typex.Keys{"123", "123"},
+		ProcessInstanceExpectationRequest{
+			States:   States{StateActive},
+			Incident: &wantIncident,
+		},
+		1,
+		options.WithVerbose(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, ProcessInstanceExpectationReport{Key: "123", Ok: true, State: StateActive, Incident: &wantIncident, Status: "process instance 123 satisfied expectation(s)"}, got.Items[0])
 }
 
 // TestClient_SearchProcessInstancesPage_MapsPagingMetadata checks the full page
@@ -1011,9 +1249,10 @@ func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScop
 }
 
 type stubProcessDefinitionAPI struct {
-	searchProcessDefinitions func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
-	getProcessDefinition     func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
-	getProcessDefinitionXML  func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
+	searchProcessDefinitions       func(ctx context.Context, filter d.ProcessDefinitionFilter, size int32, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+	searchProcessDefinitionsLatest func(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error)
+	getProcessDefinition           func(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error)
+	getProcessDefinitionXML        func(ctx context.Context, key string, opts ...services.CallOption) (string, error)
 }
 
 // SearchProcessDefinitions delegates to the per-test callback and panics when a
@@ -1025,9 +1264,13 @@ func (s *stubProcessDefinitionAPI) SearchProcessDefinitions(ctx context.Context,
 	return s.searchProcessDefinitions(ctx, filter, size, opts...)
 }
 
-// SearchProcessDefinitionsLatest panics when a facade test accidentally takes the latest-definition path.
-func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(context.Context, d.ProcessDefinitionFilter, ...services.CallOption) ([]d.ProcessDefinition, error) {
-	panic("unexpected call")
+// SearchProcessDefinitionsLatest delegates to the per-test callback and panics
+// when a test did not authorize this service method.
+func (s *stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(ctx context.Context, filter d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+	if s.searchProcessDefinitionsLatest == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessDefinitionsLatest(ctx, filter, opts...)
 }
 
 // GetProcessDefinition delegates to the per-test callback and panics on
@@ -1051,16 +1294,19 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
-	searchForProcessInstances      func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
-	searchForProcessInstancesPage  func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
-	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
-	ancestry                       func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
-	descendants                    func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
-	cancelProcessInstance          func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
-	deleteProcessInstance          func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
-	ancestryResult                 func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
-	descendantsResult              func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
-	familyResult                   func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
+	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
+	searchProcessInstanceIncidents     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
+	ancestry                           func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
+	descendants                        func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
+	cancelProcessInstance              func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	deleteProcessInstance              func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
+	ancestryResult                     func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	descendantsResult                  func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	familyResult                       func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	waitForProcessInstanceExpectation  func(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error)
+	waitForProcessInstancesExpectation func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
 
 // CreateProcessInstance panics when a facade test accidentally starts a process instance.
@@ -1079,6 +1325,14 @@ func (s stubProcessInstanceAPI) SearchProcessInstanceIncidents(ctx context.Conte
 		panic("unexpected call")
 	}
 	return s.searchProcessInstanceIncidents(ctx, key, opts...)
+}
+
+// SearchProcessInstanceVariables delegates to the per-test callback used by variable enrichment facade tests.
+func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	if s.searchProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstanceVariables(ctx, key, opts...)
 }
 
 // GetDirectChildrenOfProcessInstance panics when a test takes the direct-children path unexpectedly.
@@ -1146,6 +1400,14 @@ func (stubProcessInstanceAPI) WaitForProcessInstanceState(context.Context, strin
 	panic("unexpected call")
 }
 
+// WaitForProcessInstanceExpectation delegates to the per-test callback and panics on unexpected single expectation waits.
+func (s stubProcessInstanceAPI) WaitForProcessInstanceExpectation(ctx context.Context, key string, request d.ProcessInstanceExpectationRequest, opts ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	if s.waitForProcessInstanceExpectation == nil {
+		panic("unexpected call")
+	}
+	return s.waitForProcessInstanceExpectation(ctx, key, request, opts...)
+}
+
 // Ancestry delegates the legacy traversal tuple used by older dry-run helpers.
 func (s stubProcessInstanceAPI) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
 	if s.ancestry == nil {
@@ -1209,6 +1471,14 @@ func (stubProcessInstanceAPI) GetProcessInstances(context.Context, typex.Keys, i
 // WaitForProcessInstancesState panics when a facade test accidentally waits for bulk state changes.
 func (stubProcessInstanceAPI) WaitForProcessInstancesState(context.Context, typex.Keys, d.States, int, ...services.CallOption) (d.StateResponses, error) {
 	panic("unexpected call")
+}
+
+// WaitForProcessInstancesExpectation delegates to the per-test callback and panics on unexpected bulk expectation waits.
+func (s stubProcessInstanceAPI) WaitForProcessInstancesExpectation(ctx context.Context, keys typex.Keys, request d.ProcessInstanceExpectationRequest, workers int, opts ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	if s.waitForProcessInstancesExpectation == nil {
+		panic("unexpected call")
+	}
+	return s.waitForProcessInstancesExpectation(ctx, keys, request, workers, opts...)
 }
 
 var _ pisvc.API = stubProcessInstanceAPI{}

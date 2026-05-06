@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -18,12 +19,25 @@ func RunCmdSubprocess(t *testing.T, scopeTestName string, env map[string]string)
 	return RunCmdSubprocessInDir(t, scopeTestName, "", env)
 }
 
+func RunCmdSubprocessWithStdin(t *testing.T, scopeTestName string, env map[string]string, stdin string) ([]byte, error) {
+	t.Helper()
+	return RunCmdSubprocessInDirWithStdin(t, scopeTestName, "", env, stdin)
+}
+
 func RunCmdSubprocessInDir(t *testing.T, scopeTestName string, dir string, env map[string]string) ([]byte, error) {
+	t.Helper()
+	return RunCmdSubprocessInDirWithStdin(t, scopeTestName, dir, env, "")
+}
+
+func RunCmdSubprocessInDirWithStdin(t *testing.T, scopeTestName string, dir string, env map[string]string, stdin string) ([]byte, error) {
 	t.Helper()
 
 	cmd := exec.Command(os.Args[0], "-test.run=^"+regexp.QuoteMeta(scopeTestName)+"$")
 	if dir != "" {
 		cmd.Dir = dir
+	}
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
 	}
 	mergedEnv := append(os.Environ(),
 		"GO_WANT_HELPER_PROCESS=1",

@@ -97,6 +97,22 @@ func fromDomainProcessInstanceIncidentDetails(xs []d.ProcessInstanceIncidentDeta
 	return toolx.MapSlice(xs, fromDomainProcessInstanceIncidentDetail)
 }
 
+func fromDomainProcessInstanceVariable(x d.ProcessInstanceVariable) ProcessInstanceVariable {
+	return ProcessInstanceVariable{
+		Name:               x.Name,
+		Value:              x.Value,
+		VariableKey:        x.VariableKey,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ScopeKey:           x.ScopeKey,
+		TenantId:           x.TenantId,
+		APITruncated:       x.APITruncated,
+	}
+}
+
+func fromDomainProcessInstanceVariables(xs []d.ProcessInstanceVariable) []ProcessInstanceVariable {
+	return toolx.MapSlice(xs, fromDomainProcessInstanceVariable)
+}
+
 func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage {
 	return ProcessInstancePage{
 		Request: ProcessInstancePageRequest{
@@ -122,6 +138,30 @@ func fromDomainProcessInstanceMap(xs map[string]d.ProcessInstance) map[string]Pr
 	return toolx.MapMap(xs, fromDomainProcessInstance)
 }
 
+func fromDomainProcessInstanceExpectationResponse(x d.ProcessInstanceExpectationResponse) ProcessInstanceExpectationReport {
+	return ProcessInstanceExpectationReport{
+		Key:      x.Key,
+		Ok:       x.Ok,
+		State:    State(x.State),
+		Incident: fromDomainIncidentExpectation(x.Incident),
+		Status:   x.Status,
+	}
+}
+
+func fromDomainProcessInstanceExpectationResponses(xs d.ProcessInstanceExpectationResponses) ProcessInstanceExpectationReports {
+	return ProcessInstanceExpectationReports{
+		Items: toolx.MapSlice(xs.Items, fromDomainProcessInstanceExpectationResponse),
+	}
+}
+
+func fromDomainIncidentExpectation(x *bool) *IncidentExpectation {
+	if x == nil {
+		return nil
+	}
+	out := IncidentExpectation(*x)
+	return &out
+}
+
 func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	return d.ProcessInstance{
 		BpmnProcessId:             x.BpmnProcessId,
@@ -140,6 +180,21 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 	}
 }
 
+func toDomainProcessInstanceExpectationRequest(x ProcessInstanceExpectationRequest) d.ProcessInstanceExpectationRequest {
+	return d.ProcessInstanceExpectationRequest{
+		States:   toolx.MapSlice(x.States, func(s State) d.State { return d.State(s) }),
+		Incident: toDomainIncidentExpectation(x.Incident),
+	}
+}
+
+func toDomainIncidentExpectation(x *IncidentExpectation) *bool {
+	if x == nil {
+		return nil
+	}
+	out := x.Bool()
+	return &out
+}
+
 func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.ProcessInstanceIncidentDetail {
 	return d.ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
@@ -154,6 +209,18 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
+	}
+}
+
+func toDomainProcessInstanceVariable(x ProcessInstanceVariable) d.ProcessInstanceVariable {
+	return d.ProcessInstanceVariable{
+		Name:               x.Name,
+		Value:              x.Value,
+		VariableKey:        x.VariableKey,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ScopeKey:           x.ScopeKey,
+		TenantId:           x.TenantId,
+		APITruncated:       x.APITruncated,
 	}
 }
 

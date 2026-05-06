@@ -54,16 +54,22 @@ func newProcessInstanceSearchCaptureServerWithResponses(t *testing.T, requests *
 	served := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		*requests = append(*requests, string(body))
-		require.Less(t, served, len(responses), "unexpected extra process-instance search request")
-
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(responses[served]))
-		served++
+
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			*requests = append(*requests, string(body))
+			require.Less(t, served, len(responses), "unexpected extra process-instance search request")
+
+			_, _ = w.Write([]byte(responses[served]))
+			served++
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
 	}))
 	return srv
 }

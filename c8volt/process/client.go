@@ -6,6 +6,7 @@ package process
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -82,7 +83,16 @@ func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string,
 	return fromDomainProcessInstanceIncidentDetails(incidents), nil
 }
 
-// EnrichProcessInstancesWithIncidents attaches direct incident details to keyed process-instance results without reordering them.
+// SearchProcessInstanceVariables exposes the tenant-safe service variable lookup through the facade error model.
+func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceVariable, error) {
+	variables, err := c.piApi.SearchProcessInstanceVariables(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return nil, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstanceVariables(variables), nil
+}
+
+// EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
 	for _, pi := range pis.Items {
@@ -96,6 +106,25 @@ func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis Pr
 		})
 	}
 	return IncidentEnrichedProcessInstances{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
+// EnrichProcessInstancesWithVariables attaches process-scope variables to selected process-instance results without reordering them.
+func (c *client) EnrichProcessInstancesWithVariables(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (VariableEnrichedProcessInstances, error) {
+	items := make([]VariableEnrichedProcessInstance, 0, len(pis.Items))
+	for _, pi := range pis.Items {
+		variables, err := c.SearchProcessInstanceVariables(ctx, pi.Key, opts...)
+		if err != nil {
+			return VariableEnrichedProcessInstances{}, err
+		}
+		items = append(items, VariableEnrichedProcessInstance{
+			Item:      pi,
+			Variables: variablesForProcessInstance(pi.Key, variables),
+		})
+	}
+	return VariableEnrichedProcessInstances{
 		Total: int32(len(items)),
 		Items: items,
 	}, nil
@@ -139,6 +168,20 @@ func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncident
 			out = append(out, incident)
 		}
 	}
+	return out
+}
+
+// variablesForProcessInstance keeps only process-scope variables owned by the requested key.
+func variablesForProcessInstance(key string, variables []ProcessInstanceVariable) []ProcessInstanceVariable {
+	out := make([]ProcessInstanceVariable, 0, len(variables))
+	for _, variable := range variables {
+		if variable.ProcessInstanceKey == key && variable.ScopeKey == key {
+			out = append(out, variable)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Name < out[j].Name
+	})
 	return out
 }
 
@@ -232,6 +275,22 @@ func (c *client) WaitForProcessInstanceState(ctx context.Context, key string, de
 		return StateReport{State: pgot, Status: got.Status}, ProcessInstance{}, ferr.FromDomain(err)
 	}
 	return StateReport{State: pgot, Status: got.Status, Key: pi.Key}, fromDomainProcessInstance(pi), nil
+}
+
+// WaitForProcessInstanceExpectation preserves the selected key in failure reports before mapping combined state/incident waits.
+func (c *client) WaitForProcessInstanceExpectation(ctx context.Context, key string, request ProcessInstanceExpectationRequest, opts ...options.FacadeOption) (ProcessInstanceExpectationReport, ProcessInstance, error) {
+	got, pi, err := c.piApi.WaitForProcessInstanceExpectation(ctx, key, toDomainProcessInstanceExpectationRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	report := fromDomainProcessInstanceExpectationResponse(got)
+	if report.Key == "" {
+		report.Key = key
+	}
+	if err != nil {
+		return report, ProcessInstance{}, ferr.FromDomain(err)
+	}
+	if report.Key == "" {
+		report.Key = pi.Key
+	}
+	return report, fromDomainProcessInstance(pi), nil
 }
 
 func MapStateResponseToReport(in d.StateResponse) StateReport {

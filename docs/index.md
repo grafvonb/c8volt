@@ -5,52 +5,50 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v2.1.0-289-gb978606-dirty`, commit `b978606`, built `2026-05-04T20:06:43Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.6.0-alpha3-1-g7284384-dirty`, commit `7284384`, built `2026-05-06T19:38:55Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
-**Operator-grade Camunda 8 workflow control. Fresh 8.9 support. Script-safe and AI-agent-safe command contracts.**
+**Operator-grade Camunda 8 control for people and pipelines. 8.9-ready, script-safe, and built to finish the job.**
 
 > **done is done**
 >
 > If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you.
 
-`c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need a trustworthy way to discover commands, run them non-interactively, and interpret results.
+`c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
 ## Why c8volt
 
-Many CLIs stop at "request accepted." `c8volt` is shaped around the next questions:
+Camunda operations rarely end when an API accepts a request. `c8volt` is shaped around the questions operators ask next:
 
 - Did the process instance actually reach `ACTIVE`?
-- Where is the incident, and what else is in the same process tree?
+- Which incident or variable explains the current state?
+- What else is in the same process tree?
 - Did the cancellation hit the root that really matters?
 - Did deletion remove the whole family, not just one visible node?
-- Can a script or agent discover the right command path without parsing help text?
-- Can unattended execution fail explicitly instead of hanging on prompts or mixing logs into stdout?
+- Can scripts and agents discover the command contract without scraping help text?
+- Can unattended runs fail clearly without hanging on prompts?
 
 That is the gap `c8volt` closes.
 
 ## At A Glance
 
-- deploy BPMN and use it immediately
-- run process instances and confirm they are active
-- inspect process-instance trees before changing them
-- cancel safely, including root escalation with `--force`
-- delete process-instance families thoroughly
-- wait for the state you actually need
-- triage incidents in direct lookups and process-instance walks
-- page through large process-instance result sets safely
-- return only the numeric process-instance match count with `get pi --total`
-- scope commands by profile and tenant when operating shared clusters
-- validate config and inspect cluster metadata when setting up or troubleshooting
+- deploy BPMN and start using it immediately
+- run process instances and confirm they become active
+- inspect process trees with incidents and variables in context
+- preview, cancel, and delete process-instance families safely
+- wait for state or incident conditions in scripts
+- search, page, count, and batch process-instance results
+- work by profile and tenant on shared clusters
+- validate config and test real Camunda connectivity
 - discover the public command surface with `capabilities --json`
 - run supported commands non-interactively with `--automation`
 
 ## Fast Start
 
-This path is intentionally boring: copy one file, edit two values, validate, test the connection, then run one harmless read command.
+This is the happy path: copy one file, edit two values, validate, test the connection, then run one harmless read command.
 
 ```bash
 # 1. Copy the starter config. Pick the path that matches how you got c8volt.
@@ -136,8 +134,6 @@ Useful setup commands, in the order you normally need them:
 ./c8volt --profile prod config show
 ```
 
-`config show --validate` and `config show --template` remain supported compatibility shortcuts for existing scripts.
-
 ### 3. Verify Connectivity
 
 ```bash
@@ -166,7 +162,7 @@ This is the quickest path from a clean environment to real process instances you
 
 `c8volt` supports Camunda `8.7`, `8.8`, and `8.9`.
 
-`8.9` is a first-class runtime target with the same practical repository command-family coverage already available on `8.8`, including cluster metadata, process-definition discovery and XML retrieval, resource lifecycle operations, process-instance lifecycle flows, search, waiting, traversal, cancel/delete flows, and tenant-aware runtime behavior.
+`8.9` is a first-class runtime target. The everyday operator loop is covered: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
 `8.8` remains the established baseline. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 
@@ -196,12 +192,13 @@ For batch execution:
 ```bash
 ./c8volt walk pi --key 2251799813711967
 ./c8volt walk pi --key 2251799813711967 --with-incidents
+./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
 ./c8volt walk pi --key 2251799813711967 --flat
 ```
 
-This is where `c8volt` becomes an operations tool instead of just a resource browser: it shows the process-instance family tree that explains why a cancellation or deletion may behave the way it does.
+Use `walk pi` before a risky action. It shows the process-instance family tree, which is usually where the real cancellation or deletion scope becomes obvious.
 
-For incident diagnosis, add `--with-incidents` to keyed walks to show incident keys and messages under the matching process-instance rows, or combine it with `--json` for structured incident details.
+For diagnosis, add `--with-incidents` and/or `--with-vars`. Human output stays compact; `--json` gives scripts the full structured details.
 
 ### Cancel Safely
 
@@ -228,16 +225,18 @@ With `--dry-run`, `c8volt` previews the selected process instances, process-inst
 
 Deletion in real environments often means preview the family scope, cancel-first when needed, then remove, then verify. `--dry-run` shows selected instances already in final state and process instances not in final state. Delete is all-or-nothing for the affected scope: if any selected or dependency-expanded process instance is not in a final state, c8volt refuses the whole delete batch before submitting any delete request. Use `--force` when the affected scope must be canceled first and then deleted.
 
-### Wait For A Known State
+### Wait For A Known State Or Incident
 
 ```bash
 ./c8volt expect pi --key <process-instance-key> --state active
+./c8volt expect pi --key <process-instance-key> --incident true
+./c8volt expect pi --key <process-instance-key> --state active --incident false
 ./c8volt expect pi --key <process-instance-key> --state completed --state absent
 ./c8volt expect pi --key <process-instance-key> --state canceled
-./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --state active -
+./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt expect pi --incident true -
 ```
 
-`expect` waits for `active`, `completed`, `canceled`, `terminated`, or `absent`, and works naturally with piped keys for bulk verification flows.
+`expect` waits for `active`, `completed`, `canceled`, `terminated`, or `absent`; it can also wait for `--incident true|false`, alone or with `--state`. Piped keys work for bulk verification flows.
 
 ### Search And Page Process Instances
 
@@ -252,6 +251,14 @@ Deletion in real environments often means preview the family scope, cancel-first
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Human-oriented modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
+
+For bulk work, check the batch first, then act:
+
+```bash
+./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --total
+./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --dry-run
+./c8volt cancel pi --bpmn-process-id <bpmn-process-id> --state active --auto-confirm
+```
 
 Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
@@ -283,8 +290,15 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 
 ```bash
 ./c8volt get pi --state active --incidents-only
+./c8volt get pi --incidents-only --with-incidents
+./c8volt get pi --with-incidents --incident-message-limit 80
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
+./c8volt get pi --with-vars
+./c8volt get pi --key <process-instance-key> --with-vars
+./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
+./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
+./c8volt get pi --key <process-instance-key> --with-vars --json
 ./c8volt get pi --roots-only
 ./c8volt get pi --children-only
 ./c8volt get pi --orphan-children-only
@@ -297,7 +311,9 @@ Human process-instance lists mark only incident-bearing instances with `inc!`; i
 
 Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
 
-For direct keyed diagnosis, add `--with-incidents` to show incident keys and messages below the process-instance row, or combine it with `--json` for structured incident details. The flag is scoped to `--key` lookups; search filters such as `--incidents-only` keep their existing list-filter behavior.
+For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. Direct incident keys and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages.
+
+For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Human values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
@@ -313,8 +329,7 @@ flag > env > profile > base config > default
 
 That applies to root persistent flags such as `--tenant` and `--profile`, command-local config-backed flags, API base URLs, auth mode, and auth credentials/scopes. When `c8volt` cannot determine a safe winner, it fails explicitly instead of guessing.
 
-Use `./c8volt config show` to inspect the effective configuration that a command will use, or `./c8volt config show --validate` to confirm the resolved config before running changes against a cluster.
-Prefer `./c8volt config validate` for direct validation, `./c8volt config template` for a starter file, and `./c8volt config test-connection` to validate local config before retrieving cluster topology. The `config show --validate` and `config show --template` flags remain supported compatibility shortcuts.
+Use `./c8volt config show` to inspect the effective configuration that a command will use. Prefer `./c8volt config validate` for local validation, `./c8volt config template` for a starter file, and `./c8volt config test-connection` before running changes against a cluster.
 
 ### Configuration Flow
 
@@ -500,13 +515,13 @@ c8volt
 |   |-- pi                    Delete process instance trees
 |   `-- pd                    Delete process definitions with safety warnings
 |-- expect                    Wait until resources reach a target state
-|   `-- pi                    Wait for active, completed, canceled, terminated, or absent
+|   `-- pi                    Wait for state or incident conditions
 |-- get                       Read state, metadata, and resources
 |   |-- cluster topology      Show connected Camunda cluster topology as a tree
 |   |-- cluster version       Show gateway and optional broker versions
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
-|   |-- process-instance      List or fetch process instances
+|   |-- process-instance      List, fetch, and enrich process instances
 |   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
@@ -540,17 +555,23 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get pi --state active --with-vars
+./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --state active --total
 
 # Inspect parent/child relationships before taking action.
 ./c8volt walk pi --key <process-instance-key>
 ./c8volt walk pi --key <process-instance-key> --with-incidents
+./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt walk pi --key <process-instance-key> --flat
 
 # Wait for automation-visible outcomes.
 ./c8volt expect pi --key <process-instance-key> --state active
+./c8volt expect pi --key <process-instance-key> --incident true
+./c8volt expect pi --key <process-instance-key> --state active --incident false
 ./c8volt expect pi --key <process-instance-key> --state completed --state absent
 
 # Preview and perform cancellation.
