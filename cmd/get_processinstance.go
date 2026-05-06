@@ -219,7 +219,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				fail(err)
 			}
-			if err := processDefinitionSelectorNoPromptError(result); err != nil {
+			if err := processDefinitionSelectorValidationError(cmd, cli, result); err != nil {
 				fail(err)
 			}
 			filter := populatePISearchFilterOpts()

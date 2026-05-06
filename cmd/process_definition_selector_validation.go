@@ -6,10 +6,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 type processDefinitionSelectorValidationMode int
@@ -31,6 +34,8 @@ type processDefinitionSelectorValidationResult struct {
 	MatchesByBpmnProcessID map[string]process.ProcessDefinitions
 	MissingBpmnProcessIDs  []string
 }
+
+var processDefinitionSelectorInteractiveTerminalFn = processDefinitionSelectorInteractiveTerminal
 
 func (r processDefinitionSelectorValidationResult) Valid() bool {
 	return len(r.MissingBpmnProcessIDs) == 0
@@ -93,6 +98,45 @@ func processDefinitionSelectorNoPromptError(result processDefinitionSelectorVali
 		return nil
 	}
 	return localPreconditionError(fmt.Errorf("%s", formatMissingProcessDefinitionSelectors(result)))
+}
+
+func processDefinitionSelectorValidationError(cmd *cobra.Command, cli process.API, result processDefinitionSelectorValidationResult) error {
+	if result.Valid() {
+		return nil
+	}
+
+	message := formatMissingProcessDefinitionSelectors(result)
+	if processDefinitionSelectorPromptAllowed(cmd) {
+		if err := confirmCmdOrAbortFn(false, message+"\n\nList visible process definitions?"); err == nil {
+			if err := listVisibleProcessDefinitionsForSelectorValidation(cmd, cli); err != nil {
+				return localPreconditionError(fmt.Errorf("%s\n\nlist visible process definitions: %w", message, err))
+			}
+		}
+	}
+
+	return localPreconditionError(fmt.Errorf("%s", message))
+}
+
+func processDefinitionSelectorPromptAllowed(cmd *cobra.Command) bool {
+	if cmd == nil || flagCmdAutoConfirm || flagViewAsJson || flagViewKeysOnly || automationModeEnabled(cmd) {
+		return false
+	}
+	return processDefinitionSelectorInteractiveTerminalFn()
+}
+
+func processDefinitionSelectorInteractiveTerminal() bool {
+	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+}
+
+func listVisibleProcessDefinitionsForSelectorValidation(cmd *cobra.Command, cli process.API) error {
+	pds, err := cli.SearchProcessDefinitions(cmd.Context(), process.ProcessDefinitionFilter{}, collectOptions()...)
+	if err != nil {
+		return fmt.Errorf("search process definitions: %w", err)
+	}
+	if err := listProcessDefinitionsView(cmd, pds); err != nil {
+		return fmt.Errorf("render process definitions: %w", err)
+	}
+	return nil
 }
 
 func formatMissingProcessDefinitionSelectors(result processDefinitionSelectorValidationResult) string {

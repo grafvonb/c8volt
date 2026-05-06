@@ -5,6 +5,9 @@ Started: 2026-05-06 12:15:57
 
 ## Codebase Patterns
 
+- Process-definition selector failures now route through `processDefinitionSelectorValidationError`, which keeps the existing local-precondition error text but can optionally ask interactive human users whether to list visible process definitions.
+- Selector listing prompt eligibility is stricter than shared confirmation: it is disabled for `--auto-confirm`, `--json`, `--keys-only`, `--automation`, and non-TTY stdin/stdout as checked by `processDefinitionSelectorInteractiveTerminalFn`.
+- Accepted selector listing prompts search visible process definitions with an empty `process.ProcessDefinitionFilter` and render through `listProcessDefinitionsView`, preserving the existing flat process-definition rows and `found: <n>` summary.
 - Process-definition selector validation now lives in `cmd/process_definition_selector_validation.go` with request/result structs, per-BPMN `process.ProcessDefinitionFilter` construction, distinct-ID normalization, any-version versus latest validation modes, and no-prompt local-precondition diagnostics.
 - `get pi` search mode now runs shared process-definition selector validation before `--total` or paged process-instance search; keyed and user-task lookup paths still bypass the BPMN preflight.
 - Command tests can reuse `stubProcessAPI` for process-definition search callbacks; facade tests can authorize `SearchProcessDefinitionsLatest` through the extended `stubProcessDefinitionAPI` instead of panicking on latest searches.
@@ -84,4 +87,30 @@ Started: 2026-05-06 12:15:57
 **Learnings**:
 - Full command-path selector tests use local HTTP listeners and are skipped in this sandbox because TCP bind is unavailable; `go test ./cmd` still passes here and will exercise those tests where local listeners are allowed.
 - The validation call can run unconditionally in the `get pi` search branch because an empty BPMN selector normalizes to no IDs and performs no process-definition facade calls.
+---
+
+---
+## Iteration 4 - 2026-05-06 12:33:41 CEST
+**User Story**: User Story 2 - Provide Safe Human and Automation Diagnostics
+**Tasks Completed**:
+- [x] T020: Add human-output diagnostic tests for a single missing selector
+- [x] T021: Add human-output diagnostic tests for multiple missing selectors
+- [x] T022: Add tests proving `--json`, `--automation`, `--keys-only`, and non-TTY execution do not prompt
+- [x] T023: Add test proving accepted interactive listing uses existing process-definition list rendering
+- [x] T024: Implement prompt eligibility checks for visible-definition listing
+- [x] T025: Implement interactive listing through existing process-definition search/list view helpers
+- [x] T026: Ensure structured and automation modes return clear errors without prompt text
+- [x] T027: Run targeted selector prompt/diagnostic tests and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance.go
+- cmd/process_definition_selector_validation.go
+- cmd/process_definition_selector_validation_test.go
+- specs/175-validate-pd-selectors/tasks.md
+- specs/175-validate-pd-selectors/progress.md
+**Learnings**:
+- Recovery listing should reuse the existing process-definition flat list renderer directly instead of duplicating output formatting.
+- Prompt eligibility needs its own TTY hook because the shared confirmation helper auto-confirms non-TTY stdin, which would make recovery listing unsafe for piped or automated execution.
+- `--auto-confirm` should suppress selector recovery prompts so unattended commands do not emit extra listing output after validation failures.
 ---

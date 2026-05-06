@@ -74,17 +74,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add human-output diagnostic tests for a single missing selector in `cmd/get_processinstance_test.go` or `cmd/process_definition_selector_validation_test.go`
-- [ ] T021 [P] [US2] Add human-output diagnostic tests for multiple missing selectors in `cmd/process_definition_selector_validation_test.go`
-- [ ] T022 [P] [US2] Add tests proving `--json`, `--automation`, `--keys-only`, and non-TTY execution do not prompt in `cmd/get_processinstance_test.go`
-- [ ] T023 [P] [US2] Add test proving accepted interactive listing uses existing process-definition list rendering in `cmd/process_definition_selector_validation_test.go` or `cmd/get_test.go`
+- [x] T020 [P] [US2] Add human-output diagnostic tests for a single missing selector in `cmd/get_processinstance_test.go` or `cmd/process_definition_selector_validation_test.go`
+- [x] T021 [P] [US2] Add human-output diagnostic tests for multiple missing selectors in `cmd/process_definition_selector_validation_test.go`
+- [x] T022 [P] [US2] Add tests proving `--json`, `--automation`, `--keys-only`, and non-TTY execution do not prompt in `cmd/get_processinstance_test.go`
+- [x] T023 [P] [US2] Add test proving accepted interactive listing uses existing process-definition list rendering in `cmd/process_definition_selector_validation_test.go` or `cmd/get_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Implement prompt eligibility checks for visible-definition listing in `cmd/process_definition_selector_validation.go`
-- [ ] T025 [US2] Implement interactive listing through existing process-definition search/list view helpers in `cmd/process_definition_selector_validation.go` and `cmd/get_processdefinition.go`
-- [ ] T026 [US2] Ensure structured and automation modes return clear errors without prompt text in `cmd/process_definition_selector_validation.go`
-- [ ] T027 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Selector.*(Diagnostic|Prompt|JSON|Automation|KeysOnly|TTY)' -count=1` and fix regressions
+- [x] T024 [US2] Implement prompt eligibility checks for visible-definition listing in `cmd/process_definition_selector_validation.go`
+- [x] T025 [US2] Implement interactive listing through existing process-definition search/list view helpers in `cmd/process_definition_selector_validation.go` and `cmd/get_processdefinition.go`
+- [x] T026 [US2] Ensure structured and automation modes return clear errors without prompt text in `cmd/process_definition_selector_validation.go`
+- [x] T027 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Selector.*(Diagnostic|Prompt|JSON|Automation|KeysOnly|TTY)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 2 is independently complete when humans get recovery guidance and scripts never block.
 
