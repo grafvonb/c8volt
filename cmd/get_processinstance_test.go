@@ -112,6 +112,102 @@ func TestGetProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequest
 	require.Equal(t, "get process-instance", got["command"])
 }
 
+func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearchHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
+	require.Contains(t, string(output), "no visible process definition matches the provided selector")
+	require.Contains(t, string(output), "bpmnProcessId: missing-process")
+	require.NotContains(t, string(output), "found: 0")
+}
+
+func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/search":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant-a",
+		"get", "process-instance",
+		"--bpmn-process-id", "order-process",
+	)
+
+	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
+	require.Equal(t, "found: 0\n", output)
+}
+
+func TestGetProcessInstanceBpmnSelectorValidationIncludesVersionTagAndTenant(t *testing.T) {
+	var pdSearchBodies []map[string]any
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			pdSearchBodies = append(pdSearchBodies, body)
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":7,"versionTag":"stable"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/search":
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant-a",
+		"get", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--pd-version", "7",
+		"--pd-version-tag", "stable",
+	)
+
+	require.Equal(t, "found: 0\n", output)
+	require.Len(t, pdSearchBodies, 1)
+	filter := requireJSONObject(t, pdSearchBodies[0]["filter"])
+	require.Equal(t, "order-process", filter["processDefinitionId"])
+	require.Equal(t, float64(7), filter["version"])
+	require.Equal(t, "stable", filter["versionTag"])
+	require.Equal(t, "tenant-a", filter["tenantId"])
+}
+
 // TestGetProcessInstanceJSON_AddsAgeMetaField verifies JSON rows include age metadata.
 func TestGetProcessInstanceJSON_AddsAgeMetaField(t *testing.T) {
 	var requests []string
@@ -3935,6 +4031,19 @@ func TestGetProcessInstanceWithIncidentsUnsupportedV87Helper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents"}
+
+	Execute()
+}
+
+func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearchHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "get", "process-instance", "--bpmn-process-id", "missing-process"}
 
 	Execute()
 }

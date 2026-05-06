@@ -52,15 +52,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add command test for `get pi --bpmn-process-id <missing>` failing before process-instance search in `cmd/get_processinstance_test.go`
-- [ ] T015 [P] [US1] Add command test for visible process definition with zero matching process instances preserving `found: 0` in `cmd/get_processinstance_test.go`
-- [ ] T016 [P] [US1] Add command test proving `--pd-version`, `--pd-version-tag`, and tenant options are included in validation context in `cmd/get_processinstance_test.go`
+- [x] T014 [P] [US1] Add command test for `get pi --bpmn-process-id <missing>` failing before process-instance search in `cmd/get_processinstance_test.go`
+- [x] T015 [P] [US1] Add command test for visible process definition with zero matching process instances preserving `found: 0` in `cmd/get_processinstance_test.go`
+- [x] T016 [P] [US1] Add command test proving `--pd-version`, `--pd-version-tag`, and tenant options are included in validation context in `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Invoke shared selector validation before `get pi` process-instance search when `--bpmn-process-id` is set in `cmd/get_processinstance.go`
-- [ ] T018 [US1] Ensure successful validation allows existing `searchProcessInstancesWithPaging` and `found: 0` behavior to continue unchanged in `cmd/get_processinstance.go`
-- [ ] T019 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*(Bpmn|Selector|Found0)' -count=1` and fix regressions
+- [x] T017 [US1] Invoke shared selector validation before `get pi` process-instance search when `--bpmn-process-id` is set in `cmd/get_processinstance.go`
+- [x] T018 [US1] Ensure successful validation allows existing `searchProcessInstancesWithPaging` and `found: 0` behavior to continue unchanged in `cmd/get_processinstance.go`
+- [x] T019 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance.*(Bpmn|Selector|Found0)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when `get pi` separates missing process definitions from valid empty process-instance results.
 

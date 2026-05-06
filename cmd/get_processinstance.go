@@ -215,6 +215,13 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 		default:
+			result, err := validateProcessDefinitionSelectors(ctx, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				fail(err)
+			}
+			if err := processDefinitionSelectorNoPromptError(result); err != nil {
+				fail(err)
+			}
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %s", filter.String()))
 			if flagGetPITotal {
