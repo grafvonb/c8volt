@@ -17,12 +17,12 @@
 
 **Purpose**: Confirm current command paths, selector mapping, prompt policy, process-definition facade behavior, and documentation surfaces before changing behavior.
 
-- [ ] T001 Inspect shared process-instance BPMN/version/tag flags and search filter construction in `cmd/get_processinstance.go`
-- [ ] T002 [P] Inspect process-instance search/mutation paging paths in `cmd/get_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`
-- [ ] T003 [P] Inspect `run pi` BPMN process ID and version validation in `cmd/run_processinstance.go`
-- [ ] T004 [P] Inspect process-definition search facade and conversion behavior in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/convert.go`, and `c8volt/process/model.go`
-- [ ] T005 [P] Inspect process-definition list rendering and tests in `cmd/get_processdefinition.go`, `cmd/cmd_views_get.go`, and `cmd/get_test.go`
-- [ ] T006 [P] Inspect automation, JSON, keys-only, and prompt helpers in `cmd/` before adding the listing offer
+- [x] T001 Inspect shared process-instance BPMN/version/tag flags and search filter construction in `cmd/get_processinstance.go`
+- [x] T002 [P] Inspect process-instance search/mutation paging paths in `cmd/get_processinstance.go`, `cmd/cancel_processinstance.go`, and `cmd/delete_processinstance.go`
+- [x] T003 [P] Inspect `run pi` BPMN process ID and version validation in `cmd/run_processinstance.go`
+- [x] T004 [P] Inspect process-definition search facade and conversion behavior in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/convert.go`, and `c8volt/process/model.go`
+- [x] T005 [P] Inspect process-definition list rendering and tests in `cmd/get_processdefinition.go`, `cmd/cmd_views_get.go`, and `cmd/get_test.go`
+- [x] T006 [P] Inspect automation, JSON, keys-only, and prompt helpers in `cmd/` before adding the listing offer
 
 ---
 
