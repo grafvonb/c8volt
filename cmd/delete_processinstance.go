@@ -80,9 +80,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
-			if err := processDefinitionSelectorValidationError(cmd, cli, result); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-			}
+			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)
 			if err != nil {

@@ -83,9 +83,7 @@ var runProcessInstanceCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
-			if err := processDefinitionSelectorValidationError(cmd, cli, result); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-			}
+			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionBpmnProcessIds))
 			for _, bpmnID := range flagRunPIProcessDefinitionBpmnProcessIds {

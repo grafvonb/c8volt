@@ -108,7 +108,43 @@ func TestProcessDefinitionSelectorValidation_CollectsMissingSelectors(t *testing
 	require.Contains(t, result.MatchesByBpmnProcessID, "visible")
 }
 
-func TestProcessDefinitionSelectorMissingFormatting_IncludesSelectorContextWithoutPrompt(t *testing.T) {
+func TestProcessDefinitionSelectorValidation_SearchesByIDOnlyWhenVersionSelectorMisses(t *testing.T) {
+	var gotFilters []process.ProcessDefinitionFilter
+	cli := stubProcessAPI{
+		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+			gotFilters = append(gotFilters, filter)
+			if filter.BpmnProcessId == "order" && filter.ProcessVersion == 0 && filter.ProcessVersionTag == "" {
+				require.True(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+				return process.ProcessDefinitions{
+					Total: 1,
+					Items: []process.ProcessDefinition{
+						{Key: "pd-order-v2", TenantId: "<default>", BpmnProcessId: "order", ProcessVersion: 2, ProcessVersionTag: "stable"},
+					},
+				}, nil
+			}
+			require.False(t, options.ApplyFacadeOptions(opts).IgnoreTenant)
+			return process.ProcessDefinitions{}, nil
+		},
+	}
+
+	result, err := validateProcessDefinitionSelectors(context.Background(), cli, processDefinitionSelectorValidationRequest{
+		BpmnProcessIds:    []string{"order"},
+		ProcessVersion:    99,
+		ProcessVersionTag: "missing",
+	})
+
+	require.NoError(t, err)
+	require.False(t, result.Valid())
+	require.Equal(t, []string{"order"}, result.MissingBpmnProcessIDs)
+	require.Equal(t, []process.ProcessDefinitionFilter{
+		{BpmnProcessId: "order", ProcessVersion: 99, ProcessVersionTag: "missing"},
+		{BpmnProcessId: "order"},
+	}, gotFilters)
+	require.True(t, result.HasNearMatches())
+	require.Equal(t, "pd-order-v2", result.NearMatchesByBpmnProcessID["order"].Items[0].Key)
+}
+
+func TestProcessDefinitionSelectorMissingFormatting_UsesSingleLineBracketedSelectors(t *testing.T) {
 	result := processDefinitionSelectorValidationResult{
 		Request: processDefinitionSelectorValidationRequest{
 			ProcessVersion:    5,
@@ -120,15 +156,51 @@ func TestProcessDefinitionSelectorMissingFormatting_IncludesSelectorContextWitho
 	got := formatMissingProcessDefinitionSelectors(result)
 	err := processDefinitionSelectorNoPromptError(result)
 
-	require.Contains(t, got, "no visible process definitions match the provided selector(s):")
-	require.Contains(t, got, "bpmnProcessId: missing-a")
-	require.Contains(t, got, "bpmnProcessId: missing-b")
-	require.Contains(t, got, "processVersion: 5")
-	require.Contains(t, got, "processVersionTag: release")
-	require.Contains(t, got, "credentials may not have access")
+	require.Equal(t, "no visible process definitions match the provided selector(s): [missing-a v5/release], [missing-b v5/release]", got)
+	require.NotContains(t, got, "bpmnProcessId:")
+	require.NotContains(t, got, "processVersion:")
+	require.NotContains(t, got, "processVersionTag:")
+	require.NotContains(t, got, "credentials may not have access")
 	require.NotContains(t, got, "List visible process definitions")
 	require.Error(t, err)
+	require.Equal(t, got, err.Error())
 	require.True(t, errors.Is(err, ferrors.ErrLocalPrecondition))
+}
+
+func TestProcessDefinitionSelectorMissingFormatting_UsesCompactVersionSelectors(t *testing.T) {
+	tests := []struct {
+		name string
+		req  processDefinitionSelectorValidationRequest
+		want string
+	}{
+		{
+			name: "version only",
+			req:  processDefinitionSelectorValidationRequest{ProcessVersion: 3},
+			want: "missing-process v3",
+		},
+		{
+			name: "tag only",
+			req:  processDefinitionSelectorValidationRequest{ProcessVersionTag: "stable"},
+			want: "missing-process */stable",
+		},
+		{
+			name: "no version selector",
+			req:  processDefinitionSelectorValidationRequest{},
+			want: "missing-process",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatMissingProcessDefinitionSelectors(processDefinitionSelectorValidationResult{
+				Request:               tt.req,
+				MissingBpmnProcessIDs: []string{"missing-process"},
+			})
+
+			require.Contains(t, got, "["+tt.want+"]")
+			require.NotContains(t, got, "bpmnProcessId:")
+		})
+	}
 }
 
 func TestProcessDefinitionSelectorNoPromptError_ReturnsNilForValidResult(t *testing.T) {
@@ -141,23 +213,26 @@ func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersLis
 
 	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
 	}
 
-	err := processDefinitionSelectorValidationError(cmd, stubProcessAPI{}, processDefinitionSelectorValidationResult{
+	result := processDefinitionSelectorValidationResult{
 		MissingBpmnProcessIDs: []string{"missing-process"},
-	})
+	}
+	err := processDefinitionSelectorValidationError(result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, stubProcessAPI{}, result)
 
 	require.Error(t, err)
+	require.NoError(t, recoveryErr)
 	require.True(t, errors.Is(err, ferrors.ErrLocalPrecondition))
-	require.Contains(t, err.Error(), "no visible process definition matches the provided selector")
-	require.Contains(t, err.Error(), "bpmnProcessId: missing-process")
-	require.Contains(t, prompt, "no visible process definition matches the provided selector")
-	require.Contains(t, prompt, "bpmnProcessId: missing-process")
-	require.Contains(t, prompt, "List visible process definitions?")
+	require.EqualError(t, err, "no visible process definition matches the provided selector: [missing-process]")
+	require.NotContains(t, err.Error(), "bpmnProcessId: missing-process")
+	require.Equal(t, "List visible process definitions?", prompt)
+	require.NotContains(t, prompt, "credentials may not have access")
+	require.NotContains(t, prompt, "\n\n")
 }
 
 func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffersListing(t *testing.T) {
@@ -166,25 +241,26 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 
 	cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
 	}
 
-	err := processDefinitionSelectorValidationError(cmd, stubProcessAPI{}, processDefinitionSelectorValidationResult{
+	result := processDefinitionSelectorValidationResult{
 		MissingBpmnProcessIDs: []string{"missing-a", "missing-b"},
-	})
+	}
+	err := processDefinitionSelectorValidationError(result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, stubProcessAPI{}, result)
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no visible process definitions match the provided selector(s)")
-	require.Contains(t, err.Error(), "bpmnProcessId: missing-a")
-	require.Contains(t, err.Error(), "bpmnProcessId: missing-b")
-	require.Contains(t, err.Error(), "They may not exist")
-	require.Contains(t, prompt, "no visible process definitions match the provided selector(s)")
-	require.Contains(t, prompt, "bpmnProcessId: missing-a")
-	require.Contains(t, prompt, "bpmnProcessId: missing-b")
-	require.Contains(t, prompt, "List visible process definitions?")
+	require.NoError(t, recoveryErr)
+	require.EqualError(t, err, "no visible process definitions match the provided selector(s): [missing-a], [missing-b]")
+	require.NotContains(t, err.Error(), "bpmnProcessId: missing-a")
+	require.NotContains(t, err.Error(), "bpmnProcessId: missing-b")
+	require.Equal(t, "List visible process definitions?", prompt)
+	require.NotContains(t, prompt, "credentials may not have access")
+	require.NotContains(t, prompt, "\n\n")
 }
 
 func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotPrompt(t *testing.T) {
@@ -224,16 +300,18 @@ func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotProm
 			processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
 			cmd, _ := newProcessDefinitionSelectorValidationTestCommand()
 			tt.setup(cmd)
-			confirmCmdOrAbortFn = func(bool, string) error {
+			confirmProcessDefinitionSelectorListVisibleFn = func(bool, string) error {
 				t.Fatal("unexpected process-definition selector listing prompt")
 				return nil
 			}
 
-			err := processDefinitionSelectorValidationError(cmd, stubProcessAPI{}, processDefinitionSelectorValidationResult{
+			result := processDefinitionSelectorValidationResult{
 				MissingBpmnProcessIDs: []string{"missing-process"},
-			})
+			}
+			err := processDefinitionSelectorValidationError(result)
 
 			require.Error(t, err)
+			require.False(t, processDefinitionSelectorPromptAllowed(cmd))
 			require.Contains(t, err.Error(), "no visible process definition matches the provided selector")
 			require.NotContains(t, err.Error(), "List visible process definitions?")
 		})
@@ -246,7 +324,7 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 
 	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
 		require.False(t, autoConfirm)
 		prompt = got
 		return nil
@@ -264,12 +342,18 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 		},
 	}
 
-	err := processDefinitionSelectorValidationError(cmd, cli, processDefinitionSelectorValidationResult{
+	result := processDefinitionSelectorValidationResult{
 		MissingBpmnProcessIDs: []string{"missing-process"},
-	})
+	}
+	err := processDefinitionSelectorValidationError(result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, cli, result)
 
 	require.Error(t, err)
-	require.Contains(t, prompt, "List visible process definitions?")
+	require.NoError(t, recoveryErr)
+	require.EqualError(t, err, "no visible process definition matches the provided selector: [missing-process]")
+	require.Equal(t, "List visible process definitions?", prompt)
+	require.NotContains(t, prompt, "credentials may not have access")
+	require.NotContains(t, prompt, "\n\n")
 	require.Contains(t, output.String(), "2251799813685250")
 	require.Contains(t, output.String(), "tenant-a")
 	require.Contains(t, output.String(), "invoice")
@@ -278,6 +362,54 @@ func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsVisibleDefi
 	require.Contains(t, output.String(), "order")
 	require.Contains(t, output.String(), "v7/stable")
 	require.Contains(t, output.String(), "found: 2")
+}
+
+func TestProcessDefinitionSelectorValidationError_AcceptedPromptListsNearMatches(t *testing.T) {
+	resetProcessDefinitionSelectorPromptTestState(t)
+	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
+
+	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
+	var prompt string
+	confirmProcessDefinitionSelectorListVisibleFn = func(autoConfirm bool, got string) error {
+		require.False(t, autoConfirm)
+		prompt = got
+		return nil
+	}
+	cli := stubProcessAPI{
+		searchProcessDefinitions: func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
+			t.Fatal("near-match listing should use already discovered process definitions")
+			return process.ProcessDefinitions{}, nil
+		},
+	}
+
+	result := processDefinitionSelectorValidationResult{
+		Request: processDefinitionSelectorValidationRequest{
+			ProcessVersion:    99,
+			ProcessVersionTag: "missing",
+		},
+		NearMatchesByBpmnProcessID: map[string]process.ProcessDefinitions{
+			"order": {
+				Total: 1,
+				Items: []process.ProcessDefinition{
+					{Key: "pd-order-v2", TenantId: "<default>", BpmnProcessId: "order", ProcessVersion: 2, ProcessVersionTag: "stable"},
+				},
+			},
+		},
+		MissingBpmnProcessIDs: []string{"order"},
+	}
+	err := processDefinitionSelectorValidationError(result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, cli, result)
+
+	require.Error(t, err)
+	require.NoError(t, recoveryErr)
+	require.EqualError(t, err, "no visible process definition matches the provided selector: [order v99/missing]")
+	require.Equal(t, "List matching process definitions?", prompt)
+	require.NotContains(t, prompt, "credentials may not have access")
+	require.Contains(t, output.String(), "pd-order-v2")
+	require.Contains(t, output.String(), "<default>")
+	require.Contains(t, output.String(), "order")
+	require.Contains(t, output.String(), "v2/stable")
+	require.Contains(t, output.String(), "found: 1")
 }
 
 func newProcessDefinitionSelectorValidationTestCommand() (*cobra.Command, *bytes.Buffer) {
@@ -295,8 +427,10 @@ func resetProcessDefinitionSelectorPromptTestState(t *testing.T) {
 
 	resetProcessInstanceCommandGlobals()
 	processDefinitionSelectorInteractiveTerminalFn = processDefinitionSelectorInteractiveTerminal
+	confirmProcessDefinitionSelectorListVisibleFn = confirmCmdOrAbortDefaultYes
 	t.Cleanup(func() {
 		resetProcessInstanceCommandGlobals()
 		processDefinitionSelectorInteractiveTerminalFn = processDefinitionSelectorInteractiveTerminal
+		confirmProcessDefinitionSelectorListVisibleFn = confirmCmdOrAbortDefaultYes
 	})
 }

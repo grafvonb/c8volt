@@ -135,7 +135,8 @@ func TestGetProcessInstanceBpmnSelectorMissingFailsBeforeSearch(t *testing.T) {
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
 	require.Contains(t, string(output), "no visible process definition matches the provided selector")
-	require.Contains(t, string(output), "bpmnProcessId: missing-process")
+	require.Contains(t, string(output), "[missing-process]")
+	require.NotContains(t, string(output), "bpmnProcessId:")
 	require.NotContains(t, string(output), "found: 0")
 }
 

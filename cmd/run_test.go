@@ -265,7 +265,8 @@ func TestRunProcessInstanceBpmnSelectorPartialMultiIDFailsBeforeCreate(t *testin
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-definitions/search"}, requests)
 	require.Contains(t, string(output), "no visible process definition matches the provided selector")
-	require.Contains(t, string(output), "bpmnProcessId: missing-process")
+	require.Contains(t, string(output), "[missing-process]")
+	require.NotContains(t, string(output), "bpmnProcessId:")
 }
 
 func TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics(t *testing.T) {
@@ -291,8 +292,9 @@ func TestRunProcessInstanceBpmnSelectorMultipleMissingDiagnostics(t *testing.T) 
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-definitions/search"}, requests)
 	require.Contains(t, string(output), "no visible process definitions match the provided selector(s)")
-	require.Contains(t, string(output), "bpmnProcessId: missing-a")
-	require.Contains(t, string(output), "bpmnProcessId: missing-b")
+	require.Contains(t, string(output), "[missing-a]")
+	require.Contains(t, string(output), "[missing-b]")
+	require.NotContains(t, string(output), "bpmnProcessId:")
 }
 
 func TestRunProcessInstanceBpmnSelectorAllVisiblePreservesCreate(t *testing.T) {
