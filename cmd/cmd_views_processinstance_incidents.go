@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	indirectProcessTreeIncidentNote    = "inc: process instance is marked as having incidents, but no direct incidents were found; details may be in the process tree"
+	indirectProcessTreeIncidentNote    = "process instance is marked as having incidents, but no direct incidents were found; inspect the process tree for child incident details"
 	indirectProcessTreeIncidentWarning = "warning: one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
 )
 
