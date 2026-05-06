@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/173-pi-with-vars/plan.md](specs/173-pi-with-vars/plan.md)
+- Active plan: [specs/175-validate-pd-selectors/plan.md](specs/175-validate-pd-selectors/plan.md)
 <!-- SPECKIT END -->
