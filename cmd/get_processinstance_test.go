@@ -1000,7 +1000,7 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 		switch r.URL.Path {
 		case "/v2/process-instances/123":
 			require.Equal(t, http.MethodGet, r.Method)
-			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
 		case "/v2/variables/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
@@ -1036,6 +1036,8 @@ func TestGetProcessInstanceWithVars_HumanOutputShowsSortedProcessScopeVariables(
 	require.Contains(t, output, "└─ zeta=2")
 	require.NotContains(t, output, "localTask")
 	require.NotContains(t, output, "var alpha")
+	require.NotContains(t, output, "incidents:")
+	require.NotContains(t, output, "process instance is marked as having incidents")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
 	require.Less(t, strings.Index(output, "alpha=1"), strings.Index(output, "zeta=2"))

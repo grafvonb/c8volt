@@ -90,7 +90,7 @@ func activityPathView(cmd *cobra.Command, items []processInstanceActivityItem, s
 			out.WriteString(sep)
 		}
 		out.WriteString(oneLinePI(item.Item))
-		writeProcessInstanceActivityLines(&out, "", item.Variables, item.Incidents, item.Item.Incident, 0)
+		writeProcessInstanceActivityLines(&out, "", item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, 0)
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
@@ -104,7 +104,7 @@ func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrich
 			out.WriteString(sep)
 		}
 		out.WriteString(oneLinePI(item.Item))
-		writeProcessInstanceActivityLines(&out, "", nil, item.Incidents, item.Item.Incident, 0)
+		writeProcessInstanceActivityLines(&out, "", nil, item.Incidents, true, item.Item.Incident, 0)
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
@@ -173,7 +173,7 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 	}
 	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
 	rootChildren := edges[rootKey]
-	for _, line := range formatMustActivityLines("", nil, rootItem.Incidents, rootItem.Item.Incident, len(rootChildren)) {
+	for _, line := range formatMustActivityLines("", nil, rootItem.Incidents, true, rootItem.Item.Incident, len(rootChildren)) {
 		renderOutputLine(cmd, "%s", line)
 	}
 
@@ -201,7 +201,7 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 			out.WriteString(branch)
 			out.WriteString(oneLinePI(item.Item))
 			out.WriteString(marker)
-			writeProcessInstanceActivityLines(&out, nextPrefix, nil, item.Incidents, item.Item.Incident, len(edges[childKey]))
+			writeProcessInstanceActivityLines(&out, nextPrefix, nil, item.Incidents, true, item.Item.Incident, len(edges[childKey]))
 			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
@@ -222,7 +222,7 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 	}
 	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
 	rootChildren := edges[rootKey]
-	for _, line := range formatMustActivityLines("", rootItem.Variables, rootItem.Incidents, rootItem.Item.Incident, len(rootChildren)) {
+	for _, line := range formatMustActivityLines("", rootItem.Variables, rootItem.Incidents, rootItem.ShowIncidents, rootItem.Item.Incident, len(rootChildren)) {
 		renderOutputLine(cmd, "%s", line)
 	}
 
@@ -250,7 +250,7 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 			out.WriteString(branch)
 			out.WriteString(oneLinePI(item.Item))
 			out.WriteString(marker)
-			writeProcessInstanceActivityLines(&out, nextPrefix, item.Variables, item.Incidents, item.Item.Incident, len(edges[childKey]))
+			writeProcessInstanceActivityLines(&out, nextPrefix, item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, len(edges[childKey]))
 			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
@@ -259,7 +259,7 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 	return nil
 }
 
-func formatMustActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, hasIncidentMarker bool, followingChildren int) []string {
-	lines, _ := formatProcessInstanceActivityLines(prefix, variables, incidents, hasIncidentMarker, followingChildren)
+func formatMustActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) []string {
+	lines, _ := formatProcessInstanceActivityLines(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren)
 	return lines
 }

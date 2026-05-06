@@ -224,6 +224,53 @@ func TestWalkProcessInstanceCommand_WithVarsAndIncidentsChildrenHumanOutputShows
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
+func TestWalkProcessInstanceCommand_WithVarsOnlyDoesNotShowIncidentSectionForIncidentMarker(t *testing.T) {
+	var requests []string
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/123":
+			_, _ = w.Write([]byte(walkedProcessInstanceJSON("123", "", true)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), `"parentProcessInstanceKey":"123"`)
+			_, _ = w.Write([]byte(walkedProcessInstanceSearchJSON(t)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/variables/search":
+			require.Equal(t, "false", r.URL.Query().Get("truncateValues"))
+			_, _ = w.Write([]byte(`{"items":[{"name":"hasIncident","value":"true","variableKey":"902","processInstanceKey":"123","scopeKey":"123","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case strings.Contains(r.URL.Path, "/incidents/search"):
+			t.Fatalf("incident lookup should not run without --with-incidents: %s %s", r.Method, r.URL.Path)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"walk", "process-instance",
+		"--key", "123",
+		"--children",
+		"--with-vars",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/123",
+		"POST /v2/process-instances/search",
+		"POST /v2/variables/search",
+	}, requests)
+	require.Contains(t, output, "123")
+	require.Contains(t, output, "└─ vars:")
+	require.Contains(t, output, "   └─ hasIncident=true")
+	require.NotContains(t, output, "incidents:")
+	require.NotContains(t, output, "process instance is marked as having incidents")
+}
+
 // TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents keeps incidents attached to their walked owners.
 func TestWalkProcessInstanceCommand_WithIncidentsFamilyHumanOutputShowsMultipleIncidents(t *testing.T) {
 	var incidentRequests []string

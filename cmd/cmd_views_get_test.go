@@ -423,6 +423,7 @@ func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVaria
 				ProcessVersion: 3,
 				State:          process.StateActive,
 				StartDate:      "2026-03-23T18:00:00Z",
+				Incident:       true,
 			},
 			Variables: []process.ProcessInstanceVariable{
 				{Name: "alpha", Value: "1", ProcessInstanceKey: "123", ScopeKey: "123"},
@@ -438,6 +439,7 @@ func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVaria
 	require.Contains(t, output, "├─ alpha=1")
 	require.Contains(t, output, "└─ zeta=2")
 	require.NotContains(t, output, "var alpha")
+	require.NotContains(t, output, "incidents:")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "123 tenant demo"), strings.Index(output, "└─ vars:"))
 	require.Less(t, strings.Index(output, "└─ vars:"), strings.Index(output, "alpha=1"))
@@ -482,6 +484,7 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 				ErrorType:           "IO_MAPPING_ERROR",
 				ErrorMessage:        "failed",
 			}},
+			ShowIncidents: true,
 		}},
 	})
 

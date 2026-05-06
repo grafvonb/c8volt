@@ -11,9 +11,10 @@ import (
 )
 
 type processInstanceActivityItem struct {
-	Item      process.ProcessInstance                 `json:"item"`
-	Variables []process.ProcessInstanceVariable       `json:"variables,omitempty"`
-	Incidents []process.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+	Item          process.ProcessInstance                 `json:"item"`
+	Variables     []process.ProcessInstanceVariable       `json:"variables,omitempty"`
+	Incidents     []process.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+	ShowIncidents bool                                    `json:"-"`
 }
 
 type processInstanceActivityInstances struct {
@@ -65,7 +66,7 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 	needsIndirectIncidentWarning := false
 	for i, it := range items {
 		renderOutputLine(cmd, "%s", lines[i])
-		detailLines, needsWarning := formatProcessInstanceActivityLines("", it.Variables, it.Incidents, it.Item.Incident, 0)
+		detailLines, needsWarning := formatProcessInstanceActivityLines("", it.Variables, it.Incidents, it.ShowIncidents, it.Item.Incident, 0)
 		for _, line := range detailLines {
 			renderOutputLine(cmd, "%s", line)
 		}
@@ -74,9 +75,9 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 	return needsIndirectIncidentWarning
 }
 
-func formatProcessInstanceActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, hasIncidentMarker bool, followingChildren int) ([]string, bool) {
+func formatProcessInstanceActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) ([]string, bool) {
 	hasVars := len(variables) > 0
-	hasIncidents := len(incidents) > 0 || hasIncidentMarker
+	hasIncidents := showIncidents && (len(incidents) > 0 || hasIncidentMarker)
 	sectionCount := 0
 	if hasVars {
 		sectionCount++
@@ -125,8 +126,8 @@ func treeChildPrefix(prefix string, branchIndex, totalBranches int) string {
 	return prefix + "│  "
 }
 
-func writeProcessInstanceActivityLines(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, hasIncidentMarker bool, followingChildren int) bool {
-	lines, needsWarning := formatProcessInstanceActivityLines(prefix, variables, incidents, hasIncidentMarker, followingChildren)
+func writeProcessInstanceActivityLines(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) bool {
+	lines, needsWarning := formatProcessInstanceActivityLines(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren)
 	for _, line := range lines {
 		out.WriteByte('\n')
 		out.WriteString(line)
@@ -138,8 +139,9 @@ func activityFromIncidentEnriched(resp process.IncidentEnrichedProcessInstances)
 	items := make([]processInstanceActivityItem, 0, len(resp.Items))
 	for _, it := range resp.Items {
 		items = append(items, processInstanceActivityItem{
-			Item:      it.Item,
-			Incidents: it.Incidents,
+			Item:          it.Item,
+			Incidents:     it.Incidents,
+			ShowIncidents: true,
 		})
 	}
 	return processInstanceActivityInstances{Total: resp.Total, Items: items}
@@ -165,9 +167,10 @@ func mergeIncidentAndVariableActivity(incidents process.IncidentEnrichedProcessI
 	items := make([]processInstanceActivityItem, 0, len(incidents.Items))
 	for _, it := range incidents.Items {
 		items = append(items, processInstanceActivityItem{
-			Item:      it.Item,
-			Variables: varsByKey[it.Item.Key],
-			Incidents: it.Incidents,
+			Item:          it.Item,
+			Variables:     varsByKey[it.Item.Key],
+			Incidents:     it.Incidents,
+			ShowIncidents: true,
 		})
 	}
 	return processInstanceActivityInstances{
@@ -189,7 +192,7 @@ func processInstancesFromTraversal(result process.TraversalResult) process.Proce
 	}
 }
 
-func activityItemsFromTraversal(result process.TraversalResult, incidents process.IncidentEnrichedTraversalResult, variables process.VariableEnrichedProcessInstances) []processInstanceActivityItem {
+func activityItemsFromTraversal(result process.TraversalResult, incidents process.IncidentEnrichedTraversalResult, variables process.VariableEnrichedProcessInstances, showIncidents bool) []processInstanceActivityItem {
 	incidentsByKey := make(map[string][]process.ProcessInstanceIncidentDetail, len(incidents.Items))
 	for _, item := range incidents.Items {
 		incidentsByKey[item.Item.Key] = item.Incidents
@@ -206,9 +209,10 @@ func activityItemsFromTraversal(result process.TraversalResult, incidents proces
 			continue
 		}
 		items = append(items, processInstanceActivityItem{
-			Item:      item,
-			Variables: varsByKey[key],
-			Incidents: incidentsByKey[key],
+			Item:          item,
+			Variables:     varsByKey[key],
+			Incidents:     incidentsByKey[key],
+			ShowIncidents: showIncidents,
 		})
 	}
 	return items
