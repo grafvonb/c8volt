@@ -42,6 +42,7 @@ func (m *mockCamundaClient) PostProcessInstancesProcessInstanceKeyCancellationWi
 type mockOperateClient struct {
 	getProcessInstanceByKeyWithResponse                   func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.GetProcessInstanceByKeyResponse, error)
 	searchProcessInstancesWithResponse                    func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error)
+	searchVariablesForProcessInstancesWithResponse        func(ctx context.Context, body operatev87.SearchVariablesForProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchVariablesForProcessInstancesResponse, error)
 	deleteProcessInstanceAndAllDependantDataByKeyWithResp func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error)
 }
 
@@ -51,6 +52,10 @@ func (m *mockOperateClient) GetProcessInstanceByKeyWithResponse(ctx context.Cont
 
 func (m *mockOperateClient) SearchProcessInstancesWithResponse(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
 	return m.searchProcessInstancesWithResponse(ctx, body, reqEditors...)
+}
+
+func (m *mockOperateClient) SearchVariablesForProcessInstancesWithResponse(ctx context.Context, body operatev87.SearchVariablesForProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchVariablesForProcessInstancesResponse, error) {
+	return m.searchVariablesForProcessInstancesWithResponse(ctx, body, reqEditors...)
 }
 
 func (m *mockOperateClient) DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {
@@ -879,6 +884,10 @@ func newStrictOperateClient(t *testing.T) *mockOperateClient {
 		},
 		searchProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error) {
 			t.Fatalf("unexpected search call")
+			return nil, nil
+		},
+		searchVariablesForProcessInstancesWithResponse: func(ctx context.Context, body operatev87.SearchVariablesForProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchVariablesForProcessInstancesResponse, error) {
+			t.Fatalf("unexpected variable search call")
 			return nil, nil
 		},
 		deleteProcessInstanceAndAllDependantDataByKeyWithResp: func(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error) {

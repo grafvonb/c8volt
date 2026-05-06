@@ -36,6 +36,16 @@ type ProcessInstanceIncidentDetail struct {
 	ProcessDefinitionId    string
 }
 
+type ProcessInstanceVariable struct {
+	Name               string
+	Value              string
+	VariableKey        string
+	ProcessInstanceKey string
+	ScopeKey           string
+	TenantId           string
+	APITruncated       bool
+}
+
 type ProcessInstanceFilter struct {
 	Key                  string
 	BpmnProcessId        string

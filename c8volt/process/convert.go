@@ -97,6 +97,22 @@ func fromDomainProcessInstanceIncidentDetails(xs []d.ProcessInstanceIncidentDeta
 	return toolx.MapSlice(xs, fromDomainProcessInstanceIncidentDetail)
 }
 
+func fromDomainProcessInstanceVariable(x d.ProcessInstanceVariable) ProcessInstanceVariable {
+	return ProcessInstanceVariable{
+		Name:               x.Name,
+		Value:              x.Value,
+		VariableKey:        x.VariableKey,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ScopeKey:           x.ScopeKey,
+		TenantId:           x.TenantId,
+		APITruncated:       x.APITruncated,
+	}
+}
+
+func fromDomainProcessInstanceVariables(xs []d.ProcessInstanceVariable) []ProcessInstanceVariable {
+	return toolx.MapSlice(xs, fromDomainProcessInstanceVariable)
+}
+
 func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage {
 	return ProcessInstancePage{
 		Request: ProcessInstancePageRequest{
@@ -193,6 +209,18 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
+	}
+}
+
+func toDomainProcessInstanceVariable(x ProcessInstanceVariable) d.ProcessInstanceVariable {
+	return d.ProcessInstanceVariable{
+		Name:               x.Name,
+		Value:              x.Value,
+		VariableKey:        x.VariableKey,
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		ScopeKey:           x.ScopeKey,
+		TenantId:           x.TenantId,
+		APITruncated:       x.APITruncated,
 	}
 }
 

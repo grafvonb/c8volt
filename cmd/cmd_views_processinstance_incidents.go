@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	indirectProcessTreeIncidentNote    = "inc: process instance is marked as having incidents, but no direct incidents were found; details may be in the process tree"
+	indirectProcessTreeIncidentNote    = "process instance is marked as having incidents, but no direct incidents were found; inspect the process tree for child incident details"
 	indirectProcessTreeIncidentWarning = "warning: one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
 )
 
@@ -21,10 +21,7 @@ func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Incid
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, incidentEnrichedProcessInstancesWithAgeMeta(resp))
 	}
-	needsIndirectIncidentWarning, err := renderIncidentEnrichedProcessInstanceRows(cmd, resp)
-	if err != nil {
-		return err
-	}
+	needsIndirectIncidentWarning := renderProcessInstanceActivityRows(cmd, activityFromIncidentEnriched(resp).Items)
 	if needsIndirectIncidentWarning {
 		renderHumanWarningLine(cmd, indirectProcessTreeIncidentWarning)
 	}
@@ -33,23 +30,7 @@ func incidentEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Incid
 }
 
 func renderIncidentEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.IncidentEnrichedProcessInstances) (bool, error) {
-	rows := make([]flatRow, 0, len(resp.Items))
-	for _, it := range resp.Items {
-		rows = append(rows, flatRowPI(it.Item))
-	}
-	lines := formatFlatRows(rows)
-	needsIndirectIncidentWarning := false
-	for i, it := range resp.Items {
-		renderOutputLine(cmd, "%s", lines[i])
-		for j, incident := range it.Incidents {
-			renderOutputLine(cmd, "%s%s", incidentTreeBranch(j, len(it.Incidents)), incidentHumanLine(incident))
-		}
-		if processInstanceHasIndirectIncidentMarker(it) {
-			renderOutputLine(cmd, "└─ %s", indirectProcessTreeIncidentNote)
-			needsIndirectIncidentWarning = true
-		}
-	}
-	return needsIndirectIncidentWarning, nil
+	return renderProcessInstanceActivityRows(cmd, activityFromIncidentEnriched(resp).Items), nil
 }
 
 func incidentTreeBranch(index, total int) string {
@@ -96,7 +77,7 @@ func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 	}
 	message := truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit)
 	fields := incidentHumanFields(incident, key)
-	return fmt.Sprintf("inc: %s message=%s", fields, message)
+	return fmt.Sprintf("%s message=%s", fields, message)
 }
 
 func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {

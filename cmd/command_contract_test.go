@@ -262,6 +262,29 @@ func TestCommandCapabilityForCommand_ProcessInstanceExpectIncidentFlag(t *testin
 	})
 }
 
+func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(getProcessInstanceCmd)
+
+	require.Equal(t, "get process-instance", capability.Path)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-vars",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "include process-instance-scope variables for keyed or list/search process-instance output",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "var-value-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation",
+	})
+}
+
 // commandCapabilityPaths flattens nested discovery output so removed aliases cannot hide under `get`.
 func commandCapabilityPaths(commands []CommandCapability) []string {
 	var paths []string

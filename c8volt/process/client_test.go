@@ -298,6 +298,82 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 	require.NotNil(t, got.Items[1].Incidents)
 }
 
+func TestClient_EnrichProcessInstancesWithVariables_PreservesOrderAndPerKeyAssociation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			calls = append(calls, key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			switch key {
+			case "123":
+				return []d.ProcessInstanceVariable{
+					{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123"},
+					{Name: "elementLocal", Value: "ignored", VariableKey: "v-local", ProcessInstanceKey: "123", ScopeKey: "element-1"},
+					{Name: "wrongOwner", Value: "ignored", VariableKey: "v-wrong", ProcessInstanceKey: "999", ScopeKey: "999"},
+					{Name: "alpha", Value: "1", VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123"},
+				}, nil
+			case "124":
+				return nil, nil
+			default:
+				t.Fatalf("unexpected variable lookup for key %s", key)
+				return nil, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
+		Total: 2,
+		Items: []ProcessInstance{
+			{Key: "123", BpmnProcessId: "order-process"},
+			{Key: "124", BpmnProcessId: "invoice-process"},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"123", "124"}, calls)
+	require.Equal(t, int32(2), got.Total)
+	require.Len(t, got.Items, 2)
+	require.Equal(t, "123", got.Items[0].Item.Key)
+	require.Equal(t, []ProcessInstanceVariable{
+		{Name: "alpha", Value: "1", VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123"},
+		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123"},
+	}, got.Items[0].Variables)
+	require.Equal(t, "124", got.Items[1].Item.Key)
+	require.Empty(t, got.Items[1].Variables)
+	require.NotNil(t, got.Items[1].Variables)
+}
+
+func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJSONMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			return []d.ProcessInstanceVariable{
+				{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
+				{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
+		Total: 1,
+		Items: []ProcessInstance{{Key: "123", BpmnProcessId: "order-process"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []ProcessInstanceVariable{
+		{Name: "alpha", Value: `"C-123"`, VariableKey: "v-1", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: true},
+		{Name: "zeta", Value: "2", VariableKey: "v-2", ProcessInstanceKey: "123", ScopeKey: "123", TenantId: "tenant", APITruncated: false},
+	}, got.Items[0].Variables)
+}
+
 // TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
 func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
@@ -1156,6 +1232,7 @@ type stubProcessInstanceAPI struct {
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	searchProcessInstanceIncidents     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 	ancestry                           func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
 	descendants                        func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
 	cancelProcessInstance              func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
@@ -1183,6 +1260,14 @@ func (s stubProcessInstanceAPI) SearchProcessInstanceIncidents(ctx context.Conte
 		panic("unexpected call")
 	}
 	return s.searchProcessInstanceIncidents(ctx, key, opts...)
+}
+
+// SearchProcessInstanceVariables delegates to the per-test callback used by variable enrichment facade tests.
+func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	if s.searchProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstanceVariables(ctx, key, opts...)
 }
 
 // GetDirectChildrenOfProcessInstance panics when a test takes the direct-children path unexpectedly.

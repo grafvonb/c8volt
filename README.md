@@ -187,12 +187,13 @@ For batch execution:
 ```bash
 ./c8volt walk pi --key 2251799813711967
 ./c8volt walk pi --key 2251799813711967 --with-incidents
+./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
 ./c8volt walk pi --key 2251799813711967 --flat
 ```
 
 This is where `c8volt` becomes an operations tool instead of just a resource browser: it shows the process-instance family tree that explains why a cancellation or deletion may behave the way it does.
 
-For incident diagnosis, add `--with-incidents` to keyed walks to show incident keys and messages under the matching process-instance rows, or combine it with `--json` for structured incident details.
+For diagnosis, add `--with-incidents` and/or `--with-vars` to keyed walks to show grouped `incidents:` and `vars:` sections under the matching process-instance rows, or combine them with `--json` for structured details.
 
 ### Cancel Safely
 
@@ -280,6 +281,11 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --with-incidents --incident-message-limit 80
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
+./c8volt get pi --with-vars
+./c8volt get pi --key <process-instance-key> --with-vars
+./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
+./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
+./c8volt get pi --key <process-instance-key> --with-vars --json
 ./c8volt get pi --roots-only
 ./c8volt get pi --children-only
 ./c8volt get pi --orphan-children-only
@@ -292,7 +298,9 @@ Human process-instance lists mark only incident-bearing instances with `inc!`; i
 
 Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
 
-For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output to show direct incident keys and messages below each matching process-instance row. Rows marked `inc!` with no direct incident details include a short note and one follow-up warning to inspect the tree with `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` to shorten human incident messages; JSON incident output keeps full messages.
+For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output to show direct incident keys and messages in a grouped `incidents:` section below each matching process-instance row. Rows marked `inc!` with no direct incident details include a short note and one follow-up warning to inspect the tree with `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` to shorten human incident messages; JSON incident output keeps full messages.
+
+For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output, to show process-instance-scope variables in a grouped `vars:` section below each matching row. It can be combined with `--with-incidents` for one inspection view. c8volt filters variables by both `processInstanceKey` and `scopeKey`, sorts them by name, and keeps human values full by default. Add `--var-value-limit <chars>` to shorten only human display values; JSON variable output keeps received values and metadata intact.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
@@ -537,11 +545,14 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get pi --state active --with-vars
+./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --state active --total
 
 # Inspect parent/child relationships before taking action.
 ./c8volt walk pi --key <process-instance-key>
 ./c8volt walk pi --key <process-instance-key> --with-incidents
+./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt walk pi --key <process-instance-key> --flat
 
 # Wait for automation-visible outcomes.

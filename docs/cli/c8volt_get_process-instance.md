@@ -18,6 +18,8 @@ Search results support interactive paging, scriptable JSON aggregation, and coun
 
 Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.
 
+Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.
+
 Use --has-user-tasks to fetch process instances by their owning user-task keys.
 
 Run `c8volt get pi --help` for the complete flag reference.
@@ -39,7 +41,11 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --limit 25 --auto-confirm
   ./c8volt get pi --incidents-only --with-incidents
   ./c8volt get pi --with-incidents --incident-message-limit 80
+  ./c8volt get pi --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --with-incidents
+  ./c8volt get pi --key 2251799813711967 --with-vars
+  ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
+  ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --json
   ./c8volt get pi --key 2251799813711967 --with-incidents --json
   ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
@@ -77,7 +83,9 @@ c8volt get process-instance [flags]
       --start-date-older-days int    only include process instances N days old or older (default -1)
   -s, --state string                 state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                        return only the numeric total of matching process instances; capped backend totals are counted by paging
+      --var-value-limit int          maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
       --with-incidents               include direct incident keys and messages for keyed or list/search process-instance output
+      --with-vars                    include process-instance-scope variables for keyed or list/search process-instance output
   -w, --workers int                  maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```
 
