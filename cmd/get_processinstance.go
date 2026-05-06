@@ -62,6 +62,7 @@ var getProcessInstanceCmd = &cobra.Command{
 	Long: "Get process instances by key or by search criteria.\n\n" +
 		"Use direct lookup when you know a process-instance key, or combine search filters to inspect matching process instances by process definition, tenant, state, incidents, variables, jobs, user tasks, and time ranges.\n\n" +
 		"Search results support interactive paging, scriptable JSON aggregation, and count-only workflows. Direct key lookup stays strict: missing keys return not-found.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before searching process instances. A missing selector fails with a local diagnostic instead of looking like a valid empty result; --json, --automation, --keys-only, and non-TTY runs never prompt for recovery output.\n\n" +
 		"Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
@@ -215,6 +216,11 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 		default:
+			result, err := validateProcessDefinitionSelectors(ctx, cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				fail(err)
+			}
+			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("using process instance search filter: %s", filter.String()))
 			if flagGetPITotal {
@@ -1122,6 +1128,10 @@ func useInvalidInputFlagErrors(cmd *cobra.Command) {
 func validatePISearchVersionSupport(cfg *config.Config) error {
 	if cfg == nil {
 		return nil
+	}
+	if (hasPIDateFilterFlags() || hasPIRelativeDayFilterFlags()) && cfg.App.CamundaVersion == toolx.V87 {
+		return ferrors.WrapClass(ferrors.ErrUnsupported,
+			fmt.Errorf("process-instance date filters require Camunda 8.8"))
 	}
 	if flagGetPIOrphanChildrenOnly && cfg.App.CamundaVersion == toolx.V87 {
 		return ferrors.WrapClass(ferrors.ErrUnsupported,

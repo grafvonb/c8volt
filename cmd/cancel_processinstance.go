@@ -22,6 +22,7 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: "Cancel process instances by key or search filters.\n\n" +
 		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
+		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation. A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi`.",
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
@@ -75,6 +76,14 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if !hasPISearchFilterFlags() {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("either at least one --key is required, or sufficient filtering options to search for process instances to cancel"))
 			}
+			if err := validatePISearchVersionSupport(cfg); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))

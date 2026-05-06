@@ -76,7 +76,11 @@ func (s *Service) SearchProcessDefinitions(ctx context.Context, filter d.Process
 		return nil, err
 	}
 
-	body := searchProcessDefinitionsRequest(common.EffectiveTenant(s.cfg), filter, size)
+	tenantID := common.EffectiveTenant(s.cfg)
+	if cCfg.IgnoreTenant {
+		tenantID = ""
+	}
+	body := searchProcessDefinitionsRequest(tenantID, filter, size)
 	common.VerboseLog(ctx, cCfg, s.log, "searching process definitions", "baseURL", s.cfg.APIs.Operate.BaseURL, "body", body)
 	resp, err := s.co.SearchProcessDefinitionsWithResponse(ctx, body)
 	if err != nil {

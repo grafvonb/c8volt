@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.6.0-alpha1-11-g7872cbd-dirty`, commit `7872cbd`, built `2026-05-06T09:24:42Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.6.0-alpha2-8-g92a8682-dirty`, commit `92a8682`, built `2026-05-06T10:50:04Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
 
@@ -255,6 +255,10 @@ Deletion in real environments often means preview the family scope, cancel-first
 ```
 
 Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Human-oriented modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
+
+When a process-instance command uses `--bpmn-process-id`, `c8volt` first validates that a matching process definition is visible with the same version, version tag, and tenant context. A missing or invisible selector fails before process-instance search, cancellation, deletion, or start work, so a typo does not look like a valid `found: 0` result. Interactive human output may offer to list visible process definitions; `--json`, `--automation`, `--keys-only`, `--auto-confirm`, and non-TTY execution fail clearly without that recovery prompt.
+
+For `run pi`, all BPMN process IDs are validated before any process instance is created. If one ID is missing in a multi-ID run, the whole request fails and no partial process instances are started.
 
 Use `--batch-size` or `-n` to control how many process instances each backend page may fetch. Use `--limit` or `-l` to cap the total number of matched process instances returned or processed across all pages.
 
@@ -552,6 +556,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --state active --with-vars

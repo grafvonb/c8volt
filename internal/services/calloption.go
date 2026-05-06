@@ -13,6 +13,7 @@ func WithDryRun() CallOption            { return func(c *CallCfg) { c.DryRun = t
 func WithVerbose() CallOption           { return func(c *CallCfg) { c.Verbose = true } }
 func WithNoWorkerLimit() CallOption     { return func(c *CallCfg) { c.NoWorkerLimit = true } }
 func WithAllowInconsistent() CallOption { return func(c *CallCfg) { c.AllowInconsistent = true } }
+func WithIgnoreTenant() CallOption      { return func(c *CallCfg) { c.IgnoreTenant = true } }
 
 type CallOption func(*CallCfg)
 
@@ -27,6 +28,7 @@ type CallCfg struct {
 	Verbose           bool
 	NoWorkerLimit     bool
 	AllowInconsistent bool
+	IgnoreTenant      bool
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

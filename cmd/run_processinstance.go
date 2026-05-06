@@ -26,6 +26,7 @@ var runProcessInstanceCmd = &cobra.Command{
 	Short: "Start process instances and confirm activation",
 	Long: "Start process instances and confirm activation.\n\n" +
 		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
+		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
 		"By default c8volt waits for active instances. Add --no-wait to verify later with `get pi`, `expect pi`, or `walk pi`.",
 	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
   ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
@@ -53,6 +54,7 @@ var runProcessInstanceCmd = &cobra.Command{
 		var datas []process.ProcessInstanceData
 		var contextForErr string
 		tenantID := cfg.App.TargetTenant()
+		fopts := collectOptions()
 		switch {
 		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
@@ -77,6 +79,12 @@ var runProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, forbiddenFlagCombinationf("cannot specify --pd-version when running multiple BPMN process IDs"))
 			}
 
+			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newRunPIProcessDefinitionSelectorValidationRequest(), fopts...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
+
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionBpmnProcessIds))
 			for _, bpmnID := range flagRunPIProcessDefinitionBpmnProcessIds {
 				datas = append(datas, process.ProcessInstanceData{
@@ -92,7 +100,6 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
 		}
 
-		fopts := collectOptions()
 		if flagFailFast {
 			fopts = append(fopts, foptions.WithFailFast())
 		}

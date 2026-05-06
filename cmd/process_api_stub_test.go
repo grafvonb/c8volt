@@ -16,13 +16,15 @@ import (
 )
 
 type stubProcessAPI struct {
-	dryRunCancelOrDeletePlan   func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
-	cancelProcessInstances     func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
-	deleteProcessInstances     func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
-	filterOrphanParent         func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
-	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
-	enrichProcessInstances     func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
-	enrichProcessInstanceVars  func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
+	dryRunCancelOrDeletePlan       func(context.Context, types.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
+	cancelProcessInstances         func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
+	deleteProcessInstances         func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
+	filterOrphanParent             func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
+	searchProcessDefinitions       func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
+	searchProcessDefinitionsLatest func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
+	searchProcessInstancesPage     func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
+	enrichProcessInstances         func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
+	enrichProcessInstanceVars      func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 }
 
 type stubTaskAPI struct {
@@ -139,12 +141,18 @@ func requireDryRunEnvelopePayload(t *testing.T, output string) map[string]any {
 	return payload
 }
 
-func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchProcessDefinitions(ctx context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+	if s.searchProcessDefinitions == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessDefinitions(ctx, filter, opts...)
 }
 
-func (stubProcessAPI) SearchProcessDefinitionsLatest(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchProcessDefinitionsLatest(ctx context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+	if s.searchProcessDefinitionsLatest == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessDefinitionsLatest(ctx, filter, opts...)
 }
 
 func (stubProcessAPI) GetProcessDefinition(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error) {
