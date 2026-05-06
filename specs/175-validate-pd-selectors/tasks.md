@@ -121,17 +121,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T035 [P] [US4] Add `run pi` test proving multiple BPMN IDs are all validated before any create request in `cmd/run_test.go`
-- [ ] T036 [P] [US4] Add `run pi` test proving multiple missing BPMN IDs are all listed in the diagnostic in `cmd/run_test.go`
-- [ ] T037 [P] [US4] Add `run pi` test proving all-visible BPMN IDs preserve existing create behavior in `cmd/run_test.go`
-- [ ] T038 [P] [US4] Add `run pi --pd-version` validation test for single BPMN ID exact-version selector behavior in `cmd/run_test.go`
+- [x] T035 [P] [US4] Add `run pi` test proving multiple BPMN IDs are all validated before any create request in `cmd/run_test.go`
+- [x] T036 [P] [US4] Add `run pi` test proving multiple missing BPMN IDs are all listed in the diagnostic in `cmd/run_test.go`
+- [x] T037 [P] [US4] Add `run pi` test proving all-visible BPMN IDs preserve existing create behavior in `cmd/run_test.go`
+- [x] T038 [P] [US4] Add `run pi --pd-version` validation test for single BPMN ID exact-version selector behavior in `cmd/run_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Build a run-specific selector validation request from `flagRunPIProcessDefinitionBpmnProcessIds` and `flagRunPIProcessDefinitionVersion` in `cmd/run_processinstance.go`
-- [ ] T040 [US4] Invoke shared selector validation before constructing or submitting `ProcessInstanceData` for BPMN process ID starts in `cmd/run_processinstance.go`
-- [ ] T041 [US4] Use latest-definition validation for `run pi` when `--pd-version` is absent and exact-version validation when it is present in `cmd/run_processinstance.go`
-- [ ] T042 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestRunProcessInstance.*(Bpmn|Selector|Partial|Version)' -count=1` and fix regressions
+- [x] T039 [US4] Build a run-specific selector validation request from `flagRunPIProcessDefinitionBpmnProcessIds` and `flagRunPIProcessDefinitionVersion` in `cmd/run_processinstance.go`
+- [x] T040 [US4] Invoke shared selector validation before constructing or submitting `ProcessInstanceData` for BPMN process ID starts in `cmd/run_processinstance.go`
+- [x] T041 [US4] Use latest-definition validation for `run pi` when `--pd-version` is absent and exact-version validation when it is present in `cmd/run_processinstance.go`
+- [x] T042 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestRunProcessInstance.*(Bpmn|Selector|Partial|Version)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 4 is independently complete when `run pi` has all-or-nothing BPMN selector validation.
 

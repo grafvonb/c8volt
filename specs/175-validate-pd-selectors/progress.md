@@ -5,6 +5,9 @@ Started: 2026-05-06 12:15:57
 
 ## Codebase Patterns
 
+- `run pi` now builds a run-specific process-definition selector validation request from `flagRunPIProcessDefinitionBpmnProcessIds` and `flagRunPIProcessDefinitionVersion`; it uses latest-definition validation when no version is supplied and exact-version search when `--pd-version` is present.
+- BPMN-based `run pi` validates selectors before constructing `ProcessInstanceData`, so mixed visible/missing multi-ID starts fail without submitting any `/v2/process-instances` create request.
+- Existing `run pi` command tests that start by BPMN process ID need a visible process-definition search fixture before the create fixture because validation now precedes starts.
 - `cancel pi` and `delete pi` search-selected paths now run `validatePISearchVersionSupport` before process-definition selector preflight so Camunda 8.7 unsupported date-filter errors stay local and avoid network calls.
 - Mutating process-instance selector guards live at the start of the keyless search branch, after sufficient-filter validation and before `populatePISearchFilterOpts`, preserving keyed `--key` paths and non-BPMN searches.
 - Shared process-instance command tests that use `newProcessInstanceSearchCaptureServerWithResponses` now provide a visible `order-process` process-definition response while continuing to capture only process-instance search request bodies.
@@ -144,4 +147,30 @@ Started: 2026-05-06 12:15:57
 - Capability checks that previously came from process-instance search services must happen before selector preflight, otherwise unsupported Camunda 8.7 date-filter runs can fail on process-definition network validation first.
 - Search-selected mutation tests need a visible process-definition fixture whenever `--bpmn-process-id` is part of the command under test.
 - `--auto-confirm` is useful in missing-selector subprocess tests because it guarantees the recovery listing prompt stays suppressed while still exercising command-level validation.
+---
+
+---
+## Iteration 6 - 2026-05-06 12:46:13 CEST
+**User Story**: User Story 4 - Prevent Partial Multi-ID Starts
+**Tasks Completed**:
+- [x] T035: Add `run pi` test proving multiple BPMN IDs are all validated before any create request in `cmd/run_test.go`
+- [x] T036: Add `run pi` test proving multiple missing BPMN IDs are all listed in the diagnostic in `cmd/run_test.go`
+- [x] T037: Add `run pi` test proving all-visible BPMN IDs preserve existing create behavior in `cmd/run_test.go`
+- [x] T038: Add `run pi --pd-version` validation test for single BPMN ID exact-version selector behavior in `cmd/run_test.go`
+- [x] T039: Build a run-specific selector validation request from `flagRunPIProcessDefinitionBpmnProcessIds` and `flagRunPIProcessDefinitionVersion` in `cmd/run_processinstance.go`
+- [x] T040: Invoke shared selector validation before constructing or submitting `ProcessInstanceData` for BPMN process ID starts in `cmd/run_processinstance.go`
+- [x] T041: Use latest-definition validation for `run pi` when `--pd-version` is absent and exact-version validation when it is present in `cmd/run_processinstance.go`
+- [x] T042: Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestRunProcessInstance.*(Bpmn|Selector|Partial|Version)' -count=1` and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/process_definition_selector_validation.go
+- cmd/run_processinstance.go
+- cmd/run_test.go
+- specs/175-validate-pd-selectors/tasks.md
+- specs/175-validate-pd-selectors/progress.md
+**Learnings**:
+- `run pi` must validate all normalized BPMN IDs before data construction to guarantee no partial start happens when any selector is missing.
+- Latest-mode validation reaches the same `/v2/process-definitions/search` endpoint with `isLatestVersion: true`; exact `--pd-version` validation uses the normal search path with `version` and no latest filter.
+- Broader `run process-instance` fixtures need process-definition visibility responses because BPMN starts now perform selector validation before create calls.
 ---

@@ -49,6 +49,18 @@ func newPIProcessDefinitionSelectorValidationRequest() processDefinitionSelector
 	}
 }
 
+func newRunPIProcessDefinitionSelectorValidationRequest() processDefinitionSelectorValidationRequest {
+	mode := processDefinitionSelectorValidationLatest
+	if flagRunPIProcessDefinitionVersion != 0 {
+		mode = processDefinitionSelectorValidationAny
+	}
+	return processDefinitionSelectorValidationRequest{
+		BpmnProcessIds: normalizeSelectorBpmnProcessIDs(flagRunPIProcessDefinitionBpmnProcessIds),
+		ProcessVersion: flagRunPIProcessDefinitionVersion,
+		Mode:           mode,
+	}
+}
+
 func (r processDefinitionSelectorValidationRequest) filterForBpmnProcessID(bpmnProcessID string) process.ProcessDefinitionFilter {
 	return process.ProcessDefinitionFilter{
 		BpmnProcessId:     bpmnProcessID,

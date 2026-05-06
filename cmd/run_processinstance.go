@@ -53,6 +53,7 @@ var runProcessInstanceCmd = &cobra.Command{
 		var datas []process.ProcessInstanceData
 		var contextForErr string
 		tenantID := cfg.App.TargetTenant()
+		fopts := collectOptions()
 		switch {
 		case len(flagRunPIProcessDefinitionKey) > 0:
 			if len(flagRunPIProcessDefinitionBpmnProcessIds) > 0 {
@@ -77,6 +78,14 @@ var runProcessInstanceCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, forbiddenFlagCombinationf("cannot specify --pd-version when running multiple BPMN process IDs"))
 			}
 
+			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newRunPIProcessDefinitionSelectorValidationRequest(), fopts...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if err := processDefinitionSelectorValidationError(cmd, cli, result); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+
 			datas = make([]process.ProcessInstanceData, 0, len(flagRunPIProcessDefinitionBpmnProcessIds))
 			for _, bpmnID := range flagRunPIProcessDefinitionBpmnProcessIds {
 				datas = append(datas, process.ProcessInstanceData{
@@ -92,7 +101,6 @@ var runProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, missingDependentFlagsf("provide either --pd-key or --bpmn-process-id"))
 		}
 
-		fopts := collectOptions()
 		if flagFailFast {
 			fopts = append(fopts, foptions.WithFailFast())
 		}
