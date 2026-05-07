@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active plan: [specs/175-validate-pd-selectors/plan.md](specs/175-validate-pd-selectors/plan.md)
+- No active Speckit implementation plan has been recorded yet.
 <!-- SPECKIT END -->

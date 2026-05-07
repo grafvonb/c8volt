@@ -208,6 +208,30 @@ stage_install_changes() {
     done < <(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)
 }
 
+stage_manifest_files() {
+    local line=""
+    local path=""
+
+    if [ ! -f "$MANIFEST_FILE" ]; then
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+
+        path="${line%% *}"
+        case "$path" in
+            \#*|tag=*|source=*|commit=*|synced_at_utc=*)
+                continue
+                ;;
+        esac
+
+        if [ -e "$REPO_ROOT/$path" ]; then
+            git -C "$REPO_ROOT" add -f -- "$path"
+        fi
+    done < "$MANIFEST_FILE"
+}
+
 write_install_manifest() {
     local source_repo="$1"
     local source_commit="$2"
@@ -236,9 +260,6 @@ write_install_manifest() {
     append_tree_files_if_present "$REPO_ROOT/presets" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/workflows" "$list_file"
     append_tree_files_if_present "$REPO_ROOT/ai" "$list_file"
-    append_file_if_present "$REPO_ROOT/scripts/ralph/ralph.sh" "$list_file"
-    append_file_if_present "$REPO_ROOT/scripts/ralph/doctor.sh" "$list_file"
-    append_file_if_present "$REPO_ROOT/scripts/ralph/prompt.md" "$list_file"
 
     sort -u "$list_file" > "$sorted_file"
 
@@ -338,6 +359,7 @@ write_install_manifest "$RESOLVED_SOURCE_REPO" "$SOURCE_COMMIT" "$TAG" "$SYNCED_
 
 printf '%s\n' "$TAG" > "$VERSION_MARKER_FILE"
 
+stage_manifest_files
 stage_install_changes
 
 modified_files=()
