@@ -17,12 +17,12 @@
 
 **Purpose**: Confirm existing command, metadata, variable lookup, worker, waiter, and docs paths before changing behavior.
 
-- [ ] T001 Inspect root command registration and mutation metadata patterns in `cmd/run.go`, `cmd/delete.go`, `cmd/deploy_processdefinition.go`, and `cmd/command_contract.go`
-- [ ] T002 [P] Inspect process-instance key/stdin, worker, fail-fast, and no-worker-limit behavior in `cmd/delete_processinstance.go`, `cmd/expect_processinstance.go`, and related tests in `cmd/delete_test.go` and `cmd/expect_test.go`
-- [ ] T003 [P] Inspect process-instance variable lookup and rendering paths in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, `cmd/cmd_views_processinstance_vars.go`, and `cmd/get_processinstance_test.go`
-- [ ] T004 [P] Inspect process facade models and service interface patterns in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/model.go`, and `internal/services/processinstance/api.go`
-- [ ] T005 [P] Inspect generated v8.8/v8.9 element-instance variable update client methods and v8.7 unsupported patterns in `internal/clients/camunda/v88/camunda/client.gen.go`, `internal/clients/camunda/v89/camunda/client.gen.go`, and `internal/services/processinstance/v87/service.go`
-- [ ] T006 [P] Inspect README, generated docs, and docs generation workflow in `README.md`, `docs/`, and `docsgen/`
+- [x] T001 Inspect root command registration and mutation metadata patterns in `cmd/run.go`, `cmd/delete.go`, `cmd/deploy_processdefinition.go`, and `cmd/command_contract.go`
+- [x] T002 [P] Inspect process-instance key/stdin, worker, fail-fast, and no-worker-limit behavior in `cmd/delete_processinstance.go`, `cmd/expect_processinstance.go`, and related tests in `cmd/delete_test.go` and `cmd/expect_test.go`
+- [x] T003 [P] Inspect process-instance variable lookup and rendering paths in `cmd/get_processinstance.go`, `cmd/get_processinstance_enrichment.go`, `cmd/cmd_views_processinstance_activity.go`, `cmd/cmd_views_processinstance_vars.go`, and `cmd/get_processinstance_test.go`
+- [x] T004 [P] Inspect process facade models and service interface patterns in `c8volt/process/api.go`, `c8volt/process/client.go`, `c8volt/process/model.go`, and `internal/services/processinstance/api.go`
+- [x] T005 [P] Inspect generated v8.8/v8.9 element-instance variable update client methods and v8.7 unsupported patterns in `internal/clients/camunda/v88/camunda/client.gen.go`, `internal/clients/camunda/v89/camunda/client.gen.go`, and `internal/services/processinstance/v87/service.go`
+- [x] T006 [P] Inspect README, generated docs, and docs generation workflow in `README.md`, `docs/`, and `docsgen/`
 
 ---
 
@@ -32,14 +32,14 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T007 Add the `update` root command with aliases, examples, backoff bindings, and state-changing metadata in `cmd/update.go`
-- [ ] T008 Add process-instance variable update request/result domain models in `internal/domain/processinstance.go`
-- [ ] T009 Add facade-level process-instance variable update request/result models in `c8volt/process/model.go`
-- [ ] T010 Extend process facade interface and client stubs for update/confirmation orchestration in `c8volt/process/api.go` and `c8volt/process/client.go`
-- [ ] T011 Extend process-instance service API and compile-time implementation assertions for variable update support in `internal/services/processinstance/api.go`
-- [ ] T012 Add unsupported Camunda 8.7 update method behavior to `internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v87/service.go`
-- [ ] T013 Add command contract discovery tests for the new update root and process-instance metadata in `cmd/command_contract_test.go`
-- [ ] T014 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(CommandCapability|Update|Unsupported)' -count=1` and fix foundational regressions
+- [x] T007 Add the `update` root command with aliases, examples, backoff bindings, and state-changing metadata in `cmd/update.go`
+- [x] T008 Add process-instance variable update request/result domain models in `internal/domain/processinstance.go`
+- [x] T009 Add facade-level process-instance variable update request/result models in `c8volt/process/model.go`
+- [x] T010 Extend process facade interface and client stubs for update/confirmation orchestration in `c8volt/process/api.go` and `c8volt/process/client.go`
+- [x] T011 Extend process-instance service API and compile-time implementation assertions for variable update support in `internal/services/processinstance/api.go`
+- [x] T012 Add unsupported Camunda 8.7 update method behavior to `internal/services/processinstance/v87/contract.go` and `internal/services/processinstance/v87/service.go`
+- [x] T013 Add command contract discovery tests for the new update root and process-instance metadata in `cmd/command_contract_test.go`
+- [x] T014 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(CommandCapability|Update|Unsupported)' -count=1` and fix foundational regressions
 
 **Checkpoint**: The command family, shared data types, and service/facade surface compile before story behavior is implemented.
 

@@ -113,6 +113,28 @@ func fromDomainProcessInstanceVariables(xs []d.ProcessInstanceVariable) []Proces
 	return toolx.MapSlice(xs, fromDomainProcessInstanceVariable)
 }
 
+func fromDomainProcessInstanceVariableUpdateResponse(x d.ProcessInstanceVariableUpdateResponse, variables map[string]any) ProcessInstanceVariableUpdateResult {
+	status := ProcessInstanceVariableUpdateStatusSubmitted
+	if !x.Ok {
+		status = ProcessInstanceVariableUpdateStatusMutationFailed
+	}
+	return ProcessInstanceVariableUpdateResult{
+		Key:              x.Key,
+		Status:           status,
+		MutationAccepted: x.Ok,
+		StatusCode:       x.StatusCode,
+		Message:          x.Status,
+		Variables:        toolx.CopyMap(variables),
+	}
+}
+
+func toDomainProcessInstanceVariableUpdateRequest(x ProcessInstanceVariableUpdateRequest) d.ProcessInstanceVariableUpdateRequest {
+	return d.ProcessInstanceVariableUpdateRequest{
+		Key:       x.Key,
+		Variables: toolx.CopyMap(x.Variables),
+	}
+}
+
 func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage {
 	return ProcessInstancePage{
 		Request: ProcessInstancePageRequest{

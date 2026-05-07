@@ -46,6 +46,18 @@ type ProcessInstanceVariable struct {
 	APITruncated       bool
 }
 
+type ProcessInstanceVariableUpdateRequest struct {
+	Key       string
+	Variables map[string]any
+}
+
+type ProcessInstanceVariableUpdateResponse struct {
+	Key        string
+	Ok         bool
+	StatusCode int
+	Status     string
+}
+
 type ProcessInstanceFilter struct {
 	Key                  string
 	BpmnProcessId        string

@@ -153,6 +153,17 @@ func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...se
 	return d.ProcessInstance{}, fmt.Errorf("%w: process-instance direct lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
+func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+	_ = ctx
+	_ = variables
+	_ = services.ApplyCallOptions(opts)
+	_, err := processInstanceKeyInt64(key)
+	if err != nil {
+		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
+	}
+	return d.ProcessInstanceVariableUpdateResponse{Key: key}, fmt.Errorf("%w: process-instance variable updates require Camunda 8.8 or newer", d.ErrUnsupported)
+}
+
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {
 	_ = services.ApplyCallOptions(opts)
 	filter := d.ProcessInstanceFilter{

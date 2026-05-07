@@ -99,6 +99,43 @@ type ProcessInstanceVariable struct {
 	APITruncated       bool   `json:"apiTruncated"`
 }
 
+type ProcessInstanceVariableUpdateStatus string
+
+const (
+	ProcessInstanceVariableUpdateStatusSubmitted          ProcessInstanceVariableUpdateStatus = "submitted"
+	ProcessInstanceVariableUpdateStatusConfirmed          ProcessInstanceVariableUpdateStatus = "confirmed"
+	ProcessInstanceVariableUpdateStatusMutationFailed     ProcessInstanceVariableUpdateStatus = "mutation_failed"
+	ProcessInstanceVariableUpdateStatusConfirmationFailed ProcessInstanceVariableUpdateStatus = "confirmation_failed"
+)
+
+type ProcessInstanceVariableUpdateRequest struct {
+	Key       string         `json:"key"`
+	Variables map[string]any `json:"variables"`
+}
+
+type ProcessInstanceVariableUpdateResult struct {
+	Key                string                              `json:"key"`
+	Status             ProcessInstanceVariableUpdateStatus `json:"status"`
+	MutationAccepted   bool                                `json:"mutationAccepted"`
+	ConfirmationStatus string                              `json:"confirmationStatus,omitempty"`
+	StatusCode         int                                 `json:"statusCode,omitempty"`
+	Message            string                              `json:"message,omitempty"`
+	Error              string                              `json:"error,omitempty"`
+	Variables          map[string]any                      `json:"variables,omitempty"`
+}
+
+func (r ProcessInstanceVariableUpdateResult) OK() bool {
+	return r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed
+}
+
+type ProcessInstanceVariableUpdateResults struct {
+	Items []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
+}
+
+func (r ProcessInstanceVariableUpdateResults) Totals() (total int, oks int, noks int) {
+	return TotalsOf(r.Items)
+}
+
 type IncidentEnrichedProcessInstance struct {
 	Item      ProcessInstance                 `json:"item"`
 	Incidents []ProcessInstanceIncidentDetail `json:"incidents"`

@@ -65,3 +65,13 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 	})
 	return variables, nil
 }
+
+func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+	_ = ctx
+	_ = variables
+	_ = services.ApplyCallOptions(opts)
+	if _, err := common.NewProcessInstanceKeyEqFilterPtr(key); err != nil {
+		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
+	}
+	return d.ProcessInstanceVariableUpdateResponse{Key: key}, fmt.Errorf("%w: process-instance variable update service call is not implemented yet", d.ErrUnsupported)
+}

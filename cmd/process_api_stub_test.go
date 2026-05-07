@@ -187,6 +187,10 @@ func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ..
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) UpdateProcessInstanceVariables(context.Context, process.ProcessInstanceVariableUpdateRequest, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResult, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) EnrichProcessInstancesWithIncidents(ctx context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error) {
 	if s.enrichProcessInstances == nil {
 		panic("unexpected call")
@@ -292,6 +296,10 @@ func (s stubProcessAPI) DeleteProcessInstances(ctx context.Context, keys types.K
 		panic("unexpected call")
 	}
 	return s.deleteProcessInstances(ctx, keys, wantedWorkers, opts...)
+}
+
+func (stubProcessAPI) UpdateProcessInstancesVariables(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error) {
+	panic("unexpected call")
 }
 
 func (stubProcessAPI) WaitForProcessInstancesState(context.Context, types.Keys, process.States, int, ...options.FacadeOption) (process.StateReports, error) {

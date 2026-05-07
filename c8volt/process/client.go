@@ -92,6 +92,22 @@ func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string,
 	return fromDomainProcessInstanceVariables(variables), nil
 }
 
+func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error) {
+	dreq := toDomainProcessInstanceVariableUpdateRequest(request)
+	resp, err := c.piApi.UpdateProcessInstanceVariables(ctx, dreq.Key, dreq.Variables, options.MapFacadeOptionsToCallOptions(opts)...)
+	result := fromDomainProcessInstanceVariableUpdateResponse(resp, request.Variables)
+	if result.Key == "" {
+		result.Key = request.Key
+	}
+	if err != nil {
+		result.Status = ProcessInstanceVariableUpdateStatusMutationFailed
+		result.MutationAccepted = false
+		result.Error = ferr.FromDomain(err).Error()
+		return result, ferr.FromDomain(err)
+	}
+	return result, nil
+}
+
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))

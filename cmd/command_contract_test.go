@@ -285,6 +285,59 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 	})
 }
 
+func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(updateProcessInstanceCmd)
+
+	require.Equal(t, "update process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to update; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "vars",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "JSON object with variables to set on each process instance",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the update request is accepted without variable confirmation",
+	})
+}
+
+func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	update, ok := findCommandCapability(doc.Commands, "update")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, update.Mutation)
+	require.Equal(t, ContractSupportLimited, update.ContractSupport)
+	require.Contains(t, update.Aliases, "u")
+
+	updatePI, ok := findCommandCapability(doc.Commands, "update process-instance")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, updatePI.Mutation)
+	require.Equal(t, ContractSupportFull, updatePI.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updatePI.AutomationSupport)
+}
+
 func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 	tests := []struct {
 		name  string

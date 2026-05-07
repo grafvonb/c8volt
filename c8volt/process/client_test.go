@@ -1298,6 +1298,7 @@ type stubProcessInstanceAPI struct {
 	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	searchProcessInstanceIncidents     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
+	updateProcessInstanceVariables     func(context.Context, string, map[string]any, ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error)
 	ancestry                           func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
 	descendants                        func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
 	cancelProcessInstance              func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
@@ -1333,6 +1334,14 @@ func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Conte
 		panic("unexpected call")
 	}
 	return s.searchProcessInstanceVariables(ctx, key, opts...)
+}
+
+// UpdateProcessInstanceVariables delegates to the per-test callback and panics on unexpected update calls.
+func (s stubProcessInstanceAPI) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+	if s.updateProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.updateProcessInstanceVariables(ctx, key, variables, opts...)
 }
 
 // GetDirectChildrenOfProcessInstance panics when a test takes the direct-children path unexpectedly.
