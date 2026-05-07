@@ -101,6 +101,7 @@ const (
 	automationNotesAnnotation   = "machine-contract/automation-notes"
 	outputModesAnnotation       = "machine-contract/output-modes"
 	contractVersionAnnotation   = "machine-contract/version"
+	flagRequiredAnnotation      = "machine-contract/flag-required"
 )
 
 // setCapabilityDocumentVersion stores the discovery document version on the root command.
@@ -196,6 +197,24 @@ func setOutputModes(cmd *cobra.Command, modes ...OutputModeContract) {
 		parts = append(parts, encodeOutputMode(mode))
 	}
 	ensureCommandAnnotations(cmd)[outputModesAnnotation] = strings.Join(parts, ",")
+}
+
+// setFlagContractRequired marks flags as required in the machine contract while leaving
+// command-owned validation responsible for user-facing invalid-input errors.
+func setFlagContractRequired(cmd *cobra.Command, names ...string) {
+	if cmd == nil {
+		return
+	}
+	for _, name := range names {
+		flag := cmd.Flags().Lookup(name)
+		if flag == nil {
+			continue
+		}
+		if flag.Annotations == nil {
+			flag.Annotations = make(map[string][]string)
+		}
+		flag.Annotations[flagRequiredAnnotation] = []string{"true"}
+	}
 }
 
 // outputModesForCommand returns explicit or inferred output modes for discovery consumers.
@@ -345,6 +364,9 @@ func hasFlag(cmd *cobra.Command, name string) bool {
 func isRequiredFlag(flag *pflag.Flag) bool {
 	if flag == nil || flag.Annotations == nil {
 		return false
+	}
+	if _, ok := flag.Annotations[flagRequiredAnnotation]; ok {
+		return true
 	}
 	_, ok := flag.Annotations[cobra.BashCompOneRequiredFlag]
 	return ok

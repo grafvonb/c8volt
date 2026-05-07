@@ -150,11 +150,11 @@
 
 **Purpose**: Make the new command discoverable and keep docs generated from source metadata.
 
-- [ ] T052 [P] Add help examples and command contract metadata coverage for `update`, `update process-instance`, and `update pi` in `cmd/update.go`, `cmd/update_processinstance.go`, and `cmd/command_contract_test.go`
-- [ ] T053 [P] Update README examples and automation guidance for process-instance variable updates in `README.md`
-- [ ] T054 [P] Update site documentation source examples for process-instance variable updates in `docs/index.md`
-- [ ] T055 Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
-- [ ] T056 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|UpdateProcessInstance.*Help|VersionHelp)' -count=1` and fix docs/help regressions
+- [x] T052 [P] Add help examples and command contract metadata coverage for `update`, `update process-instance`, and `update pi` in `cmd/update.go`, `cmd/update_processinstance.go`, and `cmd/command_contract_test.go`
+- [x] T053 [P] Update README examples and automation guidance for process-instance variable updates in `README.md`
+- [x] T054 [P] Update site documentation source examples for process-instance variable updates in `docs/index.md`
+- [x] T055 Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T056 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|UpdateProcessInstance.*Help|VersionHelp)' -count=1` and fix docs/help regressions
 
 ---
 

@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.6.0-alpha3-4-g6f6d9af-dirty`, commit `6f6d9af`, built `2026-05-07T15:08:20Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.6.0-alpha3-11-g43883a0-dirty`, commit `43883a0`, built `2026-05-07T16:30:58Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
 
@@ -37,6 +37,7 @@ That is the gap `c8volt` closes.
 
 - deploy BPMN and start using it immediately
 - run process instances and confirm they become active
+- update process-instance-scope variables and confirm visibility
 - inspect process trees with incidents and variables in context
 - preview, cancel, and delete process-instance families safely
 - wait for state or incident conditions in scripts
@@ -119,7 +120,7 @@ After the first command, jump to [Configuration Notes](#configuration-notes) for
 
 `8.9` is a first-class runtime target. The everyday operator loop is covered: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
-`8.8` remains the established baseline. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+`8.8` remains the established baseline. Process-instance variable updates are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for that state-changing command. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 
 ## Core Workflows
 
@@ -141,6 +142,24 @@ For batch execution:
 ```bash
 ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
 ```
+
+### Update Runtime Variables
+
+```bash
+./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
+./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
+printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
+```
+
+By default, `update pi` submits the variable mutation and waits until the requested process-instance-scope values are visible through the same lookup path used by `get pi --with-vars`. The `--vars` value must be a JSON object; repeated `--key` flags and stdin `-` keys are merged and deduplicated before the same variable map is applied to each target.
+
+Use `--no-wait` when accepted/submitted output is enough:
+
+```bash
+./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --no-wait
+```
+
+Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camunda `8.7` fails before mutation with an unsupported-version error.
 
 ### Walk Before You Change
 
@@ -428,6 +447,7 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ./c8volt capabilities --json
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
+./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --no-wait
 ./c8volt --automation --json get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
 ```
 
@@ -447,6 +467,7 @@ Examples:
 
 ```bash
 ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
+./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
 ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --allow-inconsistent --auto-confirm --no-wait -
 ```
 
@@ -462,6 +483,8 @@ c8volt
 |   `-- pd                    Deploy BPMN process definitions
 |-- run                       Start runnable resources
 |   `-- pi                    Start process instances and confirm activation by default
+|-- update                    Update existing resources
+|   `-- pi                    Update process-instance variables and confirm visibility by default
 |-- walk                      Inspect parent/child relationships
 |   `-- pi                    Walk ancestors, descendants, or full family trees
 |-- cancel                    Cancel resources and wait for confirmation
@@ -507,6 +530,10 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Start process instances from the latest version.
 ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
 ./c8volt run pi -b <bpmn-process-id> -n 25 --workers 5
+
+# Update process-instance-scope variables.
+./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
+./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active

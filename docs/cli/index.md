@@ -35,6 +35,7 @@ If you are new to `c8volt`, start with the workflows that define the tool:
 - [deploy bundled BPMN fixtures](./c8volt_embed_deploy)
 - [deploy BPMN files](./c8volt_deploy_process-definition)
 - [run process instances](./c8volt_run_process-instance)
+- [update process-instance variables](./c8volt_update_process-instance)
 - [walk process trees](./c8volt_walk_process-instance)
 - [cancel process instances](./c8volt_cancel_process-instance)
 - [delete process instances](./c8volt_delete_process-instance)
@@ -47,6 +48,8 @@ These are the workflows where `c8volt` stands apart from a basic CRUD-oriented C
   Bootstrap a local environment with bundled BPMN fixtures.
 - `run process-instance`
   Start process instances and confirm they are actually active.
+- `update process-instance`
+  Update process-instance variables and confirm requested values are visible.
 - `walk process-instance`
   Inspect parent/child structure before changing a live tree.
 - `cancel process-instance --force`
@@ -85,6 +88,8 @@ Tenant-aware operations are supported through the global `--tenant` flag and the
   Deploy BPMN process definitions from files or stdin.
 - [run commands](./c8volt_run)
   Start process instances and confirm activation by default.
+- [update commands](./c8volt_update)
+  Update existing resources.
 - [walk commands](./c8volt_walk)
   Inspect ancestors, descendants, and full family trees.
 - [cancel commands](./c8volt_cancel)

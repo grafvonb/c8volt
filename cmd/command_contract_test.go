@@ -338,6 +338,40 @@ func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	require.Equal(t, AutomationSupportFull, updatePI.AutomationSupport)
 }
 
+func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"update"}, []string{
+		"Update existing resources",
+		"Camunda 8.8 and 8.9",
+		"unsupported-version error before mutation",
+		"./c8volt update process-instance --key 2251799813711967 --vars",
+		"./c8volt --automation --json update pi --key 2251799813711967 --vars",
+	}, nil)
+	require.Contains(t, output, "process-instance")
+
+	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
+		"Update process-instance variables by key",
+		"--vars flag must be a JSON object",
+		"repeated --key values or newline-separated keys from stdin with '-'",
+		"By default c8volt waits until requested process-instance-scope variables are visible",
+		"add --no-wait to return after the update request is accepted",
+		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars",
+		"printf '%s\\n' 2251799813711967 | ./c8volt update pi --key 2251799813711968 - --vars",
+		"--workers",
+		"--fail-fast",
+	}, nil)
+	require.Contains(t, output, "Aliases:")
+	require.Contains(t, output, "pi")
+
+	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
+		"Update process-instance variables by key",
+		"--vars string",
+		"--no-wait",
+	}, nil)
+	require.Contains(t, aliasOutput, "Aliases:")
+	require.Contains(t, aliasOutput, "pi")
+}
+
 func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -5,6 +5,8 @@ Started: 2026-05-07 17:46:04
 
 ## Codebase Patterns
 
+- Required flag discovery can use `setFlagContractRequired` when command-owned validation must preserve shared invalid-input error handling instead of Cobra required-flag pre-run failures.
+- `make docs-content` is the source of truth for generated CLI reference pages and `docs/index.md`; update `README.md` first when changing the docs homepage content.
 - Prefer command-owned validation for required state-changing inputs when the shared error model needs an invalid-input exit; Cobra `MarkFlagRequired` returns generic pre-run errors outside command-local classification.
 - Command tests that call `resetCommandTreeFlags(root)` after adding `StringSlice` flags must also reset the corresponding package globals; pflag default reset can otherwise leave a literal `[]` value in the bound slice.
 - Update process-instance target selection should let `mergeAndValidateKeys(...).Unique()` feed the facade bulk method directly; command-local single-key caps conflict with shared repeated-flag and stdin key behavior.
@@ -205,4 +207,33 @@ Started: 2026-05-07 17:46:04
 - Missing `--vars` should be handled by `parseUpdateProcessInstanceVariables` so it is classified as invalid input consistently with malformed and non-object JSON.
 - Resetting command tree flags alone is not enough for new bound `StringSlice` globals; the process-instance global reset helper must include update command flags.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` passed.
+---
+---
+## Iteration 7 - 2026-05-07 18:31:49 CEST
+**User Story**: Phase 7: Documentation & Command Discovery
+**Tasks Completed**:
+- [x] T052: Add help examples and command contract metadata coverage for `update`, `update process-instance`, and `update pi`
+- [x] T053: Update README examples and automation guidance for process-instance variable updates
+- [x] T054: Update site documentation source examples for process-instance variable updates
+- [x] T055: Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T056: Run docs/help targeted validation and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract.go
+- cmd/command_contract_test.go
+- cmd/update.go
+- cmd/update_processinstance.go
+- docs/cli/c8volt.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/index.md
+- docs/index.md
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Contract-only required metadata keeps `--vars` visible as required to `capabilities --json` without moving validation into Cobra's generic pre-run required flag path.
+- Generated docs now include the new `c8volt update` and `c8volt update process-instance` pages; the site homepage content was refreshed from `README.md`.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|UpdateProcessInstance.*Help|VersionHelp)' -count=1` passed.
 ---

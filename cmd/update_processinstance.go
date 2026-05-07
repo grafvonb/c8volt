@@ -19,10 +19,14 @@ var updateProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Update process-instance variables by key",
 	Long: "Update process-instance variables by key.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. By default c8volt waits until requested process-instance-scope variables are visible through the same lookup path as `get pi --with-vars`; add --no-wait to return after the update request is accepted.",
+		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. The --vars flag must be a JSON object and the same variable map is applied to every unique target key.\n\n" +
+		"By default c8volt waits until requested process-instance-scope variables are visible through the same lookup path as `get pi --with-vars`; add --no-wait to return after the update request is accepted.\n\n" +
+		"Variable updates are supported for Camunda 8.8 and 8.9. Camunda 8.7 returns an unsupported-version error before mutation.",
 	Example: `  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
   ./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
+  ./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars '{"customerTier":"gold"}'
   printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
+  printf '%s\n' 2251799813711967 | ./c8volt update pi --key 2251799813711968 - --vars '{"customerTier":"gold"}'
   ./c8volt --json update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --no-wait`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -72,6 +76,7 @@ func init() {
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new updates after the first error")
 
+	setFlagContractRequired(updateProcessInstanceCmd, "vars")
 	setCommandMutation(updateProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(updateProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(updateProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
