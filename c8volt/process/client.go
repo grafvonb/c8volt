@@ -11,22 +11,26 @@ import (
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
 type client struct {
-	pdApi pdsvc.API
-	piApi pisvc.API
-	log   *slog.Logger
+	pdApi  pdsvc.API
+	piApi  pisvc.API
+	incApi incsvc.API
+	log    *slog.Logger
 }
 
-func New(pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger) API {
+// New creates a process facade with incident lookup routed through the incident service layer.
+func New(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, log *slog.Logger) API {
 	return &client{
-		pdApi: pdApi,
-		piApi: piApi,
-		log:   log,
+		pdApi:  pdApi,
+		piApi:  piApi,
+		incApi: incApi,
+		log:    log,
 	}
 }
 
@@ -76,7 +80,7 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 
 // SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.
 func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
-	incidents, err := c.piApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	incidents, err := c.incApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return nil, ferr.FromDomain(err)
 	}

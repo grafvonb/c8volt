@@ -28,7 +28,6 @@ import (
 type mockCamundaClient struct {
 	createProcessInstanceWithResponse func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error)
 	searchProcessInstancesWithResp    func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error)
-	searchProcessInstanceIncidents    func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error)
 	searchVariablesWithResponse       func(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error)
 	createElementInstanceVariables    func(ctx context.Context, elementInstanceKey camundav89.ElementInstanceKey, body camundav89.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateElementInstanceVariablesResponse, error)
 	cancelProcessInstanceWithResponse func(ctx context.Context, key string, body camundav89.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CancelProcessInstanceResponse, error)
@@ -44,10 +43,6 @@ func (m *mockCamundaClient) CreateProcessInstanceWithResponse(ctx context.Contex
 
 func (m *mockCamundaClient) SearchProcessInstancesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
 	return m.searchProcessInstancesWithResp(ctx, contentType, body, reqEditors...)
-}
-
-func (m *mockCamundaClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
-	return m.searchProcessInstanceIncidents(ctx, key, body, reqEditors...)
 }
 
 func (m *mockCamundaClient) SearchVariablesWithResponse(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error) {
@@ -329,68 +324,12 @@ func TestService_SearchAndLookup(t *testing.T) {
 	})
 }
 
-// TestService_SearchProcessInstanceIncidents verifies v8.9 incident lookup uses the scoped endpoint and preserves returned detail fields.
-func TestService_SearchProcessInstanceIncidents(t *testing.T) {
-	ctx := context.Background()
-	jobKey := camundav89.JobKey("job-1")
-	rootKey := camundav89.ProcessInstanceKey("root-123")
-
-	svc := newTestService(t, testConfig(), &mockCamundaClient{
-		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
-		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
-		searchProcessInstanceIncidents: func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
-			payload := marshalJSON(t, body)
-			assert.Equal(t, camundav89.ProcessInstanceKey("123"), key)
-			assert.NotContains(t, payload, "processInstanceKey")
-			assert.Contains(t, payload, `"tenantId":"tenant"`)
-			assert.Contains(t, payload, `"limit":1000`)
-			return &camundav89.SearchProcessInstanceIncidentsResponse{
-				HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/incidents/search", http.StatusOK, "200 OK"),
-				JSON200: &camundav89.IncidentSearchQueryResult{
-					Items: []camundav89.IncidentResult{
-						{
-							ElementId:              "task-a",
-							ElementInstanceKey:     "element-123",
-							ErrorMessage:           "No retries left",
-							ErrorType:              camundav89.IncidentErrorTypeEnum("JOB_NO_RETRIES"),
-							IncidentKey:            "incident-123",
-							JobKey:                 &jobKey,
-							ProcessDefinitionId:    "demo",
-							ProcessDefinitionKey:   "pd-123",
-							ProcessInstanceKey:     "123",
-							RootProcessInstanceKey: &rootKey,
-							State:                  camundav89.IncidentStateEnum("ACTIVE"),
-							TenantId:               "tenant",
-						},
-					},
-				},
-			}, nil
-		},
-		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
-		deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
-		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
-	})
-
-	incidents, err := svc.SearchProcessInstanceIncidents(ctx, "123")
-
-	require.NoError(t, err)
-	require.Len(t, incidents, 1)
-	assert.Equal(t, "incident-123", incidents[0].IncidentKey)
-	assert.Equal(t, "123", incidents[0].ProcessInstanceKey)
-	assert.Equal(t, "No retries left", incidents[0].ErrorMessage)
-	assert.Equal(t, "task-a", incidents[0].FlowNodeId)
-	assert.Equal(t, "element-123", incidents[0].FlowNodeInstanceKey)
-	assert.Equal(t, "job-1", incidents[0].JobKey)
-	assert.Equal(t, "root-123", incidents[0].RootProcessInstanceKey)
-}
-
 // Variable lookup must request process-scope values and decode fields missing from the generated model.
 func TestService_SearchProcessInstanceVariables_UsesProcessInstanceAndScopeFilters(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestService(t, testConfig(), &mockCamundaClient{
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
-		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
 		searchVariablesWithResponse: func(ctx context.Context, params *camundav89.SearchVariablesParams, body camundav89.SearchVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchVariablesResponse, error) {
 			require.NotNil(t, params)
 			require.NotNil(t, params.TruncateValues)
@@ -427,7 +366,6 @@ func TestElementInstanceVariablesUpdate_UsesProcessInstanceKeyAsElementInstanceK
 	svc := newTestService(t, testConfig(), &mockCamundaClient{
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
-		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
 		searchVariablesWithResponse:       unexpectedSearchVariables(t),
 		createElementInstanceVariables: func(ctx context.Context, elementInstanceKey camundav89.ElementInstanceKey, body camundav89.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateElementInstanceVariablesResponse, error) {
 			assert.Equal(t, camundav89.ElementInstanceKey("123"), elementInstanceKey)
@@ -827,7 +765,6 @@ func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	return &mockCamundaClient{
 		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
-		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
 		searchVariablesWithResponse:       unexpectedSearchVariables(t),
 		createElementInstanceVariables:    unexpectedCreateElementInstanceVariables(t),
 		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
@@ -848,14 +785,6 @@ func unexpectedSearchProcessInstances(t *testing.T) func(context.Context, string
 	t.Helper()
 	return func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
 		t.Fatalf("unexpected search call")
-		return nil, nil
-	}
-}
-
-func unexpectedSearchProcessInstanceIncidents(t *testing.T) func(context.Context, camundav89.ProcessInstanceKey, camundav89.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
-	t.Helper()
-	return func(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
-		t.Fatalf("unexpected incident search call")
 		return nil, nil
 	}
 }
