@@ -13,6 +13,7 @@ import (
 	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/config"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
@@ -484,6 +485,48 @@ func TestVariableConfirmation_ConfirmsRequestedVariablesWithNormalizedJSON(t *te
 			"nested": map[string]any{"count": float64(2)},
 		},
 	}, got)
+}
+
+func TestVariableConfirmation_WaitsUntilRequestedVariablesAreVisible(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var lookups atomic.Int32
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"hasIncident": true}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			if lookups.Add(1) == 1 {
+				return []d.ProcessInstanceVariable{
+					{Name: "hasIncident", Value: `false`, ProcessInstanceKey: "123", ScopeKey: "123"},
+				}, nil
+			}
+			return []d.ProcessInstanceVariable{
+				{Name: "hasIncident", Value: `true`, ProcessInstanceKey: "123", ScopeKey: "123"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key:       "123",
+		Variables: map[string]any{"hasIncident": true},
+	}, options.WithBackoff(config.BackoffConfig{
+		Strategy:     config.BackoffFixed,
+		InitialDelay: time.Millisecond,
+		MaxDelay:     time.Millisecond,
+		MaxRetries:   3,
+		Timeout:      time.Second,
+	}))
+
+	require.NoError(t, err)
+	require.Equal(t, int32(2), lookups.Load())
+	require.Equal(t, ProcessInstanceVariableUpdateStatusConfirmed, got.Status)
+	require.True(t, got.OK())
 }
 
 func TestUpdateProcessInstanceVariablesMultipleKeysRespectWorkersAndFailFastOptions(t *testing.T) {

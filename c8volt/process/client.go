@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -121,14 +122,14 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 		result.ConfirmationStatus = "skipped"
 		return result, nil
 	}
-	variables, err := c.SearchProcessInstanceVariables(ctx, request.Key, opts...)
+	missing, err := c.waitForRequestedVariables(ctx, request.Key, request.Variables, opts...)
 	if err != nil {
 		result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
 		result.ConfirmationStatus = "failed"
 		result.Error = ferr.FromDomain(err).Error()
 		return result, ferr.FromDomain(err)
 	}
-	if missing := missingRequestedVariables(request.Key, request.Variables, variables); len(missing) > 0 {
+	if len(missing) > 0 {
 		result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
 		result.ConfirmationStatus = "failed"
 		result.Error = fmt.Sprintf("requested variable value(s) not visible for process instance %s: %s", request.Key, strings.Join(missing, ", "))
@@ -232,6 +233,55 @@ func variablesForProcessInstance(key string, variables []ProcessInstanceVariable
 	return out
 }
 
+func (c *client) waitForRequestedVariables(ctx context.Context, key string, requested map[string]any, opts ...options.FacadeOption) ([]string, error) {
+	cfg := options.ApplyFacadeOptions(opts)
+	if cfg.Backoff == nil {
+		variables, err := c.SearchProcessInstanceVariables(ctx, key, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return missingRequestedVariables(key, requested, variables), nil
+	}
+
+	backoff := *cfg.Backoff
+	if backoff.Timeout > 0 {
+		deadline := time.Now().Add(backoff.Timeout)
+		if dl, ok := ctx.Deadline(); !ok || deadline.Before(dl) {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithDeadline(ctx, deadline)
+			defer cancel()
+		}
+	}
+	delay := backoff.InitialDelay
+	if delay <= 0 {
+		delay = 500 * time.Millisecond
+	}
+	attempts := 0
+	for {
+		if err := ctx.Err(); err != nil {
+			return requestedVariableNames(requested), err
+		}
+		attempts++
+		variables, err := c.SearchProcessInstanceVariables(ctx, key, opts...)
+		if err != nil {
+			return nil, err
+		}
+		missing := missingRequestedVariables(key, requested, variables)
+		if len(missing) == 0 {
+			return nil, nil
+		}
+		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
+			return missing, nil
+		}
+		select {
+		case <-time.After(delay):
+			delay = backoff.NextDelay(delay)
+		case <-ctx.Done():
+			return missing, ctx.Err()
+		}
+	}
+}
+
 func missingRequestedVariables(key string, requested map[string]any, observed []ProcessInstanceVariable) []string {
 	byName := make(map[string]ProcessInstanceVariable, len(observed))
 	for _, variable := range variablesForProcessInstance(key, observed) {
@@ -250,6 +300,15 @@ func missingRequestedVariables(key string, requested map[string]any, observed []
 		}
 	}
 	return missing
+}
+
+func requestedVariableNames(requested map[string]any) []string {
+	names := make([]string, 0, len(requested))
+	for name := range requested {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
