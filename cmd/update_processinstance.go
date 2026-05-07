@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/spf13/cobra"
 )
 
@@ -56,8 +55,7 @@ var updateProcessInstanceCmd = &cobra.Command{
 		if len(keys) == 0 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to update")))
 		}
-		fopts := append(collectOptions(), foptions.WithBackoff(cfg.App.Backoff))
-		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, fopts...)
+		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
 		}

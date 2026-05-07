@@ -47,7 +47,6 @@ type GenProcessInstanceClientCamunda interface {
 
 type GenProcessInstanceClientOperate interface {
 	SearchProcessInstancesWithResponse(ctx context.Context, body operatev87.SearchProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchProcessInstancesResponse, error)
-	SearchVariablesForProcessInstancesWithResponse(ctx context.Context, body operatev87.SearchVariablesForProcessInstancesJSONRequestBody, reqEditors ...operatev87.RequestEditorFn) (*operatev87.SearchVariablesForProcessInstancesResponse, error)
 	DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx context.Context, key int64, reqEditors ...operatev87.RequestEditorFn) (*operatev87.DeleteProcessInstanceAndAllDependantDataByKeyResponse, error)
 }
 

@@ -3,10 +3,7 @@
 
 package foptions
 
-import (
-	"github.com/grafvonb/c8volt/config"
-	"github.com/grafvonb/c8volt/internal/services"
-)
+import "github.com/grafvonb/c8volt/internal/services"
 
 // WithNoStateCheck disables facade-level state validation before a state-changing operation.
 func WithNoStateCheck() FacadeOption { return func(c *FacadeCfg) { c.NoStateCheck = true } }
@@ -16,11 +13,6 @@ func WithForce() FacadeOption { return func(c *FacadeCfg) { c.Force = true } }
 
 // WithNoWait asks operations to return after submission instead of waiting for confirmation.
 func WithNoWait() FacadeOption { return func(c *FacadeCfg) { c.NoWait = true } }
-
-// WithBackoff carries the resolved retry policy for facade-owned confirmation loops.
-func WithBackoff(backoff config.BackoffConfig) FacadeOption {
-	return func(c *FacadeCfg) { c.Backoff = &backoff }
-}
 
 // WithRun asks deploy-style flows to start process instances after successful deployment.
 func WithRun() FacadeOption { return func(c *FacadeCfg) { c.Run = true } }
@@ -64,7 +56,6 @@ type FacadeCfg struct {
 	AllowInconsistent            bool
 	IgnoreTenant                 bool
 	AffectedProcessInstanceCount int
-	Backoff                      *config.BackoffConfig
 }
 
 // ApplyFacadeOptions folds facade options into a new configuration value.

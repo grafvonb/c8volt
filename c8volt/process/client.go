@@ -4,15 +4,9 @@
 package process
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
-	"reflect"
 	"sort"
-	"strings"
-	"time"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -108,9 +102,14 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 	}
 	if err != nil {
 		updateErr := ferr.FromDomain(err)
+		result.Error = updateErr.Error()
+		if result.MutationAccepted {
+			result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
+			result.ConfirmationStatus = "failed"
+			return result, updateErr
+		}
 		result.Status = ProcessInstanceVariableUpdateStatusMutationFailed
 		result.MutationAccepted = false
-		result.Error = updateErr.Error()
 		if cfg.NoWait {
 			result.ConfirmationStatus = "skipped"
 			return result, nil
@@ -121,19 +120,6 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 		result.Status = ProcessInstanceVariableUpdateStatusSubmitted
 		result.ConfirmationStatus = "skipped"
 		return result, nil
-	}
-	missing, err := c.waitForRequestedVariables(ctx, request.Key, request.Variables, opts...)
-	if err != nil {
-		result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
-		result.ConfirmationStatus = "failed"
-		result.Error = ferr.FromDomain(err).Error()
-		return result, ferr.FromDomain(err)
-	}
-	if len(missing) > 0 {
-		result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
-		result.ConfirmationStatus = "failed"
-		result.Error = fmt.Sprintf("requested variable value(s) not visible for process instance %s: %s", request.Key, strings.Join(missing, ", "))
-		return result, fmt.Errorf("%s", result.Error)
 	}
 	result.Status = ProcessInstanceVariableUpdateStatusConfirmed
 	result.ConfirmationStatus = "confirmed"
@@ -231,115 +217,6 @@ func variablesForProcessInstance(key string, variables []ProcessInstanceVariable
 		return out[i].Name < out[j].Name
 	})
 	return out
-}
-
-func (c *client) waitForRequestedVariables(ctx context.Context, key string, requested map[string]any, opts ...options.FacadeOption) ([]string, error) {
-	cfg := options.ApplyFacadeOptions(opts)
-	if cfg.Backoff == nil {
-		variables, err := c.SearchProcessInstanceVariables(ctx, key, opts...)
-		if err != nil {
-			return nil, err
-		}
-		return missingRequestedVariables(key, requested, variables), nil
-	}
-
-	backoff := *cfg.Backoff
-	if backoff.Timeout > 0 {
-		deadline := time.Now().Add(backoff.Timeout)
-		if dl, ok := ctx.Deadline(); !ok || deadline.Before(dl) {
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithDeadline(ctx, deadline)
-			defer cancel()
-		}
-	}
-	delay := backoff.InitialDelay
-	if delay <= 0 {
-		delay = 500 * time.Millisecond
-	}
-	attempts := 0
-	for {
-		if err := ctx.Err(); err != nil {
-			return requestedVariableNames(requested), err
-		}
-		attempts++
-		variables, err := c.SearchProcessInstanceVariables(ctx, key, opts...)
-		if err != nil {
-			return nil, err
-		}
-		missing := missingRequestedVariables(key, requested, variables)
-		if len(missing) == 0 {
-			return nil, nil
-		}
-		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
-			return missing, nil
-		}
-		select {
-		case <-time.After(delay):
-			delay = backoff.NextDelay(delay)
-		case <-ctx.Done():
-			return missing, ctx.Err()
-		}
-	}
-}
-
-func missingRequestedVariables(key string, requested map[string]any, observed []ProcessInstanceVariable) []string {
-	byName := make(map[string]ProcessInstanceVariable, len(observed))
-	for _, variable := range variablesForProcessInstance(key, observed) {
-		byName[variable.Name] = variable
-	}
-	missing := make([]string, 0)
-	names := make([]string, 0, len(requested))
-	for name := range requested {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		variable, ok := byName[name]
-		if !ok || !normalizedJSONValuesEqual(requested[name], variable.Value) {
-			missing = append(missing, name)
-		}
-	}
-	return missing
-}
-
-func requestedVariableNames(requested map[string]any) []string {
-	names := make([]string, 0, len(requested))
-	for name := range requested {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
-	var observed any
-	if err := json.Unmarshal([]byte(observedRaw), &observed); err != nil {
-		if s, ok := requested.(string); ok {
-			return observedRaw == s
-		}
-		return false
-	}
-	var requestedNormalized any
-	requestedBytes, err := json.Marshal(requested)
-	if err != nil {
-		return false
-	}
-	decoder := json.NewDecoder(bytes.NewReader(requestedBytes))
-	decoder.UseNumber()
-	if err := decoder.Decode(&requestedNormalized); err != nil {
-		return false
-	}
-	observedBytes, err := json.Marshal(observed)
-	if err != nil {
-		return false
-	}
-	decoder = json.NewDecoder(bytes.NewReader(observedBytes))
-	decoder.UseNumber()
-	var observedNormalized any
-	if err := decoder.Decode(&observedNormalized); err != nil {
-		return false
-	}
-	return reflect.DeepEqual(requestedNormalized, observedNormalized)
 }
 
 func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {

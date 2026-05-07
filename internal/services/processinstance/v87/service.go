@@ -24,6 +24,8 @@ import (
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
+	varsvc "github.com/grafvonb/c8volt/internal/services/variable"
+	varv87 "github.com/grafvonb/c8volt/internal/services/variable/v87"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -32,10 +34,11 @@ import (
 const wrongStateMessage400 = "Process instances needs to be in one of the states [COMPLETED, CANCELED]"
 
 type Service struct {
-	cc  GenProcessInstanceClientCamunda
-	co  GenProcessInstanceClientOperate
-	cfg *config.Config
-	log *slog.Logger
+	cc          GenProcessInstanceClientCamunda
+	co          GenProcessInstanceClientOperate
+	variableAPI varsvc.API
+	cfg         *config.Config
+	log         *slog.Logger
 }
 
 type traversalAdapter struct {
@@ -74,6 +77,14 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+func WithVariableAPI(api varsvc.API) Option {
+	return func(s *Service) {
+		if api != nil {
+			s.variableAPI = api
+		}
+	}
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -102,6 +113,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 		return nil, err
 	}
 	s.log = logger
+	if s.variableAPI == nil {
+		variableOpts := []varv87.Option{}
+		if variableClient, ok := s.co.(varv87.GenVariableClientOperate); ok {
+			variableOpts = append(variableOpts, varv87.WithClientOperate(variableClient))
+		}
+		variableAPI, err := varv87.New(s.cfg, deps.HTTPClient, s.log, variableOpts...)
+		if err != nil {
+			return nil, err
+		}
+		s.variableAPI = variableAPI
+	}
 	return s, nil
 }
 
@@ -151,17 +173,6 @@ func (s *Service) GetProcessInstance(ctx context.Context, key string, opts ...se
 		return d.ProcessInstance{}, err
 	}
 	return d.ProcessInstance{}, fmt.Errorf("%w: process-instance direct lookup by key is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
-}
-
-func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
-	_ = ctx
-	_ = variables
-	_ = services.ApplyCallOptions(opts)
-	_, err := processInstanceKeyInt64(key)
-	if err != nil {
-		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
-	}
-	return d.ProcessInstanceVariableUpdateResponse{Key: key}, fmt.Errorf("%w: process-instance variable updates require Camunda 8.8 or newer", d.ErrUnsupported)
 }
 
 func (s *Service) GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstance, error) {

@@ -442,7 +442,7 @@ func TestElementInstanceVariablesUpdate_UsesProcessInstanceKeyAsElementInstanceK
 		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
 	})
 
-	got, err := svc.UpdateProcessInstanceVariables(ctx, "123", map[string]any{"foo": "bar"})
+	got, err := svc.UpdateProcessInstanceVariables(ctx, "123", map[string]any{"foo": "bar"}, services.WithNoWait())
 
 	require.NoError(t, err)
 	assert.Equal(t, d.ProcessInstanceVariableUpdateResponse{
