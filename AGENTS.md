@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- No active Speckit implementation plan has been recorded yet.
+- Active implementation plan: `specs/179-update-pi-vars/plan.md`
 <!-- SPECKIT END -->
