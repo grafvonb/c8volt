@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package v89
+package v88
 
 import (
 	"context"
 	"fmt"
 
-	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
+	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
@@ -18,16 +18,16 @@ import (
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
-	tenantFilter, err := newStringEqFilterPtr(s.cfg.App.Tenant)
+	tenantFilter, err := common.NewStringEqFilterPtr(s.cfg.App.Tenant)
 	if err != nil {
 		return nil, fmt.Errorf("building tenant incident filter: %w", err)
 	}
 	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
-	body := camundav89.SearchProcessInstanceIncidentsJSONRequestBody{
+	body := camundav88.SearchProcessInstanceIncidentsJSONRequestBody{
 		Page: &page,
 	}
 	if tenantFilter != nil {
-		body.Filter = &camundav89.IncidentFilter{
+		body.Filter = &camundav88.IncidentFilter{
 			TenantId: tenantFilter,
 		}
 	}
@@ -40,4 +40,14 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 		return nil, err
 	}
 	return toolx.MapSlice(payload.Items, fromIncidentResult), nil
+}
+
+// newSearchQueryPageRequest builds the v8.8 page request for incident lookups.
+func newSearchQueryPageRequest(pageReq d.ProcessInstancePageRequest) camundav88.SearchQueryPageRequest {
+	page := camundav88.SearchQueryPageRequest{}
+	_ = page.FromOffsetPagination(camundav88.OffsetPagination{
+		From:  &pageReq.From,
+		Limit: &pageReq.Size,
+	})
+	return page
 }

@@ -111,6 +111,26 @@ func (c *client) DeleteProcessInstances(ctx context.Context, keys types.Keys, wa
 	return r, err
 }
 
+// UpdateProcessInstancesVariables submits the same variable map for each unique process-instance key.
+// Confirmation orchestration is layered onto the per-key update path as story behavior is implemented.
+func (c *client) UpdateProcessInstancesVariables(ctx context.Context, keys types.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResults, error) {
+	cCfg := options.ApplyFacadeOptions(opts)
+	ukeys := keys.Unique()
+	lk := len(ukeys)
+
+	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
+	logging.InfoIfVerbose(fmt.Sprintf("updating variables for %d unique process instance(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
+	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("updating variables for", lk, 0))
+	defer stopActivity()
+	rs, err := pool.ExecuteSlice[string, ProcessInstanceVariableUpdateResult](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (ProcessInstanceVariableUpdateResult, error) {
+		return c.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+			Key:       key,
+			Variables: variables,
+		}, opts...)
+	})
+	return ProcessInstanceVariableUpdateResults{Items: rs}, err
+}
+
 func hasStatusCode(items []DeleteReport, statusCode int) bool {
 	for _, item := range items {
 		if item.StatusCode == statusCode {

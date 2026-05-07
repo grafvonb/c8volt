@@ -22,15 +22,18 @@ import (
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
+	varsvc "github.com/grafvonb/c8volt/internal/services/variable"
+	varv89 "github.com/grafvonb/c8volt/internal/services/variable/v89"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 )
 
 type Service struct {
-	cc  GenProcessInstanceClientCamunda
-	cfg *config.Config
-	log *slog.Logger
+	cc          GenProcessInstanceClientCamunda
+	variableAPI varsvc.API
+	cfg         *config.Config
+	log         *slog.Logger
 }
 
 func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
@@ -51,6 +54,14 @@ func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
 			s.log = logger
+		}
+	}
+}
+
+func WithVariableAPI(api varsvc.API) Option {
+	return func(s *Service) {
+		if api != nil {
+			s.variableAPI = api
 		}
 	}
 }
@@ -76,6 +87,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 		return nil, err
 	}
 	s.log = logger
+	if s.variableAPI == nil {
+		variableOpts := []varv89.Option{}
+		if variableClient, ok := s.cc.(varv89.GenVariableClientCamunda); ok {
+			variableOpts = append(variableOpts, varv89.WithClientCamunda(variableClient))
+		}
+		variableAPI, err := varv89.New(s.cfg, deps.HTTPClient, s.log, variableOpts...)
+		if err != nil {
+			return nil, err
+		}
+		s.variableAPI = variableAPI
+	}
 	return s, nil
 }
 

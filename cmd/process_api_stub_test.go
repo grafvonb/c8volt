@@ -25,6 +25,7 @@ type stubProcessAPI struct {
 	searchProcessInstancesPage     func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
 	enrichProcessInstances         func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
 	enrichProcessInstanceVars      func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
+	updateProcessInstancesVars     func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
 }
 
 type stubTaskAPI struct {
@@ -187,6 +188,10 @@ func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ..
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) UpdateProcessInstanceVariables(context.Context, process.ProcessInstanceVariableUpdateRequest, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResult, error) {
+	panic("unexpected call")
+}
+
 func (s stubProcessAPI) EnrichProcessInstancesWithIncidents(ctx context.Context, pis process.ProcessInstances, opts ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error) {
 	if s.enrichProcessInstances == nil {
 		panic("unexpected call")
@@ -292,6 +297,13 @@ func (s stubProcessAPI) DeleteProcessInstances(ctx context.Context, keys types.K
 		panic("unexpected call")
 	}
 	return s.deleteProcessInstances(ctx, keys, wantedWorkers, opts...)
+}
+
+func (s stubProcessAPI) UpdateProcessInstancesVariables(ctx context.Context, keys types.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error) {
+	if s.updateProcessInstancesVars == nil {
+		panic("unexpected call")
+	}
+	return s.updateProcessInstancesVars(ctx, keys, variables, wantedWorkers, opts...)
 }
 
 func (stubProcessAPI) WaitForProcessInstancesState(context.Context, types.Keys, process.States, int, ...options.FacadeOption) (process.StateReports, error) {

@@ -73,6 +73,7 @@ type API interface {
 	LookupProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstance, error)
 	SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error)
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceVariable, error)
+	UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error)
 	EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error)
 	EnrichProcessInstancesWithVariables(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (VariableEnrichedProcessInstances, error)
 	EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error)
@@ -91,6 +92,7 @@ type API interface {
 	CreateNProcessInstances(ctx context.Context, data ProcessInstanceData, n int, wantedWorkers int, opts ...options.FacadeOption) ([]ProcessInstance, error)
 	CancelProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (CancelReports, error)
 	DeleteProcessInstances(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error)
+	UpdateProcessInstancesVariables(ctx context.Context, keys types.Keys, variables map[string]any, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResults, error)
 	WaitForProcessInstancesState(ctx context.Context, keys types.Keys, desired States, wantedWorkers int, opts ...options.FacadeOption) (StateReports, error)
 	WaitForProcessInstancesExpectation(ctx context.Context, keys types.Keys, request ProcessInstanceExpectationRequest, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceExpectationReports, error)
 

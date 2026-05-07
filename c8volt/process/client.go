@@ -11,22 +11,26 @@ import (
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
 type client struct {
-	pdApi pdsvc.API
-	piApi pisvc.API
-	log   *slog.Logger
+	pdApi  pdsvc.API
+	piApi  pisvc.API
+	incApi incsvc.API
+	log    *slog.Logger
 }
 
-func New(pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger) API {
+// New creates a process facade with incident lookup routed through the incident service layer.
+func New(pdApi pdsvc.API, piApi pisvc.API, incApi incsvc.API, log *slog.Logger) API {
 	return &client{
-		pdApi: pdApi,
-		piApi: piApi,
-		log:   log,
+		pdApi:  pdApi,
+		piApi:  piApi,
+		incApi: incApi,
+		log:    log,
 	}
 }
 
@@ -76,7 +80,7 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 
 // SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.
 func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
-	incidents, err := c.piApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	incidents, err := c.incApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return nil, ferr.FromDomain(err)
 	}
@@ -90,6 +94,40 @@ func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string,
 		return nil, ferr.FromDomain(err)
 	}
 	return fromDomainProcessInstanceVariables(variables), nil
+}
+
+func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error) {
+	cfg := options.ApplyFacadeOptions(opts)
+	dreq := toDomainProcessInstanceVariableUpdateRequest(request)
+	resp, err := c.piApi.UpdateProcessInstanceVariables(ctx, dreq.Key, dreq.Variables, options.MapFacadeOptionsToCallOptions(opts)...)
+	result := fromDomainProcessInstanceVariableUpdateResponse(resp, request.Variables)
+	if result.Key == "" {
+		result.Key = request.Key
+	}
+	if err != nil {
+		updateErr := ferr.FromDomain(err)
+		result.Error = updateErr.Error()
+		if result.MutationAccepted {
+			result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
+			result.ConfirmationStatus = "failed"
+			return result, updateErr
+		}
+		result.Status = ProcessInstanceVariableUpdateStatusMutationFailed
+		result.MutationAccepted = false
+		if cfg.NoWait {
+			result.ConfirmationStatus = "skipped"
+			return result, nil
+		}
+		return result, updateErr
+	}
+	if cfg.NoWait {
+		result.Status = ProcessInstanceVariableUpdateStatusSubmitted
+		result.ConfirmationStatus = "skipped"
+		return result, nil
+	}
+	result.Status = ProcessInstanceVariableUpdateStatusConfirmed
+	result.ConfirmationStatus = "confirmed"
+	return result, nil
 }
 
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.

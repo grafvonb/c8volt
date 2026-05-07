@@ -204,6 +204,42 @@ func TestRunProcessInstanceCommand_V89NoWait(t *testing.T) {
 	require.Contains(t, stderr, "INFO")
 }
 
+func TestRunProcessInstanceCommand_VarsPayloadRemainsCreationInput(t *testing.T) {
+	var sawRun bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-definitions/search":
+			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"<default>","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances":
+			sawRun = true
+			defer r.Body.Close()
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, "order-process", body["processDefinitionId"])
+			require.Equal(t, map[string]any{"customerId": "1234", "priority": float64(2)}, body["variables"])
+			_, _ = w.Write([]byte(`{"processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","tenantId":"<default>","variables":{"customerId":"1234","priority":2}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"run", "process-instance",
+		"--bpmn-process-id", "order-process",
+		"--vars", `{"customerId":"1234","priority":2}`,
+		"--no-wait",
+	)
+
+	require.True(t, sawRun)
+	require.Contains(t, output, "2251799813711967")
+}
+
 func TestRunProcessInstanceCommand_DefaultOutputDoesNotEmitMachineEnvelope(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
