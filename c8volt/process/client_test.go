@@ -434,6 +434,56 @@ func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJS
 	}, got.Items[0].Variables)
 }
 
+func TestVariableConfirmation_ConfirmsRequestedVariablesWithNormalizedJSON(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{
+				"foo":    "bar",
+				"nested": map[string]any{"count": float64(2)},
+			}, variables)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceVariable{
+				{Name: "foo", Value: `"bar"`, ProcessInstanceKey: "123", ScopeKey: "123"},
+				{Name: "nested", Value: `{"count":2}`, ProcessInstanceKey: "123", ScopeKey: "123"},
+				{Name: "unrelated", Value: `"ignored"`, ProcessInstanceKey: "123", ScopeKey: "123"},
+				{Name: "foo", Value: `"wrong-scope"`, ProcessInstanceKey: "123", ScopeKey: "element-1"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key: "123",
+		Variables: map[string]any{
+			"foo":    "bar",
+			"nested": map[string]any{"count": float64(2)},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, ProcessInstanceVariableUpdateResult{
+		Key:                "123",
+		Status:             ProcessInstanceVariableUpdateStatusConfirmed,
+		MutationAccepted:   true,
+		ConfirmationStatus: "confirmed",
+		StatusCode:         204,
+		Message:            "204 No Content",
+		Variables: map[string]any{
+			"foo":    "bar",
+			"nested": map[string]any{"count": float64(2)},
+		},
+	}, got)
+}
+
 // TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
 func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()

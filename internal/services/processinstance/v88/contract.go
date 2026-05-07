@@ -47,6 +47,7 @@ type GenProcessInstanceClientCamunda interface {
 	SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error)
 	SearchProcessInstancesWithResponse(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error)
 	SearchVariablesWithResponse(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error)
+	CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error)
 }
 
 type GenProcessInstanceClientOperate interface {

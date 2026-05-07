@@ -6,12 +6,14 @@ package v88
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
@@ -67,11 +69,32 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 }
 
 func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
-	_ = ctx
-	_ = variables
 	_ = services.ApplyCallOptions(opts)
 	if _, err := common.NewProcessInstanceKeyEqFilterPtr(key); err != nil {
 		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
 	}
-	return d.ProcessInstanceVariableUpdateResponse{Key: key}, fmt.Errorf("%w: process-instance variable update service call is not implemented yet", d.ErrUnsupported)
+	resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav88.ElementInstanceKey(key), camundav88.CreateElementInstanceVariablesJSONRequestBody{
+		Variables: variables,
+	})
+	if err != nil {
+		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
+	}
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.ProcessInstanceVariableUpdateResponse{
+			Key:        key,
+			Ok:         false,
+			StatusCode: resp.StatusCode(),
+			Status:     resp.Status(),
+		}, err
+	}
+	status := resp.Status()
+	if status == "" {
+		status = http.StatusText(resp.StatusCode())
+	}
+	return d.ProcessInstanceVariableUpdateResponse{
+		Key:        key,
+		Ok:         true,
+		StatusCode: resp.StatusCode(),
+		Status:     status,
+	}, nil
 }

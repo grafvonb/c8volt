@@ -30,6 +30,7 @@ type mockCamundaClient struct {
 	searchProcessInstanceIncidents    func(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error)
 	searchProcessInstancesWithResp    func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error)
 	searchVariablesWithResponse       func(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error)
+	createElementInstanceVariables    func(ctx context.Context, elementInstanceKey camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error)
 	cancelProcessInstanceWithResponse func(ctx context.Context, key string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error)
 }
 
@@ -51,6 +52,10 @@ func (m *mockCamundaClient) SearchProcessInstancesWithResponse(ctx context.Conte
 
 func (m *mockCamundaClient) SearchVariablesWithResponse(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error) {
 	return m.searchVariablesWithResponse(ctx, params, body, reqEditors...)
+}
+
+func (m *mockCamundaClient) CreateElementInstanceVariablesWithResponse(ctx context.Context, elementInstanceKey camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+	return m.createElementInstanceVariables(ctx, elementInstanceKey, body, reqEditors...)
 }
 
 func (m *mockCamundaClient) CancelProcessInstanceWithResponse(ctx context.Context, key string, body camundav88.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CancelProcessInstanceResponse, error) {
@@ -1103,6 +1108,36 @@ func TestService_SearchProcessInstanceVariables_UsesProcessInstanceAndScopeFilte
 	}, got)
 }
 
+func TestElementInstanceVariablesUpdate_UsesProcessInstanceKeyAsElementInstanceKey(t *testing.T) {
+	ctx := context.Background()
+	svc := newTestService(t, testConfig(), &mockCamundaClient{
+		createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+		getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
+		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+		searchVariablesWithResponse:       unexpectedSearchVariables(t),
+		createElementInstanceVariables: func(ctx context.Context, elementInstanceKey camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+			assert.Equal(t, camundav88.ElementInstanceKey("123"), elementInstanceKey)
+			assert.Equal(t, map[string]any{"foo": "bar"}, body.Variables)
+			return &camundav88.CreateElementInstanceVariablesResponse{
+				Body:         []byte{},
+				HTTPResponse: newHTTPResponse(http.MethodPut, "https://camunda.local/v2/element-instances/123/variables", http.StatusNoContent, "204 No Content"),
+			}, nil
+		},
+		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+	}, newStrictOperateClient(t))
+
+	got, err := svc.UpdateProcessInstanceVariables(ctx, "123", map[string]any{"foo": "bar"})
+
+	require.NoError(t, err)
+	assert.Equal(t, d.ProcessInstanceVariableUpdateResponse{
+		Key:        "123",
+		Ok:         true,
+		StatusCode: http.StatusNoContent,
+		Status:     "204 No Content",
+	}, got)
+}
+
 // newStrictCamundaClient returns a v8.8 Camunda client mock that fails on unexpected calls.
 func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 	t.Helper()
@@ -1112,6 +1147,7 @@ func newStrictCamundaClient(t *testing.T) *mockCamundaClient {
 		searchProcessInstanceIncidents:    unexpectedSearchProcessInstanceIncidents(t),
 		searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
 		searchVariablesWithResponse:       unexpectedSearchVariables(t),
+		createElementInstanceVariables:    unexpectedCreateElementInstanceVariables(t),
 		cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
 	}
 }
@@ -1163,6 +1199,14 @@ func unexpectedSearchVariables(t *testing.T) func(context.Context, *camundav88.S
 	t.Helper()
 	return func(ctx context.Context, params *camundav88.SearchVariablesParams, body camundav88.SearchVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchVariablesResponse, error) {
 		t.Fatalf("unexpected variable search call")
+		return nil, nil
+	}
+}
+
+func unexpectedCreateElementInstanceVariables(t *testing.T) func(context.Context, camundav88.ElementInstanceKey, camundav88.CreateElementInstanceVariablesJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+	t.Helper()
+	return func(ctx context.Context, elementInstanceKey camundav88.ElementInstanceKey, body camundav88.CreateElementInstanceVariablesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.CreateElementInstanceVariablesResponse, error) {
+		t.Fatalf("unexpected element-instance variable update call")
 		return nil, nil
 	}
 }

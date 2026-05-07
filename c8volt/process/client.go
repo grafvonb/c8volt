@@ -4,9 +4,14 @@
 package process
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
+	"reflect"
 	"sort"
+	"strings"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -93,6 +98,7 @@ func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string,
 }
 
 func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error) {
+	cfg := options.ApplyFacadeOptions(opts)
 	dreq := toDomainProcessInstanceVariableUpdateRequest(request)
 	resp, err := c.piApi.UpdateProcessInstanceVariables(ctx, dreq.Key, dreq.Variables, options.MapFacadeOptionsToCallOptions(opts)...)
 	result := fromDomainProcessInstanceVariableUpdateResponse(resp, request.Variables)
@@ -105,6 +111,26 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 		result.Error = ferr.FromDomain(err).Error()
 		return result, ferr.FromDomain(err)
 	}
+	if cfg.NoWait {
+		result.Status = ProcessInstanceVariableUpdateStatusSubmitted
+		result.ConfirmationStatus = "skipped"
+		return result, nil
+	}
+	variables, err := c.SearchProcessInstanceVariables(ctx, request.Key, opts...)
+	if err != nil {
+		result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
+		result.ConfirmationStatus = "failed"
+		result.Error = ferr.FromDomain(err).Error()
+		return result, ferr.FromDomain(err)
+	}
+	if missing := missingRequestedVariables(request.Key, request.Variables, variables); len(missing) > 0 {
+		result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
+		result.ConfirmationStatus = "failed"
+		result.Error = fmt.Sprintf("requested variable value(s) not visible for process instance %s: %s", request.Key, strings.Join(missing, ", "))
+		return result, fmt.Errorf("%s", result.Error)
+	}
+	result.Status = ProcessInstanceVariableUpdateStatusConfirmed
+	result.ConfirmationStatus = "confirmed"
 	return result, nil
 }
 
@@ -199,6 +225,57 @@ func variablesForProcessInstance(key string, variables []ProcessInstanceVariable
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+func missingRequestedVariables(key string, requested map[string]any, observed []ProcessInstanceVariable) []string {
+	byName := make(map[string]ProcessInstanceVariable, len(observed))
+	for _, variable := range variablesForProcessInstance(key, observed) {
+		byName[variable.Name] = variable
+	}
+	missing := make([]string, 0)
+	names := make([]string, 0, len(requested))
+	for name := range requested {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		variable, ok := byName[name]
+		if !ok || !normalizedJSONValuesEqual(requested[name], variable.Value) {
+			missing = append(missing, name)
+		}
+	}
+	return missing
+}
+
+func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
+	var observed any
+	if err := json.Unmarshal([]byte(observedRaw), &observed); err != nil {
+		if s, ok := requested.(string); ok {
+			return observedRaw == s
+		}
+		return false
+	}
+	var requestedNormalized any
+	requestedBytes, err := json.Marshal(requested)
+	if err != nil {
+		return false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(requestedBytes))
+	decoder.UseNumber()
+	if err := decoder.Decode(&requestedNormalized); err != nil {
+		return false
+	}
+	observedBytes, err := json.Marshal(observed)
+	if err != nil {
+		return false
+	}
+	decoder = json.NewDecoder(bytes.NewReader(observedBytes))
+	decoder.UseNumber()
+	var observedNormalized any
+	if err := decoder.Decode(&observedNormalized); err != nil {
+		return false
+	}
+	return reflect.DeepEqual(requestedNormalized, observedNormalized)
 }
 
 func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {

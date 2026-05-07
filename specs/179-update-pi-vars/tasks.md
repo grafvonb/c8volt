@@ -53,21 +53,21 @@
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add command test for `update pi --key <key> --vars '{"foo":"bar"}'` submitting the v8.8 update request and confirming through variable lookup in `cmd/update_processinstance_test.go`
-- [ ] T016 [P] [US1] Add command test proving `update process-instance` and `update pi` behave identically for a single key in `cmd/update_processinstance_test.go`
-- [ ] T017 [P] [US1] Add v8.8 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key in `internal/services/processinstance/v88/service_test.go`
-- [ ] T018 [P] [US1] Add v8.9 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key in `internal/services/processinstance/v89/service_test.go`
-- [ ] T019 [P] [US1] Add facade test for normalized JSON confirmation comparing requested values to returned process-instance variables in `c8volt/process/client_test.go`
+- [x] T015 [P] [US1] Add command test for `update pi --key <key> --vars '{"foo":"bar"}'` submitting the v8.8 update request and confirming through variable lookup in `cmd/update_processinstance_test.go`
+- [x] T016 [P] [US1] Add command test proving `update process-instance` and `update pi` behave identically for a single key in `cmd/update_processinstance_test.go`
+- [x] T017 [P] [US1] Add v8.8 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key in `internal/services/processinstance/v88/service_test.go`
+- [x] T018 [P] [US1] Add v8.9 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key in `internal/services/processinstance/v89/service_test.go`
+- [x] T019 [P] [US1] Add facade test for normalized JSON confirmation comparing requested values to returned process-instance variables in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] Add `cmd/update_processinstance.go` with command registration, `--key`, `--vars`, `--no-wait`, worker flags, automation support, and state-changing metadata
-- [ ] T021 [US1] Parse and validate single-key `--vars` JSON object input before mutation in `cmd/update_processinstance.go`
-- [ ] T022 [US1] Implement v8.8 variable update service call in `internal/services/processinstance/v88/variables.go`
-- [ ] T023 [US1] Implement v8.9 variable update service call in `internal/services/processinstance/v89/variables.go`
-- [ ] T024 [US1] Implement facade update and default confirmation flow using existing variable lookup and normalized JSON comparison in `c8volt/process/client.go`
-- [ ] T025 [US1] Render single-key confirmed update results for human and JSON output in `cmd/update_processinstance.go` and existing command view helpers as needed
-- [ ] T026 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(UpdateProcessInstance|UpdatePI|ElementInstanceVariables|VariableConfirmation)' -count=1` and fix regressions
+- [x] T020 [US1] Add `cmd/update_processinstance.go` with command registration, `--key`, `--vars`, `--no-wait`, worker flags, automation support, and state-changing metadata
+- [x] T021 [US1] Parse and validate single-key `--vars` JSON object input before mutation in `cmd/update_processinstance.go`
+- [x] T022 [US1] Implement v8.8 variable update service call in `internal/services/processinstance/v88/variables.go`
+- [x] T023 [US1] Implement v8.9 variable update service call in `internal/services/processinstance/v89/variables.go`
+- [x] T024 [US1] Implement facade update and default confirmation flow using existing variable lookup and normalized JSON comparison in `c8volt/process/client.go`
+- [x] T025 [US1] Render single-key confirmed update results for human and JSON output in `cmd/update_processinstance.go` and existing command view helpers as needed
+- [x] T026 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(UpdateProcessInstance|UpdatePI|ElementInstanceVariables|VariableConfirmation)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when one-key update, alias behavior, confirmation, and human/JSON output pass.
 

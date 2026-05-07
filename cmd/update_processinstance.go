@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -27,8 +28,39 @@ var updateProcessInstanceCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("update process-instance is not implemented yet")
+	Run: func(cmd *cobra.Command, args []string) {
+		cli, log, cfg, err := NewCli(cmd)
+		if err != nil {
+			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
+		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("--workers must be positive integer"))
+		}
+		variables, err := parseUpdateProcessInstanceVariables(flagUpdatePIVars)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		stdinKeys, err := readKeysIfDash(args)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		keys := mergeAndValidateKeys(flagUpdatePIKeys, stdinKeys, log, cfg).Unique()
+		if len(keys) == 0 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to update")))
+		}
+		if len(keys) > 1 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("update process-instance currently supports exactly one process instance key")))
+		}
+		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectOptions()...)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
+		}
+		if err := renderUpdateProcessInstanceVariableResults(cmd, results); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update result: %w", err))
+		}
 	},
 }
 
@@ -47,4 +79,18 @@ func init() {
 	setCommandMutation(updateProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(updateProcessInstanceCmd, ContractSupportFull)
 	setAutomationSupport(updateProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
+}
+
+func parseUpdateProcessInstanceVariables(raw string) (map[string]any, error) {
+	if raw == "" {
+		return nil, invalidFlagValuef("--vars is required and must be a JSON object")
+	}
+	var variables map[string]any
+	if err := json.Unmarshal([]byte(raw), &variables); err != nil {
+		return nil, invalidFlagValuef("--vars must be a valid JSON object: %v", err)
+	}
+	if variables == nil {
+		return nil, invalidFlagValuef("--vars must be a JSON object")
+	}
+	return variables, nil
 }

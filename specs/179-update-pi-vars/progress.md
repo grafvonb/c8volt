@@ -17,6 +17,9 @@ Started: 2026-05-07 17:46:04
 - v8.8 and v8.9 generated clients expose `CreateElementInstanceVariablesWithResponse(ctx, elementInstanceKey, body, ...)` for `PUT /element-instances/{elementInstanceKey}/variables`; responses have status/status-code helpers and no success JSON payload.
 - Camunda 8.7 unsupported behavior is represented by errors wrapping `domain.ErrUnsupported`, with message text naming the unsupported operation before mutation.
 - CLI docs are generated from Cobra metadata by `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown`; `make docs-content` also syncs `docs/index.md` from `README.md`.
+- Generated element-instance variable update responses should be validated with `httpc.HttpStatusErr`; successful calls can return `204 No Content` with an empty body.
+- Single-key update confirmation can reuse `SearchProcessInstanceVariables` and the existing process-scope filter helper, then compare only requested variable names after normalizing JSON values.
+- Shared JSON command envelopes are emitted by `renderCommandResult`; human output needs an explicit view helper because `renderCommandResult` intentionally does nothing outside machine-readable modes.
 
 ---
 ## Iteration 1 - 2026-05-07 17:47:53 CEST
@@ -78,4 +81,42 @@ Started: 2026-05-07 17:46:04
 - Interface expansion surfaced strict test stubs immediately, which is useful for keeping command and facade tests explicit about unexpected update calls.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(CommandCapability|Update|Unsupported)' -count=1` passed.
 - `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(Update|Unsupported)' -count=1` passed for compile coverage on touched versioned services.
+---
+---
+## Iteration 3 - 2026-05-07 18:06:13 CEST
+**User Story**: User Story 1 - Update Variables For One Process Instance
+**Tasks Completed**: 
+- [x] T015: Add command test for `update pi --key <key> --vars '{"foo":"bar"}'` submitting the v8.8 update request and confirming through variable lookup
+- [x] T016: Add command test proving `update process-instance` and `update pi` behave identically for a single key
+- [x] T017: Add v8.8 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key
+- [x] T018: Add v8.9 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key
+- [x] T019: Add facade test for normalized JSON confirmation comparing requested values to returned process-instance variables
+- [x] T020: Add the executable update process-instance command surface for one key
+- [x] T021: Parse and validate single-key `--vars` JSON object input before mutation
+- [x] T022: Implement v8.8 variable update service call
+- [x] T023: Implement v8.9 variable update service call
+- [x] T024: Implement facade update and default confirmation flow
+- [x] T025: Render single-key confirmed update results for human and JSON output
+- [x] T026: Run the US1 targeted validation command and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- cmd/update_processinstance.go
+- cmd/cmd_views_processinstance_update.go
+- cmd/update_processinstance_test.go
+- cmd/process_api_stub_test.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/variables.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/variables.go
+- internal/services/processinstance/v89/service_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- The generated Camunda update method uses the process instance key as an `ElementInstanceKey` path parameter and returns no success payload, so domain results need to carry status metadata from the HTTP response.
+- The prescribed US1 test regex requires test names beginning with `TestUpdateProcessInstance`, `TestUpdatePI`, `TestElementInstanceVariables`, or `TestVariableConfirmation` to avoid silently skipping new coverage.
+- US1 intentionally keeps the command to one unique target key; repeated-key, stdin merge/dedup, and worker-controlled multi-key behavior remain in the next user story.
 ---
