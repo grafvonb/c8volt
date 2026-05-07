@@ -264,7 +264,7 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 			t.Cleanup(srv.Close)
 			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-			output := executeRootForProcessInstanceTest(t,
+			stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
 				"--config", cfgPath,
 				"update", leaf,
 				"--key", "2251799813711967",
@@ -272,8 +272,9 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 			)
 
 			require.Equal(t, "/v2/element-instances/2251799813711967/variables", requestedPath)
-			require.Contains(t, output, "updated process-instance 2251799813711967: confirmed")
-			require.Contains(t, output, "updated: 1")
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, "updated process-instance 2251799813711967: confirmed")
+			require.Contains(t, stderr, "updated: 1")
 		})
 	}
 }
