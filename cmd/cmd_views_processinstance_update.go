@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// renderUpdateProcessInstanceVariableResults renders update outcomes through the command view contract.
 func renderUpdateProcessInstanceVariableResults(cmd *cobra.Command, results process.ProcessInstanceVariableUpdateResults) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, results)

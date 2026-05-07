@@ -12,14 +12,17 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
+// Service implements variable operations through the Camunda 8.7 Operate API.
 type Service struct {
 	co  GenVariableClientOperate
 	cfg *config.Config
 	log *slog.Logger
 }
 
+// Option configures a v8.7 variable service.
 type Option func(*Service)
 
+// WithClientOperate replaces the generated Operate client when c is non-nil.
 func WithClientOperate(c GenVariableClientOperate) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -28,6 +31,7 @@ func WithClientOperate(c GenVariableClientOperate) Option {
 	}
 }
 
+// New creates a v8.7 variable service with generated Operate client dependencies.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {

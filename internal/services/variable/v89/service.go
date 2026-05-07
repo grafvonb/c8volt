@@ -12,14 +12,17 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 )
 
+// Service implements variable operations through the Camunda 8.9 API.
 type Service struct {
 	cc  GenVariableClientCamunda
 	cfg *config.Config
 	log *slog.Logger
 }
 
+// Option configures a v8.9 variable service.
 type Option func(*Service)
 
+// WithClientCamunda replaces the generated Camunda client when c is non-nil.
 func WithClientCamunda(c GenVariableClientCamunda) Option {
 	return func(s *Service) {
 		if c != nil {
@@ -28,6 +31,7 @@ func WithClientCamunda(c GenVariableClientCamunda) Option {
 	}
 }
 
+// New creates a v8.9 variable service with generated Camunda client dependencies.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {

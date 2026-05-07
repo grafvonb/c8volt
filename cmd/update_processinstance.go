@@ -82,6 +82,7 @@ func init() {
 	setAutomationSupport(updateProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
 }
 
+// parseUpdateProcessInstanceVariables decodes the --vars JSON object used for process-instance updates.
 func parseUpdateProcessInstanceVariables(raw string) (map[string]any, error) {
 	if raw == "" {
 		return nil, invalidFlagValuef("--vars is required and must be a JSON object")

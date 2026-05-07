@@ -16,10 +16,12 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
+// VariableWaiter searches process-instance variables for confirmation loops.
 type VariableWaiter interface {
 	SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 }
 
+// WaitForProcessInstanceVariables polls until requested process-scope variable values are visible.
 func WaitForProcessInstanceVariables(ctx context.Context, s VariableWaiter, cfg *config.Config, key string, requested map[string]any, opts ...services.CallOption) ([]string, error) {
 	backoff := cfg.App.Backoff
 	if backoff.Timeout > 0 {
@@ -61,6 +63,7 @@ func WaitForProcessInstanceVariables(ctx context.Context, s VariableWaiter, cfg 
 	}
 }
 
+// MissingRequestedVariables returns requested names whose process-scope values are absent or different.
 func MissingRequestedVariables(key string, requested map[string]any, observed []d.ProcessInstanceVariable) []string {
 	byName := make(map[string]d.ProcessInstanceVariable, len(observed))
 	for _, variable := range processScopeVariablesForInstance(key, observed) {
@@ -77,6 +80,7 @@ func MissingRequestedVariables(key string, requested map[string]any, observed []
 	return out
 }
 
+// processScopeVariablesForInstance keeps variables owned by the process instance scope.
 func processScopeVariablesForInstance(key string, variables []d.ProcessInstanceVariable) []d.ProcessInstanceVariable {
 	out := make([]d.ProcessInstanceVariable, 0, len(variables))
 	for _, variable := range variables {
@@ -87,6 +91,7 @@ func processScopeVariablesForInstance(key string, variables []d.ProcessInstanceV
 	return out
 }
 
+// requestedVariableNames returns requested variable names in stable order.
 func requestedVariableNames(requested map[string]any) []string {
 	names := make([]string, 0, len(requested))
 	for name := range requested {
@@ -96,6 +101,7 @@ func requestedVariableNames(requested map[string]any) []string {
 	return names
 }
 
+// normalizedJSONValuesEqual compares requested values with raw Camunda JSON values.
 func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
 	var observed any
 	if err := json.Unmarshal([]byte(observedRaw), &observed); err != nil {
@@ -115,6 +121,7 @@ func normalizedJSONValuesEqual(requested any, observedRaw string) bool {
 	return reflect.DeepEqual(requestedNormalized, observedNormalized)
 }
 
+// normalizeJSONValue round-trips a value through JSON using stable numeric handling.
 func normalizeJSONValue(v any) (any, bool) {
 	b, err := json.Marshal(v)
 	if err != nil {

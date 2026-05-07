@@ -10,10 +10,12 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 )
 
+// SearchProcessInstanceVariables delegates process-instance variable lookup to the variable service.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	return s.variableAPI.SearchProcessInstanceVariables(ctx, key, opts...)
 }
 
+// UpdateProcessInstanceVariables delegates process-instance variable mutation to the variable service.
 func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
 	return s.variableAPI.UpdateProcessInstanceVariables(ctx, key, variables, opts...)
 }

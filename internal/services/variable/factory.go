@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// New creates a variable service for the configured Camunda API version.
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger) (API, error) {
 	v := cfg.App.CamundaVersion
 	switch v {

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// stubVariableWaiter lets tests control variable search responses.
 type stubVariableWaiter struct {
 	search func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
 }
@@ -67,6 +68,7 @@ func TestMissingRequestedVariables_NormalizedJSONAndScopeFiltering(t *testing.T)
 	require.Empty(t, got)
 }
 
+// testConfig builds a variable waiter config with explicit retry timing.
 func testConfig(initialDelay time.Duration, maxRetries int, timeout time.Duration) *config.Config {
 	return &config.Config{App: config.App{
 		Backoff: config.BackoffConfig{

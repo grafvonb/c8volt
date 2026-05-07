@@ -16,6 +16,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// SearchProcessInstanceVariables returns process-scope variables for a v8.7 process instance.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using operate client", key))
@@ -56,6 +57,7 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 	return variables, nil
 }
 
+// UpdateProcessInstanceVariables rejects updates because Camunda 8.7 has no supported mutation endpoint.
 func (s *Service) UpdateProcessInstanceVariables(_ context.Context, key string, _ map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
 	if _, err := processInstanceKeyInt64(key); err != nil {
 		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
@@ -63,6 +65,7 @@ func (s *Service) UpdateProcessInstanceVariables(_ context.Context, key string, 
 	return d.ProcessInstanceVariableUpdateResponse{Key: key}, fmt.Errorf("%w: process-instance variable updates require Camunda 8.8 or newer", d.ErrUnsupported)
 }
 
+// fromOperateVariable maps an Operate variable result to the shared domain model.
 func fromOperateVariable(v operatev87.Variable) d.ProcessInstanceVariable {
 	return d.ProcessInstanceVariable{
 		Name:               toolx.Deref(v.Name, ""),
@@ -75,6 +78,7 @@ func fromOperateVariable(v operatev87.Variable) d.ProcessInstanceVariable {
 	}
 }
 
+// formatOperateVariableKey renders an optional Operate numeric key as a domain string key.
 func formatOperateVariableKey(key *int64) string {
 	if key == nil {
 		return ""
@@ -82,6 +86,7 @@ func formatOperateVariableKey(key *int64) string {
 	return strconv.FormatInt(*key, 10)
 }
 
+// processInstanceKeyInt64 validates and parses a process-instance key for Operate requests.
 func processInstanceKeyInt64(key string) (int64, error) {
 	return strconv.ParseInt(key, 10, 64)
 }

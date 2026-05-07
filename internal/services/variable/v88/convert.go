@@ -12,11 +12,13 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// variableSearchQueryResult preserves raw variable fields that generated models omit.
 type variableSearchQueryResult struct {
 	Items []variableSearchResult             `json:"items"`
 	Page  camundav88.SearchQueryPageResponse `json:"page"`
 }
 
+// variableSearchResult mirrors the variable search payload fields needed for display and confirmation.
 type variableSearchResult struct {
 	Name               string `json:"name"`
 	Value              string `json:"value"`
@@ -28,6 +30,7 @@ type variableSearchResult struct {
 	Truncated          *bool  `json:"truncated,omitempty"`
 }
 
+// fromVariableSearchResult maps a raw variable search result to the shared domain model.
 func fromVariableSearchResult(r variableSearchResult) d.ProcessInstanceVariable {
 	return d.ProcessInstanceVariable{
 		Name:               r.Name,
@@ -40,6 +43,7 @@ func fromVariableSearchResult(r variableSearchResult) d.ProcessInstanceVariable 
 	}
 }
 
+// decodeSearchVariablesResponse reads raw JSON because the generated v8.8 model drops value and truncation fields.
 func decodeSearchVariablesResponse(body []byte, page *camundav88.VariableSearchQueryResult) (variableSearchQueryResult, error) {
 	if len(bytes.TrimSpace(body)) == 0 {
 		return variableSearchQueryResult{}, d.ErrMalformedResponse
@@ -54,6 +58,7 @@ func decodeSearchVariablesResponse(body []byte, page *camundav88.VariableSearchQ
 	return result, nil
 }
 
+// variableAPITruncated accepts both observed truncation field names used by Camunda responses.
 func variableAPITruncated(r variableSearchResult) bool {
 	if r.IsTruncated != nil {
 		return *r.IsTruncated

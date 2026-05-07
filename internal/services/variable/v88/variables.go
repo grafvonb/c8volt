@@ -19,6 +19,7 @@ import (
 	"github.com/grafvonb/c8volt/toolx"
 )
 
+// SearchProcessInstanceVariables returns untruncated process-scope variables for a v8.8 process instance.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using generated camunda client", key))
@@ -72,6 +73,7 @@ func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string
 	return variables, nil
 }
 
+// UpdateProcessInstanceVariables writes variables to the process instance element scope and confirms visibility unless no-wait is set.
 func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	if _, err := common.NewProcessInstanceKeyEqFilterPtr(key); err != nil {
