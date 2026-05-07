@@ -5,6 +5,9 @@ Started: 2026-05-07 17:46:04
 
 ## Codebase Patterns
 
+- Repository-wide `make test` runs with `-race`; command tests with concurrent `httptest` handlers must protect shared maps/counters with synchronization.
+- Expanding `c8volt/process.API` can require panic-on-unexpected-call methods in downstream facade test stubs outside process and cmd packages, including `c8volt/resource`.
+- `make docs-content` may refresh generated `docs/index.md` build metadata even when the command reference pages are already current.
 - Required flag discovery can use `setFlagContractRequired` when command-owned validation must preserve shared invalid-input error handling instead of Cobra required-flag pre-run failures.
 - `make docs-content` is the source of truth for generated CLI reference pages and `docs/index.md`; update `README.md` first when changing the docs homepage content.
 - Prefer command-owned validation for required state-changing inputs when the shared error model needs an invalid-input exit; Cobra `MarkFlagRequired` returns generic pre-run errors outside command-local classification.
@@ -236,4 +239,30 @@ Started: 2026-05-07 17:46:04
 - Contract-only required metadata keeps `--vars` visible as required to `capabilities --json` without moving validation into Cobra's generic pre-run required flag path.
 - Generated docs now include the new `c8volt update` and `c8volt update process-instance` pages; the site homepage content was refreshed from `README.md`.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|UpdateProcessInstance.*Help|VersionHelp)' -count=1` passed.
+---
+---
+## Iteration 8 - 2026-05-07 18:37:20 CEST
+**User Story**: Phase 8: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T057: Run gofmt on touched Go files
+- [x] T058: Run targeted process-instance update package validation
+- [x] T059: Run `make docs-content`
+- [x] T060: Run `make test` and fix repository validation failures
+- [x] T061: Review `quickstart.md` against implemented behavior
+- [x] T062: Verify diff scope before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/resource/client_test.go
+- cmd/update_processinstance_test.go
+- docs/index.md
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Resource facade tests need strict panic methods for both singular and bulk process variable update methods after the process facade interface expansion.
+- Multi-key command tests can issue concurrent handler calls under worker fan-out; `make test` catches unsynchronized request counters with the race detector.
+- `quickstart.md` already matched the implemented update, no-wait, JSON, validation, unsupported-version, docs, and final validation workflows.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` passed.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/resource -race -count=1` passed after the repository-wide validation fixes.
+- `make docs-content` and `make test` passed.
 ---

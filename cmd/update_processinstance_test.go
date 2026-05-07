@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -64,6 +65,7 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 }
 
 func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToEachUniqueKey(t *testing.T) {
+	var mu sync.Mutex
 	updates := map[string]int{}
 	confirmations := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,14 +74,18 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 			"/v2/element-instances/2251799813711968/variables":
 			require.Equal(t, http.MethodPut, r.Method)
 			key := keyFromElementInstanceVariablesPath(t, r.URL.Path)
+			mu.Lock()
 			updates[key]++
+			mu.Unlock()
 			var body map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			require.Equal(t, map[string]any{"foo": "bar"}, body["variables"])
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
 			require.Equal(t, http.MethodPost, r.Method)
+			mu.Lock()
 			confirmations++
+			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"},{"name":"foo","value":"\"bar\"","variableKey":"902","processInstanceKey":"2251799813711968","scopeKey":"2251799813711968","tenantId":"<default>"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
 		default:
@@ -101,24 +107,34 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 		"--vars", `{"foo":"bar"}`,
 	)
 
+	mu.Lock()
+	gotUpdates := map[string]int{}
+	for key, count := range updates {
+		gotUpdates[key] = count
+	}
+	gotConfirmations := confirmations
+	mu.Unlock()
 	require.Equal(t, map[string]int{
 		"2251799813711967": 1,
 		"2251799813711968": 1,
-	}, updates)
-	require.Equal(t, 2, confirmations)
+	}, gotUpdates)
+	require.Equal(t, 2, gotConfirmations)
 	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	requireUpdateResultKeys(t, envelope, "2251799813711967", "2251799813711968")
 }
 
 func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t *testing.T) {
+	var mu sync.Mutex
 	updates := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813711967/variables",
 			"/v2/element-instances/2251799813711968/variables":
 			key := keyFromElementInstanceVariablesPath(t, r.URL.Path)
+			mu.Lock()
 			updates[key]++
+			mu.Unlock()
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
 			w.Header().Set("Content-Type", "application/json")
@@ -140,10 +156,16 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 		"--vars", `{"foo":"bar"}`,
 	)
 
+	mu.Lock()
+	gotUpdates := map[string]int{}
+	for key, count := range updates {
+		gotUpdates[key] = count
+	}
+	mu.Unlock()
 	require.Equal(t, map[string]int{
 		"2251799813711967": 1,
 		"2251799813711968": 1,
-	}, updates)
+	}, gotUpdates)
 	require.Contains(t, stdout, "updated process-instance 2251799813711967: confirmed")
 	require.Contains(t, stdout, "updated process-instance 2251799813711968: confirmed")
 	require.Contains(t, stdout, "updated: 2")

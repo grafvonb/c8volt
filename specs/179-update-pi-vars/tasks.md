@@ -162,12 +162,12 @@
 
 **Purpose**: Final cleanup, formatting, and repository-wide proof.
 
-- [ ] T057 [P] Run `gofmt -w cmd/update.go cmd/update_processinstance.go cmd/update_processinstance_test.go cmd/command_contract_test.go cmd/run_test.go cmd/get_processinstance_test.go c8volt/process/api.go c8volt/process/client.go c8volt/process/client_test.go c8volt/process/model.go internal/domain/processinstance.go internal/domain/processinstance_test.go internal/services/processinstance/api.go internal/services/processinstance/v87/contract.go internal/services/processinstance/v87/service.go internal/services/processinstance/v87/service_test.go internal/services/processinstance/v88/contract.go internal/services/processinstance/v88/variables.go internal/services/processinstance/v88/service_test.go internal/services/processinstance/v89/contract.go internal/services/processinstance/v89/variables.go internal/services/processinstance/v89/service_test.go`
-- [ ] T058 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
-- [ ] T059 Run `make docs-content` and fix documentation generation issues
-- [ ] T060 Run `make test` and fix repository validation failures
-- [ ] T061 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
-- [ ] T062 Verify `git diff` contains only issue #179 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T057 [P] Run `gofmt -w cmd/update.go cmd/update_processinstance.go cmd/update_processinstance_test.go cmd/command_contract_test.go cmd/run_test.go cmd/get_processinstance_test.go c8volt/process/api.go c8volt/process/client.go c8volt/process/client_test.go c8volt/process/model.go internal/domain/processinstance.go internal/domain/processinstance_test.go internal/services/processinstance/api.go internal/services/processinstance/v87/contract.go internal/services/processinstance/v87/service.go internal/services/processinstance/v87/service_test.go internal/services/processinstance/v88/contract.go internal/services/processinstance/v88/variables.go internal/services/processinstance/v88/service_test.go internal/services/processinstance/v89/contract.go internal/services/processinstance/v89/variables.go internal/services/processinstance/v89/service_test.go`
+- [x] T058 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` and fix regressions
+- [x] T059 Run `make docs-content` and fix documentation generation issues
+- [x] T060 Run `make test` and fix repository validation failures
+- [x] T061 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
+- [x] T062 Verify `git diff` contains only issue #179 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 
