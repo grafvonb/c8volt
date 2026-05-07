@@ -128,19 +128,19 @@
 
 ### Tests for User Story 4
 
-- [ ] T042 [P] [US4] Add command validation tests for missing `--vars`, malformed JSON, and non-object JSON in `cmd/update_processinstance_test.go`
-- [ ] T043 [P] [US4] Add command validation tests for missing `--key` and missing stdin input via `-` in `cmd/update_processinstance_test.go`
-- [ ] T044 [P] [US4] Add v8.7 unsupported-version command or service test proving mutation is not attempted in `cmd/update_processinstance_test.go` or `internal/services/processinstance/v87/service_test.go`
-- [ ] T045 [P] [US4] Add facade or command test for confirmation timeout/retry exhaustion reporting confirmation failure for the affected key in `c8volt/process/client_test.go` or `cmd/update_processinstance_test.go`
-- [ ] T046 [P] [US4] Add regression tests proving existing `run --vars` and `get process-instance --with-vars` behavior remains unchanged in `cmd/run_test.go` and `cmd/get_processinstance_test.go`
+- [x] T042 [P] [US4] Add command validation tests for missing `--vars`, malformed JSON, and non-object JSON in `cmd/update_processinstance_test.go`
+- [x] T043 [P] [US4] Add command validation tests for missing `--key` and missing stdin input via `-` in `cmd/update_processinstance_test.go`
+- [x] T044 [P] [US4] Add v8.7 unsupported-version command or service test proving mutation is not attempted in `cmd/update_processinstance_test.go` or `internal/services/processinstance/v87/service_test.go`
+- [x] T045 [P] [US4] Add facade or command test for confirmation timeout/retry exhaustion reporting confirmation failure for the affected key in `c8volt/process/client_test.go` or `cmd/update_processinstance_test.go`
+- [x] T046 [P] [US4] Add regression tests proving existing `run --vars` and `get process-instance --with-vars` behavior remains unchanged in `cmd/run_test.go` and `cmd/get_processinstance_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T047 [US4] Reject missing `--vars`, malformed JSON, and non-object JSON before creating a CLI client mutation request in `cmd/update_processinstance.go`
-- [ ] T048 [US4] Reject missing target keys through existing key target validation behavior in `cmd/update_processinstance.go`
-- [ ] T049 [US4] Ensure v8.7 returns unsupported-version errors before mutation through `internal/services/processinstance/v87/service.go` and facade error mapping in `c8volt/process/client.go`
-- [ ] T050 [US4] Report confirmation timeout or retry exhaustion as per-key confirmation failure in `c8volt/process/client.go`
-- [ ] T051 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` and fix regressions
+- [x] T047 [US4] Reject missing `--vars`, malformed JSON, and non-object JSON before creating a CLI client mutation request in `cmd/update_processinstance.go`
+- [x] T048 [US4] Reject missing target keys through existing key target validation behavior in `cmd/update_processinstance.go`
+- [x] T049 [US4] Ensure v8.7 returns unsupported-version errors before mutation through `internal/services/processinstance/v87/service.go` and facade error mapping in `c8volt/process/client.go`
+- [x] T050 [US4] Report confirmation timeout or retry exhaustion as per-key confirmation failure in `c8volt/process/client.go`
+- [x] T051 [US4] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 4 is independently complete when invalid/unsupported/timeout paths fail clearly and existing variable commands still pass.
 

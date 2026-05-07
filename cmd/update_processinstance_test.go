@@ -8,9 +8,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
 	"sort"
 	"testing"
 
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -253,6 +256,84 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 	}
 }
 
+func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	tests := []struct {
+		name       string
+		helperName string
+		args       []string
+		want       string
+	}{
+		{
+			name:       "missing vars",
+			helperName: "TestUpdateProcessInstanceCommand_MissingVarsHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967"},
+			want:       "--vars is required and must be a JSON object",
+		},
+		{
+			name:       "malformed json",
+			helperName: "TestUpdateProcessInstanceCommand_MalformedVarsHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `{"foo":`},
+			want:       "--vars must be a valid JSON object",
+		},
+		{
+			name:       "non object json",
+			helperName: "TestUpdateProcessInstanceCommand_NonObjectVarsHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `["foo"]`},
+			want:       "--vars must be a valid JSON object",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := testx.RunCmdSubprocess(t, tt.helperName, map[string]string{
+				"C8VOLT_TEST_CONFIG":      cfgPath,
+				"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, tt.args),
+			})
+			require.Error(t, err)
+
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+			require.Contains(t, string(output), "invalid input")
+			require.Contains(t, string(output), tt.want)
+		})
+	}
+}
+
+func TestUpdateProcessInstanceCommand_MissingTargetsFailBeforeMutation(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	t.Run("no key", func(t *testing.T) {
+		output, err := testx.RunCmdSubprocess(t, "TestUpdateProcessInstanceCommand_MissingKeyHelper", map[string]string{
+			"C8VOLT_TEST_CONFIG":      cfgPath,
+			"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{"update", "pi", "--vars", `{"foo":"bar"}`}),
+		})
+		require.Error(t, err)
+
+		exitErr, ok := err.(*exec.ExitError)
+		require.True(t, ok)
+		require.Equal(t, exitcode.Error, exitErr.ExitCode())
+		require.Contains(t, string(output), "local precondition failed")
+		require.Contains(t, string(output), "no process instance keys provided or found to update")
+	})
+
+	t.Run("empty stdin", func(t *testing.T) {
+		output, err := testx.RunCmdSubprocessWithStdin(t, "TestUpdateProcessInstanceCommand_EmptyStdinHelper", map[string]string{
+			"C8VOLT_TEST_CONFIG":      cfgPath,
+			"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{"update", "pi", "-", "--vars", `{"foo":"bar"}`}),
+		}, "\n")
+		require.Error(t, err)
+
+		exitErr, ok := err.(*exec.ExitError)
+		require.True(t, ok)
+		require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+		require.Contains(t, string(output), "invalid input")
+		require.Contains(t, string(output), "stdin contained no keys")
+	})
+}
+
 func requireUpdateProcessInstanceEnvelope(t *testing.T, output string) map[string]any {
 	t.Helper()
 
@@ -294,6 +375,55 @@ func requireUpdateResultKeys(t *testing.T, envelope map[string]any, want ...stri
 	sort.Strings(got)
 	sort.Strings(want)
 	require.Equal(t, want, got)
+}
+
+func TestUpdateProcessInstanceCommand_MissingVarsHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_MalformedVarsHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_NonObjectVarsHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_MissingKeyHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_EmptyStdinHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func runUpdateProcessInstanceHelperFromEnv(t *testing.T) {
+	t.Helper()
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var updateArgs []string
+	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_UPDATE_ARGS")), &updateArgs); err != nil {
+		t.Fatalf("invalid helper args: %v", err)
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, updateArgs...))
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	if err := root.Execute(); err != nil {
+		handleBootstrapError(root, err)
+	}
+}
+
+func marshalUpdateArgsForEnv(t *testing.T, args []string) string {
+	t.Helper()
+	data, err := json.Marshal(args)
+	require.NoError(t, err)
+	return string(data)
 }
 
 func keyFromElementInstanceVariablesPath(t *testing.T, path string) string {

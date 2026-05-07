@@ -272,6 +272,17 @@ func TestService_SearchProcessInstanceIncidentsUnsupported(t *testing.T) {
 	assert.Contains(t, err.Error(), "tenant-safe")
 }
 
+func TestUpdateProcessInstanceVariablesUnsupportedBeforeMutation(t *testing.T) {
+	svc := newTestService(t, testConfig(), newStrictCamundaClient(t), newStrictOperateClient(t))
+
+	resp, err := svc.UpdateProcessInstanceVariables(context.Background(), "2251799813711967", map[string]any{"foo": "bar"})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, d.ErrUnsupported)
+	assert.Equal(t, "2251799813711967", resp.Key)
+	assert.Contains(t, err.Error(), "process-instance variable updates require Camunda 8.8 or newer")
+}
+
 func TestService_SearchForProcessInstances(t *testing.T) {
 	ctx := context.Background()
 

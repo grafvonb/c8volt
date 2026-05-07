@@ -5,6 +5,8 @@ Started: 2026-05-07 17:46:04
 
 ## Codebase Patterns
 
+- Prefer command-owned validation for required state-changing inputs when the shared error model needs an invalid-input exit; Cobra `MarkFlagRequired` returns generic pre-run errors outside command-local classification.
+- Command tests that call `resetCommandTreeFlags(root)` after adding `StringSlice` flags must also reset the corresponding package globals; pflag default reset can otherwise leave a literal `[]` value in the bound slice.
 - Update process-instance target selection should let `mergeAndValidateKeys(...).Unique()` feed the facade bulk method directly; command-local single-key caps conflict with shared repeated-flag and stdin key behavior.
 - CLI stdin-key tests can replace `os.Stdin` with an `os.Pipe`; `readKeysIfDash` intentionally checks the real stdin file descriptor with `term.IsTerminal`.
 - Facade bulk update behavior is owned by `UpdateProcessInstancesVariables`, which deduplicates `typex.Keys`, computes worker count with `toolx.DetermineNoOfWorkers`, and maps `fail-fast`/`no-worker-limit` through shared facade options.
@@ -49,7 +51,7 @@ Started: 2026-05-07 17:46:04
 ---
 ## Iteration 2 - 2026-05-07 17:55:20 CEST
 **User Story**: Phase 2: Foundational (Blocking Prerequisites)
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T007: Add the `update` root command with aliases, examples, backoff bindings, and state-changing metadata
 - [x] T008: Add process-instance variable update request/result domain models
 - [x] T009: Add facade-level process-instance variable update request/result models
@@ -60,7 +62,7 @@ Started: 2026-05-07 17:46:04
 - [x] T014: Run foundational targeted validation and fix regressions
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - cmd/update.go
 - cmd/update_processinstance.go
 - cmd/command_contract_test.go
@@ -90,7 +92,7 @@ Started: 2026-05-07 17:46:04
 ---
 ## Iteration 3 - 2026-05-07 18:06:13 CEST
 **User Story**: User Story 1 - Update Variables For One Process Instance
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T015: Add command test for `update pi --key <key> --vars '{"foo":"bar"}'` submitting the v8.8 update request and confirming through variable lookup
 - [x] T016: Add command test proving `update process-instance` and `update pi` behave identically for a single key
 - [x] T017: Add v8.8 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key
@@ -105,7 +107,7 @@ Started: 2026-05-07 17:46:04
 - [x] T026: Run the US1 targeted validation command and fix regressions
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - cmd/update_processinstance.go
 - cmd/cmd_views_processinstance_update.go
 - cmd/update_processinstance_test.go
@@ -153,7 +155,7 @@ Started: 2026-05-07 17:46:04
 ---
 ## Iteration 5 - 2026-05-07 18:17:26 CEST
 **User Story**: User Story 3 - Return Accepted Output Without Waiting
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T035: Add command test proving `--no-wait` returns accepted/submitted output without variable confirmation lookup
 - [x] T036: Add JSON output test for `--no-wait` submitted results
 - [x] T037: Add facade test proving mutation errors still report per-key failure when `--no-wait` is set
@@ -163,7 +165,7 @@ Started: 2026-05-07 17:46:04
 - [x] T041: Run the US3 targeted validation command and fix regressions
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - cmd/update_processinstance_test.go
 - c8volt/process/client.go
 - c8volt/process/client_test.go
@@ -173,4 +175,34 @@ Started: 2026-05-07 17:46:04
 - Existing command option collection already forwards `--no-wait`; the missing hardening was preserving mutation failures as per-key no-wait results.
 - Server-backed no-wait command tests should fail on `/v2/variables/search` so accidental confirmation polling is caught directly.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*NoWait|NoWait.*Update)' -count=1` passed.
+---
+---
+## Iteration 6 - 2026-05-07 18:25:24 CEST
+**User Story**: User Story 4 - Reject Invalid Or Unsupported Updates
+**Tasks Completed**:
+- [x] T042: Add command validation tests for missing `--vars`, malformed JSON, and non-object JSON
+- [x] T043: Add command validation tests for missing `--key` and missing stdin input via `-`
+- [x] T044: Add v8.7 unsupported-version service test proving mutation is not attempted
+- [x] T045: Add facade timeout confirmation failure test
+- [x] T046: Add regression coverage for `run --vars` and reuse existing `get process-instance --with-vars` coverage
+- [x] T047: Reject missing `--vars`, malformed JSON, and non-object JSON through command-owned validation
+- [x] T048: Reject missing target keys through existing key target validation behavior
+- [x] T049: Ensure v8.7 returns unsupported-version errors before mutation
+- [x] T050: Report confirmation timeout as per-key confirmation failure
+- [x] T051: Run US4 targeted validation and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_processinstance.go
+- cmd/update_processinstance_test.go
+- cmd/get_processinstance_test.go
+- cmd/run_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/v87/service_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Missing `--vars` should be handled by `parseUpdateProcessInstanceVariables` so it is classified as invalid input consistently with malformed and non-object JSON.
+- Resetting command tree flags alone is not enough for new bound `StringSlice` globals; the process-instance global reset helper must include update command flags.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` passed.
 ---

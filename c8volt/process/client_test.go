@@ -595,6 +595,44 @@ func TestUpdateProcessInstanceVariablesNoWaitReportsMutationFailurePerKey(t *tes
 	require.False(t, got.Items[0].OK())
 }
 
+func TestUpdateProcessInstanceVariablesConfirmationTimeoutReportsPerKeyFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"foo": "bar"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			return nil, context.DeadlineExceeded
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key:       "123",
+		Variables: map[string]any{"foo": "bar"},
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "operation timed out")
+	require.Contains(t, err.Error(), context.DeadlineExceeded.Error())
+	require.Equal(t, ProcessInstanceVariableUpdateResult{
+		Key:                "123",
+		Status:             ProcessInstanceVariableUpdateStatusConfirmationFailed,
+		MutationAccepted:   true,
+		ConfirmationStatus: "failed",
+		StatusCode:         204,
+		Message:            "204 No Content",
+		Error:              "operation timed out: context deadline exceeded",
+		Variables:          map[string]any{"foo": "bar"},
+	}, got)
+	require.False(t, got.OK())
+}
+
 func drainStringChannel(ch <-chan string) []string {
 	out := make([]string, 0)
 	for s := range ch {

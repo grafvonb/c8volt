@@ -71,7 +71,6 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple process instances (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new updates after the first error")
-	_ = updateProcessInstanceCmd.MarkFlagRequired("vars")
 
 	setCommandMutation(updateProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(updateProcessInstanceCmd, ContractSupportFull)
