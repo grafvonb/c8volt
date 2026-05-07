@@ -23,6 +23,8 @@ Started: 2026-05-07 17:46:04
 - Generated element-instance variable update responses should be validated with `httpc.HttpStatusErr`; successful calls can return `204 No Content` with an empty body.
 - Single-key update confirmation can reuse `SearchProcessInstanceVariables` and the existing process-scope filter helper, then compare only requested variable names after normalizing JSON values.
 - Shared JSON command envelopes are emitted by `renderCommandResult`; human output needs an explicit view helper because `renderCommandResult` intentionally does nothing outside machine-readable modes.
+- `--no-wait` update behavior should pass through `collectOptions()`/`options.WithNoWait()` and skip `SearchProcessInstanceVariables`, reporting `submitted` with `confirmationStatus: "skipped"` instead of confirmed.
+- No-wait mutation failures should remain per-key result data so command output can report the failed target without implying confirmation polling.
 
 ---
 ## Iteration 1 - 2026-05-07 17:47:53 CEST
@@ -147,4 +149,28 @@ Started: 2026-05-07 17:46:04
 - The US2 implementation only needed to remove the command's temporary single-key guard because the existing facade bulk path already deduplicates keys, applies worker settings, and preserves per-key results.
 - The sandbox blocks local TCP listeners, so server-backed command tests in `./cmd` are skipped here; the targeted command still passes, and the non-network facade worker/dedup test exercises the executable bulk path.
 - `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*(Multiple|Stdin|Dedup|Workers|FailFast))' -count=1` passed.
+---
+---
+## Iteration 5 - 2026-05-07 18:17:26 CEST
+**User Story**: User Story 3 - Return Accepted Output Without Waiting
+**Tasks Completed**: 
+- [x] T035: Add command test proving `--no-wait` returns accepted/submitted output without variable confirmation lookup
+- [x] T036: Add JSON output test for `--no-wait` submitted results
+- [x] T037: Add facade test proving mutation errors still report per-key failure when `--no-wait` is set
+- [x] T038: Wire `--no-wait` into update request options and skip confirmation after accepted mutation
+- [x] T039: Distinguish submitted, confirmed, mutation-failed, and confirmation-failed statuses in result models
+- [x] T040: Ensure human and JSON renderers show submitted status without implying read-model confirmation
+- [x] T041: Run the US3 targeted validation command and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**: 
+- cmd/update_processinstance_test.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Existing command option collection already forwards `--no-wait`; the missing hardening was preserving mutation failures as per-key no-wait results.
+- Server-backed no-wait command tests should fail on `/v2/variables/search` so accidental confirmation polling is caught directly.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*NoWait|NoWait.*Update)' -count=1` passed.
 ---

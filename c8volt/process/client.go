@@ -106,10 +106,15 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 		result.Key = request.Key
 	}
 	if err != nil {
+		updateErr := ferr.FromDomain(err)
 		result.Status = ProcessInstanceVariableUpdateStatusMutationFailed
 		result.MutationAccepted = false
-		result.Error = ferr.FromDomain(err).Error()
-		return result, ferr.FromDomain(err)
+		result.Error = updateErr.Error()
+		if cfg.NoWait {
+			result.ConfirmationStatus = "skipped"
+			return result, nil
+		}
+		return result, updateErr
 	}
 	if cfg.NoWait {
 		result.Status = ProcessInstanceVariableUpdateStatusSubmitted

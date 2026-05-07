@@ -105,16 +105,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T035 [P] [US3] Add command test proving `--no-wait` returns accepted/submitted output without variable confirmation lookup in `cmd/update_processinstance_test.go`
-- [ ] T036 [P] [US3] Add JSON output test for `--no-wait` submitted results in `cmd/update_processinstance_test.go`
-- [ ] T037 [P] [US3] Add facade test proving mutation errors still report per-key failure when `--no-wait` is set in `c8volt/process/client_test.go`
+- [x] T035 [P] [US3] Add command test proving `--no-wait` returns accepted/submitted output without variable confirmation lookup in `cmd/update_processinstance_test.go`
+- [x] T036 [P] [US3] Add JSON output test for `--no-wait` submitted results in `cmd/update_processinstance_test.go`
+- [x] T037 [P] [US3] Add facade test proving mutation errors still report per-key failure when `--no-wait` is set in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] Wire `--no-wait` into update request options and skip confirmation after accepted mutation in `cmd/update_processinstance.go` and `c8volt/process/client.go`
-- [ ] T039 [US3] Distinguish submitted, confirmed, mutation-failed, and confirmation-failed statuses in result models in `c8volt/process/model.go`
-- [ ] T040 [US3] Ensure human and JSON renderers show submitted status without implying read-model confirmation in `cmd/update_processinstance.go`
-- [ ] T041 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*NoWait|NoWait.*Update)' -count=1` and fix regressions
+- [x] T038 [US3] Wire `--no-wait` into update request options and skip confirmation after accepted mutation in `cmd/update_processinstance.go` and `c8volt/process/client.go`
+- [x] T039 [US3] Distinguish submitted, confirmed, mutation-failed, and confirmation-failed statuses in result models in `c8volt/process/model.go`
+- [x] T040 [US3] Ensure human and JSON renderers show submitted status without implying read-model confirmation in `cmd/update_processinstance.go`
+- [x] T041 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*NoWait|NoWait.*Update)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 3 is independently complete when no-wait output is accepted/submitted and no confirmation polling occurs.
 

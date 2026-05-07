@@ -554,6 +554,47 @@ func TestUpdateProcessInstanceVariablesMultipleKeysRespectWorkersAndFailFastOpti
 	}
 }
 
+func TestUpdateProcessInstanceVariablesNoWaitReportsMutationFailurePerKey(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"foo": "bar"}, variables)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return d.ProcessInstanceVariableUpdateResponse{
+				Key:        key,
+				Ok:         false,
+				StatusCode: 500,
+				Status:     "500 Internal Server Error",
+			}, errors.New("mutation rejected")
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.UpdateProcessInstancesVariables(ctx,
+		typex.Keys{"123"},
+		map[string]any{"foo": "bar"},
+		1,
+		options.WithNoWait(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, ProcessInstanceVariableUpdateResult{
+		Key:                "123",
+		Status:             ProcessInstanceVariableUpdateStatusMutationFailed,
+		MutationAccepted:   false,
+		ConfirmationStatus: "skipped",
+		StatusCode:         500,
+		Message:            "500 Internal Server Error",
+		Error:              "mutation rejected",
+		Variables:          map[string]any{"foo": "bar"},
+	}, got.Items[0])
+	require.False(t, got.Items[0].OK())
+}
+
 func drainStringChannel(ch <-chan string) []string {
 	out := make([]string, 0)
 	for s := range ch {

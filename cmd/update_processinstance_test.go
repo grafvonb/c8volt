@@ -146,6 +146,79 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 	require.Contains(t, stdout, "updated: 2")
 }
 
+func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedWithoutConfirmationLookup(t *testing.T) {
+	var sawUpdate bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/element-instances/2251799813711967/variables":
+			require.Equal(t, http.MethodPut, r.Method)
+			sawUpdate = true
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]any{"foo": "bar"}, body["variables"])
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/variables/search":
+			t.Fatalf("no-wait update must not perform confirmation lookup")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"update", "pi",
+		"--key", "2251799813711967",
+		"--vars", `{"foo":"bar"}`,
+		"--no-wait",
+	)
+
+	require.True(t, sawUpdate)
+	require.Contains(t, output, "updated process-instance 2251799813711967: submitted")
+	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
+}
+
+func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResults(t *testing.T) {
+	var sawUpdate bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/element-instances/2251799813711967/variables":
+			require.Equal(t, http.MethodPut, r.Method)
+			sawUpdate = true
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/variables/search":
+			t.Fatalf("no-wait update must not perform confirmation lookup")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, _ := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"update", "pi",
+		"--key", "2251799813711967",
+		"--vars", `{"foo":"bar"}`,
+		"--no-wait",
+	)
+
+	require.True(t, sawUpdate)
+	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
+	require.Equal(t, string(OutcomeAccepted), envelope["outcome"])
+	require.Equal(t, "update process-instance", envelope["command"])
+	item := firstUpdateResultItem(t, envelope)
+	require.Equal(t, "2251799813711967", item["key"])
+	require.Equal(t, "submitted", item["status"])
+	require.Equal(t, true, item["mutationAccepted"])
+	require.Equal(t, "skipped", item["confirmationStatus"])
+}
+
 func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingleKey(t *testing.T) {
 	for _, leaf := range []string{"process-instance", "pi"} {
 		t.Run(leaf, func(t *testing.T) {
