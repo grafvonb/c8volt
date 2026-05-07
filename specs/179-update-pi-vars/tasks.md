@@ -81,17 +81,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Add command test for multiple repeated `--key` values applying one `--vars` payload to each unique key in `cmd/update_processinstance_test.go`
-- [ ] T028 [P] [US2] Add command test for stdin `-` keys merged and deduplicated with `--key` values in `cmd/update_processinstance_test.go`
-- [ ] T029 [P] [US2] Add facade test for multi-key update respecting worker count and fail-fast options in `c8volt/process/client_test.go`
+- [x] T027 [P] [US2] Add command test for multiple repeated `--key` values applying one `--vars` payload to each unique key in `cmd/update_processinstance_test.go`
+- [x] T028 [P] [US2] Add command test for stdin `-` keys merged and deduplicated with `--key` values in `cmd/update_processinstance_test.go`
+- [x] T029 [P] [US2] Add facade test for multi-key update respecting worker count and fail-fast options in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Reuse existing stdin key parsing, validation, merge, and deduplication behavior for update targets in `cmd/update_processinstance.go`
-- [ ] T031 [US2] Apply the same parsed variable map to every unique target key through facade/service calls in `c8volt/process/client.go`
-- [ ] T032 [US2] Reuse existing worker, `--workers`, `--fail-fast`, and `--no-worker-limit` option mapping for multi-key updates in `cmd/update_processinstance.go` and `c8volt/process/client.go`
-- [ ] T033 [US2] Render multi-key human and JSON results with independent per-key statuses in `cmd/update_processinstance.go`
-- [ ] T034 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*(Multiple|Stdin|Dedup|Workers|FailFast))' -count=1` and fix regressions
+- [x] T030 [US2] Reuse existing stdin key parsing, validation, merge, and deduplication behavior for update targets in `cmd/update_processinstance.go`
+- [x] T031 [US2] Apply the same parsed variable map to every unique target key through facade/service calls in `c8volt/process/client.go`
+- [x] T032 [US2] Reuse existing worker, `--workers`, `--fail-fast`, and `--no-worker-limit` option mapping for multi-key updates in `cmd/update_processinstance.go` and `c8volt/process/client.go`
+- [x] T033 [US2] Render multi-key human and JSON results with independent per-key statuses in `cmd/update_processinstance.go`
+- [x] T034 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*(Multiple|Stdin|Dedup|Workers|FailFast))' -count=1` and fix regressions
 
 **Checkpoint**: User Story 2 is independently complete when repeated keys, stdin keys, deduplication, workers, and per-key output pass.
 

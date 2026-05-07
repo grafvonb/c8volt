@@ -5,6 +5,9 @@ Started: 2026-05-07 17:46:04
 
 ## Codebase Patterns
 
+- Update process-instance target selection should let `mergeAndValidateKeys(...).Unique()` feed the facade bulk method directly; command-local single-key caps conflict with shared repeated-flag and stdin key behavior.
+- CLI stdin-key tests can replace `os.Stdin` with an `os.Pipe`; `readKeysIfDash` intentionally checks the real stdin file descriptor with `term.IsTerminal`.
+- Facade bulk update behavior is owned by `UpdateProcessInstancesVariables`, which deduplicates `typex.Keys`, computes worker count with `toolx.DetermineNoOfWorkers`, and maps `fail-fast`/`no-worker-limit` through shared facade options.
 - Foundation command shells can expose Cobra metadata and required flags before full story behavior lands; tests should cover metadata while later story tasks own parsing, mutation, confirmation, and rendering behavior.
 - Expanding facade/service interfaces requires updating strict test stubs in `cmd/process_api_stub_test.go` and `c8volt/process/client_test.go` with panic-on-unexpected-call methods to preserve unrelated test signal.
 - Supported-version service API additions can compile with temporary domain-level unsupported stubs in `v88`/`v89` until story-specific tasks wire generated client calls.
@@ -24,7 +27,7 @@ Started: 2026-05-07 17:46:04
 ---
 ## Iteration 1 - 2026-05-07 17:47:53 CEST
 **User Story**: Phase 1: Setup (Shared Discovery)
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T001: Inspect root command registration and mutation metadata patterns
 - [x] T002: Inspect process-instance key/stdin, worker, fail-fast, and no-worker-limit behavior
 - [x] T003: Inspect process-instance variable lookup and rendering paths
@@ -33,7 +36,7 @@ Started: 2026-05-07 17:46:04
 - [x] T006: Inspect README, generated docs, and docs generation workflow
 **Tasks Remaining in Story**: None - story complete
 **Commit**: No commit - sandbox cannot write `.git/index.lock`
-**Files Changed**: 
+**Files Changed**:
 - specs/179-update-pi-vars/tasks.md
 - specs/179-update-pi-vars/progress.md
 **Learnings**:
@@ -119,4 +122,29 @@ Started: 2026-05-07 17:46:04
 - The generated Camunda update method uses the process instance key as an `ElementInstanceKey` path parameter and returns no success payload, so domain results need to carry status metadata from the HTTP response.
 - The prescribed US1 test regex requires test names beginning with `TestUpdateProcessInstance`, `TestUpdatePI`, `TestElementInstanceVariables`, or `TestVariableConfirmation` to avoid silently skipping new coverage.
 - US1 intentionally keeps the command to one unique target key; repeated-key, stdin merge/dedup, and worker-controlled multi-key behavior remain in the next user story.
+---
+---
+## Iteration 4 - 2026-05-07 18:12:20 CEST
+**User Story**: User Story 2 - Update Multiple Selected Process Instances
+**Tasks Completed**:
+- [x] T027: Add command test for multiple repeated `--key` values applying one `--vars` payload to each unique key
+- [x] T028: Add command test for stdin `-` keys merged and deduplicated with `--key` values
+- [x] T029: Add facade test for multi-key update respecting worker count and fail-fast options
+- [x] T030: Reuse existing stdin key parsing, validation, merge, and deduplication behavior for update targets
+- [x] T031: Apply the same parsed variable map to every unique target key through facade/service calls
+- [x] T032: Reuse existing worker, `--workers`, `--fail-fast`, and `--no-worker-limit` option mapping for multi-key updates
+- [x] T033: Render multi-key human and JSON results with independent per-key statuses
+- [x] T034: Run the US2 targeted validation command and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_processinstance.go
+- cmd/update_processinstance_test.go
+- c8volt/process/client_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- The US2 implementation only needed to remove the command's temporary single-key guard because the existing facade bulk path already deduplicates keys, applies worker settings, and preserves per-key results.
+- The sandbox blocks local TCP listeners, so server-backed command tests in `./cmd` are skipped here; the targeted command still passes, and the non-network facade worker/dedup test exercises the executable bulk path.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*(Multiple|Stdin|Dedup|Workers|FailFast))' -count=1` passed.
 ---

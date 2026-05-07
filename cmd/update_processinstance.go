@@ -51,9 +51,6 @@ var updateProcessInstanceCmd = &cobra.Command{
 		if len(keys) == 0 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to update")))
 		}
-		if len(keys) > 1 {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("update process-instance currently supports exactly one process instance key")))
-		}
 		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))

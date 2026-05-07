@@ -8,7 +8,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -482,6 +484,82 @@ func TestVariableConfirmation_ConfirmsRequestedVariablesWithNormalizedJSON(t *te
 			"nested": map[string]any{"count": float64(2)},
 		},
 	}, got)
+}
+
+func TestUpdateProcessInstanceVariablesMultipleKeysRespectWorkersAndFailFastOptions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var active int32
+	var maxActive int32
+	var updates int32
+	seen := make(chan string, 3)
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			cfg := services.ApplyCallOptions(opts)
+			if !cfg.FailFast {
+				return d.ProcessInstanceVariableUpdateResponse{}, errors.New("expected fail-fast call option")
+			}
+			if !cfg.NoWorkerLimit {
+				return d.ProcessInstanceVariableUpdateResponse{}, errors.New("expected no-worker-limit call option")
+			}
+			if variables["foo"] != "bar" || len(variables) != 1 {
+				return d.ProcessInstanceVariableUpdateResponse{}, errors.New("unexpected variables payload")
+			}
+
+			current := atomic.AddInt32(&active, 1)
+			for {
+				previous := atomic.LoadInt32(&maxActive)
+				if current <= previous || atomic.CompareAndSwapInt32(&maxActive, previous, current) {
+					break
+				}
+			}
+			time.Sleep(10 * time.Millisecond)
+			atomic.AddInt32(&active, -1)
+			atomic.AddInt32(&updates, 1)
+			seen <- key
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			cfg := services.ApplyCallOptions(opts)
+			if !cfg.FailFast {
+				return nil, errors.New("expected fail-fast call option")
+			}
+			if !cfg.NoWorkerLimit {
+				return nil, errors.New("expected no-worker-limit call option")
+			}
+			return []d.ProcessInstanceVariable{{Name: "foo", Value: `"bar"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	got, err := cli.UpdateProcessInstancesVariables(ctx,
+		typex.Keys{"2251799813711967", "2251799813711968", "2251799813711967", "2251799813711969"},
+		map[string]any{"foo": "bar"},
+		2,
+		options.WithFailFast(),
+		options.WithNoWorkerLimit(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 3)
+	require.Equal(t, int32(3), atomic.LoadInt32(&updates))
+	require.LessOrEqual(t, atomic.LoadInt32(&maxActive), int32(2))
+	close(seen)
+	require.ElementsMatch(t, []string{"2251799813711967", "2251799813711968", "2251799813711969"}, drainStringChannel(seen))
+	for _, item := range got.Items {
+		require.Equal(t, ProcessInstanceVariableUpdateStatusConfirmed, item.Status)
+		require.True(t, item.MutationAccepted)
+		require.Equal(t, "confirmed", item.ConfirmationStatus)
+	}
+}
+
+func drainStringChannel(ch <-chan string) []string {
+	out := make([]string, 0)
+	for s := range ch {
+		out = append(out, s)
+	}
+	return out
 }
 
 // TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
