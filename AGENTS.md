@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/179-update-pi-vars/plan.md`
+- Active implementation plan: `specs/180-job-update-lookup/plan.md`
 <!-- SPECKIT END -->
