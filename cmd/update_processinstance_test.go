@@ -64,6 +64,51 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 	require.Equal(t, "confirmed", item["confirmationStatus"])
 }
 
+func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
+	var sawUpdate bool
+	var sawConfirmation bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/element-instances/2251799813711967/variables":
+			require.Equal(t, http.MethodPut, r.Method)
+			sawUpdate = true
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]any{"foo": "bar"}, body["variables"])
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			sawConfirmation = true
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	varsPath := t.TempDir() + "/vars.json"
+	require.NoError(t, os.WriteFile(varsPath, []byte(`{"foo":"bar"}`), 0o600))
+
+	stdout, _ := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--automation",
+		"--json",
+		"update", "pi",
+		"--key", "2251799813711967",
+		"--vars-file", varsPath,
+	)
+
+	require.True(t, sawUpdate)
+	require.True(t, sawConfirmation)
+	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	item := firstUpdateResultItem(t, envelope)
+	require.Equal(t, "confirmed", item["status"])
+	require.Equal(t, "confirmed", item["confirmationStatus"])
+}
+
 func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToEachUniqueKey(t *testing.T) {
 	var mu sync.Mutex
 	updates := map[string]int{}
@@ -281,6 +326,8 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 
 func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+	malformedVarsFile := t.TempDir() + "/malformed-vars.json"
+	require.NoError(t, os.WriteFile(malformedVarsFile, []byte(`{"foo":`), 0o600))
 
 	tests := []struct {
 		name       string
@@ -292,7 +339,19 @@ func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T
 			name:       "missing vars",
 			helperName: "TestUpdateProcessInstanceCommand_MissingVarsHelper",
 			args:       []string{"update", "pi", "--key", "2251799813711967"},
-			want:       "--vars is required and must be a JSON object",
+			want:       "--vars or --vars-file is required and must be a JSON object",
+		},
+		{
+			name:       "mutually exclusive vars and vars file",
+			helperName: "TestUpdateProcessInstanceCommand_MutuallyExclusiveVarsHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `{"foo":"bar"}`, "--vars-file", malformedVarsFile},
+			want:       "--vars cannot be combined with --vars-file",
+		},
+		{
+			name:       "vars file flag missing argument",
+			helperName: "TestUpdateProcessInstanceCommand_VarsFileMissingArgumentHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `{"foo":"bar"}`, "--vars-file"},
+			want:       "flag needs an argument: --vars-file",
 		},
 		{
 			name:       "malformed json",
@@ -305,6 +364,18 @@ func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T
 			helperName: "TestUpdateProcessInstanceCommand_NonObjectVarsHelper",
 			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars", `["foo"]`},
 			want:       "--vars must be a valid JSON object",
+		},
+		{
+			name:       "missing vars file",
+			helperName: "TestUpdateProcessInstanceCommand_MissingVarsFileHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars-file", t.TempDir() + "/missing.json"},
+			want:       "--vars-file could not be read",
+		},
+		{
+			name:       "malformed vars file",
+			helperName: "TestUpdateProcessInstanceCommand_MalformedVarsFileHelper",
+			args:       []string{"update", "pi", "--key", "2251799813711967", "--vars-file", malformedVarsFile},
+			want:       "--vars-file must be a valid JSON object",
 		},
 	}
 
@@ -321,6 +392,7 @@ func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T
 			require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 			require.Contains(t, string(output), "invalid input")
 			require.Contains(t, string(output), tt.want)
+			require.NotContains(t, string(output), "Usage:")
 		})
 	}
 }
@@ -408,7 +480,23 @@ func TestUpdateProcessInstanceCommand_MalformedVarsHelper(t *testing.T) {
 	runUpdateProcessInstanceHelperFromEnv(t)
 }
 
+func TestUpdateProcessInstanceCommand_MutuallyExclusiveVarsHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_VarsFileMissingArgumentHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
 func TestUpdateProcessInstanceCommand_NonObjectVarsHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_MissingVarsFileHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_MalformedVarsFileHelper(t *testing.T) {
 	runUpdateProcessInstanceHelperFromEnv(t)
 }
 

@@ -306,9 +306,16 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "vars",
 		Type:        "string",
-		Required:    true,
+		Required:    false,
 		Repeated:    false,
 		Description: "JSON object with variables to set on each process instance",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "vars-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "path to JSON object file with variables to set on each process instance",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
@@ -344,13 +351,15 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Camunda 8.8 and 8.9",
 		"unsupported-version error before mutation",
 		"./c8volt update process-instance --key 2251799813711967 --vars",
+		"./c8volt update pi --key 2251799813711967 --vars-file",
 		"./c8volt --automation --json update pi --key 2251799813711967 --vars",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
 		"Update process-instance variables by key",
-		"--vars flag must be a JSON object",
+		"Provide exactly one variable payload source",
+		"--vars with a JSON object or --vars-file with a path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"By default c8volt waits until requested process-instance-scope variables are visible",
 		"add --no-wait to return after the update request is accepted",
@@ -366,6 +375,7 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
 		"Update process-instance variables by key",
 		"--vars string",
+		"--vars-file string",
 		"--no-wait",
 	}, nil)
 	require.Contains(t, aliasOutput, "Aliases:")

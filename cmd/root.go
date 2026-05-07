@@ -240,6 +240,8 @@ func Execute() {
 }
 
 func init() {
+	useInvalidInputFlagErrors(rootCmd)
+
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress output except errors")
 	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable non-interactive mode for commands that explicitly support it")
