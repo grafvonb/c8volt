@@ -26,3 +26,15 @@ func fromIncidentResult(r camundav88.IncidentResult) d.ProcessInstanceIncidentDe
 		ProcessDefinitionId:    r.ProcessDefinitionId,
 	}
 }
+
+// newBasicStringEqFilterPtr builds a v8.8 basic string equality filter when a value is set.
+func newBasicStringEqFilterPtr(v string) (*camundav88.BasicStringFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav88.BasicStringFilterProperty
+	if err := f.FromBasicStringFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}

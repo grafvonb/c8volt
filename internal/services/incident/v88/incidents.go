@@ -5,6 +5,7 @@ package v88
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
@@ -26,7 +27,10 @@ func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		return d.ProcessInstanceIncidentDetail{}, err
+		if !errors.Is(err, d.ErrNotFound) {
+			return d.ProcessInstanceIncidentDetail{}, err
+		}
+		return s.searchIncidentByKey(ctx, key)
 	}
 	return fromIncidentResult(*payload), nil
 }
@@ -41,6 +45,27 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 	}
 	result := d.IncidentResolutionResponse{
 		Key:        key,
+		Ok:         resp.StatusCode() >= 200 && resp.StatusCode() < 300,
+		StatusCode: resp.StatusCode(),
+		Status:     resp.Status(),
+	}
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		result.Ok = false
+		return result, err
+	}
+	return result, nil
+}
+
+// ResolveProcessInstanceIncidents submits process-instance incident resolution without doing confirmation polling.
+func (s *Service) ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("resolving incidents for process instance with key %s using generated camunda client", processInstanceKey))
+	resp, err := s.cc.ResolveProcessInstanceIncidentsWithResponse(ctx, processInstanceKey)
+	if err != nil {
+		return d.IncidentResolutionResponse{Key: processInstanceKey}, err
+	}
+	result := d.IncidentResolutionResponse{
+		Key:        processInstanceKey,
 		Ok:         resp.StatusCode() >= 200 && resp.StatusCode() < 300,
 		StatusCode: resp.StatusCode(),
 		Status:     resp.Status(),
@@ -78,6 +103,39 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 		return nil, err
 	}
 	return toolx.MapSlice(payload.Items, fromIncidentResult), nil
+}
+
+func (s *Service) searchIncidentByKey(ctx context.Context, key string) (d.ProcessInstanceIncidentDetail, error) {
+	incidentFilter, err := newBasicStringEqFilterPtr(key)
+	if err != nil {
+		return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("building incident key filter: %w", err)
+	}
+	tenantFilter, err := common.NewStringEqFilterPtr(s.cfg.App.Tenant)
+	if err != nil {
+		return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("building tenant incident filter: %w", err)
+	}
+	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1})
+	body := camundav88.SearchIncidentsJSONRequestBody{
+		Page: &page,
+		Filter: &camundav88.IncidentFilter{
+			IncidentKey: incidentFilter,
+			TenantId:    tenantFilter,
+		},
+	}
+	resp, err := s.cc.SearchIncidentsWithResponse(ctx, body)
+	if err != nil {
+		return d.ProcessInstanceIncidentDetail{}, err
+	}
+	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+	if err != nil {
+		return d.ProcessInstanceIncidentDetail{}, err
+	}
+	for _, item := range payload.Items {
+		if item.IncidentKey == key {
+			return fromIncidentResult(item), nil
+		}
+	}
+	return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("%w: incident %s not found", d.ErrNotFound, key)
 }
 
 // WaitForIncidentResolved polls direct incident lookup until the selected incident is no longer active.

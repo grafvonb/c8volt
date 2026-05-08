@@ -27,6 +27,14 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 	return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, fmt.Errorf("%w: incident resolution is not supported in Camunda 8.7", d.ErrUnsupported)
 }
 
+// ResolveProcessInstanceIncidents rejects incident resolution before mutation because Camunda 8.7 has no supported endpoint.
+func (s *Service) ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	_ = ctx
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug(fmt.Sprintf("rejecting process-instance incident resolution for key %s because Camunda 8.7 has no supported endpoint", processInstanceKey))
+	return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: "unsupported"}, fmt.Errorf("%w: process-instance incident resolution is not supported in Camunda 8.7", d.ErrUnsupported)
+}
+
 // SearchProcessInstanceIncidents rejects incident lookup because Camunda 8.7 has no tenant-safe endpoint.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = ctx

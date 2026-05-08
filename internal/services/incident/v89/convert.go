@@ -38,6 +38,18 @@ func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	return new(f), nil
 }
 
+// newBasicStringEqFilterPtr builds a v8.9 basic string equality filter when a value is set.
+func newBasicStringEqFilterPtr(v string) (*camundav89.BasicStringFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.BasicStringFilterProperty
+	if err := f.FromBasicStringFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
 func valueOrEmpty[T ~string](v *T) T {
 	if v == nil {
 		return ""

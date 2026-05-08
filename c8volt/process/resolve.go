@@ -10,6 +10,7 @@ import (
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/incident/waiter"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/pool"
@@ -46,15 +47,32 @@ func (c *client) ResolveIncident(ctx context.Context, key string, opts ...option
 		return result, nil
 	}
 
-	resp, err := c.incApi.ResolveIncident(ctx, key, callOpts...)
 	result := IncidentResolutionResult{
-		IncidentKey:       key,
-		MutationAccepted:  resp.Ok,
-		StatusCode:        resp.StatusCode,
-		Message:           resp.Status,
-		DryRun:            false,
-		MutationSubmitted: resp.Ok,
+		IncidentKey: key,
+		DryRun:      false,
 	}
+	incident, err := c.incApi.GetIncident(ctx, key, callOpts...)
+	if err != nil {
+		ferrErr := ferr.FromDomain(err)
+		result.Status = IncidentResolutionStatusMutationFailed
+		result.Error = ferrErr.Error()
+		return result, ferrErr
+	}
+	result.ProcessInstanceKey = incident.ProcessInstanceKey
+	result.IncidentState = incident.State
+	detail := fromDomainProcessInstanceIncidentDetail(incident)
+	result.Incident = &detail
+	if !waiter.IncidentIsActive(incident) {
+		result.Status = IncidentResolutionStatusSkipped
+		result.ConfirmationStatus = "already_resolved"
+		return result, nil
+	}
+
+	resp, err := c.resolveIncidentMutation(ctx, key, incident.ProcessInstanceKey, callOpts...)
+	result.MutationAccepted = resp.Ok
+	result.StatusCode = resp.StatusCode
+	result.Message = resp.Status
+	result.MutationSubmitted = resp.Ok
 	if err != nil {
 		ferrErr := ferr.FromDomain(err)
 		result.Status = IncidentResolutionStatusMutationFailed
@@ -71,7 +89,7 @@ func (c *client) ResolveIncident(ctx context.Context, key string, opts ...option
 		result.ConfirmationStatus = "skipped"
 		return result, nil
 	}
-	waitResp, waitErr := c.incApi.WaitForIncidentResolved(ctx, key, callOpts...)
+	waitResp, waitErr := c.waitForIncidentResolution(ctx, key, incident.ProcessInstanceKey, callOpts...)
 	if waitErr != nil {
 		ferrErr := ferr.FromDomain(waitErr)
 		result.Status = IncidentResolutionStatusConfirmationFailed
@@ -117,22 +135,19 @@ func (c *client) ResolveProcessInstanceIncidents(ctx context.Context, key string
 		return result, nil
 	}
 
-	for _, incidentKey := range result.AttemptedIncidentKeys {
-		resp, err := c.incApi.ResolveIncident(ctx, incidentKey, callOpts...)
-		if err != nil {
-			result.FailedIncidentKeys = append(result.FailedIncidentKeys, incidentKey)
-			result.Error = ferr.FromDomain(err).Error()
-			continue
-		}
-		result.MutationSubmitted = result.MutationSubmitted || resp.Ok
-		if resp.Ok {
-			result.ResolvedIncidentKeys = append(result.ResolvedIncidentKeys, incidentKey)
-		} else {
-			result.FailedIncidentKeys = append(result.FailedIncidentKeys, incidentKey)
-			if result.Error == "" {
-				result.Error = mutationNotAcceptedMessage(resp.Status)
-			}
-		}
+	resp, err := c.incApi.ResolveProcessInstanceIncidents(ctx, key, callOpts...)
+	result.MutationSubmitted = resp.Ok
+	if err != nil {
+		result.FailedIncidentKeys = append(result.FailedIncidentKeys, result.AttemptedIncidentKeys...)
+		result.Status = ProcessInstanceResolutionStatusFailed
+		result.Error = ferr.FromDomain(err).Error()
+		return result, errorFromResult(result.Error)
+	}
+	if resp.Ok {
+		result.ResolvedIncidentKeys = append(result.ResolvedIncidentKeys, result.AttemptedIncidentKeys...)
+	} else {
+		result.FailedIncidentKeys = append(result.FailedIncidentKeys, result.AttemptedIncidentKeys...)
+		result.Error = mutationNotAcceptedMessage(resp.Status)
 	}
 	if len(result.ResolvedIncidentKeys) == 0 {
 		result.Status = ProcessInstanceResolutionStatusFailed
@@ -162,6 +177,20 @@ func (c *client) ResolveProcessInstanceIncidents(ctx context.Context, key string
 		result.ConfirmationStatus = "resolved"
 	}
 	return result, errorFromResult(result.Error)
+}
+
+func (c *client) resolveIncidentMutation(ctx context.Context, incidentKey string, processInstanceKey string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if processInstanceKey != "" {
+		return c.incApi.ResolveProcessInstanceIncidents(ctx, processInstanceKey, opts...)
+	}
+	return c.incApi.ResolveIncident(ctx, incidentKey, opts...)
+}
+
+func (c *client) waitForIncidentResolution(ctx context.Context, incidentKey string, processInstanceKey string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if processInstanceKey != "" {
+		return c.incApi.WaitForProcessInstanceIncidentsResolved(ctx, processInstanceKey, []string{incidentKey}, opts...)
+	}
+	return c.incApi.WaitForIncidentResolved(ctx, incidentKey, opts...)
 }
 
 func mutationNotAcceptedMessage(status string) string {
