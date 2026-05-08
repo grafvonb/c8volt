@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -24,6 +26,7 @@ import (
 func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 	var sawUpdate bool
 	var sawConfirmation bool
+	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813711967/variables":
@@ -35,9 +38,14 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
 			require.Equal(t, http.MethodPost, r.Method)
-			sawConfirmation = true
+			searchCalls++
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			if searchCalls == 1 {
+				_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+				return
+			}
+			sawConfirmation = true
+			_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`)))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -70,6 +78,7 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
 	var sawUpdate bool
 	var sawConfirmation bool
+	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813711967/variables":
@@ -81,9 +90,14 @@ func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
 			require.Equal(t, http.MethodPost, r.Method)
-			sawConfirmation = true
+			searchCalls++
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			if searchCalls == 1 {
+				_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+				return
+			}
+			sawConfirmation = true
+			_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`)))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -133,9 +147,14 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 			require.Equal(t, http.MethodPost, r.Method)
 			mu.Lock()
 			confirmations++
+			searchCall := confirmations
 			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"},{"name":"foo","value":"\"bar\"","variableKey":"902","processInstanceKey":"2251799813711968","scopeKey":"2251799813711968","tenantId":"<default>"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+			if searchCall <= 2 {
+				_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+				return
+			}
+			_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`, `{"name":"foo","value":"\"bar\"","variableKey":"902","processInstanceKey":"2251799813711968","scopeKey":"2251799813711968","tenantId":"<default>"}`)))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -175,6 +194,7 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t *testing.T) {
 	var mu sync.Mutex
 	updates := map[string]int{}
+	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813711967/variables",
@@ -185,8 +205,16 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 			mu.Unlock()
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
+			mu.Lock()
+			searchCalls++
+			searchCall := searchCalls
+			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"},{"name":"foo","value":"\"bar\"","variableKey":"902","processInstanceKey":"2251799813711968","scopeKey":"2251799813711968","tenantId":"<default>"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+			if searchCall <= 2 {
+				_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+				return
+			}
+			_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`, `{"name":"foo","value":"\"bar\"","variableKey":"902","processInstanceKey":"2251799813711968","scopeKey":"2251799813711968","tenantId":"<default>"}`)))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -304,6 +332,7 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 	for _, leaf := range []string{"process-instance", "pi"} {
 		t.Run(leaf, func(t *testing.T) {
 			var requestedPath string
+			searchCalls := 0
 			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/v2/element-instances/2251799813711967/variables":
@@ -311,8 +340,13 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 					requestedPath = r.URL.Path
 					w.WriteHeader(http.StatusNoContent)
 				case "/v2/variables/search":
+					searchCalls++
 					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+					if searchCalls == 1 {
+						_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+						return
+					}
+					_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`)))
 				default:
 					t.Fatalf("unexpected request path: %s", r.URL.Path)
 				}
@@ -792,6 +826,14 @@ func keyFromElementInstanceVariablesPath(t *testing.T, path string) string {
 	require.Equal(t, prefix, path[:len(prefix)])
 	require.Equal(t, suffix, path[len(path)-len(suffix):])
 	return path[len(prefix) : len(path)-len(suffix)]
+}
+
+func emptyVariableSearchResponse() string {
+	return `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`
+}
+
+func variableSearchResponse(items ...string) string {
+	return `{"items":[` + strings.Join(items, ",") + `],"page":{"totalItems":` + strconv.Itoa(len(items)) + `,"hasMoreTotalItems":false}}`
 }
 
 func executeRootForProcessInstanceTestWithStdin(t *testing.T, stdin string, args ...string) string {
