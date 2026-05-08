@@ -35,7 +35,7 @@ func TestResolveProcessInstanceCommand_DiscoversResolvesAndWaitsForConfirmation(
 			_, _ = w.Write([]byte(incidentSearchJSON(
 				incidentSearchItemJSON("2251799813685248", "2251799813685250", "RESOLVED"),
 			)))
-		case "/v2/process-instances/2251799813685250/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
 			sawResolve = true
 			w.WriteHeader(http.StatusNoContent)
@@ -81,10 +81,10 @@ func TestResolveProcessInstanceCommand_AliasRepeatedKeysAndStdinDeduplicate(t *t
 				return
 			}
 			_, _ = w.Write([]byte(incidentSearchJSON()))
-		case "/v2/process-instances/2251799813685250/incident-resolution",
-			"/v2/process-instances/2251799813685260/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution",
+			"/v2/incidents/2251799813685259/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
-			key := incidentKeyFromPath(t, r.URL.Path, "/v2/process-instances/", "/incident-resolution")
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "/resolution")
 			resolveCounts[key]++
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -103,7 +103,7 @@ func TestResolveProcessInstanceCommand_AliasRepeatedKeysAndStdinDeduplicate(t *t
 		"-",
 	)
 
-	require.Equal(t, map[string]int{"2251799813685250": 1, "2251799813685260": 1}, resolveCounts)
+	require.Equal(t, map[string]int{"2251799813685249": 1, "2251799813685259": 1}, resolveCounts)
 	require.Equal(t, map[string]int{"2251799813685250": 2, "2251799813685260": 2}, searchCounts)
 	require.Contains(t, output, "resolved process-instance 2251799813685250: confirmed")
 	require.Contains(t, output, "resolved process-instance 2251799813685260: confirmed")
@@ -121,7 +121,8 @@ func TestResolveProcessInstanceCommand_NoActiveIncidentsReportsSkipped(t *testin
 				incidentSearchItemJSON("2251799813685249", "2251799813685250", "RESOLVED"),
 			)))
 		default:
-			if r.URL.Path == "/v2/process-instances/2251799813685250/incident-resolution" {
+			if r.URL.Path == "/v2/incidents/2251799813685249/resolution" ||
+				r.URL.Path == "/v2/process-instances/2251799813685250/incident-resolution" {
 				sawResolve = true
 			}
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
@@ -305,9 +306,9 @@ func TestResolveProcessInstanceCommand_NoWaitPartialFailureRendersSuccessfulTarg
 			require.Equal(t, http.MethodPost, r.Method)
 			searchCounts["2251799813685260"]++
 			http.Error(w, `{"message":"lookup failed"}`, http.StatusInternalServerError)
-		case "/v2/process-instances/2251799813685250/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
-			resolveCounts["2251799813685250"]++
+			resolveCounts["2251799813685249"]++
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
@@ -329,7 +330,7 @@ func TestResolveProcessInstanceCommand_NoWaitPartialFailureRendersSuccessfulTarg
 	})
 	require.Error(t, err)
 	require.Equal(t, map[string]int{"2251799813685250": 1, "2251799813685260": 1}, searchCounts)
-	require.Equal(t, map[string]int{"2251799813685250": 1}, resolveCounts)
+	require.Equal(t, map[string]int{"2251799813685249": 1}, resolveCounts)
 	require.Contains(t, string(output), "resolved process-instance 2251799813685250: submitted (1 incident(s))")
 	require.Contains(t, string(output), "resolved process-instance 2251799813685260: failed")
 	require.Contains(t, string(output), "resolved process-instances: 2 (confirmed/submitted/skipped: 1, failed: 1)")
@@ -373,7 +374,7 @@ func TestResolveProcessInstanceCommand_TimeoutReportsConfirmationFailure(t *test
 			_, _ = w.Write([]byte(incidentSearchJSON(
 				incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
 			)))
-		case "/v2/process-instances/2251799813685250/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
 			w.WriteHeader(http.StatusNoContent)
 		default:

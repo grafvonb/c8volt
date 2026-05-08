@@ -14,6 +14,9 @@ func WithVerbose() CallOption           { return func(c *CallCfg) { c.Verbose = 
 func WithNoWorkerLimit() CallOption     { return func(c *CallCfg) { c.NoWorkerLimit = true } }
 func WithAllowInconsistent() CallOption { return func(c *CallCfg) { c.AllowInconsistent = true } }
 func WithIgnoreTenant() CallOption      { return func(c *CallCfg) { c.IgnoreTenant = true } }
+func WithIncidentState(state string) CallOption {
+	return func(c *CallCfg) { c.IncidentState = state }
+}
 
 type CallOption func(*CallCfg)
 
@@ -29,6 +32,7 @@ type CallCfg struct {
 	NoWorkerLimit     bool
 	AllowInconsistent bool
 	IgnoreTenant      bool
+	IncidentState     string
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

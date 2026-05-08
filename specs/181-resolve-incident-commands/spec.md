@@ -91,6 +91,8 @@ As a c8volt user, I want the new resolution commands to follow existing command 
 1. **Given** a supported Camunda version, **When** the user runs the new commands, **Then** the commands expose human and JSON output suitable for per-target reporting.
 2. **Given** an unsupported Camunda version, **When** the user attempts resolution, **Then** c8volt fails with an unsupported-version error before submitting any mutation.
 3. **Given** existing `get process-instance --with-incidents`, `get pi --with-incidents`, and `update pi --vars` commands, **When** this feature is added, **Then** their behavior remains unchanged.
+4. **Given** an operator needs incident history for a known process instance, **When** the user runs `get pi --key <key> --with-incidents --incident-state <active|pending|resolved|migrated|unknown|all>`, **Then** c8volt lists matching incidents without changing list/search process-instance incident semantics.
+5. **Given** an operator needs only process instances that have direct incident details, **When** the user runs `get pi --direct-incidents-only`, **Then** c8volt filters the selected process-instance result set by loaded direct incidents instead of using the process-instance `hasIncident` marker.
 
 ### Edge Cases
 
@@ -103,6 +105,8 @@ As a c8volt user, I want the new resolution commands to follow existing command 
 - Partial failures report the failed incident or process instance while preserving successful target results.
 - Confirmation timeout and retry exhaustion are reported per affected target when reloaded lookup state does not satisfy the requested resolution predicate.
 - Unsupported Camunda versions fail before mutation.
+- Process-instance incident enrichment defaults to active incidents; non-active incident history requires an explicit keyed ops scope.
+- Direct incident filtering may require one incident lookup per candidate process instance and is mutually exclusive with process-instance marker filters.
 
 ## Requirements *(mandatory)*
 
@@ -132,7 +136,9 @@ As a c8volt user, I want the new resolution commands to follow existing command 
 - **FR-022**: System MUST use generated Camunda clients for versions where incident resolution endpoints are available.
 - **FR-023**: System MUST fail with an unsupported-version error before mutation when the configured Camunda version cannot resolve incidents.
 - **FR-024**: Incident lookup and resolution behavior MUST remain in the incident service boundary and MUST NOT be reintroduced into the process-instance service boundary.
-- **FR-025**: Existing `get process-instance --with-incidents`, `get pi --with-incidents`, and `update pi --vars` behavior MUST remain unchanged.
+- **FR-025**: Existing `get process-instance --with-incidents`, `get pi --with-incidents`, and `update pi --vars` behavior MUST remain unchanged except for the incident state rendering and incident scope behavior explicitly specified here.
+- **FR-026**: Keyed `get pi --with-incidents` and keyed `walk pi --with-incidents` MUST support an explicit incident-state scope of `active`, `pending`, `resolved`, `migrated`, `unknown`, or `all`, defaulting to `active`, and MUST show incident state in human incident detail lines whenever the incident detail includes a state. List/search `get pi --with-incidents` MUST reject explicit `--incident-state` because process-instance list/search incident semantics are based on the active `hasIncident` marker.
+- **FR-027**: `get pi` MUST support `--direct-incidents-only` as a process-instance result filter that keeps only selected process instances with loaded direct incident details and MUST reject it together with `--incidents-only` or `--no-incidents-only`.
 
 ### Key Entities *(include if feature involves data)*
 

@@ -16,16 +16,16 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
 	v89 "github.com/grafvonb/c8volt/internal/services/incident/v89"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/stretchr/testify/require"
 )
 
 type mockIncidentClient struct {
-	getIncident                     func(context.Context, camundav89.IncidentKey, ...camundav89.RequestEditorFn) (*camundav89.GetIncidentResponse, error)
-	resolveIncident                 func(context.Context, camundav89.IncidentKey, camundav89.ResolveIncidentJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.ResolveIncidentResponse, error)
-	resolveProcessInstanceIncidents func(context.Context, camundav89.ProcessInstanceKey, ...camundav89.RequestEditorFn) (*camundav89.ResolveProcessInstanceIncidentsResponse, error)
-	searchProcessInstanceIncidents  func(context.Context, camundav89.ProcessInstanceKey, camundav89.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error)
+	getIncident                    func(context.Context, camundav89.IncidentKey, ...camundav89.RequestEditorFn) (*camundav89.GetIncidentResponse, error)
+	resolveIncident                func(context.Context, camundav89.IncidentKey, camundav89.ResolveIncidentJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.ResolveIncidentResponse, error)
+	searchProcessInstanceIncidents func(context.Context, camundav89.ProcessInstanceKey, camundav89.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error)
 }
 
 func (m mockIncidentClient) GetIncidentWithResponse(ctx context.Context, key camundav89.IncidentKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetIncidentResponse, error) {
@@ -34,10 +34,6 @@ func (m mockIncidentClient) GetIncidentWithResponse(ctx context.Context, key cam
 
 func (m mockIncidentClient) ResolveIncidentWithResponse(ctx context.Context, key camundav89.IncidentKey, body camundav89.ResolveIncidentJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.ResolveIncidentResponse, error) {
 	return m.resolveIncident(ctx, key, body, reqEditors...)
-}
-
-func (m mockIncidentClient) ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.ResolveProcessInstanceIncidentsResponse, error) {
-	return m.resolveProcessInstanceIncidents(ctx, key, reqEditors...)
 }
 
 func (m mockIncidentClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
@@ -113,27 +109,6 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 	}, got)
 }
 
-func TestResolveProcessInstanceIncidentsMapsAcceptedResponse(t *testing.T) {
-	t.Parallel()
-
-	svc := newTestService(t, mockIncidentClient{
-		resolveProcessInstanceIncidents: func(_ context.Context, key camundav89.ProcessInstanceKey, _ ...camundav89.RequestEditorFn) (*camundav89.ResolveProcessInstanceIncidentsResponse, error) {
-			require.Equal(t, "2251799813685250", key)
-			return &camundav89.ResolveProcessInstanceIncidentsResponse{HTTPResponse: testHTTPResponse(http.StatusOK), Body: nil}, nil
-		},
-	})
-
-	got, err := svc.ResolveProcessInstanceIncidents(context.Background(), "2251799813685250")
-
-	require.NoError(t, err)
-	require.Equal(t, d.IncidentResolutionResponse{
-		Key:        "2251799813685250",
-		Ok:         true,
-		StatusCode: http.StatusOK,
-		Status:     "200 OK",
-	}, got)
-}
-
 func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T) {
 	t.Parallel()
 
@@ -166,6 +141,61 @@ func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T
 	require.True(t, got.Ok)
 	require.Equal(t, "2251799813685250", got.Key)
 	require.Equal(t, 2, attempts)
+}
+
+func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		option    services.CallOption
+		wantState *camundav89.IncidentStateEnum
+	}{
+		{name: "default active", wantState: ptrIncidentState89(camundav89.IncidentStateEnumACTIVE)},
+		{name: "pending", option: services.WithIncidentState("pending"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumPENDING)},
+		{name: "resolved", option: services.WithIncidentState("resolved"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumRESOLVED)},
+		{name: "migrated", option: services.WithIncidentState("migrated"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumMIGRATED)},
+		{name: "unknown", option: services.WithIncidentState("unknown"), wantState: ptrIncidentState89(camundav89.IncidentStateEnumUNKNOWN)},
+		{name: "all", option: services.WithIncidentState("all"), wantState: nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			svc := newTestService(t, mockIncidentClient{
+				searchProcessInstanceIncidents: func(_ context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
+					require.Equal(t, camundav89.ProcessInstanceKey("2251799813685250"), key)
+					require.NotNil(t, body.Filter)
+					if tt.wantState == nil {
+						require.Nil(t, body.Filter.State)
+					} else {
+						require.NotNil(t, body.Filter.State)
+						state, err := body.Filter.State.AsIncidentStateFilterProperty0()
+						require.NoError(t, err)
+						require.Equal(t, *tt.wantState, state)
+					}
+					return &camundav89.SearchProcessInstanceIncidentsResponse{
+						HTTPResponse: testHTTPResponse(http.StatusOK),
+						JSON200:      &camundav89.IncidentSearchQueryResult{Items: nil},
+					}, nil
+				},
+			})
+
+			opts := []services.CallOption{}
+			if tt.option != nil {
+				opts = append(opts, tt.option)
+			}
+			got, err := svc.SearchProcessInstanceIncidents(context.Background(), "2251799813685250", opts...)
+
+			require.NoError(t, err)
+			require.Empty(t, got)
+		})
+	}
+}
+
+func ptrIncidentState89(v camundav89.IncidentStateEnum) *camundav89.IncidentStateEnum {
+	return &v
 }
 
 func newTestService(t *testing.T, client mockIncidentClient) *v89.Service {

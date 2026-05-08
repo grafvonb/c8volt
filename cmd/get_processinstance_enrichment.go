@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
@@ -16,11 +17,15 @@ import (
 // identical.
 func enrichProcessInstancesWithIncidentActivity(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.IncidentEnrichedProcessInstances, error) {
 	if len(pis.Items) == 0 {
-		return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectOptions()...)
+		return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectIncidentEnrichmentOptions()...)
 	}
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("loading incident details for %d process instance(s)", len(pis.Items)))
 	defer stopActivity()
-	return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectOptions()...)
+	return cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectIncidentEnrichmentOptions()...)
+}
+
+func collectIncidentEnrichmentOptions() []options.FacadeOption {
+	return append(collectOptions(), options.WithIncidentState(flagGetPIIncidentState))
 }
 
 // enrichProcessInstancesWithVariableActivity mirrors incident enrichment for

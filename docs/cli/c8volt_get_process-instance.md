@@ -42,9 +42,11 @@ c8volt get process-instance [flags]
   ./c8volt get pi --state active --batch-size 250 --limit 25
   ./c8volt get pi --state active --limit 25 --auto-confirm
   ./c8volt get pi --incidents-only --with-incidents
+  ./c8volt get pi --direct-incidents-only --with-incidents
   ./c8volt get pi --with-incidents --incident-message-limit 80
   ./c8volt get pi --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --with-incidents
+  ./c8volt get pi --key 2251799813711967 --with-incidents --incident-state all
   ./c8volt get pi --key 2251799813711967 --with-vars
   ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
@@ -60,6 +62,7 @@ c8volt get process-instance [flags]
   -n, --batch-size int32             number of process instances to fetch per page (max limit 1000 enforced by server) (default 1000)
   -b, --bpmn-process-id string       BPMN process ID to filter process instances
       --children-only                show only child process instances
+      --direct-incidents-only        show only process instances with direct incident details
       --end-date-after string        only include process instances with end date >= YYYY-MM-DD
       --end-date-before string       only include process instances with end date <= YYYY-MM-DD
       --end-date-newer-days int      only include process instances with end date N days old or newer (0 means today) (default -1)
@@ -68,6 +71,7 @@ c8volt get process-instance [flags]
       --has-user-tasks strings       user task key(s) whose owning process instances should be fetched
   -h, --help                         help for process-instance
       --incident-message-limit int   maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation
+      --incident-state string        incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
       --incidents-only               show only process instances that have incidents
   -k, --key strings                  process instance key(s) to fetch
   -l, --limit int32                  maximum number of matching process instances to return or process across all pages
@@ -86,7 +90,7 @@ c8volt get process-instance [flags]
   -s, --state string                 state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                        return only the numeric total of matching process instances; capped backend totals are counted by paging
       --var-value-limit int          maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
-      --with-incidents               include direct incident keys and messages for keyed or list/search process-instance output
+      --with-incidents               include direct incident keys, states, and messages for keyed or list/search process-instance output
       --with-vars                    include process-instance-scope variables for keyed or list/search process-instance output
   -w, --workers int                  maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
 ```

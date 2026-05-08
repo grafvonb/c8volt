@@ -47,8 +47,10 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --state active --json")
 	require.Contains(t, output, "./c8volt get pi --state active --limit 25 --auto-confirm")
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents")
+	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-message-limit 80")
 	require.Contains(t, output, "./c8volt get pi --with-vars --var-value-limit 120")
+	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-incidents --incident-state all")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-vars")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120")
 	require.Contains(t, output, "capped backend totals are counted by paging")
@@ -57,12 +59,16 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "number of process instances to fetch per page")
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "maximum characters to show for human incident messages when --with-incidents is set")
+	require.Contains(t, output, "--incident-state string")
+	require.Contains(t, output, "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
 	require.Contains(t, output, "--limit int32")
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.Contains(t, output, "--var-value-limit int")
 	require.Contains(t, output, "maximum characters to show for human variable values when --with-vars is set")
 	require.Contains(t, output, "--with-incidents")
-	require.Contains(t, output, "include direct incident keys and messages for keyed or list/search process-instance output")
+	require.Contains(t, output, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
+	require.Contains(t, output, "--direct-incidents-only")
+	require.Contains(t, output, "show only process instances with direct incident details")
 	require.Contains(t, output, "--with-vars")
 	require.Contains(t, output, "include process-instance-scope variables for keyed or list/search process-instance output")
 	require.NotContains(t, output, "--count")
@@ -488,6 +494,11 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			helper: "TestGetProcessInstanceWithIncidentsWithTotalHelper",
 			want:   "--total cannot be combined with --with-incidents",
 		},
+		{
+			name:   "rejects direct and marker incident filters together",
+			helper: "TestGetProcessInstanceDirectIncidentsOnlyWithIncidentsOnlyHelper",
+			want:   "using --incidents-only, --direct-incidents-only, and --no-incidents-only together does not make sense",
+		},
 	}
 
 	for _, tt := range tests {
@@ -499,6 +510,55 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			require.Contains(t, output, tt.want)
 		})
 	}
+}
+
+func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t *testing.T) {
+	var requests []string
+	var searchBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchBodies = append(searchBodies, string(body))
+			_, _ = w.Write([]byte(`{"items":[
+				{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
+				{"hasIncident":false,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case "/v2/process-instances/124/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"direct failure","incidentKey":"incident-124","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "process-instance",
+		"--direct-incidents-only",
+	)
+
+	require.Equal(t, []string{
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/123/incidents/search",
+		"POST /v2/process-instances/124/incidents/search",
+	}, requests)
+	require.Len(t, searchBodies, 1)
+	require.NotContains(t, searchBodies[0], "hasIncident")
+	require.NotContains(t, output, "123 tenant demo-a")
+	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
+	require.Contains(t, output, "found: 1")
 }
 
 // TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted verifies list/search incident enrichment is no longer keyed-only.
@@ -641,7 +701,7 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:\n│  └─ hasIncident=true")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -693,9 +753,9 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 jobKey=n/a message=Second key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 state=ACTIVE jobKey=n/a message=Second key failed")
 	require.Contains(t, output, "found: 2")
 	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
 	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
@@ -742,7 +802,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message=First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -813,6 +873,42 @@ func TestGetProcessInstanceIncidentMessageLimitValidation(t *testing.T) {
 			name:   "rejects negative limit",
 			helper: "TestGetProcessInstanceIncidentMessageLimitNegativeHelper",
 			want:   "invalid value for --incident-message-limit: -1, expected non-negative integer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, code := executeProcessInstanceFailureHelper(t, tt.helper, cfgPath)
+
+			require.Equal(t, exitcode.InvalidArgs, code)
+			require.Contains(t, output, "invalid input")
+			require.Contains(t, output, tt.want)
+		})
+	}
+}
+
+func TestGetProcessInstanceIncidentStateValidation(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "requires with-incidents",
+			helper: "TestGetProcessInstanceIncidentStateWithoutIncidentsHelper",
+			want:   "--incident-state requires --with-incidents",
+		},
+		{
+			name:   "requires keyed lookup",
+			helper: "TestGetProcessInstanceIncidentStateListSearchHelper",
+			want:   "--incident-state is only supported with --key for process-instance incident lookup; list/search process-instance results use the active hasIncident marker",
+		},
+		{
+			name:   "rejects unsupported value",
+			helper: "TestGetProcessInstanceIncidentStateInvalidHelper",
+			want:   `invalid value for --incident-state: "closed", valid values are: active, pending, resolved, migrated, unknown, all`,
 		},
 	}
 
@@ -1139,10 +1235,47 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Len(t, incidentBodies, 1)
 	require.NotContains(t, incidentBodies[0], "processInstanceKey")
+	require.Contains(t, incidentBodies[0], `"state":"ACTIVE"`)
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolvedState(t *testing.T) {
+	var incidentBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/123":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/123/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			incidentBodies = append(incidentBodies, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"resolved earlier","incidentKey":"incident-123","processInstanceKey":"123","state":"RESOLVED","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "process-instance",
+		"--key", "123",
+		"--with-incidents",
+		"--incident-state", "all",
+	)
+
+	require.Len(t, incidentBodies, 1)
+	require.NotContains(t, incidentBodies[0], `"state"`)
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=RESOLVED jobKey=n/a message=resolved earlier")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1180,7 +1313,7 @@ func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 	}, requests)
 	require.Contains(t, output, "2251799813711967 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=2251799813685249 errorType=JOB_NO_RETRIES jobKey=2251799813685251 message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=2251799813685249 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=2251799813685251 message=No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1214,7 +1347,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message=No retr...")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message=No retr...")
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
@@ -1244,7 +1377,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message="+fullMessage)
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message="+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
@@ -1339,7 +1472,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=IO_MAPPING_ERROR jobKey=n/a message=No retries left")
+	require.Contains(t, output, "   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=IO_MAPPING_ERROR jobKey=n/a message=No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -1451,8 +1584,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left",
-				"└─ key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 errorType=EXTRACT_VALUE_ERROR jobKey=n/a message=Gateway failed",
+				"├─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left",
+				"└─ key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 state=ACTIVE errorType=EXTRACT_VALUE_ERROR jobKey=n/a message=Gateway failed",
 			},
 		},
 		{
@@ -2891,12 +3024,14 @@ func TestResetProcessInstanceCommandGlobals_ResetsIncidentMessageLimit(t *testin
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
+	flagGetPIIncidentState = "all"
 	flagGetPIIncidentMessageLimit = 80
 	flagGetPIVarValueLimit = 120
 	flagGetPIWithVars = true
 
 	resetProcessInstanceCommandGlobals()
 
+	require.Equal(t, "active", flagGetPIIncidentState)
 	require.Zero(t, flagGetPIIncidentMessageLimit)
 	require.Zero(t, flagGetPIVarValueLimit)
 	require.False(t, flagGetPIWithVars)
@@ -3668,6 +3803,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPISize = consts.MaxPISearchSize
 	flagGetPILimit = 0
 	flagGetPIWithIncidents = false
+	flagGetPIIncidentState = "active"
 	flagGetPIIncidentMessageLimit = 0
 	flagGetPIWithVars = false
 	flagGetPIVarValueLimit = 0
@@ -3675,6 +3811,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagGetPIChildrenOnly = false
 	flagGetPIOrphanChildrenOnly = false
 	flagGetPIIncidentsOnly = false
+	flagGetPIDirectIncidentsOnly = false
 	flagGetPINoIncidentsOnly = false
 	flagWalkPIKey = ""
 	flagWalkPIModeParent = false
@@ -4021,6 +4158,20 @@ func TestGetProcessInstanceWithIncidentsWithTotalHelper(t *testing.T) {
 	Execute()
 }
 
+// Helper-process entrypoint for mutually exclusive direct and marker incident filter validation.
+func TestGetProcessInstanceDirectIncidentsOnlyWithIncidentsOnlyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--direct-incidents-only", "--incidents-only"}
+
+	Execute()
+}
+
 // Helper-process entrypoint for --incident-message-limit without --with-incidents validation.
 func TestGetProcessInstanceIncidentMessageLimitWithoutIncidentsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -4045,6 +4196,48 @@ func TestGetProcessInstanceIncidentMessageLimitNegativeHelper(t *testing.T) {
 	prevArgs := os.Args
 	t.Cleanup(func() { os.Args = prevArgs })
 	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incident-message-limit", "-1"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --incident-state without --with-incidents validation.
+func TestGetProcessInstanceIncidentStateWithoutIncidentsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--state", "active", "--incident-state", "all"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for --incident-state in list/search process-instance mode.
+func TestGetProcessInstanceIncidentStateListSearchHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--with-incidents", "--incident-state", "resolved"}
+
+	Execute()
+}
+
+// Helper-process entrypoint for unsupported --incident-state validation.
+func TestGetProcessInstanceIncidentStateInvalidHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	applyRelativeDayNowOverrideFromEnv(t)
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "process-instance", "--key", "123", "--with-incidents", "--incident-state", "closed"}
 
 	Execute()
 }

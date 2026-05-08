@@ -37,8 +37,6 @@ Started: 2026-05-08 21:06:02
 - Direct incident resolution should likely use the generated single-incident endpoint for per-target reporting; the process-instance and batch resolution endpoints return batch-operation style responses and do not satisfy the planned per-incident reporting contract by themselves.
 - Resolution implementation should extend `internal/services/incident` and facade stubs before command work, because current process-facing tests already rely on `incsvc.API` as the incident lookup boundary.
 - `git add` and `git commit` currently fail because the sandbox cannot create `.git/index.lock`; the next iteration should commit this completed setup work once Git metadata writes are available.
----
----
 ## Iteration 2 - 2026-05-08 21:21:54 CEST
 **User Story**: Phase 2: Foundational (Blocking Prerequisites)
 **Tasks Completed**:
@@ -251,4 +249,67 @@ Started: 2026-05-08 21:06:02
 - `make test` runs the full command package under race detection and caught `TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput`, which the narrower final command regex did not include because the test name starts with `TestGetPI`.
 - The alias regression test should preserve the existing one-line process-instance field order by checking the stable row prefix and `inc!` marker separately.
 - Final validation passed with the targeted incident service, process facade, command, and docsgen checks, plus `make test` and `git diff --check`.
+---
+---
+## Iteration 9 - 2026-05-08 23:35:00 CEST
+**User Story**: User Story 5 - Preserve Existing Workflows
+**Tasks Completed**:
+- [x] T055: Add explicit keyed-only `--incident-state active|pending|resolved|migrated|unknown|all` scope and `--direct-incidents-only` filtering for `get pi`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Pending in current working tree
+**Files Changed**:
+- README.md
+- c8volt/foptions/options.go
+- c8volt/process/client_test.go
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/get_processinstance.go
+- cmd/get_processinstance_enrichment.go
+- cmd/get_processinstance_test.go
+- cmd/get_processinstance_validation.go
+- cmd/walk_processinstance.go
+- cmd/walk_test.go
+- docs/cli/c8volt_get_process-instance.md
+- docs/cli/c8volt_walk_process-instance.md
+- docs/index.md
+- internal/services/calloption.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v88/incidents_test.go
+- internal/services/incident/v89/incidents.go
+- internal/services/incident/v89/incidents_test.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/quickstart.md
+- specs/181-resolve-incident-commands/spec.md
+- specs/181-resolve-incident-commands/tasks.md
+**Learnings**:
+- The process-instance incident endpoint supports Camunda's documented incident state enum directly, so the ops view can stay on the same tenant-safe Camunda path instead of adding a workaround.
+- Default list/search enrichment remains active-only because process-instance search incident semantics are based on the active `hasIncident` marker; explicit non-active incident states are only valid for keyed process-instance lookup and walk.
+- `all` intentionally omits the incident state filter, and human incident rows now render the returned state consistently for active and non-active incidents.
+- `--direct-incidents-only` is a process-instance filter, not a view extension; it performs direct incident enrichment for selected candidate rows and is mutually exclusive with marker-based `--incidents-only` and `--no-incidents-only`.
+- Validation passed with targeted command/facade/service tests and `GOCACHE=/tmp/c8volt-gocache go test ./... -count=1`.
+---
+---
+## Iteration 10 - 2026-05-09
+**User Story**: User Story 1 - Resolve Incidents for Selected Process Instances
+**Tasks Completed**:
+- [x] Correct `resolve pi` mutation to submit direct incident resolution for each discovered active incident key instead of calling the process-instance batch incident-resolution endpoint
+**Tasks Remaining in Story**: Awaiting user review and explicit commit request
+**Commit**: Pending user approval
+**Files Changed**:
+- c8volt/process/resolve.go
+- c8volt/process/client_test.go
+- cmd/resolve_processinstance_test.go
+- internal/services/incident/api.go
+- internal/services/incident/v87/contract.go
+- internal/services/incident/v87/incidents.go
+- internal/services/incident/v88/contract.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v88/incidents_test.go
+- internal/services/incident/v89/contract.go
+- internal/services/incident/v89/incidents.go
+- internal/services/incident/v89/incidents_test.go
+- specs/181-resolve-incident-commands/progress.md
+**Learnings**:
+- Camunda's process-instance incident-resolution endpoint is batch-oriented and can reject the generated no-body request with `415 Content-Type 'null' is not supported`; `resolve pi` already owns a concrete discovered incident key set, so direct incident resolution preserves the command contract and avoids that endpoint.
+- The public incident service API no longer exposes the process-instance batch mutation wrapper; process-instance resolution now combines scoped incident lookup, direct incident mutation per active key, and scoped lookup polling for confirmation.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process ./cmd ./internal/services/incident ./internal/services/incident/v87 ./internal/services/incident/v88 ./internal/services/incident/v89 -count=1`.
 ---

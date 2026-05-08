@@ -48,6 +48,12 @@ Preview process-instance incident resolution without mutation:
 ./c8volt resolve pi --key 2251799813685250 --dry-run
 ```
 
+List active and resolved process-instance incidents for ops inspection:
+
+```bash
+./c8volt get pi --key 2251799813685250 --with-incidents --incident-state all
+```
+
 Submit process-instance incident resolution without waiting:
 
 ```bash

@@ -6,6 +6,7 @@ package v89
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -52,46 +53,26 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 	return result, nil
 }
 
-// ResolveProcessInstanceIncidents submits process-instance incident resolution without doing confirmation polling.
-func (s *Service) ResolveProcessInstanceIncidents(ctx context.Context, processInstanceKey string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
-	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("resolving incidents for process instance with key %s using generated camunda client", processInstanceKey))
-	resp, err := s.cc.ResolveProcessInstanceIncidentsWithResponse(ctx, processInstanceKey)
-	if err != nil {
-		return d.IncidentResolutionResponse{Key: processInstanceKey}, err
-	}
-	result := d.IncidentResolutionResponse{
-		Key:        processInstanceKey,
-		Ok:         resp.StatusCode() >= 200 && resp.StatusCode() < 300,
-		StatusCode: resp.StatusCode(),
-		Status:     resp.Status(),
-	}
-	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		result.Ok = false
-		return result, err
-	}
-	return result, nil
-}
-
 // SearchProcessInstanceIncidents uses the scoped process-instance incident endpoint for active incident enrichment.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	_ = services.ApplyCallOptions(opts)
+	callCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
 	tenantFilter, err := newStringEqFilterPtr(s.cfg.App.Tenant)
 	if err != nil {
 		return nil, fmt.Errorf("building tenant incident filter: %w", err)
 	}
-	stateFilter, err := newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
+	stateFilter, err := newIncidentSearchStateFilter(callCfg.IncidentState)
 	if err != nil {
-		return nil, fmt.Errorf("building active incident filter: %w", err)
+		return nil, fmt.Errorf("building incident state filter: %w", err)
+	}
+	filter := &camundav89.IncidentFilter{
+		State:    stateFilter,
+		TenantId: tenantFilter,
 	}
 	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
 	body := camundav89.SearchProcessInstanceIncidentsJSONRequestBody{
-		Page: &page,
-		Filter: &camundav89.IncidentFilter{
-			State:    stateFilter,
-			TenantId: tenantFilter,
-		},
+		Page:   &page,
+		Filter: filter,
 	}
 	resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
 	if err != nil {
@@ -102,6 +83,25 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 		return nil, err
 	}
 	return toolx.MapSlice(payload.Items, fromIncidentResult), nil
+}
+
+func newIncidentSearchStateFilter(state string) (*camundav89.IncidentStateFilterProperty, error) {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case "", "active":
+		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
+	case "pending":
+		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumPENDING)
+	case "resolved":
+		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumRESOLVED)
+	case "migrated":
+		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumMIGRATED)
+	case "unknown":
+		return newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumUNKNOWN)
+	case "all":
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported incident state %q", state)
+	}
 }
 
 // WaitForIncidentResolved polls direct incident lookup until the selected incident is no longer active.

@@ -89,6 +89,9 @@ func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key str
 	if incident.FlowNodeInstanceKey != "" {
 		fields = append(fields, "flowNodeInstanceKey="+incident.FlowNodeInstanceKey)
 	}
+	if incident.State != "" {
+		fields = append(fields, "state="+incident.State)
+	}
 	if incident.ErrorType != "" {
 		fields = append(fields, "errorType="+incident.ErrorType)
 	}

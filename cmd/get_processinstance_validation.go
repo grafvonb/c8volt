@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -66,8 +67,14 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if flagGetPIIncidentMessageLimit < 0 {
 		return invalidFlagValuef("invalid value for --incident-message-limit: %d, expected non-negative integer", flagGetPIIncidentMessageLimit)
 	}
+	if err := validatePIIncidentStateFlag(flagGetPIIncidentState); err != nil {
+		return err
+	}
 	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagGetPIWithIncidents {
 		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
+	}
+	if isPIIncidentStateFlagChanged(cmd) && !flagGetPIWithIncidents {
+		return missingDependentFlagsf("--incident-state requires --with-incidents")
 	}
 	if flagGetPIVarValueLimit < 0 {
 		return invalidFlagValuef("invalid value for --var-value-limit: %d, expected non-negative integer", flagGetPIVarValueLimit)
@@ -127,8 +134,8 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if flagGetPIChildrenOnly && flagGetPIRootsOnly {
 		return forbiddenFlagCombinationf("using both --children-only and --roots-only filters returns does not make sense")
 	}
-	if flagGetPIIncidentsOnly && flagGetPINoIncidentsOnly {
-		return forbiddenFlagCombinationf("using both --incidents-only and --no-incidents-only filters does not make sense")
+	if activeIncidentFilterCount() > 1 {
+		return forbiddenFlagCombinationf("using --incidents-only, --direct-incidents-only, and --no-incidents-only together does not make sense")
 	}
 	return nil
 }
@@ -144,6 +151,19 @@ func isPILimitFlagChanged(cmd *cobra.Command) bool {
 // operator actually requested that dependent behavior.
 func isPIIncidentMessageLimitFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("incident-message-limit")
+}
+
+func isPIIncidentStateFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("incident-state")
+}
+
+func validatePIIncidentStateFlag(value string) error {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "active", "pending", "resolved", "migrated", "unknown", "all":
+		return nil
+	default:
+		return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: active, pending, resolved, migrated, unknown, all", value)
+	}
 }
 
 // isPIVarValueLimitFlagChanged detects whether variable truncation was supplied
@@ -163,11 +183,14 @@ func validatePIKeyedModeLimit(keyCount int) error {
 }
 
 // validatePIWithIncidentsUsage keeps incident enrichment out of modes that cannot attach details unambiguously.
-func validatePIWithIncidentsUsage(keyCount int, filterFlagsSet bool) error {
+func validatePIWithIncidentsUsage(cmd *cobra.Command, keyCount int, filterFlagsSet bool) error {
+	if isPIIncidentStateFlagChanged(cmd) && keyCount == 0 {
+		return missingDependentFlagsf("--incident-state is only supported with --key for process-instance incident lookup; list/search process-instance results use the active hasIncident marker")
+	}
 	if !flagGetPIWithIncidents {
 		return nil
 	}
-	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
+	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
 		return mutuallyExclusiveFlagsf("--with-incidents cannot be combined with search-mode filters")
 	}
 	return nil
@@ -178,10 +201,24 @@ func validatePIWithVarsUsage(keyCount int, filterFlagsSet bool) error {
 	if !flagGetPIWithVars {
 		return nil
 	}
-	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
+	if keyCount > 0 && (filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || flagGetPITotal) {
 		return mutuallyExclusiveFlagsf("--with-vars cannot be combined with search-mode filters")
 	}
 	return nil
+}
+
+func activeIncidentFilterCount() int {
+	count := 0
+	if flagGetPIIncidentsOnly {
+		count++
+	}
+	if flagGetPIDirectIncidentsOnly {
+		count++
+	}
+	if flagGetPINoIncidentsOnly {
+		count++
+	}
+	return count
 }
 
 // useInvalidInputFlagErrors maps Cobra flag parsing failures into the command's

@@ -167,6 +167,7 @@
 - [x] T052 Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
 - [x] T053 Run repository validation with `make test`
 - [x] T054 Review `git diff --check` and final changed files before committing
+- [x] T055 Add ops-only process-instance incident state scope and validate with `go test ./... -count=1`
 
 ---
 
