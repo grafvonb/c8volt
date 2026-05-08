@@ -15,8 +15,11 @@ c8volt --json get job --key <job-key>
 c8volt update job --key <job-key> --retries 3
 c8volt update job --key <job-key> --timeout 5m
 c8volt update job --key <job-key> --retries 3 --timeout 5m
+c8volt update job --key <job-key> --retries 3 --dry-run
+c8volt update job --key <job-key> --timeout 5m --dry-run
 c8volt update job --key <job-key> --retries 3 --no-wait
-c8volt --json update job --key <job-key> --retries 3
+c8volt --json update job --key <job-key> --retries 3 --dry-run
+c8volt --json update job --key <job-key> --retries 3 --auto-confirm
 ```
 
 ## Invalid Invocations
@@ -27,6 +30,8 @@ c8volt update job
 c8volt update job --key <job-key>
 c8volt update job --key <job-key> --retries invalid
 c8volt update job --key <job-key> --timeout invalid
+c8volt --json update job --key <job-key> --retries 3
+c8volt --json --verbose update job --key <job-key> --retries 3 --dry-run
 c8volt update job --key <job-key> --retries 3 # with Camunda 8.7 config
 ```
 
@@ -36,6 +41,8 @@ Expected behavior:
 - Missing update flags for `update job` fails validation before calling Camunda.
 - Invalid retry counts fail validation before calling Camunda.
 - Invalid timeout durations fail validation before calling Camunda.
+- Non-dry-run JSON mutations fail before lookup or mutation unless `--auto-confirm` or automation mode is supplied.
+- `--json --verbose` fails before lookup or mutation for `update job`, including dry-run mode.
 - Camunda 8.7 job updates fail with an unsupported-version error before mutation.
 
 ## Lookup Behavior
@@ -74,6 +81,34 @@ Unsupported changes:
 - throw BPMN error;
 - bulk updates from filters.
 
+## Planning And Dry-Run Behavior
+
+Before a material mutation, `update job` loads the current job through the same lookup behavior as `get job --key <job-key>` and builds a plan.
+
+The plan distinguishes:
+
+- retries that would change, for example `retries: 1 -> 3`;
+- retries already matching the request, for example `retries: 3 (unchanged)`;
+- timeout submission intent, for example `timeout: submit 5m`;
+- whether mutation was submitted.
+
+With `--dry-run`:
+
+- the command renders the plan and submits no mutation;
+- no interactive confirmation prompt is shown;
+- retry-only unchanged requests report that there is nothing to update;
+- timeout requests are shown as submitted intent, not as deadline before/after comparison.
+
+## Interactive Confirmation Behavior
+
+For material non-dry-run updates in interactive mode:
+
+- the command renders a compact plan;
+- the command asks for confirmation before mutation;
+- `--auto-confirm` and automation mode bypass the prompt;
+- retry-only unchanged requests skip both the prompt and mutation;
+- `--no-wait` skips post-mutation confirmation only and does not bypass this local confirmation gate.
+
 ## Default Confirmation Behavior
 
 Unless `--no-wait` is supplied:
@@ -98,6 +133,8 @@ Human output must be compact and distinguish:
 
 - job found;
 - job not found;
+- dry-run plan;
+- no-op update plan;
 - submitted/accepted without confirmation;
 - confirmed retry update;
 - mutation failure;
@@ -105,6 +142,8 @@ Human output must be compact and distinguish:
 - unsupported version.
 
 For timeout-only updates, human output must not imply confirmed deadline state.
+
+Plan output must stay compact. Summary lines should use short counts and avoid phrases such as `mutation submitted: false`; dry-run output should state that no changes were applied.
 
 ## JSON Output
 
@@ -117,9 +156,13 @@ JSON output must be script-safe and include enough fields to distinguish:
 - submitted fields;
 - confirmed fields where applicable;
 - skipped or not-applicable confirmation;
+- dry-run status and mutation-submitted status;
+- plan items for retries and timeout;
 - error details.
 
 For timeout-only updates, JSON output must represent the timeout as submitted, not confirmed.
+
+`--json --dry-run` returns the full stable plan payload. `--verbose` must not change JSON shape or add human detail; `--json --verbose` is rejected for `update job`.
 
 ## Command Metadata
 

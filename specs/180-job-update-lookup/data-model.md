@@ -31,6 +31,30 @@ Represents one mutation request for a single job.
 - **Validation**: at least one of retries or timeout is required.
 - **Scope**: retryBackOff, job variables, fail, complete, and BPMN error behavior are excluded.
 
+## Job Update Plan
+
+Represents the pre-mutation plan used by dry-run, interactive confirmation, no-op handling, and JSON output.
+
+- **Job Key**: target job identifier.
+- **Current Job Detail**: visible job state loaded through job lookup before mutation.
+- **Requested Retries**: optional retry count requested by the user.
+- **Retry Classification**: one of change, unchanged, or not requested.
+- **Requested Timeout**: optional duration requested by the user.
+- **Timeout Submission**: timeout milliseconds that would be sent when timeout is requested.
+- **Material Change**: true when a mutation should be submitted; retry-only unchanged requests are not material, while timeout requests are material.
+- **Dry Run**: true when the plan is rendered without mutation.
+- **Mutation Submitted**: false for dry-run and no-op plans, true after an accepted mutation request.
+
+## Job Update Plan Item
+
+Represents one planned field-level effect.
+
+- **Name**: retries or timeout.
+- **Before**: visible current value when the value has a reliable comparison predicate.
+- **After**: requested value or submitted timeout duration.
+- **Status**: change, unchanged, submit, or not applicable.
+- **Display Rule**: unchanged retry output is compact; timeout output shows submission intent and does not show a deadline comparison.
+
 ## Timeout Duration
 
 Represents the user-supplied timeout input.
@@ -53,6 +77,7 @@ Represents the timestamp returned by job lookup.
 Represents the command outcome for one update request.
 
 - **Key**: target job key.
+- **Plan**: pre-mutation job update plan when available.
 - **Mutation Status**: accepted, failed, or unsupported.
 - **Confirmation Status**: confirmed, skipped, failed, or not applicable.
 - **Submitted Fields**: retries and/or timeout fields accepted by the mutation request.
@@ -67,6 +92,16 @@ Represents the post-mutation read-model verification path for retry updates.
 - **Source**: same backend behavior used by `get job --key <job-key>`.
 - **Success Rule**: observed retries equal the requested retry count before waiter exhaustion.
 - **Failure Rule**: waiter timeout or retry exhaustion reports confirmation failure without claiming success.
+
+## Mutation Confirmation Gate
+
+Represents the local decision to proceed with a planned material update.
+
+- **Trigger**: non-dry-run material update in interactive mode.
+- **Auto-Confirm Bypass**: `--auto-confirm` and automation mode proceed without prompting.
+- **JSON Rule**: non-dry-run JSON material updates must use auto-confirm or automation instead of prompting.
+- **No-Op Rule**: retry-only unchanged plans skip the prompt and mutation.
+- **No-Wait Rule**: `--no-wait` skips post-mutation confirmation only; it does not bypass the local confirmation gate.
 
 ## Unsupported Version Error
 

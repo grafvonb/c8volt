@@ -38,6 +38,7 @@ Lookup in JSON mode:
 Update retries with confirmation:
 
 ```bash
+./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --retries 3
 ./c8volt get job --key <job-key>
 ```
@@ -45,6 +46,7 @@ Update retries with confirmation:
 Update timeout without deadline confirmation:
 
 ```bash
+./c8volt update job --key <job-key> --timeout 5m --dry-run
 ./c8volt update job --key <job-key> --timeout 5m
 ./c8volt get job --key <job-key>
 ```
@@ -52,6 +54,7 @@ Update timeout without deadline confirmation:
 Update retries and timeout together, confirming retries only:
 
 ```bash
+./c8volt update job --key <job-key> --retries 3 --timeout 5m --dry-run
 ./c8volt update job --key <job-key> --retries 3 --timeout 5m
 ./c8volt get job --key <job-key>
 ```
@@ -65,8 +68,9 @@ Accepted/submitted without confirmation:
 JSON update output:
 
 ```bash
-./c8volt --json update job --key <job-key> --retries 3
-./c8volt --json update job --key <job-key> --timeout 5m
+./c8volt --json update job --key <job-key> --retries 3 --dry-run
+./c8volt --json update job --key <job-key> --timeout 5m --dry-run
+./c8volt --json update job --key <job-key> --retries 3 --auto-confirm
 ```
 
 Validation errors:
@@ -77,6 +81,8 @@ Validation errors:
 ./c8volt update job --key <job-key>
 ./c8volt update job --key <job-key> --retries invalid
 ./c8volt update job --key <job-key> --timeout invalid
+./c8volt --json update job --key <job-key> --retries 3
+./c8volt --json --verbose update job --key <job-key> --retries 3 --dry-run
 ```
 
 Unsupported version:

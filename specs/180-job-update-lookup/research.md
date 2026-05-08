@@ -67,6 +67,30 @@ When retries are supplied and `--no-wait` is not supplied, poll job lookup until
 - Confirm timeout using a deadline tolerance: rejected because tolerance-based confirmation can produce brittle tests and false confidence under clock drift.
 - Skip all confirmation for job updates: rejected because retries can be confirmed reliably and the constitution favors operational proof where available.
 
+## Decision: Plan Job Updates Before Mutation And Support `--dry-run`
+
+Before submitting `update job`, load the current job through the same lookup path as `get job --key`, build a compact update plan, and use that plan for dry-run output, no-op detection, and interactive confirmation.
+
+**Rationale**: Job updates are state-changing and should follow the newer mutation UX established for process-instance variable updates. A plan lets operators see retries before/after, timeout submission intent, and no-op retry-only requests before mutation. It also keeps shell and JSON automation behavior predictable.
+
+**Alternatives considered**:
+
+- Submit immediately without a plan: rejected because it does not match the current mutation safety pattern for update commands.
+- Compare timeout requests to observed deadlines for no-op detection: rejected because timeout equality is timing-sensitive and conflicts with the retries-only confirmation decision.
+- Make `--dry-run` a command-only mock without loading current state: rejected because retry no-op detection and useful plan output require the visible job state.
+
+## Decision: Keep JSON Output Stable For Job Updates
+
+Reject `--json --verbose` for `update job`, including dry-run mode, and require `--auto-confirm` or `--automation` for non-dry-run JSON updates that would mutate state.
+
+**Rationale**: JSON output should be one stable machine-readable view. Prompt text or verbose log lines around JSON make automation brittle, and the process-instance variable update behavior established the same contract for state-changing updates.
+
+**Alternatives considered**:
+
+- Let `--verbose` add detail to JSON output: rejected because JSON should already return the full payload.
+- Prompt during non-dry-run JSON updates: rejected because prompts intermixed with JSON are poor automation UX.
+- Allow `--json --verbose` only for dry-run: rejected because it creates inconsistent rules for the same command.
+
 ## Decision: Keep `--no-wait` As Submitted/Accepted Output
 
 When `--no-wait` is supplied, return after the mutation request is accepted and skip retries confirmation.
