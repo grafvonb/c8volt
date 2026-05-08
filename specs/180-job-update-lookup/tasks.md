@@ -17,13 +17,13 @@
 
 **Purpose**: Confirm existing command, service, generated-client, rendering, waiter, and docs paths before changing behavior.
 
-- [ ] T001 Inspect get/update command registration and command metadata patterns in `cmd/get.go`, `cmd/update.go`, `cmd/get_processinstance.go`, `cmd/update_processinstance.go`, and `cmd/command_contract.go`
-- [ ] T002 [P] Inspect job-related generated client methods and types in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
-- [ ] T003 [P] Inspect versioned service package patterns in `internal/services/tenant/`, `internal/services/variable/`, and `internal/services/processinstance/`
-- [ ] T004 [P] Inspect existing waiter/backoff and confirmation patterns in `internal/services/processinstance/waiter/`, `internal/services/variable/waiter/`, `c8volt/process/client.go`, and `cmd/update_processinstance.go`
-- [ ] T005 [P] Inspect jobKey incident output and regressions in `cmd/cmd_views_processinstance_incidents.go`, `cmd/get_processinstance.go`, and `cmd/get_processinstance_test.go`
-- [ ] T006 [P] Inspect README, generated docs, and docs generation workflow in `README.md`, `docs/`, and `docsgen/`
-- [ ] T077 [P] Inspect current variable update dry-run, plan, confirmation, JSON, and no-op behavior in `cmd/update_processinstance.go`, `cmd/update_processinstance_payload.go`, `cmd/update_processinstance_plan.go`, and `cmd/update_processinstance_test.go`
+- [x] T001 Inspect get/update command registration and command metadata patterns in `cmd/get.go`, `cmd/update.go`, `cmd/get_processinstance.go`, `cmd/update_processinstance.go`, and `cmd/command_contract.go`
+- [x] T002 [P] Inspect job-related generated client methods and types in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
+- [x] T003 [P] Inspect versioned service package patterns in `internal/services/tenant/`, `internal/services/variable/`, and `internal/services/processinstance/`
+- [x] T004 [P] Inspect existing waiter/backoff and confirmation patterns in `internal/services/processinstance/waiter/`, `internal/services/variable/waiter/`, `c8volt/process/client.go`, and `cmd/update_processinstance.go`
+- [x] T005 [P] Inspect jobKey incident output and regressions in `cmd/cmd_views_processinstance_incidents.go`, `cmd/get_processinstance.go`, and `cmd/get_processinstance_test.go`
+- [x] T006 [P] Inspect README, generated docs, and docs generation workflow in `README.md`, `docs/`, and `docsgen/`
+- [x] T077 [P] Inspect current variable update dry-run, plan, confirmation, JSON, and no-op behavior in `cmd/update_processinstance.go`, `cmd/update_processinstance_payload.go`, `cmd/update_processinstance_plan.go`, and `cmd/update_processinstance_test.go`
 
 ---
 
