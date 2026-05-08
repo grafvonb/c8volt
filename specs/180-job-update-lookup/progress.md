@@ -5,6 +5,7 @@ Started: 2026-05-08 11:45:05
 
 ## Codebase Patterns
 
+- `update job --no-wait` is implemented as a post-mutation confirmation skip only: command parsing sets `NoWait`, facade/domain mapping sets `SkipConfirmation`, shared `collectOptions()` also passes `WithNoWait()`, and the local dry-run/no-op/interactive confirmation gate still runs before mutation.
 - Job timeout updates use `UpdateRequest.TimeoutMillis`/`JobUpdateRequest.TimeoutMillis` and generated `JobChangeset.Timeout`; timeout-only results skip confirmation and output submitted milliseconds without deadline-confirmation language.
 - `update job` now performs command-local lookup-backed planning before mutation, with retry no-op and dry-run handling in `cmd/update_job.go`/`cmd/cmd_views_job.go`; the facade attaches the submitted plan to mutation results for JSON output.
 - Job retry mutation is owned by the versioned job services, while retry read-model confirmation lives in `internal/services/job/waiter` and reuses `cfg.App.Backoff`, verbose polling logs, context deadlines, and max-retry exhaustion semantics.
@@ -214,4 +215,29 @@ Started: 2026-05-08 11:45:05
 - Timeout submission was already flowing through the command/facade/service model; the missing behavior was explicit regression coverage and human result rendering that names submitted timeout milliseconds without implying deadline confirmation.
 - Pure view tests cover timeout output in this sandbox even when HTTP-backed command tests skip due local listener restrictions.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Timeout|TimeoutOnly|RetriesAndTimeout)' -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-08 12:28:03 CEST
+**User Story**: User Story 5 - Return After Accepted Update Without Waiting
+**Tasks Completed**:
+- [x] T052: Add command test proving `--no-wait` skips retry confirmation for retries updates
+- [x] T053: Add command JSON output test for no-wait submitted results
+- [x] T054: Add facade test proving mutation errors still report failure when `--no-wait` is set
+- [x] T095: Add command test proving `--no-wait` still uses the local confirmation gate for material interactive updates
+- [x] T055: Wire `--no-wait` into job update request options without bypassing dry-run planning or the local confirmation gate
+- [x] T056: Skip retry confirmation after accepted mutation when no-wait is set
+- [x] T057: Ensure human and JSON renderers show submitted status without implying confirmation
+- [x] T058: Run targeted US5 validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- cmd/update_job_test.go
+- specs/180-job-update-lookup/tasks.md
+- specs/180-job-update-lookup/progress.md
+**Learnings**:
+- The no-wait production path was already present from the retry/timeout update plumbing; this iteration added coverage that it skips only post-mutation polling and does not bypass the pre-mutation confirmation gate.
+- No-wait submitted output uses the existing `submitted` result vocabulary with `confirmationStatus=skipped`, `submittedRetries`, and no `confirmedRetries`.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job -run 'Test(UpdateJob.*NoWait|NoWait.*Job)' -count=1`.
 ---

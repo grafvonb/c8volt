@@ -278,6 +278,78 @@ func TestUpdateJobCommand_JSONDryRunRetriesAndTimeoutPlanPayload(t *testing.T) {
 	require.Empty(t, timeoutItem["before"])
 }
 
+func TestUpdateJobCommand_NoWaitSkipsRetryConfirmation(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--no-wait", "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
+	require.Len(t, patchBodies, 1)
+	requirePatchRetries(t, patchBodies[0], float64(3))
+	require.Contains(t, output, "updated job 2251799813711967: submitted retries=3")
+	require.NotContains(t, output, "confirmed retries")
+}
+
+func TestUpdateJobCommand_NoWaitJSONSubmittedResult(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--no-wait", "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
+	require.Len(t, patchBodies, 1)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "submitted", payload["status"])
+	require.Equal(t, true, payload["mutationAccepted"])
+	require.Equal(t, "skipped", payload["confirmationStatus"])
+	require.Equal(t, float64(3), payload["submittedRetries"])
+	require.NotContains(t, payload, "confirmedRetries")
+	plan := requireJSONObject(t, payload["plan"])
+	require.Equal(t, true, plan["mutationSubmitted"])
+	require.Equal(t, "changed", plan["retryStatus"])
+}
+
+func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialUpdates(t *testing.T) {
+	prevConfirm := confirmCmdOrAbortFn
+	var prompt string
+	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+		require.False(t, autoConfirm)
+		prompt = got
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--no-wait")
+
+	require.Contains(t, prompt, "You are about to update job 2251799813711967")
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
+	require.Len(t, patchBodies, 1)
+	require.Contains(t, output, "plan: update job 2251799813711967: retries: 1 -> 3; pending confirmation")
+	require.Contains(t, output, "updated job 2251799813711967: submitted retries=3")
+	require.NotContains(t, output, "confirmed retries")
+}
+
 func TestUpdateJobCommand_RejectsJSONVerboseBeforeLookupOrMutation(t *testing.T) {
 	resetUpdateJobFlagState()
 	t.Cleanup(resetUpdateJobFlagState)

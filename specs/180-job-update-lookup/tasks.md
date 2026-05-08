@@ -156,17 +156,17 @@
 
 ### Tests for User Story 5
 
-- [ ] T052 [P] [US5] Add command test proving `--no-wait` skips retry confirmation for retries updates in `cmd/update_job_test.go`
-- [ ] T053 [P] [US5] Add command JSON output test for no-wait submitted results in `cmd/update_job_test.go`
-- [ ] T054 [P] [US5] Add facade test proving mutation errors still report failure when `--no-wait` is set in `c8volt/job/client_test.go`
-- [ ] T095 [P] [US5] Add command test proving `--no-wait` still uses the local confirmation gate for material interactive updates and only skips post-mutation polling in `cmd/update_job_test.go`
+- [x] T052 [P] [US5] Add command test proving `--no-wait` skips retry confirmation for retries updates in `cmd/update_job_test.go`
+- [x] T053 [P] [US5] Add command JSON output test for no-wait submitted results in `cmd/update_job_test.go`
+- [x] T054 [P] [US5] Add facade test proving mutation errors still report failure when `--no-wait` is set in `c8volt/job/client_test.go`
+- [x] T095 [P] [US5] Add command test proving `--no-wait` still uses the local confirmation gate for material interactive updates and only skips post-mutation polling in `cmd/update_job_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T055 [US5] Wire `--no-wait` into job update request options in `cmd/update_job.go` and `c8volt/job/model.go` without bypassing dry-run planning or the local confirmation gate
-- [ ] T056 [US5] Skip retry confirmation after accepted mutation when no-wait is set in `c8volt/job/client.go`
-- [ ] T057 [US5] Ensure human and JSON renderers show submitted status without implying confirmation in `cmd/update_job.go`
-- [ ] T058 [US5] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job -run 'Test(UpdateJob.*NoWait|NoWait.*Job)' -count=1` and fix regressions
+- [x] T055 [US5] Wire `--no-wait` into job update request options in `cmd/update_job.go` and `c8volt/job/model.go` without bypassing dry-run planning or the local confirmation gate
+- [x] T056 [US5] Skip retry confirmation after accepted mutation when no-wait is set in `c8volt/job/client.go`
+- [x] T057 [US5] Ensure human and JSON renderers show submitted status without implying confirmation in `cmd/update_job.go`
+- [x] T058 [US5] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job -run 'Test(UpdateJob.*NoWait|NoWait.*Job)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 5 is independently complete when no-wait output is submitted/accepted and no retry confirmation lookup occurs.
 
