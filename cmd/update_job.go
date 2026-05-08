@@ -215,6 +215,7 @@ func buildUpdateJobPlan(current job.LookupResult, request job.UpdateRequest) job
 	return plan
 }
 
+// validateUpdateJobPlanPreconditions rejects planned updates that Camunda cannot accept for the current job state.
 func validateUpdateJobPlanPreconditions(plan job.UpdatePlan, request job.UpdateRequest) error {
 	if request.TimeoutMillis == nil {
 		return nil

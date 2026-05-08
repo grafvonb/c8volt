@@ -444,6 +444,7 @@ func jobSearchResponse(key string, retries int32) string {
 	return jobSearchResponseWithState(key, retries, "FAILED")
 }
 
+// jobSearchResponseWithState builds a job lookup response fixture with an explicit state.
 func jobSearchResponseWithState(key string, retries int32, state string) string {
 	return `{"items":[{"jobKey":"` + key + `","state":"` + state + `","retries":` + strconvFormatInt32(retries) + `,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
 }
@@ -489,6 +490,7 @@ func TestParseUpdateJobRequestParsesTimeoutMillis(t *testing.T) {
 	require.False(t, request.ConfirmRetries)
 }
 
+// TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob verifies timeout updates stop before mutation when the job is not active.
 func TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob(t *testing.T) {
 	timeoutMillis := int64(20000)
 	plan := job.UpdatePlan{
@@ -508,6 +510,7 @@ func TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob(t *testing.T) {
 	require.Contains(t, err.Error(), "job 2251799814014237 is RETRIES_UPDATED")
 }
 
+// TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob verifies timeout updates remain valid for active job lookup state.
 func TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob(t *testing.T) {
 	timeoutMillis := int64(20000)
 	plan := job.UpdatePlan{
@@ -524,6 +527,7 @@ func TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestUpdateJobPlanPreconditionAllowsRetryOnlyForNonActiveJob verifies retry updates are not blocked by timeout-only state checks.
 func TestUpdateJobPlanPreconditionAllowsRetryOnlyForNonActiveJob(t *testing.T) {
 	retries := int32(2)
 	plan := job.UpdatePlan{
