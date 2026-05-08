@@ -5,7 +5,6 @@ package v88
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	camundav88 "github.com/grafvonb/c8volt/internal/clients/camunda/v88/camunda"
@@ -27,10 +26,7 @@ func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.
 	}
 	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
 	if err != nil {
-		if !errors.Is(err, d.ErrNotFound) {
-			return d.ProcessInstanceIncidentDetail{}, err
-		}
-		return s.searchIncidentByKey(ctx, key)
+		return d.ProcessInstanceIncidentDetail{}, err
 	}
 	return fromIncidentResult(*payload), nil
 }
@@ -103,39 +99,6 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 		return nil, err
 	}
 	return toolx.MapSlice(payload.Items, fromIncidentResult), nil
-}
-
-func (s *Service) searchIncidentByKey(ctx context.Context, key string) (d.ProcessInstanceIncidentDetail, error) {
-	incidentFilter, err := newBasicStringEqFilterPtr(key)
-	if err != nil {
-		return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("building incident key filter: %w", err)
-	}
-	tenantFilter, err := common.NewStringEqFilterPtr(s.cfg.App.Tenant)
-	if err != nil {
-		return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("building tenant incident filter: %w", err)
-	}
-	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1})
-	body := camundav88.SearchIncidentsJSONRequestBody{
-		Page: &page,
-		Filter: &camundav88.IncidentFilter{
-			IncidentKey: incidentFilter,
-			TenantId:    tenantFilter,
-		},
-	}
-	resp, err := s.cc.SearchIncidentsWithResponse(ctx, body)
-	if err != nil {
-		return d.ProcessInstanceIncidentDetail{}, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return d.ProcessInstanceIncidentDetail{}, err
-	}
-	for _, item := range payload.Items {
-		if item.IncidentKey == key {
-			return fromIncidentResult(item), nil
-		}
-	}
-	return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("%w: incident %s not found", d.ErrNotFound, key)
 }
 
 // WaitForIncidentResolved polls direct incident lookup until the selected incident is no longer active.

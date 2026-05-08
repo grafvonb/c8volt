@@ -20,21 +20,15 @@ func TestResolveIncidentCommand_SubmitsResolutionAndWaitsForConfirmation(t *test
 	var sawWait bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v2/incidents/2251799813685249":
-			require.Equal(t, http.MethodGet, r.Method)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
-		case "/v2/process-instances/2251799813685250/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
 			sawResolve = true
 			w.WriteHeader(http.StatusNoContent)
-		case "/v2/process-instances/2251799813685250/incidents/search":
-			require.Equal(t, http.MethodPost, r.Method)
+		case "/v2/incidents/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
 			sawWait = true
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentSearchJSON(
-				incidentSearchItemJSON("2251799813685249", "2251799813685250", "RESOLVED"),
-			)))
+			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "RESOLVED")))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -60,35 +54,19 @@ func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.
 	waitCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249/resolution",
+			"/v2/incidents/2251799813685250/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "/resolution")
+			resolveCounts[key]++
+			w.WriteHeader(http.StatusNoContent)
 		case "/v2/incidents/2251799813685249",
 			"/v2/incidents/2251799813685250":
 			require.Equal(t, http.MethodGet, r.Method)
 			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "")
-			piKey := map[string]string{
-				"2251799813685249": "2251799813685260",
-				"2251799813685250": "2251799813685261",
-			}[key]
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON(key, piKey, "ACTIVE")))
-		case "/v2/process-instances/2251799813685260/incident-resolution",
-			"/v2/process-instances/2251799813685261/incident-resolution":
-			require.Equal(t, http.MethodPost, r.Method)
-			key := incidentKeyFromPath(t, r.URL.Path, "/v2/process-instances/", "/incident-resolution")
-			resolveCounts[key]++
-			w.WriteHeader(http.StatusNoContent)
-		case "/v2/process-instances/2251799813685260/incidents/search",
-			"/v2/process-instances/2251799813685261/incidents/search":
-			require.Equal(t, http.MethodPost, r.Method)
-			piKey := incidentKeyFromPath(t, r.URL.Path, "/v2/process-instances/", "/incidents/search")
-			key := map[string]string{
-				"2251799813685260": "2251799813685249",
-				"2251799813685261": "2251799813685250",
-			}[piKey]
 			waitCounts[key]++
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentSearchJSON(
-				incidentSearchItemJSON(key, piKey, "RESOLVED"),
-			)))
+			_, _ = w.Write([]byte(incidentResultJSON(key, "2251799813685260", "RESOLVED")))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -106,8 +84,8 @@ func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.
 	)
 
 	require.Equal(t, map[string]int{
-		"2251799813685260": 1,
-		"2251799813685261": 1,
+		"2251799813685249": 1,
+		"2251799813685250": 1,
 	}, resolveCounts)
 	require.Equal(t, map[string]int{
 		"2251799813685249": 1,
@@ -235,22 +213,12 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 	resolveCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v2/incidents/2251799813685249",
-			"/v2/incidents/2251799813685250":
-			require.Equal(t, http.MethodGet, r.Method)
-			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "")
-			piKey := map[string]string{
-				"2251799813685249": "2251799813685260",
-				"2251799813685250": "2251799813685261",
-			}[key]
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON(key, piKey, "ACTIVE")))
-		case "/v2/process-instances/2251799813685260/incident-resolution",
-			"/v2/process-instances/2251799813685261/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution",
+			"/v2/incidents/2251799813685250/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
-			piKey := incidentKeyFromPath(t, r.URL.Path, "/v2/process-instances/", "/incident-resolution")
-			resolveCounts[piKey]++
-			if piKey == "2251799813685261" {
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "/resolution")
+			resolveCounts[key]++
+			if key == "2251799813685250" {
 				http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
 				return
 			}
@@ -278,7 +246,7 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 	})
 	require.Error(t, err)
 	require.False(t, sawWait)
-	require.Equal(t, map[string]int{"2251799813685260": 1, "2251799813685261": 1}, resolveCounts)
+	require.Equal(t, map[string]int{"2251799813685249": 1, "2251799813685250": 1}, resolveCounts)
 	require.Contains(t, string(output), "resolved incident 2251799813685249: submitted")
 	require.Contains(t, string(output), "resolved incident 2251799813685250: mutation failed")
 	require.Contains(t, string(output), "resolved: 2 (confirmed/submitted/skipped: 1, failed: 1)")
@@ -287,18 +255,10 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testing.T) {
 	var resolveCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/v2/incidents/2251799813685249":
-			require.Equal(t, http.MethodGet, r.Method)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685260", "ACTIVE")))
-		case "/v2/process-instances/2251799813685260/incident-resolution":
-			require.Equal(t, http.MethodPost, r.Method)
-			resolveCount++
-			http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
-		default:
-			t.Fatalf("unexpected request path: %s", r.URL.Path)
-		}
+		require.Equal(t, "/v2/incidents/2251799813685249/resolution", r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		resolveCount++
+		http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
 	}))
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -324,20 +284,14 @@ func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *tes
 	var waitCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v2/incidents/2251799813685249":
-			require.Equal(t, http.MethodGet, r.Method)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
-		case "/v2/process-instances/2251799813685250/incident-resolution":
+		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
 			w.WriteHeader(http.StatusNoContent)
-		case "/v2/process-instances/2251799813685250/incidents/search":
-			require.Equal(t, http.MethodPost, r.Method)
+		case "/v2/incidents/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
 			waitCount++
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentSearchJSON(
-				incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
-			)))
+			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}

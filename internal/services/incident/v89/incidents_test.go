@@ -25,7 +25,6 @@ type mockIncidentClient struct {
 	getIncident                     func(context.Context, camundav89.IncidentKey, ...camundav89.RequestEditorFn) (*camundav89.GetIncidentResponse, error)
 	resolveIncident                 func(context.Context, camundav89.IncidentKey, camundav89.ResolveIncidentJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.ResolveIncidentResponse, error)
 	resolveProcessInstanceIncidents func(context.Context, camundav89.ProcessInstanceKey, ...camundav89.RequestEditorFn) (*camundav89.ResolveProcessInstanceIncidentsResponse, error)
-	searchIncidents                 func(context.Context, camundav89.SearchIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error)
 	searchProcessInstanceIncidents  func(context.Context, camundav89.ProcessInstanceKey, camundav89.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error)
 }
 
@@ -39,10 +38,6 @@ func (m mockIncidentClient) ResolveIncidentWithResponse(ctx context.Context, key
 
 func (m mockIncidentClient) ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.ResolveProcessInstanceIncidentsResponse, error) {
 	return m.resolveProcessInstanceIncidents(ctx, key, reqEditors...)
-}
-
-func (m mockIncidentClient) SearchIncidentsWithResponse(ctx context.Context, body camundav89.SearchIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
-	return m.searchIncidents(ctx, body, reqEditors...)
 }
 
 func (m mockIncidentClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
@@ -116,33 +111,6 @@ func TestGetIncidentMapsDetail(t *testing.T) {
 		ProcessDefinitionKey:   "2251799813685253",
 		ProcessDefinitionId:    "order-process",
 	}, got)
-}
-
-func TestGetIncidentFallsBackToSearchWhenDirectLookupReturnsNotFound(t *testing.T) {
-	t.Parallel()
-
-	svc := newTestService(t, mockIncidentClient{
-		getIncident: func(_ context.Context, key camundav89.IncidentKey, _ ...camundav89.RequestEditorFn) (*camundav89.GetIncidentResponse, error) {
-			require.Equal(t, "2251799813685249", key)
-			return &camundav89.GetIncidentResponse{HTTPResponse: testHTTPResponse(http.StatusNotFound), Body: []byte(`{"message":"not found"}`)}, nil
-		},
-		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
-			require.NotNil(t, body.Filter)
-			require.NotNil(t, body.Filter.IncidentKey)
-			return &camundav89.SearchIncidentsResponse{
-				HTTPResponse: testHTTPResponse(http.StatusOK),
-				JSON200: &camundav89.IncidentSearchQueryResult{Items: []camundav89.IncidentResult{
-					{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685250", State: camundav89.IncidentStateEnumACTIVE},
-				}},
-			}, nil
-		},
-	})
-
-	got, err := svc.GetIncident(context.Background(), "2251799813685249")
-
-	require.NoError(t, err)
-	require.Equal(t, "2251799813685250", got.ProcessInstanceKey)
-	require.Equal(t, "ACTIVE", got.State)
 }
 
 func TestResolveProcessInstanceIncidentsMapsAcceptedResponse(t *testing.T) {

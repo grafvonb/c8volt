@@ -26,7 +26,6 @@ type GenIncidentClientCamunda interface {
 	GetIncidentWithResponse(ctx context.Context, incidentKey camundav88.IncidentKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetIncidentResponse, error)
 	ResolveIncidentWithResponse(ctx context.Context, incidentKey camundav88.IncidentKey, body camundav88.ResolveIncidentJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.ResolveIncidentResponse, error)
 	ResolveProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey camundav88.ProcessInstanceKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.ResolveProcessInstanceIncidentsResponse, error)
-	SearchIncidentsWithResponse(ctx context.Context, body camundav88.SearchIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error)
 	SearchProcessInstanceIncidentsWithResponse(ctx context.Context, processInstanceKey string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error)
 }
 

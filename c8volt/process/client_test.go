@@ -322,20 +322,13 @@ func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
 	ctx := context.Background()
 	var calls []string
 	incAPI := stubIncidentAPI{
-		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
-			calls = append(calls, "get:"+key)
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			calls = append(calls, "resolve:"+key)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
-			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "ACTIVE"}, nil
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
-		resolveProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
-			calls = append(calls, "resolve-pi:"+key)
-			require.Equal(t, "2251799813685250", key)
-			require.True(t, services.ApplyCallOptions(opts).Verbose)
-			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK"}, nil
-		},
-		waitForPIIncidentsResolved: func(_ context.Context, key string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
-			calls = append(calls, "wait-pi:"+key)
-			require.Equal(t, []string{"2251799813685249"}, incidentKeys)
+		waitForIncidentResolved: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			calls = append(calls, "wait:"+key)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.IncidentResolutionResponse{Key: key, Ok: true, Status: "resolved"}, nil
 		},
@@ -345,7 +338,7 @@ func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
 	got, err := cli.ResolveIncident(ctx, "2251799813685249", options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"get:2251799813685249", "resolve-pi:2251799813685250", "wait-pi:2251799813685250"}, calls)
+	require.Equal(t, []string{"resolve:2251799813685249", "wait:2251799813685249"}, calls)
 	require.Equal(t, IncidentResolutionStatusConfirmed, got.Status)
 	require.True(t, got.MutationAccepted)
 	require.True(t, got.MutationSubmitted)
@@ -356,15 +349,10 @@ func TestResolveIncidentNoWaitSkipsConfirmation(t *testing.T) {
 	t.Parallel()
 
 	incAPI := stubIncidentAPI{
-		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			require.Equal(t, "2251799813685249", key)
 			require.True(t, services.ApplyCallOptions(opts).NoWait)
-			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "ACTIVE"}, nil
-		},
-		resolveProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
-			require.Equal(t, "2251799813685250", key)
-			require.True(t, services.ApplyCallOptions(opts).NoWait)
-			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK"}, nil
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
 	}
 
@@ -407,12 +395,8 @@ func TestResolveIncidentUnsupportedMapsFailureBeforeWait(t *testing.T) {
 	t.Parallel()
 
 	incAPI := stubIncidentAPI{
-		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			require.Equal(t, "2251799813685249", key)
-			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "ACTIVE"}, nil
-		},
-		resolveProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
-			require.Equal(t, "2251799813685250", key)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, d.ErrUnsupported
 		},
 	}
@@ -542,10 +526,7 @@ func TestResolveIncidentsBulkWorkersNoWorkerLimitAndPartialFailureTotals(t *test
 	var maxActive int32
 	var calls int32
 	incAPI := stubIncidentAPI{
-		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
-			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "pi-" + key, State: "ACTIVE"}, nil
-		},
-		resolveProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			cfg := services.ApplyCallOptions(opts)
 			if !cfg.NoWait {
 				return d.IncidentResolutionResponse{}, errors.New("expected no-wait call option")
@@ -563,10 +544,10 @@ func TestResolveIncidentsBulkWorkersNoWorkerLimitAndPartialFailureTotals(t *test
 			time.Sleep(10 * time.Millisecond)
 			atomic.AddInt32(&active, -1)
 			atomic.AddInt32(&calls, 1)
-			if key == "pi-incident-b" {
+			if key == "incident-b" {
 				return d.IncidentResolutionResponse{Key: key, Ok: false, StatusCode: 500, Status: "500 Internal Server Error"}, errors.New("mutation rejected")
 			}
-			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK"}, nil
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
 	}
 
@@ -593,13 +574,8 @@ func TestResolveIncidentsBulkFailFastStopsSchedulingAfterFirstFailure(t *testing
 
 	var calls int32
 	incAPI := stubIncidentAPI{
-		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			require.Equal(t, "incident-fail", key)
-			require.True(t, services.ApplyCallOptions(opts).FailFast)
-			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "pi-fail", State: "ACTIVE"}, nil
-		},
-		resolveProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
-			require.Equal(t, "pi-fail", key)
 			require.True(t, services.ApplyCallOptions(opts).FailFast)
 			atomic.AddInt32(&calls, 1)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, StatusCode: 500, Status: "500 Internal Server Error"}, errors.New("mutation rejected")
