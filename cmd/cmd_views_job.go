@@ -12,15 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func jobLookupView(cmd *cobra.Command, result job.LookupResult) error {
+func jobView(cmd *cobra.Command, item job.Job) error {
 	if pickMode() == RenderModeJSON {
-		return renderJSONPayload(cmd, RenderModeJSON, result)
+		return renderJSONPayload(cmd, RenderModeJSON, item)
 	}
-	if !result.Found {
-		renderOutputLine(cmd, "job %s: not found", result.Key)
-		return nil
-	}
-	renderOutputLine(cmd, "%s", oneLineJob(result.Job))
+	renderOutputLine(cmd, "%s", oneLineJob(item))
 	return nil
 }
 

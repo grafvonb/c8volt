@@ -27,7 +27,7 @@
 
 As a Camunda operator investigating an incident, I want to use the `jobKey` already exposed by incident-aware process-instance output to inspect the matching job directly so that I can diagnose runtime job state without leaving c8volt.
 
-**Why this priority**: Job lookup is the foundation for diagnosis and for the default post-update confirmation path.
+**Why this priority**: Job get is the foundation for diagnosis and for the default post-update confirmation path.
 
 **Independent Test**: Run `c8volt get job --key <job-key>` against a supported Camunda 8.8 or 8.9 environment and verify the command returns the matching job details, including operational metadata needed for incident diagnosis.
 
@@ -45,11 +45,11 @@ As a Camunda operator, I want to set a job retry count and confirm the read mode
 
 **Why this priority**: Retry adjustment is the simplest state-changing job update and proves the accepted, confirmed, and failed result flow.
 
-**Independent Test**: Run `c8volt update job --key <job-key> --retries 3` and verify the command reports success only after job lookup observes retries `3`.
+**Independent Test**: Run `c8volt update job --key <job-key> --retries 3` and verify the command reports success only after job get observes retries `3`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid job key on Camunda 8.8 or 8.9, **When** the operator runs `c8volt update job --key <job-key> --retries 3`, **Then** the command submits retries `3` and waits until job lookup reports retries `3`.
+1. **Given** a valid job key on Camunda 8.8 or 8.9, **When** the operator runs `c8volt update job --key <job-key> --retries 3`, **Then** the command submits retries `3` and waits until job get reports retries `3`.
 2. **Given** the mutation request fails before acceptance, **When** retries are submitted, **Then** the command reports mutation failure and does not run confirmation.
 3. **Given** the mutation is accepted but the requested retry count is not observed before waiter exhaustion, **When** confirmation ends, **Then** the command reports confirmation failure instead of success.
 4. **Given** the current retry count already matches the requested retry count and no timeout update is requested, **When** the operator runs the update without `--dry-run`, **Then** the command reports that there is nothing to update and does not ask for confirmation or submit a mutation.
@@ -102,7 +102,7 @@ As an automation user, I want `--no-wait` to return as soon as a job update requ
 
 **Acceptance Scenarios**:
 
-1. **Given** `--no-wait` is supplied and the update request is accepted, **When** the command runs, **Then** it returns submitted output without polling job lookup.
+1. **Given** `--no-wait` is supplied and the update request is accepted, **When** the command runs, **Then** it returns submitted output without polling job get.
 2. **Given** `--no-wait` is supplied and the mutation request fails, **When** the command runs, **Then** it reports mutation failure instead of submitted or confirmed output.
 3. **Given** `--no-wait` is supplied for a material interactive update without `--auto-confirm`, `--automation`, or `--dry-run`, **When** the command reaches the mutation gate, **Then** it still asks for confirmation before submitting and only skips post-mutation polling.
 
@@ -114,13 +114,13 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 
 **Why this priority**: Isolation and regression coverage protect existing commands while adding a new state-changing command family.
 
-**Independent Test**: Run targeted tests for existing process-instance incident output and process-instance variable updates, then verify no job lookup, update, or confirmation behavior is added to unrelated service areas.
+**Independent Test**: Run targeted tests for existing process-instance incident output and process-instance variable updates, then verify no job get, update, or confirmation behavior is added to unrelated service areas.
 
 **Acceptance Scenarios**:
 
 1. **Given** `c8volt get pi --with-incidents` already exposes `jobKey`, **When** the new job commands are added, **Then** the existing incident output remains unchanged.
 2. **Given** `c8volt update pi --vars` already has planning, dry-run, submitted, confirmed, confirmation-failed, and mutation-failed result semantics, **When** job updates are added, **Then** process-instance variable update behavior remains unchanged.
-3. **Given** Camunda 8.7 is configured, **When** job lookup or update is attempted, **Then** unsupported-version errors are reported before unsupported mutation paths are used.
+3. **Given** Camunda 8.7 is configured, **When** get job or update is attempted, **Then** unsupported-version errors are reported before unsupported mutation paths are used.
 
 ### Edge Cases
 
@@ -150,11 +150,11 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **FR-001**: The system MUST add `c8volt get job --key <job-key>`.
 - **FR-002**: The system MUST add `c8volt update job --key <job-key>` under the existing `c8volt update` root command.
 - **FR-003**: Both job commands MUST require `--key`.
-- **FR-004**: Job lookup MUST support Camunda 8.8 and 8.9.
+- **FR-004**: Job get MUST support Camunda 8.8 and 8.9.
 - **FR-005**: Job updates MUST support Camunda 8.8 and 8.9 only.
 - **FR-006**: Camunda 8.7 usage MUST fail with unsupported-version errors before unsupported mutation paths are used.
-- **FR-007**: Job lookup MUST return job details including key, state, retries, deadline when present, process instance key, element instance key, error fields when present, and tenant metadata when available.
-- **FR-008**: Job lookup MUST report a not-found outcome suitable for both human-readable and JSON modes when no job exists for the supplied key.
+- **FR-007**: Job get MUST return job details including key, state, retries, deadline when present, process instance key, element instance key, error fields when present, and tenant metadata when available.
+- **FR-008**: Job get MUST report a not-found outcome suitable for both human-readable and JSON modes when no job exists for the supplied key.
 - **FR-009**: `update job` MUST require at least one update flag from `--retries` or `--timeout`.
 - **FR-010**: `update job` MUST support `--retries <count>`.
 - **FR-011**: `update job` MUST support `--timeout <duration>`.
@@ -163,7 +163,7 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **FR-014**: Job updates MUST NOT expose `retryBackOff`.
 - **FR-015**: Job updates MUST support submitting retries and timeout in one update request when both flags are supplied.
 - **FR-016**: By default, job updates MUST confirm requested retries through the same lookup behavior as `c8volt get job --key <job-key>` when retries are supplied.
-- **FR-017**: Retry confirmation MUST wait until job lookup reports the requested retry count.
+- **FR-017**: Retry confirmation MUST wait until job get reports the requested retry count.
 - **FR-018**: Timeout-only updates MUST report accepted/submitted output after mutation acceptance and MUST NOT claim deadline confirmation.
 - **FR-019**: Timeout updates MUST NOT be confirmed by comparing observed deadline timestamps against requested durations.
 - **FR-020**: When retries and timeout are both supplied, confirmation MUST verify the requested retry count only while reporting timeout as submitted in the same mutation.
@@ -171,15 +171,15 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **FR-022**: Confirmation timeout or retry exhaustion MUST report confirmation failure without claiming success.
 - **FR-023**: Mutation failure and confirmation failure MUST be distinguishable in human-readable and JSON output.
 - **FR-024**: Job update results MUST follow the same submitted, confirmed, confirmation-failed, and mutation-failed pattern as process-instance variable updates where confirmation is available; timeout-only updates use submitted or mutation-failed outcomes.
-- **FR-025**: Job lookup, job updates, and job update confirmation MUST stay within a dedicated job service boundary.
+- **FR-025**: Job get, job updates, and job update confirmation MUST stay within a dedicated job service boundary.
 - **FR-026**: Job service code MUST include shared API/factory behavior, versioned services for 8.7, 8.8, and 8.9, and compile-time conformance checks matching existing service package patterns.
 - **FR-027**: Job functionality MUST NOT be mixed into process-instance services, incident services, or facade-only helpers.
 - **FR-028**: Command output MUST use existing command context logger and activity plumbing for submitted and confirmed output.
 - **FR-029**: Existing `get pi --with-incidents` behavior MUST remain unchanged and continue to expose `jobKey`.
 - **FR-030**: Existing `update pi --vars` dry-run, planning, confirmation, submitted, confirmed, confirmation-failed, and mutation-failed behavior MUST remain unchanged.
-- **FR-031**: User-facing help and generated documentation MUST describe job lookup, job update flags, version support, no-wait behavior, confirmation outcomes, and examples.
-- **FR-032**: Automated tests MUST cover successful job lookup on Camunda 8.8 and 8.9.
-- **FR-033**: Automated tests MUST cover not-found job lookup output in human-readable and JSON modes.
+- **FR-031**: User-facing help and generated documentation MUST describe job get, job update flags, version support, no-wait behavior, confirmation outcomes, and examples.
+- **FR-032**: Automated tests MUST cover successful job get on Camunda 8.8 and 8.9.
+- **FR-033**: Automated tests MUST cover not-found job errors in human-readable and JSON modes.
 - **FR-034**: Automated tests MUST cover retries update with confirmation, timeout update without deadline confirmation, combined retries and timeout update with retries-only confirmation, and `--no-wait`.
 - **FR-035**: Automated tests MUST cover mutation failure, confirmation failure, invalid inputs, missing required flags, and Camunda 8.7 unsupported-version behavior.
 - **FR-036**: Automated tests MUST cover unchanged `get pi --with-incidents` and `update pi --vars` behavior.
@@ -201,7 +201,7 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **Job Update Request**: A single accepted mutation request that may include retries, timeout, or both.
 - **Job Update Plan**: The pre-mutation aggregate containing current job state, requested changes, no-op classification, dry-run status, and mutation-submission status.
 - **Timeout Duration**: User input such as `60s`, `5m`, or `1h` converted to milliseconds for submission.
-- **Observed Deadline**: The timestamp returned by job lookup for display and diagnosis; it is not used to confirm timeout updates.
+- **Observed Deadline**: The timestamp returned by job get for display and diagnosis; it is not used to confirm timeout updates.
 - **Job Update Result**: The command outcome indicating submitted, confirmed, confirmation-failed, or mutation-failed state.
 - **Unsupported Version Error**: The explicit failure returned when the command is used against Camunda 8.7 for unsupported job functionality.
 
@@ -220,7 +220,7 @@ As a maintainer, I want job functionality isolated from existing process-instanc
 - **SC-009**: Automated tests show Camunda 8.7 fails with unsupported-version errors before unsupported mutation paths are used.
 - **SC-010**: Automated tests show `get pi --with-incidents` still exposes `jobKey` unchanged.
 - **SC-011**: Automated tests show `update pi --vars` behavior and confirmation semantics remain unchanged.
-- **SC-012**: Automated tests or static checks show job lookup, update, and confirmation behavior are not added to process-instance or incident service APIs.
+- **SC-012**: Automated tests or static checks show job get, update, and confirmation behavior are not added to process-instance or incident service APIs.
 - **SC-013**: Help output, examples, and generated CLI documentation accurately describe the new commands, required flags, update options, `--no-wait`, version support, and confirmation outcomes.
 - **SC-014**: Relevant targeted command and service tests pass, followed by the closest broader repository validation command.
 - **SC-015**: Automated tests show `c8volt update job --key <job-key> --retries 3 --dry-run` renders a plan and submits no mutation.

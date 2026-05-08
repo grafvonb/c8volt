@@ -36,7 +36,7 @@ Represents one mutation request for a single job.
 Represents the pre-mutation plan used by dry-run, interactive confirmation, no-op handling, and JSON output.
 
 - **Job Key**: target job identifier.
-- **Current Job Detail**: visible job state loaded through job lookup before mutation.
+- **Current Job Detail**: visible job state loaded through job get before mutation.
 - **Requested Retries**: optional retry count requested by the user.
 - **Retry Classification**: one of change, unchanged, or not requested.
 - **Requested Timeout**: optional duration requested by the user.
@@ -66,9 +66,9 @@ Represents the user-supplied timeout input.
 
 ## Observed Deadline
 
-Represents the timestamp returned by job lookup.
+Represents the timestamp returned by job get.
 
-- **Source**: job lookup result.
+- **Source**: job get result.
 - **Role**: displayed for diagnostics and returned where supported by output modes.
 - **Non-Role**: not used as proof that a requested timeout duration was applied.
 

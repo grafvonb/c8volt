@@ -23,12 +23,12 @@ func New(api jsvc.API, log *slog.Logger) API {
 	return &client{api: api, log: log}
 }
 
-func (c *client) LookupJob(ctx context.Context, key string, opts ...foptions.FacadeOption) (LookupResult, error) {
-	result, err := c.api.LookupJob(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
+func (c *client) GetJob(ctx context.Context, key string, opts ...foptions.FacadeOption) (Job, error) {
+	result, err := c.api.GetJob(ctx, key, foptions.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
-		return LookupResult{}, ferrors.FromDomain(err)
+		return Job{}, ferrors.FromDomain(err)
 	}
-	return fromDomainLookupResult(key, result), nil
+	return fromDomainJob(result), nil
 }
 
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
@@ -43,14 +43,6 @@ func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...f
 		return out, ferrors.FromDomain(err)
 	}
 	return out, nil
-}
-
-func fromDomainLookupResult(key string, result d.Job) LookupResult {
-	return LookupResult{
-		Key:   key,
-		Found: result.Key != "",
-		Job:   fromDomainJob(result),
-	}
 }
 
 func fromDomainJob(result d.Job) Job {

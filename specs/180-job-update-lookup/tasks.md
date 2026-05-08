@@ -62,7 +62,7 @@
 
 - [x] T017 [P] [US1] Add command test for successful `get job --key <job-key>` human output in `cmd/get_job_test.go`
 - [x] T018 [P] [US1] Add command test for successful `get job --key <job-key>` JSON output in `cmd/get_job_test.go`
-- [x] T019 [P] [US1] Add command test for not-found job lookup in human and JSON modes in `cmd/get_job_test.go`
+- [x] T019 [P] [US1] Add command test for not-found get job in human and JSON modes in `cmd/get_job_test.go`
 - [x] T020 [P] [US1] Add v8.8 service test for generated job search by key in `internal/services/job/v88/service_test.go`
 - [x] T021 [P] [US1] Add v8.9 service test for generated job search by key in `internal/services/job/v89/service_test.go`
 - [x] T022 [P] [US1] Add facade lookup tests for found and not-found results in `c8volt/job/client_test.go`
@@ -74,15 +74,15 @@
 - [x] T025 [US1] Implement v8.9 job search and conversion in `internal/services/job/v89/convert.go` and `internal/services/job/v89/service.go`
 - [x] T026 [US1] Implement facade lookup orchestration in `c8volt/job/client.go`
 - [x] T027 [US1] Implement `cmd/get_job.go` flag validation, service wiring, and human/JSON output for found and not-found results
-- [x] T028 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobLookup|SearchJobs)' -count=1` and fix regressions
+- [x] T028 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobGetter|SearchJobs)' -count=1` and fix regressions
 
-**Checkpoint**: User Story 1 is independently complete when job lookup, not-found behavior, and human/JSON output pass.
+**Checkpoint**: User Story 1 is independently complete when get job, not-found behavior, and human/JSON output pass.
 
 ---
 
 ## Phase 4: User Story 2 - Update Job Retries With Confirmation (Priority: P2)
 
-**Goal**: `c8volt update job --key <job-key> --retries <count>` submits the retry update and confirms the requested retry count through job lookup.
+**Goal**: `c8volt update job --key <job-key> --retries <count>` submits the retry update and confirms the requested retry count by reading the job by key.
 
 **Independent Test**: Run `c8volt update job --key <job-key> --retries 3` and verify the command reports confirmed success only after lookup observes retries `3`.
 
@@ -107,7 +107,7 @@
 - [x] T038 [US2] Implement facade retry update and default confirmation flow in `c8volt/job/client.go`
 - [x] T039 [US2] Implement `cmd/update_job.go` `--retries` validation, service wiring, and confirmed human/JSON output
 - [x] T040 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/waiter ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Retries|RetryConfirmation|JobUpdateRetries)' -count=1` and fix regressions
-- [x] T086 [US2] Implement retry plan construction from current job lookup state in `cmd/update_job.go` and the selected plan model file
+- [x] T086 [US2] Implement retry plan construction from current get job state in `cmd/update_job.go` and the selected plan model file
 - [x] T087 [US2] Implement `--dry-run` retry rendering and JSON payload without submitting mutation in `cmd/update_job.go` and `cmd/cmd_views_job.go`
 - [x] T088 [US2] Implement retry-only no-op detection that skips prompt and mutation in `cmd/update_job.go`
 - [x] T089 [US2] Implement interactive confirmation gate for material retry updates, reusing existing command confirmation helpers in `cmd/update_job.go`
@@ -176,13 +176,13 @@
 
 **Goal**: Job behavior remains isolated from process-instance and incident services while existing incident and process-instance update behavior stays unchanged.
 
-**Independent Test**: Run targeted regressions for `get pi --with-incidents`, `update pi --vars`, and static/API checks that job lookup/update methods are absent from process-instance and incident service APIs.
+**Independent Test**: Run targeted regressions for `get pi --with-incidents`, `update pi --vars`, and static/API checks that get job/update methods are absent from process-instance and incident service APIs.
 
 ### Tests for User Story 6
 
 - [x] T059 [P] [US6] Add regression test proving `get pi --with-incidents` still exposes `jobKey` unchanged in `cmd/get_processinstance_test.go`
 - [x] T060 [P] [US6] Add regression test proving `update pi --vars` planning, dry-run, and confirmation semantics remain unchanged in `cmd/update_processinstance_test.go`
-- [x] T061 [P] [US6] Add boundary test or static assertion that `internal/services/processinstance/api.go` and `internal/services/incident/api.go` do not expose job lookup/update/confirmation methods in `cmd/command_contract_test.go` or a focused internal test
+- [x] T061 [P] [US6] Add boundary test or static assertion that `internal/services/processinstance/api.go` and `internal/services/incident/api.go` do not expose get job/update/confirmation methods in `cmd/command_contract_test.go` or a focused internal test
 - [x] T062 [P] [US6] Add command/service test proving Camunda 8.7 job update fails unsupported before mutation in `cmd/update_job_test.go` or `internal/services/job/v87/service_test.go`
 
 ### Implementation for User Story 6
@@ -200,8 +200,8 @@
 **Purpose**: Make the new commands discoverable and keep docs generated from source metadata.
 
 - [x] T066 [P] Add help examples and command contract metadata coverage for `get job` and `update job`, including `--dry-run`, `--no-wait`, `--auto-confirm`, and JSON guardrails, in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/command_contract_test.go`
-- [x] T067 [P] Update README examples for job lookup, job update dry-run, confirmed updates, and no-wait updates in `README.md`
-- [x] T068 [P] Update site documentation source examples for job lookup, job update dry-run, confirmed updates, and no-wait updates in `docs/index.md`
+- [x] T067 [P] Update README examples for get job, job update dry-run, confirmed updates, and no-wait updates in `README.md`
+- [x] T068 [P] Update site documentation source examples for get job, job update dry-run, confirmed updates, and no-wait updates in `docs/index.md`
 - [x] T069 Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
 - [x] T070 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|GetJob.*Help|UpdateJob.*Help|VersionHelp)' -count=1` and fix docs/help regressions
 
@@ -227,7 +227,7 @@
 - **Setup (Phase 1)**: No dependencies.
 - **Foundational (Phase 2)**: Depends on setup and blocks all user stories.
 - **US1 (Phase 3)**: Depends on foundational command/service/facade surface and delivers the MVP.
-- **US2 (Phase 4)**: Depends on US1 lookup because retries confirmation and retry planning use job lookup.
+- **US2 (Phase 4)**: Depends on US1 lookup because retries confirmation and retry planning use get job.
 - **US3 (Phase 5)**: Depends on the update request/result model from US2 but can be implemented without changing retry confirmation semantics.
 - **US4 (Cross-cutting)**: Depends on US1 lookup and US2 update planning; its dry-run, no-op, JSON, and confirmation-gate tasks are included in US2 and US3 so the mutation path is never implemented without the safety contract.
 - **US5 (Phase 6)**: Depends on US2 result modeling and adds no-wait behavior.
@@ -279,13 +279,13 @@ Task: "Add waiter test for retry confirmation success and exhaustion in internal
 ### MVP First
 
 1. Complete Phase 1 and Phase 2.
-2. Complete User Story 1 to deliver job lookup and not-found behavior.
+2. Complete User Story 1 to deliver get job and not-found behavior.
 3. Stop and run the US1 targeted tests before adding mutation behavior.
 
 ### Incremental Delivery
 
 1. Add dedicated job domain, facade, service, and command shells.
-2. Add job lookup with human/JSON output.
+2. Add get job with human/JSON output.
 3. Add update planning, `--dry-run`, retry no-op handling, JSON guardrails, and interactive confirmation before any retry mutation.
 4. Add retry update with retries confirmation.
 5. Add timeout planning with submitted intent, timeout mutation with submitted-only behavior, and combined retries-plus-timeout retries-only confirmation.
@@ -298,5 +298,5 @@ Task: "Add waiter test for retry confirmation success and exhaustion in internal
 Use Conventional Commit subjects and append the issue number as the final token, for example:
 
 ```text
-feat(job): add job lookup and update commands #180
+feat(job): add get job and update commands #180
 ```

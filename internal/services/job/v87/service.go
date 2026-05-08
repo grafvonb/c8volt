@@ -48,11 +48,11 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-func (s *Service) LookupJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error) {
+func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error) {
 	_ = ctx
 	_ = key
 	_ = services.ApplyCallOptions(opts)
-	return d.Job{}, unsupportedJobOperation("job lookup")
+	return d.Job{}, unsupportedJobOperation("get job")
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {

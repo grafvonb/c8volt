@@ -48,11 +48,11 @@ func fromJobSearchResult(r camundav89.JobSearchResult) d.Job {
 func requireSingleJob(items []camundav89.JobSearchResult, key string) (d.Job, error) {
 	switch len(items) {
 	case 0:
-		return d.Job{}, nil
+		return d.Job{}, fmt.Errorf("%w: job %s was not found or is not visible to the configured tenant", d.ErrNotFound, key)
 	case 1:
 		return fromJobSearchResult(items[0]), nil
 	default:
-		return d.Job{}, fmt.Errorf("%w: job lookup for key %s returned %d matches", d.ErrMalformedResponse, key, len(items))
+		return d.Job{}, fmt.Errorf("%w: get job for key %s returned %d matches", d.ErrMalformedResponse, key, len(items))
 	}
 }
 

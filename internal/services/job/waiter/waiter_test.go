@@ -16,11 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeJobLookup struct {
+type fakeJobGetter struct {
 	jobs []d.Job
 }
 
-func (f *fakeJobLookup) LookupJob(context.Context, string, ...services.CallOption) (d.Job, error) {
+func (f *fakeJobGetter) GetJob(context.Context, string, ...services.CallOption) (d.Job, error) {
 	if len(f.jobs) == 0 {
 		return d.Job{}, nil
 	}
@@ -30,7 +30,7 @@ func (f *fakeJobLookup) LookupJob(context.Context, string, ...services.CallOptio
 }
 
 func TestRetryConfirmationSuccess(t *testing.T) {
-	lookup := &fakeJobLookup{jobs: []d.Job{
+	lookup := &fakeJobGetter{jobs: []d.Job{
 		{Key: "2251799813711967", Retries: 1},
 		{Key: "2251799813711967", Retries: 3},
 	}}
@@ -42,7 +42,7 @@ func TestRetryConfirmationSuccess(t *testing.T) {
 }
 
 func TestRetryConfirmationExhaustion(t *testing.T) {
-	lookup := &fakeJobLookup{jobs: []d.Job{
+	lookup := &fakeJobGetter{jobs: []d.Job{
 		{Key: "2251799813711967", Retries: 1},
 		{Key: "2251799813711967", Retries: 2},
 	}}

@@ -37,7 +37,7 @@ func (m *mockJobClient) UpdateJobWithResponse(ctx context.Context, jobKey camund
 
 func TestSearchJobsByKey(t *testing.T) {
 	deadline := time.Date(2026, 5, 8, 10, 15, 0, 0, time.UTC)
-	svc := newJobLookupTestService(t, &mockJobClient{
+	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
 			requireJobSearchBody(t, body, "2251799813711967")
 			return &camundav88.SearchJobsResponse{
@@ -59,7 +59,7 @@ func TestSearchJobsByKey(t *testing.T) {
 		},
 	})
 
-	job, err := svc.LookupJob(context.Background(), "2251799813711967")
+	job, err := svc.GetJob(context.Background(), "2251799813711967")
 
 	require.NoError(t, err)
 	require.Equal(t, d.Job{
@@ -75,8 +75,8 @@ func TestSearchJobsByKey(t *testing.T) {
 	}, job)
 }
 
-func TestJobLookupService_NotFound(t *testing.T) {
-	svc := newJobLookupTestService(t, &mockJobClient{
+func TestService_GetJob_NotFound(t *testing.T) {
+	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(_ context.Context, body camundav88.SearchJobsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
 			requireJobSearchBody(t, body, "missing-job")
 			return &camundav88.SearchJobsResponse{
@@ -86,15 +86,15 @@ func TestJobLookupService_NotFound(t *testing.T) {
 		},
 	})
 
-	job, err := svc.LookupJob(context.Background(), "missing-job")
+	job, err := svc.GetJob(context.Background(), "missing-job")
 
-	require.NoError(t, err)
+	require.ErrorIs(t, err, d.ErrNotFound)
 	require.Empty(t, job)
 }
 
 func TestJobUpdateRetriesRequest(t *testing.T) {
 	retries := int32(3)
-	svc := newJobLookupTestService(t, &mockJobClient{
+	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(context.Context, camundav88.SearchJobsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
 			t.Fatal("unexpected retry confirmation lookup")
 			return nil, nil
@@ -124,7 +124,7 @@ func TestJobUpdateRetriesRequest(t *testing.T) {
 
 func TestUpdateJobTimeoutRequest(t *testing.T) {
 	timeoutMillis := int64(300000)
-	svc := newJobLookupTestService(t, &mockJobClient{
+	svc := newJobServiceTest(t, &mockJobClient{
 		searchJobsWithResponse: func(context.Context, camundav88.SearchJobsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchJobsResponse, error) {
 			t.Fatal("unexpected timeout confirmation lookup")
 			return nil, nil
@@ -152,7 +152,7 @@ func TestUpdateJobTimeoutRequest(t *testing.T) {
 	require.Nil(t, result.ConfirmedRetries)
 }
 
-func newJobLookupTestService(t *testing.T, client *mockJobClient) *Service {
+func newJobServiceTest(t *testing.T, client *mockJobClient) *Service {
 	t.Helper()
 	cfg := testx.TestConfig(t)
 	cfg.App.CamundaVersion = toolx.V88

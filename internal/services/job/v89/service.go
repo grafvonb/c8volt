@@ -70,7 +70,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-func (s *Service) LookupJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error) {
+func (s *Service) GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error) {
 	_ = services.ApplyCallOptions(opts)
 
 	jobKeyFilter, err := newJobKeyEqFilterPtr(key)
@@ -134,4 +134,4 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 	return result, nil
 }
 
-var _ waiter.JobLookup = (*Service)(nil)
+var _ waiter.JobGetter = (*Service)(nil)

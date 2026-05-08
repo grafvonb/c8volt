@@ -12,7 +12,7 @@ Update a job by key
 
 Update a Camunda job by key.
 
-The command supports retries and timeout updates for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, asks for confirmation before material interactive mutations, and can return after acceptance with --no-wait. Retry updates are confirmed through job lookup by default; timeout updates report submitted milliseconds without deadline confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
+The command supports retries and timeout updates for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, asks for confirmation before material interactive mutations, and can return after acceptance with --no-wait. Retry updates are confirmed by reading the job by key by default; timeout updates report submitted milliseconds without deadline confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
 
 ```
 c8volt update job [flags]

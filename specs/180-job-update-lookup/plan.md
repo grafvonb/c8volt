@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add job-focused runtime commands for inspecting a job by key and updating supported job parameters on Camunda 8.8 and 8.9. Introduce `c8volt get job --key <job-key>` and `c8volt update job --key <job-key>` under the existing command tree; add a dedicated `internal/services/job` service package with versioned 8.7, 8.8, and 8.9 implementations; use generated job search/update capabilities; build a pre-mutation plan for job updates with `--dry-run`, no-op detection, and interactive confirmation; confirm requested retries through job lookup when retries are supplied; and treat timeout updates as accepted/submitted after mutation without deadline-based confirmation.
+Add job-focused runtime commands for inspecting a job by key and updating supported job parameters on Camunda 8.8 and 8.9. Introduce `c8volt get job --key <job-key>` and `c8volt update job --key <job-key>` under the existing command tree; add a dedicated `internal/services/job` service package with versioned 8.7, 8.8, and 8.9 implementations; use generated job search/update capabilities; build a pre-mutation plan for job updates with `--dry-run`, no-op detection, and interactive confirmation; confirm requested retries through job get when retries are supplied; and treat timeout updates as accepted/submitted after mutation without deadline-based confirmation.
 
 ## Technical Context
 
@@ -23,7 +23,7 @@ Add job-focused runtime commands for inspecting a job by key and updating suppor
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Operational Proof Over Intent**: PASS. Retry updates are planned before mutation and confirmed through job lookup before confirmed success is reported. Timeout-only updates explicitly report submitted/accepted output and do not claim deadline confirmation.
+- **Operational Proof Over Intent**: PASS. Retry updates are planned before mutation and confirmed through job get before confirmed success is reported. Timeout-only updates explicitly report submitted/accepted output and do not claim deadline confirmation.
 - **CLI-First, Script-Safe Interfaces**: PASS. The command surface uses stable Cobra flags, validation, dry-run planning, compact human output, stable JSON output, and existing metadata conventions.
 - **Tests and Validation Are Mandatory**: PASS. The plan requires command tests, facade/domain tests, versioned service tests, waiter tests for retries confirmation, docs generation checks, targeted Go tests, and final `make test`.
 - **Documentation Matches User Behavior**: PASS. The new commands, flags, examples, unsupported-version behavior, no-wait behavior, retries confirmation, and timeout submitted-only behavior require README/help/generated docs updates.
@@ -98,7 +98,7 @@ docs/
 docsgen/
 ```
 
-**Structure Decision**: Add `cmd/get_job.go` under the existing get root and `cmd/update_job.go` under the existing update root. Add a dedicated `c8volt/job` facade package for command-facing job lookup/update orchestration, while keeping generated-client ownership and confirmation inside `internal/services/job`. Implement v8.8/v8.9 with generated job search and update calls, make v8.7 return unsupported-version errors, and add a job waiter only for retries confirmation. Build job update plans from the same job lookup path used by `get job`, keep the plan aggregate in the command/facade boundary, and reuse existing dry-run, confirmation, rendering, command metadata, docs generation, and error mapping paths instead of adding parallel infrastructure.
+**Structure Decision**: Add `cmd/get_job.go` under the existing get root and `cmd/update_job.go` under the existing update root. Add a dedicated `c8volt/job` facade package for command-facing job get/update orchestration, while keeping generated-client ownership and confirmation inside `internal/services/job`. Implement v8.8/v8.9 with generated job search and update calls, make v8.7 return unsupported-version errors, and add a job waiter only for retries confirmation. Build job update plans from the same job get path used by `get job`, keep the plan aggregate in the command/facade boundary, and reuse existing dry-run, confirmation, rendering, command metadata, docs generation, and error mapping paths instead of adding parallel infrastructure.
 
 ## Phase 0: Research
 

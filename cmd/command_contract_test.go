@@ -441,7 +441,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
 		"Inspect a Camunda job by key",
 		"Use the jobKey exposed by incident-aware process-instance output",
-		"--json returns the stable lookup payload",
+		"--json returns the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key 2251799813711967",
@@ -467,7 +467,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"pre-mutation plan",
 		"--dry-run previews",
 		"--no-wait",
-		"Retry updates are confirmed through job lookup by default",
+		"Retry updates are confirmed by reading the job by key by default",
 		"timeout updates report submitted milliseconds without deadline confirmation",
 		"JSON mutations require --dry-run, --auto-confirm, or --automation",
 		"--json cannot be combined with --verbose",

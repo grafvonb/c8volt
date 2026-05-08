@@ -111,7 +111,7 @@ After the first command, jump to [Configuration Notes](#configuration-notes) for
 
 `8.9` is a first-class runtime target. The everyday operator loop is covered: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
-`8.8` remains the established baseline. Process-instance variable updates and job lookup/update commands are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for those state-changing job and variable update commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+`8.8` remains the established baseline. Process-instance variable updates and `get job`/`update job` commands are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for those state-changing job and variable update commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 
 ## Core Workflows
 
@@ -163,7 +163,7 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 ./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
 ```
 
-Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Human job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed through job lookup by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
+Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Human job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
 
 ### Walk Before You Change
 

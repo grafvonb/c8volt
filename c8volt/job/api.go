@@ -10,7 +10,7 @@ import (
 )
 
 type API interface {
-	LookupJob(ctx context.Context, key string, opts ...options.FacadeOption) (LookupResult, error)
+	GetJob(ctx context.Context, key string, opts ...options.FacadeOption) (Job, error)
 	UpdateJob(ctx context.Context, request UpdateRequest, opts ...options.FacadeOption) (UpdateResult, error)
 }
 

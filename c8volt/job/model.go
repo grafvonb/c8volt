@@ -3,10 +3,7 @@
 
 package job
 
-import (
-	"encoding/json"
-	"time"
-)
+import "time"
 
 type Job struct {
 	Key                string     `json:"key,omitempty"`
@@ -18,29 +15,6 @@ type Job struct {
 	ErrorCode          string     `json:"errorCode,omitempty"`
 	ErrorMessage       string     `json:"errorMessage,omitempty"`
 	TenantId           string     `json:"tenantId,omitempty"`
-}
-
-type LookupResult struct {
-	Key   string `json:"key,omitempty"`
-	Found bool   `json:"found"`
-	Job   Job    `json:"job,omitempty"`
-}
-
-func (r LookupResult) MarshalJSON() ([]byte, error) {
-	type lookupResultJSON struct {
-		Key   string `json:"key,omitempty"`
-		Found bool   `json:"found"`
-		Job   *Job   `json:"job,omitempty"`
-	}
-	var result *Job
-	if r.Found {
-		result = &r.Job
-	}
-	return json.Marshal(lookupResultJSON{
-		Key:   r.Key,
-		Found: r.Found,
-		Job:   result,
-	})
 }
 
 type UpdateRequest struct {

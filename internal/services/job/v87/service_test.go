@@ -24,15 +24,15 @@ func newTestService(t *testing.T) *Service {
 	return svc
 }
 
-func TestService_LookupJob_Unsupported(t *testing.T) {
+func TestService_GetJob_Unsupported(t *testing.T) {
 	svc := newTestService(t)
 
-	job, err := svc.LookupJob(context.Background(), "2251799813711967")
+	job, err := svc.GetJob(context.Background(), "2251799813711967")
 
 	require.Error(t, err)
 	assert.Empty(t, job)
 	assert.ErrorIs(t, err, domain.ErrUnsupported)
-	assert.Contains(t, err.Error(), "job lookup")
+	assert.Contains(t, err.Error(), "get job")
 	assert.Contains(t, err.Error(), "Camunda 8.8")
 }
 

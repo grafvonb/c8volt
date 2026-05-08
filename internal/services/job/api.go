@@ -13,9 +13,9 @@ import (
 	v89 "github.com/grafvonb/c8volt/internal/services/job/v89"
 )
 
-// API exposes tenant-safe job lookup and update operations.
+// API exposes tenant-safe get and update operations for jobs.
 type API interface {
-	LookupJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
+	GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
 	UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error)
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 type API interface {
-	LookupJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
+	GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
 	UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error)
 }
 

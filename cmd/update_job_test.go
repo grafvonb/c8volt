@@ -383,7 +383,7 @@ func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "job lookup")
+	require.Contains(t, string(output), "get job")
 	require.Contains(t, string(output), "Camunda 8.8")
 	require.NotContains(t, string(output), "updated job")
 }
@@ -444,7 +444,7 @@ func jobSearchResponse(key string, retries int32) string {
 	return jobSearchResponseWithState(key, retries, "FAILED")
 }
 
-// jobSearchResponseWithState builds a job lookup response fixture with an explicit state.
+// jobSearchResponseWithState builds a get job response fixture with an explicit state.
 func jobSearchResponseWithState(key string, retries int32, state string) string {
 	return `{"items":[{"jobKey":"` + key + `","state":"` + state + `","retries":` + strconvFormatInt32(retries) + `,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
 }
@@ -510,7 +510,7 @@ func TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob(t *testing.T) {
 	require.Contains(t, err.Error(), "job 2251799814014237 is RETRIES_UPDATED")
 }
 
-// TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob verifies timeout updates remain valid for active job lookup state.
+// TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob verifies timeout updates remain valid for active get job state.
 func TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob(t *testing.T) {
 	timeoutMillis := int64(20000)
 	plan := job.UpdatePlan{

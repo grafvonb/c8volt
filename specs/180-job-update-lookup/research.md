@@ -26,12 +26,12 @@ Create `cmd/update_job.go` and register `c8volt update job --key <job-key>` belo
 
 Add `internal/services/job` with shared `api.go`, `factory.go`, versioned `v87`, `v88`, and `v89` services, and compile-time API conformance checks.
 
-**Rationale**: The issue explicitly requires job lookup, job update, and confirmation to stay inside a job service boundary. Existing services follow this package/factory/version layout, and a dedicated package prevents job behavior from leaking into process-instance or incident services.
+**Rationale**: The issue explicitly requires job get, job update, and confirmation to stay inside a job service boundary. Existing services follow this package/factory/version layout, and a dedicated package prevents job behavior from leaking into process-instance or incident services.
 
 **Alternatives considered**:
 
-- Add job lookup to `internal/services/processinstance`: rejected because the issue forbids mixing job functionality into process-instance services.
-- Add job lookup to `internal/services/incident`: rejected because incident output only supplies `jobKey`; job inspection and mutation are separate behavior.
+- Add job get to `internal/services/processinstance`: rejected because the issue forbids mixing job functionality into process-instance services.
+- Add job get to `internal/services/incident`: rejected because incident output only supplies `jobKey`; job inspection and mutation are separate behavior.
 - Implement generated-client calls in `cmd`: rejected because it bypasses service versioning, error mapping, and test patterns.
 
 ## Decision: Use Generated Job Search For Lookup
@@ -58,7 +58,7 @@ Implement v8.8/v8.9 updates with generated `PATCH /jobs/{jobKey}` behavior and a
 
 ## Decision: Confirm Retries Only
 
-When retries are supplied and `--no-wait` is not supplied, poll job lookup until the requested retry count is observed or waiter exhaustion occurs. Timeout-only updates return submitted/accepted output after mutation acceptance and do not compare deadline timestamps.
+When retries are supplied and `--no-wait` is not supplied, poll job get until the requested retry count is observed or waiter exhaustion occurs. Timeout-only updates return submitted/accepted output after mutation acceptance and do not compare deadline timestamps.
 
 **Rationale**: Retry count has a stable read-model predicate. Timeout confirmation would require comparing an observed deadline timestamp against client-side timing assumptions, which is vulnerable to time drift and read-model timing differences. The command should not claim confirmation where the predicate is not reliable.
 

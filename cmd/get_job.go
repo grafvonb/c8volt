@@ -19,7 +19,7 @@ var getJobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Inspect a job by key",
 	Long: "Inspect a Camunda job by key.\n\n" +
-		"Use the jobKey exposed by incident-aware process-instance output to inspect the matching runtime job directly. Human output is compact for terminal diagnosis, while --json returns the stable lookup payload for automation. Use --error-message-limit to shorten long human error messages. Job lookup is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
+		"Use the jobKey exposed by incident-aware process-instance output to inspect the matching runtime job directly. Human output is compact for terminal diagnosis, while --json returns the stable job payload for automation. Use --error-message-limit to shorten long human error messages. Getting jobs by key is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
 	Example: `  ./c8volt get job --key 2251799813711967
   ./c8volt --json get job --key 2251799813711967`,
 	Args: cobra.NoArgs,
@@ -34,12 +34,12 @@ var getJobCmd = &cobra.Command{
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		result, err := cli.LookupJob(cmd.Context(), flagGetJobKey, collectOptions()...)
+		item, err := cli.GetJob(cmd.Context(), flagGetJobKey, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get job: %w", err))
 		}
-		if err := jobLookupView(cmd, result); err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job lookup result: %w", err))
+		if err := jobView(cmd, item); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job: %w", err))
 		}
 	},
 }
@@ -59,7 +59,7 @@ func init() {
 
 func validateGetJobFlags(cmd *cobra.Command) error {
 	if strings.TrimSpace(flagGetJobKey) == "" {
-		return invalidFlagValuef("job lookup requires a non-empty --key")
+		return invalidFlagValuef("get job requires a non-empty --key")
 	}
 	if flagGetErrorMessageLimit < 0 {
 		return invalidFlagValuef("--error-message-limit must be non-negative")

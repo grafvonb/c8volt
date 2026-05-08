@@ -5,7 +5,7 @@ Started: 2026-05-08 11:45:05
 
 ## Codebase Patterns
 
-- JSON lookup payloads with optional nested structs need custom marshaling or pointer fields; `omitempty` does not omit zero-value struct fields, so not-found job output omits `job` through `LookupResult.MarshalJSON`.
+- Job get follows the repository's single-resource API rule: return the job object on success and a not-found error when the key is absent or hidden by tenant scope.
 - In the Codex sandbox, full race validation needs `GOCACHE=/tmp/c8volt-gocache`; the default Go cache under the user Library can make `./cmd` exit with status 1 without individual test failures.
 - `update job --no-wait` is implemented as a post-mutation confirmation skip only: command parsing sets `NoWait`, facade/domain mapping sets `SkipConfirmation`, shared `collectOptions()` also passes `WithNoWait()`, and the local dry-run/no-op/interactive confirmation gate still runs before mutation.
 - Job timeout updates use `UpdateRequest.TimeoutMillis`/`JobUpdateRequest.TimeoutMillis` and generated `JobChangeset.Timeout`; timeout-only results skip confirmation and output submitted milliseconds without deadline-confirmation language.
@@ -18,11 +18,11 @@ Started: 2026-05-08 11:45:05
 - Service packages follow `api.go`, `factory.go`, versioned `v87`/`v88`/`v89` subpackages, compile-time interface assertions, and `New(cfg, httpClient, log)` factories that switch on `cfg.App.CamundaVersion`.
 - Unsupported version behavior returns domain `ErrUnsupported` from the versioned service, as seen in tenant v8.7 and process-instance variable update v8.7 paths.
 - Generated Camunda v8.8 and v8.9 clients expose `SearchJobsWithResponse(ctx, JobSearchQuery, ...)`, `UpdateJobWithResponse(ctx, jobKey, JobUpdateRequest, ...)`, `JobSearchResult`, and `JobChangeset` with `Retries *int32` and `Timeout *int64`; `JobFailRequest` has `RetryBackOff`, which is separate from the update endpoint and remains out of scope.
-- Single-key job lookup uses generated job search with a `jobKey` equality filter and a small offset page, returns an empty domain job as a not-found result, and treats duplicate matches as malformed response state.
+- Single-key get job uses generated job search with a `jobKey` equality filter and a small offset page, returns an empty domain job as a not-found result, and treats duplicate matches as malformed response state.
 - Waiters use `cfg.App.Backoff`, optional context deadlines, `backoff.InitialDelay` plus `backoff.NextDelay`, max-retry checks, verbose polling logs, and return confirmation failure without converting it into mutation success.
 - Incident-enriched process-instance human output includes `jobKey` only when present in `incidentHumanFields`; regression coverage already asserts the full incident line containing `jobKey=...`.
 - Docs are regenerated through `make docs-content`, which runs `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown` and syncs `docs/index.md` from `README.md`.
-- Service boundary regression coverage can use reflection against `processinstance.API` and `incident.API` to prove job lookup/update/confirmation methods stay out of unrelated service surfaces.
+- Service boundary regression coverage can use reflection against `processinstance.API` and `incident.API` to prove get job/update/confirmation methods stay out of unrelated service surfaces.
 - Job command documentation is source-driven: Cobra `Long` and `Example` text feeds `docs/cli/`, while README examples are the source for `docs/index.md` through `make docs-content`.
 
 ---
@@ -108,7 +108,7 @@ Started: 2026-05-08 11:45:05
 **Tasks Completed**:
 - [x] T017: Add command test for successful `get job --key <job-key>` human output
 - [x] T018: Add command test for successful `get job --key <job-key>` JSON output
-- [x] T019: Add command test for not-found job lookup in human and JSON modes
+- [x] T019: Add command test for not-found get job in human and JSON modes
 - [x] T020: Add v8.8 service test for generated job search by key
 - [x] T021: Add v8.9 service test for generated job search by key
 - [x] T022: Add facade lookup tests for found and not-found results
@@ -135,7 +135,7 @@ Started: 2026-05-08 11:45:05
 **Learnings**:
 - Generated job-search models expose `jobKey` as a union-backed equality filter, so service tests assert the typed filter with `AsJobKeyFilterProperty0`.
 - Human `get job` output now includes deadline and error metadata when present, matching the diagnostic fields required for incident follow-up.
-- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobLookup|SearchJobs)' -count=1`.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobGetter|SearchJobs)' -count=1`.
 ---
 
 ---
@@ -158,7 +158,7 @@ Started: 2026-05-08 11:45:05
 - [x] T038: Implement facade retry update and default confirmation flow
 - [x] T039: Implement `cmd/update_job.go` `--retries` validation, service wiring, and confirmed human/JSON output
 - [x] T040: Run targeted US2 validation
-- [x] T086: Implement retry plan construction from current job lookup state
+- [x] T086: Implement retry plan construction from current get job state
 - [x] T087: Implement `--dry-run` retry rendering and JSON payload without submitting mutation
 - [x] T088: Implement retry-only no-op detection that skips prompt and mutation
 - [x] T089: Implement interactive confirmation gate for material retry updates
@@ -274,8 +274,8 @@ Started: 2026-05-08 11:45:05
 **User Story**: Phase 8: Documentation & Command Discovery
 **Tasks Completed**:
 - [x] T066: Add help examples and command contract metadata coverage for `get job` and `update job`, including `--dry-run`, `--no-wait`, `--auto-confirm`, and JSON guardrails
-- [x] T067: Update README examples for job lookup, job update dry-run, confirmed updates, and no-wait updates
-- [x] T068: Update site documentation source examples for job lookup, job update dry-run, confirmed updates, and no-wait updates
+- [x] T067: Update README examples for get job, job update dry-run, confirmed updates, and no-wait updates
+- [x] T068: Update site documentation source examples for get job, job update dry-run, confirmed updates, and no-wait updates
 - [x] T069: Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
 - [x] T070: Run targeted command help and discovery validation
 **Tasks Remaining in Story**: None - story complete
@@ -331,7 +331,7 @@ Started: 2026-05-08 11:45:05
 - specs/180-job-update-lookup/quickstart.md
 - specs/180-job-update-lookup/tasks.md
 **Learnings**:
-- `LookupResult` needs custom JSON marshaling so not-found payloads keep `found=false` and `key` while omitting the empty `job` object.
+- `Job` needs custom JSON marshaling so not-found payloads keep `found=false` and `key` while omitting the empty `job` object.
 - Default `make test` fails in this sandbox because the default Go build cache is outside writable roots; `GOCACHE=/tmp/c8volt-gocache make test` passes the full race-enabled suite.
 - Final diff scope is limited to issue #180 job command behavior, documentation/generated docs, and Speckit artifacts.
 - `git add -A` failed with `Unable to create .git/index.lock: Operation not permitted`, so the final work-unit commit still needs to be created in an environment with Git metadata write access.

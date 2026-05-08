@@ -12,7 +12,7 @@ Inspect a job by key
 
 Inspect a Camunda job by key.
 
-Use the jobKey exposed by incident-aware process-instance output to inspect the matching runtime job directly. Human output is compact for terminal diagnosis, while --json returns the stable lookup payload for automation. Use --error-message-limit to shorten long human error messages. Job lookup is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.
+Use the jobKey exposed by incident-aware process-instance output to inspect the matching runtime job directly. Human output is compact for terminal diagnosis, while --json returns the stable job payload for automation. Use --error-message-limit to shorten long human error messages. Getting jobs by key is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.
 
 ```
 c8volt get job [flags]

@@ -8,9 +8,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"strconv"
 	"testing"
 
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,10 +90,7 @@ func TestGetJobCommand_JSONOutput(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "get job", envelope["command"])
-	payload := requireJSONObject(t, envelope["payload"])
-	require.Equal(t, true, payload["found"])
-	require.Equal(t, "2251799813711967", payload["key"])
-	job := requireJSONObject(t, payload["job"])
+	job := requireJSONObject(t, envelope["payload"])
 	require.Equal(t, "2251799813711967", job["key"])
 	require.Equal(t, "FAILED", job["state"])
 	require.Equal(t, float64(2), job["retries"])
@@ -98,35 +99,55 @@ func TestGetJobCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, "tenant-a", job["tenantId"])
 }
 
-func TestGetJobCommand_NotFoundHumanAndJSON(t *testing.T) {
-	t.Run("human", func(t *testing.T) {
-		var requests []string
-		srv := newJobLookupServer(t, &requests, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
-		t.Cleanup(srv.Close)
-		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+func TestGetJobCommand_NotFoundExitsWithNotFound(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		json bool
+	}{
+		{name: "human"},
+		{name: "json", json: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []string
+			srv := newJobLookupServer(t, &requests, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
+			t.Cleanup(srv.Close)
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-		output := executeRootForJobTest(t, "--config", cfgPath, "get", "job", "--key", "missing-job")
+			env := map[string]string{"C8VOLT_TEST_CONFIG": cfgPath}
+			if tc.json {
+				env["C8VOLT_TEST_JSON"] = "1"
+			}
+			output, err := testx.RunCmdSubprocess(t, "TestGetJobCommand_NotFoundExitsWithNotFoundHelper", env)
+			require.Error(t, err)
 
-		require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
-		require.Equal(t, "job missing-job: not found\n", output)
-	})
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.NotFound, exitErr.ExitCode())
+			require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+			require.Contains(t, string(output), "resource not found")
+			require.Contains(t, string(output), "job missing-job was not found or is not visible to the configured tenant")
+			if tc.json {
+				var envelope map[string]any
+				require.NoError(t, json.Unmarshal(output, &envelope))
+				require.Equal(t, "not_found", envelope["class"])
+			}
+		})
+	}
+}
 
-	t.Run("json", func(t *testing.T) {
-		var requests []string
-		srv := newJobLookupServer(t, &requests, `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`)
-		t.Cleanup(srv.Close)
-		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+func TestGetJobCommand_NotFoundExitsWithNotFoundHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
 
-		output := executeRootForJobTest(t, "--config", cfgPath, "--json", "get", "job", "--key", "missing-job")
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "job", "--key", "missing-job"}
+	if os.Getenv("C8VOLT_TEST_JSON") == "1" {
+		os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--json", "get", "job", "--key", "missing-job"}
+	}
 
-		require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
-		var envelope map[string]any
-		require.NoError(t, json.Unmarshal([]byte(output), &envelope))
-		payload := requireJSONObject(t, envelope["payload"])
-		require.Equal(t, false, payload["found"])
-		require.Equal(t, "missing-job", payload["key"])
-		require.NotContains(t, payload, "job")
-	})
+	Execute()
 }
 
 func newJobLookupServer(t *testing.T, requests *[]string, response string) *httptest.Server {

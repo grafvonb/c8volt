@@ -15,11 +15,11 @@ import (
 	"github.com/grafvonb/c8volt/toolx/logging"
 )
 
-type JobLookup interface {
-	LookupJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
+type JobGetter interface {
+	GetJob(ctx context.Context, key string, opts ...services.CallOption) (d.Job, error)
 }
 
-func WaitForRetries(ctx context.Context, s JobLookup, cfg *config.Config, log *slog.Logger, key string, retries int32, opts ...services.CallOption) (d.Job, error) {
+func WaitForRetries(ctx context.Context, s JobGetter, cfg *config.Config, log *slog.Logger, key string, retries int32, opts ...services.CallOption) (d.Job, error) {
 	cCfg := services.ApplyCallOptions(opts)
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for job %s retries to be %d", key, retries))
 	defer stopActivity()
@@ -45,7 +45,7 @@ func WaitForRetries(ctx context.Context, s JobLookup, cfg *config.Config, log *s
 			return d.Job{}, err
 		}
 		attempts++
-		job, err := s.LookupJob(ctx, key, opts...)
+		job, err := s.GetJob(ctx, key, opts...)
 		if err != nil {
 			return d.Job{}, err
 		}
