@@ -92,9 +92,11 @@ func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key str
 	if incident.ErrorType != "" {
 		fields = append(fields, "errorType="+incident.ErrorType)
 	}
-	if incident.JobKey != "" {
-		fields = append(fields, "jobKey="+incident.JobKey)
+	jobKey := incident.JobKey
+	if jobKey == "" {
+		jobKey = "n/a"
 	}
+	fields = append(fields, "jobKey="+jobKey)
 	return strings.Join(fields, " ")
 }
 
