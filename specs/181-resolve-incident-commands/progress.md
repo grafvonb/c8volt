@@ -18,6 +18,7 @@ Started: 2026-05-08 21:06:02
 - Resolve dry-run support is already driven by facade `WithDryRun`; command leaves only need to expose `--dry-run`, pass `collectOptions()`, reject `--json --verbose`, and render planned/skipped results without submitting mutation.
 - Resolve mutation commands must render facade bulk results before handling aggregate facade errors so partial failures do not suppress successful target output.
 - The shared worker pool now preserves a worker result even when the worker also returns an error; resolve bulk helpers compact unscheduled fail-fast zero-value slots so totals describe attempted work instead of requested-but-unscheduled keys.
+- `make docs-content` regenerates Cobra command markdown and syncs `docs/index.md` from `README.md`; `docs/cli/index.md` remains a maintained landing page and must be updated directly when adding command-family navigation.
 
 ## Iteration 1 - 2026-05-08 21:07:28 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
@@ -197,4 +198,35 @@ Started: 2026-05-08 21:06:02
 - `--no-wait` was wired through `collectOptions()` but missing from both resolve leaf flag sets, so command-level coverage must include the actual Cobra flag surface.
 - Process-instance no-wait status depends on setting `ConfirmationStatus` before deriving the aggregate result status; otherwise successful no-wait results look confirmed.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`, and `GOCACHE=/tmp/c8volt-gocache go test ./toolx/pool -count=1`.
+---
+---
+## Iteration 7 - 2026-05-08 21:57:38 CEST
+**User Story**: User Story 5 - Preserve Existing Workflows
+**Tasks Completed**:
+- [x] T043: Add regression tests that `get process-instance --with-incidents`, `get pi --with-incidents`, and `update pi --vars` remain unchanged in `cmd/get_processinstance_test.go` and `cmd/update_processinstance_test.go`
+- [x] T044: Update docs generation tests for resolve command docs in `docsgen/main_test.go`
+- [x] T045: Update capabilities tests for resolve metadata in `cmd/capabilities_test.go`
+- [x] T046: Update README examples and command overview for resolve workflows, including dry-run examples, in `README.md`
+- [x] T047: Regenerate CLI reference markdown with `make docs-content`, updating resolve command docs and CLI navigation
+- [x] T048: Verify no incident lookup or resolution methods were added to process-instance service contracts or factory
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/capabilities_test.go
+- cmd/get_processinstance_test.go
+- cmd/update_processinstance_test.go
+- docs/cli/c8volt.md
+- docs/cli/c8volt_resolve.md
+- docs/cli/c8volt_resolve_incident.md
+- docs/cli/c8volt_resolve_process-instance.md
+- docs/cli/index.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/tasks.md
+**Learnings**:
+- Resolve command documentation is generated from Cobra command long text and examples, while `docs/cli/index.md` needs a separate navigation update to expose the new command family from the CLI landing page.
+- Capabilities JSON tests can reuse the recursive `findCommandCapability` helper from the command contract tests because all command tests share package `cmd`.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance|TestGetPIWithIncidents|TestUpdatePI|TestCapabilities|TestCapabilityDocumentForRoot_ResolveCommandFamily|TestCommandCapabilityForCommand_Resolve' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`, `git diff --check`, and a no-match boundary scan for incident/resolve methods in `internal/services/processinstance` factory and version contracts.
 ---

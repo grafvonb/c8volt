@@ -1146,6 +1146,43 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "found: 1")
 }
 
+// Protects the short `get pi --with-incidents` workflow used before resolving incidents.
+func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813711967":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"2251799813711967","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`))
+		case "/v2/process-instances/2251799813711967/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[{"errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685249","jobKey":"2251799813685251","processInstanceKey":"2251799813711967","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"get", "pi",
+		"--key", "2251799813711967",
+		"--with-incidents",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/process-instances/2251799813711967",
+		"POST /v2/process-instances/2251799813711967/incidents/search",
+	}, requests)
+	require.Contains(t, output, "2251799813711967 tenant demo v3 ACTIVE inc!")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=2251799813685249 errorType=JOB_NO_RETRIES jobKey=2251799813685251 message=No retries left")
+	require.Contains(t, output, "found: 1")
+}
+
 func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessageOnly(t *testing.T) {
 	var requests []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

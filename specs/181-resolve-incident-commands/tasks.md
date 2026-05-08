@@ -143,15 +143,15 @@
 
 ### Tests for User Story 5
 
-- [ ] T043 [P] [US5] Add regression tests that `get process-instance --with-incidents`, `get pi --with-incidents`, and `update pi --vars` remain unchanged in `cmd/get_processinstance_test.go` and `cmd/update_processinstance_test.go`
-- [ ] T044 [P] [US5] Update docs generation tests for resolve command docs in `docsgen/main_test.go`
-- [ ] T045 [P] [US5] Update capabilities tests for resolve metadata in `cmd/capabilities_test.go`
+- [x] T043 [P] [US5] Add regression tests that `get process-instance --with-incidents`, `get pi --with-incidents`, and `update pi --vars` remain unchanged in `cmd/get_processinstance_test.go` and `cmd/update_processinstance_test.go`
+- [x] T044 [P] [US5] Update docs generation tests for resolve command docs in `docsgen/main_test.go`
+- [x] T045 [P] [US5] Update capabilities tests for resolve metadata in `cmd/capabilities_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T046 [US5] Update README examples and command overview for resolve workflows, including dry-run examples, in `README.md`
-- [ ] T047 [US5] Regenerate CLI reference markdown with `make docs-content`, updating `docs/cli/c8volt_resolve.md`, `docs/cli/c8volt_resolve_incident.md`, `docs/cli/c8volt_resolve_process-instance.md`, and `docs/cli/index.md`
-- [ ] T048 [US5] Verify no incident lookup or resolution methods were added to `internal/services/processinstance/factory.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, or `internal/services/processinstance/v89/contract.go`
+- [x] T046 [US5] Update README examples and command overview for resolve workflows, including dry-run examples, in `README.md`
+- [x] T047 [US5] Regenerate CLI reference markdown with `make docs-content`, updating `docs/cli/c8volt_resolve.md`, `docs/cli/c8volt_resolve_incident.md`, `docs/cli/c8volt_resolve_process-instance.md`, and `docs/cli/index.md`
+- [x] T048 [US5] Verify no incident lookup or resolution methods were added to `internal/services/processinstance/factory.go`, `internal/services/processinstance/v87/contract.go`, `internal/services/processinstance/v88/contract.go`, or `internal/services/processinstance/v89/contract.go`
 
 **Checkpoint**: User-facing documentation and existing workflows remain consistent.
 
