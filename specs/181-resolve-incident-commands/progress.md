@@ -13,6 +13,7 @@ Started: 2026-05-08 21:06:02
 - Incident resolution should use single-incident generated endpoints for per-incident mutation results, while process-instance resolution should discover active incident keys through `internal/services/incident` and then resolve those keys directly; no incident methods belong in `internal/services/processinstance`.
 - Incident confirmation polling now follows the service waiter pattern: direct incident waits accept `404/not found` or non-active incident state as resolved, and process-instance waits poll the scoped incident lookup until the initially discovered active incident keys disappear.
 - Expanding the exported process facade API requires updating test doubles in command/resource packages even before CLI wiring exists; keep those stubs panic-only unless a test explicitly exercises resolution.
+- Resolve mutation command rendering should use shared JSON envelopes in machine mode and compact per-target human lines plus a totals line in one-line mode, matching update process-instance result rendering.
 
 ## Iteration 1 - 2026-05-08 21:07:28 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
@@ -78,4 +79,32 @@ Started: 2026-05-08 21:06:02
 - Process-instance resolution can stay entirely inside the incident service boundary by combining scoped incident lookup, direct incident mutation calls, and scoped lookup polling from the process facade.
 - `--no-wait` should be modeled as accepted/submitted output in facade results, while dry-run should call lookup paths only and keep `mutationSubmitted` false.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`, plus compile-only `go test` checks for `./cmd`, `./c8volt/resource`, and `./...`.
+---
+---
+## Iteration 3 - 2026-05-08 21:29:19 CEST
+**User Story**: User Story 1 - Resolve Known Incidents
+**Tasks Completed**:
+- [x] T018: Add command tests for incident key flags, stdin `-`, duplicate keys, and invalid keys in `cmd/resolve_incident_test.go`
+- [x] T019: Add human and JSON view tests for incident resolution results and non-dry-run payloads in `cmd/cmd_views_resolve_test.go`
+- [x] T020: Add command contract expectations for `resolve incident`, alias `inc`, and mutation metadata in `cmd/command_contract_test.go`
+- [x] T021: Add the `resolve` root command with shared backoff and state-changing metadata in `cmd/resolve.go`
+- [x] T022: Add `resolve incident` command parsing, aliases, flags, stdin key merge, validation, automation support, and worker flags in `cmd/resolve_incident.go`
+- [x] T023: Add incident resolution human and JSON rendering in `cmd/cmd_views_resolve.go`
+- [x] T024: Wire `resolve incident` to the process facade and preserve per-target failures in `cmd/resolve_incident.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_resolve.go
+- cmd/cmd_views_resolve_test.go
+- cmd/command_contract_test.go
+- cmd/get_processinstance_test.go
+- cmd/resolve.go
+- cmd/resolve_incident.go
+- cmd/resolve_incident_test.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/tasks.md
+**Learnings**:
+- Direct `resolve incident` can wire straight to the process facade `ResolveIncidents` bulk helper; command-local responsibility is target collection, validation, automation metadata, and rendering.
+- The command test server can confirm default wait behavior by returning a resolved state from `GET /v2/incidents/{key}` immediately after `POST /v2/incidents/{key}/resolution`.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolveIncident|TestRenderIncidentResolution|TestCommandCapabilityForCommand_ResolveIncidentContract|TestCapabilityDocumentForRoot_ResolveCommandFamily' -count=1`, the broader command slice, and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---

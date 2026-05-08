@@ -3607,6 +3607,7 @@ func resetProcessInstanceCommandGlobals() {
 	flagRunPIProcessDefinitionVersion = 0
 	flagRunPICount = 1
 	flagRunPIVars = ""
+	flagResolveIncidentKeys = nil
 	flagUpdatePIKeys = nil
 	flagUpdatePIVars = ""
 	flagUpdatePIVarsFile = ""

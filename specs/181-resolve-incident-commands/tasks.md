@@ -54,16 +54,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T018 [P] [US1] Add command tests for incident key flags, stdin `-`, duplicate keys, and invalid keys in `cmd/resolve_incident_test.go`
-- [ ] T019 [P] [US1] Add human and JSON view tests for incident resolution results and non-dry-run payloads in `cmd/cmd_views_resolve_test.go`
-- [ ] T020 [P] [US1] Add command contract expectations for `resolve incident`, alias `inc`, and mutation metadata in `cmd/command_contract_test.go`
+- [x] T018 [P] [US1] Add command tests for incident key flags, stdin `-`, duplicate keys, and invalid keys in `cmd/resolve_incident_test.go`
+- [x] T019 [P] [US1] Add human and JSON view tests for incident resolution results and non-dry-run payloads in `cmd/cmd_views_resolve_test.go`
+- [x] T020 [P] [US1] Add command contract expectations for `resolve incident`, alias `inc`, and mutation metadata in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Add the `resolve` root command with shared backoff and state-changing metadata in `cmd/resolve.go`
-- [ ] T022 [US1] Add `resolve incident` command parsing, aliases, flags, stdin key merge, validation, automation support, and worker flags in `cmd/resolve_incident.go`
-- [ ] T023 [US1] Add incident resolution human and JSON rendering in `cmd/cmd_views_resolve.go`
-- [ ] T024 [US1] Wire `resolve incident` to the process facade and preserve per-target failures in `cmd/resolve_incident.go`
+- [x] T021 [US1] Add the `resolve` root command with shared backoff and state-changing metadata in `cmd/resolve.go`
+- [x] T022 [US1] Add `resolve incident` command parsing, aliases, flags, stdin key merge, validation, automation support, and worker flags in `cmd/resolve_incident.go`
+- [x] T023 [US1] Add incident resolution human and JSON rendering in `cmd/cmd_views_resolve.go`
+- [x] T024 [US1] Wire `resolve incident` to the process facade and preserve per-target failures in `cmd/resolve_incident.go`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable.
 

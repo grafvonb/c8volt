@@ -431,6 +431,62 @@ func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	require.Equal(t, AutomationSupportFull, updateJob.AutomationSupport)
 }
 
+func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(resolveIncidentCmd)
+
+	require.Equal(t, "resolve incident", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "inc")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to resolve; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when resolving multiple incidents (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling new incident resolutions after the first error",
+	})
+}
+
+func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	resolve, ok := findCommandCapability(doc.Commands, "resolve")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, resolve.Mutation)
+	require.Equal(t, ContractSupportLimited, resolve.ContractSupport)
+	require.Contains(t, resolve.Aliases, "res")
+
+	incident, ok := findCommandCapability(doc.Commands, "resolve incident")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, incident.Mutation)
+	require.Equal(t, ContractSupportFull, incident.ContractSupport)
+	require.Equal(t, AutomationSupportFull, incident.AutomationSupport)
+	require.Contains(t, incident.Aliases, "inc")
+}
+
 func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get"}, []string{
 		"Inspect cluster, process, job, tenant, and resource state",
