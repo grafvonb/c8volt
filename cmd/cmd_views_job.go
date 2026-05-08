@@ -30,9 +30,20 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 	}
 	switch result.Status {
 	case "confirmed":
-		renderOutputLine(cmd, "updated job %s: confirmed retries=%d", result.Key, derefInt32(result.ConfirmedRetries))
+		parts := []string{fmt.Sprintf("confirmed retries=%d", derefInt32(result.ConfirmedRetries))}
+		if result.SubmittedTimeoutMS != nil {
+			parts = append(parts, fmt.Sprintf("timeout=%dms submitted", *result.SubmittedTimeoutMS))
+		}
+		renderOutputLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, "; "))
 	case "submitted":
-		renderOutputLine(cmd, "updated job %s: submitted", result.Key)
+		parts := []string{"submitted"}
+		if result.SubmittedRetries != nil {
+			parts = append(parts, fmt.Sprintf("retries=%d", *result.SubmittedRetries))
+		}
+		if result.SubmittedTimeoutMS != nil {
+			parts = append(parts, fmt.Sprintf("timeout=%dms", *result.SubmittedTimeoutMS))
+		}
+		renderOutputLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
 	case "confirmation_failed":
 		renderOutputLine(cmd, "updated job %s: confirmation failed: %s", result.Key, result.Error)
 	case "mutation_failed":

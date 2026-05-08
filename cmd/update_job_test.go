@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -152,6 +155,129 @@ func TestUpdateJobCommand_JSONDryRunRetriesPlanPayload(t *testing.T) {
 	require.Equal(t, float64(1), current["retries"])
 }
 
+func TestUpdateJobTimeoutSubmittedViewIncludesSubmittedTimeoutOnly(t *testing.T) {
+	timeoutMillis := int64(300000)
+	cmd, output := newJobViewTestCommand()
+
+	err := jobUpdateResultView(cmd, job.UpdateResult{
+		Key:                "2251799813711967",
+		Status:             "submitted",
+		MutationAccepted:   true,
+		ConfirmationStatus: "skipped",
+		SubmittedTimeoutMS: &timeoutMillis,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "updated job 2251799813711967: submitted timeout=300000ms\n", output.String())
+}
+
+func TestUpdateJobRetriesAndTimeoutViewShowsRetriesConfirmedAndTimeoutSubmitted(t *testing.T) {
+	retries := int32(3)
+	timeoutMillis := int64(300000)
+	cmd, output := newJobViewTestCommand()
+
+	err := jobUpdateResultView(cmd, job.UpdateResult{
+		Key:                "2251799813711967",
+		Status:             "confirmed",
+		MutationAccepted:   true,
+		ConfirmationStatus: "confirmed",
+		SubmittedRetries:   &retries,
+		SubmittedTimeoutMS: &timeoutMillis,
+		ConfirmedRetries:   &retries,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "updated job 2251799813711967: confirmed retries=3; timeout=300000ms submitted\n", output.String())
+	require.NotContains(t, output.String(), "deadline")
+}
+
+func TestUpdateJobCommand_TimeoutSubmittedHumanOutputWithoutConfirmationPolling(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--timeout", "5m", "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
+	require.Len(t, patchBodies, 1)
+	requirePatchTimeout(t, patchBodies[0], float64(300000))
+	require.NotContains(t, output, "confirmed")
+	require.Contains(t, output, "updated job 2251799813711967: submitted timeout=300000ms")
+}
+
+func TestUpdateJobCommand_RetriesAndTimeoutConfirmsRetriesOnly(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+		jobSearchResponse("2251799813711967", 3),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--timeout", "5m", "--auto-confirm")
+
+	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
+	require.Len(t, patchBodies, 1)
+	requirePatchRetries(t, patchBodies[0], float64(3))
+	requirePatchTimeout(t, patchBodies[0], float64(300000))
+	require.Contains(t, output, "updated job 2251799813711967: confirmed retries=3; timeout=300000ms submitted")
+	require.NotContains(t, output, "confirmed deadline")
+}
+
+func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--timeout", "5m", "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, patchBodies)
+	require.Contains(t, output, "dry run: update job 2251799813711967: timeout: submit 5m; no changes applied")
+	require.NotContains(t, output, "deadline")
+}
+
+func TestUpdateJobCommand_JSONDryRunRetriesAndTimeoutPlanPayload(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 1),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "--json", "update", "job", "--key", "2251799813711967", "--retries", "3", "--timeout", "5m", "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, patchBodies)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, true, payload["materialChange"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+	require.Equal(t, "changed", payload["retryStatus"])
+	require.Equal(t, float64(3), payload["requestedRetries"])
+	require.Equal(t, "5m", payload["requestedTimeout"])
+	require.Equal(t, float64(300000), payload["timeoutMillis"])
+	items := payload["items"].([]any)
+	require.Len(t, items, 2)
+	timeoutItem := requireJSONObject(t, items[1])
+	require.Equal(t, "timeout", timeoutItem["name"])
+	require.Equal(t, "5m", timeoutItem["after"])
+	require.Equal(t, "submit", timeoutItem["status"])
+	require.Empty(t, timeoutItem["before"])
+}
+
 func TestUpdateJobCommand_RejectsJSONVerboseBeforeLookupOrMutation(t *testing.T) {
 	resetUpdateJobFlagState()
 	t.Cleanup(resetUpdateJobFlagState)
@@ -202,8 +328,39 @@ func requirePatchRetries(t *testing.T, body map[string]any, want float64) {
 	require.Equal(t, want, changeset["retries"])
 }
 
+func requirePatchTimeout(t *testing.T, body map[string]any, want float64) {
+	t.Helper()
+	changeset := requireJSONObject(t, body["changeset"])
+	require.Equal(t, want, changeset["timeout"])
+}
+
+func newJobViewTestCommand() (*cobra.Command, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	cmd := &cobra.Command{}
+	cmd.SetOut(buf)
+	return cmd, buf
+}
+
 func strconvFormatInt32(value int32) string {
 	return strconv.Itoa(int(value))
+}
+
+func TestParseUpdateJobRequestParsesTimeoutMillis(t *testing.T) {
+	resetUpdateJobFlagState()
+	t.Cleanup(resetUpdateJobFlagState)
+	resetCommandTreeFlags(Root())
+	require.NoError(t, updateJobCmd.Flags().Set("timeout", "5m"))
+	t.Cleanup(func() { require.NoError(t, updateJobCmd.Flags().Set("timeout", "")) })
+
+	flagUpdateJobKey = "2251799813711967"
+	flagUpdateJobTimeoutRaw = "5m"
+
+	request, err := parseUpdateJobRequest(updateJobCmd)
+
+	require.NoError(t, err)
+	require.NotNil(t, request.TimeoutMillis)
+	require.Equal(t, int64(300000), *request.TimeoutMillis)
+	require.False(t, request.ConfirmRetries)
 }
 
 func TestUpdateJobCommand_RejectsJSONMutationWithoutAutoConfirmOrAutomationBeforeLookupOrMutation(t *testing.T) {

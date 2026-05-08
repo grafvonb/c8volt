@@ -5,6 +5,7 @@ Started: 2026-05-08 11:45:05
 
 ## Codebase Patterns
 
+- Job timeout updates use `UpdateRequest.TimeoutMillis`/`JobUpdateRequest.TimeoutMillis` and generated `JobChangeset.Timeout`; timeout-only results skip confirmation and output submitted milliseconds without deadline-confirmation language.
 - `update job` now performs command-local lookup-backed planning before mutation, with retry no-op and dry-run handling in `cmd/update_job.go`/`cmd/cmd_views_job.go`; the facade attaches the submitted plan to mutation results for JSON output.
 - Job retry mutation is owned by the versioned job services, while retry read-model confirmation lives in `internal/services/job/waiter` and reuses `cfg.App.Backoff`, verbose polling logs, context deadlines, and max-retry exhaustion semantics.
 - New facade packages must be embedded in `c8volt.API`, wired in `c8volt.New`, and backed by a matching `internal/services/<resource>` factory before command code can call them through `NewCli(cmd)`.
@@ -178,4 +179,39 @@ Started: 2026-05-08 11:45:05
 - `update job` can reuse the same lookup path as `get job` for preflight retry plans, making dry-run, no-op, and interactive confirmation decisions local to the command before mutation.
 - Versioned job services can submit generated `JobChangeset.Retries` and use the same service as the waiter lookup source for post-mutation retry confirmation.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/waiter ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Retries|RetryConfirmation|JobUpdateRetries)' -count=1` and with the same package list at `-count=1`.
+---
+
+---
+## Iteration 5 - 2026-05-08 12:24:26 CEST
+**User Story**: User Story 3 - Update Job Timeout Without Deadline Confirmation
+**Tasks Completed**:
+- [x] T041: Add command test for `update job --key <job-key> --timeout 5m` submitted output without confirmation polling
+- [x] T042: Add command test for combined `--retries 3 --timeout 5m` confirming retries only
+- [x] T043: Add v8.8 service test for generated job timeout milliseconds request
+- [x] T044: Add v8.9 service test for generated job timeout milliseconds request
+- [x] T045: Add facade test proving timeout-only updates skip deadline confirmation
+- [x] T091: Add command test proving timeout dry-run reports timeout submission intent, performs no deadline comparison, and submits no mutation
+- [x] T092: Add command test proving combined retries-plus-timeout dry-run includes retry classification and timeout submission intent
+- [x] T046: Implement timeout duration parsing and millisecond conversion
+- [x] T047: Implement v8.8 timeout update request mapping
+- [x] T048: Implement v8.9 timeout update request mapping
+- [x] T049: Implement timeout-only submitted result behavior and combined retries-plus-timeout retries-only confirmation
+- [x] T050: Render timeout submitted fields without confirmed deadline claims in human and JSON output
+- [x] T051: Run targeted US3 validation
+- [x] T093: Extend job update planning to mark timeout requests as material submission intent without deadline equality checks
+- [x] T094: Extend dry-run and JSON renderers to show timeout submission intent without confirmed deadline claims
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client_test.go
+- cmd/cmd_views_job.go
+- cmd/update_job_test.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/service_test.go
+- specs/180-job-update-lookup/tasks.md
+- specs/180-job-update-lookup/progress.md
+**Learnings**:
+- Timeout submission was already flowing through the command/facade/service model; the missing behavior was explicit regression coverage and human result rendering that names submitted timeout milliseconds without implying deadline confirmation.
+- Pure view tests cover timeout output in this sandbox even when HTTP-backed command tests skip due local listener restrictions.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Timeout|TimeoutOnly|RetriesAndTimeout)' -count=1`.
 ---

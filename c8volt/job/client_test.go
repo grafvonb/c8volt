@@ -105,3 +105,39 @@ func TestUpdateJobRetriesFacade_MutationFailureReturnsFailedResult(t *testing.T)
 	require.False(t, result.MutationAccepted)
 	require.Equal(t, mutationErr.Error(), result.Error)
 }
+
+func TestUpdateJobTimeoutOnlyFacade_SkipsDeadlineConfirmation(t *testing.T) {
+	timeoutMillis := int64(300000)
+	api := New(fakeJobService{
+		lookup: func(context.Context, string, ...services.CallOption) (d.Job, error) {
+			t.Fatal("unexpected lookup for timeout-only confirmation")
+			return d.Job{}, nil
+		},
+		update: func(_ context.Context, request d.JobUpdateRequest, _ ...services.CallOption) (d.JobUpdateResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			require.Nil(t, request.Retries)
+			require.False(t, request.ConfirmRetries)
+			require.NotNil(t, request.TimeoutMillis)
+			require.Equal(t, timeoutMillis, *request.TimeoutMillis)
+			return d.JobUpdateResult{
+				Key:                request.Key,
+				MutationAccepted:   true,
+				ConfirmationStatus: "skipped",
+				SubmittedTimeoutMS: request.TimeoutMillis,
+			}, nil
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.UpdateJob(context.Background(), UpdateRequest{
+		Key:           "2251799813711967",
+		TimeoutRaw:    "5m",
+		TimeoutMillis: &timeoutMillis,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "submitted", result.Status)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Nil(t, result.ConfirmedRetries)
+	require.Equal(t, &timeoutMillis, result.SubmittedTimeoutMS)
+}

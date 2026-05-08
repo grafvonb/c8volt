@@ -125,24 +125,24 @@
 
 ### Tests for User Story 3
 
-- [ ] T041 [P] [US3] Add command test for `update job --key <job-key> --timeout 5m` submitted output without confirmation polling in `cmd/update_job_test.go`
-- [ ] T042 [P] [US3] Add command test for combined `--retries 3 --timeout 5m` confirming retries only in `cmd/update_job_test.go`
-- [ ] T043 [P] [US3] Add v8.8 service test for generated job timeout milliseconds request in `internal/services/job/v88/service_test.go`
-- [ ] T044 [P] [US3] Add v8.9 service test for generated job timeout milliseconds request in `internal/services/job/v89/service_test.go`
-- [ ] T045 [P] [US3] Add facade test proving timeout-only updates skip deadline confirmation in `c8volt/job/client_test.go`
-- [ ] T091 [P] [US3] Add command test proving timeout dry-run reports timeout submission intent, performs no deadline comparison, and submits no mutation in `cmd/update_job_test.go`
-- [ ] T092 [P] [US3] Add command test proving combined retries-plus-timeout dry-run includes retry classification and timeout submission intent in `cmd/update_job_test.go`
+- [x] T041 [P] [US3] Add command test for `update job --key <job-key> --timeout 5m` submitted output without confirmation polling in `cmd/update_job_test.go`
+- [x] T042 [P] [US3] Add command test for combined `--retries 3 --timeout 5m` confirming retries only in `cmd/update_job_test.go`
+- [x] T043 [P] [US3] Add v8.8 service test for generated job timeout milliseconds request in `internal/services/job/v88/service_test.go`
+- [x] T044 [P] [US3] Add v8.9 service test for generated job timeout milliseconds request in `internal/services/job/v89/service_test.go`
+- [x] T045 [P] [US3] Add facade test proving timeout-only updates skip deadline confirmation in `c8volt/job/client_test.go`
+- [x] T091 [P] [US3] Add command test proving timeout dry-run reports timeout submission intent, performs no deadline comparison, and submits no mutation in `cmd/update_job_test.go`
+- [x] T092 [P] [US3] Add command test proving combined retries-plus-timeout dry-run includes retry classification and timeout submission intent in `cmd/update_job_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T046 [US3] Implement timeout duration parsing and millisecond conversion in `cmd/update_job.go` or a repository-local helper used by the command
-- [ ] T047 [US3] Implement v8.8 timeout update request mapping in `internal/services/job/v88/service.go`
-- [ ] T048 [US3] Implement v8.9 timeout update request mapping in `internal/services/job/v89/service.go`
-- [ ] T049 [US3] Implement timeout-only submitted result behavior and combined retries-plus-timeout retries-only confirmation in `c8volt/job/client.go`
-- [ ] T050 [US3] Render timeout submitted fields without confirmed deadline claims in human and JSON output in `cmd/update_job.go`
-- [ ] T051 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Timeout|TimeoutOnly|RetriesAndTimeout)' -count=1` and fix regressions
-- [ ] T093 [US3] Extend job update planning to mark timeout requests as material submission intent without deadline equality checks in `cmd/update_job.go`
-- [ ] T094 [US3] Extend dry-run and JSON renderers to show timeout submission intent without confirmed deadline claims in `cmd/update_job.go` and `cmd/cmd_views_job.go`
+- [x] T046 [US3] Implement timeout duration parsing and millisecond conversion in `cmd/update_job.go` or a repository-local helper used by the command
+- [x] T047 [US3] Implement v8.8 timeout update request mapping in `internal/services/job/v88/service.go`
+- [x] T048 [US3] Implement v8.9 timeout update request mapping in `internal/services/job/v89/service.go`
+- [x] T049 [US3] Implement timeout-only submitted result behavior and combined retries-plus-timeout retries-only confirmation in `c8volt/job/client.go`
+- [x] T050 [US3] Render timeout submitted fields without confirmed deadline claims in human and JSON output in `cmd/update_job.go`
+- [x] T051 [US3] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Timeout|TimeoutOnly|RetriesAndTimeout)' -count=1` and fix regressions
+- [x] T093 [US3] Extend job update planning to mark timeout requests as material submission intent without deadline equality checks in `cmd/update_job.go`
+- [x] T094 [US3] Extend dry-run and JSON renderers to show timeout submission intent without confirmed deadline claims in `cmd/update_job.go` and `cmd/cmd_views_job.go`
 
 **Checkpoint**: User Story 3 is independently complete when timeout updates plan submission intent, dry-run without mutation, submit milliseconds, combined updates confirm retries only, and output never implies deadline confirmation.
 
