@@ -24,6 +24,12 @@ Resolve one known incident key and wait for confirmation:
 ./c8volt resolve incident --key 2251799813685249
 ```
 
+Preview one known incident key without mutation:
+
+```bash
+./c8volt resolve incident --key 2251799813685249 --dry-run
+```
+
 Resolve repeated and stdin incident keys:
 
 ```bash
@@ -36,10 +42,22 @@ Resolve incidents discovered for one process instance:
 ./c8volt resolve pi --key 2251799813685250
 ```
 
+Preview process-instance incident resolution without mutation:
+
+```bash
+./c8volt resolve pi --key 2251799813685250 --dry-run
+```
+
 Submit process-instance incident resolution without waiting:
 
 ```bash
 ./c8volt --json resolve process-instance --key 2251799813685250 --no-wait
+```
+
+Render a stable JSON dry-run plan:
+
+```bash
+./c8volt --json resolve process-instance --key 2251799813685250 --dry-run
 ```
 
 Verify unsupported-version behavior with a Camunda 8.7 test configuration:

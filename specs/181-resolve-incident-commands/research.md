@@ -27,14 +27,33 @@
 - Try a best-effort v8.7 mutation path: rejected because unsupported versions must fail before mutation and the current incident service does not provide tenant-safe lookup.
 - Use process-instance batch incident-resolution endpoints for `resolve pi`: rejected for the first iteration because the requirement says discover the active incidents at command start and resolve/report attempted incident keys.
 
-## Decision: Confirm default waits with incident-state observation and process-instance incident lookup
+## Decision: Confirm default waits by polling the same lookup paths used for planning and display
 
-**Rationale**: The constitution requires operational proof unless an explicit opt-out exists. `resolve incident` should confirm supplied incident keys are no longer active or are reported resolved. `resolve pi` should confirm each selected process instance no longer has the initially discovered active incidents. `--no-wait` remains the opt-out.
+**Rationale**: The existing `update pi --vars` mutation path submits the mutation in the versioned service and, unless `--no-wait` is set, polls the same lookup path used for planning/display until the requested state is visible. Resolve commands should follow that pattern exactly: `resolve incident` polls incident lookup for each supplied incident key until it is no longer active, and `resolve pi` polls process-instance incident lookup until the initially discovered incident keys are no longer active for that process instance. Accepted mutation response alone is not confirmation. `--no-wait` remains the opt-out and returns submitted/accepted output without lookup polling.
 
 **Alternatives considered**:
 
-- Treat accepted resolution response as success by default: rejected because it weakens the repository's done-is-done behavior.
+- Treat accepted resolution response as success by default: rejected because it weakens the repository's done-is-done behavior and diverges from `update pi --vars`.
 - Poll for every future incident on the process instance: rejected because the issue limits scope to incidents discovered at command start.
+
+## Decision: Add Lookup-Backed `--dry-run` Resolution Plans
+
+**Rationale**: Issue #180 established the repository's newer mutation UX: state-changing commands should be able to load current state, build a compact pre-mutation plan, render dry-run output, and submit no mutation. Applying the same pattern to incident resolution lets operators review explicit incident keys and discovered process-instance incident sets before recovery actions run.
+
+**Alternatives considered**:
+
+- Make `--dry-run` echo only supplied keys without lookup: rejected because `resolve pi` must discover incidents to be useful and direct incident resolution should surface current state when the generated client supports lookup.
+- Add interactive confirmation prompts with dry-run: rejected because issue #181 explicitly keeps interactive confirmation prompts out of scope.
+- Let `--no-wait` change dry-run behavior: rejected because dry-run never submits a mutation, so there is nothing to wait for.
+
+## Decision: Keep JSON Dry-Run Output Stable
+
+**Rationale**: Issue #180 rejects JSON plus verbose output for state-changing dry-run plans so automation receives one stable payload shape. Resolve commands should follow the same rule and include dry-run status plus mutation-submission status in JSON plan/result payloads.
+
+**Alternatives considered**:
+
+- Let `--verbose` add fields to JSON dry-run output: rejected because it makes automation contracts mode-sensitive.
+- Omit mutation-submission status from dry-run JSON: rejected because dry-run safety is easier to assert when the payload explicitly says no mutation was submitted.
 
 ## Decision: Put result contracts in facade models and render through shared command view helpers
 

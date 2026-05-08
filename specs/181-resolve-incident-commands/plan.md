@@ -5,19 +5,19 @@
 
 ## Summary
 
-Add a new state-changing `c8volt resolve` root command family for resolving Camunda incidents by explicit incident key or by process instance key. The implementation extends the existing Go/Cobra CLI, keeps lookup and resolution behavior behind `internal/services/incident`, reuses process facade bulk and wait patterns for per-target reporting, and updates tests plus generated CLI documentation so the command is script-safe and operator-ready.
+Add a new state-changing `c8volt resolve` root command family for resolving Camunda incidents by explicit incident key or by process instance key. The implementation extends the existing Go/Cobra CLI, keeps lookup and resolution behavior behind `internal/services/incident`, builds lookup-backed `--dry-run` plans before mutation, reuses process facade bulk and wait patterns for per-target reporting, and updates tests plus generated CLI documentation so the command is script-safe and operator-ready.
 
 ## Technical Context
 
 **Language/Version**: Go, existing repository toolchain  
-**Primary Dependencies**: Cobra CLI, existing generated Camunda clients, existing c8volt service/facade packages  
+**Primary Dependencies**: Cobra CLI, existing generated Camunda clients, existing c8volt service/facade packages, existing dry-run/JSON guardrail patterns
 **Storage**: N/A, command submits Camunda state-changing requests and observes API state  
 **Testing**: Go tests through targeted `go test` packages, then `make test` before commit  
 **Target Platform**: CLI for local operator and automation use on supported c8volt platforms  
 **Project Type**: Single Go CLI project  
 **Performance Goals**: Bulk resolution should use existing worker fan-out controls and avoid unbounded polling; process-instance resolution must resolve only incidents discovered at command start  
-**Constraints**: Preserve existing command behavior, support human and JSON output, fail unsupported Camunda versions before mutation, keep incident behavior out of `internal/services/processinstance`  
-**Scale/Scope**: One root command family with two leaf commands, incident resolution support for Camunda versions with generated endpoints, regression coverage for affected command contracts and process-instance workflows
+**Constraints**: Preserve existing command behavior, support human and JSON output, render `--dry-run` plans without mutation, reject `--json --verbose` for stable JSON output, fail unsupported Camunda versions before mutation, keep incident behavior out of `internal/services/processinstance`
+**Scale/Scope**: One root command family with two leaf commands, dry-run planning, incident resolution support for Camunda versions with generated endpoints, regression coverage for affected command contracts and process-instance workflows
 
 ## Constitution Check
 
@@ -26,7 +26,7 @@ Add a new state-changing `c8volt resolve` root command family for resolving Camu
 | Principle | Status | Notes |
 |-----------|--------|-------|
 | I. Operational Proof Over Intent | PASS | Default behavior waits for incident resolution visibility; `--no-wait` is the explicit opt-out. |
-| II. CLI-First, Script-Safe Interfaces | PASS | New commands use Cobra, stable flags, aliases, exit behavior, human output, JSON output, and automation metadata. |
+| II. CLI-First, Script-Safe Interfaces | PASS | New commands use Cobra, stable flags, aliases, dry-run plans, exit behavior, human output, JSON output, and automation metadata. |
 | III. Tests and Validation Are Mandatory | PASS | Plan requires service, facade, command, contract, regression, docsgen, and validation tasks. |
 | IV. Documentation Matches User Behavior | PASS | README and generated CLI docs are in scope through `make docs-content`. |
 | V. Small, Compatible, Repository-Native Changes | PASS | Work follows existing command/service/facade/view patterns and avoids moving incident behavior into process-instance services. |
@@ -87,9 +87,10 @@ docsgen/
 Research output is captured in [research.md](./research.md). Key decisions:
 
 - Add `resolve` as a distinct root command because the issue defines incident resolution as an operator recovery action rather than a field update.
+- Add lookup-backed `--dry-run` plans that render affected incidents without submitting mutations.
 - Use generated v8.8 and v8.9 incident resolution endpoints through `internal/services/incident`; v8.7 returns an unsupported-version error before mutation.
 - Confirm resolution through incident lookup for process-instance-scoped waits and a direct incident state lookup or resolution response check for incident-key waits, depending on the generated client surface.
-- Model per-target command results in the process facade so human and JSON output share one data contract.
+- Model pre-mutation plans and per-target command results in the process facade so human and JSON output share one data contract.
 
 ## Phase 1: Design & Contracts
 
