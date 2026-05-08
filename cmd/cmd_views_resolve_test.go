@@ -25,7 +25,7 @@ func TestRenderIncidentResolutionResults_HumanOutputShowsPerTargetStatuses(t *te
 		Items: []process.IncidentResolutionResult{
 			{IncidentKey: "2251799813685249", Status: process.IncidentResolutionStatusConfirmed},
 			{IncidentKey: "2251799813685250", Status: process.IncidentResolutionStatusSubmitted},
-			{IncidentKey: "2251799813685251", Status: process.IncidentResolutionStatusSkipped, IncidentState: "RESOLVED"},
+			{IncidentKey: "2251799813685251", Status: process.IncidentResolutionStatusSkipped, IncidentState: "RESOLVED", Incident: &process.ProcessInstanceIncidentDetail{CreationTime: "2026-05-06T15:43:59.260Z"}},
 		},
 	}
 
@@ -34,7 +34,7 @@ func TestRenderIncidentResolutionResults_HumanOutputShowsPerTargetStatuses(t *te
 	output := buf.String()
 	require.Contains(t, output, "resolved incident 2251799813685249: confirmed")
 	require.Contains(t, output, "resolved incident 2251799813685250: submitted")
-	require.Contains(t, output, "resolved incident 2251799813685251: skipped (RESOLVED)")
+	require.Contains(t, output, "incident 2251799813685251 already resolved (created 2026-05-06T15:43:59.260Z): skipped")
 	require.Contains(t, output, "resolved: 3 (confirmed/submitted/skipped: 3, failed: 0)")
 }
 

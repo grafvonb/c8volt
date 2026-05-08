@@ -4,6 +4,8 @@
 package v89
 
 import (
+	"time"
+
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
 )
@@ -12,6 +14,7 @@ import (
 func fromIncidentResult(r camundav89.IncidentResult) d.ProcessInstanceIncidentDetail {
 	return d.ProcessInstanceIncidentDetail{
 		IncidentKey:            r.IncidentKey,
+		CreationTime:           incidentCreationTime(r.CreationTime),
 		ProcessInstanceKey:     r.ProcessInstanceKey,
 		TenantId:               r.TenantId,
 		State:                  string(r.State),
@@ -52,4 +55,11 @@ func valueOrEmpty[T ~string](v *T) T {
 		return ""
 	}
 	return *v
+}
+
+func incidentCreationTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(time.RFC3339Nano)
 }

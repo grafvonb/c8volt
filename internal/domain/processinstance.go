@@ -23,6 +23,7 @@ type ProcessInstance struct {
 
 type ProcessInstanceIncidentDetail struct {
 	IncidentKey            string
+	CreationTime           string
 	ProcessInstanceKey     string
 	TenantId               string
 	State                  string

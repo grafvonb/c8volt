@@ -80,7 +80,7 @@ func TestResolveIncidentCommand_SkipsNonActiveIncidentBeforeMutation(t *testing.
 
 	require.False(t, sawResolve)
 	require.Empty(t, stdout)
-	require.Contains(t, stderr, "resolved incident 2251799813685249: skipped (RESOLVED)")
+	require.Contains(t, stderr, "incident 2251799813685249 already resolved (created 2026-03-23T18:01:00Z): skipped")
 	require.Contains(t, stderr, "resolved: 1 (confirmed/submitted/skipped: 1, failed: 0)")
 }
 

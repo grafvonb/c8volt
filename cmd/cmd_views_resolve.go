@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
@@ -23,7 +24,7 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 		case process.IncidentResolutionStatusSubmitted:
 			renderHumanLine(cmd, "resolved incident %s: submitted", item.IncidentKey)
 		case process.IncidentResolutionStatusSkipped:
-			renderHumanLine(cmd, "resolved incident %s: skipped (%s)", item.IncidentKey, incidentResolutionSkipReason(item))
+			renderHumanLine(cmd, "%s", incidentResolutionSkippedLine(item))
 		case process.IncidentResolutionStatusMutationFailed:
 			renderHumanLine(cmd, "resolved incident %s: mutation failed: %s", item.IncidentKey, item.Error)
 		case process.IncidentResolutionStatusConfirmationFailed:
@@ -45,6 +46,16 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 		return fmt.Errorf("one or more incident resolutions failed")
 	}
 	return nil
+}
+
+func incidentResolutionSkippedLine(item process.IncidentResolutionResult) string {
+	if strings.EqualFold(item.IncidentState, "RESOLVED") {
+		if item.Incident != nil && item.Incident.CreationTime != "" {
+			return fmt.Sprintf("incident %s already resolved (created %s): skipped", item.IncidentKey, item.Incident.CreationTime)
+		}
+		return fmt.Sprintf("incident %s already resolved: skipped", item.IncidentKey)
+	}
+	return fmt.Sprintf("resolved incident %s: skipped (%s)", item.IncidentKey, incidentResolutionSkipReason(item))
 }
 
 func incidentResolutionSkipReason(item process.IncidentResolutionResult) string {

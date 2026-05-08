@@ -79,6 +79,7 @@ func fromDomainProcessInstances(xs []d.ProcessInstance) ProcessInstances {
 func fromDomainProcessInstanceIncidentDetail(x d.ProcessInstanceIncidentDetail) ProcessInstanceIncidentDetail {
 	return ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
+		CreationTime:           x.CreationTime,
 		ProcessInstanceKey:     x.ProcessInstanceKey,
 		TenantId:               x.TenantId,
 		State:                  x.State,

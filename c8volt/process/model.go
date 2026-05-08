@@ -76,6 +76,7 @@ type ProcessInstance struct {
 
 type ProcessInstanceIncidentDetail struct {
 	IncidentKey            string `json:"incidentKey,omitempty"`
+	CreationTime           string `json:"creationTime,omitempty"`
 	ProcessInstanceKey     string `json:"processInstanceKey"`
 	TenantId               string `json:"tenantId,omitempty"`
 	State                  string `json:"state,omitempty"`
