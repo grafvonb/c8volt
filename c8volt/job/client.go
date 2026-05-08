@@ -33,10 +33,16 @@ func (c *client) LookupJob(ctx context.Context, key string, opts ...foptions.Fac
 
 func (c *client) UpdateJob(ctx context.Context, request UpdateRequest, opts ...foptions.FacadeOption) (UpdateResult, error) {
 	result, err := c.api.UpdateJob(ctx, toDomainUpdateRequest(request), foptions.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return UpdateResult{}, ferrors.FromDomain(err)
+	out := fromDomainUpdateResult(result)
+	if request.UpdatePlan != nil {
+		plan := *request.UpdatePlan
+		plan.MutationSubmitted = out.MutationAccepted
+		out.Plan = &plan
 	}
-	return fromDomainUpdateResult(result), nil
+	if err != nil {
+		return out, ferrors.FromDomain(err)
+	}
+	return out, nil
 }
 
 func fromDomainLookupResult(key string, result d.Job) LookupResult {

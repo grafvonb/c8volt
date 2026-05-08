@@ -81,3 +81,27 @@ func TestJobLookupFacade_NotFound(t *testing.T) {
 	require.Equal(t, "missing-job", result.Key)
 	require.Empty(t, result.Job)
 }
+
+func TestUpdateJobRetriesFacade_MutationFailureReturnsFailedResult(t *testing.T) {
+	mutationErr := errors.New("camunda rejected update")
+	api := New(fakeJobService{
+		lookup: func(context.Context, string, ...services.CallOption) (d.Job, error) {
+			t.Fatal("unexpected confirmation lookup after mutation failure")
+			return d.Job{}, nil
+		},
+		update: func(_ context.Context, request d.JobUpdateRequest, _ ...services.CallOption) (d.JobUpdateResult, error) {
+			require.Equal(t, "2251799813711967", request.Key)
+			return d.JobUpdateResult{
+				Key:           request.Key,
+				MutationError: mutationErr.Error(),
+			}, mutationErr
+		},
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	result, err := api.UpdateJob(context.Background(), UpdateRequest{Key: "2251799813711967"})
+
+	require.Error(t, err)
+	require.Equal(t, "mutation_failed", result.Status)
+	require.False(t, result.MutationAccepted)
+	require.Equal(t, mutationErr.Error(), result.Error)
+}

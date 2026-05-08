@@ -75,6 +75,36 @@ func TestSearchJobsByKey(t *testing.T) {
 	}, job)
 }
 
+func TestJobUpdateRetriesRequest(t *testing.T) {
+	retries := int32(3)
+	svc := newJobLookupTestService(t, &mockJobClient{
+		searchJobsWithResponse: func(context.Context, camundav89.SearchJobsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchJobsResponse, error) {
+			t.Fatal("unexpected retry confirmation lookup")
+			return nil, nil
+		},
+		updateJobWithResponse: func(_ context.Context, jobKey camundav89.JobKey, body camundav89.UpdateJobJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.UpdateJobResponse, error) {
+			require.Equal(t, camundav89.JobKey("2251799813711967"), jobKey)
+			require.NotNil(t, body.Changeset.Retries)
+			require.Equal(t, retries, *body.Changeset.Retries)
+			require.Nil(t, body.Changeset.Timeout)
+			return &camundav89.UpdateJobResponse{
+				HTTPResponse: okJobUpdateHTTPResponse(),
+			}, nil
+		},
+	})
+
+	result, err := svc.UpdateJob(context.Background(), d.JobUpdateRequest{
+		Key:              "2251799813711967",
+		Retries:          &retries,
+		SkipConfirmation: true,
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.MutationAccepted)
+	require.Equal(t, "skipped", result.ConfirmationStatus)
+	require.Equal(t, &retries, result.SubmittedRetries)
+}
+
 func newJobLookupTestService(t *testing.T, client *mockJobClient) *Service {
 	t.Helper()
 	cfg := testx.TestConfig(t)
@@ -100,6 +130,17 @@ func okHTTPResponse() *http.Response {
 		Request: &http.Request{
 			Method: http.MethodPost,
 			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/search"},
+		},
+	}
+}
+
+func okJobUpdateHTTPResponse() *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusNoContent,
+		Status:     "204 No Content",
+		Request: &http.Request{
+			Method: http.MethodPatch,
+			URL:    &url.URL{Scheme: "https", Host: "camunda.example", Path: "/v2/jobs/2251799813711967"},
 		},
 	}
 }

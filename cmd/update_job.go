@@ -4,10 +4,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/spf13/cobra"
 )
@@ -46,6 +49,32 @@ var updateJobCmd = &cobra.Command{
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		plan, err := planUpdateJob(cmd.Context(), cli, request)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan job update: %w", err))
+		}
+		request.UpdatePlan = &plan
+		if flagDryRun {
+			if err := jobUpdatePlanView(cmd, plan, "dry run"); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update dry-run result: %w", err))
+			}
+			return
+		}
+		if !plan.HasMaterialChange() {
+			if err := jobUpdatePlanView(cmd, plan, "plan"); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update plan: %w", err))
+			}
+			return
+		}
+		if !shouldImplicitlyConfirm(cmd) {
+			if err := jobUpdatePlanView(cmd, plan, "plan"); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update plan: %w", err))
+			}
+			prompt := fmt.Sprintf("You are about to update job %s. Do you want to proceed?", request.Key)
+			if err := confirmCmdOrAbortFn(false, prompt); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
 		}
 		result, err := cli.UpdateJob(cmd.Context(), request, collectOptions()...)
 		if err != nil {
@@ -87,7 +116,7 @@ func parseUpdateJobRequest(cmd *cobra.Command) (job.UpdateRequest, error) {
 		Key:         flagUpdateJobKey,
 		NoWait:      flagNoWait,
 		AutoConfirm: flagCmdAutoConfirm,
-		Automation:  automationModeEnabled(cmd),
+		Automation:  updateJobAutomationEnabled(cmd),
 		DryRun:      flagDryRun,
 	}
 	if retriesChanged {
@@ -118,8 +147,67 @@ func validateUpdateJobJSONGuardrails(cmd *cobra.Command) error {
 	if pickMode() == RenderModeJSON && flagVerbose {
 		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for update job")
 	}
-	if flagDryRun || pickMode() != RenderModeJSON || shouldImplicitlyConfirm(cmd) {
+	if flagDryRun || pickMode() != RenderModeJSON || flagCmdAutoConfirm || flagCmdAutomation || updateJobAutomationEnabled(cmd) {
 		return nil
 	}
 	return missingDependentFlagsf("--json update job requires --dry-run, --auto-confirm, or --automation")
+}
+
+func updateJobAutomationEnabled(cmd *cobra.Command) bool {
+	if cmd == nil || cmd.Context() == nil {
+		return false
+	}
+	return automationModeEnabled(cmd)
+}
+
+func planUpdateJob(ctx context.Context, cli c8volt.API, request job.UpdateRequest) (job.UpdatePlan, error) {
+	current, err := cli.LookupJob(ctx, request.Key, collectOptions()...)
+	if err != nil {
+		return job.UpdatePlan{}, err
+	}
+	return buildUpdateJobPlan(current, request), nil
+}
+
+func buildUpdateJobPlan(current job.LookupResult, request job.UpdateRequest) job.UpdatePlan {
+	plan := job.UpdatePlan{
+		Key:               request.Key,
+		Current:           current.Job,
+		RetryStatus:       job.RetryChangeNotRequested,
+		DryRun:            request.DryRun,
+		MutationSubmitted: false,
+	}
+	if request.Retries != nil {
+		retries := *request.Retries
+		plan.RequestedRetries = &retries
+		status := job.RetryChangeChanged
+		before := ""
+		if current.Found {
+			before = strconv.FormatInt(int64(current.Job.Retries), 10)
+			if current.Job.Retries == retries {
+				status = job.RetryChangeUnchanged
+			}
+		}
+		plan.RetryStatus = status
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "retries",
+			Before: before,
+			After:  strconv.FormatInt(int64(retries), 10),
+			Status: string(status),
+		})
+		if status == job.RetryChangeChanged {
+			plan.MaterialChange = true
+		}
+	}
+	if request.TimeoutMillis != nil {
+		timeoutMillis := *request.TimeoutMillis
+		plan.RequestedTimeout = request.TimeoutRaw
+		plan.TimeoutMillis = &timeoutMillis
+		plan.MaterialChange = true
+		plan.Items = append(plan.Items, job.UpdatePlanItem{
+			Name:   "timeout",
+			After:  request.TimeoutRaw,
+			Status: "submit",
+		})
+	}
+	return plan
 }

@@ -71,6 +71,10 @@ type UpdatePlan struct {
 	Items             []UpdatePlanItem  `json:"items,omitempty"`
 }
 
+func (p UpdatePlan) HasMaterialChange() bool {
+	return p.MaterialChange
+}
+
 type UpdatePlanItem struct {
 	Name   string `json:"name,omitempty"`
 	Before string `json:"before,omitempty"`

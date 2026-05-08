@@ -14,6 +14,8 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
+	"github.com/grafvonb/c8volt/internal/services/httpc"
+	"github.com/grafvonb/c8volt/internal/services/job/waiter"
 )
 
 type Service struct {
@@ -93,8 +95,43 @@ func (s *Service) LookupJob(ctx context.Context, key string, opts ...services.Ca
 }
 
 func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
-	_ = ctx
-	_ = request
-	_ = services.ApplyCallOptions(opts)
-	return d.JobUpdateResult{}, fmt.Errorf("%w: job update service implementation is pending", d.ErrUnsupported)
+	cCfg := services.ApplyCallOptions(opts)
+	result := d.JobUpdateResult{
+		Key:                  request.Key,
+		SubmittedRetries:     request.Retries,
+		SubmittedTimeoutMS:   request.TimeoutMillis,
+		ConfirmationStatus:   "not_applicable",
+		UnsupportedOperation: false,
+	}
+	resp, err := s.c.UpdateJobWithResponse(ctx, camundav88.JobKey(request.Key), camundav88.UpdateJobJSONRequestBody{
+		Changeset: camundav88.JobChangeset{
+			Retries: request.Retries,
+			Timeout: request.TimeoutMillis,
+		},
+	})
+	if err != nil {
+		result.MutationError = err.Error()
+		return result, err
+	}
+	result.MutationAccepted = true
+	if err := httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		result.MutationAccepted = false
+		result.MutationError = err.Error()
+		return result, err
+	}
+	if cCfg.NoWait || request.SkipConfirmation || !request.ConfirmRetries || request.Retries == nil {
+		result.ConfirmationStatus = "skipped"
+		return result, nil
+	}
+	confirmed, err := waiter.WaitForRetries(ctx, s, s.cfg, s.log, request.Key, *request.Retries, opts...)
+	if err != nil {
+		result.ConfirmationStatus = "failed"
+		result.ConfirmationError = err.Error()
+		return result, nil
+	}
+	result.ConfirmationStatus = "confirmed"
+	result.ConfirmedRetries = &confirmed.Retries
+	return result, nil
 }
+
+var _ waiter.JobLookup = (*Service)(nil)

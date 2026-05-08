@@ -5,6 +5,8 @@ Started: 2026-05-08 11:45:05
 
 ## Codebase Patterns
 
+- `update job` now performs command-local lookup-backed planning before mutation, with retry no-op and dry-run handling in `cmd/update_job.go`/`cmd/cmd_views_job.go`; the facade attaches the submitted plan to mutation results for JSON output.
+- Job retry mutation is owned by the versioned job services, while retry read-model confirmation lives in `internal/services/job/waiter` and reuses `cfg.App.Backoff`, verbose polling logs, context deadlines, and max-retry exhaustion semantics.
 - New facade packages must be embedded in `c8volt.API`, wired in `c8volt.New`, and backed by a matching `internal/services/<resource>` factory before command code can call them through `NewCli(cmd)`.
 - Cobra command files use package-level flag variables, register subcommands in `init()`, call `NewCli(cmd)` inside command execution, validate automation with `requireAutomationSupport(cmd)`, collect shared facade options with `collectOptions()`, and attach machine-contract metadata with `setCommandMutation`, `setContractSupport`, `setAutomationSupport`, and `setFlagContractRequired`.
 - State-changing update commands use command-local planning before mutation, reject JSON plus verbose output, require `--auto-confirm` or `--automation` for non-dry-run JSON mutations, render dry-runs before mutation, skip prompts for no-op plans, and use `shouldImplicitlyConfirm(cmd)` plus `confirmCmdOrAbortFn` for material interactive changes.
@@ -128,4 +130,52 @@ Started: 2026-05-08 11:45:05
 - Generated job-search models expose `jobKey` as a union-backed equality filter, so service tests assert the typed filter with `AsJobKeyFilterProperty0`.
 - Human `get job` output now includes deadline and error metadata when present, matching the diagnostic fields required for incident follow-up.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobLookup|SearchJobs)' -count=1`.
+---
+
+---
+## Iteration 4 - 2026-05-08 12:19:31 CEST
+**User Story**: User Story 2 - Update Job Retries With Confirmation
+**Tasks Completed**:
+- [x] T029: Add command test for `update job --key <job-key> --retries 3` submitted and confirmed output
+- [x] T030: Add command JSON output test for confirmed retry update
+- [x] T031: Add v8.8 service test for generated job update retries request
+- [x] T032: Add v8.9 service test for generated job update retries request
+- [x] T033: Add waiter test for retry confirmation success and exhaustion
+- [x] T034: Add facade test for mutation failure skipping confirmation
+- [x] T082: Add command dry-run retry plan test
+- [x] T083: Add retry-only no-op prompt and mutation skip test
+- [x] T084: Add material interactive retry confirmation-gate test
+- [x] T085: Add command JSON dry-run retry plan payload test
+- [x] T035: Add job waiter implementation for retry confirmation
+- [x] T036: Implement v8.8 retry update request mapping
+- [x] T037: Implement v8.9 retry update request mapping
+- [x] T038: Implement facade retry update and default confirmation flow
+- [x] T039: Implement `cmd/update_job.go` `--retries` validation, service wiring, and confirmed human/JSON output
+- [x] T040: Run targeted US2 validation
+- [x] T086: Implement retry plan construction from current job lookup state
+- [x] T087: Implement `--dry-run` retry rendering and JSON payload without submitting mutation
+- [x] T088: Implement retry-only no-op detection that skips prompt and mutation
+- [x] T089: Implement interactive confirmation gate for material retry updates
+- [x] T090: Implement JSON guardrails for retry updates
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/job/client.go
+- c8volt/job/client_test.go
+- c8volt/job/model.go
+- cmd/cmd_views_job.go
+- cmd/update_job.go
+- cmd/update_job_test.go
+- internal/services/job/waiter/waiter.go
+- internal/services/job/waiter/waiter_test.go
+- internal/services/job/v88/service.go
+- internal/services/job/v88/service_test.go
+- internal/services/job/v89/service.go
+- internal/services/job/v89/service_test.go
+- specs/180-job-update-lookup/tasks.md
+- specs/180-job-update-lookup/progress.md
+**Learnings**:
+- `update job` can reuse the same lookup path as `get job` for preflight retry plans, making dry-run, no-op, and interactive confirmation decisions local to the command before mutation.
+- Versioned job services can submit generated `JobChangeset.Retries` and use the same service as the waiter lookup source for post-mutation retry confirmation.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/waiter ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Retries|RetryConfirmation|JobUpdateRetries)' -count=1` and with the same package list at `-count=1`.
 ---

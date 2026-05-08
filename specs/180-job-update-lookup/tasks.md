@@ -88,30 +88,30 @@
 
 ### Tests for User Story 2
 
-- [ ] T029 [P] [US2] Add command test for `update job --key <job-key> --retries 3` submitted and confirmed output in `cmd/update_job_test.go`
-- [ ] T030 [P] [US2] Add command JSON output test for confirmed retry update in `cmd/update_job_test.go`
-- [ ] T031 [P] [US2] Add v8.8 service test for generated job update retries request in `internal/services/job/v88/service_test.go`
-- [ ] T032 [P] [US2] Add v8.9 service test for generated job update retries request in `internal/services/job/v89/service_test.go`
-- [ ] T033 [P] [US2] Add waiter test for retry confirmation success and exhaustion in `internal/services/job/waiter/waiter_test.go`
-- [ ] T034 [P] [US2] Add facade test for mutation failure skipping confirmation in `c8volt/job/client_test.go`
-- [ ] T082 [P] [US2] Add command test proving `update job --key <job-key> --retries 3 --dry-run` loads current job state, renders retry before/after, and submits no mutation in `cmd/update_job_test.go`
-- [ ] T083 [P] [US2] Add command test proving retry-only no-op requests report nothing to update and skip prompt and mutation in `cmd/update_job_test.go`
-- [ ] T084 [P] [US2] Add command test proving material interactive retry updates render a compact plan and require confirmation before mutation in `cmd/update_job_test.go`
-- [ ] T085 [P] [US2] Add command JSON dry-run test proving the full retry update plan payload is stable without verbose output in `cmd/update_job_test.go`
+- [x] T029 [P] [US2] Add command test for `update job --key <job-key> --retries 3` submitted and confirmed output in `cmd/update_job_test.go`
+- [x] T030 [P] [US2] Add command JSON output test for confirmed retry update in `cmd/update_job_test.go`
+- [x] T031 [P] [US2] Add v8.8 service test for generated job update retries request in `internal/services/job/v88/service_test.go`
+- [x] T032 [P] [US2] Add v8.9 service test for generated job update retries request in `internal/services/job/v89/service_test.go`
+- [x] T033 [P] [US2] Add waiter test for retry confirmation success and exhaustion in `internal/services/job/waiter/waiter_test.go`
+- [x] T034 [P] [US2] Add facade test for mutation failure skipping confirmation in `c8volt/job/client_test.go`
+- [x] T082 [P] [US2] Add command test proving `update job --key <job-key> --retries 3 --dry-run` loads current job state, renders retry before/after, and submits no mutation in `cmd/update_job_test.go`
+- [x] T083 [P] [US2] Add command test proving retry-only no-op requests report nothing to update and skip prompt and mutation in `cmd/update_job_test.go`
+- [x] T084 [P] [US2] Add command test proving material interactive retry updates render a compact plan and require confirmation before mutation in `cmd/update_job_test.go`
+- [x] T085 [P] [US2] Add command JSON dry-run test proving the full retry update plan payload is stable without verbose output in `cmd/update_job_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T035 [US2] Add job waiter implementation for retry confirmation in `internal/services/job/waiter/waiter.go`
-- [ ] T036 [US2] Implement v8.8 retry update request mapping in `internal/services/job/v88/service.go`
-- [ ] T037 [US2] Implement v8.9 retry update request mapping in `internal/services/job/v89/service.go`
-- [ ] T038 [US2] Implement facade retry update and default confirmation flow in `c8volt/job/client.go`
-- [ ] T039 [US2] Implement `cmd/update_job.go` `--retries` validation, service wiring, and confirmed human/JSON output
-- [ ] T040 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/waiter ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Retries|RetryConfirmation|JobUpdateRetries)' -count=1` and fix regressions
-- [ ] T086 [US2] Implement retry plan construction from current job lookup state in `cmd/update_job.go` and the selected plan model file
-- [ ] T087 [US2] Implement `--dry-run` retry rendering and JSON payload without submitting mutation in `cmd/update_job.go` and `cmd/cmd_views_job.go`
-- [ ] T088 [US2] Implement retry-only no-op detection that skips prompt and mutation in `cmd/update_job.go`
-- [ ] T089 [US2] Implement interactive confirmation gate for material retry updates, reusing existing command confirmation helpers in `cmd/update_job.go`
-- [ ] T090 [US2] Implement JSON guardrails for retry updates, including rejection of `--json --verbose` and non-dry-run JSON mutations without auto-confirm or automation, in `cmd/update_job.go`
+- [x] T035 [US2] Add job waiter implementation for retry confirmation in `internal/services/job/waiter/waiter.go`
+- [x] T036 [US2] Implement v8.8 retry update request mapping in `internal/services/job/v88/service.go`
+- [x] T037 [US2] Implement v8.9 retry update request mapping in `internal/services/job/v89/service.go`
+- [x] T038 [US2] Implement facade retry update and default confirmation flow in `c8volt/job/client.go`
+- [x] T039 [US2] Implement `cmd/update_job.go` `--retries` validation, service wiring, and confirmed human/JSON output
+- [x] T040 [US2] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/waiter ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(UpdateJob.*Retries|RetryConfirmation|JobUpdateRetries)' -count=1` and fix regressions
+- [x] T086 [US2] Implement retry plan construction from current job lookup state in `cmd/update_job.go` and the selected plan model file
+- [x] T087 [US2] Implement `--dry-run` retry rendering and JSON payload without submitting mutation in `cmd/update_job.go` and `cmd/cmd_views_job.go`
+- [x] T088 [US2] Implement retry-only no-op detection that skips prompt and mutation in `cmd/update_job.go`
+- [x] T089 [US2] Implement interactive confirmation gate for material retry updates, reusing existing command confirmation helpers in `cmd/update_job.go`
+- [x] T090 [US2] Implement JSON guardrails for retry updates, including rejection of `--json --verbose` and non-dry-run JSON mutations without auto-confirm or automation, in `cmd/update_job.go`
 
 **Checkpoint**: User Story 2 is independently complete when retry updates are planned, dry-run rendered, no-op safe, confirmation-gated, submitted, confirmed, rendered, and failure modes distinguish mutation and confirmation failures.
 
