@@ -163,7 +163,7 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 ./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
 ```
 
-Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed through job lookup by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
+Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Human job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed through job lookup by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
 
 ### Walk Before You Change
 

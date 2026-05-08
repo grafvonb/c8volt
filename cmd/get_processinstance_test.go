@@ -693,9 +693,9 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message=First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 message=Second key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 jobKey=n/a message=Second key failed")
 	require.Contains(t, output, "found: 2")
 	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
 	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
@@ -742,7 +742,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message=First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -1176,7 +1176,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=No retr...")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message=No retr...")
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
@@ -1206,7 +1206,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message="+fullMessage)
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 jobKey=n/a message="+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 

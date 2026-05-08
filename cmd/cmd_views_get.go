@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const humanTimestampMillisLayout = "2006-01-02T15:04:05.000-07:00"
+
 //nolint:unused
 func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
 	if pickMode() == RenderModeJSON {
@@ -103,7 +105,7 @@ func processInstanceTimestampMillis(value string) string {
 	if err != nil {
 		return value
 	}
-	return t.Format("2006-01-02T15:04:05.000Z07:00")
+	return t.Format(humanTimestampMillisLayout)
 }
 
 type processInstanceAgeMeta struct {

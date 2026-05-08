@@ -71,30 +71,34 @@ func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) er
 }
 
 func oneLineJob(item job.Job) string {
-	parts := []string{"job " + item.Key}
-	if item.State != "" {
-		parts = append(parts, "state="+item.State)
+	return compactFlatRow(flatRowJob(item))
+}
+
+func flatRowJob(item job.Job) flatRow {
+	parts := flatRow{item.Key}
+	if item.TenantId != "" {
+		parts = append(parts, item.TenantId)
 	}
-	parts = append(parts, "retries="+strconv.FormatInt(int64(item.Retries), 10))
-	if item.Deadline != nil {
-		parts = append(parts, "deadline="+item.Deadline.Format("2006-01-02T15:04:05Z07:00"))
+	if item.State != "" {
+		parts = append(parts, item.State)
 	}
 	if item.ProcessInstanceKey != "" {
-		parts = append(parts, "processInstanceKey="+item.ProcessInstanceKey)
+		parts = append(parts, "pi:"+item.ProcessInstanceKey)
 	}
 	if item.ElementInstanceKey != "" {
-		parts = append(parts, "elementInstanceKey="+item.ElementInstanceKey)
+		parts = append(parts, "ei:"+item.ElementInstanceKey)
+	}
+	parts = append(parts, "r:"+strconv.FormatInt(int64(item.Retries), 10))
+	if item.Deadline != nil {
+		parts = append(parts, "d:"+item.Deadline.Format(humanTimestampMillisLayout))
 	}
 	if item.ErrorCode != "" {
-		parts = append(parts, "errorCode="+item.ErrorCode)
+		parts = append(parts, "ec:"+item.ErrorCode)
 	}
 	if item.ErrorMessage != "" {
-		parts = append(parts, "errorMessage="+item.ErrorMessage)
+		parts = append(parts, "err:"+truncateHumanMessage(item.ErrorMessage, flagGetErrorMessageLimit))
 	}
-	if item.TenantId != "" {
-		parts = append(parts, "tenantId="+item.TenantId)
-	}
-	return strings.Join(parts, " ")
+	return parts
 }
 
 func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {

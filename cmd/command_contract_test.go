@@ -348,6 +348,13 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Repeated:    false,
 		Description: "job key to inspect",
 	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "error-message-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "truncate error messages in human output to this many characters; 0 keeps full messages",
+	})
 
 	updateCapability := commandCapabilityForCommand(updateJobCmd)
 	require.Equal(t, "update job", updateCapability.Path)
@@ -435,10 +442,12 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Inspect a Camunda job by key",
 		"Use the jobKey exposed by incident-aware process-instance output",
 		"--json returns the stable lookup payload",
+		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key 2251799813711967",
 		"./c8volt --json get job --key 2251799813711967",
 		"--key string",
+		"--error-message-limit int",
 	}, nil)
 
 	output = assertCommandHelpOutput(t, []string{"update"}, []string{

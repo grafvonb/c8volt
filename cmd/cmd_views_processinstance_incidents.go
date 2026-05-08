@@ -102,6 +102,10 @@ func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key str
 
 // truncateIncidentHumanMessage applies the human-only incident message display limit.
 func truncateIncidentHumanMessage(message string, limit int) string {
+	return truncateHumanMessage(message, limit)
+}
+
+func truncateHumanMessage(message string, limit int) string {
 	if limit <= 0 {
 		return message
 	}
