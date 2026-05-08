@@ -318,6 +318,13 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 		Description: "path to JSON object file with variables to set on each process instance",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview variable updates without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
 		Type:        "bool",
 		Required:    false,
@@ -361,12 +368,16 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Provide exactly one variable payload source",
 		"--vars with a JSON object or --vars-file with a path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
-		"By default c8volt waits until requested process-instance-scope variables are visible",
-		"add --no-wait to return after the update request is accepted",
+		"loads current process-instance-scope variables",
+		"Use --dry-run to preview without mutating",
+		"--auto-confirm for unattended mutation",
+		"--no-wait to return after the update request is accepted",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update pi --key 2251799813711967 --vars '{\"customerTier\":\"gold\"}' --dry-run",
 		"./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars",
 		"printf '%s\\n' 2251799813711967 | ./c8volt update pi --key 2251799813711968 - --vars",
 		"--workers",
+		"--dry-run",
 		"--fail-fast",
 	}, nil)
 	require.Contains(t, output, "Aliases:")
@@ -376,6 +387,7 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Update process-instance variables by key",
 		"--vars string",
 		"--vars-file string",
+		"--dry-run",
 		"--no-wait",
 	}, nil)
 	require.Contains(t, aliasOutput, "Aliases:")

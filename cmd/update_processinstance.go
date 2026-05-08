@@ -4,9 +4,7 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -22,10 +20,12 @@ var updateProcessInstanceCmd = &cobra.Command{
 	Short: "Update process-instance variables by key",
 	Long: "Update process-instance variables by key.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.\n\n" +
-		"By default c8volt waits until requested process-instance-scope variables are visible through the same lookup path as `get pi --with-vars`; add --no-wait to return after the update request is accepted.\n\n" +
+		"By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get pi --with-vars`. Use --dry-run to preview without mutating, --auto-confirm for unattended mutation, or --no-wait to return after the update request is accepted.\n\n" +
 		"Variable updates are supported for Camunda 8.8 and 8.9. Camunda 8.7 returns an unsupported-version error before mutation.",
 	Example: `  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
   ./c8volt update pi --key 2251799813711967 --vars-file ./vars.json
+  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --auto-confirm
   ./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
   ./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars '{"customerTier":"gold"}'
   printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
@@ -58,6 +58,35 @@ var updateProcessInstanceCmd = &cobra.Command{
 		if len(keys) == 0 {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process instance keys provided or found to update")))
 		}
+		if err := validateUpdateProcessInstanceJSONConfirmation(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		preview, err := planUpdateProcessInstanceVariables(cmd.Context(), cmd, cli, keys, variables)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan process-instance variable update: %w", err))
+		}
+		if flagDryRun {
+			if err := renderUpdateProcessInstanceVariablePreview(cmd, preview); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update dry-run result: %w", err))
+			}
+			return
+		}
+		if !preview.HasPlannedChanges() {
+			if err := renderUpdateProcessInstanceVariablePlan(cmd, preview); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update plan: %w", err))
+			}
+			return
+		}
+		if !shouldImplicitlyConfirm(cmd) {
+			if err := renderUpdateProcessInstanceVariablePlan(cmd, preview); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render update plan: %w", err))
+			}
+			requestedUpdates := preview.VariableAddCount + preview.VariableChangeCount
+			prompt := fmt.Sprintf("You are about to update %d requested variable value(s) on %d process instance(s). Do you want to proceed?", requestedUpdates, preview.UpdateCount)
+			if err := confirmCmdOrAbortFn(false, prompt); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+		}
 		results, err := cli.UpdateProcessInstancesVariables(cmd.Context(), keys, variables, flagWorkers, collectOptions()...)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("update process-instance variables: %w", err))
@@ -75,6 +104,7 @@ func init() {
 	fs.StringSliceVar(&flagUpdatePIKeys, "key", nil, "process instance key(s) to update; repeat or combine with stdin '-'")
 	fs.StringVar(&flagUpdatePIVars, "vars", "", "JSON object with variables to set on each process instance")
 	fs.StringVar(&flagUpdatePIVarsFile, "vars-file", "", "path to JSON object file with variables to set on each process instance")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without variable confirmation")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple process instances (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
@@ -83,40 +113,5 @@ func init() {
 	useInvalidInputFlagErrors(updateProcessInstanceCmd)
 	setCommandMutation(updateProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(updateProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(updateProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
-}
-
-// parseUpdateProcessInstanceVariablesFromFlags selects exactly one variable payload source and decodes it.
-func parseUpdateProcessInstanceVariablesFromFlags(cmd *cobra.Command, raw string, filePath string) (map[string]any, error) {
-	varsChanged := cmd.Flags().Changed("vars")
-	varsFileChanged := cmd.Flags().Changed("vars-file")
-	if varsChanged && varsFileChanged {
-		return nil, mutuallyExclusiveFlagsf("--vars cannot be combined with --vars-file")
-	}
-	if varsFileChanged {
-		if filePath == "" {
-			return nil, invalidFlagValuef("--vars-file requires a file path")
-		}
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, invalidFlagValuef("--vars-file could not be read: %v", err)
-		}
-		return parseUpdateProcessInstanceVariables(string(data), "--vars-file")
-	}
-	return parseUpdateProcessInstanceVariables(raw, "--vars")
-}
-
-// parseUpdateProcessInstanceVariables decodes the --vars JSON object used for process-instance updates.
-func parseUpdateProcessInstanceVariables(raw string, source string) (map[string]any, error) {
-	if raw == "" {
-		return nil, invalidFlagValuef("--vars or --vars-file is required and must be a JSON object")
-	}
-	var variables map[string]any
-	if err := json.Unmarshal([]byte(raw), &variables); err != nil {
-		return nil, invalidFlagValuef("%s must be a valid JSON object: %v", source, err)
-	}
-	if variables == nil {
-		return nil, invalidFlagValuef("%s must be a JSON object", source)
-	}
-	return variables, nil
+	setAutomationSupport(updateProcessInstanceCmd, AutomationSupportFull, "supports shared machine output, non-mutating dry-run previews, and accepted results with --no-wait")
 }

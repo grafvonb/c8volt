@@ -13,8 +13,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	types "github.com/grafvonb/c8volt/typex"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -163,7 +166,7 @@ func TestUpdateProcessInstanceCommand_MultipleRepeatedKeysApplyOneVarsPayloadToE
 		"2251799813711967": 1,
 		"2251799813711968": 1,
 	}, gotUpdates)
-	require.Equal(t, 2, gotConfirmations)
+	require.Equal(t, 4, gotConfirmations)
 	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	requireUpdateResultKeys(t, envelope, "2251799813711967", "2251799813711968")
@@ -216,8 +219,9 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 	require.Contains(t, stdout, "updated: 2")
 }
 
-func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedWithoutConfirmationLookup(t *testing.T) {
+func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterPreflightOnly(t *testing.T) {
 	var sawUpdate bool
+	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813711967/variables":
@@ -228,7 +232,9 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedWithoutConfirmationL
 			require.Equal(t, map[string]any{"foo": "bar"}, body["variables"])
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
-			t.Fatalf("no-wait update must not perform confirmation lookup")
+			searchCalls++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -246,12 +252,14 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedWithoutConfirmationL
 	)
 
 	require.True(t, sawUpdate)
+	require.Equal(t, 1, searchCalls)
 	require.Contains(t, output, "updated process-instance 2251799813711967: submitted")
 	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
 }
 
-func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResults(t *testing.T) {
+func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterPreflightOnly(t *testing.T) {
 	var sawUpdate bool
+	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/element-instances/2251799813711967/variables":
@@ -259,7 +267,9 @@ func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResults(t *testi
 			sawUpdate = true
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/variables/search":
-			t.Fatalf("no-wait update must not perform confirmation lookup")
+			searchCalls++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -279,6 +289,7 @@ func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResults(t *testi
 	)
 
 	require.True(t, sawUpdate)
+	require.Equal(t, 1, searchCalls)
 	envelope := requireUpdateProcessInstanceEnvelope(t, stdout)
 	require.Equal(t, string(OutcomeAccepted), envelope["outcome"])
 	require.Equal(t, "update process-instance", envelope["command"])
@@ -322,6 +333,232 @@ func TestUpdateProcessInstanceCommand_FullNameAndAliasBehaveIdenticallyForSingle
 			require.Contains(t, stderr, "updated: 1")
 		})
 	}
+}
+
+func TestUpdateProcessInstanceVariablePlan_ClassifiesRequestedAndUntouchedVariables(t *testing.T) {
+	plan := newProcessInstanceVariableUpdatePlan("2251799813687231", []process.ProcessInstanceVariable{
+		{Name: "isActive", Value: "true", ProcessInstanceKey: "2251799813687231", ScopeKey: "2251799813687231"},
+		{Name: "same", Value: `"gold"`, ProcessInstanceKey: "2251799813687231", ScopeKey: "2251799813687231"},
+		{Name: "businessId", Value: "1334283", ProcessInstanceKey: "2251799813687231", ScopeKey: "2251799813687231"},
+		{Name: "canRun", Value: "true", ProcessInstanceKey: "2251799813687231", ScopeKey: "2251799813687231"},
+		{Name: "elementLocal", Value: `"ignored"`, ProcessInstanceKey: "2251799813687231", ScopeKey: "element-1"},
+		{Name: "wrongOwner", Value: `"ignored"`, ProcessInstanceKey: "999", ScopeKey: "999"},
+	}, map[string]any{
+		"isActive": false,
+		"message":  "hello",
+		"same":     "gold",
+	})
+
+	require.Equal(t, "2251799813687231", plan.ProcessInstanceKey)
+	require.Equal(t, []processInstanceVariablePlannedValue{{Name: "message", Value: "hello"}}, plan.Additions)
+	require.Equal(t, []processInstanceVariablePlannedChange{{Name: "isActive", Before: true, After: false}}, plan.Changes)
+	require.Equal(t, []processInstanceVariablePlannedValue{{Name: "same", Value: "gold"}}, plan.UnchangedRequested)
+	require.Equal(t, []processInstanceVariablePlannedValue{
+		{Name: "businessId", Value: float64(1334283)},
+		{Name: "canRun", Value: true},
+	}, plan.Untouched)
+}
+
+func TestUpdateProcessInstanceVariableDryRun_HumanOutputUsesCompactPlanSyntax(t *testing.T) {
+	prevVerbose := flagVerbose
+	flagVerbose = false
+	t.Cleanup(func() { flagVerbose = prevVerbose })
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	preview := newProcessInstanceVariableUpdatePreview(types.Keys{"2251799813687231"}, []processInstanceVariableUpdatePlan{{
+		ProcessInstanceKey: "2251799813687231",
+		Additions:          []processInstanceVariablePlannedValue{{Name: "message", Value: "hello"}},
+		Changes:            []processInstanceVariablePlannedChange{{Name: "isActive", Before: true, After: false}},
+		Untouched: []processInstanceVariablePlannedValue{
+			{Name: "businessId", Value: float64(1334283)},
+			{Name: "canRun", Value: true},
+		},
+	}})
+
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: update process-instance variables: 1 process instance(s), 1 change(s), 1 addition(s), 0 unchanged, 2 untouched; no changes applied")
+	require.Contains(t, output, `2251799813687231: ~ isActive: true -> false; + message: "hello"; = businessId: 1334283, canRun: true`)
+	require.NotContains(t, output, "selected process instances")
+	require.NotContains(t, output, "variables to add")
+	require.NotContains(t, output, "variables to change")
+	require.NotContains(t, output, "\n\n")
+}
+
+func TestUpdateProcessInstanceVariableDryRun_JSONIgnoresVerboseForStableShape(t *testing.T) {
+	prevJSON := flagViewAsJson
+	prevVerbose := flagVerbose
+	flagViewAsJson = true
+	flagVerbose = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagVerbose = prevVerbose
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	preview := newProcessInstanceVariableUpdatePreview(types.Keys{"2251799813687231"}, []processInstanceVariableUpdatePlan{{
+		ProcessInstanceKey: "2251799813687231",
+		Changes:            []processInstanceVariablePlannedChange{{Name: "buba", Before: "was here 3", After: "was here 2"}},
+	}})
+
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+	payload := requireDryRunEnvelopePayload(t, buf.String())
+	items := requireJSONItems(t, payload["processInstances"], 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813687231", item["processInstanceKey"])
+	require.Equal(t, float64(1), payload["variableChangeCount"])
+
+	defaultOutput := buf.String()
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+	require.JSONEq(t, defaultOutput, buf.String())
+}
+
+func TestUpdateProcessInstanceVariableDryRun_NoPlannedChangesStaysCompact(t *testing.T) {
+	prevVerbose := flagVerbose
+	flagVerbose = false
+	t.Cleanup(func() { flagVerbose = prevVerbose })
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	preview := newProcessInstanceVariableUpdatePreview(types.Keys{"2251799813687231"}, []processInstanceVariableUpdatePlan{{
+		ProcessInstanceKey: "2251799813687231",
+		UnchangedRequested: []processInstanceVariablePlannedValue{
+			{Name: "isActive", Value: true},
+			{Name: "message", Value: "hello"},
+		},
+		Untouched: []processInstanceVariablePlannedValue{
+			{Name: "businessId", Value: float64(1334283)},
+			{Name: "canRun", Value: true},
+		},
+	}})
+
+	require.False(t, preview.HasPlannedChanges())
+	require.Equal(t, 0, preview.UpdateCount)
+	require.NoError(t, renderUpdateProcessInstanceVariablePreview(cmd, preview))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: update process-instance variables: nothing to update (2 requested value(s) already match visible variables); no changes applied")
+	require.NotContains(t, output, "process instances to update")
+	require.NotContains(t, output, "variables unchanged by request")
+	require.NotContains(t, output, "isActive")
+	require.NotContains(t, output, "businessId")
+	require.NotContains(t, output, "variables left untouched")
+}
+
+func TestFormatProcessInstanceVariableUpdatePlan_RendersUnchangedWithoutArrow(t *testing.T) {
+	plan := processInstanceVariableUpdatePlan{
+		ProcessInstanceKey: "2251799813687231",
+		UnchangedRequested: []processInstanceVariablePlannedValue{
+			{Name: "hasIncident", Value: false},
+		},
+	}
+
+	require.Equal(t, "~ hasIncident: false (unchanged)", formatProcessInstanceVariableUpdatePlan(plan))
+}
+
+func TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation(t *testing.T) {
+	var sawSearch bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/element-instances/2251799813711967/variables":
+			t.Fatalf("no-op update must not submit mutation")
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			sawSearch = true
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("no-op update must not prompt for confirmation")
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"update", "pi",
+		"--key", "2251799813711967",
+		"--vars", `{"foo":"bar"}`,
+	)
+
+	require.True(t, sawSearch)
+	require.Contains(t, output, "plan: update process-instance variables")
+	require.Contains(t, output, "nothing to update")
+	require.NotContains(t, output, "updated process-instance")
+}
+
+func TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmation(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmationHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{
+			"--json",
+			"update", "pi",
+			"--key", "2251799813711967",
+			"--vars", `{"foo":"bar"}`,
+		}),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.NotContains(t, string(output), "plan: update process-instance variables")
+	require.NotContains(t, string(output), "Do you want to proceed?")
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(output, &envelope))
+	require.Equal(t, string(OutcomeInvalid), envelope["outcome"])
+	require.Equal(t, "invalid_input", envelope["class"])
+	detail := requireJSONObject(t, envelope["detail"])
+	require.Contains(t, detail["message"], "--json update pi requires --dry-run, --auto-confirm, or --automation")
+}
+
+func TestUpdateProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
+	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+
+	output, err := testx.RunCmdSubprocess(t, "TestUpdateProcessInstanceCommand_JSONRejectsVerboseHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_UPDATE_ARGS": marshalUpdateArgsForEnv(t, []string{
+			"--json",
+			"--verbose",
+			"update", "pi",
+			"--key", "2251799813711967",
+			"--vars", `{"foo":"bar"}`,
+			"--dry-run",
+		}),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.NotContains(t, string(output), "dry run: update process-instance variables")
+	require.NotContains(t, string(output), "Do you want to proceed?")
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(output, &envelope))
+	require.Equal(t, string(OutcomeInvalid), envelope["outcome"])
+	require.Equal(t, "invalid_input", envelope["class"])
+	detail := requireJSONObject(t, envelope["detail"])
+	require.Contains(t, detail["message"], "--json cannot be combined with --verbose for update pi")
 }
 
 func TestUpdateProcessInstanceCommand_InvalidVarsFailBeforeMutation(t *testing.T) {
@@ -497,6 +734,14 @@ func TestUpdateProcessInstanceCommand_MissingVarsFileHelper(t *testing.T) {
 }
 
 func TestUpdateProcessInstanceCommand_MalformedVarsFileHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_JSONMutationRequiresExplicitConfirmationHelper(t *testing.T) {
+	runUpdateProcessInstanceHelperFromEnv(t)
+}
+
+func TestUpdateProcessInstanceCommand_JSONRejectsVerboseHelper(t *testing.T) {
 	runUpdateProcessInstanceHelperFromEnv(t)
 }
 
