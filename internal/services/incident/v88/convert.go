@@ -26,3 +26,12 @@ func fromIncidentResult(r camundav88.IncidentResult) d.ProcessInstanceIncidentDe
 		ProcessDefinitionId:    r.ProcessDefinitionId,
 	}
 }
+
+// newIncidentStateEqFilterPtr builds a v8.8 incident state equality filter.
+func newIncidentStateEqFilterPtr(v camundav88.IncidentStateEnum) (*camundav88.IncidentStateFilterProperty, error) {
+	var f camundav88.IncidentStateFilterProperty
+	if err := f.FromIncidentStateFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}

@@ -73,7 +73,7 @@ func (s *Service) ResolveProcessInstanceIncidents(ctx context.Context, processIn
 	return result, nil
 }
 
-// SearchProcessInstanceIncidents uses the scoped process-instance incident endpoint and applies only tenant/page filters locally.
+// SearchProcessInstanceIncidents uses the scoped process-instance incident endpoint for active incident enrichment.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
@@ -81,14 +81,17 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 	if err != nil {
 		return nil, fmt.Errorf("building tenant incident filter: %w", err)
 	}
+	stateFilter, err := newIncidentStateEqFilterPtr(camundav89.IncidentStateEnumACTIVE)
+	if err != nil {
+		return nil, fmt.Errorf("building active incident filter: %w", err)
+	}
 	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
 	body := camundav89.SearchProcessInstanceIncidentsJSONRequestBody{
 		Page: &page,
-	}
-	if tenantFilter != nil {
-		body.Filter = &camundav89.IncidentFilter{
+		Filter: &camundav89.IncidentFilter{
+			State:    stateFilter,
 			TenantId: tenantFilter,
-		}
+		},
 	}
 	resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
 	if err != nil {

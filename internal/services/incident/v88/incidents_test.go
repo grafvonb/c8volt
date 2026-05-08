@@ -164,8 +164,13 @@ func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T
 
 	attempts := 0
 	svc := newTestService(t, mockIncidentClient{
-		searchProcessInstanceIncidents: func(_ context.Context, key string, _ camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
+		searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 			require.Equal(t, "2251799813685250", key)
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.State)
+			state, err := body.Filter.State.AsIncidentStateFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav88.IncidentStateEnumACTIVE, state)
 			attempts++
 			items := []camundav88.IncidentResult{
 				{IncidentKey: "other", ProcessInstanceKey: key, State: camundav88.IncidentStateEnumACTIVE},

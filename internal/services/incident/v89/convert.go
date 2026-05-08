@@ -38,6 +38,15 @@ func newStringEqFilterPtr(v string) (*camundav89.StringFilterProperty, error) {
 	return new(f), nil
 }
 
+// newIncidentStateEqFilterPtr builds a v8.9 incident state equality filter.
+func newIncidentStateEqFilterPtr(v camundav89.IncidentStateEnum) (*camundav89.IncidentStateFilterProperty, error) {
+	var f camundav89.IncidentStateFilterProperty
+	if err := f.FromIncidentStateFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
 func valueOrEmpty[T ~string](v *T) T {
 	if v == nil {
 		return ""
