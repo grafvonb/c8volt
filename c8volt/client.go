@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
@@ -21,6 +22,7 @@ import (
 	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/task"
 )
@@ -84,6 +86,10 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	jAPI, err := jsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
 	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
 		return nil, err
@@ -93,6 +99,7 @@ func New(opts ...Option) (API, error) {
 		ClusterAPI: cluster.New(cAPI, c.log),
 		ProcessAPI: process.New(pdAPI, piAPI, incAPI, c.log),
 		TaskAPI:    task.New(pdAPI, piAPI, utAPI, c.log),
+		JobAPI:     job.New(jAPI, c.log),
 		TenantAPI:  tenant.New(tAPI, c.log),
 		capsFunc: func(context.Context) (Capabilities, error) {
 			return Capabilities{
@@ -116,6 +123,7 @@ type ProcessAPI = process.API
 type TaskAPI = task.API
 type ResourceAPI = resource.API
 type TenantAPI = tenant.API
+type JobAPI = job.API
 
 var _ API = (*client)(nil)
 
@@ -123,6 +131,7 @@ type client struct {
 	ClusterAPI
 	ProcessAPI
 	TaskAPI
+	JobAPI
 	ResourceAPI
 	TenantAPI
 

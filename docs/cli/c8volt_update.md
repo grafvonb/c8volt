@@ -13,8 +13,10 @@ Update existing resources
 Update existing resources.
 
 The process-instance command updates process-instance-scope variables on
-existing Camunda 8.8 and 8.9 process instances. Camunda 8.7 configurations
-return an unsupported-version error before mutation.
+existing Camunda 8.8 and 8.9 process instances. The job command updates
+job retries and timeout by key, with dry-run planning, confirmation prompts,
+and optional no-wait submitted output. Camunda 8.7 configurations return an
+unsupported-version error before these mutations.
 
 ```
 c8volt update [flags]
@@ -24,6 +26,11 @@ c8volt update [flags]
 
 ```
   ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
+  ./c8volt update pi --key 2251799813711967 --vars-file ./vars.json
+  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update job --key 2251799813711967 --retries 3 --dry-run
+  ./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm
+  ./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
   ./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
   printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
   ./c8volt --automation --json update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --no-wait
@@ -56,5 +63,6 @@ c8volt update [flags]
 ### SEE ALSO
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
+* [c8volt update job](c8volt_update_job)	 - Update a job by key
 * [c8volt update process-instance](c8volt_update_process-instance)	 - Update process-instance variables by key
 

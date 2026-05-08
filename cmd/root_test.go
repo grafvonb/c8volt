@@ -136,6 +136,30 @@ func TestTimeoutFlag_RejectsInvalidDuration(t *testing.T) {
 	require.Error(t, root.PersistentFlags().Set("timeout", "eventually"))
 }
 
+func TestFlagParseErrorsDoNotPrintUsage(t *testing.T) {
+	tests := [][]string{
+		{"--config"},
+		{"get", "tenant", "--key"},
+		{"run", "pi", "--vars"},
+		{"walk", "pi", "--key"},
+		{"delete", "pd", "--key"},
+		{"update", "pi", "--vars-file"},
+	}
+
+	for _, args := range tests {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			output, err := executeRootExpectErrorForTest(t, args...)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid input")
+			require.Contains(t, err.Error(), "flag needs an argument")
+			require.NotContains(t, output, "Usage:")
+			require.NotContains(t, output, "Examples:")
+			require.NotContains(t, output, "Global Flags:")
+		})
+	}
+}
+
 // TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment verifies that automation mode can be
 // configured through environment variables, not only through CLI flags.
 func TestRetrieveAndNormalizeConfig_BindsAutomationFlagAndEnvironment(t *testing.T) {

@@ -111,7 +111,7 @@ After the first command, jump to [Configuration Notes](#configuration-notes) for
 
 `8.9` is a first-class runtime target. The everyday operator loop is covered: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
-`8.8` remains the established baseline. Process-instance variable updates are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for that state-changing command. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+`8.8` remains the established baseline. Process-instance variable updates and `get job`/`update job` commands are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for those state-changing job and variable update commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 
 ## Core Workflows
 
@@ -151,6 +151,19 @@ Use `--no-wait` when accepted/submitted output is enough:
 ```
 
 Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camunda `8.7` fails before mutation with an unsupported-version error.
+
+### Inspect And Update Jobs
+
+```bash
+./c8volt get job --key 2251799813711967
+./c8volt --json get job --key 2251799813711967
+./c8volt update job --key 2251799813711967 --retries 3 --dry-run
+./c8volt update job --key 2251799813711967 --retries 3 --auto-confirm
+./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm
+./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
+```
+
+Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Human job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
 
 ### Walk Before You Change
 
@@ -277,6 +290,8 @@ Human process-instance lists mark only incident-bearing instances with `inc!`; i
 Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
 
 For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. Direct incident keys and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages.
+
+When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`; use `--no-wait` when your script will verify later.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Human values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
@@ -439,6 +454,7 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
 ./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --no-wait
+./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt --automation --json get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
 ```
 
@@ -459,6 +475,9 @@ Examples:
 ```bash
 ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
 ./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
+./c8volt get job --key <job-key>
+./c8volt update job --key <job-key> --retries 3 --dry-run
+./c8volt update job --key <job-key> --retries 3 --no-wait --auto-confirm
 ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --allow-inconsistent --auto-confirm --no-wait -
 ```
 
@@ -475,7 +494,8 @@ c8volt
 |-- run                       Start runnable resources
 |   `-- pi                    Start process instances and confirm activation by default
 |-- update                    Update existing resources
-|   `-- pi                    Update process-instance variables and confirm visibility by default
+|   |-- pi                    Update process-instance variables and confirm visibility by default
+|   `-- job                   Update job retries and timeout by key
 |-- walk                      Inspect parent/child relationships
 |   `-- pi                    Walk ancestors, descendants, or full family trees
 |-- cancel                    Cancel resources and wait for confirmation
@@ -491,6 +511,7 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List, fetch, and enrich process instances
+|   |-- job                   Inspect a job by key
 |   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
@@ -525,6 +546,12 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Update process-instance-scope variables.
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
 ./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
+
+# Inspect and update jobs from incident job keys.
+./c8volt get job --key <job-key>
+./c8volt update job --key <job-key> --retries 3 --dry-run
+./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+./c8volt update job --key <job-key> --retries 3 --no-wait --auto-confirm
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active

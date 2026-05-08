@@ -189,7 +189,7 @@ func validatePIWithVarsUsage(keyCount int, filterFlagsSet bool) error {
 // semantic validation failures.
 func useInvalidInputFlagErrors(cmd *cobra.Command) {
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		return invalidInputError(err)
+		return silenceUsageForError(cmd, invalidInputError(err))
 	})
 }
 

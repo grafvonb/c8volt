@@ -306,9 +306,23 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "vars",
 		Type:        "string",
-		Required:    true,
+		Required:    false,
 		Repeated:    false,
 		Description: "JSON object with variables to set on each process instance",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "vars-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "path to JSON object file with variables to set on each process instance",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview variable updates without submitting mutation",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
@@ -316,6 +330,79 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 		Required:    false,
 		Repeated:    false,
 		Description: "return after the update request is accepted without variable confirmation",
+	})
+}
+
+func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	getCapability := commandCapabilityForCommand(getJobCmd)
+	require.Equal(t, "get job", getCapability.Path)
+	require.Equal(t, CommandMutationReadOnly, getCapability.Mutation)
+	require.Equal(t, ContractSupportFull, getCapability.ContractSupport)
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "job key to inspect",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "error-message-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "truncate error messages in human output to this many characters; 0 keeps full messages",
+	})
+
+	updateCapability := commandCapabilityForCommand(updateJobCmd)
+	require.Equal(t, "update job", updateCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, updateCapability.Mutation)
+	require.Equal(t, ContractSupportFull, updateCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updateCapability.AutomationSupport)
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "job key to update",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "retries",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "retry count to set on the job",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "timeout",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "timeout duration to submit for the job, for example 60s, 5m, or 1h",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview job updates without submitting mutation",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the update request is accepted without retry confirmation",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
 	})
 }
 
@@ -336,28 +423,92 @@ func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	require.Equal(t, CommandMutationStateChanging, updatePI.Mutation)
 	require.Equal(t, ContractSupportFull, updatePI.ContractSupport)
 	require.Equal(t, AutomationSupportFull, updatePI.AutomationSupport)
+
+	updateJob, ok := findCommandCapability(doc.Commands, "update job")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, updateJob.Mutation)
+	require.Equal(t, ContractSupportFull, updateJob.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updateJob.AutomationSupport)
+}
+
+func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"get"}, []string{
+		"Inspect cluster, process, job, tenant, and resource state",
+		"./c8volt get job --key 2251799813711967",
+	}, nil)
+	require.Contains(t, output, "job")
+
+	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
+		"Inspect a Camunda job by key",
+		"Use the jobKey exposed by incident-aware process-instance output",
+		"--json returns the stable job payload",
+		"--error-message-limit",
+		"Camunda 8.8 and 8.9",
+		"./c8volt get job --key 2251799813711967",
+		"./c8volt --json get job --key 2251799813711967",
+		"--key string",
+		"--error-message-limit int",
+	}, nil)
+
+	output = assertCommandHelpOutput(t, []string{"update"}, []string{
+		"Update existing resources",
+		"job retries and timeout by key",
+		"dry-run planning",
+		"optional no-wait submitted output",
+		"./c8volt update job --key 2251799813711967 --retries 3 --dry-run",
+		"./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm",
+		"./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm",
+	}, nil)
+	require.Contains(t, output, "job")
+
+	output = assertCommandHelpOutput(t, []string{"update", "job"}, []string{
+		"Update a Camunda job by key",
+		"supports retries and timeout updates",
+		"pre-mutation plan",
+		"--dry-run previews",
+		"--no-wait",
+		"Retry updates are confirmed by reading the job by key by default",
+		"timeout updates report submitted milliseconds without deadline confirmation",
+		"JSON mutations require --dry-run, --auto-confirm, or --automation",
+		"--json cannot be combined with --verbose",
+		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update job --key 2251799813711967 --retries 3 --dry-run",
+		"./c8volt --json update job --key 2251799813711967 --retries 3 --auto-confirm",
+		"--key string",
+		"--retries int32",
+		"--timeout string",
+		"--dry-run",
+		"--no-wait",
+		"--auto-confirm",
+	}, nil)
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
 		"Update existing resources",
 		"Camunda 8.8 and 8.9",
-		"unsupported-version error before mutation",
+		"unsupported-version error before these mutations",
 		"./c8volt update process-instance --key 2251799813711967 --vars",
+		"./c8volt update pi --key 2251799813711967 --vars-file",
 		"./c8volt --automation --json update pi --key 2251799813711967 --vars",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
 		"Update process-instance variables by key",
-		"--vars flag must be a JSON object",
+		"Provide exactly one variable payload source",
+		"--vars with a JSON object or --vars-file with a path",
 		"repeated --key values or newline-separated keys from stdin with '-'",
-		"By default c8volt waits until requested process-instance-scope variables are visible",
-		"add --no-wait to return after the update request is accepted",
+		"loads current process-instance-scope variables",
+		"Use --dry-run to preview without mutating",
+		"--auto-confirm for unattended mutation",
+		"--no-wait to return after the update request is accepted",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update pi --key 2251799813711967 --vars '{\"customerTier\":\"gold\"}' --dry-run",
 		"./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars",
 		"printf '%s\\n' 2251799813711967 | ./c8volt update pi --key 2251799813711968 - --vars",
 		"--workers",
+		"--dry-run",
 		"--fail-fast",
 	}, nil)
 	require.Contains(t, output, "Aliases:")
@@ -366,6 +517,8 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
 		"Update process-instance variables by key",
 		"--vars string",
+		"--vars-file string",
+		"--dry-run",
 		"--no-wait",
 	}, nil)
 	require.Contains(t, aliasOutput, "Aliases:")
