@@ -520,6 +520,154 @@ func TestResolveProcessInstanceIncidentsReportsPartialMutationFailures(t *testin
 	require.True(t, got.MutationSubmitted)
 }
 
+func TestResolveIncidentsBulkWorkersNoWorkerLimitAndPartialFailureTotals(t *testing.T) {
+	t.Parallel()
+
+	var active int32
+	var maxActive int32
+	var calls int32
+	incAPI := stubIncidentAPI{
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			cfg := services.ApplyCallOptions(opts)
+			if !cfg.NoWait {
+				return d.IncidentResolutionResponse{}, errors.New("expected no-wait call option")
+			}
+			if !cfg.NoWorkerLimit {
+				return d.IncidentResolutionResponse{}, errors.New("expected no-worker-limit call option")
+			}
+			current := atomic.AddInt32(&active, 1)
+			for {
+				previous := atomic.LoadInt32(&maxActive)
+				if current <= previous || atomic.CompareAndSwapInt32(&maxActive, previous, current) {
+					break
+				}
+			}
+			time.Sleep(10 * time.Millisecond)
+			atomic.AddInt32(&active, -1)
+			atomic.AddInt32(&calls, 1)
+			if key == "incident-b" {
+				return d.IncidentResolutionResponse{Key: key, Ok: false, StatusCode: 500, Status: "500 Internal Server Error"}, errors.New("mutation rejected")
+			}
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncidents(context.Background(),
+		typex.Keys{"incident-a", "incident-c", "incident-b", "incident-a"},
+		2,
+		options.WithNoWait(),
+		options.WithNoWorkerLimit(),
+	)
+
+	require.Error(t, err)
+	require.Len(t, got.Items, 3)
+	require.Equal(t, 3, got.Total)
+	require.Equal(t, 2, got.Submitted)
+	require.Equal(t, 1, got.Failed)
+	require.True(t, got.MutationSubmitted)
+	require.Equal(t, int32(3), atomic.LoadInt32(&calls))
+	require.Equal(t, int32(2), atomic.LoadInt32(&maxActive))
+}
+
+func TestResolveIncidentsBulkFailFastStopsSchedulingAfterFirstFailure(t *testing.T) {
+	t.Parallel()
+
+	var calls int32
+	incAPI := stubIncidentAPI{
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			require.Equal(t, "incident-fail", key)
+			require.True(t, services.ApplyCallOptions(opts).FailFast)
+			atomic.AddInt32(&calls, 1)
+			return d.IncidentResolutionResponse{Key: key, Ok: false, StatusCode: 500, Status: "500 Internal Server Error"}, errors.New("mutation rejected")
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncidents(context.Background(),
+		typex.Keys{"incident-fail", "incident-skip"},
+		1,
+		options.WithFailFast(),
+		options.WithNoWait(),
+	)
+
+	require.Error(t, err)
+	require.Equal(t, int32(1), atomic.LoadInt32(&calls))
+	require.Len(t, got.Items, 1)
+	require.Equal(t, 1, got.Total)
+	require.Equal(t, 1, got.Failed)
+	require.Equal(t, "incident-fail", got.Items[0].IncidentKey)
+}
+
+func TestResolveProcessInstancesIncidentsBulkReportsPartialFailureTotals(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "pi-a", key)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "incident-a", ProcessInstanceKey: key, State: "ACTIVE"},
+				{IncidentKey: "incident-b", ProcessInstanceKey: key, State: "ACTIVE"},
+			}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			if key == "incident-b" {
+				return d.IncidentResolutionResponse{Key: key, Ok: false, StatusCode: 500, Status: "500 Internal Server Error"}, errors.New("mutation rejected")
+			}
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstancesIncidents(context.Background(),
+		typex.Keys{"pi-a"},
+		1,
+		options.WithNoWait(),
+	)
+
+	require.Error(t, err)
+	require.Equal(t, 1, got.Total)
+	require.Equal(t, 1, got.Failed)
+	require.True(t, got.MutationSubmitted)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, ProcessInstanceResolutionStatusPartialFailed, got.Items[0].Status)
+	require.Equal(t, []string{"incident-a"}, got.Items[0].ResolvedIncidentKeys)
+	require.Equal(t, []string{"incident-b"}, got.Items[0].FailedIncidentKeys)
+}
+
+func TestResolveProcessInstancesIncidentsBulkFailFastStopsSchedulingAfterFirstLookupFailure(t *testing.T) {
+	t.Parallel()
+
+	var searches int32
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "pi-fail", key)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			atomic.AddInt32(&searches, 1)
+			return nil, errors.New("lookup failed")
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstancesIncidents(context.Background(),
+		typex.Keys{"pi-fail", "pi-skip"},
+		1,
+		options.WithFailFast(),
+		options.WithNoWorkerLimit(),
+	)
+
+	require.Error(t, err)
+	require.Equal(t, int32(1), atomic.LoadInt32(&searches))
+	require.Len(t, got.Items, 1)
+	require.Equal(t, 1, got.Total)
+	require.Equal(t, 1, got.Failed)
+	require.Equal(t, "pi-fail", got.Items[0].ProcessInstanceKey)
+}
+
 func TestResolveProcessInstanceIncidentsKeepsIncidentBoundaryOutOfProcessInstanceService(t *testing.T) {
 	t.Parallel()
 

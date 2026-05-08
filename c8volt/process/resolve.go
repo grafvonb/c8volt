@@ -61,6 +61,11 @@ func (c *client) ResolveIncident(ctx context.Context, key string, opts ...option
 		result.Error = ferrErr.Error()
 		return result, ferrErr
 	}
+	if !resp.Ok {
+		result.Status = IncidentResolutionStatusMutationFailed
+		result.Error = mutationNotAcceptedMessage(resp.Status)
+		return result, errors.New(result.Error)
+	}
 	if cfg.NoWait {
 		result.Status = IncidentResolutionStatusSubmitted
 		result.ConfirmationStatus = "skipped"
@@ -124,15 +129,21 @@ func (c *client) ResolveProcessInstanceIncidents(ctx context.Context, key string
 			result.ResolvedIncidentKeys = append(result.ResolvedIncidentKeys, incidentKey)
 		} else {
 			result.FailedIncidentKeys = append(result.FailedIncidentKeys, incidentKey)
+			if result.Error == "" {
+				result.Error = mutationNotAcceptedMessage(resp.Status)
+			}
 		}
 	}
 	if len(result.ResolvedIncidentKeys) == 0 {
 		result.Status = ProcessInstanceResolutionStatusFailed
+		if result.Error == "" {
+			result.Error = "incident resolution mutation was not accepted"
+		}
 		return result, errorFromResult(result.Error)
 	}
 	if cfg.NoWait {
-		result.Status = processInstanceResolutionStatusForFailures(result)
 		result.ConfirmationStatus = "skipped"
+		result.Status = processInstanceResolutionStatusForFailures(result)
 		return result, errorFromResult(result.Error)
 	}
 	waitResp, waitErr := c.incApi.WaitForProcessInstanceIncidentsResolved(ctx, key, result.ResolvedIncidentKeys, callOpts...)
@@ -151,6 +162,13 @@ func (c *client) ResolveProcessInstanceIncidents(ctx context.Context, key string
 		result.ConfirmationStatus = "resolved"
 	}
 	return result, errorFromResult(result.Error)
+}
+
+func mutationNotAcceptedMessage(status string) string {
+	if status != "" {
+		return status
+	}
+	return "incident resolution mutation was not accepted"
 }
 
 func summarizeIncidentResolutionResults(items []IncidentResolutionResult) IncidentResolutionResults {
@@ -258,6 +276,7 @@ func (c *client) ResolveIncidents(ctx context.Context, keys types.Keys, wantedWo
 	items, err := pool.ExecuteSlice[string, IncidentResolutionResult](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (IncidentResolutionResult, error) {
 		return c.ResolveIncident(ctx, key, opts...)
 	})
+	items = compactIncidentResolutionResults(items)
 	return summarizeIncidentResolutionResults(items), err
 }
 
@@ -268,5 +287,28 @@ func (c *client) ResolveProcessInstancesIncidents(ctx context.Context, keys type
 	items, err := pool.ExecuteSlice[string, ProcessInstanceResolutionResult](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (ProcessInstanceResolutionResult, error) {
 		return c.ResolveProcessInstanceIncidents(ctx, key, opts...)
 	})
+	items = compactProcessInstanceResolutionResults(items)
 	return summarizeProcessInstanceResolutionResults(items), err
+}
+
+func compactIncidentResolutionResults(items []IncidentResolutionResult) []IncidentResolutionResult {
+	out := items[:0]
+	for _, item := range items {
+		if item.IncidentKey == "" && item.Status == "" {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func compactProcessInstanceResolutionResults(items []ProcessInstanceResolutionResult) []ProcessInstanceResolutionResult {
+	out := items[:0]
+	for _, item := range items {
+		if item.ProcessInstanceKey == "" && item.Status == "" {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
 }

@@ -466,6 +466,13 @@ func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
 		Description: "preview incident resolutions without submitting mutation",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the resolution request is accepted without incident confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "fail-fast",
 		Type:        "bool",
 		Required:    false,
@@ -507,6 +514,13 @@ func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T
 		Required:    false,
 		Repeated:    false,
 		Description: "preview process-instance incident resolutions without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after resolution requests are accepted without incident confirmation",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "fail-fast",

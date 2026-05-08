@@ -208,6 +208,111 @@ func TestResolveIncidentCommand_JSONRejectsVerbose(t *testing.T) {
 	require.Contains(t, string(output), "--json cannot be combined with --verbose for resolve incident")
 }
 
+func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *testing.T) {
+	var sawWait bool
+	resolveCounts := map[string]int{}
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249/resolution",
+			"/v2/incidents/2251799813685250/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "/resolution")
+			resolveCounts[key]++
+			if key == "2251799813685250" {
+				http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			if r.Method == http.MethodGet {
+				sawWait = true
+			}
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveIncidentCommand_PartialFailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"resolve", "incident",
+			"--no-wait",
+			"--workers", "1",
+			"--no-worker-limit",
+			"--key", "2251799813685249",
+			"--key", "2251799813685250",
+		}),
+	})
+	require.Error(t, err)
+	require.False(t, sawWait)
+	require.Equal(t, map[string]int{"2251799813685249": 1, "2251799813685250": 1}, resolveCounts)
+	require.Contains(t, string(output), "resolved incident 2251799813685249: submitted")
+	require.Contains(t, string(output), "resolved incident 2251799813685250: mutation failed")
+	require.Contains(t, string(output), "resolved: 2 (confirmed/submitted/skipped: 1, failed: 1)")
+}
+
+func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testing.T) {
+	var resolveCount int
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/incidents/2251799813685249/resolution", r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		resolveCount++
+		http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveIncidentCommand_FailFastHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"resolve", "incident",
+			"--no-wait",
+			"--workers", "1",
+			"--fail-fast",
+			"--key", "2251799813685249",
+			"--key", "2251799813685250",
+		}),
+	})
+	require.Error(t, err)
+	require.Equal(t, 1, resolveCount)
+	require.Contains(t, string(output), "resolved: 1 (confirmed/submitted/skipped: 0, failed: 1)")
+	require.NotContains(t, string(output), "2251799813685250")
+}
+
+func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *testing.T) {
+	var waitCount int
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/incidents/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
+			waitCount++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveIncidentCommand_RetryExhaustionHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"resolve", "--backoff-max-retries", "1",
+			"incident",
+			"--key", "2251799813685249",
+		}),
+	})
+	require.Error(t, err)
+	require.Equal(t, 1, waitCount)
+	require.Contains(t, string(output), "confirmation failed")
+	require.Contains(t, string(output), "exceeded max_retries (1)")
+}
+
 func TestResolveIncidentCommand_InvalidFlagKeyHelper(t *testing.T) {
 	runResolveIncidentHelperFromEnv(t)
 }
@@ -217,6 +322,18 @@ func TestResolveIncidentCommand_EmptyStdinHelper(t *testing.T) {
 }
 
 func TestResolveIncidentCommand_JSONRejectsVerboseHelper(t *testing.T) {
+	runResolveIncidentHelperFromEnv(t)
+}
+
+func TestResolveIncidentCommand_PartialFailureHelper(t *testing.T) {
+	runResolveIncidentHelperFromEnv(t)
+}
+
+func TestResolveIncidentCommand_FailFastHelper(t *testing.T) {
+	runResolveIncidentHelperFromEnv(t)
+}
+
+func TestResolveIncidentCommand_RetryExhaustionHelper(t *testing.T) {
 	runResolveIncidentHelperFromEnv(t)
 }
 

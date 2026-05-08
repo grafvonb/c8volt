@@ -16,6 +16,8 @@ Started: 2026-05-08 21:06:02
 - Resolve mutation command rendering should use shared JSON envelopes in machine mode and compact per-target human lines plus a totals line in one-line mode, matching update process-instance result rendering.
 - `resolve process-instance` mirrors direct incident command input handling, but schedules facade `ResolveProcessInstancesIncidents` so commands never call incident lookup/resolution services directly and `internal/services/processinstance` remains free of incident resolution methods.
 - Resolve dry-run support is already driven by facade `WithDryRun`; command leaves only need to expose `--dry-run`, pass `collectOptions()`, reject `--json --verbose`, and render planned/skipped results without submitting mutation.
+- Resolve mutation commands must render facade bulk results before handling aggregate facade errors so partial failures do not suppress successful target output.
+- The shared worker pool now preserves a worker result even when the worker also returns an error; resolve bulk helpers compact unscheduled fail-fast zero-value slots so totals describe attempted work instead of requested-but-unscheduled keys.
 
 ## Iteration 1 - 2026-05-08 21:07:28 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
@@ -169,4 +171,30 @@ Started: 2026-05-08 21:06:02
 - Process-instance dry-run uses the same scoped incident search as mutation mode, but stops after discovery and renders planned/skipped results without confirmation polling.
 - Stable JSON dry-run output stays on the shared envelope and now carries the resolve operation name, while `--json --verbose` is rejected before lookup or mutation.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolveIncidentCommand_DryRun|TestResolveIncidentCommand_JSON|TestResolveProcessInstanceCommand_DryRun|TestResolveProcessInstanceCommand_JSON|TestRenderIncidentResolutionResults|TestRenderProcessInstanceResolutionResults|TestCommandCapabilityForCommand_Resolve' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -run 'TestResolveIncidentDryRun|TestResolveProcessInstanceIncidents' -count=1`, plus full `go test ./cmd -count=1` and `go test ./c8volt/process -count=1`.
+---
+---
+## Iteration 6 - 2026-05-08 21:51:32 CEST
+**User Story**: User Story 4 - Control Waiting and Failure Reporting
+**Tasks Completed**:
+- [x] T039: Add command tests for `--no-wait`, fail-fast, workers, no-worker-limit, timeout, and retry exhaustion in `cmd/resolve_incident_test.go` and `cmd/resolve_processinstance_test.go`
+- [x] T040: Add facade bulk tests for worker fan-out, fail-fast, no-worker-limit, and partial failure totals in `c8volt/process/client_test.go`
+- [x] T041: Thread existing backoff, timeout, retry, worker, fail-fast, no-worker-limit, and no-wait options through resolve commands in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
+- [x] T042: Ensure facade result totals and command exit behavior surface partial failures without suppressing successful target output in `c8volt/process/model.go`, `c8volt/process/client.go`, and `cmd/cmd_views_resolve.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- c8volt/process/resolve.go
+- cmd/command_contract_test.go
+- cmd/resolve_incident.go
+- cmd/resolve_incident_test.go
+- cmd/resolve_processinstance.go
+- cmd/resolve_processinstance_test.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/tasks.md
+- toolx/pool/pool.go
+**Learnings**:
+- `--no-wait` was wired through `collectOptions()` but missing from both resolve leaf flag sets, so command-level coverage must include the actual Cobra flag surface.
+- Process-instance no-wait status depends on setting `ConfirmationStatus` before deriving the aggregate result status; otherwise successful no-wait results look confirmed.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`, and `GOCACHE=/tmp/c8volt-gocache go test ./toolx/pool -count=1`.
 ---

@@ -123,13 +123,13 @@
 
 ### Tests for User Story 4
 
-- [ ] T039 [P] [US4] Add command tests for `--no-wait`, fail-fast, workers, no-worker-limit, timeout, and retry exhaustion in `cmd/resolve_incident_test.go` and `cmd/resolve_processinstance_test.go`
-- [ ] T040 [P] [US4] Add facade bulk tests for worker fan-out, fail-fast, no-worker-limit, and partial failure totals in `c8volt/process/client_test.go`
+- [x] T039 [P] [US4] Add command tests for `--no-wait`, fail-fast, workers, no-worker-limit, timeout, and retry exhaustion in `cmd/resolve_incident_test.go` and `cmd/resolve_processinstance_test.go`
+- [x] T040 [P] [US4] Add facade bulk tests for worker fan-out, fail-fast, no-worker-limit, and partial failure totals in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Thread existing backoff, timeout, retry, worker, fail-fast, no-worker-limit, and no-wait options through resolve commands in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
-- [ ] T042 [US4] Ensure facade result totals and command exit behavior surface partial failures without suppressing successful target output in `c8volt/process/model.go`, `c8volt/process/client.go`, and `cmd/cmd_views_resolve.go`
+- [x] T041 [US4] Thread existing backoff, timeout, retry, worker, fail-fast, no-worker-limit, and no-wait options through resolve commands in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
+- [x] T042 [US4] Ensure facade result totals and command exit behavior surface partial failures without suppressing successful target output in `c8volt/process/model.go`, `c8volt/process/client.go`, and `cmd/cmd_views_resolve.go`
 
 **Checkpoint**: Waiting and failure behavior is explicit across incident and process-instance resolution.
 

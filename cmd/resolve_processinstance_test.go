@@ -289,6 +289,114 @@ func TestResolveProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
 	require.Contains(t, string(output), "--json cannot be combined with --verbose for resolve process-instance")
 }
 
+func TestResolveProcessInstanceCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *testing.T) {
+	searchCounts := map[string]int{}
+	resolveCounts := map[string]int{}
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813685250/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searchCounts["2251799813685250"]++
+			_, _ = w.Write([]byte(incidentSearchJSON(
+				incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
+			)))
+		case "/v2/process-instances/2251799813685260/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searchCounts["2251799813685260"]++
+			http.Error(w, `{"message":"lookup failed"}`, http.StatusInternalServerError)
+		case "/v2/incidents/2251799813685249/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			resolveCounts["2251799813685249"]++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveProcessInstanceCommand_PartialFailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"resolve", "pi",
+			"--no-wait",
+			"--workers", "1",
+			"--no-worker-limit",
+			"--key", "2251799813685250",
+			"--key", "2251799813685260",
+		}),
+	})
+	require.Error(t, err)
+	require.Equal(t, map[string]int{"2251799813685250": 1, "2251799813685260": 1}, searchCounts)
+	require.Equal(t, map[string]int{"2251799813685249": 1}, resolveCounts)
+	require.Contains(t, string(output), "resolved process-instance 2251799813685250: submitted (1 incident(s))")
+	require.Contains(t, string(output), "resolved process-instance 2251799813685260: failed")
+	require.Contains(t, string(output), "resolved process-instances: 2 (confirmed/submitted/skipped: 1, failed: 1)")
+}
+
+func TestResolveProcessInstanceCommand_FailFastStopsAfterFirstLookupFailure(t *testing.T) {
+	var searches int
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/process-instances/2251799813685250/incidents/search", r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		searches++
+		http.Error(w, `{"message":"lookup failed"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveProcessInstanceCommand_FailFastHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"resolve", "process-instance",
+			"--workers", "1",
+			"--fail-fast",
+			"--key", "2251799813685250",
+			"--key", "2251799813685260",
+		}),
+	})
+	require.Error(t, err)
+	require.Equal(t, 1, searches)
+	require.Contains(t, string(output), "resolved process-instances: 1 (confirmed/submitted/skipped: 0, failed: 1)")
+	require.NotContains(t, string(output), "2251799813685260")
+}
+
+func TestResolveProcessInstanceCommand_TimeoutReportsConfirmationFailure(t *testing.T) {
+	var searches int
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813685250/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searches++
+			_, _ = w.Write([]byte(incidentSearchJSON(
+				incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
+			)))
+		case "/v2/incidents/2251799813685249/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveProcessInstanceCommand_TimeoutHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{
+			"resolve", "--backoff-timeout", "1ns",
+			"pi",
+			"--key", "2251799813685250",
+		}),
+	})
+	require.Error(t, err)
+	require.GreaterOrEqual(t, searches, 1)
+	require.Contains(t, string(output), "partial failure")
+	require.Contains(t, string(output), "context deadline exceeded")
+}
+
 func TestResolveProcessInstanceCommand_LookupFailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -315,6 +423,18 @@ func TestResolveProcessInstanceCommand_EmptyStdinHelper(t *testing.T) {
 }
 
 func TestResolveProcessInstanceCommand_JSONRejectsVerboseHelper(t *testing.T) {
+	runResolveProcessInstanceHelperFromEnv(t)
+}
+
+func TestResolveProcessInstanceCommand_PartialFailureHelper(t *testing.T) {
+	runResolveProcessInstanceHelperFromEnv(t)
+}
+
+func TestResolveProcessInstanceCommand_FailFastHelper(t *testing.T) {
+	runResolveProcessInstanceHelperFromEnv(t)
+}
+
+func TestResolveProcessInstanceCommand_TimeoutHelper(t *testing.T) {
 	runResolveProcessInstanceHelperFromEnv(t)
 }
 
