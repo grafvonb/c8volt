@@ -1178,7 +1178,8 @@ func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 		"GET /v2/process-instances/2251799813711967",
 		"POST /v2/process-instances/2251799813711967/incidents/search",
 	}, requests)
-	require.Contains(t, output, "2251799813711967 tenant demo v3 ACTIVE inc!")
+	require.Contains(t, output, "2251799813711967 tenant demo v3 ACTIVE")
+	require.Contains(t, output, "inc!")
 	require.Contains(t, output, "└─ incidents:\n   └─ key=2251799813685249 errorType=JOB_NO_RETRIES jobKey=2251799813685251 message=No retries left")
 	require.Contains(t, output, "found: 1")
 }

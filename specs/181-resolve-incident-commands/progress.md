@@ -19,6 +19,7 @@ Started: 2026-05-08 21:06:02
 - Resolve mutation commands must render facade bulk results before handling aggregate facade errors so partial failures do not suppress successful target output.
 - The shared worker pool now preserves a worker result even when the worker also returns an error; resolve bulk helpers compact unscheduled fail-fast zero-value slots so totals describe attempted work instead of requested-but-unscheduled keys.
 - `make docs-content` regenerates Cobra command markdown and syncs `docs/index.md` from `README.md`; `docs/cli/index.md` remains a maintained landing page and must be updated directly when adding command-family navigation.
+- Process-instance one-line rows render start/end/parent metadata before the `inc!` marker, so incident regression assertions should check the stable row prefix and marker independently instead of requiring `ACTIVE inc!` adjacency.
 
 ## Iteration 1 - 2026-05-08 21:07:28 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
@@ -229,4 +230,25 @@ Started: 2026-05-08 21:06:02
 - Resolve command documentation is generated from Cobra command long text and examples, while `docs/cli/index.md` needs a separate navigation update to expose the new command family from the CLI landing page.
 - Capabilities JSON tests can reuse the recursive `findCommandCapability` helper from the command contract tests because all command tests share package `cmd`.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetProcessInstance|TestGetPIWithIncidents|TestUpdatePI|TestCapabilities|TestCapabilityDocumentForRoot_ResolveCommandFamily|TestCommandCapabilityForCommand_Resolve' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`, `git diff --check`, and a no-match boundary scan for incident/resolve methods in `internal/services/processinstance` factory and version contracts.
+---
+---
+## Iteration 8 - 2026-05-08 22:02:16 CEST
+**User Story**: Final Phase: Validation & Handoff
+**Tasks Completed**:
+- [x] T049: Run targeted service validation with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`
+- [x] T050: Run targeted facade validation with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`
+- [x] T051: Run targeted command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolve|TestCommandContract|TestCapabilities|TestGetProcessInstance|TestUpdatePI' -count=1`
+- [x] T052: Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T053: Run repository validation with `make test`
+- [x] T054: Review `git diff --check` and final changed files before committing
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processinstance_test.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/tasks.md
+**Learnings**:
+- `make test` runs the full command package under race detection and caught `TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput`, which the narrower final command regex did not include because the test name starts with `TestGetPI`.
+- The alias regression test should preserve the existing one-line process-instance field order by checking the stable row prefix and `inc!` marker separately.
+- Final validation passed with the targeted incident service, process facade, command, and docsgen checks, plus `make test` and `git diff --check`.
 ---

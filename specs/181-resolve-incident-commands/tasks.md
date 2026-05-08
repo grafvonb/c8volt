@@ -161,12 +161,12 @@
 
 **Purpose**: Prove the complete feature before commit or PR handoff.
 
-- [ ] T049 Run targeted service validation with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`
-- [ ] T050 Run targeted facade validation with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`
-- [ ] T051 Run targeted command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolve|TestCommandContract|TestCapabilities|TestGetProcessInstance|TestUpdatePI' -count=1`
-- [ ] T052 Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
-- [ ] T053 Run repository validation with `make test`
-- [ ] T054 Review `git diff --check` and final changed files before committing
+- [x] T049 Run targeted service validation with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`
+- [x] T050 Run targeted facade validation with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`
+- [x] T051 Run targeted command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolve|TestCommandContract|TestCapabilities|TestGetProcessInstance|TestUpdatePI' -count=1`
+- [x] T052 Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T053 Run repository validation with `make test`
+- [x] T054 Review `git diff --check` and final changed files before committing
 
 ---
 
