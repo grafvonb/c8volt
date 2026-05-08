@@ -33,20 +33,20 @@
 
 **Critical**: No user story implementation should begin until this phase is complete.
 
-- [ ] T007 Add job domain request/result models in `internal/domain/job.go` and model tests in `internal/domain/job_test.go`
-- [ ] T008 Add dedicated job facade request/result models in `c8volt/job/model.go`
-- [ ] T009 Add dedicated job facade interface and client shell in `c8volt/job/api.go` and `c8volt/job/client.go`
-- [ ] T010 Add shared job service API and compile-time conformance expectations in `internal/services/job/api.go`
-- [ ] T011 Add job service factory and factory tests in `internal/services/job/factory.go` and `internal/services/job/factory_test.go`
-- [ ] T012 Add v8.7 unsupported job service shell in `internal/services/job/v87/contract.go`, `internal/services/job/v87/service.go`, and `internal/services/job/v87/service_test.go`
-- [ ] T013 Add v8.8 and v8.9 job service shells with compile-time conformance in `internal/services/job/v88/contract.go`, `internal/services/job/v88/service.go`, `internal/services/job/v89/contract.go`, and `internal/services/job/v89/service.go`
-- [ ] T014 Add command shells for `get job` and `update job` registration in `cmd/get_job.go` and `cmd/update_job.go`
-- [ ] T015 Add command contract discovery tests for `get job` and `update job` metadata in `cmd/command_contract_test.go`
-- [ ] T016 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 -run 'Test(CommandCapability|Job|Unsupported)' -count=1` and fix foundational regressions
-- [ ] T078 Add job update plan models for current job state, requested retries, requested timeout, material-change classification, dry-run status, and mutation-submitted status in `c8volt/job/model.go` or the command-local model file chosen during discovery
-- [ ] T079 Add command contract tests proving `update job` exposes `--dry-run`, marks the command state-changing, and keeps mutation metadata automation-compatible in `cmd/command_contract_test.go`
-- [ ] T080 Add command validation tests proving `update job --json --verbose` is rejected before lookup or mutation in `cmd/update_job_test.go`
-- [ ] T081 Add command validation tests proving non-dry-run `--json update job` requires `--auto-confirm` or automation mode before lookup or mutation in `cmd/update_job_test.go`
+- [x] T007 Add job domain request/result models in `internal/domain/job.go` and model tests in `internal/domain/job_test.go`
+- [x] T008 Add dedicated job facade request/result models in `c8volt/job/model.go`
+- [x] T009 Add dedicated job facade interface and client shell in `c8volt/job/api.go` and `c8volt/job/client.go`
+- [x] T010 Add shared job service API and compile-time conformance expectations in `internal/services/job/api.go`
+- [x] T011 Add job service factory and factory tests in `internal/services/job/factory.go` and `internal/services/job/factory_test.go`
+- [x] T012 Add v8.7 unsupported job service shell in `internal/services/job/v87/contract.go`, `internal/services/job/v87/service.go`, and `internal/services/job/v87/service_test.go`
+- [x] T013 Add v8.8 and v8.9 job service shells with compile-time conformance in `internal/services/job/v88/contract.go`, `internal/services/job/v88/service.go`, `internal/services/job/v89/contract.go`, and `internal/services/job/v89/service.go`
+- [x] T014 Add command shells for `get job` and `update job` registration in `cmd/get_job.go` and `cmd/update_job.go`
+- [x] T015 Add command contract discovery tests for `get job` and `update job` metadata in `cmd/command_contract_test.go`
+- [x] T016 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/v87 -run 'Test(CommandCapability|Job|Unsupported)' -count=1` and fix foundational regressions
+- [x] T078 Add job update plan models for current job state, requested retries, requested timeout, material-change classification, dry-run status, and mutation-submitted status in `c8volt/job/model.go` or the command-local model file chosen during discovery
+- [x] T079 Add command contract tests proving `update job` exposes `--dry-run`, marks the command state-changing, and keeps mutation metadata automation-compatible in `cmd/command_contract_test.go`
+- [x] T080 Add command validation tests proving `update job --json --verbose` is rejected before lookup or mutation in `cmd/update_job_test.go`
+- [x] T081 Add command validation tests proving non-dry-run `--json update job` requires `--auto-confirm` or automation mode before lookup or mutation in `cmd/update_job_test.go`
 
 **Checkpoint**: The command family, dedicated facade, service surface, and update planning contract compile before story behavior is implemented.
 
@@ -60,21 +60,21 @@
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] Add command test for successful `get job --key <job-key>` human output in `cmd/get_job_test.go`
-- [ ] T018 [P] [US1] Add command test for successful `get job --key <job-key>` JSON output in `cmd/get_job_test.go`
-- [ ] T019 [P] [US1] Add command test for not-found job lookup in human and JSON modes in `cmd/get_job_test.go`
-- [ ] T020 [P] [US1] Add v8.8 service test for generated job search by key in `internal/services/job/v88/service_test.go`
-- [ ] T021 [P] [US1] Add v8.9 service test for generated job search by key in `internal/services/job/v89/service_test.go`
-- [ ] T022 [P] [US1] Add facade lookup tests for found and not-found results in `c8volt/job/client_test.go`
+- [x] T017 [P] [US1] Add command test for successful `get job --key <job-key>` human output in `cmd/get_job_test.go`
+- [x] T018 [P] [US1] Add command test for successful `get job --key <job-key>` JSON output in `cmd/get_job_test.go`
+- [x] T019 [P] [US1] Add command test for not-found job lookup in human and JSON modes in `cmd/get_job_test.go`
+- [x] T020 [P] [US1] Add v8.8 service test for generated job search by key in `internal/services/job/v88/service_test.go`
+- [x] T021 [P] [US1] Add v8.9 service test for generated job search by key in `internal/services/job/v89/service_test.go`
+- [x] T022 [P] [US1] Add facade lookup tests for found and not-found results in `c8volt/job/client_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T023 [US1] Implement job detail domain and facade conversion helpers in `internal/domain/job.go` and `c8volt/job/model.go`
-- [ ] T024 [US1] Implement v8.8 job search and conversion in `internal/services/job/v88/convert.go` and `internal/services/job/v88/service.go`
-- [ ] T025 [US1] Implement v8.9 job search and conversion in `internal/services/job/v89/convert.go` and `internal/services/job/v89/service.go`
-- [ ] T026 [US1] Implement facade lookup orchestration in `c8volt/job/client.go`
-- [ ] T027 [US1] Implement `cmd/get_job.go` flag validation, service wiring, and human/JSON output for found and not-found results
-- [ ] T028 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobLookup|SearchJobs)' -count=1` and fix regressions
+- [x] T023 [US1] Implement job detail domain and facade conversion helpers in `internal/domain/job.go` and `c8volt/job/model.go`
+- [x] T024 [US1] Implement v8.8 job search and conversion in `internal/services/job/v88/convert.go` and `internal/services/job/v88/service.go`
+- [x] T025 [US1] Implement v8.9 job search and conversion in `internal/services/job/v89/convert.go` and `internal/services/job/v89/service.go`
+- [x] T026 [US1] Implement facade lookup orchestration in `c8volt/job/client.go`
+- [x] T027 [US1] Implement `cmd/get_job.go` flag validation, service wiring, and human/JSON output for found and not-found results
+- [x] T028 [US1] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v88 ./internal/services/job/v89 -run 'Test(GetJob|JobLookup|SearchJobs)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 1 is independently complete when job lookup, not-found behavior, and human/JSON output pass.
 

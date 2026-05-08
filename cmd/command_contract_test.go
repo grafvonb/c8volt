@@ -333,6 +333,50 @@ func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T)
 	})
 }
 
+func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	getCapability := commandCapabilityForCommand(getJobCmd)
+	require.Equal(t, "get job", getCapability.Path)
+	require.Equal(t, CommandMutationReadOnly, getCapability.Mutation)
+	require.Equal(t, ContractSupportFull, getCapability.ContractSupport)
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "job key to inspect",
+	})
+
+	updateCapability := commandCapabilityForCommand(updateJobCmd)
+	require.Equal(t, "update job", updateCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, updateCapability.Mutation)
+	require.Equal(t, ContractSupportFull, updateCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updateCapability.AutomationSupport)
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "job key to update",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview job updates without submitting mutation",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the update request is accepted without retry confirmation",
+	})
+}
+
 func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -350,6 +394,12 @@ func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	require.Equal(t, CommandMutationStateChanging, updatePI.Mutation)
 	require.Equal(t, ContractSupportFull, updatePI.ContractSupport)
 	require.Equal(t, AutomationSupportFull, updatePI.AutomationSupport)
+
+	updateJob, ok := findCommandCapability(doc.Commands, "update job")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, updateJob.Mutation)
+	require.Equal(t, ContractSupportFull, updateJob.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updateJob.AutomationSupport)
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {

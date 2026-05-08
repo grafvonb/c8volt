@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/task"
@@ -18,6 +19,7 @@ type API interface {
 	process.API
 	task.API
 	cluster.API
+	job.API
 	resource.API
 	tenant.API
 }
