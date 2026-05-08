@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testConfig returns the minimal config needed to construct versioned job services in tests.
 func testConfig() *config.Config {
 	return &config.Config{
 		APIs: config.APIs{
