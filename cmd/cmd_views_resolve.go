@@ -37,3 +37,40 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 	}
 	return nil
 }
+
+func renderProcessInstanceResolutionResults(cmd *cobra.Command, results process.ProcessInstanceResolutionResults) error {
+	if commandUsesSharedEnvelope(cmd, pickMode()) {
+		return renderCommandResult(cmd, results)
+	}
+	for _, item := range results.Items {
+		switch item.Status {
+		case process.ProcessInstanceResolutionStatusConfirmed:
+			renderHumanLine(cmd, "resolved process-instance %s: confirmed (%d incident(s))", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys))
+		case process.ProcessInstanceResolutionStatusSubmitted:
+			renderHumanLine(cmd, "resolved process-instance %s: submitted (%d incident(s))", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys))
+		case process.ProcessInstanceResolutionStatusSkipped:
+			renderHumanLine(cmd, "resolved process-instance %s: skipped (%s)", item.ProcessInstanceKey, processInstanceResolutionSkipReason(item))
+		case process.ProcessInstanceResolutionStatusPlanned:
+			renderHumanLine(cmd, "resolved process-instance %s: planned (%d incident(s))", item.ProcessInstanceKey, len(item.AttemptedIncidentKeys))
+		case process.ProcessInstanceResolutionStatusPartialFailed:
+			renderHumanLine(cmd, "resolved process-instance %s: partial failure (resolved: %d, failed: %d): %s", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys), len(item.FailedIncidentKeys), item.Error)
+		case process.ProcessInstanceResolutionStatusFailed:
+			renderHumanLine(cmd, "resolved process-instance %s: failed: %s", item.ProcessInstanceKey, item.Error)
+		default:
+			renderHumanLine(cmd, "resolved process-instance %s: %s", item.ProcessInstanceKey, item.Status)
+		}
+	}
+	total, ok, failed := results.Totals()
+	renderHumanLine(cmd, "resolved process-instances: %d (confirmed/submitted/skipped: %d, failed: %d)", total, ok, failed)
+	if failed > 0 {
+		return fmt.Errorf("one or more process-instance incident resolutions failed")
+	}
+	return nil
+}
+
+func processInstanceResolutionSkipReason(item process.ProcessInstanceResolutionResult) string {
+	if item.ConfirmationStatus != "" {
+		return item.ConfirmationStatus
+	}
+	return "no_active_incidents"
+}

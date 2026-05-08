@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -516,6 +518,34 @@ func TestResolveProcessInstanceIncidentsReportsPartialMutationFailures(t *testin
 	require.Equal(t, []string{"incident-a"}, got.ResolvedIncidentKeys)
 	require.Equal(t, []string{"incident-b"}, got.FailedIncidentKeys)
 	require.True(t, got.MutationSubmitted)
+}
+
+func TestResolveProcessInstanceIncidentsKeepsIncidentBoundaryOutOfProcessInstanceService(t *testing.T) {
+	t.Parallel()
+
+	apiType := reflect.TypeOf((*pisvc.API)(nil)).Elem()
+	for i := 0; i < apiType.NumMethod(); i++ {
+		method := apiType.Method(i)
+		require.NotContains(t, strings.ToLower(method.Name), "incident")
+	}
+
+	var lookedUp bool
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			lookedUp = true
+			require.Equal(t, "2251799813685250", key)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "2251799813685249", ProcessInstanceKey: key, State: "RESOLVED"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstanceIncidents(context.Background(), "2251799813685250")
+
+	require.NoError(t, err)
+	require.True(t, lookedUp)
+	require.Equal(t, ProcessInstanceResolutionStatusSkipped, got.Status)
 }
 
 // TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation prevents incident details from leaking across keyed results.

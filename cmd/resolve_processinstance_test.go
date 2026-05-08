@@ -1,0 +1,250 @@
+// SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package cmd
+
+import (
+	"net/http"
+	"os"
+	"os/exec"
+	"strconv"
+	"testing"
+
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
+	"github.com/stretchr/testify/require"
+)
+
+func TestResolveProcessInstanceCommand_DiscoversResolvesAndWaitsForConfirmation(t *testing.T) {
+	var searches int
+	var sawResolve bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813685250/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searches++
+			if searches == 1 {
+				_, _ = w.Write([]byte(incidentSearchJSON(
+					incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
+					incidentSearchItemJSON("2251799813685248", "2251799813685250", "RESOLVED"),
+					incidentSearchItemJSON("2251799813685247", "2251799813685260", "ACTIVE"),
+				)))
+				return
+			}
+			_, _ = w.Write([]byte(incidentSearchJSON(
+				incidentSearchItemJSON("2251799813685248", "2251799813685250", "RESOLVED"),
+			)))
+		case "/v2/incidents/2251799813685249/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			sawResolve = true
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"resolve", "process-instance",
+		"--key", "2251799813685250",
+	)
+
+	require.True(t, sawResolve)
+	require.Equal(t, 2, searches)
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "resolved process-instance 2251799813685250: confirmed (1 incident(s))")
+	require.Contains(t, stderr, "resolved process-instances: 1")
+}
+
+func TestResolveProcessInstanceCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.T) {
+	searchCounts := map[string]int{}
+	resolveCounts := map[string]int{}
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813685250/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searchCounts["2251799813685250"]++
+			if searchCounts["2251799813685250"] == 1 {
+				_, _ = w.Write([]byte(incidentSearchJSON(incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"))))
+				return
+			}
+			_, _ = w.Write([]byte(incidentSearchJSON()))
+		case "/v2/process-instances/2251799813685260/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searchCounts["2251799813685260"]++
+			if searchCounts["2251799813685260"] == 1 {
+				_, _ = w.Write([]byte(incidentSearchJSON(incidentSearchItemJSON("2251799813685259", "2251799813685260", "ACTIVE"))))
+				return
+			}
+			_, _ = w.Write([]byte(incidentSearchJSON()))
+		case "/v2/incidents/2251799813685249/resolution",
+			"/v2/incidents/2251799813685259/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "/resolution")
+			resolveCounts[key]++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTestWithStdin(t,
+		"2251799813685250\n2251799813685260\n2251799813685260\n",
+		"--config", cfgPath,
+		"resolve", "pi",
+		"--workers", "1",
+		"--key", "2251799813685250",
+		"-",
+	)
+
+	require.Equal(t, map[string]int{"2251799813685249": 1, "2251799813685259": 1}, resolveCounts)
+	require.Equal(t, map[string]int{"2251799813685250": 2, "2251799813685260": 2}, searchCounts)
+	require.Contains(t, output, "resolved process-instance 2251799813685250: confirmed")
+	require.Contains(t, output, "resolved process-instance 2251799813685260: confirmed")
+	require.Contains(t, output, "resolved process-instances: 2")
+}
+
+func TestResolveProcessInstanceCommand_NoActiveIncidentsReportsSkipped(t *testing.T) {
+	var sawResolve bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813685250/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(incidentSearchJSON(
+				incidentSearchItemJSON("2251799813685249", "2251799813685250", "RESOLVED"),
+			)))
+		default:
+			if r.URL.Path == "/v2/incidents/2251799813685249/resolution" {
+				sawResolve = true
+			}
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"resolve", "pi",
+		"--key", "2251799813685250",
+	)
+
+	require.False(t, sawResolve)
+	require.Contains(t, output, "resolved process-instance 2251799813685250: skipped (no_active_incidents)")
+	require.Contains(t, output, "resolved process-instances: 1")
+}
+
+func TestResolveProcessInstanceCommand_InvalidKeysAndLookupFailure(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	t.Run("invalid flag key", func(t *testing.T) {
+		output, err := testx.RunCmdSubprocess(t, "TestResolveProcessInstanceCommand_InvalidFlagKeyHelper", map[string]string{
+			"C8VOLT_TEST_CONFIG":       cfgPath,
+			"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{"resolve", "process-instance", "--key", "bad-key"}),
+		})
+		require.Error(t, err)
+		exitErr, ok := err.(*exec.ExitError)
+		require.True(t, ok)
+		require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+		require.Contains(t, string(output), "invalid input")
+		require.Contains(t, string(output), "process instance key \"bad-key\" is not a valid key")
+	})
+
+	t.Run("empty stdin", func(t *testing.T) {
+		output, err := testx.RunCmdSubprocessWithStdin(t, "TestResolveProcessInstanceCommand_EmptyStdinHelper", map[string]string{
+			"C8VOLT_TEST_CONFIG":       cfgPath,
+			"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{"resolve", "pi", "-"}),
+		}, "\n")
+		require.Error(t, err)
+		exitErr, ok := err.(*exec.ExitError)
+		require.True(t, ok)
+		require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+		require.Contains(t, string(output), "invalid input")
+		require.Contains(t, string(output), "stdin contained no keys")
+	})
+
+	t.Run("lookup failure", func(t *testing.T) {
+		srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/v2/process-instances/2251799813685250/incidents/search", r.URL.Path)
+			http.Error(w, `{"message":"lookup failed"}`, http.StatusInternalServerError)
+		}))
+		t.Cleanup(srv.Close)
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output, err := testx.RunCmdSubprocess(t, "TestResolveProcessInstanceCommand_LookupFailureHelper", map[string]string{
+			"C8VOLT_TEST_CONFIG":       cfgPath,
+			"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{"resolve", "pi", "--key", "2251799813685250"}),
+		})
+		require.Error(t, err)
+		require.Contains(t, string(output), "resolve process-instance incidents")
+		require.Contains(t, string(output), "lookup failed")
+	})
+}
+
+func TestResolveProcessInstanceCommand_LookupFailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	cfgPath := os.Getenv("C8VOLT_TEST_CONFIG")
+	args := unmarshalResolveArgsFromEnv(t, "C8VOLT_TEST_RESOLVE_ARGS")
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs(append([]string{"--config", cfgPath}, args...))
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	if err := root.Execute(); err != nil {
+		handleBootstrapError(root, err)
+	}
+}
+
+func TestResolveProcessInstanceCommand_InvalidFlagKeyHelper(t *testing.T) {
+	runResolveProcessInstanceHelperFromEnv(t)
+}
+
+func TestResolveProcessInstanceCommand_EmptyStdinHelper(t *testing.T) {
+	runResolveProcessInstanceHelperFromEnv(t)
+}
+
+func runResolveProcessInstanceHelperFromEnv(t *testing.T) {
+	t.Helper()
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	cfgPath := os.Getenv("C8VOLT_TEST_CONFIG")
+	args := unmarshalResolveArgsFromEnv(t, "C8VOLT_TEST_RESOLVE_ARGS")
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs(append([]string{"--config", cfgPath}, args...))
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	if err := root.Execute(); err != nil {
+		handleBootstrapError(root, err)
+	}
+}
+
+func incidentSearchJSON(items ...string) string {
+	out := `{"items":[`
+	for i, item := range items {
+		if i > 0 {
+			out += ","
+		}
+		out += item
+	}
+	out += `],"page":{"totalItems":`
+	out += strconv.Itoa(len(items))
+	out += `,"hasMoreTotalItems":false}}`
+	return out
+}
+
+func incidentSearchItemJSON(incidentKey string, processInstanceKey string, state string) string {
+	return `{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685300","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"` + incidentKey + `","processDefinitionId":"demo","processDefinitionKey":"2251799813685200","processInstanceKey":"` + processInstanceKey + `","state":"` + state + `","tenantId":"<default>"}`
+}

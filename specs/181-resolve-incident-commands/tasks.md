@@ -77,15 +77,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Add command tests for process-instance key flags, stdin `-`, duplicate keys, no active incidents, and lookup failures in `cmd/resolve_processinstance_test.go`
-- [ ] T026 [P] [US2] Add facade tests proving process-instance resolution uses incident lookup and never adds incident methods to `internal/services/processinstance` in `c8volt/process/client_test.go`
-- [ ] T027 [P] [US2] Add command contract expectations for `resolve process-instance` and alias `pi` in `cmd/command_contract_test.go`
+- [x] T025 [P] [US2] Add command tests for process-instance key flags, stdin `-`, duplicate keys, no active incidents, and lookup failures in `cmd/resolve_processinstance_test.go`
+- [x] T026 [P] [US2] Add facade tests proving process-instance resolution uses incident lookup and never adds incident methods to `internal/services/processinstance` in `c8volt/process/client_test.go`
+- [x] T027 [P] [US2] Add command contract expectations for `resolve process-instance` and alias `pi` in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Add `resolve process-instance` command parsing, aliases, flags, stdin key merge, validation, automation support, and worker flags in `cmd/resolve_processinstance.go`
-- [ ] T029 [US2] Implement process-instance resolution command orchestration in `cmd/resolve_processinstance.go`
-- [ ] T030 [US2] Complete process-instance resolution result rendering for no-op, success, partial failure, and JSON output in `cmd/cmd_views_resolve.go`
+- [x] T028 [US2] Add `resolve process-instance` command parsing, aliases, flags, stdin key merge, validation, automation support, and worker flags in `cmd/resolve_processinstance.go`
+- [x] T029 [US2] Implement process-instance resolution command orchestration in `cmd/resolve_processinstance.go`
+- [x] T030 [US2] Complete process-instance resolution result rendering for no-op, success, partial failure, and JSON output in `cmd/cmd_views_resolve.go`
 
 **Checkpoint**: User Story 2 is functional without changing existing get or update process-instance behavior.
 

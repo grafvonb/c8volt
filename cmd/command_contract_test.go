@@ -467,6 +467,42 @@ func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
 	})
 }
 
+func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(resolveProcessInstanceCmd)
+
+	require.Equal(t, "resolve process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to resolve; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when resolving multiple process instances (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling new process-instance resolutions after the first error",
+	})
+}
+
 func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -485,6 +521,13 @@ func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
 	require.Equal(t, ContractSupportFull, incident.ContractSupport)
 	require.Equal(t, AutomationSupportFull, incident.AutomationSupport)
 	require.Contains(t, incident.Aliases, "inc")
+
+	processInstance, ok := findCommandCapability(doc.Commands, "resolve process-instance")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, processInstance.Mutation)
+	require.Equal(t, ContractSupportFull, processInstance.ContractSupport)
+	require.Equal(t, AutomationSupportFull, processInstance.AutomationSupport)
+	require.Contains(t, processInstance.Aliases, "pi")
 }
 
 func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
