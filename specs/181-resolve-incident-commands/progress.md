@@ -1,0 +1,81 @@
+# Ralph Progress Log
+
+Feature: 181-resolve-incident-commands
+Started: 2026-05-08 21:06:02
+
+## Codebase Patterns
+
+- Generated Camunda v8.8 and v8.9 clients expose `ResolveIncidentWithResponse`, `GetIncidentWithResponse`, `SearchProcessInstanceIncidentsWithResponse`, `ResolveProcessInstanceIncidentsWithResponse`, and batch incident resolution response helpers. Direct incident resolution responses carry status/body/problem fields but no success JSON payload.
+- Existing incident service boundary exposes only `SearchProcessInstanceIncidents`; v8.7 rejects lookup as unsupported before mutation, while v8.8/v8.9 use `/v2/process-instances/{key}/incidents/search` with tenant filtering and map `IncidentResult` values to domain incident details.
+- Mutation commands are Cobra leaves that validate optional stdin `-`, call `readKeysIfDash`, merge repeated flags and stdin with `mergeAndValidateKeys(...).Unique()`, gate automation through `requireAutomationSupport`, and declare metadata with `setCommandMutation`, `setContractSupport`, and `setAutomationSupport`.
+- Existing process facade incident lookup tests verify option propagation, exact detail mapping, per-key association, and filtering out incident rows whose `ProcessInstanceKey` does not match the owning process instance.
+- Existing command incident enrichment tests assert request ordering, direct incident rendering under each process-instance row, limit-aware lookup scheduling, and shared JSON envelope helpers for `get process-instance`.
+- Incident resolution should use single-incident generated endpoints for per-incident mutation results, while process-instance resolution should discover active incident keys through `internal/services/incident` and then resolve those keys directly; no incident methods belong in `internal/services/processinstance`.
+- Incident confirmation polling now follows the service waiter pattern: direct incident waits accept `404/not found` or non-active incident state as resolved, and process-instance waits poll the scoped incident lookup until the initially discovered active incident keys disappear.
+- Expanding the exported process facade API requires updating test doubles in command/resource packages even before CLI wiring exists; keep those stubs panic-only unless a test explicitly exercises resolution.
+
+## Iteration 1 - 2026-05-08 21:07:28 CEST
+**User Story**: Phase 1: Setup (Shared Infrastructure)
+**Tasks Completed**:
+- [x] T001: Inspect generated incident resolution methods in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
+- [x] T002: Inspect current mutation command patterns in `cmd/update_job.go`, `cmd/cancel_processinstance.go`, and `cmd/update_processinstance.go`
+- [x] T003: Inspect existing incident lookup tests in `internal/services/incident/v87/incidents.go`, `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, `c8volt/process/client_test.go`, and `cmd/get_processinstance_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: No commit - blocked by `.git` write restriction in this sandbox
+**Files Changed**:
+- specs/181-resolve-incident-commands/tasks.md
+- specs/181-resolve-incident-commands/progress.md
+**Learnings**:
+- v8.8 and v8.9 generated incident resolution surfaces are effectively parallel, so future version implementations should stay symmetric unless tests prove a response contract difference.
+- Direct incident resolution should likely use the generated single-incident endpoint for per-target reporting; the process-instance and batch resolution endpoints return batch-operation style responses and do not satisfy the planned per-incident reporting contract by themselves.
+- Resolution implementation should extend `internal/services/incident` and facade stubs before command work, because current process-facing tests already rely on `incsvc.API` as the incident lookup boundary.
+- `git add` and `git commit` currently fail because the sandbox cannot create `.git/index.lock`; the next iteration should commit this completed setup work once Git metadata writes are available.
+---
+---
+## Iteration 2 - 2026-05-08 21:21:54 CEST
+**User Story**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T004: Add incident resolution domain result fields or reuse existing domain models in `internal/domain/processinstance.go`
+- [x] T005: Extend the incident service API with incident resolution and state lookup methods in `internal/services/incident/api.go`
+- [x] T006: Add v8.7 unsupported resolution tests in `internal/services/incident/v87/incidents_test.go`
+- [x] T007: Add v8.8 resolution service tests in `internal/services/incident/v88/incidents_test.go`
+- [x] T008: Add v8.9 resolution service tests in `internal/services/incident/v89/incidents_test.go`
+- [x] T009: Implement unsupported v8.7 incident resolution behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
+- [x] T010: Implement v8.8 incident resolution calls in `internal/services/incident/v88/incidents.go` and `internal/services/incident/v88/contract.go`
+- [x] T011: Implement v8.9 incident resolution calls in `internal/services/incident/v89/incidents.go` and `internal/services/incident/v89/contract.go`
+- [x] T012: Add incident service factory/API compile checks and version tests in `internal/services/incident/factory_test.go`
+- [x] T013: Add process facade resolution plan/result models, dry-run status, mutation-submission status, and totals helpers in `c8volt/process/model.go`
+- [x] T014: Extend the process facade API with incident and process-instance resolution methods in `c8volt/process/api.go`
+- [x] T015: Implement versioned-service lookup polling for post-mutation confirmation, following the `update pi --vars` waiter pattern, in `internal/services/incident`
+- [x] T016: Implement facade resolution orchestration and wait result mapping in `c8volt/process/client.go` and `c8volt/process/bulk.go`
+- [x] T017: Add facade tests for direct incident resolution, process-instance discovery, dry-run plans, lookup-polling confirmation, partial failures, `--no-wait`, and unsupported errors in `c8volt/process/client_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/api.go
+- c8volt/process/client_test.go
+- c8volt/process/model.go
+- c8volt/process/resolve.go
+- c8volt/resource/client_test.go
+- cmd/process_api_stub_test.go
+- internal/domain/processinstance.go
+- internal/services/incident/api.go
+- internal/services/incident/factory_test.go
+- internal/services/incident/v87/contract.go
+- internal/services/incident/v87/incidents.go
+- internal/services/incident/v87/incidents_test.go
+- internal/services/incident/v88/contract.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v88/incidents_test.go
+- internal/services/incident/v89/contract.go
+- internal/services/incident/v89/incidents.go
+- internal/services/incident/v89/incidents_test.go
+- internal/services/incident/waiter/waiter.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/tasks.md
+**Learnings**:
+- Generated v8.8/v8.9 single incident resolution endpoints return status/body/problem fields only, so facade-level result models must carry submission and confirmation metadata rather than relying on a success JSON payload.
+- Process-instance resolution can stay entirely inside the incident service boundary by combining scoped incident lookup, direct incident mutation calls, and scoped lookup polling from the process facade.
+- `--no-wait` should be modeled as accepted/submitted output in facade results, while dry-run should call lookup paths only and keep `mutationSubmitted` false.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`, plus compile-only `go test` checks for `./cmd`, `./c8volt/resource`, and `./...`.
+---

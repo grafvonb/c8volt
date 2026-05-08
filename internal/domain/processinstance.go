@@ -36,6 +36,13 @@ type ProcessInstanceIncidentDetail struct {
 	ProcessDefinitionId    string
 }
 
+type IncidentResolutionResponse struct {
+	Key        string
+	Ok         bool
+	StatusCode int
+	Status     string
+}
+
 type ProcessInstanceVariable struct {
 	Name               string
 	Value              string

@@ -15,9 +15,9 @@
 
 **Purpose**: Confirm generated client surfaces and command patterns before implementation.
 
-- [ ] T001 Inspect generated incident resolution methods in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
-- [ ] T002 Inspect current mutation command patterns in `cmd/update_job.go`, `cmd/cancel_processinstance.go`, and `cmd/update_processinstance.go`
-- [ ] T003 Inspect existing incident lookup tests in `internal/services/incident/v87/incidents.go`, `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, `c8volt/process/client_test.go`, and `cmd/get_processinstance_test.go`
+- [x] T001 Inspect generated incident resolution methods in `internal/clients/camunda/v88/camunda/client.gen.go` and `internal/clients/camunda/v89/camunda/client.gen.go`
+- [x] T002 Inspect current mutation command patterns in `cmd/update_job.go`, `cmd/cancel_processinstance.go`, and `cmd/update_processinstance.go`
+- [x] T003 Inspect existing incident lookup tests in `internal/services/incident/v87/incidents.go`, `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, `c8volt/process/client_test.go`, and `cmd/get_processinstance_test.go`
 
 ---
 
@@ -27,20 +27,20 @@
 
 **CRITICAL**: No user story command work should begin until this phase is complete.
 
-- [ ] T004 Add incident resolution domain result fields or reuse existing domain models in `internal/domain/processinstance.go`
-- [ ] T005 Extend the incident service API with incident resolution and state lookup methods in `internal/services/incident/api.go`
-- [ ] T006 [P] Add v8.7 unsupported resolution tests in `internal/services/incident/v87/incidents_test.go`
-- [ ] T007 [P] Add v8.8 resolution service tests in `internal/services/incident/v88/incidents_test.go`
-- [ ] T008 [P] Add v8.9 resolution service tests in `internal/services/incident/v89/incidents_test.go`
-- [ ] T009 Implement unsupported v8.7 incident resolution behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
-- [ ] T010 Implement v8.8 incident resolution calls in `internal/services/incident/v88/incidents.go` and `internal/services/incident/v88/contract.go`
-- [ ] T011 Implement v8.9 incident resolution calls in `internal/services/incident/v89/incidents.go` and `internal/services/incident/v89/contract.go`
-- [ ] T012 Add incident service factory/API compile checks and version tests in `internal/services/incident/factory_test.go`
-- [ ] T013 Add process facade resolution plan/result models, dry-run status, mutation-submission status, and totals helpers in `c8volt/process/model.go`
-- [ ] T014 Extend the process facade API with incident and process-instance resolution methods in `c8volt/process/api.go`
-- [ ] T015 Implement versioned-service lookup polling for post-mutation confirmation, following the `update pi --vars` waiter pattern, in `internal/services/incident`
-- [ ] T016 Implement facade resolution orchestration and wait result mapping in `c8volt/process/client.go` and `c8volt/process/bulk.go`
-- [ ] T017 Add facade tests for direct incident resolution, process-instance discovery, dry-run plans, lookup-polling confirmation, partial failures, `--no-wait`, and unsupported errors in `c8volt/process/client_test.go`
+- [x] T004 Add incident resolution domain result fields or reuse existing domain models in `internal/domain/processinstance.go`
+- [x] T005 Extend the incident service API with incident resolution and state lookup methods in `internal/services/incident/api.go`
+- [x] T006 [P] Add v8.7 unsupported resolution tests in `internal/services/incident/v87/incidents_test.go`
+- [x] T007 [P] Add v8.8 resolution service tests in `internal/services/incident/v88/incidents_test.go`
+- [x] T008 [P] Add v8.9 resolution service tests in `internal/services/incident/v89/incidents_test.go`
+- [x] T009 Implement unsupported v8.7 incident resolution behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
+- [x] T010 Implement v8.8 incident resolution calls in `internal/services/incident/v88/incidents.go` and `internal/services/incident/v88/contract.go`
+- [x] T011 Implement v8.9 incident resolution calls in `internal/services/incident/v89/incidents.go` and `internal/services/incident/v89/contract.go`
+- [x] T012 Add incident service factory/API compile checks and version tests in `internal/services/incident/factory_test.go`
+- [x] T013 Add process facade resolution plan/result models, dry-run status, mutation-submission status, and totals helpers in `c8volt/process/model.go`
+- [x] T014 Extend the process facade API with incident and process-instance resolution methods in `c8volt/process/api.go`
+- [x] T015 Implement versioned-service lookup polling for post-mutation confirmation, following the `update pi --vars` waiter pattern, in `internal/services/incident`
+- [x] T016 Implement facade resolution orchestration and wait result mapping in `c8volt/process/client.go` and `c8volt/process/bulk.go`
+- [x] T017 Add facade tests for direct incident resolution, process-instance discovery, dry-run plans, lookup-polling confirmation, partial failures, `--no-wait`, and unsupported errors in `c8volt/process/client_test.go`
 
 **Checkpoint**: Incident service and facade can resolve incidents without CLI command wiring.
 

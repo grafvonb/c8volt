@@ -314,6 +314,210 @@ func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *te
 	}, got)
 }
 
+func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	incAPI := stubIncidentAPI{
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			calls = append(calls, "resolve:"+key)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		waitForIncidentResolved: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			calls = append(calls, "wait:"+key)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, Status: "resolved"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncident(ctx, "2251799813685249", options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"resolve:2251799813685249", "wait:2251799813685249"}, calls)
+	require.Equal(t, IncidentResolutionStatusConfirmed, got.Status)
+	require.True(t, got.MutationAccepted)
+	require.True(t, got.MutationSubmitted)
+	require.Equal(t, "resolved", got.ConfirmationStatus)
+}
+
+func TestResolveIncidentNoWaitSkipsConfirmation(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			require.Equal(t, "2251799813685249", key)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncident(context.Background(), "2251799813685249", options.WithNoWait())
+
+	require.NoError(t, err)
+	require.Equal(t, IncidentResolutionStatusSubmitted, got.Status)
+	require.Equal(t, "skipped", got.ConfirmationStatus)
+}
+
+func TestResolveIncidentDryRunLoadsIncidentWithoutMutation(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "2251799813685249", key)
+			require.True(t, services.ApplyCallOptions(opts).DryRun)
+			return d.ProcessInstanceIncidentDetail{
+				IncidentKey:        key,
+				ProcessInstanceKey: "2251799813685250",
+				State:              "ACTIVE",
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncident(context.Background(), "2251799813685249", options.WithDryRun())
+
+	require.NoError(t, err)
+	require.Equal(t, IncidentResolutionStatusPlanned, got.Status)
+	require.True(t, got.DryRun)
+	require.False(t, got.MutationSubmitted)
+	require.True(t, got.WouldResolve)
+	require.Equal(t, "2251799813685250", got.ProcessInstanceKey)
+	require.NotNil(t, got.Incident)
+}
+
+func TestResolveIncidentUnsupportedMapsFailureBeforeWait(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			require.Equal(t, "2251799813685249", key)
+			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, d.ErrUnsupported
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncident(context.Background(), "2251799813685249")
+
+	require.Error(t, err)
+	require.Equal(t, IncidentResolutionStatusMutationFailed, got.Status)
+	require.False(t, got.MutationSubmitted)
+	require.Contains(t, got.Error, "unsupported")
+}
+
+func TestResolveProcessInstanceIncidentsDiscoversAndWaitsInitialActiveSet(t *testing.T) {
+	t.Parallel()
+
+	var resolved []string
+	var waited []string
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "2251799813685250", key)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "incident-a", ProcessInstanceKey: key, State: "ACTIVE"},
+				{IncidentKey: "incident-b", ProcessInstanceKey: key, State: "RESOLVED"},
+				{IncidentKey: "wrong-owner", ProcessInstanceKey: "other", State: "ACTIVE"},
+			}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			resolved = append(resolved, key)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		waitForPIIncidentsResolved: func(_ context.Context, key string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			require.Equal(t, "2251799813685250", key)
+			waited = append(waited, incidentKeys...)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, Status: "resolved"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstanceIncidents(context.Background(), "2251799813685250", options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"incident-a"}, resolved)
+	require.Equal(t, []string{"incident-a"}, waited)
+	require.Equal(t, ProcessInstanceResolutionStatusConfirmed, got.Status)
+	require.Equal(t, []string{"incident-a"}, got.AttemptedIncidentKeys)
+	require.Equal(t, []string{"incident-a"}, got.ResolvedIncidentKeys)
+	require.True(t, got.MutationSubmitted)
+}
+
+func TestResolveProcessInstanceIncidentsDryRunPlansNoMutation(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.True(t, services.ApplyCallOptions(opts).DryRun)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "incident-a", ProcessInstanceKey: key, State: "ACTIVE"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstanceIncidents(context.Background(), "2251799813685250", options.WithDryRun())
+
+	require.NoError(t, err)
+	require.Equal(t, ProcessInstanceResolutionStatusPlanned, got.Status)
+	require.True(t, got.DryRun)
+	require.False(t, got.MutationSubmitted)
+	require.Equal(t, []string{"incident-a"}, got.AttemptedIncidentKeys)
+}
+
+func TestResolveProcessInstanceIncidentsReportsNoActiveIncidentsAsSkipped(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "incident-a", ProcessInstanceKey: key, State: "RESOLVED"},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstanceIncidents(context.Background(), "2251799813685250")
+
+	require.NoError(t, err)
+	require.Equal(t, ProcessInstanceResolutionStatusSkipped, got.Status)
+	require.Equal(t, "no_active_incidents", got.ConfirmationStatus)
+	require.False(t, got.MutationSubmitted)
+}
+
+func TestResolveProcessInstanceIncidentsReportsPartialMutationFailures(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "incident-a", ProcessInstanceKey: key, State: "ACTIVE"},
+				{IncidentKey: "incident-b", ProcessInstanceKey: key, State: "ACTIVE"},
+			}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			if key == "incident-b" {
+				return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "500 Internal Server Error"}, errors.New("mutation rejected")
+			}
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveProcessInstanceIncidents(context.Background(), "2251799813685250", options.WithNoWait())
+
+	require.Error(t, err)
+	require.Equal(t, ProcessInstanceResolutionStatusPartialFailed, got.Status)
+	require.Equal(t, []string{"incident-a"}, got.ResolvedIncidentKeys)
+	require.Equal(t, []string{"incident-b"}, got.FailedIncidentKeys)
+	require.True(t, got.MutationSubmitted)
+}
+
 // TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation prevents incident details from leaking across keyed results.
 func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
@@ -1522,7 +1726,27 @@ func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Conte
 }
 
 type stubIncidentAPI struct {
+	getIncident                    func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
+	resolveIncident                func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	waitForIncidentResolved        func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	waitForPIIncidentsResolved     func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+}
+
+// GetIncident delegates to the per-test callback used by direct incident resolution facade tests.
+func (s stubIncidentAPI) GetIncident(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+	if s.getIncident == nil {
+		panic("unexpected call")
+	}
+	return s.getIncident(ctx, key, opts...)
+}
+
+// ResolveIncident delegates to the per-test callback used by incident mutation facade tests.
+func (s stubIncidentAPI) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.resolveIncident == nil {
+		panic("unexpected call")
+	}
+	return s.resolveIncident(ctx, key, opts...)
 }
 
 // SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.
@@ -1531,6 +1755,22 @@ func (s stubIncidentAPI) SearchProcessInstanceIncidents(ctx context.Context, key
 		panic("unexpected call")
 	}
 	return s.searchProcessInstanceIncidents(ctx, key, opts...)
+}
+
+// WaitForIncidentResolved delegates to the per-test callback used by incident confirmation facade tests.
+func (s stubIncidentAPI) WaitForIncidentResolved(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.waitForIncidentResolved == nil {
+		panic("unexpected call")
+	}
+	return s.waitForIncidentResolved(ctx, key, opts...)
+}
+
+// WaitForProcessInstanceIncidentsResolved delegates to the per-test callback used by process-instance resolution facade tests.
+func (s stubIncidentAPI) WaitForProcessInstanceIncidentsResolved(ctx context.Context, key string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.waitForPIIncidentsResolved == nil {
+		panic("unexpected call")
+	}
+	return s.waitForPIIncidentsResolved(ctx, key, incidentKeys, opts...)
 }
 
 var _ incsvc.API = stubIncidentAPI{}
