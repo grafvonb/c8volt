@@ -99,17 +99,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T031 [P] [US3] Add command dry-run tests for direct incident keys, stdin keys, duplicate keys, and no submitted mutation in `cmd/resolve_incident_test.go`
-- [ ] T032 [P] [US3] Add command dry-run tests for process-instance incident discovery, no active incidents, and no submitted mutation in `cmd/resolve_processinstance_test.go`
-- [ ] T033 [P] [US3] Add JSON dry-run and `--json --verbose` rejection tests in `cmd/resolve_incident_test.go`, `cmd/resolve_processinstance_test.go`, and `cmd/cmd_views_resolve_test.go`
-- [ ] T034 [P] [US3] Add command contract expectations proving `resolve incident` and `resolve process-instance` expose `--dry-run` in `cmd/command_contract_test.go`
+- [x] T031 [P] [US3] Add command dry-run tests for direct incident keys, stdin keys, duplicate keys, and no submitted mutation in `cmd/resolve_incident_test.go`
+- [x] T032 [P] [US3] Add command dry-run tests for process-instance incident discovery, no active incidents, and no submitted mutation in `cmd/resolve_processinstance_test.go`
+- [x] T033 [P] [US3] Add JSON dry-run and `--json --verbose` rejection tests in `cmd/resolve_incident_test.go`, `cmd/resolve_processinstance_test.go`, and `cmd/cmd_views_resolve_test.go`
+- [x] T034 [P] [US3] Add command contract expectations proving `resolve incident` and `resolve process-instance` expose `--dry-run` in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Add `--dry-run` parsing and request propagation in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
-- [ ] T036 [US3] Implement lookup-backed dry-run plan construction in `c8volt/process/client.go` and `c8volt/process/bulk.go`
-- [ ] T037 [US3] Implement compact human dry-run rendering and stable JSON dry-run payloads in `cmd/cmd_views_resolve.go`
-- [ ] T038 [US3] Reject `--json --verbose` for resolve commands before lookup or mutation in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
+- [x] T035 [US3] Add `--dry-run` parsing and request propagation in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
+- [x] T036 [US3] Implement lookup-backed dry-run plan construction in `c8volt/process/client.go` and `c8volt/process/bulk.go`
+- [x] T037 [US3] Implement compact human dry-run rendering and stable JSON dry-run payloads in `cmd/cmd_views_resolve.go`
+- [x] T038 [US3] Reject `--json --verbose` for resolve commands before lookup or mutation in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
 
 **Checkpoint**: Dry-run plans are independently complete for both resolve command paths.
 

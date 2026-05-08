@@ -29,3 +29,10 @@ func init() {
 	addBackoffFlagsAndBindings(resolveCmd)
 	setCommandMutation(resolveCmd, CommandMutationStateChanging)
 }
+
+func validateResolveJSONGuardrails(target string) error {
+	if pickMode() == RenderModeJSON && flagVerbose {
+		return mutuallyExclusiveFlagsf("--json cannot be combined with --verbose for resolve %s", target)
+	}
+	return nil
+}

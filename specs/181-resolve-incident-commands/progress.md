@@ -15,6 +15,7 @@ Started: 2026-05-08 21:06:02
 - Expanding the exported process facade API requires updating test doubles in command/resource packages even before CLI wiring exists; keep those stubs panic-only unless a test explicitly exercises resolution.
 - Resolve mutation command rendering should use shared JSON envelopes in machine mode and compact per-target human lines plus a totals line in one-line mode, matching update process-instance result rendering.
 - `resolve process-instance` mirrors direct incident command input handling, but schedules facade `ResolveProcessInstancesIncidents` so commands never call incident lookup/resolution services directly and `internal/services/processinstance` remains free of incident resolution methods.
+- Resolve dry-run support is already driven by facade `WithDryRun`; command leaves only need to expose `--dry-run`, pass `collectOptions()`, reject `--json --verbose`, and render planned/skipped results without submitting mutation.
 
 ## Iteration 1 - 2026-05-08 21:07:28 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)
@@ -135,4 +136,37 @@ Started: 2026-05-08 21:06:02
 - Process-instance resolution command tests need two scoped incident-search calls for successful wait-confirmed paths: one discovery lookup before mutation and one confirmation lookup after mutation.
 - Human output can treat no active incidents as a successful skipped target while JSON output remains the shared process facade result envelope.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolveProcessInstance|TestRenderProcessInstanceResolution|TestCommandCapabilityForCommand_ResolveProcessInstanceContract|TestCapabilityDocumentForRoot_ResolveCommandFamily' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -run 'TestResolveProcessInstanceIncidents|TestResolveProcessInstanceIncidentsKeepsIncidentBoundary' -count=1`, plus full `go test ./cmd -count=1` and `go test ./c8volt/process -count=1`.
+---
+---
+## Iteration 5 - 2026-05-08 21:43:59 CEST
+**User Story**: User Story 3 - Preview Resolution Plan
+**Tasks Completed**:
+- [x] T031: Add command dry-run tests for direct incident keys, stdin keys, duplicate keys, and no submitted mutation in `cmd/resolve_incident_test.go`
+- [x] T032: Add command dry-run tests for process-instance incident discovery, no active incidents, and no submitted mutation in `cmd/resolve_processinstance_test.go`
+- [x] T033: Add JSON dry-run and `--json --verbose` rejection tests in `cmd/resolve_incident_test.go`, `cmd/resolve_processinstance_test.go`, and `cmd/cmd_views_resolve_test.go`
+- [x] T034: Add command contract expectations proving `resolve incident` and `resolve process-instance` expose `--dry-run` in `cmd/command_contract_test.go`
+- [x] T035: Add `--dry-run` parsing and request propagation in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
+- [x] T036: Implement lookup-backed dry-run plan construction in `c8volt/process/client.go` and `c8volt/process/bulk.go`
+- [x] T037: Implement compact human dry-run rendering and stable JSON dry-run payloads in `cmd/cmd_views_resolve.go`
+- [x] T038: Reject `--json --verbose` for resolve commands before lookup or mutation in `cmd/resolve_incident.go` and `cmd/resolve_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/model.go
+- c8volt/process/resolve.go
+- cmd/cmd_views_resolve.go
+- cmd/cmd_views_resolve_test.go
+- cmd/command_contract_test.go
+- cmd/resolve.go
+- cmd/resolve_incident.go
+- cmd/resolve_incident_test.go
+- cmd/resolve_processinstance.go
+- cmd/resolve_processinstance_test.go
+- specs/181-resolve-incident-commands/progress.md
+- specs/181-resolve-incident-commands/tasks.md
+**Learnings**:
+- Direct incident dry-run loads current incident state with `GET /v2/incidents/{key}` and classifies active incidents as planned without calling `/resolution`.
+- Process-instance dry-run uses the same scoped incident search as mutation mode, but stops after discovery and renders planned/skipped results without confirmation polling.
+- Stable JSON dry-run output stays on the shared envelope and now carries the resolve operation name, while `--json --verbose` is rejected before lookup or mutation.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestResolveIncidentCommand_DryRun|TestResolveIncidentCommand_JSON|TestResolveProcessInstanceCommand_DryRun|TestResolveProcessInstanceCommand_JSON|TestRenderIncidentResolutionResults|TestRenderProcessInstanceResolutionResults|TestCommandCapabilityForCommand_Resolve' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -run 'TestResolveIncidentDryRun|TestResolveProcessInstanceIncidents' -count=1`, plus full `go test ./cmd -count=1` and `go test ./c8volt/process -count=1`.
 ---

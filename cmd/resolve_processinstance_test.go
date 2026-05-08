@@ -141,6 +141,93 @@ func TestResolveProcessInstanceCommand_NoActiveIncidentsReportsSkipped(t *testin
 	require.Contains(t, output, "resolved process-instances: 1")
 }
 
+func TestResolveProcessInstanceCommand_DryRunDiscoversIncidentsAndDoesNotMutate(t *testing.T) {
+	var searches int
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/process-instances/2251799813685250/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			searches++
+			_, _ = w.Write([]byte(incidentSearchJSON(
+				incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
+				incidentSearchItemJSON("2251799813685248", "2251799813685250", "RESOLVED"),
+			)))
+		default:
+			t.Fatalf("unexpected request path during dry-run: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"resolve", "pi",
+		"--key", "2251799813685250",
+		"--dry-run",
+	)
+
+	require.Equal(t, 1, searches)
+	require.Contains(t, output, "dry run: process-instance 2251799813685250 would resolve 1 incident(s)")
+	require.Contains(t, output, "no changes applied")
+}
+
+func TestResolveProcessInstanceCommand_DryRunNoActiveIncidentsReportsSkipped(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/process-instances/2251799813685250/incidents/search", r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(incidentSearchJSON(
+			incidentSearchItemJSON("2251799813685248", "2251799813685250", "RESOLVED"),
+		)))
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"resolve", "process-instance",
+		"--key", "2251799813685250",
+		"--dry-run",
+	)
+
+	require.Contains(t, output, "resolved process-instance 2251799813685250: skipped (no_active_incidents)")
+	require.Contains(t, output, "no changes applied")
+}
+
+func TestResolveProcessInstanceCommand_JSONDryRunReturnsStablePlanPayload(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/process-instances/2251799813685250/incidents/search", r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(incidentSearchJSON(
+			incidentSearchItemJSON("2251799813685249", "2251799813685250", "ACTIVE"),
+		)))
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--json",
+		"--config", cfgPath,
+		"resolve", "pi",
+		"--key", "2251799813685250",
+		"--dry-run",
+	)
+
+	require.Empty(t, stderr)
+	payload := requireDryRunEnvelopePayload(t, stdout)
+	require.Equal(t, "resolveProcessInstance", payload["operation"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+	items := requireJSONItems(t, payload["items"], 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813685250", item["processInstanceKey"])
+	require.Equal(t, "planned", item["status"])
+	require.Equal(t, []any{"2251799813685249"}, item["attemptedIncidentKeys"])
+	require.Equal(t, false, item["mutationSubmitted"])
+}
+
 func TestResolveProcessInstanceCommand_InvalidKeysAndLookupFailure(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -188,6 +275,20 @@ func TestResolveProcessInstanceCommand_InvalidKeysAndLookupFailure(t *testing.T)
 	})
 }
 
+func TestResolveProcessInstanceCommand_JSONRejectsVerbose(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveProcessInstanceCommand_JSONRejectsVerboseHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":       cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{"--json", "resolve", "process-instance", "--key", "2251799813685250", "--dry-run", "--verbose"}),
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "--json cannot be combined with --verbose for resolve process-instance")
+}
+
 func TestResolveProcessInstanceCommand_LookupFailureHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -210,6 +311,10 @@ func TestResolveProcessInstanceCommand_InvalidFlagKeyHelper(t *testing.T) {
 }
 
 func TestResolveProcessInstanceCommand_EmptyStdinHelper(t *testing.T) {
+	runResolveProcessInstanceHelperFromEnv(t)
+}
+
+func TestResolveProcessInstanceCommand_JSONRejectsVerboseHelper(t *testing.T) {
 	runResolveProcessInstanceHelperFromEnv(t)
 }
 

@@ -128,6 +128,7 @@ func (r IncidentResolutionResult) OK() bool {
 }
 
 type IncidentResolutionResults struct {
+	Operation         ResolutionOperation        `json:"operation,omitempty"`
 	Items             []IncidentResolutionResult `json:"items,omitempty"`
 	Total             int                        `json:"total"`
 	Submitted         int                        `json:"submitted"`
@@ -172,6 +173,7 @@ func (r ProcessInstanceResolutionResult) OK() bool {
 }
 
 type ProcessInstanceResolutionResults struct {
+	Operation         ResolutionOperation               `json:"operation,omitempty"`
 	Items             []ProcessInstanceResolutionResult `json:"items,omitempty"`
 	Total             int                               `json:"total"`
 	Submitted         int                               `json:"submitted"`

@@ -96,6 +96,74 @@ func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.
 	require.Contains(t, output, "resolved: 2")
 }
 
+func TestResolveIncidentCommand_DryRunLoadsKeysAndDoesNotMutate(t *testing.T) {
+	getCounts := map[string]int{}
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249",
+			"/v2/incidents/2251799813685250":
+			require.Equal(t, http.MethodGet, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "")
+			getCounts[key]++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON(key, "2251799813685260", "ACTIVE")))
+		default:
+			t.Fatalf("unexpected request path during dry-run: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTestWithStdin(t,
+		"2251799813685249\n2251799813685250\n2251799813685250\n",
+		"--config", cfgPath,
+		"resolve", "inc",
+		"--dry-run",
+		"--workers", "1",
+		"--key", "2251799813685249",
+		"-",
+	)
+
+	require.Equal(t, map[string]int{
+		"2251799813685249": 1,
+		"2251799813685250": 1,
+	}, getCounts)
+	require.Contains(t, output, "dry run: incident 2251799813685249 would be resolved")
+	require.Contains(t, output, "dry run: incident 2251799813685250 would be resolved")
+	require.Contains(t, output, "no changes applied")
+}
+
+func TestResolveIncidentCommand_JSONDryRunReturnsStablePlanPayload(t *testing.T) {
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v2/incidents/2251799813685249", r.URL.Path)
+		require.Equal(t, http.MethodGet, r.Method)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--json",
+		"--config", cfgPath,
+		"resolve", "incident",
+		"--key", "2251799813685249",
+		"--dry-run",
+	)
+
+	require.Empty(t, stderr)
+	payload := requireDryRunEnvelopePayload(t, stdout)
+	require.Equal(t, "resolveIncident", payload["operation"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+	items := requireJSONItems(t, payload["items"], 1)
+	item := requireJSONObject(t, items[0])
+	require.Equal(t, "2251799813685249", item["incidentKey"])
+	require.Equal(t, "planned", item["status"])
+	require.Equal(t, true, item["wouldResolve"])
+	require.Equal(t, false, item["mutationSubmitted"])
+}
+
 func TestResolveIncidentCommand_InvalidKeysFailBeforeMutation(t *testing.T) {
 	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
 
@@ -126,11 +194,29 @@ func TestResolveIncidentCommand_InvalidKeysFailBeforeMutation(t *testing.T) {
 	})
 }
 
+func TestResolveIncidentCommand_JSONRejectsVerbose(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output, err := testx.RunCmdSubprocess(t, "TestResolveIncidentCommand_JSONRejectsVerboseHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":       cfgPath,
+		"C8VOLT_TEST_RESOLVE_ARGS": marshalResolveArgsForEnv(t, []string{"--json", "resolve", "incident", "--key", "2251799813685249", "--dry-run", "--verbose"}),
+	})
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "--json cannot be combined with --verbose for resolve incident")
+}
+
 func TestResolveIncidentCommand_InvalidFlagKeyHelper(t *testing.T) {
 	runResolveIncidentHelperFromEnv(t)
 }
 
 func TestResolveIncidentCommand_EmptyStdinHelper(t *testing.T) {
+	runResolveIncidentHelperFromEnv(t)
+}
+
+func TestResolveIncidentCommand_JSONRejectsVerboseHelper(t *testing.T) {
 	runResolveIncidentHelperFromEnv(t)
 }
 

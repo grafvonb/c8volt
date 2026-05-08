@@ -154,7 +154,7 @@ func (c *client) ResolveProcessInstanceIncidents(ctx context.Context, key string
 }
 
 func summarizeIncidentResolutionResults(items []IncidentResolutionResult) IncidentResolutionResults {
-	out := IncidentResolutionResults{Items: items, Total: len(items)}
+	out := IncidentResolutionResults{Operation: ResolutionOperationIncident, Items: items, Total: len(items)}
 	for _, item := range items {
 		out.DryRun = out.DryRun || item.DryRun
 		out.MutationSubmitted = out.MutationSubmitted || item.MutationSubmitted
@@ -173,7 +173,7 @@ func summarizeIncidentResolutionResults(items []IncidentResolutionResult) Incide
 }
 
 func summarizeProcessInstanceResolutionResults(items []ProcessInstanceResolutionResult) ProcessInstanceResolutionResults {
-	out := ProcessInstanceResolutionResults{Items: items, Total: len(items)}
+	out := ProcessInstanceResolutionResults{Operation: ResolutionOperationProcessInstance, Items: items, Total: len(items)}
 	for _, item := range items {
 		out.DryRun = out.DryRun || item.DryRun
 		out.MutationSubmitted = out.MutationSubmitted || item.MutationSubmitted

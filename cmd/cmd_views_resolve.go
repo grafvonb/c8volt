@@ -16,6 +16,8 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 	}
 	for _, item := range results.Items {
 		switch item.Status {
+		case process.IncidentResolutionStatusPlanned:
+			renderHumanLine(cmd, "dry run: incident %s would be resolved", item.IncidentKey)
 		case process.IncidentResolutionStatusConfirmed:
 			renderHumanLine(cmd, "resolved incident %s: confirmed", item.IncidentKey)
 		case process.IncidentResolutionStatusSubmitted:
@@ -31,6 +33,13 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 		}
 	}
 	total, ok, failed := results.Totals()
+	if results.DryRun {
+		renderHumanLine(cmd, "dry run: resolve incidents: %d target(s), %d planned/skipped, %d failed; no changes applied", total, ok, failed)
+		if failed > 0 {
+			return fmt.Errorf("one or more incident resolution dry-run lookups failed")
+		}
+		return nil
+	}
 	renderHumanLine(cmd, "resolved: %d (confirmed/submitted/skipped: %d, failed: %d)", total, ok, failed)
 	if failed > 0 {
 		return fmt.Errorf("one or more incident resolutions failed")
@@ -44,14 +53,14 @@ func renderProcessInstanceResolutionResults(cmd *cobra.Command, results process.
 	}
 	for _, item := range results.Items {
 		switch item.Status {
+		case process.ProcessInstanceResolutionStatusPlanned:
+			renderHumanLine(cmd, "dry run: process-instance %s would resolve %d incident(s)", item.ProcessInstanceKey, len(item.AttemptedIncidentKeys))
 		case process.ProcessInstanceResolutionStatusConfirmed:
 			renderHumanLine(cmd, "resolved process-instance %s: confirmed (%d incident(s))", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys))
 		case process.ProcessInstanceResolutionStatusSubmitted:
 			renderHumanLine(cmd, "resolved process-instance %s: submitted (%d incident(s))", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys))
 		case process.ProcessInstanceResolutionStatusSkipped:
 			renderHumanLine(cmd, "resolved process-instance %s: skipped (%s)", item.ProcessInstanceKey, processInstanceResolutionSkipReason(item))
-		case process.ProcessInstanceResolutionStatusPlanned:
-			renderHumanLine(cmd, "resolved process-instance %s: planned (%d incident(s))", item.ProcessInstanceKey, len(item.AttemptedIncidentKeys))
 		case process.ProcessInstanceResolutionStatusPartialFailed:
 			renderHumanLine(cmd, "resolved process-instance %s: partial failure (resolved: %d, failed: %d): %s", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys), len(item.FailedIncidentKeys), item.Error)
 		case process.ProcessInstanceResolutionStatusFailed:
@@ -61,6 +70,13 @@ func renderProcessInstanceResolutionResults(cmd *cobra.Command, results process.
 		}
 	}
 	total, ok, failed := results.Totals()
+	if results.DryRun {
+		renderHumanLine(cmd, "dry run: resolve process-instances: %d target(s), %d planned/skipped, %d failed; no changes applied", total, ok, failed)
+		if failed > 0 {
+			return fmt.Errorf("one or more process-instance incident resolution dry-run lookups failed")
+		}
+		return nil
+	}
 	renderHumanLine(cmd, "resolved process-instances: %d (confirmed/submitted/skipped: %d, failed: %d)", total, ok, failed)
 	if failed > 0 {
 		return fmt.Errorf("one or more process-instance incident resolutions failed")

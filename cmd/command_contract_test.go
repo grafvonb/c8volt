@@ -459,6 +459,13 @@ func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
 		Description: "maximum concurrent workers when resolving multiple incidents (default: min(count, GOMAXPROCS))",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview incident resolutions without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "fail-fast",
 		Type:        "bool",
 		Required:    false,
@@ -493,6 +500,13 @@ func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T
 		Required:    false,
 		Repeated:    false,
 		Description: "maximum concurrent workers when resolving multiple process instances (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview process-instance incident resolutions without submitting mutation",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "fail-fast",

@@ -46,6 +46,7 @@ func TestRenderIncidentResolutionResults_JSONUsesSharedEnvelope(t *testing.T) {
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	results := process.IncidentResolutionResults{
+		Operation: process.ResolutionOperationIncident,
 		Items: []process.IncidentResolutionResult{{
 			IncidentKey:        "2251799813685249",
 			MutationAccepted:   true,
@@ -66,6 +67,7 @@ func TestRenderIncidentResolutionResults_JSONUsesSharedEnvelope(t *testing.T) {
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "resolveIncident", payload["operation"])
 	items := requireJSONItems(t, payload["items"], 1)
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "2251799813685249", item["incidentKey"])
@@ -74,6 +76,77 @@ func TestRenderIncidentResolutionResults_JSONUsesSharedEnvelope(t *testing.T) {
 	require.Equal(t, true, item["mutationAccepted"])
 	require.Equal(t, "resolved", item["confirmationStatus"])
 	require.Equal(t, true, item["mutationSubmitted"])
+}
+
+func TestRenderIncidentResolutionResults_DryRunHumanOutputIsCompact(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() { flagViewAsJson = prevJSON })
+
+	cmd := &cobra.Command{Use: "incident"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	results := process.IncidentResolutionResults{
+		Operation: process.ResolutionOperationIncident,
+		Items: []process.IncidentResolutionResult{{
+			IncidentKey:       "2251799813685249",
+			Status:            process.IncidentResolutionStatusPlanned,
+			DryRun:            true,
+			MutationSubmitted: false,
+			WouldResolve:      true,
+		}},
+		Total:   1,
+		Skipped: 1,
+		DryRun:  true,
+	}
+
+	require.NoError(t, renderIncidentResolutionResults(cmd, results))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: incident 2251799813685249 would be resolved")
+	require.Contains(t, output, "dry run: resolve incidents: 1 target(s), 1 planned/skipped, 0 failed; no changes applied")
+	require.NotContains(t, output, "resolved:")
+}
+
+func TestRenderIncidentResolutionResults_JSONDryRunPayloadIgnoresVerbose(t *testing.T) {
+	prevJSON := flagViewAsJson
+	prevVerbose := flagVerbose
+	flagViewAsJson = true
+	flagVerbose = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagVerbose = prevVerbose
+	})
+
+	cmd := &cobra.Command{Use: "incident"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	results := process.IncidentResolutionResults{
+		Operation: process.ResolutionOperationIncident,
+		Items: []process.IncidentResolutionResult{{
+			IncidentKey:       "2251799813685249",
+			Status:            process.IncidentResolutionStatusPlanned,
+			DryRun:            true,
+			MutationSubmitted: false,
+			WouldResolve:      true,
+		}},
+		Total:   1,
+		Skipped: 1,
+		DryRun:  true,
+	}
+
+	require.NoError(t, renderIncidentResolutionResults(cmd, results))
+	defaultOutput := buf.String()
+	payload := requireDryRunEnvelopePayload(t, defaultOutput)
+	require.Equal(t, "resolveIncident", payload["operation"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderIncidentResolutionResults(cmd, results))
+	require.JSONEq(t, defaultOutput, buf.String())
 }
 
 func TestRenderProcessInstanceResolutionResults_HumanOutputShowsNoOpSuccessAndFailure(t *testing.T) {
@@ -128,6 +201,7 @@ func TestRenderProcessInstanceResolutionResults_JSONUsesSharedEnvelope(t *testin
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	results := process.ProcessInstanceResolutionResults{
+		Operation: process.ResolutionOperationProcessInstance,
 		Items: []process.ProcessInstanceResolutionResult{{
 			ProcessInstanceKey:    "2251799813685250",
 			AttemptedIncidentKeys: []string{"2251799813685249"},
@@ -148,6 +222,7 @@ func TestRenderProcessInstanceResolutionResults_JSONUsesSharedEnvelope(t *testin
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "resolveProcessInstance", payload["operation"])
 	items := requireJSONItems(t, payload["items"], 1)
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "2251799813685250", item["processInstanceKey"])
@@ -156,4 +231,74 @@ func TestRenderProcessInstanceResolutionResults_JSONUsesSharedEnvelope(t *testin
 	require.Equal(t, true, item["mutationSubmitted"])
 	require.Equal(t, []any{"2251799813685249"}, item["attemptedIncidentKeys"])
 	require.Equal(t, []any{"2251799813685249"}, item["resolvedIncidentKeys"])
+}
+
+func TestRenderProcessInstanceResolutionResults_DryRunHumanOutputIsCompact(t *testing.T) {
+	prevJSON := flagViewAsJson
+	flagViewAsJson = false
+	t.Cleanup(func() { flagViewAsJson = prevJSON })
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	results := process.ProcessInstanceResolutionResults{
+		Operation: process.ResolutionOperationProcessInstance,
+		Items: []process.ProcessInstanceResolutionResult{{
+			ProcessInstanceKey:    "2251799813685250",
+			AttemptedIncidentKeys: []string{"2251799813685249", "2251799813685251"},
+			Status:                process.ProcessInstanceResolutionStatusPlanned,
+			DryRun:                true,
+			MutationSubmitted:     false,
+		}},
+		Total:   1,
+		Skipped: 1,
+		DryRun:  true,
+	}
+
+	require.NoError(t, renderProcessInstanceResolutionResults(cmd, results))
+
+	output := buf.String()
+	require.Contains(t, output, "dry run: process-instance 2251799813685250 would resolve 2 incident(s)")
+	require.Contains(t, output, "dry run: resolve process-instances: 1 target(s), 1 planned/skipped, 0 failed; no changes applied")
+}
+
+func TestRenderProcessInstanceResolutionResults_JSONDryRunPayloadIgnoresVerbose(t *testing.T) {
+	prevJSON := flagViewAsJson
+	prevVerbose := flagVerbose
+	flagViewAsJson = true
+	flagVerbose = false
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagVerbose = prevVerbose
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	setContractSupport(cmd, ContractSupportFull)
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	results := process.ProcessInstanceResolutionResults{
+		Operation: process.ResolutionOperationProcessInstance,
+		Items: []process.ProcessInstanceResolutionResult{{
+			ProcessInstanceKey:    "2251799813685250",
+			AttemptedIncidentKeys: []string{"2251799813685249"},
+			Status:                process.ProcessInstanceResolutionStatusPlanned,
+			DryRun:                true,
+			MutationSubmitted:     false,
+		}},
+		Total:   1,
+		Skipped: 1,
+		DryRun:  true,
+	}
+
+	require.NoError(t, renderProcessInstanceResolutionResults(cmd, results))
+	defaultOutput := buf.String()
+	payload := requireDryRunEnvelopePayload(t, defaultOutput)
+	require.Equal(t, "resolveProcessInstance", payload["operation"])
+	require.Equal(t, true, payload["dryRun"])
+	require.Equal(t, false, payload["mutationSubmitted"])
+
+	buf.Reset()
+	flagVerbose = true
+	require.NoError(t, renderProcessInstanceResolutionResults(cmd, results))
+	require.JSONEq(t, defaultOutput, buf.String())
 }
