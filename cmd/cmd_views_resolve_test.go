@@ -34,7 +34,7 @@ func TestRenderIncidentResolutionResults_HumanOutputShowsPerTargetStatuses(t *te
 	output := buf.String()
 	require.Contains(t, output, "resolved incident 2251799813685249: confirmed")
 	require.Contains(t, output, "resolved incident 2251799813685250: submitted")
-	require.Contains(t, output, "resolved incident 2251799813685251: skipped: incident exists but state \"RESOLVED\" is not valid for resolve")
+	require.Contains(t, output, "resolved incident 2251799813685251: skipped (RESOLVED)")
 	require.Contains(t, output, "resolved: 3 (confirmed/submitted/skipped: 3, failed: 0)")
 }
 

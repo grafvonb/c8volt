@@ -23,7 +23,7 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 		case process.IncidentResolutionStatusSubmitted:
 			renderHumanLine(cmd, "resolved incident %s: submitted", item.IncidentKey)
 		case process.IncidentResolutionStatusSkipped:
-			renderHumanLine(cmd, "resolved incident %s: skipped: incident exists but state %q is not valid for resolve", item.IncidentKey, item.IncidentState)
+			renderHumanLine(cmd, "resolved incident %s: skipped (%s)", item.IncidentKey, incidentResolutionSkipReason(item))
 		case process.IncidentResolutionStatusMutationFailed:
 			renderHumanLine(cmd, "resolved incident %s: mutation failed: %s", item.IncidentKey, item.Error)
 		case process.IncidentResolutionStatusConfirmationFailed:
@@ -45,6 +45,16 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 		return fmt.Errorf("one or more incident resolutions failed")
 	}
 	return nil
+}
+
+func incidentResolutionSkipReason(item process.IncidentResolutionResult) string {
+	if item.IncidentState != "" {
+		return item.IncidentState
+	}
+	if item.ConfirmationStatus != "" {
+		return item.ConfirmationStatus
+	}
+	return "not_active"
 }
 
 func renderProcessInstanceResolutionResults(cmd *cobra.Command, results process.ProcessInstanceResolutionResults) error {
