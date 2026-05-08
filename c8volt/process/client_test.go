@@ -322,6 +322,11 @@ func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
 	ctx := context.Background()
 	var calls []string
 	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, "get:"+key)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "ACTIVE"}, nil
+		},
 		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			calls = append(calls, "resolve:"+key)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
@@ -338,7 +343,7 @@ func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
 	got, err := cli.ResolveIncident(ctx, "2251799813685249", options.WithVerbose())
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"resolve:2251799813685249", "wait:2251799813685249"}, calls)
+	require.Equal(t, []string{"get:2251799813685249", "resolve:2251799813685249", "wait:2251799813685249"}, calls)
 	require.Equal(t, IncidentResolutionStatusConfirmed, got.Status)
 	require.True(t, got.MutationAccepted)
 	require.True(t, got.MutationSubmitted)
@@ -349,6 +354,11 @@ func TestResolveIncidentNoWaitSkipsConfirmation(t *testing.T) {
 	t.Parallel()
 
 	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "2251799813685249", key)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "ACTIVE"}, nil
+		},
 		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			require.Equal(t, "2251799813685249", key)
 			require.True(t, services.ApplyCallOptions(opts).NoWait)
@@ -362,6 +372,32 @@ func TestResolveIncidentNoWaitSkipsConfirmation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, IncidentResolutionStatusSubmitted, got.Status)
 	require.Equal(t, "skipped", got.ConfirmationStatus)
+}
+
+func TestResolveIncidentSkipsNonActiveIncidentBeforeMutation(t *testing.T) {
+	t.Parallel()
+
+	var mutated bool
+	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "2251799813685249", key)
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "RESOLVED"}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			mutated = true
+			return d.IncidentResolutionResponse{}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.ResolveIncident(context.Background(), "2251799813685249")
+
+	require.NoError(t, err)
+	require.False(t, mutated)
+	require.Equal(t, IncidentResolutionStatusSkipped, got.Status)
+	require.Equal(t, "invalid_state", got.ConfirmationStatus)
+	require.Equal(t, "RESOLVED", got.IncidentState)
+	require.False(t, got.MutationSubmitted)
 }
 
 func TestResolveIncidentDryRunLoadsIncidentWithoutMutation(t *testing.T) {
@@ -395,6 +431,10 @@ func TestResolveIncidentUnsupportedMapsFailureBeforeWait(t *testing.T) {
 	t.Parallel()
 
 	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "2251799813685249", key)
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, ProcessInstanceKey: "2251799813685250", State: "ACTIVE"}, nil
+		},
 		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			require.Equal(t, "2251799813685249", key)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, d.ErrUnsupported
@@ -526,6 +566,9 @@ func TestResolveIncidentsBulkWorkersNoWorkerLimitAndPartialFailureTotals(t *test
 	var maxActive int32
 	var calls int32
 	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, State: "ACTIVE"}, nil
+		},
 		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			cfg := services.ApplyCallOptions(opts)
 			if !cfg.NoWait {
@@ -574,6 +617,11 @@ func TestResolveIncidentsBulkFailFastStopsSchedulingAfterFirstFailure(t *testing
 
 	var calls int32
 	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, "incident-fail", key)
+			require.True(t, services.ApplyCallOptions(opts).FailFast)
+			return d.ProcessInstanceIncidentDetail{IncidentKey: key, State: "ACTIVE"}, nil
+		},
 		resolveIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 			require.Equal(t, "incident-fail", key)
 			require.True(t, services.ApplyCallOptions(opts).FailFast)

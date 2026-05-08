@@ -19,42 +19,38 @@ import (
 func (c *client) ResolveIncident(ctx context.Context, key string, opts ...options.FacadeOption) (IncidentResolutionResult, error) {
 	cfg := options.ApplyFacadeOptions(opts)
 	callOpts := options.MapFacadeOptionsToCallOptions(opts)
-	if cfg.DryRun {
-		incident, err := c.incApi.GetIncident(ctx, key, callOpts...)
-		result := IncidentResolutionResult{
-			IncidentKey:       key,
-			Status:            IncidentResolutionStatusPlanned,
-			DryRun:            true,
-			MutationSubmitted: false,
-		}
-		if err != nil {
-			ferrErr := ferr.FromDomain(err)
-			result.Status = IncidentResolutionStatusMutationFailed
-			result.Error = ferrErr.Error()
-			return result, ferrErr
-		}
-		result.ProcessInstanceKey = incident.ProcessInstanceKey
-		result.IncidentState = incident.State
-		detail := fromDomainProcessInstanceIncidentDetail(incident)
-		result.Incident = &detail
-		if waiter.IncidentIsActive(incident) {
-			result.WouldResolve = true
-			return result, nil
-		}
+	incident, err := c.incApi.GetIncident(ctx, key, callOpts...)
+	result := IncidentResolutionResult{
+		IncidentKey:       key,
+		DryRun:            cfg.DryRun,
+		MutationSubmitted: false,
+	}
+	if err != nil {
+		ferrErr := ferr.FromDomain(err)
+		result.Status = IncidentResolutionStatusMutationFailed
+		result.Error = ferrErr.Error()
+		return result, ferrErr
+	}
+	result.ProcessInstanceKey = incident.ProcessInstanceKey
+	result.IncidentState = incident.State
+	detail := fromDomainProcessInstanceIncidentDetail(incident)
+	result.Incident = &detail
+	if !waiter.IncidentIsActive(incident) {
 		result.Status = IncidentResolutionStatusSkipped
-		result.ConfirmationStatus = "already_resolved"
+		result.ConfirmationStatus = "invalid_state"
+		return result, nil
+	}
+	if cfg.DryRun {
+		result.Status = IncidentResolutionStatusPlanned
+		result.WouldResolve = true
 		return result, nil
 	}
 
 	resp, err := c.incApi.ResolveIncident(ctx, key, callOpts...)
-	result := IncidentResolutionResult{
-		IncidentKey:       key,
-		MutationAccepted:  resp.Ok,
-		StatusCode:        resp.StatusCode,
-		Message:           resp.Status,
-		DryRun:            false,
-		MutationSubmitted: resp.Ok,
-	}
+	result.MutationAccepted = resp.Ok
+	result.StatusCode = resp.StatusCode
+	result.Message = resp.Status
+	result.MutationSubmitted = resp.Ok
 	if err != nil {
 		ferrErr := ferr.FromDomain(err)
 		result.Status = IncidentResolutionStatusMutationFailed

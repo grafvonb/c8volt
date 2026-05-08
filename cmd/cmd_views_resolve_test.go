@@ -25,6 +25,7 @@ func TestRenderIncidentResolutionResults_HumanOutputShowsPerTargetStatuses(t *te
 		Items: []process.IncidentResolutionResult{
 			{IncidentKey: "2251799813685249", Status: process.IncidentResolutionStatusConfirmed},
 			{IncidentKey: "2251799813685250", Status: process.IncidentResolutionStatusSubmitted},
+			{IncidentKey: "2251799813685251", Status: process.IncidentResolutionStatusSkipped, IncidentState: "RESOLVED"},
 		},
 	}
 
@@ -33,7 +34,8 @@ func TestRenderIncidentResolutionResults_HumanOutputShowsPerTargetStatuses(t *te
 	output := buf.String()
 	require.Contains(t, output, "resolved incident 2251799813685249: confirmed")
 	require.Contains(t, output, "resolved incident 2251799813685250: submitted")
-	require.Contains(t, output, "resolved: 2 (confirmed/submitted/skipped: 2, failed: 0)")
+	require.Contains(t, output, "resolved incident 2251799813685251: skipped: incident exists but state \"RESOLVED\" is not valid for resolve")
+	require.Contains(t, output, "resolved: 3 (confirmed/submitted/skipped: 3, failed: 0)")
 }
 
 func TestRenderIncidentResolutionResults_JSONUsesSharedEnvelope(t *testing.T) {

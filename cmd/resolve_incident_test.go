@@ -20,15 +20,20 @@ func TestResolveIncidentCommand_SubmitsResolutionAndWaitsForConfirmation(t *test
 	var sawWait bool
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
+			if sawResolve {
+				sawWait = true
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "RESOLVED")))
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
 		case "/v2/incidents/2251799813685249/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
 			sawResolve = true
 			w.WriteHeader(http.StatusNoContent)
-		case "/v2/incidents/2251799813685249":
-			require.Equal(t, http.MethodGet, r.Method)
-			sawWait = true
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "RESOLVED")))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -49,9 +54,39 @@ func TestResolveIncidentCommand_SubmitsResolutionAndWaitsForConfirmation(t *test
 	require.Contains(t, stderr, "resolved: 1")
 }
 
+func TestResolveIncidentCommand_SkipsNonActiveIncidentBeforeMutation(t *testing.T) {
+	var sawResolve bool
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "RESOLVED")))
+		case "/v2/incidents/2251799813685249/resolution":
+			sawResolve = true
+			t.Fatalf("resolve mutation should not run for non-active incidents")
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"resolve", "incident",
+		"--key", "2251799813685249",
+	)
+
+	require.False(t, sawResolve)
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "resolved incident 2251799813685249: skipped: incident exists but state \"RESOLVED\" is not valid for resolve")
+	require.Contains(t, stderr, "resolved: 1 (confirmed/submitted/skipped: 1, failed: 0)")
+}
+
 func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.T) {
 	resolveCounts := map[string]int{}
-	waitCounts := map[string]int{}
+	getCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249/resolution",
@@ -64,9 +99,13 @@ func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.
 			"/v2/incidents/2251799813685250":
 			require.Equal(t, http.MethodGet, r.Method)
 			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "")
-			waitCounts[key]++
+			getCounts[key]++
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(incidentResultJSON(key, "2251799813685260", "RESOLVED")))
+			state := "ACTIVE"
+			if getCounts[key] > 1 {
+				state = "RESOLVED"
+			}
+			_, _ = w.Write([]byte(incidentResultJSON(key, "2251799813685260", state)))
 		default:
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
@@ -88,9 +127,9 @@ func TestResolveIncidentCommand_AliasRepeatedKeysAndStdinDeduplicate(t *testing.
 		"2251799813685250": 1,
 	}, resolveCounts)
 	require.Equal(t, map[string]int{
-		"2251799813685249": 1,
-		"2251799813685250": 1,
-	}, waitCounts)
+		"2251799813685249": 2,
+		"2251799813685250": 2,
+	}, getCounts)
 	require.Contains(t, output, "resolved incident 2251799813685249: confirmed")
 	require.Contains(t, output, "resolved incident 2251799813685250: confirmed")
 	require.Contains(t, output, "resolved: 2")
@@ -213,6 +252,12 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 	resolveCounts := map[string]int{}
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249",
+			"/v2/incidents/2251799813685250":
+			require.Equal(t, http.MethodGet, r.Method)
+			key := incidentKeyFromPath(t, r.URL.Path, "/v2/incidents/", "")
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON(key, "2251799813685260", "ACTIVE")))
 		case "/v2/incidents/2251799813685249/resolution",
 			"/v2/incidents/2251799813685250/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
@@ -224,7 +269,7 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 			}
 			w.WriteHeader(http.StatusNoContent)
 		default:
-			if r.Method == http.MethodGet {
+			if r.Method == http.MethodGet && r.URL.Path != "/v2/incidents/2251799813685249" && r.URL.Path != "/v2/incidents/2251799813685250" {
 				sawWait = true
 			}
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
@@ -255,10 +300,18 @@ func TestResolveIncidentCommand_NoWaitPartialFailureRendersSuccessfulTargets(t *
 func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testing.T) {
 	var resolveCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/v2/incidents/2251799813685249/resolution", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		resolveCount++
-		http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249":
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685260", "ACTIVE")))
+		case "/v2/incidents/2251799813685249/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			resolveCount++
+			http.Error(w, `{"message":"mutation rejected"}`, http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
 	}))
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -281,7 +334,7 @@ func TestResolveIncidentCommand_FailFastStopsAfterFirstMutationFailure(t *testin
 }
 
 func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *testing.T) {
-	var waitCount int
+	var getCount int
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/incidents/2251799813685249/resolution":
@@ -289,7 +342,7 @@ func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *tes
 			w.WriteHeader(http.StatusNoContent)
 		case "/v2/incidents/2251799813685249":
 			require.Equal(t, http.MethodGet, r.Method)
-			waitCount++
+			getCount++
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(incidentResultJSON("2251799813685249", "2251799813685250", "ACTIVE")))
 		default:
@@ -308,7 +361,7 @@ func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *tes
 		}),
 	})
 	require.Error(t, err)
-	require.Equal(t, 1, waitCount)
+	require.Equal(t, 2, getCount)
 	require.Contains(t, string(output), "confirmation failed")
 	require.Contains(t, string(output), "exceeded max_retries (1)")
 }
