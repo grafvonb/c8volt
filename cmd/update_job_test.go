@@ -216,7 +216,7 @@ func TestUpdateJobCommand_TimeoutSubmittedHumanOutputWithoutConfirmationPolling(
 	var requests []string
 	var patchBodies []map[string]any
 	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
-		jobSearchResponse("2251799813711967", 1),
+		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -234,7 +234,7 @@ func TestUpdateJobCommand_RetriesAndTimeoutConfirmsRetriesOnly(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
 	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
-		jobSearchResponse("2251799813711967", 1),
+		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 		jobSearchResponse("2251799813711967", 3),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
@@ -254,7 +254,7 @@ func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
 	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
-		jobSearchResponse("2251799813711967", 1),
+		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -271,7 +271,7 @@ func TestUpdateJobCommand_JSONDryRunRetriesAndTimeoutPlanPayload(t *testing.T) {
 	var requests []string
 	var patchBodies []map[string]any
 	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
-		jobSearchResponse("2251799813711967", 1),
+		jobSearchResponseWithState("2251799813711967", 1, "CREATED"),
 	}, http.StatusNoContent)
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
@@ -441,7 +441,11 @@ func newJobUpdateServer(t *testing.T, requests *[]string, patchBodies *[]map[str
 }
 
 func jobSearchResponse(key string, retries int32) string {
-	return `{"items":[{"jobKey":"` + key + `","state":"FAILED","retries":` + strconvFormatInt32(retries) + `,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
+	return jobSearchResponseWithState(key, retries, "FAILED")
+}
+
+func jobSearchResponseWithState(key string, retries int32, state string) string {
+	return `{"items":[{"jobKey":"` + key + `","state":"` + state + `","retries":` + strconvFormatInt32(retries) + `,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`
 }
 
 func requirePatchRetries(t *testing.T, body map[string]any, want float64) {
@@ -483,6 +487,57 @@ func TestParseUpdateJobRequestParsesTimeoutMillis(t *testing.T) {
 	require.NotNil(t, request.TimeoutMillis)
 	require.Equal(t, int64(300000), *request.TimeoutMillis)
 	require.False(t, request.ConfirmRetries)
+}
+
+func TestUpdateJobPlanPreconditionRejectsTimeoutForNonActiveJob(t *testing.T) {
+	timeoutMillis := int64(20000)
+	plan := job.UpdatePlan{
+		Key: "2251799814014237",
+		Current: job.Job{
+			Key:   "2251799814014237",
+			State: "RETRIES_UPDATED",
+		},
+	}
+	request := job.UpdateRequest{Key: "2251799814014237", TimeoutMillis: &timeoutMillis}
+
+	err := validateUpdateJobPlanPreconditions(plan, request)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "local precondition failed")
+	require.Contains(t, err.Error(), "job timeout can be updated only for active jobs")
+	require.Contains(t, err.Error(), "job 2251799814014237 is RETRIES_UPDATED")
+}
+
+func TestUpdateJobPlanPreconditionAllowsTimeoutForCreatedJob(t *testing.T) {
+	timeoutMillis := int64(20000)
+	plan := job.UpdatePlan{
+		Key: "2251799813711967",
+		Current: job.Job{
+			Key:   "2251799813711967",
+			State: "CREATED",
+		},
+	}
+	request := job.UpdateRequest{Key: "2251799813711967", TimeoutMillis: &timeoutMillis}
+
+	err := validateUpdateJobPlanPreconditions(plan, request)
+
+	require.NoError(t, err)
+}
+
+func TestUpdateJobPlanPreconditionAllowsRetryOnlyForNonActiveJob(t *testing.T) {
+	retries := int32(2)
+	plan := job.UpdatePlan{
+		Key: "2251799814014237",
+		Current: job.Job{
+			Key:   "2251799814014237",
+			State: "FAILED",
+		},
+	}
+	request := job.UpdateRequest{Key: "2251799814014237", Retries: &retries}
+
+	err := validateUpdateJobPlanPreconditions(plan, request)
+
+	require.NoError(t, err)
 }
 
 func TestUpdateJobCommand_RejectsJSONMutationWithoutAutoConfirmOrAutomationBeforeLookupOrMutation(t *testing.T) {

@@ -55,6 +55,9 @@ var updateJobCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan job update: %w", err))
 		}
 		request.UpdatePlan = &plan
+		if err := validateUpdateJobPlanPreconditions(plan, request); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		if flagDryRun {
 			if err := jobUpdatePlanView(cmd, plan, "dry run"); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render job update dry-run result: %w", err))
@@ -210,4 +213,21 @@ func buildUpdateJobPlan(current job.LookupResult, request job.UpdateRequest) job
 		})
 	}
 	return plan
+}
+
+func validateUpdateJobPlanPreconditions(plan job.UpdatePlan, request job.UpdateRequest) error {
+	if request.TimeoutMillis == nil {
+		return nil
+	}
+	if plan.Current.Key == "" {
+		return nil
+	}
+	if strings.EqualFold(plan.Current.State, "CREATED") {
+		return nil
+	}
+	state := plan.Current.State
+	if state == "" {
+		state = "unknown"
+	}
+	return localPreconditionError(fmt.Errorf("job timeout can be updated only for active jobs; job %s is %s", request.Key, state))
 }
