@@ -12,9 +12,9 @@ Update process-instance variables by key
 
 Update process-instance variables by key.
 
-The command accepts repeated --key values or newline-separated keys from stdin with '-'. The --vars flag must be a JSON object and the same variable map is applied to every unique target key.
+The command accepts repeated --key values or newline-separated keys from stdin with '-'. Provide exactly one variable payload source: --vars with a JSON object or --vars-file with a path to a JSON object file. The same variable map is applied to every unique target key.
 
-By default c8volt waits until requested process-instance-scope variables are visible through the same lookup path as `get pi --with-vars`; add --no-wait to return after the update request is accepted.
+By default c8volt loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, then waits until requested variables are visible through the same lookup path as `get pi --with-vars`. Use --dry-run to preview without mutating, --auto-confirm for unattended mutation, or --no-wait to return after the update request is accepted.
 
 Variable updates are supported for Camunda 8.8 and 8.9. Camunda 8.7 returns an unsupported-version error before mutation.
 
@@ -26,6 +26,9 @@ c8volt update process-instance [flags]
 
 ```
   ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
+  ./c8volt update pi --key 2251799813711967 --vars-file ./vars.json
+  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --dry-run
+  ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --auto-confirm
   ./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
   ./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars '{"customerTier":"gold"}'
   printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
@@ -36,13 +39,15 @@ c8volt update process-instance [flags]
 ### Options
 
 ```
-      --fail-fast         stop scheduling new updates after the first error
-  -h, --help              help for process-instance
-      --key strings       process instance key(s) to update; repeat or combine with stdin '-'
-      --no-wait           return after the update request is accepted without variable confirmation
-      --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
-      --vars string       JSON object with variables to set on each process instance
-  -w, --workers int       maximum concurrent workers when updating multiple process instances (default: min(count, GOMAXPROCS))
+      --dry-run            preview variable updates without submitting mutation
+      --fail-fast          stop scheduling new updates after the first error
+  -h, --help               help for process-instance
+      --key strings        process instance key(s) to update; repeat or combine with stdin '-'
+      --no-wait            return after the update request is accepted without variable confirmation
+      --no-worker-limit    disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --vars string        JSON object with variables to set on each process instance
+      --vars-file string   path to JSON object file with variables to set on each process instance
+  -w, --workers int        maximum concurrent workers when updating multiple process instances (default: min(count, GOMAXPROCS))
 ```
 
 ### Options inherited from parent commands

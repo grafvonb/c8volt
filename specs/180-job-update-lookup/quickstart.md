@@ -106,5 +106,5 @@ make docs-content
 Before committing implementation work, run:
 
 ```bash
-make test
+GOCACHE=/tmp/c8volt-gocache make test
 ```

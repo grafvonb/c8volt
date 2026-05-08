@@ -362,6 +362,20 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Description: "job key to update",
 	})
 	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "retries",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "retry count to set on the job",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "timeout",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "timeout duration to submit for the job, for example 60s, 5m, or 1h",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
 		Name:        "dry-run",
 		Type:        "bool",
 		Required:    false,
@@ -374,6 +388,14 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Required:    false,
 		Repeated:    false,
 		Description: "return after the update request is accepted without retry confirmation",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
 	})
 }
 
@@ -402,11 +424,61 @@ func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	require.Equal(t, AutomationSupportFull, updateJob.AutomationSupport)
 }
 
+func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"get"}, []string{
+		"Inspect cluster, process, job, tenant, and resource state",
+		"./c8volt get job --key 2251799813711967",
+	}, nil)
+	require.Contains(t, output, "job")
+
+	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
+		"Inspect a Camunda job by key",
+		"Use the jobKey exposed by incident-aware process-instance output",
+		"--json returns the stable lookup payload",
+		"Camunda 8.8 and 8.9",
+		"./c8volt get job --key 2251799813711967",
+		"./c8volt --json get job --key 2251799813711967",
+		"--key string",
+	}, nil)
+
+	output = assertCommandHelpOutput(t, []string{"update"}, []string{
+		"Update existing resources",
+		"job retries and timeout by key",
+		"dry-run planning",
+		"optional no-wait submitted output",
+		"./c8volt update job --key 2251799813711967 --retries 3 --dry-run",
+		"./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm",
+		"./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm",
+	}, nil)
+	require.Contains(t, output, "job")
+
+	output = assertCommandHelpOutput(t, []string{"update", "job"}, []string{
+		"Update a Camunda job by key",
+		"supports retries and timeout updates",
+		"pre-mutation plan",
+		"--dry-run previews",
+		"--no-wait",
+		"Retry updates are confirmed through job lookup by default",
+		"timeout updates report submitted milliseconds without deadline confirmation",
+		"JSON mutations require --dry-run, --auto-confirm, or --automation",
+		"--json cannot be combined with --verbose",
+		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update job --key 2251799813711967 --retries 3 --dry-run",
+		"./c8volt --json update job --key 2251799813711967 --retries 3 --auto-confirm",
+		"--key string",
+		"--retries int32",
+		"--timeout string",
+		"--dry-run",
+		"--no-wait",
+		"--auto-confirm",
+	}, nil)
+}
+
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"update"}, []string{
 		"Update existing resources",
 		"Camunda 8.8 and 8.9",
-		"unsupported-version error before mutation",
+		"unsupported-version error before these mutations",
 		"./c8volt update process-instance --key 2251799813711967 --vars",
 		"./c8volt update pi --key 2251799813711967 --vars-file",
 		"./c8volt --automation --json update pi --key 2251799813711967 --vars",

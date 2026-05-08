@@ -199,11 +199,11 @@
 
 **Purpose**: Make the new commands discoverable and keep docs generated from source metadata.
 
-- [ ] T066 [P] Add help examples and command contract metadata coverage for `get job` and `update job`, including `--dry-run`, `--no-wait`, `--auto-confirm`, and JSON guardrails, in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/command_contract_test.go`
-- [ ] T067 [P] Update README examples for job lookup, job update dry-run, confirmed updates, and no-wait updates in `README.md`
-- [ ] T068 [P] Update site documentation source examples for job lookup, job update dry-run, confirmed updates, and no-wait updates in `docs/index.md`
-- [ ] T069 Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
-- [ ] T070 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|GetJob.*Help|UpdateJob.*Help|VersionHelp)' -count=1` and fix docs/help regressions
+- [x] T066 [P] Add help examples and command contract metadata coverage for `get job` and `update job`, including `--dry-run`, `--no-wait`, `--auto-confirm`, and JSON guardrails, in `cmd/get_job.go`, `cmd/update_job.go`, and `cmd/command_contract_test.go`
+- [x] T067 [P] Update README examples for job lookup, job update dry-run, confirmed updates, and no-wait updates in `README.md`
+- [x] T068 [P] Update site documentation source examples for job lookup, job update dry-run, confirmed updates, and no-wait updates in `docs/index.md`
+- [x] T069 Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T070 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|GetJob.*Help|UpdateJob.*Help|VersionHelp)' -count=1` and fix docs/help regressions
 
 ---
 
@@ -211,12 +211,12 @@
 
 **Purpose**: Final cleanup, formatting, and repository-wide proof.
 
-- [ ] T071 [P] Run `gofmt -w cmd/get_job.go cmd/get_job_test.go cmd/update_job.go cmd/update_job_test.go cmd/command_contract_test.go cmd/get_processinstance_test.go cmd/update_processinstance_test.go c8volt/job/api.go c8volt/job/client.go c8volt/job/client_test.go c8volt/job/model.go internal/domain/job.go internal/domain/job_test.go internal/services/job/api.go internal/services/job/factory.go internal/services/job/factory_test.go internal/services/job/waiter/waiter.go internal/services/job/waiter/waiter_test.go internal/services/job/v87/contract.go internal/services/job/v87/service.go internal/services/job/v87/service_test.go internal/services/job/v88/contract.go internal/services/job/v88/convert.go internal/services/job/v88/service.go internal/services/job/v88/service_test.go internal/services/job/v89/contract.go internal/services/job/v89/convert.go internal/services/job/v89/service.go internal/services/job/v89/service_test.go`
-- [ ] T072 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/waiter ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1` and fix regressions
-- [ ] T073 Run `make docs-content` and fix documentation generation issues
-- [ ] T074 Run `make test` and fix repository validation failures
-- [ ] T075 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
-- [ ] T076 Verify `git diff` contains only issue #180 implementation, docs, generated docs, and Speckit artifacts before commit
+- [x] T071 [P] Run `gofmt -w cmd/get_job.go cmd/get_job_test.go cmd/update_job.go cmd/update_job_test.go cmd/command_contract_test.go cmd/get_processinstance_test.go cmd/update_processinstance_test.go c8volt/job/api.go c8volt/job/client.go c8volt/job/client_test.go c8volt/job/model.go internal/domain/job.go internal/domain/job_test.go internal/services/job/api.go internal/services/job/factory.go internal/services/job/factory_test.go internal/services/job/waiter/waiter.go internal/services/job/waiter/waiter_test.go internal/services/job/v87/contract.go internal/services/job/v87/service.go internal/services/job/v87/service_test.go internal/services/job/v88/contract.go internal/services/job/v88/convert.go internal/services/job/v88/service.go internal/services/job/v88/service_test.go internal/services/job/v89/contract.go internal/services/job/v89/convert.go internal/services/job/v89/service.go internal/services/job/v89/service_test.go`
+- [x] T072 Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/domain ./internal/services/job ./internal/services/job/waiter ./internal/services/job/v87 ./internal/services/job/v88 ./internal/services/job/v89 -count=1` and fix regressions
+- [x] T073 Run `make docs-content` and fix documentation generation issues
+- [x] T074 Run `make test` and fix repository validation failures
+- [x] T075 [P] Review [quickstart.md](./quickstart.md) against implemented behavior and update if command examples or validation commands changed
+- [x] T076 Verify `git diff` contains only issue #180 implementation, docs, generated docs, and Speckit artifacts before commit
 
 ---
 

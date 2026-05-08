@@ -1,39 +1,35 @@
 ---
-title: "c8volt get"
+title: "c8volt get job"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt get
+## c8volt get job
 
-Inspect cluster, process, tenant, and resource state
+Inspect a job by key
 
 ### Synopsis
 
-Inspect cluster, process, job, tenant, and resource state without changing it.
+Inspect a Camunda job by key.
 
-Check cluster health, list deployed process definitions, inspect process
-instances, inspect jobs by key, list visible tenants, or fetch a known resource.
+Use the jobKey exposed by incident-aware process-instance output to inspect the matching runtime job directly. Human output is compact for terminal diagnosis, while --json returns the stable lookup payload for automation. Job lookup is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.
 
 ```
-c8volt get [flags]
+c8volt get job [flags]
 ```
 
 ### Examples
 
 ```
-  ./c8volt get cluster topology
-  ./c8volt get pd --latest
-  ./c8volt get pi --state active
   ./c8volt get job --key 2251799813711967
-  ./c8volt get tenant
-  ./c8volt get resource --id <resource-key>
+  ./c8volt --json get job --key 2251799813711967
 ```
 
 ### Options
 
 ```
-  -h, --help   help for get
+  -h, --help         help for job
+      --key string   job key to inspect
 ```
 
 ### Options inherited from parent commands
@@ -56,11 +52,5 @@ c8volt get [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
-* [c8volt get job](c8volt_get_job)	 - Inspect a job by key
-* [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
-* [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
-* [c8volt get resource](c8volt_get_resource)	 - Get a resource by id
-* [c8volt get tenant](c8volt_get_tenant)	 - List tenants
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
 
