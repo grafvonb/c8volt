@@ -8,11 +8,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -98,7 +102,23 @@ func TestUpdateJobCommand_RetriesNoOpSkipsPromptAndMutation(t *testing.T) {
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
-	require.Contains(t, output, "plan: update job 2251799813711967: nothing to update; pending confirmation")
+	require.Contains(t, output, "plan: update job 2251799813711967: nothing to update; no confirmation required")
+}
+
+func TestUpdateJobCommand_RetriesNoOpDryRunReportsNoChangesApplied(t *testing.T) {
+	var requests []string
+	var patchBodies []map[string]any
+	srv := newJobUpdateServer(t, &requests, &patchBodies, []string{
+		jobSearchResponse("2251799813711967", 3),
+	}, http.StatusNoContent)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForJobTest(t, "--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--dry-run")
+
+	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
+	require.Empty(t, patchBodies)
+	require.Contains(t, output, "dry run: update job 2251799813711967: nothing to update; no changes applied")
 }
 
 func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t *testing.T) {
@@ -125,7 +145,8 @@ func TestUpdateJobCommand_MaterialInteractiveRetriesUpdateRequiresConfirmation(t
 	require.Contains(t, prompt, "You are about to update job 2251799813711967")
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967", "POST /v2/jobs/search"}, requests)
 	require.Len(t, patchBodies, 1)
-	require.Contains(t, output, "plan: update job 2251799813711967: retries: 1 -> 3; pending confirmation")
+	require.Contains(t, output, "plan: update job 2251799813711967: retries: 1 -> 3")
+	require.NotContains(t, output, "pending confirmation")
 	require.Contains(t, output, "updated job 2251799813711967: confirmed retries=3")
 }
 
@@ -345,43 +366,38 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 	require.Contains(t, prompt, "You are about to update job 2251799813711967")
 	require.Equal(t, []string{"POST /v2/jobs/search", "PATCH /v2/jobs/2251799813711967"}, requests)
 	require.Len(t, patchBodies, 1)
-	require.Contains(t, output, "plan: update job 2251799813711967: retries: 1 -> 3; pending confirmation")
+	require.Contains(t, output, "plan: update job 2251799813711967: retries: 1 -> 3")
+	require.NotContains(t, output, "pending confirmation")
 	require.Contains(t, output, "updated job 2251799813711967: submitted retries=3")
 	require.NotContains(t, output, "confirmed retries")
 }
 
 func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
-	var requests []string
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
-		t.Fatalf("unsupported v8.7 job update must not call Camunda: %s %s", r.Method, r.URL.Path)
-	}))
-	t.Cleanup(srv.Close)
-	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
 
-	resetGetJobFlagState()
-	resetUpdateJobFlagState()
-	t.Cleanup(func() {
-		resetGetJobFlagState()
-		resetUpdateJobFlagState()
+	output, err := testx.RunCmdSubprocess(t, "TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
 	})
-
-	root := Root()
-	buf := &bytes.Buffer{}
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetArgs([]string{"--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm"})
-	resetCommandTreeFlags(root)
-	resetGetJobFlagState()
-	resetUpdateJobFlagState()
-
-	_, err := root.ExecuteC()
-
 	require.Error(t, err)
-	require.Empty(t, requests)
-	require.Contains(t, err.Error(), "job lookup")
-	require.Contains(t, err.Error(), "Camunda 8.8")
-	require.NotContains(t, buf.String(), "updated job")
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "job lookup")
+	require.Contains(t, string(output), "Camunda 8.8")
+	require.NotContains(t, string(output), "updated job")
+}
+
+func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutationHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm"}
+
+	Execute()
 }
 
 func TestUpdateJobCommand_RejectsJSONVerboseBeforeLookupOrMutation(t *testing.T) {
@@ -474,6 +490,19 @@ func TestUpdateJobCommand_RejectsJSONMutationWithoutAutoConfirmOrAutomationBefor
 	t.Cleanup(resetUpdateJobFlagState)
 
 	flagViewAsJson = true
+
+	err := validateUpdateJobJSONGuardrails(updateJobCmd)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--json update job requires --dry-run, --auto-confirm, or --automation")
+}
+
+func TestUpdateJobCommand_RejectsJSONNoWaitWithoutAutoConfirmOrAutomationBeforeLookupOrMutation(t *testing.T) {
+	resetUpdateJobFlagState()
+	t.Cleanup(resetUpdateJobFlagState)
+
+	flagViewAsJson = true
+	flagNoWait = true
 
 	err := validateUpdateJobJSONGuardrails(updateJobCmd)
 

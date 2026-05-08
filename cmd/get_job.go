@@ -24,7 +24,7 @@ var getJobCmd = &cobra.Command{
   ./c8volt --json get job --key 2251799813711967`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := validateGetJobFlags(); err != nil {
+		if err := validateGetJobFlags(cmd); err != nil {
 			failBeforeCli(cmd, err)
 		}
 		cli, log, cfg, err := NewCli(cmd)
@@ -57,12 +57,15 @@ func init() {
 	setFlagContractRequired(getJobCmd, "key")
 }
 
-func validateGetJobFlags() error {
+func validateGetJobFlags(cmd *cobra.Command) error {
 	if strings.TrimSpace(flagGetJobKey) == "" {
 		return invalidFlagValuef("job lookup requires a non-empty --key")
 	}
 	if flagGetErrorMessageLimit < 0 {
 		return invalidFlagValuef("--error-message-limit must be non-negative")
+	}
+	if pickMode() == RenderModeJSON && cmd != nil && cmd.Flags().Changed("error-message-limit") {
+		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --json")
 	}
 	return nil
 }

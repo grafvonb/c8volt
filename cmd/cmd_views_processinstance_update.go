@@ -101,20 +101,17 @@ func renderUpdateProcessInstanceVariablePlan(cmd *cobra.Command, preview process
 }
 
 func renderProcessInstanceVariableUpdatePlanHuman(cmd *cobra.Command, preview processInstanceVariableUpdatePreview, label string) {
-	status := processInstanceVariableUpdatePlanHumanStatus(label)
+	status := processInstanceVariableUpdatePlanHumanStatus(preview, label)
 	if !preview.HasPlannedChanges() {
 		renderHumanLine(cmd, "%s: update process-instance variables: nothing to update (%d requested value(s) already match visible variables); %s", label, preview.VariableUnchangedCount, status)
 		return
 	}
-	renderHumanLine(cmd, "%s: update process-instance variables: %d process instance(s), %d change(s), %d addition(s), %d unchanged, %d untouched; %s",
-		label,
-		preview.UpdateCount,
-		preview.VariableChangeCount,
-		preview.VariableAddCount,
-		preview.VariableUnchangedCount,
-		preview.VariableUntouchedCount,
-		status,
-	)
+	summary := fmt.Sprintf("%s: update process-instance variables: %d process instance(s), %d change(s), %d addition(s), %d unchanged, %d untouched",
+		label, preview.UpdateCount, preview.VariableChangeCount, preview.VariableAddCount, preview.VariableUnchangedCount, preview.VariableUntouchedCount)
+	if status != "" {
+		summary += "; " + status
+	}
+	renderHumanLine(cmd, "%s", summary)
 	if flagVerbose || (preview.UpdateCount == 1 && len(preview.ProcessInstances) == 1) {
 		for _, plan := range preview.ProcessInstances {
 			if !plan.HasPlannedChanges() && !flagVerbose {
@@ -125,11 +122,14 @@ func renderProcessInstanceVariableUpdatePlanHuman(cmd *cobra.Command, preview pr
 	}
 }
 
-func processInstanceVariableUpdatePlanHumanStatus(label string) string {
+func processInstanceVariableUpdatePlanHumanStatus(preview processInstanceVariableUpdatePreview, label string) string {
 	if label == "dry run" {
 		return "no changes applied"
 	}
-	return "pending confirmation"
+	if !preview.HasPlannedChanges() {
+		return "no confirmation required"
+	}
+	return ""
 }
 
 // renderUpdateProcessInstanceVariableResults renders update outcomes through the command view contract.

@@ -58,16 +58,27 @@ func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) er
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, plan)
 	}
-	status := "pending confirmation"
-	if label == "dry run" {
-		status = "no changes applied"
-	}
+	status := jobUpdatePlanHumanStatus(plan, label)
 	if !plan.HasMaterialChange() {
 		renderOutputLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)
 		return nil
 	}
-	renderOutputLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
+	if status != "" {
+		renderOutputLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
+		return nil
+	}
+	renderOutputLine(cmd, "%s: update job %s: %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items))
 	return nil
+}
+
+func jobUpdatePlanHumanStatus(plan job.UpdatePlan, label string) string {
+	if label == "dry run" {
+		return "no changes applied"
+	}
+	if !plan.HasMaterialChange() {
+		return "no confirmation required"
+	}
+	return ""
 }
 
 func oneLineJob(item job.Job) string {

@@ -53,6 +53,26 @@ func TestGetJobCommand_HumanOutputTruncatesErrorMessageWhenLimitIsSet(t *testing
 	require.Equal(t, "2251799814014237 tenant-a FAILED r:0 err:Process instance...\n", output)
 }
 
+func TestGetJobCommand_RejectsJSONErrorMessageLimit(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetGetJobFlagState()
+	t.Cleanup(func() {
+		resetCommandTreeFlags(root)
+		resetGetJobFlagState()
+		flagViewAsJson = false
+	})
+
+	flagViewAsJson = true
+	flagGetJobKey = "2251799814014237"
+	require.NoError(t, getJobCmd.Flags().Set("error-message-limit", "16"))
+
+	err := validateGetJobFlags(getJobCmd)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--error-message-limit cannot be combined with --json")
+}
+
 func TestGetJobCommand_JSONOutput(t *testing.T) {
 	var requests []string
 	srv := newJobLookupServer(t, &requests, `{"items":[{"jobKey":"2251799813711967","state":"FAILED","retries":2,"processInstanceKey":"2251799813711000","elementInstanceKey":"2251799813711001","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`)

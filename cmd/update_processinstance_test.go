@@ -500,6 +500,7 @@ func TestUpdateProcessInstanceCommand_NoPlannedChangesSkipsPromptAndMutation(t *
 	require.True(t, sawSearch)
 	require.Contains(t, output, "plan: update process-instance variables")
 	require.Contains(t, output, "nothing to update")
+	require.Contains(t, output, "no confirmation required")
 	require.NotContains(t, output, "updated process-instance")
 }
 
