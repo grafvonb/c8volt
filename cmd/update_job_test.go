@@ -350,6 +350,40 @@ func TestUpdateJobCommand_NoWaitStillRequiresInteractiveConfirmationForMaterialU
 	require.NotContains(t, output, "confirmed retries")
 }
 
+func TestUpdateJobCommand_UnsupportedV87FailsBeforeMutation(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		t.Fatalf("unsupported v8.7 job update must not call Camunda: %s %s", r.Method, r.URL.Path)
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.7")
+
+	resetGetJobFlagState()
+	resetUpdateJobFlagState()
+	t.Cleanup(func() {
+		resetGetJobFlagState()
+		resetUpdateJobFlagState()
+	})
+
+	root := Root()
+	buf := &bytes.Buffer{}
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"--config", cfgPath, "update", "job", "--key", "2251799813711967", "--retries", "3", "--auto-confirm"})
+	resetCommandTreeFlags(root)
+	resetGetJobFlagState()
+	resetUpdateJobFlagState()
+
+	_, err := root.ExecuteC()
+
+	require.Error(t, err)
+	require.Empty(t, requests)
+	require.Contains(t, err.Error(), "job lookup")
+	require.Contains(t, err.Error(), "Camunda 8.8")
+	require.NotContains(t, buf.String(), "updated job")
+}
+
 func TestUpdateJobCommand_RejectsJSONVerboseBeforeLookupOrMutation(t *testing.T) {
 	resetUpdateJobFlagState()
 	t.Cleanup(resetUpdateJobFlagState)

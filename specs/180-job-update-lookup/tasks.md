@@ -180,16 +180,16 @@
 
 ### Tests for User Story 6
 
-- [ ] T059 [P] [US6] Add regression test proving `get pi --with-incidents` still exposes `jobKey` unchanged in `cmd/get_processinstance_test.go`
-- [ ] T060 [P] [US6] Add regression test proving `update pi --vars` planning, dry-run, and confirmation semantics remain unchanged in `cmd/update_processinstance_test.go`
-- [ ] T061 [P] [US6] Add boundary test or static assertion that `internal/services/processinstance/api.go` and `internal/services/incident/api.go` do not expose job lookup/update/confirmation methods in `cmd/command_contract_test.go` or a focused internal test
-- [ ] T062 [P] [US6] Add command/service test proving Camunda 8.7 job update fails unsupported before mutation in `cmd/update_job_test.go` or `internal/services/job/v87/service_test.go`
+- [x] T059 [P] [US6] Add regression test proving `get pi --with-incidents` still exposes `jobKey` unchanged in `cmd/get_processinstance_test.go`
+- [x] T060 [P] [US6] Add regression test proving `update pi --vars` planning, dry-run, and confirmation semantics remain unchanged in `cmd/update_processinstance_test.go`
+- [x] T061 [P] [US6] Add boundary test or static assertion that `internal/services/processinstance/api.go` and `internal/services/incident/api.go` do not expose job lookup/update/confirmation methods in `cmd/command_contract_test.go` or a focused internal test
+- [x] T062 [P] [US6] Add command/service test proving Camunda 8.7 job update fails unsupported before mutation in `cmd/update_job_test.go` or `internal/services/job/v87/service_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T063 [US6] Ensure job service factory returns unsupported 8.7 behavior and supported 8.8/8.9 behavior in `internal/services/job/factory.go`
-- [ ] T064 [US6] Keep command service wiring pointed at `c8volt/job` and `internal/services/job` without adding job methods to process-instance or incident APIs in `cmd/cmd_services.go`, `c8volt/job/client.go`, and `internal/services/job/api.go`
-- [ ] T065 [US6] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(GetProcessInstance.*Incident|UpdateProcessInstance|UpdateJob.*Unsupported|ServiceBoundary)' -count=1` and fix regressions
+- [x] T063 [US6] Ensure job service factory returns unsupported 8.7 behavior and supported 8.8/8.9 behavior in `internal/services/job/factory.go`
+- [x] T064 [US6] Keep command service wiring pointed at `c8volt/job` and `internal/services/job` without adding job methods to process-instance or incident APIs in `cmd/cmd_services.go`, `c8volt/job/client.go`, and `internal/services/job/api.go`
+- [x] T065 [US6] Run `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job ./internal/services/job/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(GetProcessInstance.*Incident|UpdateProcessInstance|UpdateJob.*Unsupported|ServiceBoundary)' -count=1` and fix regressions
 
 **Checkpoint**: User Story 6 is independently complete when service boundaries are preserved and related existing commands keep their behavior.
 

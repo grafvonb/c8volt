@@ -20,6 +20,7 @@ Started: 2026-05-08 11:45:05
 - Waiters use `cfg.App.Backoff`, optional context deadlines, `backoff.InitialDelay` plus `backoff.NextDelay`, max-retry checks, verbose polling logs, and return confirmation failure without converting it into mutation success.
 - Incident-enriched process-instance human output includes `jobKey` only when present in `incidentHumanFields`; regression coverage already asserts the full incident line containing `jobKey=...`.
 - Docs are regenerated through `make docs-content`, which runs `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown` and syncs `docs/index.md` from `README.md`.
+- Service boundary regression coverage can use reflection against `processinstance.API` and `incident.API` to prove job lookup/update/confirmation methods stay out of unrelated service surfaces.
 
 ---
 
@@ -240,4 +241,27 @@ Started: 2026-05-08 11:45:05
 - The no-wait production path was already present from the retry/timeout update plumbing; this iteration added coverage that it skips only post-mutation polling and does not bypass the pre-mutation confirmation gate.
 - No-wait submitted output uses the existing `submitted` result vocabulary with `confirmationStatus=skipped`, `submittedRetries`, and no `confirmedRetries`.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/job -run 'Test(UpdateJob.*NoWait|NoWait.*Job)' -count=1`.
+---
+
+---
+## Iteration 7 - 2026-05-08 12:31:52 CEST
+**User Story**: User Story 6 - Preserve Boundaries And Existing Behavior
+**Tasks Completed**:
+- [x] T059: Add regression test proving `get pi --with-incidents` still exposes `jobKey` unchanged
+- [x] T060: Add regression test proving `update pi --vars` planning, dry-run, and confirmation semantics remain unchanged
+- [x] T061: Add boundary test proving process-instance and incident APIs do not expose job operations
+- [x] T062: Add command/service test proving Camunda 8.7 job update fails unsupported before mutation
+- [x] T063: Ensure job service factory returns unsupported 8.7 behavior and supported 8.8/8.9 behavior
+- [x] T064: Keep command service wiring pointed at job services without adding job methods to process-instance or incident APIs
+- [x] T065: Run targeted US6 validation
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_job_test.go
+- internal/services/job/boundary_test.go
+- specs/180-job-update-lookup/tasks.md
+- specs/180-job-update-lookup/progress.md
+**Learnings**:
+- Existing `get pi --with-incidents` and `update pi --vars` tests already exercise the required regression paths; US6 added explicit boundary reflection coverage and a command-level 8.7 unsupported-before-mutation assertion.
+- Validation passed with the T065 command, plus `./internal/services/job` included to exercise the new boundary reflection test.
 ---
