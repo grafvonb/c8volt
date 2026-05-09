@@ -234,6 +234,66 @@ func TestGetIncidentCommand_NotFoundExitsWithNotFoundHelper(t *testing.T) {
 	Execute()
 }
 
+func TestGetIncidentCommand_V87ReportsUnsupported(t *testing.T) {
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.7")
+
+	tests := []struct {
+		name   string
+		helper string
+		want   string
+	}{
+		{
+			name:   "keyed lookup",
+			helper: "TestGetIncidentCommand_V87KeyedLookupUnsupportedHelper",
+			want:   "direct incident lookup is not tenant-safe in Camunda 8.7",
+		},
+		{
+			name:   "search",
+			helper: "TestGetIncidentCommand_V87SearchUnsupportedHelper",
+			want:   "incident search is not tenant-safe in Camunda 8.7",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := testx.RunCmdSubprocess(t, tt.helper, map[string]string{
+				"C8VOLT_TEST_CONFIG": cfgPath,
+			})
+
+			require.Error(t, err)
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), "unsupported capability")
+			require.Contains(t, string(output), tt.want)
+		})
+	}
+}
+
+func TestGetIncidentCommand_V87KeyedLookupUnsupportedHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "incident", "--key", "2251799813685249"}
+
+	Execute()
+}
+
+func TestGetIncidentCommand_V87SearchUnsupportedHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	prevArgs := os.Args
+	t.Cleanup(func() { os.Args = prevArgs })
+	os.Args = []string{"c8volt", "--config", os.Getenv("C8VOLT_TEST_CONFIG"), "get", "incident"}
+
+	Execute()
+}
+
 func TestGetIncidentCommand_SearchDefaultsToActiveState(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,

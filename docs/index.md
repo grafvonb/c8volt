@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-1-g61f2e7e-dirty`, commit `61f2e7e`, built `2026-05-09T13:30:47Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-15-g8b9e62b-dirty`, commit `8b9e62b`, built `2026-05-09T20:46:40Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -294,6 +294,8 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --incidents-only --with-incidents
 ./c8volt get pi --direct-incidents-only --with-incidents
 ./c8volt get pi --with-incidents --incident-message-limit 80
+./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message failed
+./c8volt get pi --total --direct-incidents-only --incident-error-type io_mapping_error
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
@@ -314,9 +316,23 @@ Human process-instance lists mark only incident-bearing instances with `inc!`; i
 
 Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
 
-For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. List/search `--incidents-only` uses the active `hasIncident` process-instance marker; use `--direct-incidents-only` when the result set should be narrowed by actually loaded direct incidents instead. Direct active incident keys, states, and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages. For keyed ops inspection of incident history, add `--incident-state pending`, `resolved`, `migrated`, `unknown`, or `all`.
+For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. List/search `--incidents-only` uses the active `hasIncident` process-instance marker; use `--direct-incidents-only` when the result set should be narrowed by actually loaded direct incidents instead. Direct active incident keys, states, and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-error-type <type>` to match a Camunda incident error type case-insensitively, and `--incident-error-message <text>` to match an error-message substring case-insensitively. In list/search mode, those incident detail filters refine `--direct-incidents-only`; in keyed mode, they refine displayed incidents under `--with-incidents`. Combine detail filters with `--total --direct-incidents-only` to count process instances with matching direct incidents. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages. For keyed ops inspection of incident history, add `--incident-state pending`, `resolved`, `migrated`, `unknown`, or `all`.
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`; use `--no-wait` when your script will verify later. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
+
+### Inspect Incidents Directly
+
+```bash
+./c8volt get incident --key <incident-key>
+./c8volt get incident --key <incident-key> --json
+./c8volt get incident --state active
+./c8volt get incident --error-type io_mapping_error --error-message failed
+./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
+./c8volt get incident --total --state resolved
+./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
+```
+
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Human rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, and `--total` preserve script-friendly output contracts.
 
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Human values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
@@ -545,6 +561,7 @@ c8volt
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List, fetch, and enrich process instances
 |   |-- job                   Inspect a job by key
+|   |-- incident              List or fetch incidents
 |   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
@@ -597,6 +614,9 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get incident --key <incident-key>
+./c8volt get incident --state active --error-message failed
+./c8volt get incident --total --state resolved
 ./c8volt get pi --state active --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --state active --total

@@ -171,16 +171,16 @@
 
 ### Tests for User Story 6
 
-- [ ] T055 [P] [US6] Add regression tests proving `get pi --with-incidents`, `--incidents-only`, `--direct-incidents-only`, and `--no-incidents-only` behavior is unchanged in `cmd/get_processinstance_test.go`
-- [ ] T056 [P] [US6] Add docs generation tests or update expectations for `get incident` docs in `docsgen/main_test.go`
-- [ ] T057 [P] [US6] Add unsupported-version behavior tests for `get incident` in `cmd/get_incident_test.go` and `internal/services/incident/v87/incidents_test.go`
+- [x] T055 [P] [US6] Add regression tests proving `get pi --with-incidents`, `--incidents-only`, `--direct-incidents-only`, and `--no-incidents-only` behavior is unchanged in `cmd/get_processinstance_test.go`
+- [x] T056 [P] [US6] Add docs generation tests or update expectations for `get incident` docs in `docsgen/main_test.go`
+- [x] T057 [P] [US6] Add unsupported-version behavior tests for `get incident` in `cmd/get_incident_test.go` and `internal/services/incident/v87/incidents_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T058 [US6] Update README examples and command overview for `get incident` in `README.md`
-- [ ] T059 [US6] Regenerate CLI reference markdown with `make docs-content`, updating `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_incident.md`, and `docs/cli/index.md`
-- [ ] T060 [US6] Verify no `--with-incidents`, `--incidents-only`, or `--direct-incidents-only` flags were added to `get incident` in `cmd/get_incident.go`
-- [ ] T061 [US6] Verify incident search logic remains out of `internal/services/processinstance/` and inside `internal/services/incident/`
+- [x] T058 [US6] Update README examples and command overview for `get incident` in `README.md`
+- [x] T059 [US6] Regenerate CLI reference markdown with `make docs-content`, updating `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_incident.md`, and `docs/cli/index.md`
+- [x] T060 [US6] Verify no `--with-incidents`, `--incidents-only`, or `--direct-incidents-only` flags were added to `get incident` in `cmd/get_incident.go`
+- [x] T061 [US6] Verify incident search logic remains out of `internal/services/processinstance/` and inside `internal/services/incident/`
 
 **Checkpoint**: User-facing documentation and existing workflows remain consistent.
 
@@ -190,12 +190,12 @@
 
 **Purpose**: Prove the complete feature before commit or PR handoff.
 
-- [ ] T062 Run targeted service validation with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`
-- [ ] T063 Run targeted facade validation with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`
-- [ ] T064 Run targeted command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncident|TestCommandContract|TestGetProcessInstance' -count=1`
-- [ ] T065 Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
-- [ ] T066 Run repository validation with `make test`
-- [ ] T067 Review `git diff --check` and final changed files before committing
+- [x] T062 Run targeted service validation with `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/incident/... -count=1`
+- [x] T063 Run targeted facade validation with `GOCACHE=/tmp/c8volt-gocache go test ./c8volt/process -count=1`
+- [x] T064 Run targeted command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncident|TestCommandContract|TestGetProcessInstance' -count=1`
+- [x] T065 Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T066 Run repository validation with `make test`
+- [x] T067 Review `git diff --check` and final changed files before committing
 
 ---
 

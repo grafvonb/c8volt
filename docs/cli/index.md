@@ -79,6 +79,8 @@ The following implemented commands are also especially useful:
   Inspect license details from the connected cluster; `licence` works as an alias.
 - [get process definition](./c8volt_get_process-definition)
   List definitions, fetch latest versions, or retrieve raw XML for one key.
+- [get incident](./c8volt_get_incident)
+  List active incidents, filter by incident fields, or fetch known incident keys.
 - [get resource](./c8volt_get_resource)
   Fetch a single resource by id.
 - [embed export](./c8volt_embed_export)
@@ -107,7 +109,7 @@ Tenant-aware operations are supported through the global `--tenant` flag and the
 - [expect commands](./c8volt_expect)
   Wait until process instances reach a target state.
 - [get commands](./c8volt_get)
-  Read cluster, definition, instance, and resource data.
+  Read cluster, definition, instance, incident, and resource data.
 - [config commands](./c8volt_config)
   Inspect, validate, and template `c8volt` configuration.
 - [version command](./c8volt_version)

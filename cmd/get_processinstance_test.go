@@ -616,6 +616,120 @@ func TestGetProcessInstanceDirectIncidentsOnly_FiltersByLoadedDirectIncidents(t 
 	require.Contains(t, output, "found: 1")
 }
 
+func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t *testing.T) {
+	tests := []struct {
+		name               string
+		args               []string
+		processResponse    string
+		incidentResponses  map[string]string
+		wantSearchFilter   string
+		wantNoSearchFilter string
+		wantRequests       []string
+		wantOutput         []string
+		wantNoOutput       []string
+	}{
+		{
+			name:            "with incidents enriches matching rows without changing process search filter",
+			args:            []string{"get", "process-instance", "--with-incidents"},
+			processResponse: `{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			incidentResponses: map[string]string{
+				"/v2/process-instances/123/incidents/search": `{"items":[{"errorMessage":"direct failure","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			},
+			wantNoSearchFilter: "hasIncident",
+			wantRequests: []string{
+				"POST /v2/process-instances/search",
+				"POST /v2/process-instances/123/incidents/search",
+			},
+			wantOutput: []string{"123 tenant demo v3 ACTIVE", "key=incident-123", "found: 1"},
+		},
+		{
+			name:             "incidents only stays on marker filter and does not load direct incidents",
+			args:             []string{"get", "process-instance", "--incidents-only"},
+			processResponse:  `{"items":[{"hasIncident":true,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantSearchFilter: `"hasIncident":true`,
+			wantRequests:     []string{"POST /v2/process-instances/search"},
+			wantOutput:       []string{"123 tenant demo v3 ACTIVE", "found: 1"},
+			wantNoOutput:     []string{"incidents:"},
+		},
+		{
+			name: "direct incidents only filters after loading direct incidents",
+			args: []string{"get", "process-instance", "--direct-incidents-only"},
+			processResponse: `{"items":[
+				{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
+				{"hasIncident":false,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
+			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+			incidentResponses: map[string]string{
+				"/v2/process-instances/123/incidents/search": `{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+				"/v2/process-instances/124/incidents/search": `{"items":[{"errorMessage":"direct failure","incidentKey":"incident-124","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			},
+			wantNoSearchFilter: "hasIncident",
+			wantRequests: []string{
+				"POST /v2/process-instances/search",
+				"POST /v2/process-instances/123/incidents/search",
+				"POST /v2/process-instances/124/incidents/search",
+			},
+			wantOutput:   []string{"124 tenant demo-b v4 ACTIVE", "found: 1"},
+			wantNoOutput: []string{"123 tenant demo-a"},
+		},
+		{
+			name:             "no incidents only stays on marker filter and omits incident rows",
+			args:             []string{"get", "process-instance", "--no-incidents-only"},
+			processResponse:  `{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+			wantSearchFilter: `"hasIncident":false`,
+			wantRequests:     []string{"POST /v2/process-instances/search"},
+			wantOutput:       []string{"124 tenant demo v3 ACTIVE", "found: 1"},
+			wantNoOutput:     []string{"incidents:"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests []string
+			var searchBodies []string
+			srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/process-instances/search":
+					require.Equal(t, http.MethodPost, r.Method)
+					body, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					searchBodies = append(searchBodies, string(body))
+					_, _ = w.Write([]byte(tt.processResponse))
+				default:
+					response, ok := tt.incidentResponses[r.URL.Path]
+					if !ok {
+						t.Fatalf("unexpected request path: %s", r.URL.Path)
+					}
+					require.Equal(t, http.MethodPost, r.Method)
+					_, _ = w.Write([]byte(response))
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+			args := append([]string{"--config", cfgPath, "--tenant", "tenant"}, tt.args...)
+
+			output := executeRootForProcessInstanceTest(t, args...)
+
+			require.Equal(t, tt.wantRequests, requests)
+			require.Len(t, searchBodies, 1)
+			if tt.wantSearchFilter != "" {
+				require.Contains(t, searchBodies[0], tt.wantSearchFilter)
+			}
+			if tt.wantNoSearchFilter != "" {
+				require.NotContains(t, searchBodies[0], tt.wantNoSearchFilter)
+			}
+			for _, want := range tt.wantOutput {
+				require.Contains(t, output, want)
+			}
+			for _, unwanted := range tt.wantNoOutput {
+				require.NotContains(t, output, unwanted)
+			}
+		})
+	}
+}
+
 // TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted verifies list/search incident enrichment is no longer keyed-only.
 func TestGetProcessInstanceWithIncidents_ListSearchWithoutKeyIsAccepted(t *testing.T) {
 	var requests []string

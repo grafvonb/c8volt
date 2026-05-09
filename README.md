@@ -311,6 +311,20 @@ For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` 
 
 When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`; use `--no-wait` when your script will verify later. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
+### Inspect Incidents Directly
+
+```bash
+./c8volt get incident --key <incident-key>
+./c8volt get incident --key <incident-key> --json
+./c8volt get incident --state active
+./c8volt get incident --error-type io_mapping_error --error-message failed
+./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
+./c8volt get incident --total --state resolved
+./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
+```
+
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Human rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, and `--total` preserve script-friendly output contracts.
+
 For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Human values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
@@ -538,6 +552,7 @@ c8volt
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List, fetch, and enrich process instances
 |   |-- job                   Inspect a job by key
+|   |-- incident              List or fetch incidents
 |   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
@@ -590,6 +605,9 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get incident --key <incident-key>
+./c8volt get incident --state active --error-message failed
+./c8volt get incident --total --state resolved
 ./c8volt get pi --state active --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --state active --total

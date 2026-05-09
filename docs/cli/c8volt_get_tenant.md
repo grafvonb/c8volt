@@ -57,5 +57,5 @@ c8volt get tenant [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
 

@@ -132,6 +132,64 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	}
 }
 
+// TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput protects generated docs for direct incident lookup and search.
+func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
+	for _, want := range []string{
+		"Inspect cluster, process, job, incident, tenant, and resource state without changing it.",
+		"./c8volt get incident --key 2251799813685249",
+		"[c8volt get incident](c8volt_get_incident)",
+	} {
+		if !strings.Contains(getDoc, want) {
+			t.Fatalf("expected generated get docs to contain %q, got %q", want, getDoc)
+		}
+	}
+
+	incidentDoc := readGeneratedDocForTest(t, out, "c8volt_get_incident.md")
+	for _, want := range []string{
+		"List or fetch incidents",
+		"Get Camunda incidents by key or by search criteria.",
+		"./c8volt get inc --key 2251799813685249 --key 2251799813685250",
+		"./c8volt get incident --state resolved --error-type io_mapping_error",
+		"--error-message string",
+		"case-insensitive incident error message substring filter for search",
+		"--creation-time-after string",
+		"only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD",
+		"--total",
+		"return only the exact numeric total of matching incidents",
+	} {
+		if !strings.Contains(incidentDoc, want) {
+			t.Fatalf("expected generated get incident docs to contain %q, got %q", want, incidentDoc)
+		}
+	}
+
+	for _, unwanted := range []string{
+		"\n      --with-incidents",
+		"\n      --incidents-only",
+		"\n      --direct-incidents-only",
+		"\n      --no-incidents-only",
+	} {
+		if strings.Contains(incidentDoc, unwanted) {
+			t.Fatalf("expected generated get incident docs to omit %q, got %q", unwanted, incidentDoc)
+		}
+	}
+}
+
 // TestGeneratedResolveDocsDocumentResolveWorkflows protects generated docs for the incident recovery command family.
 func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	out := t.TempDir()
