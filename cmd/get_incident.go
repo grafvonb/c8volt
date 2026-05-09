@@ -29,6 +29,7 @@ var (
 	flagGetIncidentCreationTimeBefore     string
 	flagGetIncidentSize                   int32
 	flagGetIncidentLimit                  int32
+	flagGetIncidentTotal                  bool
 )
 
 var getIncidentCmd = &cobra.Command{
@@ -89,6 +90,12 @@ var getIncidentCmd = &cobra.Command{
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get incidents: %w", err))
 			}
+			if flagGetIncidentTotal {
+				if err := processInstanceTotalView(cmd, int64(len(incidents.Items))); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incident total: %w", err))
+				}
+				return
+			}
 			if err := listIncidentsView(cmd, incidents, flagGetIncidentMessageLimit); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incidents: %w", err))
 			}
@@ -97,6 +104,16 @@ var getIncidentCmd = &cobra.Command{
 
 		filter := populateGetIncidentSearchFilter()
 		log.Debug(fmt.Sprintf("searching incidents, render mode: %s", pickMode()))
+		if flagGetIncidentTotal {
+			total, err := searchIncidentsTotal(cmd, cli, cfg, filter)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get incidents total: %w", err))
+			}
+			if err := processInstanceTotalView(cmd, total); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incident total: %w", err))
+			}
+			return
+		}
 		incidents, renderedIncrementally, err := searchIncidentsWithPaging(cmd, cli, cfg, filter)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get incidents: %w", err))
@@ -128,6 +145,7 @@ func init() {
 	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
 	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages")
+	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for human incident messages; 0 keeps full messages")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
@@ -157,6 +175,14 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	}
 	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagGetIncidentCreationTimeBefore); err != nil {
 		return err
+	}
+	if flagGetIncidentTotal {
+		switch pickMode() {
+		case RenderModeJSON:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --json")
+		case RenderModeKeysOnly:
+			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
+		}
 	}
 	if len(flagGetIncidentKeys) > 0 && hasGetIncidentSearchModeFlags(cmd) {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
@@ -281,6 +307,7 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentCreationTimeBefore = ""
 	flagGetIncidentSize = consts.MaxPISearchSize
 	flagGetIncidentLimit = 0
+	flagGetIncidentTotal = false
 	flagWorkers = 0
 	flagNoWorkerLimit = false
 	flagFailFast = false

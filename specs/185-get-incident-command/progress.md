@@ -5,6 +5,8 @@ Started: 2026-05-09 21:46:32
 
 ## Codebase Patterns
 
+- Plain `get incident` human list rows now use `incidentListHumanLineWithMessageLimit` so they can include tenant, process context, flow-node context, job key, message, and creation-time age without changing existing process-instance and walk incident enrichment rows that use `incidentHumanLineWithMessageLimit`.
+- Plain incident `--total` is a command-level page loop over `SearchIncidentsPage`; it uses exact reported totals only when the service reports them as exact and otherwise counts returned page items after service-owned local filtering.
 - Creation-time incident filters accept RFC3339/RFC3339Nano timestamps and YYYY-MM-DD values at the CLI boundary, flow through `process.IncidentFilter`, use v8.9 server-side `creationTime` ranges, and trigger page-loop fallback for local filtering paths such as v8.8.
 - Plain `get incident` now switches to search/list mode only when no `--key` flags and no stdin `-` are provided; explicit keyed mode rejects search flags before client construction.
 - Incident search paging uses the same command/config batch-size source and continuation concepts as `get pi`, but advances offset by requested page size because service-local incident filtering can reduce returned page item counts.
@@ -203,4 +205,33 @@ Started: 2026-05-09 21:46:32
 - Creation-time search filters already existed in the public/domain incident filter model; the missing work was CLI exposure, validation, and page-loop protection for local filtering paths.
 - v8.9 generated filters serialize date-only bounds as midnight UTC timestamps, while v8.8 keeps compatibility by omitting rich incident filters and applying time bounds locally.
 - Non-page `SearchIncidents` callers need continuation logic for creation-time filters because local filtering can produce empty first pages before later matches.
+---
+
+---
+## Iteration 7 - 2026-05-09 22:40:57 CEST
+**User Story**: User Story 5 - Render Incident Lists And Counts
+**Tasks Completed**:
+- [x] T047: Add human row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
+- [x] T048: Add JSON output tests proving full `errorMessage` and `creationTime` are preserved in `cmd/get_incident_test.go`
+- [x] T049: Add keys-only and exact `--total` command tests, including local-filter totals, in `cmd/get_incident_test.go`
+- [x] T050: Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with non-human output in `cmd/get_incident_test.go`
+- [x] T051: Add incident age calculation and missing or unparsable `creationTime` handling in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T052: Add `--error-message-limit` handling for human incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T053: Implement exact `--total` output after all local filters in `cmd/get_incident.go` and `c8volt/process/client.go`
+- [x] T054: Ensure JSON output preserves full incident fields without human truncation in `cmd/cmd_views_get.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/cmd_views_get_test.go
+- cmd/cmd_views_processinstance_incidents.go
+- cmd/get_incident.go
+- cmd/get_incident_search.go
+- cmd/get_incident_test.go
+- specs/185-get-incident-command/tasks.md
+- specs/185-get-incident-command/progress.md
+**Learnings**:
+- Plain incident output needed a separate human list formatter to meet the richer row contract while preserving existing process-instance and walk incident row expectations.
+- Exact incident totals can trust `IncidentReportedTotalKindExact` for server-complete filters and otherwise count service-filtered page items until `ProcessInstanceOverflowStateNoMore`.
+- Generated v8.9 creation-time request bodies use `$gte` and `$lte` property names in JSON, so command tests should assert that concrete wire shape.
 ---

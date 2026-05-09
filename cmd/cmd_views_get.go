@@ -38,7 +38,7 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 
 func listIncidentsView(cmd *cobra.Command, resp process.Incidents, messageLimit int) error {
 	return listOrJSON(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstanceIncidentDetail) string {
-		return incidentHumanLineWithMessageLimit(it, messageLimit)
+		return incidentListHumanLineWithMessageLimit(it, messageLimit)
 	}, func(it process.ProcessInstanceIncidentDetail) string {
 		return it.IncidentKey
 	})

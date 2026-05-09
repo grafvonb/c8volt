@@ -251,6 +251,58 @@ func TestProcessInstancesWithAgeMeta(t *testing.T) {
 	require.Equal(t, 4, payload.Meta.AgeDaysBy["2251799813758959"])
 }
 
+func TestIncidentHumanLineWithMessageLimit_RendersIncidentListFieldsAndAge(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 9, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	line := incidentListHumanLineWithMessageLimit(process.ProcessInstanceIncidentDetail{
+		IncidentKey:            "2251799813685249",
+		TenantId:               "tenant-a",
+		State:                  "ACTIVE",
+		ErrorType:              "JOB_NO_RETRIES",
+		ErrorMessage:           "No retries left for a long-running job",
+		CreationTime:           "2026-05-05T10:15:00Z",
+		ProcessInstanceKey:     "2251799813711967",
+		RootProcessInstanceKey: "2251799813711960",
+		ProcessDefinitionKey:   "2251799813685200",
+		ProcessDefinitionId:    "demo-process",
+		FlowNodeId:             "task-a",
+		FlowNodeInstanceKey:    "2251799813685300",
+	}, 15)
+
+	require.Contains(t, line, "key=2251799813685249")
+	require.Contains(t, line, "tenant=tenant-a")
+	require.Contains(t, line, "state=ACTIVE")
+	require.Contains(t, line, "errorType=JOB_NO_RETRIES")
+	require.Contains(t, line, "creationTime=2026-05-05T10:15:00Z")
+	require.Contains(t, line, "processInstanceKey=2251799813711967")
+	require.Contains(t, line, "rootProcessInstanceKey=2251799813711960")
+	require.Contains(t, line, "processDefinitionKey=2251799813685200")
+	require.Contains(t, line, "processDefinitionId=demo-process")
+	require.Contains(t, line, "flowNodeId=task-a")
+	require.Contains(t, line, "flowNodeInstanceKey=2251799813685300")
+	require.Contains(t, line, "jobKey=n/a")
+	require.Contains(t, line, "message=No retries left...")
+	require.Contains(t, line, "(4 days ago)")
+}
+
+func TestIncidentHumanLineWithMessageLimit_SkipsAgeForMissingOrInvalidCreationTime(t *testing.T) {
+	line := incidentListHumanLineWithMessageLimit(process.ProcessInstanceIncidentDetail{
+		IncidentKey:  "2251799813685249",
+		CreationTime: "not-a-date",
+		ErrorMessage: "failed",
+	}, 0)
+
+	require.Contains(t, line, "creationTime=not-a-date")
+	require.NotContains(t, line, "days ago")
+	require.NotContains(t, line, "(today)")
+}
+
 func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = true

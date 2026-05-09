@@ -51,8 +51,9 @@ func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T
 
 func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	var requests []string
+	longMessage := "No retries left with full diagnostic context that must not be truncated in JSON"
 	srv := newIncidentLookupServer(t, &requests, map[string]string{
-		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
+		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", longMessage),
 	})
 	t.Cleanup(srv.Close)
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
@@ -76,7 +77,7 @@ func TestGetIncidentCommand_JSONOutputUsesIncidentListPayload(t *testing.T) {
 	require.Len(t, items, 1)
 	item := requireJSONObject(t, items[0])
 	require.Equal(t, "2251799813685249", item["incidentKey"])
-	require.Equal(t, "No retries left", item["errorMessage"])
+	require.Equal(t, longMessage, item["errorMessage"])
 	require.Equal(t, "2026-03-23T18:01:00Z", item["creationTime"])
 }
 
@@ -99,6 +100,65 @@ func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	require.Equal(t, "2251799813685249\n", output)
 }
 
+func TestGetIncidentCommand_SearchKeysOnlyOutputUsesIncidentKeys(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"--keys-only",
+		"get", "incident",
+		"--state", "active",
+	)
+
+	require.Len(t, requests, 1)
+	require.Equal(t, "2251799813685253\n2251799813685254\n", output)
+}
+
+func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":7,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--total",
+	)
+
+	require.Len(t, requests, 1)
+	require.Equal(t, "7\n", output)
+}
+
+func TestGetIncidentCommand_TotalCountsLocalFilteredMatchesAcrossPages(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"No retries left","incidentKey":"2251799813685257","processInstanceKey":"2251799813711976","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"Mapping failed","incidentKey":"2251799813685258","processInstanceKey":"2251799813711977","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"first intentional failure","incidentKey":"2251799813685259","processInstanceKey":"2251799813711978","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second INTENTIONAL issue","incidentKey":"2251799813685260","processInstanceKey":"2251799813711979","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "2",
+		"--total",
+		"--error-message", "INTENTIONAL",
+	)
+
+	require.Len(t, requests, 2)
+	require.NotContains(t, output, "found:")
+	require.Equal(t, "2\n", output)
+}
+
 func TestGetIncidentCommand_RejectsInvalidKeyBeforeLookup(t *testing.T) {
 	output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", "--key", "bad-key")
 
@@ -114,6 +174,33 @@ func TestGetIncidentCommand_RejectsJSONErrorMessageLimit(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--error-message-limit cannot be combined with --json")
 	require.Empty(t, output)
+}
+
+func TestGetIncidentCommand_RejectsKeysOnlyErrorMessageLimit(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t, "--keys-only", "get", "incident", "--key", "2251799813685249", "--error-message-limit", "8")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--error-message-limit cannot be combined with --keys-only")
+	require.Empty(t, output)
+}
+
+func TestGetIncidentCommand_RejectsTotalWithMachineOutput(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "json", args: []string{"--json", "get", "incident", "--total"}, want: "--total cannot be combined with --json"},
+		{name: "keys only", args: []string{"--keys-only", "get", "incident", "--total"}, want: "--total cannot be combined with --keys-only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := executeRootExpectErrorForIncidentTest(t, tc.args...)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+			require.Empty(t, output)
+		})
+	}
 }
 
 func TestGetIncidentCommand_NotFoundExitsWithNotFound(t *testing.T) {
@@ -274,8 +361,8 @@ func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 
 	require.Len(t, requests, 1)
 	require.Contains(t, requests[0], `"creationTime"`)
-	require.Contains(t, requests[0], `"gte":"2026-05-09T09:00:00Z"`)
-	require.Contains(t, requests[0], `"lte":"2026-05-09T11:00:00Z"`)
+	require.Contains(t, requests[0], `"$gte":"2026-05-09T09:00:00Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-09T11:00:00Z"`)
 	require.Contains(t, output, "key=2251799813685253")
 	require.Contains(t, output, "creationTime=2026-05-09T10:15:00Z")
 	require.Contains(t, output, "found: 1")
@@ -297,8 +384,8 @@ func TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds(t *testing.T
 	)
 
 	require.Len(t, requests, 1)
-	require.Contains(t, requests[0], `"gte":"2026-05-09T00:00:00Z"`)
-	require.Contains(t, requests[0], `"lte":"2026-05-10T00:00:00Z"`)
+	require.Contains(t, requests[0], `"$gte":"2026-05-09T00:00:00Z"`)
+	require.Contains(t, requests[0], `"$lte":"2026-05-10T00:00:00Z"`)
 	require.Contains(t, output, "found: 0")
 }
 

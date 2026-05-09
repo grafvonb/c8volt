@@ -93,10 +93,33 @@ func renderIncidentSearchPage(cmd *cobra.Command, items []process.ProcessInstanc
 		}
 	default:
 		for _, item := range items {
-			renderOutputLine(cmd, "%s", incidentHumanLineWithMessageLimit(item, flagGetIncidentMessageLimit))
+			renderOutputLine(cmd, "%s", incidentListHumanLineWithMessageLimit(item, flagGetIncidentMessageLimit))
 		}
 	}
 	return nil
+}
+
+func canUseIncidentExactReportedTotal(page process.IncidentPage) bool {
+	return page.ReportedTotal != nil && page.ReportedTotal.Kind == process.IncidentReportedTotalKindExact
+}
+
+func searchIncidentsTotal(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.IncidentFilter) (int64, error) {
+	pageReq := newIncidentSearchPageRequest(cmd, cfg, 0)
+	total := int64(0)
+	for {
+		page, err := cli.SearchIncidentsPage(cmd.Context(), filter, pageReq, collectOptions()...)
+		if err != nil {
+			return 0, err
+		}
+		if canUseIncidentExactReportedTotal(page) {
+			return page.ReportedTotal.Count, nil
+		}
+		total += int64(len(page.Items))
+		if page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
+			return total, nil
+		}
+		pageReq = nextIncidentSearchPageRequest(cmd, cfg, pageReq, page)
+	}
 }
 
 // searchIncidentsWithPaging runs the list/search path for `get incident`.

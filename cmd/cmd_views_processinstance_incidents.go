@@ -111,6 +111,71 @@ func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key str
 	return strings.Join(fields, " ")
 }
 
+func incidentAgeTag(creationTime string) string {
+	age, ok := processInstanceAgeDays(creationTime)
+	if !ok {
+		return ""
+	}
+	if age == 0 {
+		return "(today)"
+	}
+	return fmt.Sprintf("(%d days ago)", age)
+}
+
+func incidentListHumanLineWithMessageLimit(incident process.ProcessInstanceIncidentDetail, messageLimit int) string {
+	key := incident.IncidentKey
+	if key == "" {
+		key = "unknown"
+	}
+	message := truncateIncidentHumanMessage(incident.ErrorMessage, messageLimit)
+	fields := incidentListHumanFields(incident, key)
+	return fmt.Sprintf("%s message=%s", fields, message)
+}
+
+func incidentListHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {
+	fields := make([]string, 0, 13)
+	fields = append(fields, "key="+key)
+	if incident.TenantId != "" {
+		fields = append(fields, "tenant="+incident.TenantId)
+	}
+	if incident.CreationTime != "" {
+		fields = append(fields, "creationTime="+incident.CreationTime)
+	}
+	if incident.ProcessInstanceKey != "" {
+		fields = append(fields, "processInstanceKey="+incident.ProcessInstanceKey)
+	}
+	if incident.RootProcessInstanceKey != "" {
+		fields = append(fields, "rootProcessInstanceKey="+incident.RootProcessInstanceKey)
+	}
+	if incident.ProcessDefinitionKey != "" {
+		fields = append(fields, "processDefinitionKey="+incident.ProcessDefinitionKey)
+	}
+	if incident.ProcessDefinitionId != "" {
+		fields = append(fields, "processDefinitionId="+incident.ProcessDefinitionId)
+	}
+	if incident.FlowNodeId != "" {
+		fields = append(fields, "flowNodeId="+incident.FlowNodeId)
+	}
+	if incident.FlowNodeInstanceKey != "" {
+		fields = append(fields, "flowNodeInstanceKey="+incident.FlowNodeInstanceKey)
+	}
+	if incident.State != "" {
+		fields = append(fields, "state="+incident.State)
+	}
+	if incident.ErrorType != "" {
+		fields = append(fields, "errorType="+incident.ErrorType)
+	}
+	jobKey := incident.JobKey
+	if jobKey == "" {
+		jobKey = "n/a"
+	}
+	fields = append(fields, "jobKey="+jobKey)
+	if age := incidentAgeTag(incident.CreationTime); age != "" {
+		fields = append(fields, age)
+	}
+	return strings.Join(fields, " ")
+}
+
 // truncateIncidentHumanMessage applies the human-only incident message display limit.
 func truncateIncidentHumanMessage(message string, limit int) string {
 	return truncateHumanMessage(message, limit)

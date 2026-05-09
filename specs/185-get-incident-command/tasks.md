@@ -147,17 +147,17 @@
 
 ### Tests for User Story 5
 
-- [ ] T047 [P] [US5] Add human row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
-- [ ] T048 [P] [US5] Add JSON output tests proving full `errorMessage` and `creationTime` are preserved in `cmd/get_incident_test.go`
-- [ ] T049 [P] [US5] Add keys-only and exact `--total` command tests, including local-filter totals, in `cmd/get_incident_test.go`
-- [ ] T050 [P] [US5] Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with non-human output in `cmd/get_incident_test.go`
+- [x] T047 [P] [US5] Add human row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
+- [x] T048 [P] [US5] Add JSON output tests proving full `errorMessage` and `creationTime` are preserved in `cmd/get_incident_test.go`
+- [x] T049 [P] [US5] Add keys-only and exact `--total` command tests, including local-filter totals, in `cmd/get_incident_test.go`
+- [x] T050 [P] [US5] Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with non-human output in `cmd/get_incident_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T051 [US5] Add incident age calculation and missing or unparsable `creationTime` handling in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T052 [US5] Add `--error-message-limit` handling for human incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T053 [US5] Implement exact `--total` output after all local filters in `cmd/get_incident.go` and `c8volt/process/client.go`
-- [ ] T054 [US5] Ensure JSON output preserves full incident fields without human truncation in `cmd/cmd_views_get.go`
+- [x] T051 [US5] Add incident age calculation and missing or unparsable `creationTime` handling in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T052 [US5] Add `--error-message-limit` handling for human incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T053 [US5] Implement exact `--total` output after all local filters in `cmd/get_incident.go` and `c8volt/process/client.go`
+- [x] T054 [US5] Ensure JSON output preserves full incident fields without human truncation in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Story 5 is complete for script and operator output modes.
 
