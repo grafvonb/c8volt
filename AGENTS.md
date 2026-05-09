@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/181-resolve-incident-commands/plan.md`
+- Active implementation plan: `specs/185-get-incident-command/plan.md`
 <!-- SPECKIT END -->
