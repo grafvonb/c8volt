@@ -636,6 +636,7 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 
 	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
 		IncidentKey:         "incident-123",
+		CreationTime:        "2026-05-06T09:29:42.711Z",
 		ErrorMessage:        "No retries left",
 		FlowNodeId:          "task-a",
 		FlowNodeInstanceKey: "element-123",
@@ -644,7 +645,7 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 		JobKey:              "job-123",
 	})
 
-	require.Equal(t, "key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
+	require.Equal(t, "key=incident-123 creationTime=2026-05-06T09:29:42.711Z flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
 	require.NotContains(t, got, "incident incident-123:")
 }
 

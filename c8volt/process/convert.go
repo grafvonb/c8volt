@@ -223,6 +223,7 @@ func toDomainIncidentExpectation(x *IncidentExpectation) *bool {
 func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.ProcessInstanceIncidentDetail {
 	return d.ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
+		CreationTime:           x.CreationTime,
 		ProcessInstanceKey:     x.ProcessInstanceKey,
 		TenantId:               x.TenantId,
 		State:                  x.State,

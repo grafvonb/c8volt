@@ -124,6 +124,7 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 	var out strings.Builder
 	writeIncidentLines(&out, "  ", []process.ProcessInstanceIncidentDetail{{
 		IncidentKey:         "incident-1",
+		CreationTime:        "2026-05-06T09:29:42.711Z",
 		ErrorMessage:        "Root job failed",
 		FlowNodeId:          "task-a",
 		FlowNodeInstanceKey: "element-123",
@@ -132,7 +133,7 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 		JobKey:              "job-123",
 	}})
 
-	require.Equal(t, "\n  └─ key=incident-1 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=Root job failed", out.String())
+	require.Equal(t, "\n  └─ key=incident-1 creationTime=2026-05-06T09:29:42.711Z flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=Root job failed", out.String())
 	require.NotContains(t, out.String(), "incident incident-1:")
 }
 

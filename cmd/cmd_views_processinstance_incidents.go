@@ -83,6 +83,9 @@ func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {
 	fields := make([]string, 0, 5)
 	fields = append(fields, "key="+key)
+	if incident.CreationTime != "" {
+		fields = append(fields, "creationTime="+incident.CreationTime)
+	}
 	if incident.FlowNodeId != "" {
 		fields = append(fields, "flowNodeId="+incident.FlowNodeId)
 	}

@@ -1239,7 +1239,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 creationTime=2026-03-23T18:01:00Z flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1584,8 +1584,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left",
-				"└─ key=incident-124 flowNodeId=task-b flowNodeInstanceKey=element-124 state=ACTIVE errorType=EXTRACT_VALUE_ERROR jobKey=n/a message=Gateway failed",
+				"├─ key=incident-123 creationTime=2026-03-23T18:01:00Z flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left",
+				"└─ key=incident-124 creationTime=2026-03-23T18:02:00Z flowNodeId=task-b flowNodeInstanceKey=element-124 state=ACTIVE errorType=EXTRACT_VALUE_ERROR jobKey=n/a message=Gateway failed",
 			},
 		},
 		{
