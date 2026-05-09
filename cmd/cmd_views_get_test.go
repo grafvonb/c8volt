@@ -805,3 +805,98 @@ func TestTruncateIncidentHumanMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
+	resp := process.Incidents{
+		Total: 2,
+		Items: []process.ProcessInstanceIncidentDetail{
+			{
+				IncidentKey:         "incident-123",
+				CreationTime:        "2026-05-06T09:29:42.711Z",
+				ProcessInstanceKey:  "pi-123",
+				TenantId:            "tenant-a",
+				State:               "ACTIVE",
+				ErrorType:           "JOB_NO_RETRIES",
+				ErrorMessage:        "No retries left",
+				FlowNodeId:          "task-a",
+				FlowNodeInstanceKey: "element-123",
+				JobKey:              "job-123",
+			},
+			{
+				IncidentKey:  "incident-124",
+				State:        "RESOLVED",
+				ErrorMessage: "Mapping failed",
+			},
+		},
+	}
+
+	t.Run("human", func(t *testing.T) {
+		resetViewModeFlags(t)
+		cmd := newGetViewTestCommand("incident")
+
+		require.NoError(t, listIncidentsView(cmd, resp, 10))
+		output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+		require.Contains(t, output, "key=incident-123")
+		require.Contains(t, output, "creationTime=2026-05-06T09:29:42.711Z")
+		require.Contains(t, output, "flowNodeId=task-a")
+		require.Contains(t, output, "errorType=JOB_NO_RETRIES")
+		require.Contains(t, output, "jobKey=job-123")
+		require.Contains(t, output, "message=No retries...")
+		require.Contains(t, output, "key=incident-124")
+		require.Contains(t, output, "jobKey=n/a")
+		require.Contains(t, output, "found: 2")
+	})
+
+	t.Run("json", func(t *testing.T) {
+		resetViewModeFlags(t)
+		flagViewAsJson = true
+		cmd := newGetViewTestCommand("incident")
+		setContractSupport(cmd, ContractSupportFull)
+
+		require.NoError(t, listIncidentsView(cmd, resp, 4))
+		output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+		require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+		payload := requireJSONObject(t, envelope["payload"])
+		items, ok := payload["items"].([]any)
+		require.True(t, ok)
+		first := requireJSONObject(t, items[0])
+		require.Equal(t, "No retries left", first["errorMessage"])
+		require.Equal(t, "2026-05-06T09:29:42.711Z", first["creationTime"])
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		resetViewModeFlags(t)
+		flagViewKeysOnly = true
+		cmd := newGetViewTestCommand("incident")
+
+		require.NoError(t, listIncidentsView(cmd, resp, 0))
+
+		require.Equal(t, "incident-123\nincident-124\n", cmd.OutOrStdout().(*bytes.Buffer).String())
+	})
+}
+
+func newGetViewTestCommand(use string) *cobra.Command {
+	cmd := &cobra.Command{Use: use}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	parent := &cobra.Command{Use: "get"}
+	parent.AddCommand(cmd)
+	return cmd
+}
+
+func resetViewModeFlags(t *testing.T) {
+	t.Helper()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+	})
+	flagViewAsJson = false
+	flagViewKeysOnly = false
+}

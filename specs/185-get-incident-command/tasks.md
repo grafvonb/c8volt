@@ -55,16 +55,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T019 [P] [US1] Add command tests for `get incident --key`, repeated `--key`, stdin `-`, deduplication, missing keys, and invalid keys in `cmd/get_incident_test.go`
-- [ ] T020 [P] [US1] Add human, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
-- [ ] T021 [P] [US1] Add command contract expectations for `get incident`, aliases `incidents` and `inc`, and inherited get flags in `cmd/command_contract_test.go`
+- [x] T019 [P] [US1] Add command tests for `get incident --key`, repeated `--key`, stdin `-`, deduplication, missing keys, and invalid keys in `cmd/get_incident_test.go`
+- [x] T020 [P] [US1] Add human, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
+- [x] T021 [P] [US1] Add command contract expectations for `get incident`, aliases `incidents` and `inc`, and inherited get flags in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Register `get incident` with aliases, examples, flags, and help text in `cmd/get_incident.go` and wire it from `cmd/get.go`
-- [ ] T023 [US1] Implement keyed lookup parsing, stdin `-` handling, key merge, validation, and facade invocation in `cmd/get_incident.go`
-- [ ] T024 [US1] Implement incident human, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T025 [US1] Ensure keyed lookup not-found and partial lookup failures preserve existing get command exit/output conventions in `cmd/get_incident.go`
+- [x] T022 [US1] Register `get incident` with aliases, examples, flags, and help text in `cmd/get_incident.go` and wire it from `cmd/get.go`
+- [x] T023 [US1] Implement keyed lookup parsing, stdin `-` handling, key merge, validation, and facade invocation in `cmd/get_incident.go`
+- [x] T024 [US1] Implement incident human, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T025 [US1] Ensure keyed lookup not-found and partial lookup failures preserve existing get command exit/output conventions in `cmd/get_incident.go`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable.
 

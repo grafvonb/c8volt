@@ -15,6 +15,8 @@ Started: 2026-05-09 21:46:32
 - Process-instance command validation centralizes flag relationship errors in `cmd/get_processinstance_validation.go` using helpers such as `invalidFlagValuef`, `mutuallyExclusiveFlagsf`, and `missingDependentFlagsf`; incident enum validation delegates to `internal/services/incidentfilter`.
 - Human/list rendering uses `pickMode`, `itemView`, `listOrJSONFlat`, `renderJSONPayload`, `renderOutputLine`, and flat row helpers in `cmd/cmd_views_get.go`; totals print only the count through `processInstanceTotalView`.
 - Process-instance pagination honors command/config page size, trims pages with local `--limit`, incrementally renders one-line and keys-only modes when appropriate, auto-continues for JSON/automation, and falls back to page-by-page counting for exact totals when local filters make backend totals unsafe.
+- Plain `get incident` keyed lookup is registered under `get` with aliases `incidents` and `inc`; command validation uses `silenceUsageForError` for semantic flag errors, stdin key handling reuses `readKeysIfDash`/`mergeAndValidateKeys`, and keyed facade calls go through `process.API.GetIncidents`.
+- Plain incident rendering now uses `listIncidentsView` in `cmd/cmd_views_get.go`, which delegates JSON, keys-only, and human list behavior to `listOrJSON` while reusing `incidentHumanLineWithMessageLimit` for compact rows.
 
 ---
 
@@ -84,4 +86,33 @@ Started: 2026-05-09 21:46:32
 - Expanding `process.API` requires updating command test doubles even when no command behavior changes yet.
 - v8.8 top-level incident search can keep compatibility risk low by sending only tenant filtering to the backend and applying state, message, context, and time checks locally until later pagination work broadens local filtering.
 - v8.9 generated filters can represent the safe exact fields needed by the plain incident command; root process instance and error message semantics remain local.
+---
+
+---
+## Iteration 3 - 2026-05-09 22:10:53 CEST
+**User Story**: User Story 1 - Fetch Known Incidents
+**Tasks Completed**:
+- [x] T019: Add command tests for `get incident --key`, repeated `--key`, stdin `-`, deduplication, missing keys, and invalid keys in `cmd/get_incident_test.go`
+- [x] T020: Add human, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
+- [x] T021: Add command contract expectations for `get incident`, aliases `incidents` and `inc`, and inherited get flags in `cmd/command_contract_test.go`
+- [x] T022: Register `get incident` with aliases, examples, flags, and help text in `cmd/get_incident.go` and wire it from `cmd/get.go`
+- [x] T023: Implement keyed lookup parsing, stdin `-` handling, key merge, validation, and facade invocation in `cmd/get_incident.go`
+- [x] T024: Implement incident human, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T025: Ensure keyed lookup not-found and partial lookup failures preserve existing get command exit/output conventions in `cmd/get_incident.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_get.go
+- cmd/cmd_views_get_test.go
+- cmd/command_contract_test.go
+- cmd/completion_test.go
+- cmd/get.go
+- cmd/get_incident.go
+- cmd/get_incident_test.go
+- cmd/get_test.go
+- specs/185-get-incident-command/tasks.md
+- specs/185-get-incident-command/progress.md
+**Learnings**:
+- Direct incident lookup can be added as a thin command layer over the facade bulk `GetIncidents` method; using `--workers 1` in command tests makes deduplication request order deterministic.
+- Cobra `Args` semantic validation needs `silenceUsageForError` to preserve existing invalid-input behavior without printing full command usage.
 ---

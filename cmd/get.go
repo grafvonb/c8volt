@@ -9,15 +9,16 @@ import (
 
 var getCmd = &cobra.Command{
 	Use:   "get",
-	Short: "Inspect cluster, process, tenant, and resource state",
-	Long: `Inspect cluster, process, job, tenant, and resource state without changing it.
+	Short: "Inspect cluster, process, incident, tenant, and resource state",
+	Long: `Inspect cluster, process, job, incident, tenant, and resource state without changing it.
 
 Check cluster health, list deployed process definitions, inspect process
-instances, inspect jobs by key, list visible tenants, or fetch a known resource.`,
+instances, inspect jobs and incidents by key, list visible tenants, or fetch a known resource.`,
 	Example: `  ./c8volt get cluster topology
   ./c8volt get pd --latest
   ./c8volt get pi --state active
   ./c8volt get job --key 2251799813711967
+  ./c8volt get incident --key 2251799813685249
   ./c8volt get tenant
   ./c8volt get resource --id <resource-key>`,
 	Aliases: []string{"g", "read"},

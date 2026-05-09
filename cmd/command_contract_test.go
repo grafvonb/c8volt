@@ -406,6 +406,44 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 	})
 }
 
+func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(resetGetIncidentFlagState)
+
+	capability := commandCapabilityForCommand(getIncidentCmd)
+	require.Equal(t, "get incident", capability.Path)
+	require.Contains(t, capability.Aliases, "incidents")
+	require.Contains(t, capability.Aliases, "inc")
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to fetch; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "error-message-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum characters to show for human incident messages; 0 keeps full messages",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: true,
+	})
+}
+
 func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
@@ -560,7 +598,7 @@ func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
 
 func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get"}, []string{
-		"Inspect cluster, process, job, tenant, and resource state",
+		"Inspect cluster, process, job, incident, tenant, and resource state",
 		"./c8volt get job --key 2251799813711967",
 	}, nil)
 	require.Contains(t, output, "job")
@@ -608,6 +646,25 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"--no-wait",
 		"--auto-confirm",
 	}, nil)
+}
+
+func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"get", "incident"}, []string{
+		"Fetch Camunda incidents by key",
+		"repeated --key values or newline-separated keys from stdin with '-'",
+		"./c8volt get incident --key 2251799813685249",
+		"./c8volt get inc --key 2251799813685249 --key 2251799813685250",
+		"./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -",
+		"./c8volt --json get incident --key 2251799813685249",
+		"./c8volt --keys-only get incident --key 2251799813685249",
+		"--key strings",
+		"--error-message-limit int",
+		"--json",
+		"--keys-only",
+	}, nil)
+	require.Contains(t, output, "Aliases:")
+	require.Contains(t, output, "incidents")
+	require.Contains(t, output, "inc")
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {

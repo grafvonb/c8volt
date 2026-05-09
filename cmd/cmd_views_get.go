@@ -36,6 +36,14 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPI, func(it process.ProcessInstance) string { return it.Key })
 }
 
+func listIncidentsView(cmd *cobra.Command, resp process.Incidents, messageLimit int) error {
+	return listOrJSON(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstanceIncidentDetail) string {
+		return incidentHumanLineWithMessageLimit(it, messageLimit)
+	}, func(it process.ProcessInstanceIncidentDetail) string {
+		return it.IncidentKey
+	})
+}
+
 // renderProcessInstanceFlatRows shares aligned human output between collected lists and incremental search pages.
 func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
 	for _, line := range formatProcessInstanceFlatRows(items) {
