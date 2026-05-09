@@ -100,8 +100,8 @@ type API interface {
 	WaitForProcessInstancesState(ctx context.Context, keys types.Keys, desired States, wantedWorkers int, opts ...options.FacadeOption) (StateReports, error)
 	WaitForProcessInstancesExpectation(ctx context.Context, keys types.Keys, request ProcessInstanceExpectationRequest, wantedWorkers int, opts ...options.FacadeOption) (ProcessInstanceExpectationReports, error)
 
-	DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (types.Keys, types.Keys, error)
-	DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error)
+	DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (types.Keys, types.Keys, error)
+	DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error)
 }
 
 var _ API = (*client)(nil)

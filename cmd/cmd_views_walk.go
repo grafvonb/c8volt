@@ -93,7 +93,7 @@ func printTraversalWarningDetails(cmd *cobra.Command, warning string, missingAnc
 	if warning == "" {
 		warning = "one or more parent process instances were not found"
 	}
-	renderHumanWarningLine(cmd, "warning: %s", warning)
+	renderHumanWarningLine(cmd, "%s", warning)
 
 	if len(missingAncestors) == 0 {
 		return

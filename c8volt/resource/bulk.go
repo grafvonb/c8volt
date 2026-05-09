@@ -14,8 +14,7 @@ import (
 	types "github.com/grafvonb/c8volt/typex"
 )
 
-// DeleteProcessDefinitions deletes or preflights deletion for unique process-definition keys in parallel.
-// wantedWorkers controls the requested worker count; without AllowInconsistent, the underlying single delete path remains a safe preparation step.
+// DeleteProcessDefinitions deletes unique process-definition keys in parallel.
 func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DeleteReports, error) {
 	cCfg := options.ApplyFacadeOptions(opts)
 	ukeys := keys.Unique()
@@ -23,11 +22,7 @@ func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, 
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
 	logging.InfoIfVerbose(fmt.Sprintf("deleting process definitions requested for %d unique key(s) using %d worker(s)", lk, nw), c.log, cCfg.Verbose)
-	activity := "preparing deletion for"
-	if cCfg.AllowInconsistent {
-		activity = "deleting"
-	}
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("%s %d process definition(s)", activity, lk))
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("deleting %d process definition(s)", lk))
 	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, DeleteReport](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (DeleteReport, error) {
 		return c.DeleteProcessDefinition(ctx, key, opts...)
@@ -37,11 +32,7 @@ func (c *client) DeleteProcessDefinitions(ctx context.Context, keys types.Keys, 
 	}
 	if !cCfg.NoWait {
 		t, oks, noks := r.Totals()
-		if cCfg.AllowInconsistent {
-			c.log.Info(fmt.Sprintf("deleting %d process definitions completed: %d succeeded, %d failed", t, oks, noks))
-		} else {
-			c.log.Info(fmt.Sprintf("preparation for deleting %d process definitions completed: %d succeeded, %d failed", t, oks, noks))
-		}
+		c.log.Info(fmt.Sprintf("deleting %d process definitions completed: %d succeeded, %d failed", t, oks, noks))
 	}
 	return r, err
 }

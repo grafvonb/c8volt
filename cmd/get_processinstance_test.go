@@ -177,7 +177,7 @@ func TestGetProcessInstanceBpmnSelectorVisiblePreservesFoundZero(t *testing.T) {
 	require.Equal(t, "found: 0\n", output)
 }
 
-// Selector preflight must use the same version, tag, and tenant context as the PI search itself.
+// Selector validation must use the same version, tag, and tenant context as the PI search itself.
 func TestGetProcessInstanceBpmnSelectorValidationIncludesVersionTagAndTenant(t *testing.T) {
 	var pdSearchBodies []map[string]any
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

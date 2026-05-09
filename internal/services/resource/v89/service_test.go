@@ -37,6 +37,7 @@ func newTestService(t *testing.T, tenantID string, client *mockResourceClient, p
 type mockResourceClient struct {
 	createDeploymentWithBodyWithResponse func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error)
 	deleteResourceWithResponse           func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error)
+	getBatchOperationWithResponse        func(ctx context.Context, batchOperationKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetBatchOperationResponse, error)
 	getResourceWithResponse              func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error)
 }
 
@@ -46,6 +47,10 @@ func (m *mockResourceClient) CreateDeploymentWithBodyWithResponse(ctx context.Co
 
 func (m *mockResourceClient) DeleteResourceOpWithResponse(ctx context.Context, resourceKey camundav89.ResourceKey, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
 	return m.deleteResourceWithResponse(ctx, resourceKey, body, reqEditors...)
+}
+
+func (m *mockResourceClient) GetBatchOperationWithResponse(ctx context.Context, batchOperationKey camundav89.BatchOperationKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetBatchOperationResponse, error) {
+	return m.getBatchOperationWithResponse(ctx, batchOperationKey, reqEditors...)
 }
 
 func (m *mockResourceClient) GetResourceWithResponse(ctx context.Context, resourceKey camundav89.ResourceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
@@ -205,24 +210,41 @@ func TestService_Deploy_DefaultsEmptyTenantToDefaultTenant(t *testing.T) {
 	assert.Equal(t, config.DefaultTenant, deployment.TenantId)
 }
 
-// TestService_Delete documents the allow-inconsistent guard around v8.9
-// resource deletion, preserving the same destructive-operation safety contract
-// as older supported Camunda versions.
+// TestService_Delete documents the process-definition deletion contract. The
+// service always asks Camunda to delete history like Operate.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("AllowInconsistentCallsDeletionEndpoint", func(t *testing.T) {
-		var called bool
+	t.Run("DefaultDeletesHistoryAndWaitsForBatchCompletion", func(t *testing.T) {
 		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
 			},
 			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
-				called = true
 				assert.Equal(t, "resource-1", resourceKey)
+				require.NotNil(t, body.DeleteHistory)
+				assert.True(t, *body.DeleteHistory)
 				return &camundav89.DeleteResourceOpResponse{
-					HTTPResponse: newHTTPResponse(http.MethodDelete, "https://camunda.local/v2/resources/resource-1", http.StatusNoContent, "204 No Content"),
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.DeleteResourceResponse{
+						ResourceKey: "resource-1",
+						BatchOperation: &camundav89.BatchOperationCreatedResult{
+							BatchOperationKey:  "batch-1",
+							BatchOperationType: camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						},
+					},
+				}, nil
+			},
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetBatchOperationResponse, error) {
+				assert.Equal(t, "batch-1", batchOperationKey)
+				return &camundav89.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.BatchOperationResponse{
+						BatchOperationKey:  "batch-1",
+						BatchOperationType: camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						State:              camundav89.BatchOperationStateEnumCOMPLETED,
+					},
 				}, nil
 			},
 			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
@@ -236,20 +258,93 @@ func TestService_Delete(t *testing.T) {
 			},
 		})
 
-		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
+		resp, err := svc.Delete(ctx, "resource-1")
 
 		require.NoError(t, err)
-		assert.True(t, called)
+		assert.True(t, resp.Ok)
+		assert.True(t, resp.DeleteHistory)
+		assert.Equal(t, "batch-1", resp.BatchOperationKey)
+		assert.Equal(t, string(camundav89.BatchOperationStateEnumCOMPLETED), resp.BatchState)
 	})
 
-	t.Run("WithoutAllowInconsistentSkipsDeletionEndpoint", func(t *testing.T) {
+	t.Run("HistoryBatch404KeepsPollingUntilVisible", func(t *testing.T) {
+		getCalls := 0
 		svc := newTestService(t, "tenant", &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
 				t.Fatalf("unexpected deploy call")
 				return nil, nil
 			},
 			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
-				t.Fatalf("deletion endpoint should not be called")
+				assert.Equal(t, "resource-1", resourceKey)
+				require.NotNil(t, body.DeleteHistory)
+				assert.True(t, *body.DeleteHistory)
+				return &camundav89.DeleteResourceOpResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.DeleteResourceResponse{
+						ResourceKey: "resource-1",
+						BatchOperation: &camundav89.BatchOperationCreatedResult{
+							BatchOperationKey:  "batch-1",
+							BatchOperationType: camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						},
+					},
+				}, nil
+			},
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetBatchOperationResponse, error) {
+				assert.Equal(t, "batch-1", batchOperationKey)
+				getCalls++
+				if getCalls == 1 {
+					return &camundav89.GetBatchOperationResponse{
+						Body:         []byte(`{"title":"NOT_FOUND","status":404,"detail":"Batch Operation with id 'batch-1' not found"}`),
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusNotFound, "404 Not Found"),
+					}, nil
+				}
+				return &camundav89.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.BatchOperationResponse{
+						BatchOperationKey:  "batch-1",
+						BatchOperationType: camundav89.BatchOperationTypeEnumDELETEPROCESSDEFINITION,
+						State:              camundav89.BatchOperationStateEnumCOMPLETED,
+					},
+				}, nil
+			},
+			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
+				t.Fatalf("unexpected get call")
+				return nil, nil
+			},
+		}, &mockProcessDefinitionClient{
+			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error) {
+				t.Fatalf("unexpected process definition lookup")
+				return nil, nil
+			},
+		})
+
+		resp, err := svc.Delete(ctx, "resource-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, getCalls)
+		assert.True(t, resp.DeleteHistory)
+		assert.Equal(t, "batch-1", resp.BatchOperationKey)
+		assert.Equal(t, string(camundav89.BatchOperationStateEnumCOMPLETED), resp.BatchState)
+	})
+
+	t.Run("DefaultFailsWhenHistoryBatchIsMissing", func(t *testing.T) {
+		svc := newTestService(t, "tenant", &mockResourceClient{
+			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
+				t.Fatalf("unexpected deploy call")
+				return nil, nil
+			},
+			deleteResourceWithResponse: func(ctx context.Context, resourceKey string, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error) {
+				require.NotNil(t, body.DeleteHistory)
+				assert.True(t, *body.DeleteHistory)
+				return &camundav89.DeleteResourceOpResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusOK, "200 OK"),
+					JSON200: &camundav89.DeleteResourceResponse{
+						ResourceKey: "resource-1",
+					},
+				}, nil
+			},
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetBatchOperationResponse, error) {
+				t.Fatalf("unexpected batch operation lookup")
 				return nil, nil
 			},
 			getResourceWithResponse: func(ctx context.Context, resourceKey string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error) {
@@ -263,9 +358,12 @@ func TestService_Delete(t *testing.T) {
 			},
 		})
 
-		err := svc.Delete(ctx, "resource-1")
+		resp, err := svc.Delete(ctx, "resource-1")
 
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrMalformedResponse)
+		assert.True(t, resp.DeleteHistory)
+		assert.Empty(t, resp.BatchOperationKey)
 	})
 }
 

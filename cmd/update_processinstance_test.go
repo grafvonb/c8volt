@@ -292,7 +292,7 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 	require.Contains(t, stdout, "updated: 2")
 }
 
-func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterPreflightOnly(t *testing.T) {
+func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -330,7 +330,7 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterPreflightOnly(t
 	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
 }
 
-func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterPreflightOnly(t *testing.T) {
+func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpactCheckOnly(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

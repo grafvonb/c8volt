@@ -19,6 +19,7 @@ import (
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
@@ -655,13 +656,43 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 	require.Contains(t, output, "--limit int32")
 
 	output = assertCommandHelpOutput(t, []string{"delete", "process-definition"}, []string{
-		"Delete process definition resources from Zeebe",
-		"Without --allow-inconsistent",
+		"Delete process definition resources from Camunda",
+		"checks delete impact without changing anything",
+		"associated history",
 		"Use --auto-confirm for unattended destructive runs",
-		"Add --no-wait to verify later with `get pd`",
-		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --allow-inconsistent --auto-confirm --no-wait",
+		"Add --no-wait to return after Camunda accepts the deletion and verify later with `get pd`",
+		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm --no-wait",
 	}, nil)
-	require.Contains(t, output, "--allow-inconsistent")
+	require.NotContains(t, output, "--allow-inconsistent")
+}
+
+// TestDeleteProcessDefinitionImpact_RenderForceImpact verifies the destructive
+// prompt context includes cancellation impact before the user is asked to proceed.
+func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagForce = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	renderDeleteProcessDefinitionImpact(cmd, resource.DeleteProcessDefinitionPlan{
+		Items: []resource.DeleteProcessDefinitionPlanItem{
+			{
+				Key:                        "pd-1",
+				ActiveProcessInstanceCount: 2,
+				CancellationByFilter:       true,
+			},
+		},
+	})
+
+	output := buf.String()
+	require.Contains(t, output, "Deletion is irreversible")
+	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
+	require.Contains(t, output, "--force will ask Camunda to cancel 2 active process instance(s) by filter before deleting process definitions")
+	require.NotContains(t, output, "WARNING:")
 }
 
 // Verifies search-mode deletion builds the expected date-filtered search request and no-ops cleanly on empty matches.
@@ -687,32 +718,21 @@ func TestDeleteProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.NotContains(t, output, "no process instance keys provided or found to delete")
 }
 
-func TestDeleteProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearch(t *testing.T) {
+func TestDeleteProcessInstanceBpmnSelectorSearchesInstancesDirectly(t *testing.T) {
 	var requests []string
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-	}))
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearchHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
+	output, err := executeDeleteProcessInstanceSuccessHelper(t, "TestDeleteProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper", cfgPath)
 
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
-	require.Contains(t, string(output), "no visible process definition matches the provided selector")
-	require.Contains(t, string(output), "[missing-process]")
-	require.NotContains(t, string(output), "bpmnProcessId:")
-	require.NotContains(t, string(output), "found: 0")
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, "missing-process", filter["processDefinitionId"])
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no visible process definition matches the provided selector")
 }
 
 func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.T) {
@@ -720,15 +740,9 @@ func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		switch r.URL.Path {
-		case "/v2/process-definitions/search":
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
-		case "/v2/process-instances/search":
-			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-		default:
-			t.Fatalf("unexpected request path: %s", r.URL.Path)
-		}
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -741,7 +755,7 @@ func TestDeleteProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 		"--bpmn-process-id", "order-process",
 	)
 
-	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
+	require.Equal(t, []string{"POST /v2/process-instances/search"}, requests)
 	require.Equal(t, "found: 0\n", output)
 }
 
@@ -854,9 +868,6 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -914,9 +925,6 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDe
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -1024,8 +1032,8 @@ func TestDeleteProcessInstanceCommand_V89DeletesViaCamundaProcessInstanceAPI(t *
 	require.Contains(t, stderr, "INFO")
 }
 
-// TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight verifies keyed preflight warnings are printed.
-func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *testing.T) {
+// TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck verifies keyed impact-check warnings are printed.
+func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	flagCmdAutoConfirm = true
@@ -1070,7 +1078,7 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.Len(t, got.Reports, 1)
 	require.Contains(t, prompt, "requested to delete 1 process instance(s)")
 	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be deleted")
-	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
@@ -1090,7 +1098,7 @@ func TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation(t *testin
 	prevConfirm := confirmCmdOrAbortFn
 	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
 	confirmCmdOrAbortFn = func(_ bool, _ string) error {
-		t.Fatal("unexpected confirmation prompt before force preflight failure")
+		t.Fatal("unexpected confirmation prompt before force impact-check failure")
 		return nil
 	}
 
@@ -1190,8 +1198,8 @@ func TestDeleteProcessInstanceSearchPages_RequiresForceBeforeAnyMutation(t *test
 	require.Contains(t, buf.String(), "next step: auto-continue")
 }
 
-// TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight verifies paged preflight warnings are printed.
-func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
+// TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck verifies paged impact-check warnings are printed.
+func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	flagCmdAutoConfirm = true
@@ -1226,7 +1234,7 @@ func TestDeleteProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testi
 	require.NoError(t, err)
 	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 2, Roots: 1}, got.Impact)
 	require.Len(t, got.Reports, 1)
-	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
@@ -1351,14 +1359,14 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 		"/v1/process-instances/403",
 	}, deleted.Snapshot())
 	require.Len(t, prompts, 2)
-	require.Contains(t, prompts[0], "Checked 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue preflight?")
+	require.Contains(t, prompts[0], "Checked delete impact for 2 process instance(s) on this page (2 requested so far, 2 including dependencies); no changes made yet. More matching process instances remain. Continue checking?")
 	require.Contains(t, prompts[1], "You are about to delete 3 process instance(s)")
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 	require.NotContains(t, output, "next step: auto-continue")
 }
 
-// Verifies v8.7 paged delete search fails once keyed tenant-safe preflight reaches the unsupported direct-lookup seam.
+// Verifies v8.7 paged delete search fails once keyed tenant-safe impact checking reaches the unsupported direct-lookup seam.
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
 	var requests safeSlice[string]
 	var deleted safeSlice[string]
@@ -2013,14 +2021,79 @@ func TestDeleteProcessDefinitionCommand_RequiresTargetSelector(t *testing.T) {
 
 // TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector verifies stdin input counts as a delete target.
 func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *testing.T) {
-	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
+	var deleteBodies []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/batch-operations/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case "/v2/resources/2251799813692357/deletion":
+			require.Equal(t, http.MethodPost, r.Method)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			deleteBodies = append(deleteBodies, string(body))
+			_, _ = w.Write([]byte(`{"resourceKey":"2251799813692357","batchOperation":{"batchOperationKey":"batch-1","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		case "/v2/batch-operations/batch-1":
+			require.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write([]byte(`{"batchOperationKey":"batch-1","batchOperationType":"DELETE_PROCESS_DEFINITION","state":"COMPLETED"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
 
 	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
 		"C8VOLT_TEST_CONFIG": cfgPath,
 	}, "2251799813692357\n")
 	require.NoError(t, err, string(output))
 	require.NotContains(t, string(output), "either --key")
-	require.Contains(t, string(output), "preparation for deleting")
+	require.NotContains(t, string(output), "WARN WARNING")
+	require.NotContains(t, string(output), "WARNING:")
+	require.Contains(t, string(output), "deleting 1 process definitions completed")
+	body := decodeSingleRequestJSON(t, deleteBodies)
+	require.Equal(t, true, body["deleteHistory"])
+}
+
+// TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation verifies
+// missing batch read permission fails before any destructive resource deletion.
+func TestDeleteProcessDefinitionCommand_BatchReadCheckBlocksBeforeMutation(t *testing.T) {
+	var mu sync.Mutex
+	deleteCalled := false
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/batch-operations/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"title":"FORBIDDEN","status":403,"detail":"Unauthorized to perform operation 'READ' on resource 'BATCH'"}`))
+		case "/v2/resources/2251799813692357/deletion":
+			mu.Lock()
+			deleteCalled = true
+			mu.Unlock()
+			http.Error(w, "delete should not be called", http.StatusInternalServerError)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfig(t, srv.URL)
+
+	output, err := testx.RunCmdSubprocessWithStdin(t, "TestHelperDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	}, "2251799813692357\n")
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "cannot confirm asynchronous history deletion because this identity cannot read Camunda batch operations")
+	require.Contains(t, string(output), "READ")
+	require.Contains(t, string(output), "BATCH")
+	mu.Lock()
+	defer mu.Unlock()
+	require.False(t, deleteCalled)
 }
 
 // TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenant verifies latest-definition lookup uses resolved tenant context.
@@ -2146,7 +2219,7 @@ func TestDeleteProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
-func TestDeleteProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearchHelper(t *testing.T) {
+func TestDeleteProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
@@ -2348,7 +2421,7 @@ func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t 
 	}
 
 	root := Root()
-	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "delete", "process-definition", "--bpmn-process-id", "order-process", "--latest", "--allow-inconsistent", "--auto-confirm", "--no-wait"})
+	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "delete", "process-definition", "--bpmn-process-id", "order-process", "--latest", "--auto-confirm", "--no-wait"})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

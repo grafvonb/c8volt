@@ -66,7 +66,21 @@ func renderHumanLine(cmd *cobra.Command, format string, args ...any) {
 
 // renderHumanWarningLine writes human-readable warnings through the activity-aware renderer.
 func renderHumanWarningLine(cmd *cobra.Command, format string, args ...any) {
-	renderHumanLogLine(cmd, true, format, args...)
+	renderHumanLogLine(cmd, true, "%s", normalizeWarningText(fmt.Sprintf(format, args...)))
+}
+
+func normalizeWarningText(msg string) string {
+	msg = strings.TrimSpace(msg)
+	lower := strings.ToLower(msg)
+	for _, prefix := range []string{"warning:", "warning -", "warning"} {
+		if lower == prefix {
+			return ""
+		}
+		if strings.HasPrefix(lower, prefix+" ") {
+			return strings.TrimSpace(msg[len(prefix):])
+		}
+	}
+	return msg
 }
 
 // renderHumanLogLine routes human output through the logger when command context provides one.

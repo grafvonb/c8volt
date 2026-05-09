@@ -72,7 +72,7 @@ func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, opera
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing %s dry-run scope for %d process instance(s)", operation, len(keys)))
 	defer stopActivity()
 
-	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, collectOptions()...)
+	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, flagWorkers, collectOptions()...)
 	if err != nil {
 		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
 	}

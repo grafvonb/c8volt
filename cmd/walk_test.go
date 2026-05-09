@@ -773,7 +773,7 @@ func TestWalkProcessInstanceCommand_WithIncidentsPartialTraversalPreservesWarnin
 	)
 
 	require.Contains(t, output, "123")
-	require.Contains(t, output, "warning: one or more parent process instances were not found")
+	require.Contains(t, output, "one or more parent process instances were not found")
 	require.Contains(t, output, "missing ancestor keys: 999")
 }
 
@@ -921,7 +921,7 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 		)
 
 		require.Contains(t, output, "123")
-		require.Contains(t, output, "warning: one or more parent process instances were not found")
+		require.Contains(t, output, "one or more parent process instances were not found")
 		require.Contains(t, output, "missing ancestor keys: 1 (use --verbose to list keys)")
 		require.NotContains(t, output, "missing ancestor keys: 999")
 	})
@@ -936,7 +936,7 @@ func TestWalkProcessInstanceCommand_PartialTraversalRendersWarningsAndJSONMetada
 
 		require.Contains(t, output, "123")
 		require.Contains(t, output, "124")
-		require.Contains(t, output, "warning: one or more parent process instances were not found")
+		require.Contains(t, output, "one or more parent process instances were not found")
 		require.Contains(t, output, "missing ancestor keys: 999")
 	})
 

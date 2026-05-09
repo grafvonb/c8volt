@@ -221,6 +221,10 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-id filter: %w", err)
 	}
+	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(filter.ProcessDefinitionKey)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-key filter: %w", err)
+	}
 	processDefinitionVersionFilter, err := newIntegerEqFilterPtr(filter.ProcessVersion)
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version filter: %w", err)
@@ -250,6 +254,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		TenantId:                    tenantFilter,
 		ProcessInstanceKey:          processInstanceKeyFilter,
 		ProcessDefinitionId:         processDefinitionIDFilter,
+		ProcessDefinitionKey:        processDefinitionKeyFilter,
 		ProcessDefinitionVersion:    processDefinitionVersionFilter,
 		ProcessDefinitionVersionTag: processDefinitionVersionTagFilter,
 		StartDate:                   startDateFilter,

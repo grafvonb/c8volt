@@ -189,6 +189,7 @@ func TestService_SearchAndLookup(t *testing.T) {
 				payload := readBody(t, body)
 				assert.Contains(t, payload, `"tenantId":"tenant"`)
 				assert.Contains(t, payload, `"processDefinitionId":"demo"`)
+				assert.Contains(t, payload, `"processDefinitionKey":"9001"`)
 				assert.Contains(t, payload, `"processDefinitionVersion":3`)
 				assert.Contains(t, payload, `"processDefinitionVersionTag":"stable"`)
 				assert.Contains(t, payload, `"state":"ACTIVE"`)
@@ -206,12 +207,13 @@ func TestService_SearchAndLookup(t *testing.T) {
 		})
 
 		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{
-			BpmnProcessId:     "demo",
-			ProcessVersion:    3,
-			ProcessVersionTag: "stable",
-			State:             d.StateActive,
-			ParentKey:         "456",
-			EndDateBefore:     "2026-04-03",
+			BpmnProcessId:        "demo",
+			ProcessDefinitionKey: "9001",
+			ProcessVersion:       3,
+			ProcessVersionTag:    "stable",
+			State:                d.StateActive,
+			ParentKey:            "456",
+			EndDateBefore:        "2026-04-03",
 		}, d.ProcessInstancePageRequest{From: 0, Size: 25})
 
 		require.NoError(t, err)

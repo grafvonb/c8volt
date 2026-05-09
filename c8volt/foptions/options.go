@@ -32,16 +32,14 @@ func WithDryRun() FacadeOption { return func(c *FacadeCfg) { c.DryRun = true } }
 // WithNoWorkerLimit disables the default cap that keeps requested workers within the runtime worker policy.
 func WithNoWorkerLimit() FacadeOption { return func(c *FacadeCfg) { c.NoWorkerLimit = true } }
 
-// WithAllowInconsistent opts into eventually consistent or destructive API operations that are otherwise guarded.
-func WithAllowInconsistent() FacadeOption { return func(c *FacadeCfg) { c.AllowInconsistent = true } }
-func WithIgnoreTenant() FacadeOption      { return func(c *FacadeCfg) { c.IgnoreTenant = true } }
+func WithIgnoreTenant() FacadeOption { return func(c *FacadeCfg) { c.IgnoreTenant = true } }
 
 // WithIncidentState selects the incident state scope for process-instance incident enrichment.
 func WithIncidentState(state string) FacadeOption {
 	return func(c *FacadeCfg) { c.IncidentState = state }
 }
 
-// WithAffectedProcessInstanceCount carries preflight expansion metadata for facade-level summaries.
+// WithAffectedProcessInstanceCount carries impact-check expansion metadata for facade-level summaries.
 func WithAffectedProcessInstanceCount(count int) FacadeOption {
 	return func(c *FacadeCfg) { c.AffectedProcessInstanceCount = count }
 }
@@ -58,7 +56,6 @@ type FacadeCfg struct {
 	Stat                         bool
 	DryRun                       bool
 	NoWorkerLimit                bool
-	AllowInconsistent            bool
 	IgnoreTenant                 bool
 	IncidentState                string
 	AffectedProcessInstanceCount int
@@ -105,9 +102,6 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	}
 	if c.NoWorkerLimit {
 		out = append(out, services.WithNoWorkerLimit())
-	}
-	if c.AllowInconsistent {
-		out = append(out, services.WithAllowInconsistent())
 	}
 	if c.IgnoreTenant {
 		out = append(out, services.WithIgnoreTenant())

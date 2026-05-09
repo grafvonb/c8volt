@@ -106,6 +106,7 @@ type processInstanceFilter struct {
 	TenantId                    *camundav89.StringFilterProperty               `json:"tenantId,omitempty"`
 	ProcessInstanceKey          *camundav89.ProcessInstanceKeyFilterProperty   `json:"processInstanceKey,omitempty"`
 	ProcessDefinitionId         *camundav89.StringFilterProperty               `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey        *camundav89.ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
 	ProcessDefinitionVersion    *camundav89.IntegerFilterProperty              `json:"processDefinitionVersion,omitempty"`
 	ProcessDefinitionVersionTag *camundav89.StringFilterProperty               `json:"processDefinitionVersionTag,omitempty"`
 	StartDate                   *camundav89.DateTimeFilterProperty             `json:"startDate,omitempty"`
@@ -120,6 +121,7 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.TenantId == nil &&
 		f.ProcessInstanceKey == nil &&
 		f.ProcessDefinitionId == nil &&
+		f.ProcessDefinitionKey == nil &&
 		f.ProcessDefinitionVersion == nil &&
 		f.ProcessDefinitionVersionTag == nil &&
 		f.StartDate == nil &&
@@ -177,6 +179,17 @@ func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyF
 	}
 	var f camundav89.ProcessInstanceKeyFilterProperty
 	if err := f.FromProcessInstanceKeyFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinitionKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ProcessDefinitionKeyFilterProperty
+	if err := f.FromProcessDefinitionKeyFilterProperty0(v); err != nil {
 		return nil, err
 	}
 	return new(f), nil

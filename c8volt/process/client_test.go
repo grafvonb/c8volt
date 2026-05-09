@@ -1630,7 +1630,7 @@ func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *t
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(ctx, typex.Keys{"c1", "c2", "c3"})
+	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(ctx, typex.Keys{"c1", "c2", "c3"}, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, typex.Keys{"r1", "r2"}, roots)
@@ -1676,7 +1676,7 @@ func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
 }
 
 // TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion exercises the
-// full cancellation/deletion preflight: selected children resolve to roots,
+// full cancellation/deletion impact check: selected children resolve to roots,
 // descendants expand per root, and partial ancestry warnings are preserved.
 func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T) {
 	t.Parallel()
@@ -1736,7 +1736,7 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"})
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"}, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
@@ -1750,6 +1750,109 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	}, got.RequiresCancelBeforeDelete)
 	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
 	assert.NotEmpty(t, got.Warning)
+}
+
+// TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal keeps
+// impact checks on the same worker path as the later mutation, because both
+// ancestry and descendant expansion are pure IO.
+func TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal(t *testing.T) {
+	ctx := context.Background()
+
+	var ancestryActive atomic.Int32
+	var ancestryMax atomic.Int32
+	var ancestryReleased atomic.Bool
+	ancestryRelease := make(chan struct{})
+
+	var descendantsActive atomic.Int32
+	var descendantsMax atomic.Int32
+	var descendantsReleased atomic.Bool
+	descendantsRelease := make(chan struct{})
+
+	waitForTraversalOverlap := func(active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
+		current := active.Add(1)
+		for {
+			seen := max.Load()
+			if current <= seen || max.CompareAndSwap(seen, current) {
+				break
+			}
+		}
+		if current >= 2 && released.CompareAndSwap(false, true) {
+			close(release)
+		}
+		select {
+		case <-release:
+		case <-time.After(2 * time.Second):
+			if released.CompareAndSwap(false, true) {
+				close(release)
+			}
+			t.Errorf("%s did not use concurrent workers", phase)
+		}
+		return func() {
+			active.Add(-1)
+		}
+	}
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			defer waitForTraversalOverlap(&ancestryActive, &ancestryMax, &ancestryReleased, ancestryRelease, "ancestry")()
+			switch startKey {
+			case "c1":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "c1",
+					RootKey:  "r1",
+					Keys:     []string{"c1", "r1"},
+					Chain:    map[string]d.ProcessInstance{"c1": {Key: "c1", State: d.StateActive}, "r1": {Key: "r1", State: d.StateActive}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			case "c2":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "c2",
+					RootKey:  "r2",
+					Keys:     []string{"c2", "r2"},
+					Chain:    map[string]d.ProcessInstance{"c2": {Key: "c2", State: d.StateActive}, "r2": {Key: "r2", State: d.StateActive}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected key %q", startKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			defer waitForTraversalOverlap(&descendantsActive, &descendantsMax, &descendantsReleased, descendantsRelease, "descendants")()
+			switch rootKey {
+			case "r1":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "r1",
+					Keys:    []string{"r1", "c1"},
+					Chain:   map[string]d.ProcessInstance{"r1": {Key: "r1", State: d.StateActive}, "c1": {Key: "c1", State: d.StateActive}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "r2":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "r2",
+					Keys:    []string{"r2", "c2"},
+					Chain:   map[string]d.ProcessInstance{"r2": {Key: "r2", State: d.StateActive}, "c2": {Key: "c2", State: d.StateActive}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected root %q", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"}, 2)
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), ancestryMax.Load())
+	assert.Equal(t, int32(2), descendantsMax.Load())
+	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
+	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
 }
 
 // TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve keeps
@@ -1773,7 +1876,7 @@ func TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve(t *
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
-	_, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1"})
+	_, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1"}, 0)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no process instances resolved during dependency expansion")

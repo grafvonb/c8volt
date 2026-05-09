@@ -161,7 +161,7 @@ var getProcessInstanceCmd = &cobra.Command{
 			if flagGetPITotal {
 				fail(mutuallyExclusiveFlagsf("--total cannot be combined with --key"))
 			}
-			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal/preflight flows.
+			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal and impact-check flows.
 			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
 			}

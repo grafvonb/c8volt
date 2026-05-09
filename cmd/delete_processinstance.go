@@ -24,7 +24,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 	Short: "Delete process instances by key or filters",
 	Long: "Delete process instances by key or search filters, optionally cancelling first.\n\n" +
 		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning deletion. A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.\n\n" +
+		"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no deletion request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi --state absent`.",
 	Example: `  ./c8volt delete pi --key 2251799813711967 --force
@@ -76,11 +76,6 @@ var deleteProcessInstanceCmd = &cobra.Command{
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
-			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
-			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-			}
-			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := deleteProcessInstanceSearchPages(cmd, cli, cfg, searchFilterOpts)
 			if err != nil {
@@ -191,7 +186,7 @@ func deleteProcessInstancesWithPlanAndRender(cmd *cobra.Command, cli process.API
 	return result, nil
 }
 
-// deleteProcessInstanceSearchPages preflights search-selected delete scope before submitting mutations.
+// deleteProcessInstanceSearchPages checks search-selected delete scope before submitting mutations.
 func deleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.ProcessInstanceFilter) (processInstancePageActionResults, error) {
 	if flagDryRun {
 		return processPISearchPagesWithAction(cmd, cli, cfg, filter, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
@@ -286,7 +281,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 			continue
 		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Checked %d process instance(s) on this page (%d requested so far, %d including dependencies). More matching process instances remain. Continue preflight?", summary.CurrentPageCount, summary.CumulativeCount, cumulativeAffected)
+			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%d requested so far, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, summary.CumulativeCount, cumulativeAffected)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{

@@ -15,7 +15,6 @@ import (
 
 	camundav87 "github.com/grafvonb/c8volt/internal/clients/camunda/v87/camunda"
 	d "github.com/grafvonb/c8volt/internal/domain"
-	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -133,63 +132,11 @@ func TestService_Deploy(t *testing.T) {
 	}
 }
 
-// TestService_Delete documents the guarded delete behavior for resources.
-// The Camunda delete endpoint is only called when allow-inconsistent is set,
-// because deleting a resource can leave process definitions in a risky state.
+// TestService_Delete documents that v8.7 has no history-safe process-definition deletion path.
 func TestService_Delete(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("AllowInconsistentCallsDeletionEndpoint", func(t *testing.T) {
-		var called bool
-		svc := newTestService(t, &mockResourceClient{
-			postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
-				t.Fatalf("unexpected deploy call")
-				return nil, nil
-			},
-			postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
-				called = true
-				assert.Equal(t, "resource-1", resourceKey)
-				return &camundav87.PostResourcesResourceKeyDeletionResponse{
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusNoContent, "204 No Content"),
-				}, nil
-			},
-			getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
-				t.Fatalf("unexpected get call")
-				return nil, nil
-			},
-		})
-
-		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
-
-		require.NoError(t, err)
-		assert.True(t, called)
-	})
-
-	t.Run("AllowInconsistentReturnsDeletionStatusErrors", func(t *testing.T) {
-		svc := newTestService(t, &mockResourceClient{
-			postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
-				t.Fatalf("unexpected deploy call")
-				return nil, nil
-			},
-			postResourcesResourceKeyDeletionWithResponseFunc: func(ctx context.Context, resourceKey string, body camundav87.PostResourcesResourceKeyDeletionJSONRequestBody, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostResourcesResourceKeyDeletionResponse, error) {
-				return &camundav87.PostResourcesResourceKeyDeletionResponse{
-					Body:         []byte(`{"detail":"missing permission"}`),
-					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/resources/resource-1/deletion", http.StatusForbidden, "403 Forbidden"),
-				}, nil
-			},
-			getResourcesResourceKeyWithResponseFunc: func(ctx context.Context, resourceKey string, reqEditors ...camundav87.RequestEditorFn) (*camundav87.GetResourcesResourceKeyResponse, error) {
-				t.Fatalf("unexpected get call")
-				return nil, nil
-			},
-		})
-
-		err := svc.Delete(ctx, "resource-1", services.WithAllowInconsistent())
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, d.ErrForbidden)
-	})
-
-	t.Run("WithoutAllowInconsistentSkipsDeletionEndpoint", func(t *testing.T) {
+	t.Run("RejectsHistorySafeDeletion", func(t *testing.T) {
 		svc := newTestService(t, &mockResourceClient{
 			postDeploymentsWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav87.RequestEditorFn) (*camundav87.PostDeploymentsResponse, error) {
 				t.Fatalf("unexpected deploy call")
@@ -205,9 +152,10 @@ func TestService_Delete(t *testing.T) {
 			},
 		})
 
-		err := svc.Delete(ctx, "resource-1")
+		_, err := svc.Delete(ctx, "resource-1")
 
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, d.ErrUnsupported)
 	})
 }
 

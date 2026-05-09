@@ -334,11 +334,11 @@ func (stubProcessAPI) WaitForProcessInstancesExpectation(context.Context, types.
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) DryRunCancelOrDeleteGetPIKeys(context.Context, types.Keys, ...options.FacadeOption) (types.Keys, types.Keys, error) {
+func (stubProcessAPI) DryRunCancelOrDeleteGetPIKeys(context.Context, types.Keys, int, ...options.FacadeOption) (types.Keys, types.Keys, error) {
 	panic("unexpected call")
 }
 
-func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
 	if s.dryRunCancelOrDeletePlan == nil {
 		panic("unexpected call")
 	}

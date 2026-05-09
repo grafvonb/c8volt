@@ -671,16 +671,16 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			name: "cancel pi",
 			args: []string{"cancel", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation.",
-				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
+				"If no matching instances are found, no cancellation request is submitted.",
 			},
 		},
 		{
 			name: "delete pi",
 			args: []string{"delete", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning deletion.",
-				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
+				"If no matching instances are found, no deletion request is submitted.",
 			},
 		},
 		{

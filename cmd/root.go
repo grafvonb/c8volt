@@ -26,17 +26,16 @@ import (
 )
 
 var (
-	flagViewAsJson        bool
-	flagViewKeysOnly      bool
-	flagQuiet             bool
-	flagVerbose           bool
-	flagDebug             bool
-	flagNoIndicator       bool
-	flagNoErrCodes        bool
-	flagCmdAutomation     bool
-	flagCmdAutoConfirm    bool
-	flagAllowInconsistent bool
-	flagHTTPTimeout       = "30s"
+	flagViewAsJson     bool
+	flagViewKeysOnly   bool
+	flagQuiet          bool
+	flagVerbose        bool
+	flagDebug          bool
+	flagNoIndicator    bool
+	flagNoErrCodes     bool
+	flagCmdAutomation  bool
+	flagCmdAutoConfirm bool
+	flagHTTPTimeout    = "30s"
 )
 
 type configSourceDescription struct {

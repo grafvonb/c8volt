@@ -87,7 +87,7 @@ func TestProcessDefinitionSelectorValidation_UsesLatestSearchWhenRequested(t *te
 	require.Equal(t, 1, latestCalls)
 }
 
-// This protects the preflight contract that a mixed visible/missing selector reports all misses without hiding valid matches.
+// This protects the selector validation contract that a mixed visible/missing selector reports all misses without hiding valid matches.
 func TestProcessDefinitionSelectorValidation_CollectsMissingSelectors(t *testing.T) {
 	cli := stubProcessAPI{
 		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {

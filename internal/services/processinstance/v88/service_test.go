@@ -273,6 +273,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 				payload := marshalJSON(t, body)
 				assert.Contains(t, payload, `"tenantId":"tenant"`)
 				assert.Contains(t, payload, `"processDefinitionId":"demo"`)
+				assert.Contains(t, payload, `"processDefinitionKey":"9001"`)
 				assert.Contains(t, payload, `"processDefinitionVersion":3`)
 				assert.Contains(t, payload, `"processDefinitionVersionTag":"stable"`)
 				assert.Contains(t, payload, `"state":"ACTIVE"`)
@@ -289,11 +290,12 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		}, newStrictOperateClient(t))
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			BpmnProcessId:     "demo",
-			ProcessVersion:    3,
-			ProcessVersionTag: "stable",
-			State:             d.StateActive,
-			ParentKey:         "456",
+			BpmnProcessId:        "demo",
+			ProcessDefinitionKey: "9001",
+			ProcessVersion:       3,
+			ProcessVersionTag:    "stable",
+			State:                d.StateActive,
+			ParentKey:            "456",
 		}, 25)
 
 		require.NoError(t, err)

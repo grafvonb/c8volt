@@ -9,6 +9,16 @@
   margin-top: 0.25rem;
 }
 
+.site-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.site-nav > .nav-list:first-child > .nav-list-item:first-child > .nav-list-link {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
 @media (min-width: 50rem) {
   .side-bar {
     width: 16.5rem;
@@ -22,6 +32,7 @@
 
   .main-content-wrap {
     max-width: 96rem;
+    padding-top: 1rem;
     padding-right: clamp(2rem, 4vw, 4rem);
     padding-left: clamp(2rem, 4vw, 4rem);
   }
@@ -56,6 +67,10 @@
   .main-content > ol,
   .main-content > blockquote {
     max-width: 74rem;
+  }
+
+  .site-nav {
+    padding-top: 1rem;
   }
 }
 
@@ -94,6 +109,70 @@
 .main-content blockquote td,
 .main-content blockquote th {
   padding: 0.35rem 0.65rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-left: 0.35rem;
+  border: 1px solid #26313d;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  vertical-align: middle;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.status-idea {
+  border-color: #3d4a5a;
+  background: #151d27;
+  color: #9fb0c4;
+}
+
+.status-shaping {
+  border-color: #4e5368;
+  background: #1b2030;
+  color: #b6b3da;
+}
+
+.status-accepted {
+  border-color: #745131;
+  background: #241a12;
+  color: #d7a16f;
+}
+
+.status-superseded {
+  border-color: #4b4f58;
+  background: #191c22;
+  color: #a8adb7;
+}
+
+.status-implemented {
+  border-color: #35594a;
+  background: #13231d;
+  color: #8cc7aa;
+}
+
+.status-guide {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 52rem;
+  margin-top: 0.75rem;
+}
+
+.status-guide p {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.status-guide .status-badge {
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 
 .main-content code {
