@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.6.0-alpha3-47-gb6db65a-dirty`, commit `b6db65a`, built `2026-05-08T19:56:38Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.6.0-alpha3-56-g36e859b-dirty`, commit `36e859b`, built `2026-05-09T06:47:16Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
 

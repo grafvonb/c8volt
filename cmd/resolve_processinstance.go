@@ -6,6 +6,9 @@ package cmd
 import (
 	"fmt"
 
+	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +20,8 @@ var resolveProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
 	Short: "Resolve process-instance incidents by key",
 	Long: "Resolve process-instance incidents by key.\n\n" +
-		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt discovers active incidents at command start, resolves that fixed incident set, and reports process instances with no active incidents as skipped.\n\n" +
+		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. For each unique process instance, c8volt expands to the process-instance family, discovers active incidents at command start for direct incidents on in-scope instances, resolves that fixed incident set, and reports process instances with no active incidents as skipped.\n\n" +
+		"By default c8volt validates the affected root and descendant instances and asks for confirmation before resolving active incidents in the family. Use --dry-run to preview the family scope and incident resolution plan without submitting mutations.\n\n" +
 		"By default c8volt waits until the initially discovered incidents are no longer active by polling process-instance incident lookup through the incident service.",
 	Example: `  ./c8volt resolve process-instance --key 2251799813685250
   ./c8volt resolve pi --key 2251799813685250 --key 2251799813685260
@@ -53,15 +57,61 @@ var resolveProcessInstanceCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("process instance key %q is not a valid key", firstBadKey))
 		}
 
-		results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), keys, flagWorkers, collectOptions()...)
+		results, err := resolveProcessInstancesWithPlan(cmd, cli, keys, true)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		_ = results
+	},
+}
+
+func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (process.ProcessInstanceResolutionResults, error) {
+	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "resolve", keys)
+	if err != nil {
+		return process.ProcessInstanceResolutionResults{}, err
+	}
+	plan := planned.Plan
+	if flagDryRun {
+		if pickMode() != RenderModeJSON {
+			if err := renderProcessInstanceDryRunPreview(cmd, planned.Preview); err != nil {
+				return process.ProcessInstanceResolutionResults{}, fmt.Errorf("render resolve dry-run scope: %w", err)
+			}
+		}
+		opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+		results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), plan.Collected, flagWorkers, opts...)
 		renderErr := renderProcessInstanceResolutionResults(cmd, results)
 		if err != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("resolve process-instance incidents: %w", err))
+			return results, fmt.Errorf("resolve process-instance incident dry-run: %w", err)
 		}
 		if renderErr != nil {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render resolve process-instance result: %w", renderErr))
+			return results, fmt.Errorf("render resolve process-instance dry-run result: %w", renderErr)
 		}
-	},
+		return results, nil
+	}
+	printDryRunExpansionWarning(cmd, plan)
+
+	if firstPage {
+		impact := planned.Impact
+		affectedCount, rootCount, requestedCount := impact.Affected, impact.Roots, impact.Requested
+		prompt := fmt.Sprintf("You are about to inspect %d process instance(s) and resolve active incidents found in that family. Do you want to proceed?", affectedCount)
+		if affectedCount > requestedCount {
+			prompt = fmt.Sprintf("You have requested to resolve incidents for %d process instance(s), but due to the process-instance family scope, %d instance(s) with %d root instance(s) will be inspected and active incidents found in that family will be resolved. Do you want to proceed?", requestedCount, affectedCount, rootCount)
+		}
+		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+			return process.ProcessInstanceResolutionResults{}, err
+		}
+	}
+
+	opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
+	results, err := cli.ResolveProcessInstancesIncidents(cmd.Context(), plan.Collected, flagWorkers, opts...)
+	renderErr := renderProcessInstanceResolutionResults(cmd, results)
+	if err != nil {
+		return results, fmt.Errorf("resolve process-instance incidents: %w", err)
+	}
+	if renderErr != nil {
+		return results, fmt.Errorf("render resolve process-instance result: %w", renderErr)
+	}
+	return results, nil
 }
 
 func init() {
