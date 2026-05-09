@@ -217,6 +217,42 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 	}
 }
 
+func TestSearchProcessInstanceIncidentsPaginatesBeforeLocalFiltering(t *testing.T) {
+	t.Parallel()
+
+	var fromValues []int32
+	svc := newTestService(t, mockIncidentClient{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
+			require.Equal(t, "2251799813685250", key)
+			require.Nil(t, body.Filter)
+			require.NotNil(t, body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			fromValues = append(fromValues, *page.From)
+
+			items := []camundav88.IncidentResult{{IncidentKey: "skip-first-page", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumJOBNORETRIES, ErrorMessage: "no retries left"}}
+			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
+			if *page.From > 0 {
+				items = []camundav88.IncidentResult{{IncidentKey: "match-second-page", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional mapping failure"}}
+			}
+			return &camundav88.SearchProcessInstanceIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchProcessInstanceIncidents(context.Background(), "2251799813685250",
+		services.WithIncidentErrorType("io_mapping_error"),
+		services.WithIncidentErrorMessage("intentional"),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []int32{0, 1}, fromValues)
+	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
+}
+
 func incidentDetailKeys(items []d.ProcessInstanceIncidentDetail) []string {
 	keys := make([]string, 0, len(items))
 	for _, item := range items {

@@ -194,8 +194,61 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 	}
 }
 
+func TestSearchProcessInstanceIncidentsUsesServerSideErrorTypeAndPagesMessageFilter(t *testing.T) {
+	t.Parallel()
+
+	var fromValues []int32
+	svc := newTestService(t, mockIncidentClient{
+		searchProcessInstanceIncidents: func(_ context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
+			require.Equal(t, camundav89.ProcessInstanceKey("2251799813685250"), key)
+			require.NotNil(t, body.Filter)
+			require.NotNil(t, body.Filter.ErrorType)
+			errorType, err := body.Filter.ErrorType.AsIncidentErrorTypeFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, errorType)
+			require.Nil(t, body.Filter.ErrorMessage)
+
+			require.NotNil(t, body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			fromValues = append(fromValues, *page.From)
+
+			items := []camundav89.IncidentResult{
+				{IncidentKey: "first", ProcessInstanceKey: key, State: camundav89.IncidentStateEnumACTIVE, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "intentional first"},
+				{IncidentKey: "skip-message", ProcessInstanceKey: key, State: camundav89.IncidentStateEnumACTIVE, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "other failure"},
+			}
+			pageResp := camundav89.SearchQueryPageResponse{TotalItems: 3}
+			if *page.From > 0 {
+				items = []camundav89.IncidentResult{{IncidentKey: "second", ProcessInstanceKey: key, State: camundav89.IncidentStateEnumACTIVE, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "INTENTIONAL second"}}
+			}
+			return &camundav89.SearchProcessInstanceIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200:      &camundav89.IncidentSearchQueryResult{Items: items, Page: pageResp},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchProcessInstanceIncidents(context.Background(), "2251799813685250",
+		services.WithIncidentErrorType("io_mapping_error"),
+		services.WithIncidentErrorMessage("intentional"),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []int32{0, 2}, fromValues)
+	require.Equal(t, []string{"first", "second"}, incidentDetailKeys(got))
+}
+
 func ptrIncidentState89(v camundav89.IncidentStateEnum) *camundav89.IncidentStateEnum {
 	return &v
+}
+
+func incidentDetailKeys(items []d.ProcessInstanceIncidentDetail) []string {
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
+		keys = append(keys, item.IncidentKey)
+	}
+	return keys
 }
 
 func newTestService(t *testing.T, client mockIncidentClient) *v89.Service {

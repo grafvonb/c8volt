@@ -50,6 +50,14 @@ func newIncidentStateEqFilterPtr(v camundav89.IncidentStateEnum) (*camundav89.In
 	return new(f), nil
 }
 
+func newIncidentErrorTypeEqFilterPtr(v camundav89.IncidentErrorTypeEnum) (*camundav89.IncidentErrorTypeFilterProperty, error) {
+	var f camundav89.IncidentErrorTypeFilterProperty
+	if err := f.FromIncidentErrorTypeFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
 func valueOrEmpty[T ~string](v *T) T {
 	if v == nil {
 		return ""

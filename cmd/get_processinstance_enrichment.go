@@ -25,7 +25,11 @@ func enrichProcessInstancesWithIncidentActivity(cmd *cobra.Command, cli process.
 }
 
 func collectIncidentEnrichmentOptions() []options.FacadeOption {
-	return append(collectOptions(), options.WithIncidentState(flagGetPIIncidentState))
+	return append(collectOptions(),
+		options.WithIncidentState(flagGetPIIncidentState),
+		options.WithIncidentErrorType(flagGetPIIncidentErrorType),
+		options.WithIncidentErrorMessage(flagGetPIIncidentErrorMessage),
+	)
 }
 
 // enrichProcessInstancesWithVariableActivity mirrors incident enrichment for

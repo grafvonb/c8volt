@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	types "github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +35,8 @@ var (
 	flagGetPILimit                int32
 	flagGetPIWithIncidents        bool
 	flagGetPIIncidentState        string
+	flagGetPIIncidentErrorType    string
+	flagGetPIIncidentErrorMessage string
 	flagGetPIIncidentMessageLimit int
 	flagGetPIWithVars             bool
 	flagGetPIVarValueLimit        int
@@ -71,6 +74,7 @@ var getProcessInstanceCmd = &cobra.Command{
   ./c8volt get pi --incidents-only --with-incidents
   ./c8volt get pi --direct-incidents-only --with-incidents
   ./c8volt get pi --with-incidents --incident-message-limit 80
+  ./c8volt get pi --with-incidents --incident-error-type io_mapping_error --incident-error-message failed
   ./c8volt get pi --with-vars --var-value-limit 120
   ./c8volt get pi --key 2251799813711967 --with-incidents
   ./c8volt get pi --key 2251799813711967 --with-incidents --incident-state all
@@ -296,6 +300,8 @@ func init() {
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
 	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
 	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
+	fs.StringVar(&flagGetPIIncidentErrorType, "incident-error-type", "", fmt.Sprintf("case-insensitive incident error type filter for --with-incidents: %s", incidentfilter.ValidErrorTypesString()))
+	fs.StringVar(&flagGetPIIncidentErrorMessage, "incident-error-message", "", "case-insensitive incident error message substring filter for --with-incidents")
 	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed or list/search process-instance output")
 	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation")

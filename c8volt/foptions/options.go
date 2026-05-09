@@ -39,6 +39,16 @@ func WithIncidentState(state string) FacadeOption {
 	return func(c *FacadeCfg) { c.IncidentState = state }
 }
 
+// WithIncidentErrorType filters process-instance incident enrichment by error type.
+func WithIncidentErrorType(errorType string) FacadeOption {
+	return func(c *FacadeCfg) { c.IncidentErrorType = errorType }
+}
+
+// WithIncidentErrorMessage filters process-instance incident enrichment by message substring.
+func WithIncidentErrorMessage(message string) FacadeOption {
+	return func(c *FacadeCfg) { c.IncidentErrorMessage = message }
+}
+
 // WithAffectedProcessInstanceCount carries impact-check expansion metadata for facade-level summaries.
 func WithAffectedProcessInstanceCount(count int) FacadeOption {
 	return func(c *FacadeCfg) { c.AffectedProcessInstanceCount = count }
@@ -58,6 +68,8 @@ type FacadeCfg struct {
 	NoWorkerLimit                bool
 	IgnoreTenant                 bool
 	IncidentState                string
+	IncidentErrorType            string
+	IncidentErrorMessage         string
 	AffectedProcessInstanceCount int
 }
 
@@ -108,6 +120,12 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	}
 	if c.IncidentState != "" {
 		out = append(out, services.WithIncidentState(c.IncidentState))
+	}
+	if c.IncidentErrorType != "" {
+		out = append(out, services.WithIncidentErrorType(c.IncidentErrorType))
+	}
+	if c.IncidentErrorMessage != "" {
+		out = append(out, services.WithIncidentErrorMessage(c.IncidentErrorMessage))
 	}
 	return out
 }

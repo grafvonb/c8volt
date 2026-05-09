@@ -277,6 +277,8 @@ func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *te
 			cfg := services.ApplyCallOptions(opts)
 			assert.True(t, cfg.Verbose)
 			assert.Equal(t, "all", cfg.IncidentState)
+			assert.Equal(t, "job_no_retries", cfg.IncidentErrorType)
+			assert.Equal(t, "No Retries", cfg.IncidentErrorMessage)
 			return []d.ProcessInstanceIncidentDetail{
 				{
 					IncidentKey:            "4503599627370497",
@@ -297,7 +299,12 @@ func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *te
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
-	got, err := cli.SearchProcessInstanceIncidents(ctx, "2251799813711967", options.WithVerbose(), options.WithIncidentState("all"))
+	got, err := cli.SearchProcessInstanceIncidents(ctx, "2251799813711967",
+		options.WithVerbose(),
+		options.WithIncidentState("all"),
+		options.WithIncidentErrorType("job_no_retries"),
+		options.WithIncidentErrorMessage("No Retries"),
+	)
 
 	require.NoError(t, err)
 	require.Equal(t, []ProcessInstanceIncidentDetail{

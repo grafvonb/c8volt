@@ -16,21 +16,29 @@ func WithIgnoreTenant() CallOption  { return func(c *CallCfg) { c.IgnoreTenant =
 func WithIncidentState(state string) CallOption {
 	return func(c *CallCfg) { c.IncidentState = state }
 }
+func WithIncidentErrorType(errorType string) CallOption {
+	return func(c *CallCfg) { c.IncidentErrorType = errorType }
+}
+func WithIncidentErrorMessage(message string) CallOption {
+	return func(c *CallCfg) { c.IncidentErrorMessage = message }
+}
 
 type CallOption func(*CallCfg)
 
 type CallCfg struct {
-	NoStateCheck  bool
-	Force         bool
-	NoWait        bool
-	Run           bool
-	FailFast      bool
-	WithStat      bool
-	DryRun        bool
-	Verbose       bool
-	NoWorkerLimit bool
-	IgnoreTenant  bool
-	IncidentState string
+	NoStateCheck         bool
+	Force                bool
+	NoWait               bool
+	Run                  bool
+	FailFast             bool
+	WithStat             bool
+	DryRun               bool
+	Verbose              bool
+	NoWorkerLimit        bool
+	IgnoreTenant         bool
+	IncidentState        string
+	IncidentErrorType    string
+	IncidentErrorMessage string
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

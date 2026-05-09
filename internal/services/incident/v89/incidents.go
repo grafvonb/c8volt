@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/internal/services/incident/waiter"
+	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
@@ -65,24 +66,16 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 	if err != nil {
 		return nil, fmt.Errorf("building incident state filter: %w", err)
 	}
+	errorTypeFilter, err := newIncidentSearchErrorTypeFilter(callCfg.IncidentErrorType)
+	if err != nil {
+		return nil, fmt.Errorf("building incident error type filter: %w", err)
+	}
 	filter := &camundav89.IncidentFilter{
-		State:    stateFilter,
-		TenantId: tenantFilter,
+		State:     stateFilter,
+		TenantId:  tenantFilter,
+		ErrorType: errorTypeFilter,
 	}
-	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
-	body := camundav89.SearchProcessInstanceIncidentsJSONRequestBody{
-		Page:   &page,
-		Filter: filter,
-	}
-	resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
-	if err != nil {
-		return nil, err
-	}
-	payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
-	if err != nil {
-		return nil, err
-	}
-	return toolx.MapSlice(payload.Items, fromIncidentResult), nil
+	return s.searchProcessInstanceIncidentsPages(ctx, key, filter, callCfg.IncidentErrorMessage)
 }
 
 func newIncidentSearchStateFilter(state string) (*camundav89.IncidentStateFilterProperty, error) {
@@ -102,6 +95,64 @@ func newIncidentSearchStateFilter(state string) (*camundav89.IncidentStateFilter
 	default:
 		return nil, fmt.Errorf("unsupported incident state %q", state)
 	}
+}
+
+func newIncidentSearchErrorTypeFilter(errorType string) (*camundav89.IncidentErrorTypeFilterProperty, error) {
+	normalized, ok := incidentfilter.NormalizeErrorType(errorType)
+	if !ok {
+		return nil, fmt.Errorf("unsupported incident error type %q", errorType)
+	}
+	if normalized == "" {
+		return nil, nil
+	}
+	return newIncidentErrorTypeEqFilterPtr(camundav89.IncidentErrorTypeEnum(normalized))
+}
+
+func (s *Service) searchProcessInstanceIncidentsPages(ctx context.Context, key string, filter *camundav89.IncidentFilter, errorMessage string) ([]d.ProcessInstanceIncidentDetail, error) {
+	const pageSize int32 = 1000
+	var out []d.ProcessInstanceIncidentDetail
+	for from := int32(0); ; {
+		page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{From: from, Size: pageSize})
+		body := camundav89.SearchProcessInstanceIncidentsJSONRequestBody{
+			Page:   &page,
+			Filter: filter,
+		}
+		resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
+		if err != nil {
+			return nil, err
+		}
+		payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, filterIncidentDetailsByMessage(errorMessage, toolx.MapSlice(payload.Items, fromIncidentResult))...)
+		if !incidentSearchHasMore(payload.Page, from, len(payload.Items), pageSize) {
+			return out, nil
+		}
+		from += int32(len(payload.Items))
+	}
+}
+
+func filterIncidentDetailsByMessage(errorMessage string, items []d.ProcessInstanceIncidentDetail) []d.ProcessInstanceIncidentDetail {
+	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
+	for _, item := range items {
+		if !incidentfilter.ErrorMessageContains(errorMessage, item.ErrorMessage) {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func incidentSearchHasMore(page camundav89.SearchQueryPageResponse, from int32, itemCount int, pageSize int32) bool {
+	if itemCount == 0 {
+		return false
+	}
+	visibleCount := int64(from) + int64(itemCount)
+	if page.TotalItems > visibleCount {
+		return true
+	}
+	return page.HasMoreTotalItems && itemCount >= int(pageSize)
 }
 
 // WaitForIncidentResolved polls direct incident lookup until the selected incident is no longer active.

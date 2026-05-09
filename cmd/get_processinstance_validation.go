@@ -12,6 +12,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
@@ -70,11 +71,20 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if err := validatePIIncidentStateFlag(flagGetPIIncidentState); err != nil {
 		return err
 	}
+	if err := validatePIIncidentErrorTypeFlag(flagGetPIIncidentErrorType); err != nil {
+		return err
+	}
 	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagGetPIWithIncidents {
 		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
 	}
 	if isPIIncidentStateFlagChanged(cmd) && !flagGetPIWithIncidents {
 		return missingDependentFlagsf("--incident-state requires --with-incidents")
+	}
+	if isPIIncidentErrorTypeFlagChanged(cmd) && !flagGetPIWithIncidents {
+		return missingDependentFlagsf("--incident-error-type requires --with-incidents")
+	}
+	if isPIIncidentErrorMessageFlagChanged(cmd) && !flagGetPIWithIncidents {
+		return missingDependentFlagsf("--incident-error-message requires --with-incidents")
 	}
 	if flagGetPIVarValueLimit < 0 {
 		return invalidFlagValuef("invalid value for --var-value-limit: %d, expected non-negative integer", flagGetPIVarValueLimit)
@@ -157,6 +167,14 @@ func isPIIncidentStateFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("incident-state")
 }
 
+func isPIIncidentErrorTypeFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("incident-error-type")
+}
+
+func isPIIncidentErrorMessageFlagChanged(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Flags().Changed("incident-error-message")
+}
+
 func validatePIIncidentStateFlag(value string) error {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "active", "pending", "resolved", "migrated", "unknown", "all":
@@ -164,6 +182,13 @@ func validatePIIncidentStateFlag(value string) error {
 	default:
 		return invalidFlagValuef("invalid value for --incident-state: %q, valid values are: active, pending, resolved, migrated, unknown, all", value)
 	}
+}
+
+func validatePIIncidentErrorTypeFlag(value string) error {
+	if _, ok := incidentfilter.NormalizeErrorType(value); ok {
+		return nil
+	}
+	return invalidFlagValuef("invalid value for --incident-error-type: %q, valid values are: %s", value, incidentfilter.ValidErrorTypesString())
 }
 
 // isPIVarValueLimitFlagChanged detects whether variable truncation was supplied
