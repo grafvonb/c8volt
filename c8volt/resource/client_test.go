@@ -7,12 +7,14 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
+	"sync/atomic"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
-	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
@@ -46,7 +48,7 @@ func TestClient_GetResource(t *testing.T) {
 		},
 	}
 
-	cli := New(api, nil, slog.Default())
+	cli := New(api, nil, nil, slog.Default())
 	got, err := cli.GetResource(ctx, "resource-1", options.WithVerbose())
 
 	require.NoError(t, err)
@@ -71,101 +73,174 @@ func TestClient_GetResource_MapsDomainErrors(t *testing.T) {
 		},
 	}
 
-	cli := New(api, nil, slog.Default())
+	cli := New(api, nil, nil, slog.Default())
 	_, err := cli.GetResource(context.Background(), "missing")
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ferr.ErrNotFound)
 }
 
-// TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan covers the safety
-// preflight before deleting a process definition resource. Active instances are
-// expanded to roots through the structured traversal plan, and only roots are
-// canceled before the resource delete proceeds.
-func TestClient_DeleteProcessDefinition_UsesStructuredDryRunPlan(t *testing.T) {
+// TestClient_DeleteProcessDefinition_UsesRootCancellationPlan covers the safety
+// impact check before deleting a process definition resource. Active instances
+// may be child/called instances, so c8volt expands them to root instances before
+// cancellation, deletes the planned process-instance tree, and only then deletes
+// the process definition resource.
+func TestClient_DeleteProcessDefinition_UsesRootCancellationPlan(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	api := &stubResourceAPI{
-		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) error {
+		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			assert.Equal(t, "pd-1", resourceKey)
-			return nil
-		},
-	}
-
-	var canceledKeys typex.Keys
-	papi := stubProcessAPI{
-		searchProcessInstances: func(_ context.Context, filter process.ProcessInstanceFilter, size int32, _ ...options.FacadeOption) (process.ProcessInstances, error) {
-			assert.Equal(t, process.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1", State: process.StateActive}, filter)
-			assert.Contains(t, []int32{1, consts.MaxPISearchSize}, size)
-			return process.ProcessInstances{Items: []process.ProcessInstance{{Key: "child-1"}}}, nil
-		},
-		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
-			assert.Equal(t, typex.Keys{"child-1"}, keys)
-			return process.DryRunPIKeyExpansion{
-				Roots:            typex.Keys{"root-1"},
-				Collected:        typex.Keys{"root-1", "child-1"},
-				MissingAncestors: []process.MissingAncestor{{Key: "missing-1", StartKey: "child-1"}},
-				Warning:          "one or more parent process instances were not found",
-				Outcome:          process.TraversalOutcomePartial,
+			return d.ResourceDeleteResponse{
+				Ok:                true,
+				StatusCode:        http.StatusOK,
+				Status:            "200 OK; history deletion batch batch-1 completed",
+				DeleteHistory:     true,
+				BatchOperationKey: "batch-1",
+				BatchState:        "COMPLETED",
 			}, nil
 		},
-		cancelProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, _ ...options.FacadeOption) (process.CancelReports, error) {
-			canceledKeys = append(typex.Keys(nil), keys...)
-			assert.Equal(t, 1, wantedWorkers)
+	}
+
+	var canceledRoots typex.Keys
+	var deletedRoots typex.Keys
+	var affectedCount int
+	var deletedAffectedCount int
+	var statsCalls atomic.Int32
+	papi := stubProcessAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
+			assert.Equal(t, "pd-1", key)
+			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			active := int64(1)
+			if statsCalls.Add(1) > 1 {
+				active = 0
+			}
+			return process.ProcessDefinition{
+				Key:        "pd-1",
+				Statistics: &process.ProcessDefinitionStatistics{Active: active},
+			}, nil
+		},
+		searchProcessInstancesPage: func(_ context.Context, filter process.ProcessInstanceFilter, page process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			assert.Equal(t, process.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1", State: process.StateActive}, filter)
+			assert.Equal(t, int32(500), page.Size)
+			return process.ProcessInstancePage{
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				Items: []process.ProcessInstance{
+					{Key: "child-1", ParentKey: "root-1", RootProcessInstanceKey: "root-1"},
+					{Key: "child-2", ParentKey: "root-1", RootProcessInstanceKey: "root-1"},
+				},
+			}, nil
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			assert.Equal(t, typex.Keys{"root-1"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "child-1", "child-2"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			canceledRoots = keys
+			affectedCount = options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount
 			return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}}}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			deletedRoots = keys
+			deletedAffectedCount = options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-1", Ok: true}}}, nil
 		},
 	}
 
-	cli := New(api, papi, slog.Default())
-	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce(), options.WithAllowInconsistent())
+	cli := New(api, papi, nil, slog.Default())
+	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce())
 
 	require.NoError(t, err)
 	assert.True(t, report.Ok)
-	assert.Equal(t, typex.Keys{"root-1"}, canceledKeys)
+	assert.True(t, report.DeleteHistory)
+	assert.Equal(t, "batch-1", report.BatchOperationKey)
+	assert.Equal(t, "COMPLETED", report.BatchState)
+	assert.Equal(t, typex.Keys{"root-1"}, canceledRoots)
+	assert.Equal(t, 3, affectedCount)
+	assert.Equal(t, typex.Keys{"root-1"}, deletedRoots)
+	assert.Equal(t, 3, deletedAffectedCount)
+	assert.Equal(t, int32(2), statsCalls.Load())
 }
 
-// TestClient_DeleteProcessDefinition_ForwardsContextToDryRunPlan verifies dry-run planning receives caller context.
-func TestClient_DeleteProcessDefinition_ForwardsContextToDryRunPlan(t *testing.T) {
+// TestClient_DeleteProcessDefinition_ForwardsContextToRootCancellation verifies
+// root cancellation and process-instance deletion receive caller context.
+func TestClient_DeleteProcessDefinition_ForwardsContextToRootCancellation(t *testing.T) {
 	t.Parallel()
 
 	type ctxKey struct{}
 	ctx := context.WithValue(context.Background(), ctxKey{}, "request-ctx")
 	api := &stubResourceAPI{
-		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) error {
+		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
 			assert.Equal(t, "pd-1", resourceKey)
-			return nil
+			return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 	}
+	var statsCalls atomic.Int32
 	papi := stubProcessAPI{
-		searchProcessInstances: func(_ context.Context, _ process.ProcessInstanceFilter, _ int32, _ ...options.FacadeOption) (process.ProcessInstances, error) {
-			return process.ProcessInstances{Items: []process.ProcessInstance{{Key: "child-1"}}}, nil
-		},
-		dryRunCancelOrDeletePlan: func(got context.Context, _ typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
-			if got.Value(ctxKey{}) != "request-ctx" {
-				return process.DryRunPIKeyExpansion{}, errors.New("dry-run plan did not receive caller context")
+		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
+			assert.Equal(t, "pd-1", key)
+			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			active := int64(1)
+			if statsCalls.Add(1) > 1 {
+				active = 0
 			}
+			return process.ProcessDefinition{
+				Key:        "pd-1",
+				Statistics: &process.ProcessDefinitionStatistics{Active: active},
+			}, nil
+		},
+		searchProcessInstancesPage: func(got context.Context, filter process.ProcessInstanceFilter, _ process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			if got.Value(ctxKey{}) != "request-ctx" {
+				return process.ProcessInstancePage{}, errors.New("active instance search did not receive caller context")
+			}
+			assert.Equal(t, process.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1", State: process.StateActive}, filter)
+			return process.ProcessInstancePage{
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				Items:         []process.ProcessInstance{{Key: "child-1", ParentKey: "root-1", RootProcessInstanceKey: "root-1"}},
+			}, nil
+		},
+		dryRunCancelOrDeletePlan: func(got context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			if got.Value(ctxKey{}) != "request-ctx" {
+				return process.DryRunPIKeyExpansion{}, errors.New("cancellation planning did not receive caller context")
+			}
+			assert.Equal(t, typex.Keys{"root-1"}, keys)
 			return process.DryRunPIKeyExpansion{
 				Roots:     typex.Keys{"root-1"},
 				Collected: typex.Keys{"root-1", "child-1"},
 				Outcome:   process.TraversalOutcomeComplete,
 			}, nil
 		},
-		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.CancelReports, error) {
+		cancelProcessInstances: func(got context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.CancelReports, error) {
+			if got.Value(ctxKey{}) != "request-ctx" {
+				return process.CancelReports{}, errors.New("root cancellation did not receive caller context")
+			}
 			assert.Equal(t, typex.Keys{"root-1"}, keys)
 			return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}}}, nil
 		},
+		deleteProcessInstances: func(got context.Context, keys typex.Keys, _ int, _ ...options.FacadeOption) (process.DeleteReports, error) {
+			if got.Value(ctxKey{}) != "request-ctx" {
+				return process.DeleteReports{}, errors.New("process-instance deletion did not receive caller context")
+			}
+			assert.Equal(t, typex.Keys{"root-1"}, keys)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-1", Ok: true}}}, nil
+		},
 	}
 
-	cli := New(api, papi, slog.Default())
-	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce(), options.WithAllowInconsistent())
+	cli := New(api, papi, nil, slog.Default())
+	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce())
 
 	require.NoError(t, err)
 	assert.True(t, report.Ok)
+	assert.Equal(t, int32(2), statsCalls.Load())
 }
 
-// TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntilVerbose verifies warning details respect verbosity.
-func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {
+// TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose verifies warning details respect verbosity.
+func TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {
 	t.Parallel()
 
 	plan := process.DryRunPIKeyExpansion{
@@ -176,8 +251,8 @@ func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntil
 		Warning: "one or more parent process instances were not found",
 	}
 
-	quiet := formatPartialCancellationPreflightWarning("pd-1", plan, false)
-	verbose := formatPartialCancellationPreflightWarning("pd-1", plan, true)
+	quiet := formatPartialCancellationImpactWarning("pd-1", plan, false)
+	verbose := formatPartialCancellationImpactWarning("pd-1", plan, true)
 
 	assert.Contains(t, quiet, "2 missing ancestor key(s)")
 	assert.Contains(t, quiet, "use --verbose to list keys")
@@ -186,32 +261,146 @@ func TestFormatPartialCancellationPreflightWarning_HidesMissingAncestorKeysUntil
 	assert.Contains(t, verbose, "missing ancestor keys: missing-1, missing-2")
 }
 
-// TestClient_DeleteProcessDefinitions_UsesActivityIndicator verifies bulk deletion reports one activity scope.
+// TestClient_PreviewDeleteProcessDefinition_UsesStatsForNonForceImpactCheck keeps
+// the default safety check cheap: without --force, deletion only needs an active
+// count, not a full list of process-instance keys.
+func TestClient_PreviewDeleteProcessDefinition_UsesStatsForNonForceImpactCheck(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &stubResourceAPI{}
+	papi := stubProcessAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
+			assert.Equal(t, "pd-1", key)
+			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			return process.ProcessDefinition{
+				Key: "pd-1",
+				Statistics: &process.ProcessDefinitionStatistics{
+					Active: 2,
+				},
+			}, nil
+		},
+		searchProcessInstancesPage: func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			t.Fatalf("non-force impact check should use process-definition statistics, not process-instance search")
+			return process.ProcessInstancePage{}, nil
+		},
+	}
+
+	cli := New(api, papi, nil, slog.Default())
+	plan, err := cli.PreviewDeleteProcessDefinitions(ctx, typex.Keys{"pd-1"})
+
+	require.NoError(t, err)
+	require.Len(t, plan.Items, 1)
+	assert.Equal(t, int64(2), plan.Items[0].ActiveProcessInstances())
+	assert.Equal(t, int64(2), plan.Totals().ActiveProcessInstances)
+}
+
+// TestClient_PreviewDeleteProcessDefinitions_UsesActivityIndicator verifies
+// slow delete-pd impact checks have one high-level progress message instead of only
+// per-request HTTP activity.
+func TestClient_PreviewDeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	ctx := logging.ToActivityContext(context.Background(), sink)
+	api := &stubResourceAPI{}
+
+	cli := New(api, nil, nil, slog.Default())
+	plan, err := cli.PreviewDeleteProcessDefinitions(ctx, typex.Keys{"pd-1", "pd-2"}, options.WithNoStateCheck())
+
+	require.NoError(t, err)
+	require.Len(t, plan.Items, 2)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"checking delete impact for 2 process definition(s); process-instance state check is skipped; no changes are being made"}, msgs)
+}
+
+// TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce verifies
+// forced deletion impact checking reports root cancellation scope so child/called
+// process instances are handled correctly.
+func TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	ctx := logging.ToActivityContext(context.Background(), sink)
+	api := &stubResourceAPI{}
+	papi := stubProcessAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
+			assert.Equal(t, "pd-1", key)
+			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			return process.ProcessDefinition{
+				Key:        "pd-1",
+				Statistics: &process.ProcessDefinitionStatistics{Active: 2},
+			}, nil
+		},
+		searchProcessInstancesPage: func(_ context.Context, filter process.ProcessInstanceFilter, _ process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			assert.Equal(t, process.ProcessInstanceFilter{ProcessDefinitionKey: "pd-1", State: process.StateActive}, filter)
+			return process.ProcessInstancePage{
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				Items: []process.ProcessInstance{
+					{Key: "child-1", ParentKey: "root-1", RootProcessInstanceKey: "root-1"},
+					{Key: "child-2", ParentKey: "root-1", RootProcessInstanceKey: "root-1"},
+				},
+			}, nil
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			assert.Equal(t, typex.Keys{"root-1"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "child-1", "child-2"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+	}
+
+	cli := New(api, papi, nil, slog.Default())
+	plan, err := cli.PreviewDeleteProcessDefinitions(ctx, typex.Keys{"pd-1"}, options.WithForce())
+
+	require.NoError(t, err)
+	require.Len(t, plan.Items, 1)
+	assert.Equal(t, int64(2), plan.Totals().ActiveProcessInstances)
+	assert.Equal(t, 1, plan.Totals().CancellationRoots)
+	assert.Equal(t, 3, plan.Totals().CancellationAffected)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{
+		"checking active process instances and cancellation roots for 1 process definition(s); no changes are being made",
+	}, msgs)
+}
+
+// TestClient_DeleteProcessDefinitions_UsesActivityIndicator verifies bulk deletion
+// wraps each direct item delete with its own delete-impact activity scope.
 func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 	t.Parallel()
 
 	sink := &activitysink.Sink{}
 	ctx := logging.ToActivityContext(context.Background(), sink)
 	api := &stubResourceAPI{
-		delete: func(_ context.Context, _ string, _ ...services.CallOption) error {
-			return nil
+		delete: func(_ context.Context, _ string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 		},
 	}
-	cli := New(api, nil, slog.Default())
+	cli := New(api, nil, nil, slog.Default())
 
-	reports, err := cli.DeleteProcessDefinitions(ctx, typex.Keys{"pd-1", "pd-2"}, 1, options.WithNoStateCheck(), options.WithAllowInconsistent())
+	reports, err := cli.DeleteProcessDefinitions(ctx, typex.Keys{"pd-1", "pd-2"}, 1, options.WithNoStateCheck())
 
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 2)
 	started, stopped, msgs := sink.Snapshot()
-	assert.Equal(t, 1, started)
-	assert.Equal(t, 1, stopped)
-	assert.Equal(t, []string{"deleting 2 process definition(s)"}, msgs)
+	assert.Equal(t, 3, started)
+	assert.Equal(t, 3, stopped)
+	assert.Equal(t, []string{
+		"deleting 2 process definition(s)",
+		"checking delete impact for 1 process definition(s); process-instance state check is skipped; no changes are being made",
+		"checking delete impact for 1 process definition(s); process-instance state check is skipped; no changes are being made",
+	}, msgs)
 }
 
 type stubResourceAPI struct {
 	get    func(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
-	delete func(ctx context.Context, resourceKey string, opts ...services.CallOption) error
+	delete func(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error)
 }
 
 func (s *stubResourceAPI) Deploy(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
@@ -220,7 +409,7 @@ func (s *stubResourceAPI) Deploy(context.Context, []d.DeploymentUnitData, ...ser
 
 // Delete delegates to the per-test callback and panics if a test did not expect
 // the resource deletion endpoint.
-func (s *stubResourceAPI) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error {
+func (s *stubResourceAPI) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	if s.delete == nil {
 		panic("unexpected call")
 	}
@@ -238,10 +427,42 @@ func (s *stubResourceAPI) Get(ctx context.Context, resourceKey string, opts ...s
 
 var _ rsvc.API = (*stubResourceAPI)(nil)
 
+type stubBatchOperationAPI struct {
+	checkBatchOperationReadAccess func(context.Context, ...options.FacadeOption) error
+	cancelProcessInstancesBatch   func(context.Context, process.ProcessInstanceFilter, ...options.FacadeOption) (batchoperation.BatchOperation, error)
+	waitBatchOperation            func(context.Context, string, ...options.FacadeOption) (batchoperation.BatchOperation, error)
+}
+
+func (s stubBatchOperationAPI) CheckBatchOperationReadAccess(ctx context.Context, opts ...options.FacadeOption) error {
+	if s.checkBatchOperationReadAccess == nil {
+		panic("unexpected call")
+	}
+	return s.checkBatchOperationReadAccess(ctx, opts...)
+}
+
+func (s stubBatchOperationAPI) CancelProcessInstancesBatch(ctx context.Context, filter process.ProcessInstanceFilter, opts ...options.FacadeOption) (batchoperation.BatchOperation, error) {
+	if s.cancelProcessInstancesBatch == nil {
+		panic("unexpected call")
+	}
+	return s.cancelProcessInstancesBatch(ctx, filter, opts...)
+}
+
+func (s stubBatchOperationAPI) WaitBatchOperation(ctx context.Context, key string, opts ...options.FacadeOption) (batchoperation.BatchOperation, error) {
+	if s.waitBatchOperation == nil {
+		panic("unexpected call")
+	}
+	return s.waitBatchOperation(ctx, key, opts...)
+}
+
+var _ batchoperation.API = (*stubBatchOperationAPI)(nil)
+
 type stubProcessAPI struct {
-	searchProcessInstances   func(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error)
-	dryRunCancelOrDeletePlan func(context.Context, typex.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
-	cancelProcessInstances   func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
+	getProcessDefinition       func(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error)
+	searchProcessInstancesPage func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
+	searchProcessInstances     func(context.Context, process.ProcessInstanceFilter, int32, ...options.FacadeOption) (process.ProcessInstances, error)
+	dryRunCancelOrDeletePlan   func(context.Context, typex.Keys, ...options.FacadeOption) (process.DryRunPIKeyExpansion, error)
+	cancelProcessInstances     func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
+	deleteProcessInstances     func(context.Context, typex.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
 }
 
 func (stubProcessAPI) SearchProcessDefinitions(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error) {
@@ -252,8 +473,11 @@ func (stubProcessAPI) SearchProcessDefinitionsLatest(context.Context, process.Pr
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) GetProcessDefinition(context.Context, string, ...options.FacadeOption) (process.ProcessDefinition, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) GetProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
+	if s.getProcessDefinition == nil {
+		panic("unexpected call")
+	}
+	return s.getProcessDefinition(ctx, key, opts...)
 }
 
 func (stubProcessAPI) GetProcessDefinitionXML(context.Context, string, ...options.FacadeOption) (string, error) {
@@ -284,6 +508,22 @@ func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ..
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) ResolveIncident(context.Context, string, ...options.FacadeOption) (process.IncidentResolutionResult, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) ResolveIncidents(context.Context, typex.Keys, int, ...options.FacadeOption) (process.IncidentResolutionResults, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) ResolveProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) (process.ProcessInstanceResolutionResult, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) ResolveProcessInstancesIncidents(context.Context, typex.Keys, int, ...options.FacadeOption) (process.ProcessInstanceResolutionResults, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) SearchProcessInstanceVariables(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceVariable, error) {
 	panic("unexpected call")
 }
@@ -304,8 +544,11 @@ func (stubProcessAPI) EnrichTraversalWithIncidents(context.Context, process.Trav
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) SearchProcessInstancesPage(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) SearchProcessInstancesPage(ctx context.Context, filter process.ProcessInstanceFilter, page process.ProcessInstancePageRequest, opts ...options.FacadeOption) (process.ProcessInstancePage, error) {
+	if s.searchProcessInstancesPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstancesPage(ctx, filter, page, opts...)
 }
 
 // SearchProcessInstances delegates to the per-test callback used by process
@@ -382,8 +625,11 @@ func (s stubProcessAPI) CancelProcessInstances(ctx context.Context, keys typex.K
 	return s.cancelProcessInstances(ctx, keys, wantedWorkers, opts...)
 }
 
-func (stubProcessAPI) DeleteProcessInstances(context.Context, typex.Keys, int, ...options.FacadeOption) (process.DeleteReports, error) {
-	panic("unexpected call")
+func (s stubProcessAPI) DeleteProcessInstances(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+	if s.deleteProcessInstances == nil {
+		panic("unexpected call")
+	}
+	return s.deleteProcessInstances(ctx, keys, wantedWorkers, opts...)
 }
 
 func (stubProcessAPI) UpdateProcessInstancesVariables(context.Context, typex.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error) {
@@ -398,11 +644,11 @@ func (stubProcessAPI) WaitForProcessInstancesExpectation(context.Context, typex.
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) DryRunCancelOrDeleteGetPIKeys(context.Context, typex.Keys, ...options.FacadeOption) (typex.Keys, typex.Keys, error) {
+func (stubProcessAPI) DryRunCancelOrDeleteGetPIKeys(context.Context, typex.Keys, int, ...options.FacadeOption) (typex.Keys, typex.Keys, error) {
 	panic("unexpected call")
 }
 
-func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys typex.Keys, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+func (s stubProcessAPI) DryRunCancelOrDeletePlan(ctx context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
 	if s.dryRunCancelOrDeletePlan == nil {
 		panic("unexpected call")
 	}

@@ -66,6 +66,7 @@ type ProcessInstance struct {
 	ParentKey                 string         `json:"parentKey,omitempty"`
 	ParentProcessInstanceKey  string         `json:"parentProcessInstanceKey,omitempty"`
 	ProcessDefinitionKey      string         `json:"processDefinitionKey,omitempty"`
+	RootProcessInstanceKey    string         `json:"rootProcessInstanceKey,omitempty"`
 	ProcessVersion            int32          `json:"processVersion,omitempty"`
 	ProcessVersionTag         string         `json:"processVersionTag,omitempty"`
 	StartDate                 string         `json:"startDate,omitempty"`
@@ -76,6 +77,7 @@ type ProcessInstance struct {
 
 type ProcessInstanceIncidentDetail struct {
 	IncidentKey            string `json:"incidentKey,omitempty"`
+	CreationTime           string `json:"creationTime,omitempty"`
 	ProcessInstanceKey     string `json:"processInstanceKey"`
 	TenantId               string `json:"tenantId,omitempty"`
 	State                  string `json:"state,omitempty"`
@@ -87,6 +89,116 @@ type ProcessInstanceIncidentDetail struct {
 	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
 	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
 	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
+}
+
+type ResolutionOperation string
+
+const (
+	ResolutionOperationIncident        ResolutionOperation = "resolveIncident"
+	ResolutionOperationProcessInstance ResolutionOperation = "resolveProcessInstance"
+)
+
+type IncidentResolutionStatus string
+
+const (
+	IncidentResolutionStatusPlanned            IncidentResolutionStatus = "planned"
+	IncidentResolutionStatusSubmitted          IncidentResolutionStatus = "submitted"
+	IncidentResolutionStatusConfirmed          IncidentResolutionStatus = "confirmed"
+	IncidentResolutionStatusSkipped            IncidentResolutionStatus = "skipped"
+	IncidentResolutionStatusMutationFailed     IncidentResolutionStatus = "mutation_failed"
+	IncidentResolutionStatusConfirmationFailed IncidentResolutionStatus = "confirmation_failed"
+)
+
+type IncidentResolutionResult struct {
+	IncidentKey        string                         `json:"incidentKey"`
+	ProcessInstanceKey string                         `json:"processInstanceKey,omitempty"`
+	MutationAccepted   bool                           `json:"mutationAccepted"`
+	Status             IncidentResolutionStatus       `json:"status"`
+	ConfirmationStatus string                         `json:"confirmationStatus,omitempty"`
+	StatusCode         int                            `json:"statusCode,omitempty"`
+	Message            string                         `json:"message,omitempty"`
+	Error              string                         `json:"error,omitempty"`
+	DryRun             bool                           `json:"dryRun"`
+	MutationSubmitted  bool                           `json:"mutationSubmitted"`
+	WouldResolve       bool                           `json:"wouldResolve,omitempty"`
+	IncidentState      string                         `json:"incidentState,omitempty"`
+	Incident           *ProcessInstanceIncidentDetail `json:"incident,omitempty"`
+}
+
+func (r IncidentResolutionResult) OK() bool {
+	return r.Status != IncidentResolutionStatusMutationFailed && r.Status != IncidentResolutionStatusConfirmationFailed
+}
+
+type IncidentResolutionResults struct {
+	Operation         ResolutionOperation        `json:"operation,omitempty"`
+	Items             []IncidentResolutionResult `json:"items,omitempty"`
+	Total             int                        `json:"total"`
+	Submitted         int                        `json:"submitted"`
+	Confirmed         int                        `json:"confirmed"`
+	Skipped           int                        `json:"skipped"`
+	Failed            int                        `json:"failed"`
+	DryRun            bool                       `json:"dryRun"`
+	MutationSubmitted bool                       `json:"mutationSubmitted"`
+}
+
+func (r IncidentResolutionResults) Totals() (total int, oks int, noks int) {
+	return TotalsOf(r.Items)
+}
+
+type ProcessInstanceResolutionStatus string
+
+const (
+	ProcessInstanceResolutionStatusPlanned       ProcessInstanceResolutionStatus = "planned"
+	ProcessInstanceResolutionStatusSubmitted     ProcessInstanceResolutionStatus = "submitted"
+	ProcessInstanceResolutionStatusConfirmed     ProcessInstanceResolutionStatus = "confirmed"
+	ProcessInstanceResolutionStatusSkipped       ProcessInstanceResolutionStatus = "skipped"
+	ProcessInstanceResolutionStatusPartialFailed ProcessInstanceResolutionStatus = "partial_failed"
+	ProcessInstanceResolutionStatusFailed        ProcessInstanceResolutionStatus = "failed"
+)
+
+type ProcessInstanceResolutionResult struct {
+	ProcessInstanceKey    string                          `json:"processInstanceKey"`
+	AttemptedIncidentKeys []string                        `json:"attemptedIncidentKeys,omitempty"`
+	ResolvedIncidentKeys  []string                        `json:"resolvedIncidentKeys,omitempty"`
+	SkippedIncidentKeys   []string                        `json:"skippedIncidentKeys,omitempty"`
+	FailedIncidentKeys    []string                        `json:"failedIncidentKeys,omitempty"`
+	ConfirmationStatus    string                          `json:"confirmationStatus,omitempty"`
+	Status                ProcessInstanceResolutionStatus `json:"status"`
+	Error                 string                          `json:"error,omitempty"`
+	DryRun                bool                            `json:"dryRun"`
+	MutationSubmitted     bool                            `json:"mutationSubmitted"`
+	Incidents             []ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+}
+
+func (r ProcessInstanceResolutionResult) OK() bool {
+	return r.Status != ProcessInstanceResolutionStatusFailed && r.Status != ProcessInstanceResolutionStatusPartialFailed
+}
+
+type ProcessInstanceResolutionResults struct {
+	Operation         ResolutionOperation               `json:"operation,omitempty"`
+	Items             []ProcessInstanceResolutionResult `json:"items,omitempty"`
+	Total             int                               `json:"total"`
+	Submitted         int                               `json:"submitted"`
+	Confirmed         int                               `json:"confirmed"`
+	Skipped           int                               `json:"skipped"`
+	Failed            int                               `json:"failed"`
+	DryRun            bool                              `json:"dryRun"`
+	MutationSubmitted bool                              `json:"mutationSubmitted"`
+}
+
+func (r ProcessInstanceResolutionResults) Totals() (total int, oks int, noks int) {
+	return TotalsOf(r.Items)
+}
+
+type ResolutionPlan struct {
+	Operation                ResolutionOperation `json:"operation"`
+	RequestedKeys            []string            `json:"requestedKeys,omitempty"`
+	DryRun                   bool                `json:"dryRun"`
+	MutationSubmitted        bool                `json:"mutationSubmitted"`
+	Items                    any                 `json:"items,omitempty"`
+	WouldResolveIncidentKeys []string            `json:"wouldResolveIncidentKeys,omitempty"`
+	SkippedIncidentKeys      []string            `json:"skippedIncidentKeys,omitempty"`
+	Errors                   []string            `json:"errors,omitempty"`
 }
 
 type ProcessInstanceVariable struct {

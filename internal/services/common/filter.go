@@ -31,6 +31,13 @@ func NewProcessInstanceKeyEqFilterPtr(v string) (*camundav88.ProcessInstanceKeyF
 	return newFilterPtr(v, (*camundav88.ProcessInstanceKeyFilterProperty).FromProcessInstanceKeyFilterProperty0)
 }
 
+func NewProcessDefinitionKeyEqFilterPtr(v string) (*camundav88.ProcessDefinitionKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	return newFilterPtr(v, (*camundav88.ProcessDefinitionKeyFilterProperty).FromProcessDefinitionKeyFilterProperty0)
+}
+
 func NewScopeKeyEqFilterPtr(v string) (*camundav88.ScopeKeyFilterProperty, error) {
 	if v == "" {
 		return nil, nil
@@ -74,6 +81,7 @@ func NewDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) (*camunda
 func ProcessInstanceFilterHasTenantSafeLookupFields(filter d.ProcessInstanceFilter) bool {
 	return filter.Key != "" ||
 		filter.BpmnProcessId != "" ||
+		filter.ProcessDefinitionKey != "" ||
 		filter.ProcessVersion != 0 ||
 		filter.ProcessVersionTag != "" ||
 		filter.ParentKey != "" ||

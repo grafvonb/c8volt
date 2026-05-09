@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -21,14 +22,14 @@ var (
 var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Delete process definition resources",
-	Long: "Delete process definition resources from Zeebe.\n\n" +
-		"By default c8volt prompts before the destructive step. Without --allow-inconsistent, it prepares definitions for later manual cleanup instead of forcing inconsistent Operate state.\n\n" +
-		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pd`.",
+	Long: "Delete process definition resources from Camunda.\n\n" +
+		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history.\n\n" +
+		"Use --auto-confirm for unattended destructive runs. Add --no-wait to return after Camunda accepts the deletion and verify later with `get pd`.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --force
-  ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --allow-inconsistent --auto-confirm --no-wait
-  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json
-  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --allow-inconsistent --auto-confirm --no-wait -`,
+	  ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm --no-wait
+	  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json
+	  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --auto-confirm --no-wait -`,
 	Aliases: []string{"pd"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -79,12 +80,21 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no process definitions found to delete")))
 		}
 
-		renderHumanWarningLine(cmd, "WARNING: This removes process-definition resources from Zeebe only. Operate history remains and must be cleaned up manually.")
-		prompt := fmt.Sprintf("Delete %d process definition(s) from Zeebe?", len(keys))
-		if !flagAllowInconsistent {
-			renderHumanWarningLine(cmd, "Without --allow-inconsistent, c8volt prepares deletion only (for example, cancels active instances).")
-			prompt = fmt.Sprintf("Prepare %d process definition(s) for later manual deletion?", len(keys))
+		impactPlan, err := cli.PreviewDeleteProcessDefinitions(cmd.Context(), keys, collectOptions()...)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("checking process-definition delete impact: %w", err))
 		}
+		renderDeleteProcessDefinitionImpact(cmd, impactPlan)
+		totals := impactPlan.Totals()
+		if !flagNoStateCheck && !flagForce && totals.ActiveProcessInstances > 0 {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("%d active process instance(s) block deletion; use --force to cancel them before deleting process definitions", totals.ActiveProcessInstances)))
+		}
+		if !flagNoWait {
+			if err := cli.CheckBatchOperationReadAccess(cmd.Context(), collectOptions()...); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("cannot confirm asynchronous history deletion because this identity cannot read Camunda batch operations: %w", err)))
+			}
+		}
+		prompt := "Proceed with this deletion?"
 		if err := confirmCmdOrAbort(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -98,13 +108,37 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	},
 }
 
+func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.DeleteProcessDefinitionPlan) {
+	totals := plan.Totals()
+	if plan.StateCheckSkipped {
+		renderHumanLine(cmd, "delete impact check: %d process definition(s); process-instance state check skipped; no changes made yet", totals.ProcessDefinitions)
+		renderHumanWarningLine(cmd, "Deletion is irreversible: process-definition resources and associated history will be removed.")
+		return
+	}
+	if totals.ActiveProcessInstances == 0 {
+		renderHumanLine(cmd, "delete impact check: %d process definition(s); no active process instances found; no changes made yet", totals.ProcessDefinitions)
+		renderHumanWarningLine(cmd, "Deletion is irreversible: process-definition resources and associated history will be removed.")
+		return
+	}
+	if flagForce {
+		renderHumanLine(cmd, "delete impact check: %d process definition(s); %d active process instance(s) found; no changes made yet", totals.ProcessDefinitions, totals.ActiveProcessInstances)
+		renderHumanLine(cmd, "--force will cancel %d root process instance(s), then delete %d affected process instance(s), before deleting process definitions", totals.CancellationRoots, totals.CancellationAffected)
+	} else {
+		renderHumanLine(cmd, "delete impact check: %d process definition(s); %d active process instance(s) found; no changes made yet", totals.ProcessDefinitions, totals.ActiveProcessInstances)
+		return
+	}
+	for _, warning := range plan.Warnings {
+		renderHumanWarningLine(cmd, "%s", warning)
+	}
+	renderHumanWarningLine(cmd, "Deletion is irreversible: process-definition resources and associated history will be removed.")
+}
+
 func init() {
 	deleteCmd.AddCommand(deleteProcessDefinitionCmd)
 
 	fs := deleteProcessDefinitionCmd.Flags()
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion work is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
-	fs.BoolVar(&flagAllowInconsistent, "allow-inconsistent", false, "allow deletion of process definitions even if their state will become inconsistent (not deleted from Operate's data)")
 	fs.StringSliceVarP(&flagDeletePDKeys, "key", "k", nil, "process definition key(s) to delete")
 	fs.StringVarP(&flagDeletePDBpmnProcessId, "bpmn-process-id", "b", "", "BPMN process ID of the process definition (all versions) to delete")
 	fs.Int32Var(&flagDeletePDProcessVersion, "pd-version", 0, "process definition version")

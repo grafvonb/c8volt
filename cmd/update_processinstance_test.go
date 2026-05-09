@@ -75,6 +75,51 @@ func TestUpdatePICommand_SubmitsV88UpdateAndConfirmsVariables(t *testing.T) {
 	require.Equal(t, "confirmed", item["confirmationStatus"])
 }
 
+// Protects the existing `update pi --vars` request path after adding resolve commands.
+func TestUpdatePICommand_RegressionVarsUsesVariableMutationAndConfirmation(t *testing.T) {
+	var requests []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r.Method+" "+r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v2/variables/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			if len(requests) == 1 {
+				_, _ = w.Write([]byte(emptyVariableSearchResponse()))
+				return
+			}
+			_, _ = w.Write([]byte(variableSearchResponse(`{"name":"foo","value":"\"bar\"","variableKey":"901","processInstanceKey":"2251799813711967","scopeKey":"2251799813711967","tenantId":"<default>"}`)))
+		case "/v2/element-instances/2251799813711967/variables":
+			require.Equal(t, http.MethodPut, r.Method)
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]any{"foo": "bar"}, body["variables"])
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", cfgPath,
+		"update", "pi",
+		"--key", "2251799813711967",
+		"--vars", `{"foo":"bar"}`,
+		"--auto-confirm",
+	)
+
+	require.Equal(t, []string{
+		"POST /v2/variables/search",
+		"PUT /v2/element-instances/2251799813711967/variables",
+		"POST /v2/variables/search",
+	}, requests)
+	require.Contains(t, output, "updated process-instance 2251799813711967: confirmed")
+	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
+}
+
 func TestUpdatePICommand_VarsFileSubmitsAndConfirmsVariables(t *testing.T) {
 	var sawUpdate bool
 	var sawConfirmation bool
@@ -247,7 +292,7 @@ func TestUpdateProcessInstanceCommand_StdinKeysMergeAndDeduplicateWithFlagKeys(t
 	require.Contains(t, stdout, "updated: 2")
 }
 
-func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterPreflightOnly(t *testing.T) {
+func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterImpactCheckOnly(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -285,7 +330,7 @@ func TestUpdateProcessInstanceCommand_NoWaitReturnsSubmittedAfterPreflightOnly(t
 	require.Contains(t, output, "updated: 1 (confirmed/submitted: 1, failed: 0)")
 }
 
-func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterPreflightOnly(t *testing.T) {
+func TestUpdateProcessInstanceCommand_NoWaitJSONReportsSubmittedResultsAfterImpactCheckOnly(t *testing.T) {
 	var sawUpdate bool
 	searchCalls := 0
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

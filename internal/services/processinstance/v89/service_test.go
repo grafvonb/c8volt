@@ -189,6 +189,7 @@ func TestService_SearchAndLookup(t *testing.T) {
 				payload := readBody(t, body)
 				assert.Contains(t, payload, `"tenantId":"tenant"`)
 				assert.Contains(t, payload, `"processDefinitionId":"demo"`)
+				assert.Contains(t, payload, `"processDefinitionKey":"9001"`)
 				assert.Contains(t, payload, `"processDefinitionVersion":3`)
 				assert.Contains(t, payload, `"processDefinitionVersionTag":"stable"`)
 				assert.Contains(t, payload, `"state":"ACTIVE"`)
@@ -206,12 +207,13 @@ func TestService_SearchAndLookup(t *testing.T) {
 		})
 
 		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{
-			BpmnProcessId:     "demo",
-			ProcessVersion:    3,
-			ProcessVersionTag: "stable",
-			State:             d.StateActive,
-			ParentKey:         "456",
-			EndDateBefore:     "2026-04-03",
+			BpmnProcessId:        "demo",
+			ProcessDefinitionKey: "9001",
+			ProcessVersion:       3,
+			ProcessVersionTag:    "stable",
+			State:                d.StateActive,
+			ParentKey:            "456",
+			EndDateBefore:        "2026-04-03",
 		}, d.ProcessInstancePageRequest{From: 0, Size: 25})
 
 		require.NoError(t, err)
@@ -222,6 +224,30 @@ func TestService_SearchAndLookup(t *testing.T) {
 		require.NotNil(t, page.ReportedTotal)
 		assert.EqualValues(t, 2, page.ReportedTotal.Count)
 		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+	})
+
+	t.Run("DoesNotTreatLowerBoundTotalMetadataAsAnotherPageWhenNoItemsAreReturned", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 10000, HasMoreTotalItems: true},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 10000, Size: 500})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 10000, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+		require.Empty(t, page.Items)
 	})
 
 	t.Run("MapsCanceledSearchStateToTerminated", func(t *testing.T) {

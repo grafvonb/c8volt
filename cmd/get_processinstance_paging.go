@@ -241,7 +241,7 @@ func isCmdAborted(err error) bool {
 // run after the page is fetched, so totals from Operate would overstate the final
 // output for those modes.
 func canUsePIReportedTotal() bool {
-	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
+	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || hasPIIncidentDetailFilters())
 }
 
 // canUsePIExactReportedTotal guards the fast total path used by count-style

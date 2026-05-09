@@ -47,6 +47,7 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
 		ParentKey:                 x.ParentKey,
 		ProcessDefinitionKey:      x.ProcessDefinitionKey,
+		RootProcessInstanceKey:    x.RootProcessInstanceKey,
 		ProcessVersion:            x.ProcessVersion,
 		ProcessVersionTag:         x.ProcessVersionTag,
 		StartDate:                 x.StartDate,
@@ -79,6 +80,7 @@ func fromDomainProcessInstances(xs []d.ProcessInstance) ProcessInstances {
 func fromDomainProcessInstanceIncidentDetail(x d.ProcessInstanceIncidentDetail) ProcessInstanceIncidentDetail {
 	return ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
+		CreationTime:           x.CreationTime,
 		ProcessInstanceKey:     x.ProcessInstanceKey,
 		TenantId:               x.TenantId,
 		State:                  x.State,
@@ -193,6 +195,7 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
 		ParentKey:                 x.ParentKey,
 		ProcessDefinitionKey:      x.ProcessDefinitionKey,
+		RootProcessInstanceKey:    x.RootProcessInstanceKey,
 		ProcessVersion:            x.ProcessVersion,
 		ProcessVersionTag:         x.ProcessVersionTag,
 		StartDate:                 x.StartDate,
@@ -220,6 +223,7 @@ func toDomainIncidentExpectation(x *IncidentExpectation) *bool {
 func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.ProcessInstanceIncidentDetail {
 	return d.ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
+		CreationTime:           x.CreationTime,
 		ProcessInstanceKey:     x.ProcessInstanceKey,
 		TenantId:               x.TenantId,
 		State:                  x.State,

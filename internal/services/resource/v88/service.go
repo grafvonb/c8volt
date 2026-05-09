@@ -5,6 +5,7 @@ package v88
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -66,21 +67,74 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error {
+func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
 
-	if cCfg.AllowInconsistent {
-		resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, camundav88.DeleteResourceOpJSONRequestBody{})
-		if err != nil {
-			return err
-		}
-		if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-			return err
-		}
-		return nil
+	body := camundav88.DeleteResourceOpJSONRequestBody{DeleteHistory: boolPtr(true)}
+	resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, body)
+	if err != nil {
+		return d.ResourceDeleteResponse{}, err
 	}
-	return nil
+	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
+		return d.ResourceDeleteResponse{}, err
+	}
+	result := d.ResourceDeleteResponse{
+		Ok:            true,
+		StatusCode:    resp.StatusCode(),
+		Status:        resp.Status(),
+		DeleteHistory: body.DeleteHistory != nil && *body.DeleteHistory,
+	}
+	if resp.JSON200 != nil && resp.JSON200.BatchOperation != nil {
+		result.BatchOperationKey = resp.JSON200.BatchOperation.BatchOperationKey
+		result.Status = fmt.Sprintf("%s; history deletion batch %s submitted", result.Status, result.BatchOperationKey)
+	}
+	if result.DeleteHistory && result.BatchOperationKey == "" {
+		return result, fmt.Errorf("%w: history deletion requested but Camunda did not return a batch operation", d.ErrMalformedResponse)
+	}
+	if !result.DeleteHistory || cCfg.NoWait || result.BatchOperationKey == "" {
+		return result, nil
+	}
+	state, err := s.waitForResourceHistoryDeletion(ctx, result.BatchOperationKey)
+	result.BatchState = string(state)
+	if err != nil {
+		return result, err
+	}
+	result.Status = fmt.Sprintf("%s; history deletion batch %s completed", resp.Status(), result.BatchOperationKey)
+	return result, nil
 }
+
+func (s *Service) waitForResourceHistoryDeletion(ctx context.Context, batchOperationKey string) (camundav88.BatchOperationStateEnum, error) {
+	var state camundav88.BatchOperationStateEnum
+	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
+		resp, err := s.c.GetBatchOperationWithResponse(ctx, batchOperationKey)
+		if err != nil {
+			return poller.JobPollStatus{}, err
+		}
+		payload, err := common.RequirePayload(resp.HTTPResponse, resp.Body, resp.JSON200)
+		if err != nil {
+			if errors.Is(err, d.ErrNotFound) {
+				return poller.JobPollStatus{
+					Success: false,
+					Message: fmt.Sprintf("history deletion batch %s not visible yet", batchOperationKey),
+				}, nil
+			}
+			return poller.JobPollStatus{}, err
+		}
+		state = payload.State
+		switch state {
+		case camundav88.BatchOperationStateEnumCOMPLETED:
+			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("history deletion batch %s completed", batchOperationKey)}, nil
+		case camundav88.BatchOperationStateEnumFAILED, camundav88.BatchOperationStateEnumCANCELED, camundav88.BatchOperationStateEnumPARTIALLYCOMPLETED:
+			return poller.JobPollStatus{}, fmt.Errorf("history deletion batch %s finished with state %s", batchOperationKey, state)
+		default:
+			return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("history deletion batch %s state %s", batchOperationKey, state)}, nil
+		}
+	}
+	err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll)
+	return state, err
+}
+
+func boolPtr(v bool) *bool { return &v }
 
 func (s *Service) Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error) {
 	_ = services.ApplyCallOptions(opts)

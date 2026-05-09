@@ -13,7 +13,7 @@ import (
 
 const (
 	indirectProcessTreeIncidentNote    = "process instance is marked as having incidents, but no direct incidents were found; inspect the process tree for child incident details"
-	indirectProcessTreeIncidentWarning = "warning: one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
+	indirectProcessTreeIncidentWarning = "one or more incident markers may refer to incidents in the process-instance tree; inspect with walk pi --key <key> --with-incidents"
 )
 
 // incidentEnrichedProcessInstancesView renders direct process-instance incident enrichment.
@@ -83,11 +83,17 @@ func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {
 	fields := make([]string, 0, 5)
 	fields = append(fields, "key="+key)
+	if incident.CreationTime != "" {
+		fields = append(fields, "creationTime="+incident.CreationTime)
+	}
 	if incident.FlowNodeId != "" {
 		fields = append(fields, "flowNodeId="+incident.FlowNodeId)
 	}
 	if incident.FlowNodeInstanceKey != "" {
 		fields = append(fields, "flowNodeInstanceKey="+incident.FlowNodeInstanceKey)
+	}
+	if incident.State != "" {
+		fields = append(fields, "state="+incident.State)
 	}
 	if incident.ErrorType != "" {
 		fields = append(fields, "errorType="+incident.ErrorType)

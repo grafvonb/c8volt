@@ -14,13 +14,14 @@ import (
 
 type API interface {
 	Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
-	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error
+	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error)
 	Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
 }
 
 type GenResourceClientCamunda interface {
 	CreateDeploymentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error)
 	DeleteResourceOpWithResponse(ctx context.Context, resourceKey camundav89.ResourceKey, body camundav89.DeleteResourceOpJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.DeleteResourceOpResponse, error)
+	GetBatchOperationWithResponse(ctx context.Context, batchOperationKey camundav89.BatchOperationKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetBatchOperationResponse, error)
 	GetResourceWithResponse(ctx context.Context, resourceKey camundav89.ResourceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetResourceResponse, error)
 }
 

@@ -6,6 +6,7 @@ package c8volt
 import (
 	"context"
 
+	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	"github.com/grafvonb/c8volt/c8volt/cluster"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -20,6 +21,7 @@ type API interface {
 	task.API
 	cluster.API
 	job.API
+	batchoperation.API
 	resource.API
 	tenant.API
 }

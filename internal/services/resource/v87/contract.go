@@ -14,7 +14,7 @@ import (
 
 type API interface {
 	Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
-	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error
+	Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error)
 	Get(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
 }
 

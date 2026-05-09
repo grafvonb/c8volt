@@ -20,6 +20,7 @@ This section is the generated command reference for `c8volt`. It is best read as
 
 - deploy BPMN and use it immediately
 - start process instances and confirm activation
+- resolve incidents by key or by process instance
 - inspect process families before changing them
 - cancel with root escalation when Camunda requires it
 - delete thoroughly instead of partially
@@ -36,6 +37,7 @@ If you are new to `c8volt`, start with the workflows that define the tool:
 - [deploy BPMN files](./c8volt_deploy_process-definition)
 - [run process instances](./c8volt_run_process-instance)
 - [update process-instance variables](./c8volt_update_process-instance)
+- [resolve incidents](./c8volt_resolve)
 - [walk process trees](./c8volt_walk_process-instance)
 - [cancel process instances](./c8volt_cancel_process-instance)
 - [delete process instances](./c8volt_delete_process-instance)
@@ -50,6 +52,10 @@ These are the workflows where `c8volt` stands apart from a basic CRUD-oriented C
   Start process instances and confirm they are actually active.
 - `update process-instance`
   Update process-instance variables and confirm requested values are visible.
+- `resolve incident`
+  Resolve known incident keys with dry-run previews and per-target results.
+- `resolve process-instance`
+  Discover and resolve active incidents for selected process instances.
 - `walk process-instance`
   Inspect parent/child structure before changing a live tree.
 - `cancel process-instance --force`
@@ -90,6 +96,8 @@ Tenant-aware operations are supported through the global `--tenant` flag and the
   Start process instances and confirm activation by default.
 - [update commands](./c8volt_update)
   Update existing resources.
+- [resolve commands](./c8volt_resolve)
+  Resolve operational incidents by incident key or process-instance key.
 - [walk commands](./c8volt_walk)
   Inspect ancestors, descendants, and full family trees.
 - [cancel commands](./c8volt_cancel)

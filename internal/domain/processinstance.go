@@ -13,6 +13,7 @@ type ProcessInstance struct {
 	ParentFlowNodeInstanceKey string
 	ParentKey                 string
 	ProcessDefinitionKey      string
+	RootProcessInstanceKey    string
 	ProcessVersion            int32
 	ProcessVersionTag         string
 	StartDate                 string
@@ -23,6 +24,7 @@ type ProcessInstance struct {
 
 type ProcessInstanceIncidentDetail struct {
 	IncidentKey            string
+	CreationTime           string
 	ProcessInstanceKey     string
 	TenantId               string
 	State                  string
@@ -34,6 +36,13 @@ type ProcessInstanceIncidentDetail struct {
 	RootProcessInstanceKey string
 	ProcessDefinitionKey   string
 	ProcessDefinitionId    string
+}
+
+type IncidentResolutionResponse struct {
+	Key        string
+	Ok         bool
+	StatusCode int
+	Status     string
 }
 
 type ProcessInstanceVariable struct {

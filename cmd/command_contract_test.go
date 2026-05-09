@@ -431,6 +431,133 @@ func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	require.Equal(t, AutomationSupportFull, updateJob.AutomationSupport)
 }
 
+func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(resolveIncidentCmd)
+
+	require.Equal(t, "resolve incident", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "inc")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to resolve; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when resolving multiple incidents (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview incident resolutions without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the resolution request is accepted without incident confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling new incident resolutions after the first error",
+	})
+}
+
+func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(resolveProcessInstanceCmd)
+
+	require.Equal(t, "resolve process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to resolve; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when resolving multiple process instances (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview process-instance incident resolutions without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after resolution requests are accepted without incident confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling new process-instance resolutions after the first error",
+	})
+}
+
+func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	resolve, ok := findCommandCapability(doc.Commands, "resolve")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, resolve.Mutation)
+	require.Equal(t, ContractSupportLimited, resolve.ContractSupport)
+	require.Contains(t, resolve.Aliases, "res")
+
+	incident, ok := findCommandCapability(doc.Commands, "resolve incident")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, incident.Mutation)
+	require.Equal(t, ContractSupportFull, incident.ContractSupport)
+	require.Equal(t, AutomationSupportFull, incident.AutomationSupport)
+	require.Contains(t, incident.Aliases, "inc")
+
+	processInstance, ok := findCommandCapability(doc.Commands, "resolve process-instance")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, processInstance.Mutation)
+	require.Equal(t, ContractSupportFull, processInstance.ContractSupport)
+	require.Equal(t, AutomationSupportFull, processInstance.AutomationSupport)
+	require.Contains(t, processInstance.Aliases, "pi")
+}
+
 func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get"}, []string{
 		"Inspect cluster, process, job, tenant, and resource state",
@@ -544,16 +671,16 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			name: "cancel pi",
 			args: []string{"cancel", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation.",
-				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
+				"If no matching instances are found, no cancellation request is submitted.",
 			},
 		},
 		{
 			name: "delete pi",
 			args: []string{"delete", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning deletion.",
-				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
+				"If no matching instances are found, no deletion request is submitted.",
 			},
 		},
 		{

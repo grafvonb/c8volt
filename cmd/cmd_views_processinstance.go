@@ -19,7 +19,7 @@ func printDryRunExpansionWarning(cmd *cobra.Command, plan process.DryRunPIKeyExp
 	if warning == "" {
 		warning = "one or more parent process instances were not found"
 	}
-	renderHumanWarningLine(cmd, "warning: %s", warning)
+	renderHumanWarningLine(cmd, "%s", warning)
 
 	if len(plan.MissingAncestors) == 0 {
 		return

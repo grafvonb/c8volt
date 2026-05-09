@@ -132,6 +132,66 @@ func TestGeneratedProcessInstanceDocsDocumentHasUserTasksLookup(t *testing.T) {
 	}
 }
 
+// TestGeneratedResolveDocsDocumentResolveWorkflows protects generated docs for the incident recovery command family.
+func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	resolveDoc := readGeneratedDocForTest(t, out, "c8volt_resolve.md")
+	for _, want := range []string{
+		"Resolve operational incidents.",
+		"./c8volt resolve incident --key 2251799813685249",
+		"[c8volt resolve incident](c8volt_resolve_incident)",
+		"[c8volt resolve process-instance](c8volt_resolve_process-instance)",
+	} {
+		if !strings.Contains(resolveDoc, want) {
+			t.Fatalf("expected generated resolve docs to contain %q, got %q", want, resolveDoc)
+		}
+	}
+
+	incidentDoc := readGeneratedDocForTest(t, out, "c8volt_resolve_incident.md")
+	for _, want := range []string{
+		"Resolve incidents by key.",
+		"Each unique incident key is submitted for resolution and reported independently.",
+		"./c8volt resolve inc --key 2251799813685249 --key 2251799813685250",
+		"--dry-run",
+		"preview incident resolutions without submitting mutation",
+		"--no-wait",
+		"return after the resolution request is accepted without incident confirmation",
+	} {
+		if !strings.Contains(incidentDoc, want) {
+			t.Fatalf("expected generated resolve incident docs to contain %q, got %q", want, incidentDoc)
+		}
+	}
+
+	processInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_resolve_process-instance.md")
+	for _, want := range []string{
+		"Resolve process-instance incidents by key.",
+		"discovers active incidents at command start",
+		"./c8volt resolve pi --key 2251799813685250 --key 2251799813685260",
+		"--dry-run",
+		"preview process-instance incident resolutions without submitting mutation",
+		"--no-wait",
+		"return after resolution requests are accepted without incident confirmation",
+	} {
+		if !strings.Contains(processInstanceDoc, want) {
+			t.Fatalf("expected generated resolve process-instance docs to contain %q, got %q", want, processInstanceDoc)
+		}
+	}
+}
+
 // TestGeneratedConfigDocsDocumentSplitDiagnostics protects generated command docs for config diagnostics.
 func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 	out := t.TempDir()

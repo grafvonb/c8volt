@@ -14,7 +14,7 @@ Delete process instances by key or search filters, optionally cancelling first.
 
 By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.
 
-When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning deletion. A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.
+When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no deletion request is submitted.
 
 Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.
 

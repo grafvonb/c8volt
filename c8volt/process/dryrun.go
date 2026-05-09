@@ -10,6 +10,8 @@ import (
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/internal/services"
+	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/pool"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
@@ -19,8 +21,8 @@ type legacyDryRunTraversalOnly interface {
 
 // DryRunCancelOrDeleteGetPIKeys returns the root keys and all collected descendant keys that would be affected.
 // keys are the user-selected process-instance keys; opts controls traversal verbosity and behavior through facade options.
-func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (roots types.Keys, collected types.Keys, err error) {
-	plan, err := c.DryRunCancelOrDeletePlan(ctx, keys, opts...)
+func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (roots types.Keys, collected types.Keys, err error) {
+	plan, err := c.DryRunCancelOrDeletePlan(ctx, keys, wantedWorkers, opts...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -29,33 +31,46 @@ func (c *client) DryRunCancelOrDeleteGetPIKeys(ctx context.Context, keys types.K
 
 // DryRunCancelOrDeletePlan expands selected process-instance keys into the cancellation/deletion dependency plan.
 // keys may contain children; the returned plan reports unique roots, descendants, partial traversal warnings, and missing ancestors.
-func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+func (c *client) DryRunCancelOrDeletePlan(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
 	if legacyOnly, ok := c.piApi.(legacyDryRunTraversalOnly); ok && legacyOnly.LegacyDryRunTraversalOnly() {
-		return c.dryRunCancelOrDeletePlanLegacy(ctx, keys, opts...)
+		return c.dryRunCancelOrDeletePlanLegacy(ctx, keys, wantedWorkers, opts...)
 	}
 
 	var roots types.Keys
 	var collected types.Keys
-	var ancestryResults []TraversalResult
-	for _, key := range keys {
+	cfg := options.ApplyFacadeOptions(opts)
+	ukeys := keys.Unique()
+	ancestryWorkers := toolx.DetermineNoOfWorkers(len(ukeys), wantedWorkers, cfg.NoWorkerLimit)
+	ancestryResults, err := pool.ExecuteSlice[string, TraversalResult](ctx, ukeys, ancestryWorkers, cfg.FailFast, func(ctx context.Context, key string, _ int) (TraversalResult, error) {
 		result, err := c.AncestryResult(ctx, key, opts...)
 		if err != nil {
-			return DryRunPIKeyExpansion{}, ferr.FromDomain(err)
+			return TraversalResult{}, ferr.FromDomain(err)
 		}
-		ancestryResults = append(ancestryResults, result)
+		return result, nil
+	})
+	if err != nil {
+		return DryRunPIKeyExpansion{}, err
+	}
+
+	for _, result := range ancestryResults {
 		if result.RootKey != "" {
 			roots = append(roots, result.RootKey)
 		}
 	}
 	roots = roots.Unique()
 
-	var descendantResults []TraversalResult
-	for _, root := range roots {
+	descendantWorkers := toolx.DetermineNoOfWorkers(len(roots), wantedWorkers, cfg.NoWorkerLimit)
+	descendantResults, err := pool.ExecuteSlice[string, TraversalResult](ctx, roots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (TraversalResult, error) {
 		result, err := c.DescendantsResult(ctx, root, opts...)
 		if err != nil {
-			return DryRunPIKeyExpansion{}, ferr.FromDomain(err)
+			return TraversalResult{}, ferr.FromDomain(err)
 		}
-		descendantResults = append(descendantResults, result)
+		return result, nil
+	})
+	if err != nil {
+		return DryRunPIKeyExpansion{}, err
+	}
+	for _, result := range descendantResults {
 		collected = append(collected, result.Keys...)
 	}
 
@@ -156,24 +171,42 @@ func selectedFinalStateProcessInstances(keys types.Keys, results []TraversalResu
 
 // dryRunCancelOrDeletePlanLegacy preserves the older traversal contract for services that cannot report structured partial results.
 // It treats successful ancestry and descendant calls as a complete plan and leaves missing-ancestor details unavailable.
-func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
+func (c *client) dryRunCancelOrDeletePlanLegacy(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (DryRunPIKeyExpansion, error) {
 	var roots types.Keys
 	var collected types.Keys
+	cfg := options.ApplyFacadeOptions(opts)
+	ukeys := keys.Unique()
 
-	for _, key := range keys {
+	ancestryWorkers := toolx.DetermineNoOfWorkers(len(ukeys), wantedWorkers, cfg.NoWorkerLimit)
+	legacyRoots, err := pool.ExecuteSlice[string, string](ctx, ukeys, ancestryWorkers, cfg.FailFast, func(ctx context.Context, key string, _ int) (string, error) {
 		rootKey, _, _, err := c.Ancestry(ctx, key, opts...)
 		if err != nil {
-			return DryRunPIKeyExpansion{}, err
+			return "", err
 		}
-		roots = append(roots, rootKey)
+		return rootKey, nil
+	})
+	if err != nil {
+		return DryRunPIKeyExpansion{}, err
+	}
+	for _, rootKey := range legacyRoots {
+		if rootKey != "" {
+			roots = append(roots, rootKey)
+		}
 	}
 	roots = roots.Unique()
 
-	for _, root := range roots {
+	descendantWorkers := toolx.DetermineNoOfWorkers(len(roots), wantedWorkers, cfg.NoWorkerLimit)
+	descendantLists, err := pool.ExecuteSlice[string, types.Keys](ctx, roots, descendantWorkers, cfg.FailFast, func(ctx context.Context, root string, _ int) (types.Keys, error) {
 		desc, _, _, err := c.Descendants(ctx, root, opts...)
 		if err != nil {
-			return DryRunPIKeyExpansion{}, err
+			return nil, err
 		}
+		return desc, nil
+	})
+	if err != nil {
+		return DryRunPIKeyExpansion{}, err
+	}
+	for _, desc := range descendantLists {
 		collected = append(collected, desc...)
 	}
 

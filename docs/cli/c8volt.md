@@ -63,6 +63,7 @@ c8volt [flags]
 * [c8volt embed](c8volt_embed)	 - Use bundled BPMN fixtures
 * [c8volt expect](c8volt_expect)	 - Wait for process instances to satisfy expectations
 * [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
+* [c8volt resolve](c8volt_resolve)	 - Resolve operational incidents
 * [c8volt run](c8volt_run)	 - Start process instances
 * [c8volt update](c8volt_update)	 - Update existing resources
 * [c8volt version](c8volt_version)	 - Print version information

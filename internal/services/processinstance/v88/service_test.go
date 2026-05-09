@@ -273,6 +273,7 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 				payload := marshalJSON(t, body)
 				assert.Contains(t, payload, `"tenantId":"tenant"`)
 				assert.Contains(t, payload, `"processDefinitionId":"demo"`)
+				assert.Contains(t, payload, `"processDefinitionKey":"9001"`)
 				assert.Contains(t, payload, `"processDefinitionVersion":3`)
 				assert.Contains(t, payload, `"processDefinitionVersionTag":"stable"`)
 				assert.Contains(t, payload, `"state":"ACTIVE"`)
@@ -289,11 +290,12 @@ func TestService_SearchForProcessInstances(t *testing.T) {
 		}, newStrictOperateClient(t))
 
 		items, err := svc.SearchForProcessInstances(ctx, d.ProcessInstanceFilter{
-			BpmnProcessId:     "demo",
-			ProcessVersion:    3,
-			ProcessVersionTag: "stable",
-			State:             d.StateActive,
-			ParentKey:         "456",
+			BpmnProcessId:        "demo",
+			ProcessDefinitionKey: "9001",
+			ProcessVersion:       3,
+			ProcessVersionTag:    "stable",
+			State:                d.StateActive,
+			ParentKey:            "456",
 		}, 25)
 
 		require.NoError(t, err)
@@ -642,6 +644,35 @@ func TestService_SearchForProcessInstancesPage_UsesNativePageMetadata(t *testing
 		assert.EqualValues(t, 2, page.ReportedTotal.Count)
 		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
 		require.Len(t, page.Items, 2)
+	})
+
+	t.Run("does not treat lower-bound total metadata as another page when no items are returned", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, body camundav88.SearchProcessInstancesJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstancesResponse, error) {
+				return &camundav88.SearchProcessInstancesResponse{
+					HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/search", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.ProcessInstanceSearchQueryResult{
+						Items: []camundav88.ProcessInstanceResult{},
+						Page: camundav88.SearchQueryPageResponse{
+							TotalItems:        10000,
+							HasMoreTotalItems: true,
+						},
+					},
+				}, nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+		}, newStrictOperateClient(t))
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 10000, Size: 500})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 10000, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+		require.Empty(t, page.Items)
 	})
 }
 

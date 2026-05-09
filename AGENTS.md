@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/180-job-update-lookup/plan.md`
+- Active implementation plan: `specs/181-resolve-incident-commands/plan.md`
 <!-- SPECKIT END -->
