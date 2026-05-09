@@ -5,6 +5,7 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sort"
 
@@ -15,6 +16,9 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/toolx/logging"
+	"github.com/grafvonb/c8volt/toolx/pool"
+	types "github.com/grafvonb/c8volt/typex"
 )
 
 type client struct {
@@ -76,6 +80,53 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 		return ProcessInstance{}, ferr.FromDomain(err)
 	}
 	return fromDomainProcessInstance(pi), nil
+}
+
+// GetIncident exposes direct incident lookup through the public facade error model.
+func (c *client) GetIncident(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstanceIncidentDetail, error) {
+	incident, err := c.incApi.GetIncident(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return ProcessInstanceIncidentDetail{}, ferr.FromDomain(err)
+	}
+	return fromDomainProcessInstanceIncidentDetail(incident), nil
+}
+
+// GetIncidents fetches unique incident keys with bounded parallelism.
+func (c *client) GetIncidents(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (Incidents, error) {
+	cfg := options.ApplyFacadeOptions(opts)
+	ukeys := keys.Unique()
+	workers := toolx.DetermineNoOfWorkers(len(ukeys), wantedWorkers, cfg.NoWorkerLimit)
+	logging.InfoIfVerbose(fmt.Sprintf("getting %d incident(s) using %d worker(s)", len(ukeys), workers), c.log, cfg.Verbose)
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("getting %d incident(s)", len(ukeys)))
+	defer stopActivity()
+	items, err := pool.ExecuteSlice[string, ProcessInstanceIncidentDetail](ctx, ukeys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) (ProcessInstanceIncidentDetail, error) {
+		return c.GetIncident(ctx, key, opts...)
+	})
+	if err != nil {
+		return Incidents{}, err
+	}
+	return Incidents{
+		Total: int32(len(items)),
+		Items: items,
+	}, nil
+}
+
+// SearchIncidents exposes top-level incident list/search through the incident service boundary.
+func (c *client) SearchIncidents(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
+	incidents, err := c.incApi.SearchIncidents(ctx, toDomainIncidentFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return Incidents{}, ferr.FromDomain(err)
+	}
+	return fromDomainIncidents(incidents), nil
+}
+
+// SearchIncidentsPage exposes one top-level incident search page with service-owned request semantics.
+func (c *client) SearchIncidentsPage(ctx context.Context, filter IncidentFilter, page IncidentPageRequest, opts ...options.FacadeOption) (IncidentPage, error) {
+	incidents, err := c.incApi.SearchIncidentsPage(ctx, toDomainIncidentFilter(filter), toDomainIncidentPageRequest(page), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return IncidentPage{}, ferr.FromDomain(err)
+	}
+	return fromDomainIncidentPage(incidents), nil
 }
 
 // SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.

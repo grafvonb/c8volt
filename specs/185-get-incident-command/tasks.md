@@ -28,20 +28,20 @@
 
 **CRITICAL**: No user story command work should begin until this phase is complete.
 
-- [ ] T005 Add incident query/filter facade models and result metadata in `c8volt/process/model.go`
-- [ ] T006 Extend the process facade API for keyed incident lookup and incident search/list in `c8volt/process/api.go`
-- [ ] T007 Extend conversion helpers for incident query/filter/result values in `c8volt/process/convert.go`
-- [ ] T008 Extend the incident service API with top-level incident search/list support in `internal/services/incident/api.go`
-- [ ] T009 [P] Add v8.7 unsupported incident search/list tests in `internal/services/incident/v87/incidents_test.go`
-- [ ] T010 [P] Add v8.8 incident search/list compatibility tests in `internal/services/incident/v88/incidents_test.go`
-- [ ] T011 [P] Add v8.9 incident search/list server-filter tests in `internal/services/incident/v89/incidents_test.go`
-- [ ] T012 Implement v8.7 unsupported incident search/list behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
-- [ ] T013 Implement v8.8 incident search/list compatibility path in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v88/convert.go`, and `internal/services/incident/v88/contract.go`
-- [ ] T014 Implement v8.9 incident search/list server-side filters in `internal/services/incident/v89/incidents.go`, `internal/services/incident/v89/convert.go`, and `internal/services/incident/v89/contract.go`
-- [ ] T015 Add factory/API compile and version selection tests for incident search/list in `internal/services/incident/factory_test.go`
-- [ ] T016 Add shared incident row formatting helpers reusable by process-instance and incident output in `cmd/cmd_views_processinstance_incidents.go`
-- [ ] T017 Add facade tests for incident query validation, service option mapping, result metadata, and unsupported-version propagation in `c8volt/process/client_test.go`
-- [ ] T018 Implement facade orchestration for keyed lookup and incident search/list in `c8volt/process/client.go`
+- [x] T005 Add incident query/filter facade models and result metadata in `c8volt/process/model.go`
+- [x] T006 Extend the process facade API for keyed incident lookup and incident search/list in `c8volt/process/api.go`
+- [x] T007 Extend conversion helpers for incident query/filter/result values in `c8volt/process/convert.go`
+- [x] T008 Extend the incident service API with top-level incident search/list support in `internal/services/incident/api.go`
+- [x] T009 [P] Add v8.7 unsupported incident search/list tests in `internal/services/incident/v87/incidents_test.go`
+- [x] T010 [P] Add v8.8 incident search/list compatibility tests in `internal/services/incident/v88/incidents_test.go`
+- [x] T011 [P] Add v8.9 incident search/list server-filter tests in `internal/services/incident/v89/incidents_test.go`
+- [x] T012 Implement v8.7 unsupported incident search/list behavior in `internal/services/incident/v87/incidents.go` and `internal/services/incident/v87/contract.go`
+- [x] T013 Implement v8.8 incident search/list compatibility path in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v88/convert.go`, and `internal/services/incident/v88/contract.go`
+- [x] T014 Implement v8.9 incident search/list server-side filters in `internal/services/incident/v89/incidents.go`, `internal/services/incident/v89/convert.go`, and `internal/services/incident/v89/contract.go`
+- [x] T015 Add factory/API compile and version selection tests for incident search/list in `internal/services/incident/factory_test.go`
+- [x] T016 Add shared incident row formatting helpers reusable by process-instance and incident output in `cmd/cmd_views_processinstance_incidents.go`
+- [x] T017 Add facade tests for incident query validation, service option mapping, result metadata, and unsupported-version propagation in `c8volt/process/client_test.go`
+- [x] T018 Implement facade orchestration for keyed lookup and incident search/list in `c8volt/process/client.go`
 
 **Checkpoint**: Incident service and facade can return incident details for keyed lookup and search/list without CLI command wiring.
 

@@ -25,6 +25,7 @@ import (
 type mockIncidentClient struct {
 	getIncident                    func(context.Context, camundav88.IncidentKey, ...camundav88.RequestEditorFn) (*camundav88.GetIncidentResponse, error)
 	resolveIncident                func(context.Context, camundav88.IncidentKey, camundav88.ResolveIncidentJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.ResolveIncidentResponse, error)
+	searchIncidents                func(context.Context, camundav88.SearchIncidentsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error)
 	searchProcessInstanceIncidents func(context.Context, string, camundav88.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error)
 }
 
@@ -34,6 +35,10 @@ func (m mockIncidentClient) GetIncidentWithResponse(ctx context.Context, key cam
 
 func (m mockIncidentClient) ResolveIncidentWithResponse(ctx context.Context, key camundav88.IncidentKey, body camundav88.ResolveIncidentJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.ResolveIncidentResponse, error) {
 	return m.resolveIncident(ctx, key, body, reqEditors...)
+}
+
+func (m mockIncidentClient) SearchIncidentsWithResponse(ctx context.Context, body camundav88.SearchIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+	return m.searchIncidents(ctx, body, reqEditors...)
 }
 
 func (m mockIncidentClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
@@ -251,6 +256,56 @@ func TestSearchProcessInstanceIncidentsPaginatesBeforeLocalFiltering(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, []int32{0, 1}, fromValues)
 	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
+}
+
+func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *testing.T) {
+	t.Parallel()
+
+	createdAt := time.Date(2026, 5, 9, 10, 0, 0, 0, time.UTC)
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			require.NotNil(t, body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			require.EqualValues(t, 25, *page.From)
+			require.NotNil(t, page.Limit)
+			require.EqualValues(t, 10, *page.Limit)
+			rootKey := "root-a"
+			otherRoot := "root-b"
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{
+						{IncidentKey: "skip-state", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "intentional", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
+						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &rootKey, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
+						{IncidentKey: "skip-root", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumRESOLVED, ErrorType: camundav88.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "Intentional failure", ElementId: "task-a", ElementInstanceKey: "fni-a", CreationTime: createdAt, RootProcessInstanceKey: &otherRoot, ProcessDefinitionKey: "pd-key", ProcessDefinitionId: "pd-id"},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 3},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		State:                  "resolved",
+		ErrorType:              "io_mapping_error",
+		ErrorMessage:           "intentional",
+		ProcessInstanceKey:     "pi-a",
+		RootProcessInstanceKey: "root-a",
+		ProcessDefinitionKey:   "pd-key",
+		ProcessDefinitionId:    "pd-id",
+		FlowNodeId:             "task-a",
+		FlowNodeInstanceKey:    "fni-a",
+		CreationTimeAfter:      "2026-05-09T09:00:00Z",
+		CreationTimeBefore:     "2026-05-09T11:00:00Z",
+	}, d.IncidentPageRequest{From: 25, Size: 10})
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPageRequest{From: 25, Size: 10}, got.Request)
+	require.Nil(t, got.ReportedTotal)
+	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
 }
 
 func incidentDetailKeys(items []d.ProcessInstanceIncidentDetail) []string {

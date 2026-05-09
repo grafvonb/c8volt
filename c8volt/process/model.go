@@ -91,6 +91,51 @@ type ProcessInstanceIncidentDetail struct {
 	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
 }
 
+type IncidentFilter struct {
+	State                  string `json:"state,omitempty"`
+	ErrorType              string `json:"errorType,omitempty"`
+	ErrorMessage           string `json:"errorMessage,omitempty"`
+	ProcessInstanceKey     string `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
+	FlowNodeId             string `json:"flowNodeId,omitempty"`
+	FlowNodeInstanceKey    string `json:"flowNodeInstanceKey,omitempty"`
+	CreationTimeAfter      string `json:"creationTimeAfter,omitempty"`
+	CreationTimeBefore     string `json:"creationTimeBefore,omitempty"`
+}
+
+type Incidents struct {
+	Total int32                           `json:"total,omitempty"`
+	Items []ProcessInstanceIncidentDetail `json:"items,omitempty"`
+}
+
+type IncidentPageRequest struct {
+	From  int32  `json:"from,omitempty"`
+	Size  int32  `json:"size,omitempty"`
+	After string `json:"after,omitempty"`
+}
+
+type IncidentReportedTotalKind string
+
+const (
+	IncidentReportedTotalKindExact      IncidentReportedTotalKind = "exact"
+	IncidentReportedTotalKindLowerBound IncidentReportedTotalKind = "lower_bound"
+)
+
+type IncidentReportedTotal struct {
+	Count int64                     `json:"count,omitempty"`
+	Kind  IncidentReportedTotalKind `json:"kind,omitempty"`
+}
+
+type IncidentPage struct {
+	Request       IncidentPageRequest             `json:"request,omitempty"`
+	OverflowState ProcessInstanceOverflowState    `json:"overflowState,omitempty"`
+	ReportedTotal *IncidentReportedTotal          `json:"reportedTotal,omitempty"`
+	EndCursor     string                          `json:"endCursor,omitempty"`
+	Items         []ProcessInstanceIncidentDetail `json:"items,omitempty"`
+}
+
 type ResolutionOperation string
 
 const (

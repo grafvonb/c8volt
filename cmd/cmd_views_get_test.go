@@ -668,6 +668,16 @@ func TestIncidentHumanLine_RendersUnavailableJobKeyWhenMissing(t *testing.T) {
 	require.Equal(t, "key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=IO_MAPPING_ERROR jobKey=n/a message=Mapping failed", got)
 }
 
+func TestIncidentHumanLineWithMessageLimit_ReusesSharedIncidentRowFormatter(t *testing.T) {
+	got := incidentHumanLineWithMessageLimit(process.ProcessInstanceIncidentDetail{
+		IncidentKey:  "incident-123",
+		ErrorMessage: "Mapping failed in worker",
+		State:        "ACTIVE",
+	}, 7)
+
+	require.Equal(t, "key=incident-123 state=ACTIVE jobKey=n/a message=Mapping...", got)
+}
+
 func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkerRendersRowNote(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = false

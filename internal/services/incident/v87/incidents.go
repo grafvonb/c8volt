@@ -27,6 +27,26 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 	return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, fmt.Errorf("%w: incident resolution is not supported in Camunda 8.7", d.ErrUnsupported)
 }
 
+// SearchIncidents rejects top-level incident search because Camunda 8.7 has no tenant-safe endpoint.
+func (s *Service) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	_ = ctx
+	_ = filter
+	_ = size
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug("rejecting incident search because Camunda 8.7 has no tenant-safe endpoint")
+	return nil, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
+}
+
+// SearchIncidentsPage rejects top-level incident search because Camunda 8.7 has no tenant-safe endpoint.
+func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+	_ = ctx
+	_ = filter
+	_ = page
+	_ = services.ApplyCallOptions(opts)
+	s.log.Debug("rejecting incident page search because Camunda 8.7 has no tenant-safe endpoint")
+	return d.IncidentPage{}, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
+}
+
 // SearchProcessInstanceIncidents rejects incident lookup because Camunda 8.7 has no tenant-safe endpoint.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = ctx

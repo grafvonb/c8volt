@@ -71,11 +71,16 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 
 // incidentHumanLine formats a human-readable incident detail line with compact attributes.
 func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
+	return incidentHumanLineWithMessageLimit(incident, flagGetPIIncidentMessageLimit)
+}
+
+// incidentHumanLineWithMessageLimit formats shared incident rows for process-instance and plain incident output.
+func incidentHumanLineWithMessageLimit(incident process.ProcessInstanceIncidentDetail, messageLimit int) string {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
 	}
-	message := truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit)
+	message := truncateIncidentHumanMessage(incident.ErrorMessage, messageLimit)
 	fields := incidentHumanFields(incident, key)
 	return fmt.Sprintf("%s message=%s", fields, message)
 }

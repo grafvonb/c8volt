@@ -38,6 +38,20 @@ type ProcessInstanceIncidentDetail struct {
 	ProcessDefinitionId    string
 }
 
+type IncidentFilter struct {
+	State                  string
+	ErrorType              string
+	ErrorMessage           string
+	ProcessInstanceKey     string
+	RootProcessInstanceKey string
+	ProcessDefinitionKey   string
+	ProcessDefinitionId    string
+	FlowNodeId             string
+	FlowNodeInstanceKey    string
+	CreationTimeAfter      string
+	CreationTimeBefore     string
+}
+
 type IncidentResolutionResponse struct {
 	Key        string
 	Ok         bool
@@ -132,6 +146,32 @@ type ProcessInstancePage struct {
 	Request       ProcessInstancePageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *ProcessInstanceReportedTotal
+	EndCursor     string
+}
+
+type IncidentPageRequest struct {
+	From  int32
+	Size  int32
+	After string
+}
+
+type IncidentReportedTotalKind string
+
+const (
+	IncidentReportedTotalKindExact      IncidentReportedTotalKind = "exact"
+	IncidentReportedTotalKindLowerBound IncidentReportedTotalKind = "lower_bound"
+)
+
+type IncidentReportedTotal struct {
+	Count int64
+	Kind  IncidentReportedTotalKind
+}
+
+type IncidentPage struct {
+	Items         []ProcessInstanceIncidentDetail
+	Request       IncidentPageRequest
+	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *IncidentReportedTotal
 	EndCursor     string
 }
 

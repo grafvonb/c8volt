@@ -25,6 +25,7 @@ import (
 type mockIncidentClient struct {
 	getIncident                    func(context.Context, camundav89.IncidentKey, ...camundav89.RequestEditorFn) (*camundav89.GetIncidentResponse, error)
 	resolveIncident                func(context.Context, camundav89.IncidentKey, camundav89.ResolveIncidentJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.ResolveIncidentResponse, error)
+	searchIncidents                func(context.Context, camundav89.SearchIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error)
 	searchProcessInstanceIncidents func(context.Context, camundav89.ProcessInstanceKey, camundav89.SearchProcessInstanceIncidentsJSONRequestBody, ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error)
 }
 
@@ -34,6 +35,10 @@ func (m mockIncidentClient) GetIncidentWithResponse(ctx context.Context, key cam
 
 func (m mockIncidentClient) ResolveIncidentWithResponse(ctx context.Context, key camundav89.IncidentKey, body camundav89.ResolveIncidentJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.ResolveIncidentResponse, error) {
 	return m.resolveIncident(ctx, key, body, reqEditors...)
+}
+
+func (m mockIncidentClient) SearchIncidentsWithResponse(ctx context.Context, body camundav89.SearchIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+	return m.searchIncidents(ctx, body, reqEditors...)
 }
 
 func (m mockIncidentClient) SearchProcessInstanceIncidentsWithResponse(ctx context.Context, key camundav89.ProcessInstanceKey, body camundav89.SearchProcessInstanceIncidentsJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstanceIncidentsResponse, error) {
@@ -237,6 +242,80 @@ func TestSearchProcessInstanceIncidentsUsesServerSideErrorTypeAndPagesMessageFil
 	require.NoError(t, err)
 	require.Equal(t, []int32{0, 2}, fromValues)
 	require.Equal(t, []string{"first", "second"}, incidentDetailKeys(got))
+}
+
+func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav89.SearchIncidentsJSONRequestBody, _ ...camundav89.RequestEditorFn) (*camundav89.SearchIncidentsResponse, error) {
+			require.NotNil(t, body.Filter)
+			state, err := body.Filter.State.AsIncidentStateFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav89.IncidentStateEnumRESOLVED, state)
+			errorType, err := body.Filter.ErrorType.AsIncidentErrorTypeFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, errorType)
+			processInstanceKey, err := body.Filter.ProcessInstanceKey.AsProcessInstanceKeyFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav89.ProcessInstanceKey("pi-a"), processInstanceKey)
+			processDefinitionKey, err := body.Filter.ProcessDefinitionKey.AsProcessDefinitionKeyFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav89.ProcessDefinitionKey("pd-key"), processDefinitionKey)
+			processDefinitionID, err := body.Filter.ProcessDefinitionId.AsStringFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, "pd-id", processDefinitionID)
+			elementID, err := body.Filter.ElementId.AsStringFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, "task-a", elementID)
+			elementInstanceKey, err := body.Filter.ElementInstanceKey.AsElementInstanceKeyFilterProperty0()
+			require.NoError(t, err)
+			require.Equal(t, camundav89.ElementInstanceKey("fni-a"), elementInstanceKey)
+			require.Nil(t, body.Filter.ErrorMessage)
+			require.NotNil(t, body.Filter.CreationTime)
+			creationTime, err := body.Filter.CreationTime.AsAdvancedDateTimeFilter()
+			require.NoError(t, err)
+			require.NotNil(t, creationTime.Gte)
+			require.NotNil(t, creationTime.Lte)
+
+			require.NotNil(t, body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			require.EqualValues(t, 0, *page.From)
+			require.NotNil(t, page.Limit)
+			require.EqualValues(t, 2, *page.Limit)
+			rootKey := "root-a"
+			return &camundav89.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav89.IncidentSearchQueryResult{
+					Items: []camundav89.IncidentResult{
+						{IncidentKey: "match", ProcessInstanceKey: "pi-a", State: camundav89.IncidentStateEnumRESOLVED, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "INTENTIONAL failure", RootProcessInstanceKey: &rootKey},
+						{IncidentKey: "skip-message", ProcessInstanceKey: "pi-a", State: camundav89.IncidentStateEnumRESOLVED, ErrorType: camundav89.IncidentErrorTypeEnumIOMAPPINGERROR, ErrorMessage: "other failure", RootProcessInstanceKey: &rootKey},
+					},
+					Page: camundav89.SearchQueryPageResponse{TotalItems: 2},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		State:                  "resolved",
+		ErrorType:              "io_mapping_error",
+		ErrorMessage:           "intentional",
+		ProcessInstanceKey:     "pi-a",
+		ProcessDefinitionKey:   "pd-key",
+		ProcessDefinitionId:    "pd-id",
+		FlowNodeId:             "task-a",
+		FlowNodeInstanceKey:    "fni-a",
+		CreationTimeAfter:      "2026-05-09T09:00:00Z",
+		CreationTimeBefore:     "2026-05-09T11:00:00Z",
+		RootProcessInstanceKey: "root-a",
+	}, d.IncidentPageRequest{Size: 2})
+
+	require.NoError(t, err)
+	require.Nil(t, got.ReportedTotal)
+	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
 }
 
 func ptrIncidentState89(v camundav89.IncidentStateEnum) *camundav89.IncidentStateEnum {

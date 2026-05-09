@@ -99,6 +99,33 @@ func fromDomainProcessInstanceIncidentDetails(xs []d.ProcessInstanceIncidentDeta
 	return toolx.MapSlice(xs, fromDomainProcessInstanceIncidentDetail)
 }
 
+func fromDomainIncidents(xs []d.ProcessInstanceIncidentDetail) Incidents {
+	items := fromDomainProcessInstanceIncidentDetails(xs)
+	return Incidents{
+		Total: int32(len(items)),
+		Items: items,
+	}
+}
+
+func fromDomainIncidentPage(x d.IncidentPage) IncidentPage {
+	return IncidentPage{
+		Request: IncidentPageRequest{
+			From:  x.Request.From,
+			Size:  x.Request.Size,
+			After: x.Request.After,
+		},
+		OverflowState: ProcessInstanceOverflowState(x.OverflowState),
+		ReportedTotal: toolx.MapPtr(x.ReportedTotal, func(t d.IncidentReportedTotal) IncidentReportedTotal {
+			return IncidentReportedTotal{
+				Count: t.Count,
+				Kind:  IncidentReportedTotalKind(t.Kind),
+			}
+		}),
+		EndCursor: x.EndCursor,
+		Items:     fromDomainProcessInstanceIncidentDetails(x.Items),
+	}
+}
+
 func fromDomainProcessInstanceVariable(x d.ProcessInstanceVariable) ProcessInstanceVariable {
 	return ProcessInstanceVariable{
 		Name:               x.Name,
@@ -235,6 +262,30 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
+	}
+}
+
+func toDomainIncidentFilter(x IncidentFilter) d.IncidentFilter {
+	return d.IncidentFilter{
+		State:                  x.State,
+		ErrorType:              x.ErrorType,
+		ErrorMessage:           x.ErrorMessage,
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		ProcessDefinitionKey:   x.ProcessDefinitionKey,
+		ProcessDefinitionId:    x.ProcessDefinitionId,
+		FlowNodeId:             x.FlowNodeId,
+		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
+		CreationTimeAfter:      x.CreationTimeAfter,
+		CreationTimeBefore:     x.CreationTimeBefore,
+	}
+}
+
+func toDomainIncidentPageRequest(x IncidentPageRequest) d.IncidentPageRequest {
+	return d.IncidentPageRequest{
+		From:  x.From,
+		Size:  x.Size,
+		After: x.After,
 	}
 }
 

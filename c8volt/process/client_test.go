@@ -325,6 +325,112 @@ func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *te
 	}, got)
 }
 
+func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var calls []string
+	incAPI := stubIncidentAPI{
+		getIncident: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, "get:"+key)
+			cfg := services.ApplyCallOptions(opts)
+			assert.True(t, cfg.Verbose)
+			return d.ProcessInstanceIncidentDetail{
+				IncidentKey:        key,
+				ProcessInstanceKey: "pi-a",
+				State:              "ACTIVE",
+				ErrorType:          "JOB_NO_RETRIES",
+				ErrorMessage:       "no retries left",
+			}, nil
+		},
+		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			calls = append(calls, "search")
+			assert.Equal(t, d.IncidentFilter{
+				State:                "resolved",
+				ErrorType:            "io_mapping_error",
+				ErrorMessage:         "intentional",
+				ProcessInstanceKey:   "pi-a",
+				ProcessDefinitionKey: "pd-key",
+				ProcessDefinitionId:  "pd-id",
+				FlowNodeId:           "task-a",
+				FlowNodeInstanceKey:  "fni-a",
+				CreationTimeAfter:    "2026-05-09T09:00:00Z",
+				CreationTimeBefore:   "2026-05-09T11:00:00Z",
+			}, filter)
+			assert.Equal(t, int32(50), size)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "incident-b", ProcessInstanceKey: "pi-a"}}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	gotIncident, err := cli.GetIncident(ctx, "incident-a", options.WithVerbose())
+	require.NoError(t, err)
+	gotSearch, err := cli.SearchIncidents(ctx, IncidentFilter{
+		State:                "resolved",
+		ErrorType:            "io_mapping_error",
+		ErrorMessage:         "intentional",
+		ProcessInstanceKey:   "pi-a",
+		ProcessDefinitionKey: "pd-key",
+		ProcessDefinitionId:  "pd-id",
+		FlowNodeId:           "task-a",
+		FlowNodeInstanceKey:  "fni-a",
+		CreationTimeAfter:    "2026-05-09T09:00:00Z",
+		CreationTimeBefore:   "2026-05-09T11:00:00Z",
+	}, 50, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"get:incident-a", "search"}, calls)
+	require.Equal(t, "incident-a", gotIncident.IncidentKey)
+	require.Equal(t, int32(1), gotSearch.Total)
+	require.Equal(t, "incident-b", gotSearch.Items[0].IncidentKey)
+}
+
+func TestClient_SearchIncidentsPageMapsMetadataAndUnsupportedErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	incAPI := stubIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+			assert.Equal(t, d.IncidentFilter{State: "active"}, filter)
+			assert.Equal(t, d.IncidentPageRequest{From: 10, Size: 5, After: "cursor-0"}, page)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.IncidentPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateHasMore,
+				ReportedTotal: &d.IncidentReportedTotal{
+					Count: 17,
+					Kind:  d.IncidentReportedTotalKindExact,
+				},
+				EndCursor: "cursor-1",
+				Items: []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "incident-a", ProcessInstanceKey: "pi-a"},
+				},
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
+	got, err := cli.SearchIncidentsPage(ctx, IncidentFilter{State: "active"}, IncidentPageRequest{From: 10, Size: 5, After: "cursor-0"}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, IncidentPageRequest{From: 10, Size: 5, After: "cursor-0"}, got.Request)
+	require.Equal(t, ProcessInstanceOverflowStateHasMore, got.OverflowState)
+	require.NotNil(t, got.ReportedTotal)
+	require.EqualValues(t, 17, got.ReportedTotal.Count)
+	require.Equal(t, IncidentReportedTotalKindExact, got.ReportedTotal.Kind)
+	require.Equal(t, "cursor-1", got.EndCursor)
+	require.Equal(t, "incident-a", got.Items[0].IncidentKey)
+
+	unsupportedAPI := stubIncidentAPI{
+		searchIncidentsPage: func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error) {
+			return d.IncidentPage{}, d.ErrUnsupported
+		},
+	}
+	_, err = New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, unsupportedAPI, slog.Default()).SearchIncidentsPage(ctx, IncidentFilter{}, IncidentPageRequest{Size: 1})
+	require.Error(t, err)
+}
+
 func TestResolveIncidentWaitsForConfirmation(t *testing.T) {
 	t.Parallel()
 
@@ -2065,6 +2171,8 @@ func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Conte
 type stubIncidentAPI struct {
 	getIncident                    func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
 	resolveIncident                func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	searchIncidents                func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPage            func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
 	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	waitForIncidentResolved        func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	waitForPIIncidentsResolved     func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
@@ -2084,6 +2192,22 @@ func (s stubIncidentAPI) ResolveIncident(ctx context.Context, key string, opts .
 		panic("unexpected call")
 	}
 	return s.resolveIncident(ctx, key, opts...)
+}
+
+// SearchIncidents delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchIncidents == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidents(ctx, filter, size, opts...)
+}
+
+// SearchIncidentsPage delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+	if s.searchIncidentsPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsPage(ctx, filter, page, opts...)
 }
 
 // SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.

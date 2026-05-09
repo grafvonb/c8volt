@@ -31,6 +31,14 @@ func TestUnsupportedIncidentResolutionOperations(t *testing.T) {
 	require.True(t, errors.Is(err, d.ErrUnsupported))
 	require.False(t, resp.Ok)
 
+	_, err = svc.SearchIncidents(context.Background(), d.IncidentFilter{}, 100)
+	require.Error(t, err)
+	require.True(t, errors.Is(err, d.ErrUnsupported))
+
+	_, err = svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{}, d.IncidentPageRequest{Size: 100})
+	require.Error(t, err)
+	require.True(t, errors.Is(err, d.ErrUnsupported))
+
 	_, err = svc.WaitForIncidentResolved(context.Background(), "2251799813685249")
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrUnsupported))
