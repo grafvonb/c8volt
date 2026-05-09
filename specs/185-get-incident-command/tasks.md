@@ -102,16 +102,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Add command tests for case-insensitive `--error-message` matching in `cmd/get_incident_test.go`
-- [ ] T035 [P] [US3] Add service/facade tests proving local message filtering pages beyond the first page in `c8volt/process/client_test.go` and `internal/services/incident/v88/incidents_test.go`
-- [ ] T036 [P] [US3] Add v8.8 compatibility tests proving known broken scoped `filter` request shapes are not sent in `internal/services/incident/v88/incidents_test.go`
+- [x] T034 [P] [US3] Add command tests for case-insensitive `--error-message` matching in `cmd/get_incident_test.go`
+- [x] T035 [P] [US3] Add service/facade tests proving local message filtering pages beyond the first page in `c8volt/process/client_test.go` and `internal/services/incident/v88/incidents_test.go`
+- [x] T036 [P] [US3] Add v8.8 compatibility tests proving known broken scoped `filter` request shapes are not sent in `internal/services/incident/v88/incidents_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Add `--error-message` parsing and validation in `cmd/get_incident.go`
-- [ ] T038 [US3] Reuse existing case-insensitive message matching helper behavior from `internal/services/incidentfilter/incidentfilter.go`
-- [ ] T039 [US3] Implement local post-filter pagination for message filtering in `c8volt/process/client.go` and `internal/services/incident/v88/incidents.go`
-- [ ] T040 [US3] Ensure explicit command limits stop local filtering only after enough matching results are found or search is exhausted in `c8volt/process/client.go`
+- [x] T037 [US3] Add `--error-message` parsing and validation in `cmd/get_incident.go`
+- [x] T038 [US3] Reuse existing case-insensitive message matching helper behavior from `internal/services/incidentfilter/incidentfilter.go`
+- [x] T039 [US3] Implement local post-filter pagination for message filtering in `c8volt/process/client.go` and `internal/services/incident/v88/incidents.go`
+- [x] T040 [US3] Ensure explicit command limits stop local filtering only after enough matching results are found or search is exhausted in `c8volt/process/client.go`
 
 **Checkpoint**: User Story 3 is independently complete for message filtering correctness.
 

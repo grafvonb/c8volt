@@ -348,7 +348,6 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 			assert.Equal(t, d.IncidentFilter{
 				State:                  "resolved",
 				ErrorType:              "io_mapping_error",
-				ErrorMessage:           "intentional",
 				ProcessInstanceKey:     "pi-a",
 				RootProcessInstanceKey: "root-pi-a",
 				ProcessDefinitionKey:   "pd-key",
@@ -370,7 +369,6 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 	gotSearch, err := cli.SearchIncidents(ctx, IncidentFilter{
 		State:                  "resolved",
 		ErrorType:              "io_mapping_error",
-		ErrorMessage:           "intentional",
 		ProcessInstanceKey:     "pi-a",
 		RootProcessInstanceKey: "root-pi-a",
 		ProcessDefinitionKey:   "pd-key",
@@ -386,6 +384,44 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 	require.Equal(t, "incident-a", gotIncident.IncidentKey)
 	require.Equal(t, int32(1), gotSearch.Total)
 	require.Equal(t, "incident-b", gotSearch.Items[0].IncidentKey)
+}
+
+func TestClient_SearchIncidentsWithMessageFilterPagesUntilEnoughLocalMatches(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var pages []d.IncidentPageRequest
+	incAPI := stubIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+			assert.Equal(t, d.IncidentFilter{State: "active", ErrorMessage: "intentional"}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			pages = append(pages, page)
+			if len(pages) == 1 {
+				return d.IncidentPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items:         nil,
+				}, nil
+			}
+			return d.IncidentPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "match", ErrorMessage: "Intentional failure"},
+				},
+			}, nil
+		},
+	}
+
+	got, err := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default()).SearchIncidents(ctx, IncidentFilter{
+		State:        "active",
+		ErrorMessage: "intentional",
+	}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.IncidentPageRequest{{Size: 1}, {From: 1, Size: 1}}, pages)
+	require.Equal(t, int32(1), got.Total)
+	require.Equal(t, "match", got.Items[0].IncidentKey)
 }
 
 func TestClient_SearchIncidentsPageMapsMetadataAndUnsupportedErrors(t *testing.T) {

@@ -308,6 +308,92 @@ func TestSearchIncidentsPageUsesTopLevelEndpointAndLocalCompatibilityFilters(t *
 	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
 }
 
+func TestSearchIncidentsPaginatesMessageFilteringBeyondFirstPage(t *testing.T) {
+	t.Parallel()
+
+	var fromValues []int32
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			require.NotNil(t, body.Page)
+			page, err := body.Page.AsOffsetPagination()
+			require.NoError(t, err)
+			require.NotNil(t, page.From)
+			fromValues = append(fromValues, *page.From)
+
+			items := []camundav88.IncidentResult{
+				{IncidentKey: "skip-first-page", ProcessInstanceKey: "pi-a", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "No retries left"},
+			}
+			pageResp := camundav88.SearchQueryPageResponse{TotalItems: 2}
+			if *page.From > 0 {
+				items = []camundav88.IncidentResult{
+					{IncidentKey: "match-second-page", ProcessInstanceKey: "pi-b", State: camundav88.IncidentStateEnumACTIVE, ErrorMessage: "INTENTIONAL failure"},
+				}
+			}
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200:      &camundav88.IncidentSearchQueryResult{Items: items, Page: pageResp},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidents(context.Background(), d.IncidentFilter{
+		State:        "active",
+		ErrorMessage: "intentional",
+	}, 1)
+
+	require.NoError(t, err)
+	require.Equal(t, []int32{0, 1}, fromValues)
+	require.Equal(t, []string{"match-second-page"}, incidentDetailKeys(got))
+}
+
+func TestSearchIncidentsPageDoesNotSendBrokenV88FilterShapeForLocalFilters(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, mockIncidentClient{
+		searchIncidents: func(_ context.Context, body camundav88.SearchIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchIncidentsResponse, error) {
+			require.Nil(t, body.Filter)
+			require.NotNil(t, body.Page)
+			rootKey := "root-a"
+			return &camundav88.SearchIncidentsResponse{
+				HTTPResponse: testHTTPResponse(http.StatusOK),
+				JSON200: &camundav88.IncidentSearchQueryResult{
+					Items: []camundav88.IncidentResult{
+						{
+							IncidentKey:            "match",
+							ProcessInstanceKey:     "pi-a",
+							RootProcessInstanceKey: &rootKey,
+							ProcessDefinitionKey:   "pd-key",
+							ProcessDefinitionId:    "pd-id",
+							ElementId:              "task-a",
+							ElementInstanceKey:     "fni-a",
+							State:                  camundav88.IncidentStateEnumACTIVE,
+							ErrorType:              camundav88.IncidentErrorTypeEnumJOBNORETRIES,
+							ErrorMessage:           "intentional failure",
+						},
+					},
+					Page: camundav88.SearchQueryPageResponse{TotalItems: 1},
+				},
+			}, nil
+		},
+	})
+
+	got, err := svc.SearchIncidentsPage(context.Background(), d.IncidentFilter{
+		State:                  "active",
+		ErrorType:              "job_no_retries",
+		ErrorMessage:           "intentional",
+		ProcessInstanceKey:     "pi-a",
+		RootProcessInstanceKey: "root-a",
+		ProcessDefinitionKey:   "pd-key",
+		ProcessDefinitionId:    "pd-id",
+		FlowNodeId:             "task-a",
+		FlowNodeInstanceKey:    "fni-a",
+	}, d.IncidentPageRequest{Size: 10})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"match"}, incidentDetailKeys(got.Items))
+}
+
 func incidentDetailKeys(items []d.ProcessInstanceIncidentDetail) []string {
 	keys := make([]string, 0, len(items))
 	for _, item := range items {

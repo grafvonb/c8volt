@@ -113,11 +113,49 @@ func (c *client) GetIncidents(ctx context.Context, keys types.Keys, wantedWorker
 
 // SearchIncidents exposes top-level incident list/search through the incident service boundary.
 func (c *client) SearchIncidents(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
+	if incidentSearchNeedsPagedLocalFiltering(filter) {
+		return c.searchIncidentPagesUntilLimit(ctx, filter, size, opts...)
+	}
 	incidents, err := c.incApi.SearchIncidents(ctx, toDomainIncidentFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return Incidents{}, ferr.FromDomain(err)
 	}
 	return fromDomainIncidents(incidents), nil
+}
+
+func (c *client) searchIncidentPagesUntilLimit(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
+	if size <= 0 {
+		return Incidents{}, nil
+	}
+	req := IncidentPageRequest{Size: size}
+	out := make([]ProcessInstanceIncidentDetail, 0, size)
+	for {
+		page, err := c.SearchIncidentsPage(ctx, filter, req, opts...)
+		if err != nil {
+			return Incidents{}, err
+		}
+		for _, item := range page.Items {
+			if int32(len(out)) >= size {
+				return Incidents{Total: int32(len(out)), Items: out}, nil
+			}
+			out = append(out, item)
+		}
+		if page.OverflowState == ProcessInstanceOverflowStateNoMore {
+			return Incidents{Total: int32(len(out)), Items: out}, nil
+		}
+		req = nextIncidentFacadePageRequest(req, page)
+	}
+}
+
+func incidentSearchNeedsPagedLocalFiltering(filter IncidentFilter) bool {
+	return filter.ErrorMessage != ""
+}
+
+func nextIncidentFacadePageRequest(current IncidentPageRequest, page IncidentPage) IncidentPageRequest {
+	if page.EndCursor != "" {
+		return IncidentPageRequest{Size: current.Size, After: page.EndCursor}
+	}
+	return IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
 }
 
 // SearchIncidentsPage exposes one top-level incident search page with service-owned request semantics.

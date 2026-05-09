@@ -68,11 +68,45 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 
 // SearchIncidents returns up to size top-level incidents after version-compatible filtering.
 func (s *Service) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if filter.ErrorMessage != "" {
+		return s.searchIncidentPagesUntilLimit(ctx, filter, size, opts...)
+	}
 	page, err := s.SearchIncidentsPage(ctx, filter, d.IncidentPageRequest{Size: size}, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return page.Items, nil
+}
+
+func (s *Service) searchIncidentPagesUntilLimit(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if size <= 0 {
+		return nil, nil
+	}
+	req := d.IncidentPageRequest{Size: size}
+	out := make([]d.ProcessInstanceIncidentDetail, 0, size)
+	for {
+		page, err := s.SearchIncidentsPage(ctx, filter, req, opts...)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range page.Items {
+			if int32(len(out)) >= size {
+				return out, nil
+			}
+			out = append(out, item)
+		}
+		if page.OverflowState == d.ProcessInstanceOverflowStateNoMore {
+			return out, nil
+		}
+		req = nextIncidentSearchPageRequest(req, page)
+	}
+}
+
+func nextIncidentSearchPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {
+	if page.EndCursor != "" {
+		return d.IncidentPageRequest{Size: current.Size, After: page.EndCursor}
+	}
+	return d.IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
 }
 
 // SearchIncidentsPage uses the top-level v8.8 incident endpoint with a tenant

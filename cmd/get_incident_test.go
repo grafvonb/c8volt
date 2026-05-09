@@ -284,6 +284,35 @@ func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *tes
 	require.Contains(t, output, "found: 3")
 }
 
+func TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"No retries left","incidentKey":"2251799813685257","processInstanceKey":"2251799813711976","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"Mapping failed","incidentKey":"2251799813685258","processInstanceKey":"2251799813711977","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"first intentional failure","incidentKey":"2251799813685259","processInstanceKey":"2251799813711978","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second INTENTIONAL issue","incidentKey":"2251799813685260","processInstanceKey":"2251799813711979","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "2",
+		"--limit", "2",
+		"--auto-confirm",
+		"--error-message", "INTENTIONAL",
+	)
+
+	require.Len(t, requests, 2)
+	require.NotContains(t, requests[0], "errorMessage")
+	require.Contains(t, requests[0], `"limit":2`)
+	require.Contains(t, requests[1], `"from":2`)
+	require.NotContains(t, output, "key=2251799813685257")
+	require.NotContains(t, output, "key=2251799813685258")
+	require.Contains(t, output, "key=2251799813685259")
+	require.Contains(t, output, "key=2251799813685260")
+	require.Contains(t, output, "found: 2")
+}
+
 func TestGetIncidentCommand_RejectsKeyedLookupWithSearchFilter(t *testing.T) {
 	output, err := executeRootExpectErrorForIncidentTest(t,
 		"get", "incident",

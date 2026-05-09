@@ -17,6 +17,7 @@ var (
 	flagGetIncidentMessageLimit           int
 	flagGetIncidentState                  string
 	flagGetIncidentErrorType              string
+	flagGetIncidentErrorMessage           string
 	flagGetIncidentProcessInstanceKey     string
 	flagGetIncidentRootProcessInstanceKey string
 	flagGetIncidentProcessDefinitionKey   string
@@ -32,7 +33,7 @@ var getIncidentCmd = &cobra.Command{
 	Short: "List or fetch incidents",
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
-		"When no keys are supplied, incidents are searched by state, error type, process context, and flow-node context. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
+		"When no keys are supplied, incidents are searched by state, error type, error message, process context, and flow-node context. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
 		"Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages.",
 	Example: `  ./c8volt get incident --key 2251799813685249
   ./c8volt get inc --key 2251799813685249 --key 2251799813685250
@@ -40,6 +41,7 @@ var getIncidentCmd = &cobra.Command{
   ./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
   ./c8volt get incident
   ./c8volt get incident --state resolved --error-type io_mapping_error
+  ./c8volt get incident --error-message "no retries"
   ./c8volt get incident --process-instance-key 2251799813685249 --flow-node-id task-a
   ./c8volt --json get incident --key 2251799813685249
   ./c8volt --keys-only get incident --key 2251799813685249`,
@@ -111,6 +113,7 @@ func init() {
 	fs.StringSliceVarP(&flagGetIncidentKeys, "key", "k", nil, "incident key(s) to fetch; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagGetIncidentState, "state", "s", "active", "incident state scope for search: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetIncidentErrorType, "error-type", "", fmt.Sprintf("case-insensitive incident error type filter for search: %s", incidentfilter.ValidErrorTypesString()))
+	fs.StringVar(&flagGetIncidentErrorMessage, "error-message", "", "case-insensitive incident error message substring filter for search")
 	fs.StringVar(&flagGetIncidentProcessInstanceKey, "process-instance-key", "", "process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentRootProcessInstanceKey, "root-process-instance-key", "", "root process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentProcessDefinitionKey, "process-definition-key", "", "process definition key to filter incidents")
@@ -201,6 +204,7 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 	for _, name := range []string{
 		"state",
 		"error-type",
+		"error-message",
 		"process-instance-key",
 		"root-process-instance-key",
 		"process-definition-key",
@@ -222,6 +226,7 @@ func populateGetIncidentSearchFilter() process.IncidentFilter {
 	return process.IncidentFilter{
 		State:                  flagGetIncidentState,
 		ErrorType:              errorType,
+		ErrorMessage:           flagGetIncidentErrorMessage,
 		ProcessInstanceKey:     flagGetIncidentProcessInstanceKey,
 		RootProcessInstanceKey: flagGetIncidentRootProcessInstanceKey,
 		ProcessDefinitionKey:   flagGetIncidentProcessDefinitionKey,
@@ -236,6 +241,7 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentMessageLimit = 0
 	flagGetIncidentState = "active"
 	flagGetIncidentErrorType = ""
+	flagGetIncidentErrorMessage = ""
 	flagGetIncidentProcessInstanceKey = ""
 	flagGetIncidentRootProcessInstanceKey = ""
 	flagGetIncidentProcessDefinitionKey = ""

@@ -19,6 +19,7 @@ Started: 2026-05-09 21:46:32
 - Process-instance pagination honors command/config page size, trims pages with local `--limit`, incrementally renders one-line and keys-only modes when appropriate, auto-continues for JSON/automation, and falls back to page-by-page counting for exact totals when local filters make backend totals unsafe.
 - Plain `get incident` keyed lookup is registered under `get` with aliases `incidents` and `inc`; command validation uses `silenceUsageForError` for semantic flag errors, stdin key handling reuses `readKeysIfDash`/`mergeAndValidateKeys`, and keyed facade calls go through `process.API.GetIncidents`.
 - Plain incident rendering now uses `listIncidentsView` in `cmd/cmd_views_get.go`, which delegates JSON, keys-only, and human list behavior to `listOrJSON` while reusing `incidentHumanLineWithMessageLimit` for compact rows.
+- Plain `get incident --error-message` is a search-mode filter only; v8.9 does not send `errorMessage` in top-level search filters, v8.8 sends only tenant-safe top-level filters, and facade/service list helpers continue paging until enough locally matched message results are collected or search is exhausted.
 
 ---
 
@@ -145,4 +146,32 @@ Started: 2026-05-09 21:46:32
 - Generated top-level incident search request JSON serializes simple enum filters as direct values such as `"state":"ACTIVE"` and `"errorType":"IO_MAPPING_ERROR"`, not `$eq` wrapper objects.
 - Root process instance filtering remains service-local for v8.9, so command-level paging must not use the filtered item count to compute the next offset.
 - Core incident search filters already flow through the facade/domain incident filter model; service call options remain scoped to existing process-instance incident enrichment behavior.
+---
+
+---
+## Iteration 5 - 2026-05-09 22:26:53 CEST
+**User Story**: User Story 3 - Search Incident Messages Safely
+**Tasks Completed**:
+- [x] T034: Add command tests for case-insensitive `--error-message` matching in `cmd/get_incident_test.go`
+- [x] T035: Add service/facade tests proving local message filtering pages beyond the first page in `c8volt/process/client_test.go` and `internal/services/incident/v88/incidents_test.go`
+- [x] T036: Add v8.8 compatibility tests proving known broken scoped `filter` request shapes are not sent in `internal/services/incident/v88/incidents_test.go`
+- [x] T037: Add `--error-message` parsing and validation in `cmd/get_incident.go`
+- [x] T038: Reuse existing case-insensitive message matching helper behavior from `internal/services/incidentfilter/incidentfilter.go`
+- [x] T039: Implement local post-filter pagination for message filtering in `c8volt/process/client.go` and `internal/services/incident/v88/incidents.go`
+- [x] T040: Ensure explicit command limits stop local filtering only after enough matching results are found or search is exhausted in `c8volt/process/client.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- cmd/get_incident.go
+- cmd/get_incident_test.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v88/incidents_test.go
+- specs/185-get-incident-command/tasks.md
+- specs/185-get-incident-command/progress.md
+**Learnings**:
+- `SearchIncidentsPage` is the correct boundary for message-safe paging because version services already apply local `incidentfilter.ErrorMessageContains` semantics per page.
+- The non-page incident facade/service helpers need their own continuation loop for local message filtering so callers do not accidentally treat the first filtered page as exhaustive.
+- v8.8 top-level incident search remains compatibility-safe by omitting rich filter objects when tenant is not set; message, state, error type, and context checks stay local.
 ---
