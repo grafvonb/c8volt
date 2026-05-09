@@ -66,6 +66,7 @@ type ProcessInstance struct {
 	ParentKey                 string         `json:"parentKey,omitempty"`
 	ParentProcessInstanceKey  string         `json:"parentProcessInstanceKey,omitempty"`
 	ProcessDefinitionKey      string         `json:"processDefinitionKey,omitempty"`
+	RootProcessInstanceKey    string         `json:"rootProcessInstanceKey,omitempty"`
 	ProcessVersion            int32          `json:"processVersion,omitempty"`
 	ProcessVersionTag         string         `json:"processVersionTag,omitempty"`
 	StartDate                 string         `json:"startDate,omitempty"`

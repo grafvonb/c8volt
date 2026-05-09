@@ -357,14 +357,23 @@ func normalizeSearchState(state d.State) d.State {
 }
 
 func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
 	visibleCount := int64(req.From) + int64(itemCount)
-	if page.HasMoreTotalItems {
-		return d.ProcessInstanceOverflowStateHasMore
+	if req.After != "" {
+		if page.EndCursor != nil {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
 	}
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.TotalItems == 0 && itemCount > 0 {
+	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 {
 		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	return d.ProcessInstanceOverflowStateNoMore

@@ -66,10 +66,14 @@ func toDomainProcessInstanceFilter(filter process.ProcessInstanceFilter) d.Proce
 
 func fromDomainBatchOperation(op d.BatchOperation) BatchOperation {
 	return BatchOperation{
-		Key:        op.Key,
-		Type:       op.Type,
-		State:      op.State,
-		StatusCode: op.StatusCode,
-		Status:     op.Status,
+		Key:                      op.Key,
+		Type:                     op.Type,
+		State:                    op.State,
+		OperationsTotalCount:     op.OperationsTotalCount,
+		OperationsCompletedCount: op.OperationsCompletedCount,
+		OperationsFailedCount:    op.OperationsFailedCount,
+		Errors:                   append([]string(nil), op.Errors...),
+		StatusCode:               op.StatusCode,
+		Status:                   op.Status,
 	}
 }

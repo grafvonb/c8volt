@@ -12,7 +12,7 @@ Delete process definition resources
 
 Delete process definition resources from Camunda.
 
-By default c8volt first checks delete impact without changing anything: active process instances, server-side cancellation batch access when --force is used, and batch-operation read access before prompting. It then asks Camunda to delete associated history so Operate and Tasklist do not keep stale finished-instance data.
+By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history.
 
 Use --auto-confirm for unattended destructive runs. Add --no-wait to return after Camunda accepts the deletion and verify later with `get pd`.
 

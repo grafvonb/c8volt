@@ -110,6 +110,65 @@ func TestService_CancelProcessInstances(t *testing.T) {
 	assert.Equal(t, "CANCEL_PROCESS_INSTANCE", op.Type)
 }
 
+func TestService_WaitForCompletion(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("MapsCompletionCounts", func(t *testing.T) {
+		svc := newTestService(t, &mockBatchOperationClient{
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey camundav88.BatchOperationKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetBatchOperationResponse, error) {
+				assert.Equal(t, "batch-1", batchOperationKey)
+				return &camundav88.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-1", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.BatchOperationResponse{
+						BatchOperationKey:        "batch-1",
+						BatchOperationType:       camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+						State:                    camundav88.BatchOperationStateEnumCOMPLETED,
+						OperationsTotalCount:     10,
+						OperationsCompletedCount: 10,
+						OperationsFailedCount:    0,
+					},
+				}, nil
+			},
+		})
+
+		op, err := svc.WaitForCompletion(ctx, "batch-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "batch-1", op.Key)
+		assert.Equal(t, int32(10), op.OperationsTotalCount)
+		assert.Equal(t, int32(10), op.OperationsCompletedCount)
+		assert.Equal(t, int32(0), op.OperationsFailedCount)
+	})
+
+	t.Run("FailsWhenCompletedBatchHasFailedItems", func(t *testing.T) {
+		svc := newTestService(t, &mockBatchOperationClient{
+			getBatchOperationWithResponse: func(ctx context.Context, batchOperationKey camundav88.BatchOperationKey, reqEditors ...camundav88.RequestEditorFn) (*camundav88.GetBatchOperationResponse, error) {
+				return &camundav88.GetBatchOperationResponse{
+					HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/batch-operations/batch-2", http.StatusOK, "200 OK"),
+					JSON200: &camundav88.BatchOperationResponse{
+						BatchOperationKey:        "batch-2",
+						BatchOperationType:       camundav88.BatchOperationTypeEnumCANCELPROCESSINSTANCE,
+						State:                    camundav88.BatchOperationStateEnumCOMPLETED,
+						OperationsTotalCount:     10,
+						OperationsCompletedCount: 9,
+						OperationsFailedCount:    1,
+						Errors: []camundav88.BatchOperationError{
+							{PartitionId: 1, Type: camundav88.QUERYFAILED, Message: "query rejected"},
+						},
+					},
+				}, nil
+			},
+		})
+
+		op, err := svc.WaitForCompletion(ctx, "batch-2")
+
+		require.Error(t, err)
+		assert.Equal(t, int32(1), op.OperationsFailedCount)
+		assert.Contains(t, err.Error(), "1/10 failed item")
+		assert.Contains(t, err.Error(), "query rejected")
+	})
+}
+
 func newTestService(t *testing.T, client GenBatchOperationClientCamunda) *Service {
 	t.Helper()
 

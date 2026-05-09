@@ -383,7 +383,7 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		require.Equal(t, "3\n", stdout)
 		require.Contains(t, stderr, "INFO page size: 2, current page: 2, total so far: 2, more matches: yes, next step: auto-continue")
 		require.Contains(t, stderr, "INFO page size: 2, current page: 1, total so far: 3, more matches: yes, next step: auto-continue")
-		require.Contains(t, stderr, "INFO page size: 2, current page: 0, total so far: 3, more matches: yes, next step: auto-continue")
+		require.Contains(t, stderr, "INFO page size: 2, current page: 0, total so far: 3, more matches: no, next step: complete")
 		require.NotContains(t, stderr, "\npage size:")
 	})
 

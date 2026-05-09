@@ -62,7 +62,6 @@ type DeleteProcessDefinitionPlanItem struct {
 	Key                        string                       `json:"key,omitempty"`
 	ActiveProcessInstanceCount int64                        `json:"activeProcessInstanceCount,omitempty"`
 	ActiveProcessInstanceKeys  []string                     `json:"activeProcessInstanceKeys,omitempty"`
-	CancellationByFilter       bool                         `json:"cancellationByFilter,omitempty"`
 	CancellationPlan           process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`
 	Warnings                   []string                     `json:"warnings,omitempty"`
 }
@@ -78,9 +77,6 @@ func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals 
 	totals := DeleteProcessDefinitionPlanTotals{ProcessDefinitions: len(p.Items)}
 	for _, item := range p.Items {
 		totals.ActiveProcessInstances += item.ActiveProcessInstances()
-		if item.CancellationByFilter {
-			totals.CancellationByFilter = true
-		}
 		totals.CancellationRoots += len(item.CancellationPlan.Roots)
 		totals.CancellationAffected += len(item.CancellationPlan.Collected)
 		totals.Warnings += len(item.Warnings)
@@ -94,6 +90,5 @@ type DeleteProcessDefinitionPlanTotals struct {
 	ActiveProcessInstances int64 `json:"activeProcessInstances"`
 	CancellationRoots      int   `json:"cancellationRoots"`
 	CancellationAffected   int   `json:"cancellationAffected"`
-	CancellationByFilter   bool  `json:"cancellationByFilter"`
 	Warnings               int   `json:"warnings"`
 }

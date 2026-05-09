@@ -21,6 +21,7 @@ func fromProcessInstanceResult(r camundav88.ProcessInstanceResult) d.ProcessInst
 		ParentFlowNodeInstanceKey: toolx.Deref(r.ParentElementInstanceKey, ""),
 		ParentKey:                 toolx.Deref(r.ParentProcessInstanceKey, ""),
 		ProcessDefinitionKey:      r.ProcessDefinitionKey,
+		RootProcessInstanceKey:    toolx.Deref(r.RootProcessInstanceKey, ""),
 		ProcessVersion:            r.ProcessDefinitionVersion,
 		ProcessVersionTag:         toolx.Deref(r.ProcessDefinitionVersionTag, ""),
 		StartDate:                 formatTime(r.StartDate),

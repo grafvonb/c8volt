@@ -13,6 +13,7 @@ type ProcessInstance struct {
 	ParentFlowNodeInstanceKey string
 	ParentKey                 string
 	ProcessDefinitionKey      string
+	RootProcessInstanceKey    string
 	ProcessVersion            int32
 	ProcessVersionTag         string
 	StartDate                 string

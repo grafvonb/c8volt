@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/grafvonb/c8volt/config"
 	camundav89 "github.com/grafvonb/c8volt/internal/clients/camunda/v89/camunda"
@@ -112,26 +113,71 @@ func (s *Service) WaitForCompletion(ctx context.Context, batchOperationKey strin
 			}
 			return poller.JobPollStatus{}, err
 		}
-		result = d.BatchOperation{
-			Key:        payload.BatchOperationKey,
-			Type:       string(payload.BatchOperationType),
-			State:      string(payload.State),
-			StatusCode: resp.StatusCode(),
-			Status:     resp.Status(),
-		}
+		result = batchOperationFromPayload(payload, resp.StatusCode(), resp.Status())
 		switch payload.State {
 		case camundav89.BatchOperationStateEnumCOMPLETED:
-			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("batch operation %s completed", batchOperationKey)}, nil
+			if result.OperationsFailedCount > 0 {
+				return poller.JobPollStatus{}, batchOperationFailedError(result)
+			}
+			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("batch operation %s completed (%d/%d completed, %d failed)", batchOperationKey, result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)}, nil
 		case camundav89.BatchOperationStateEnumFAILED, camundav89.BatchOperationStateEnumCANCELED, camundav89.BatchOperationStateEnumPARTIALLYCOMPLETED:
-			return poller.JobPollStatus{}, fmt.Errorf("batch operation %s finished with state %s", batchOperationKey, payload.State)
+			if result.OperationsFailedCount > 0 {
+				return poller.JobPollStatus{}, batchOperationFailedError(result)
+			}
+			return poller.JobPollStatus{}, fmt.Errorf("batch operation %s finished with state %s (%d/%d completed, %d failed)", batchOperationKey, payload.State, result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)
 		default:
-			return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("batch operation %s state %s", batchOperationKey, payload.State)}, nil
+			return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("batch operation %s state %s (%d/%d completed, %d failed)", batchOperationKey, payload.State, result.OperationsCompletedCount, result.OperationsTotalCount, result.OperationsFailedCount)}, nil
 		}
 	}
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return result, err
 	}
 	return result, nil
+}
+
+func batchOperationFromPayload(payload *camundav89.BatchOperationResponse, statusCode int, status string) d.BatchOperation {
+	if payload == nil {
+		return d.BatchOperation{}
+	}
+	return d.BatchOperation{
+		Key:                      payload.BatchOperationKey,
+		Type:                     string(payload.BatchOperationType),
+		State:                    string(payload.State),
+		OperationsTotalCount:     payload.OperationsTotalCount,
+		OperationsCompletedCount: payload.OperationsCompletedCount,
+		OperationsFailedCount:    payload.OperationsFailedCount,
+		Errors:                   batchOperationErrorMessages(payload.Errors),
+		StatusCode:               statusCode,
+		Status:                   status,
+	}
+}
+
+func batchOperationErrorMessages(errors []camundav89.BatchOperationError) []string {
+	out := make([]string, 0, len(errors))
+	for _, item := range errors {
+		parts := make([]string, 0, 3)
+		if item.PartitionId != 0 {
+			parts = append(parts, fmt.Sprintf("partition %d", item.PartitionId))
+		}
+		if item.Type != "" {
+			parts = append(parts, string(item.Type))
+		}
+		if item.Message != "" {
+			parts = append(parts, item.Message)
+		}
+		if len(parts) > 0 {
+			out = append(out, strings.Join(parts, ": "))
+		}
+	}
+	return out
+}
+
+func batchOperationFailedError(op d.BatchOperation) error {
+	msg := fmt.Sprintf("batch operation %s completed with %d/%d failed item(s) (%d completed)", op.Key, op.OperationsFailedCount, op.OperationsTotalCount, op.OperationsCompletedCount)
+	if len(op.Errors) > 0 {
+		msg += ": " + strings.Join(op.Errors, "; ")
+	}
+	return errors.New(msg)
 }
 
 func (s *Service) processInstanceFilter(filter d.ProcessInstanceFilter) (camundav89.ProcessInstanceFilter, error) {

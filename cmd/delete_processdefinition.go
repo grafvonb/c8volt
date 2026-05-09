@@ -23,7 +23,7 @@ var deleteProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Delete process definition resources",
 	Long: "Delete process definition resources from Camunda.\n\n" +
-		"By default c8volt first checks delete impact without changing anything: active process instances, server-side cancellation batch access when --force is used, and batch-operation read access before prompting. It then asks Camunda to delete associated history so Operate and Tasklist do not keep stale finished-instance data.\n\n" +
+		"By default c8volt first checks delete impact without changing anything: active process instances, required cancellation roots and process-instance tree scope when --force is used, and batch-operation read access before prompting. With --force, it cancels the root process instances, deletes the affected process-instance history, then asks Camunda to delete the process definition and remaining associated history.\n\n" +
 		"Use --auto-confirm for unattended destructive runs. Add --no-wait to return after Camunda accepts the deletion and verify later with `get pd`.",
 	Example: `  ./c8volt delete pd --key <process-definition-key> --auto-confirm
   ./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --force
@@ -122,11 +122,7 @@ func renderDeleteProcessDefinitionImpact(cmd *cobra.Command, plan resource.Delet
 	}
 	if flagForce {
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); %d active process instance(s) found; no changes made yet", totals.ProcessDefinitions, totals.ActiveProcessInstances)
-		if totals.CancellationByFilter {
-			renderHumanLine(cmd, "--force will ask Camunda to cancel %d active process instance(s) by filter before deleting process definitions", totals.ActiveProcessInstances)
-		} else {
-			renderHumanLine(cmd, "--force will cancel %d root process instance(s), affecting %d process instance(s), before deleting process definitions", totals.CancellationRoots, totals.CancellationAffected)
-		}
+		renderHumanLine(cmd, "--force will cancel %d root process instance(s), then delete %d affected process instance(s), before deleting process definitions", totals.CancellationRoots, totals.CancellationAffected)
 	} else {
 		renderHumanLine(cmd, "delete impact check: %d process definition(s); %d active process instance(s) found; no changes made yet", totals.ProcessDefinitions, totals.ActiveProcessInstances)
 		return

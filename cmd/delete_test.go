@@ -683,7 +683,10 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 			{
 				Key:                        "pd-1",
 				ActiveProcessInstanceCount: 2,
-				CancellationByFilter:       true,
+				CancellationPlan: process.DryRunPIKeyExpansion{
+					Roots:     typex.Keys{"root-1"},
+					Collected: typex.Keys{"root-1", "child-1"},
+				},
 			},
 		},
 	})
@@ -691,7 +694,7 @@ func TestDeleteProcessDefinitionImpact_RenderForceImpact(t *testing.T) {
 	output := buf.String()
 	require.Contains(t, output, "Deletion is irreversible")
 	require.Contains(t, output, "delete impact check: 1 process definition(s); 2 active process instance(s) found; no changes made yet")
-	require.Contains(t, output, "--force will ask Camunda to cancel 2 active process instance(s) by filter before deleting process definitions")
+	require.Contains(t, output, "--force will cancel 1 root process instance(s), then delete 2 affected process instance(s), before deleting process definitions")
 	require.NotContains(t, output, "WARNING:")
 }
 

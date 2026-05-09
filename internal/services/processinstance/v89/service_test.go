@@ -226,6 +226,30 @@ func TestService_SearchAndLookup(t *testing.T) {
 		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
 	})
 
+	t.Run("DoesNotTreatLowerBoundTotalMetadataAsAnotherPageWhenNoItemsAreReturned", func(t *testing.T) {
+		svc := newTestService(t, testConfig(), &mockCamundaClient{
+			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+			searchProcessInstancesWithResp: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.SearchProcessInstancesResponse, error) {
+				return searchResponse(t, http.StatusOK, searchProcessInstancesResult{
+					Items: []camundav89.ProcessInstanceResult{},
+					Page:  camundav89.SearchQueryPageResponse{TotalItems: 10000, HasMoreTotalItems: true},
+				}), nil
+			},
+			cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+			deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+			getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+		})
+
+		page, err := svc.SearchForProcessInstancesPage(ctx, d.ProcessInstanceFilter{}, d.ProcessInstancePageRequest{From: 10000, Size: 500})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.ProcessInstanceOverflowStateNoMore, page.OverflowState)
+		require.NotNil(t, page.ReportedTotal)
+		assert.EqualValues(t, 10000, page.ReportedTotal.Count)
+		assert.Equal(t, d.ProcessInstanceReportedTotalKindLowerBound, page.ReportedTotal.Kind)
+		require.Empty(t, page.Items)
+	})
+
 	t.Run("MapsCanceledSearchStateToTerminated", func(t *testing.T) {
 		svc := newTestService(t, testConfig(), &mockCamundaClient{
 			createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
