@@ -257,6 +257,63 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 	require.Contains(t, output, "found: 1")
 }
 
+func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"creationTime":"2026-05-09T10:15:00Z","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--creation-time-after", "2026-05-09T09:00:00Z",
+		"--creation-time-before", "2026-05-09T11:00:00Z",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"creationTime"`)
+	require.Contains(t, requests[0], `"gte":"2026-05-09T09:00:00Z"`)
+	require.Contains(t, requests[0], `"lte":"2026-05-09T11:00:00Z"`)
+	require.Contains(t, output, "key=2251799813685253")
+	require.Contains(t, output, "creationTime=2026-05-09T10:15:00Z")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_SearchCreationTimeAcceptsDateOnlyBounds(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--creation-time-after", "2026-05-09",
+		"--creation-time-before", "2026-05-10",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"gte":"2026-05-09T00:00:00Z"`)
+	require.Contains(t, requests[0], `"lte":"2026-05-10T00:00:00Z"`)
+	require.Contains(t, output, "found: 0")
+}
+
+func TestGetIncidentCommand_RejectsInvalidCreationTimeBeforeLookup(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t,
+		"get", "incident",
+		"--creation-time-after", "last-friday",
+	)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), `invalid value for --creation-time-after: "last-friday", expected RFC3339 timestamp or YYYY-MM-DD`)
+	require.Empty(t, output)
+}
+
 func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
@@ -24,6 +25,8 @@ var (
 	flagGetIncidentProcessDefinitionID    string
 	flagGetIncidentFlowNodeID             string
 	flagGetIncidentFlowNodeInstanceKey    string
+	flagGetIncidentCreationTimeAfter      string
+	flagGetIncidentCreationTimeBefore     string
 	flagGetIncidentSize                   int32
 	flagGetIncidentLimit                  int32
 )
@@ -33,7 +36,7 @@ var getIncidentCmd = &cobra.Command{
 	Short: "List or fetch incidents",
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
-		"When no keys are supplied, incidents are searched by state, error type, error message, process context, and flow-node context. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
+		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
 		"Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages.",
 	Example: `  ./c8volt get incident --key 2251799813685249
   ./c8volt get inc --key 2251799813685249 --key 2251799813685250
@@ -42,6 +45,7 @@ var getIncidentCmd = &cobra.Command{
   ./c8volt get incident
   ./c8volt get incident --state resolved --error-type io_mapping_error
   ./c8volt get incident --error-message "no retries"
+  ./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
   ./c8volt get incident --process-instance-key 2251799813685249 --flow-node-id task-a
   ./c8volt --json get incident --key 2251799813685249
   ./c8volt --keys-only get incident --key 2251799813685249`,
@@ -120,6 +124,8 @@ func init() {
 	fs.StringVar(&flagGetIncidentProcessDefinitionID, "process-definition-id", "", "process definition ID to filter incidents")
 	fs.StringVar(&flagGetIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
 	fs.StringVar(&flagGetIncidentFlowNodeInstanceKey, "flow-node-instance-key", "", "flow node instance key to filter incidents")
+	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
+	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
 	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for human incident messages; 0 keeps full messages")
@@ -144,6 +150,12 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return err
 	}
 	if err := validateGetIncidentErrorTypeFlag(flagGetIncidentErrorType); err != nil {
+		return err
+	}
+	if err := validateGetIncidentCreationTimeFlag("--creation-time-after", flagGetIncidentCreationTimeAfter); err != nil {
+		return err
+	}
+	if err := validateGetIncidentCreationTimeFlag("--creation-time-before", flagGetIncidentCreationTimeBefore); err != nil {
 		return err
 	}
 	if len(flagGetIncidentKeys) > 0 && hasGetIncidentSearchModeFlags(cmd) {
@@ -193,6 +205,19 @@ func validateGetIncidentErrorTypeFlag(value string) error {
 	return invalidFlagValuef("invalid value for --error-type: %q, valid values are: %s", value, incidentfilter.ValidErrorTypesString())
 }
 
+func validateGetIncidentCreationTimeFlag(name string, value string) error {
+	if value == "" {
+		return nil
+	}
+	if _, err := time.Parse(time.RFC3339Nano, value); err == nil {
+		return nil
+	}
+	if _, err := time.Parse(time.DateOnly, value); err == nil {
+		return nil
+	}
+	return invalidFlagValuef("invalid value for %s: %q, expected RFC3339 timestamp or YYYY-MM-DD", name, value)
+}
+
 func isGetIncidentLimitFlagChanged(cmd *cobra.Command) bool {
 	return cmd != nil && cmd.Flags().Changed("limit")
 }
@@ -211,6 +236,8 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"process-definition-id",
 		"flow-node-id",
 		"flow-node-instance-key",
+		"creation-time-after",
+		"creation-time-before",
 		"batch-size",
 		"limit",
 	} {
@@ -233,6 +260,8 @@ func populateGetIncidentSearchFilter() process.IncidentFilter {
 		ProcessDefinitionId:    flagGetIncidentProcessDefinitionID,
 		FlowNodeId:             flagGetIncidentFlowNodeID,
 		FlowNodeInstanceKey:    flagGetIncidentFlowNodeInstanceKey,
+		CreationTimeAfter:      flagGetIncidentCreationTimeAfter,
+		CreationTimeBefore:     flagGetIncidentCreationTimeBefore,
 	}
 }
 
@@ -248,6 +277,8 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentProcessDefinitionID = ""
 	flagGetIncidentFlowNodeID = ""
 	flagGetIncidentFlowNodeInstanceKey = ""
+	flagGetIncidentCreationTimeAfter = ""
+	flagGetIncidentCreationTimeBefore = ""
 	flagGetIncidentSize = consts.MaxPISearchSize
 	flagGetIncidentLimit = 0
 	flagWorkers = 0

@@ -148,7 +148,9 @@ func (c *client) searchIncidentPagesUntilLimit(ctx context.Context, filter Incid
 }
 
 func incidentSearchNeedsPagedLocalFiltering(filter IncidentFilter) bool {
-	return filter.ErrorMessage != ""
+	return filter.ErrorMessage != "" ||
+		filter.CreationTimeAfter != "" ||
+		filter.CreationTimeBefore != ""
 }
 
 func nextIncidentFacadePageRequest(current IncidentPageRequest, page IncidentPage) IncidentPageRequest {

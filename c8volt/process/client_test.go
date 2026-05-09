@@ -354,8 +354,6 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 				ProcessDefinitionId:    "pd-id",
 				FlowNodeId:             "task-a",
 				FlowNodeInstanceKey:    "fni-a",
-				CreationTimeAfter:      "2026-05-09T09:00:00Z",
-				CreationTimeBefore:     "2026-05-09T11:00:00Z",
 			}, filter)
 			assert.Equal(t, int32(50), size)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
@@ -375,8 +373,6 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 		ProcessDefinitionId:    "pd-id",
 		FlowNodeId:             "task-a",
 		FlowNodeInstanceKey:    "fni-a",
-		CreationTimeAfter:      "2026-05-09T09:00:00Z",
-		CreationTimeBefore:     "2026-05-09T11:00:00Z",
 	}, 50, options.WithVerbose())
 
 	require.NoError(t, err)
@@ -416,6 +412,44 @@ func TestClient_SearchIncidentsWithMessageFilterPagesUntilEnoughLocalMatches(t *
 	got, err := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default()).SearchIncidents(ctx, IncidentFilter{
 		State:        "active",
 		ErrorMessage: "intentional",
+	}, 1, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.IncidentPageRequest{{Size: 1}, {From: 1, Size: 1}}, pages)
+	require.Equal(t, int32(1), got.Total)
+	require.Equal(t, "match", got.Items[0].IncidentKey)
+}
+
+func TestClient_SearchIncidentsWithCreationTimeFilterPagesUntilEnoughLocalMatches(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var pages []d.IncidentPageRequest
+	incAPI := stubIncidentAPI{
+		searchIncidentsPage: func(_ context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+			assert.Equal(t, d.IncidentFilter{State: "active", CreationTimeAfter: "2026-05-09T09:00:00Z"}, filter)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			pages = append(pages, page)
+			if len(pages) == 1 {
+				return d.IncidentPage{
+					Request:       page,
+					OverflowState: d.ProcessInstanceOverflowStateHasMore,
+					Items:         nil,
+				}, nil
+			}
+			return d.IncidentPage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "match", CreationTime: "2026-05-09T10:00:00Z"},
+				},
+			}, nil
+		},
+	}
+
+	got, err := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default()).SearchIncidents(ctx, IncidentFilter{
+		State:             "active",
+		CreationTimeAfter: "2026-05-09T09:00:00Z",
 	}, 1, options.WithVerbose())
 
 	require.NoError(t, err)

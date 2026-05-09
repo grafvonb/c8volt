@@ -68,7 +68,7 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 
 // SearchIncidents returns up to size top-level incidents after version-compatible filtering.
 func (s *Service) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	if filter.ErrorMessage != "" {
+	if incidentSearchNeedsPagedLocalFiltering(filter) {
 		return s.searchIncidentPagesUntilLimit(ctx, filter, size, opts...)
 	}
 	page, err := s.SearchIncidentsPage(ctx, filter, d.IncidentPageRequest{Size: size}, opts...)
@@ -100,6 +100,12 @@ func (s *Service) searchIncidentPagesUntilLimit(ctx context.Context, filter d.In
 		}
 		req = nextIncidentSearchPageRequest(req, page)
 	}
+}
+
+func incidentSearchNeedsPagedLocalFiltering(filter d.IncidentFilter) bool {
+	return filter.ErrorMessage != "" ||
+		filter.CreationTimeAfter != "" ||
+		filter.CreationTimeBefore != ""
 }
 
 func nextIncidentSearchPageRequest(current d.IncidentPageRequest, page d.IncidentPage) d.IncidentPageRequest {

@@ -125,15 +125,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T041 [P] [US4] Add command tests for `--creation-time-after`, `--creation-time-before`, combined time windows, and invalid date values in `cmd/get_incident_test.go`
-- [ ] T042 [P] [US4] Add v8.9 service tests for creation-time request shape in `internal/services/incident/v89/incidents_test.go`
-- [ ] T043 [P] [US4] Add local fallback creation-time filtering tests where needed in `c8volt/process/client_test.go`
+- [x] T041 [P] [US4] Add command tests for `--creation-time-after`, `--creation-time-before`, combined time windows, and invalid date values in `cmd/get_incident_test.go`
+- [x] T042 [P] [US4] Add v8.9 service tests for creation-time request shape in `internal/services/incident/v89/incidents_test.go`
+- [x] T043 [P] [US4] Add local fallback creation-time filtering tests where needed in `c8volt/process/client_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T044 [US4] Add creation-time flags using existing date parsing conventions in `cmd/get_incident.go`
-- [ ] T045 [US4] Add creation-time call options and conversion in `internal/services/calloption.go`, `internal/services/incident/v88/convert.go`, and `internal/services/incident/v89/convert.go`
-- [ ] T046 [US4] Apply creation-time bounds through safe server-side filters or local fallback in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, and `c8volt/process/client.go`
+- [x] T044 [US4] Add creation-time flags using existing date parsing conventions in `cmd/get_incident.go`
+- [x] T045 [US4] Add creation-time call options and conversion in `internal/services/calloption.go`, `internal/services/incident/v88/convert.go`, and `internal/services/incident/v89/convert.go`
+- [x] T046 [US4] Apply creation-time bounds through safe server-side filters or local fallback in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, and `c8volt/process/client.go`
 
 **Checkpoint**: User Story 4 is independently complete for time-window searches.
 

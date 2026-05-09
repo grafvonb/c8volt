@@ -5,6 +5,7 @@ Started: 2026-05-09 21:46:32
 
 ## Codebase Patterns
 
+- Creation-time incident filters accept RFC3339/RFC3339Nano timestamps and YYYY-MM-DD values at the CLI boundary, flow through `process.IncidentFilter`, use v8.9 server-side `creationTime` ranges, and trigger page-loop fallback for local filtering paths such as v8.8.
 - Plain `get incident` now switches to search/list mode only when no `--key` flags and no stdin `-` are provided; explicit keyed mode rejects search flags before client construction.
 - Incident search paging uses the same command/config batch-size source and continuation concepts as `get pi`, but advances offset by requested page size because service-local incident filtering can reduce returned page item counts.
 - Public process facade additions should update `c8volt/process/model.go`, `api.go`, `convert.go`, and concrete orchestration in `client.go`; command test stubs in `cmd/process_api_stub_test.go` must also satisfy the expanded `process.API`.
@@ -174,4 +175,32 @@ Started: 2026-05-09 21:46:32
 - `SearchIncidentsPage` is the correct boundary for message-safe paging because version services already apply local `incidentfilter.ErrorMessageContains` semantics per page.
 - The non-page incident facade/service helpers need their own continuation loop for local message filtering so callers do not accidentally treat the first filtered page as exhaustive.
 - v8.8 top-level incident search remains compatibility-safe by omitting rich filter objects when tenant is not set; message, state, error type, and context checks stay local.
+---
+
+---
+## Iteration 6 - 2026-05-09 22:33:40 CEST
+**User Story**: User Story 4 - Filter By Creation Time
+**Tasks Completed**:
+- [x] T041: Add command tests for `--creation-time-after`, `--creation-time-before`, combined time windows, and invalid date values in `cmd/get_incident_test.go`
+- [x] T042: Add v8.9 service tests for creation-time request shape in `internal/services/incident/v89/incidents_test.go`
+- [x] T043: Add local fallback creation-time filtering tests where needed in `c8volt/process/client_test.go`
+- [x] T044: Add creation-time flags using existing date parsing conventions in `cmd/get_incident.go`
+- [x] T045: Add creation-time call options and conversion in `internal/services/calloption.go`, `internal/services/incident/v88/convert.go`, and `internal/services/incident/v89/convert.go`
+- [x] T046: Apply creation-time bounds through safe server-side filters or local fallback in `internal/services/incident/v88/incidents.go`, `internal/services/incident/v89/incidents.go`, and `c8volt/process/client.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- cmd/get_incident.go
+- cmd/get_incident_test.go
+- internal/services/incident/v88/incidents.go
+- internal/services/incident/v88/incidents_test.go
+- internal/services/incident/v89/incidents_test.go
+- specs/185-get-incident-command/tasks.md
+- specs/185-get-incident-command/progress.md
+**Learnings**:
+- Creation-time search filters already existed in the public/domain incident filter model; the missing work was CLI exposure, validation, and page-loop protection for local filtering paths.
+- v8.9 generated filters serialize date-only bounds as midnight UTC timestamps, while v8.8 keeps compatibility by omitting rich incident filters and applying time bounds locally.
+- Non-page `SearchIncidents` callers need continuation logic for creation-time filters because local filtering can produce empty first pages before later matches.
 ---

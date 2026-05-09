@@ -277,6 +277,8 @@ func TestSearchIncidentsPageUsesServerFiltersAndLocalMessageFiltering(t *testing
 			require.NoError(t, err)
 			require.NotNil(t, creationTime.Gte)
 			require.NotNil(t, creationTime.Lte)
+			require.Equal(t, time.Date(2026, 5, 9, 9, 0, 0, 0, time.UTC), *creationTime.Gte)
+			require.Equal(t, time.Date(2026, 5, 9, 11, 0, 0, 0, time.UTC), *creationTime.Lte)
 
 			require.NotNil(t, body.Page)
 			page, err := body.Page.AsOffsetPagination()
