@@ -1529,7 +1529,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 
 // TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary verifies indeterminate overflow emits a warning summary.
 func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
-	var requests []string
+	var requests safeSlice[string]
 	var cancelled safeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1537,7 +1537,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1587,7 +1587,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		"--batch-size", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/221/cancellation",

@@ -49,7 +49,8 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "./c8volt get pi --incidents-only --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --with-incidents")
 	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-message-limit 80")
-	require.Contains(t, output, "./c8volt get pi --with-incidents --incident-error-type io_mapping_error --incident-error-message failed")
+	require.Contains(t, output, "./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message failed")
+	require.Contains(t, output, "./c8volt get pi --total --direct-incidents-only --incident-error-type io_mapping_error")
 	require.Contains(t, output, "./c8volt get pi --with-vars --var-value-limit 120")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-incidents --incident-state all")
 	require.Contains(t, output, "./c8volt get pi --key 2251799813711967 --with-vars")
@@ -61,9 +62,9 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--incident-message-limit int")
 	require.Contains(t, output, "maximum characters to show for human incident messages when --with-incidents is set")
 	require.Contains(t, output, "--incident-error-message string")
-	require.Contains(t, output, "case-insensitive incident error message substring filter for --with-incidents")
+	require.Contains(t, output, "case-insensitive incident error message substring filter for keyed --with-incidents or list/search --direct-incidents-only")
 	require.Contains(t, output, "--incident-error-type string")
-	require.Contains(t, output, "case-insensitive incident error type filter for --with-incidents: AD_HOC_SUB_PROCESS_NO_RETRIES")
+	require.Contains(t, output, "case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only: AD_HOC_SUB_PROCESS_NO_RETRIES")
 	require.Contains(t, output, "JOB_NO_RETRIES")
 	require.Contains(t, output, "--incident-state string")
 	require.Contains(t, output, "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
@@ -328,6 +329,54 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		require.Empty(t, stderr)
 	})
 
+	t.Run("incident detail filters count matching direct incidents", func(t *testing.T) {
+		tests := []struct {
+			name string
+			args []string
+		}{
+			{name: "direct incidents only", args: []string{"--total", "--direct-incidents-only", "--incident-error-type", "io_mapping_error", "--incident-error-message", "intentional"}},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				var requests []string
+				srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					requests = append(requests, r.Method+" "+r.URL.Path)
+					w.Header().Set("Content-Type", "application/json")
+					switch r.URL.Path {
+					case "/v2/process-instances/search":
+						require.Equal(t, http.MethodPost, r.Method)
+						_, _ = w.Write([]byte(`{"items":[
+							{"hasIncident":true,"processDefinitionId":"demo-a","processDefinitionKey":"9001","processDefinitionName":"demo-a","processDefinitionVersion":3,"processInstanceKey":"123","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"},
+							{"hasIncident":true,"processDefinitionId":"demo-b","processDefinitionKey":"9002","processDefinitionName":"demo-b","processDefinitionVersion":4,"processInstanceKey":"124","startDate":"2026-03-23T18:05:00Z","state":"ACTIVE","tenantId":"tenant"}
+						],"page":{"totalItems":2,"hasMoreTotalItems":false}}`))
+					case "/v2/process-instances/123/incidents/search":
+						require.Equal(t, http.MethodPost, r.Method)
+						_, _ = w.Write([]byte(`{"items":[{"errorMessage":"Intentional mapping failure","errorType":"IO_MAPPING_ERROR","incidentKey":"incident-123","processInstanceKey":"123","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+					case "/v2/process-instances/124/incidents/search":
+						require.Equal(t, http.MethodPost, r.Method)
+						_, _ = w.Write([]byte(`{"items":[{"errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"incident-124","processInstanceKey":"124","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+					default:
+						t.Fatalf("unexpected request path: %s", r.URL.Path)
+					}
+				}))
+				t.Cleanup(srv.Close)
+
+				cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+				args := append([]string{"--config", cfgPath, "--tenant", "tenant", "get", "process-instance"}, tt.args...)
+				stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t, args...)
+
+				require.Equal(t, []string{
+					"POST /v2/process-instances/search",
+					"POST /v2/process-instances/123/incidents/search",
+					"POST /v2/process-instances/124/incidents/search",
+				}, requests)
+				require.Equal(t, "1\n", stdout)
+				require.Empty(t, stderr)
+			})
+		}
+	})
+
 	t.Run("capped reported total falls back to cursor paging for exact count", func(t *testing.T) {
 		var requests []string
 		srv := newProcessInstanceSearchCaptureServerWithResponses(t, &requests,
@@ -468,6 +517,11 @@ func TestGetProcessInstanceTotalValidation(t *testing.T) {
 			helper: "TestGetProcessInstanceTotalWithKeysOnlyHelper",
 			want:   "--total cannot be combined with --keys-only",
 		},
+		{
+			name:   "incident view output is rejected",
+			helper: "TestGetProcessInstanceWithIncidentsWithTotalHelper",
+			want:   "--total cannot be combined with --with-incidents",
+		},
 	}
 
 	for _, tt := range tests {
@@ -494,11 +548,6 @@ func TestGetProcessInstanceWithIncidentsValidation(t *testing.T) {
 			name:   "rejects search-mode incident filters",
 			helper: "TestGetProcessInstanceWithIncidentsWithSearchFilterHelper",
 			want:   "--with-incidents cannot be combined with search-mode filters",
-		},
-		{
-			name:   "rejects total output",
-			helper: "TestGetProcessInstanceWithIncidentsWithTotalHelper",
-			want:   "--total cannot be combined with --with-incidents",
 		},
 		{
 			name:   "rejects direct and marker incident filters together",
@@ -902,14 +951,14 @@ func TestGetProcessInstanceIncidentStateValidation(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "requires with-incidents",
+			name:   "list/search requires direct incident filtering",
 			helper: "TestGetProcessInstanceIncidentStateWithoutIncidentsHelper",
-			want:   "--incident-state requires --with-incidents",
+			want:   "--incident-state requires --direct-incidents-only for list/search process-instance filtering",
 		},
 		{
-			name:   "requires keyed lookup",
+			name:   "with-incidents does not make list/search incident-state a filter",
 			helper: "TestGetProcessInstanceIncidentStateListSearchHelper",
-			want:   "--incident-state is only supported with --key for process-instance incident lookup; list/search process-instance results use the active hasIncident marker",
+			want:   "--incident-state requires --direct-incidents-only for list/search process-instance filtering",
 		},
 		{
 			name:   "rejects unsupported value",
@@ -938,14 +987,14 @@ func TestGetProcessInstanceIncidentDetailFilterValidation(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "error type requires with-incidents",
+			name:   "error type list/search requires direct incident filtering",
 			helper: "TestGetProcessInstanceIncidentErrorTypeWithoutIncidentsHelper",
-			want:   "--incident-error-type requires --with-incidents",
+			want:   "--incident-error-type requires --direct-incidents-only for list/search process-instance filtering",
 		},
 		{
-			name:   "error message requires with-incidents",
+			name:   "error message list/search requires direct incident filtering",
 			helper: "TestGetProcessInstanceIncidentErrorMessageWithoutIncidentsHelper",
-			want:   "--incident-error-message requires --with-incidents",
+			want:   "--incident-error-message requires --direct-incidents-only for list/search process-instance filtering",
 		},
 		{
 			name:   "rejects unsupported error type",

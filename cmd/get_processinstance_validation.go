@@ -77,15 +77,6 @@ func validatePISearchFlags(cmds ...*cobra.Command) error {
 	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagGetPIWithIncidents {
 		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
 	}
-	if isPIIncidentStateFlagChanged(cmd) && !flagGetPIWithIncidents {
-		return missingDependentFlagsf("--incident-state requires --with-incidents")
-	}
-	if isPIIncidentErrorTypeFlagChanged(cmd) && !flagGetPIWithIncidents {
-		return missingDependentFlagsf("--incident-error-type requires --with-incidents")
-	}
-	if isPIIncidentErrorMessageFlagChanged(cmd) && !flagGetPIWithIncidents {
-		return missingDependentFlagsf("--incident-error-message requires --with-incidents")
-	}
 	if flagGetPIVarValueLimit < 0 {
 		return invalidFlagValuef("invalid value for --var-value-limit: %d, expected non-negative integer", flagGetPIVarValueLimit)
 	}
@@ -191,6 +182,36 @@ func validatePIIncidentErrorTypeFlag(value string) error {
 	return invalidFlagValuef("invalid value for --incident-error-type: %q, valid values are: %s", value, incidentfilter.ValidErrorTypesString())
 }
 
+func hasPIIncidentDetailFilters() bool {
+	return strings.TrimSpace(flagGetPIIncidentErrorType) != "" ||
+		strings.TrimSpace(flagGetPIIncidentErrorMessage) != ""
+}
+
+func validatePIIncidentDetailFilterUsage(cmd *cobra.Command, keyCount int) error {
+	if keyCount > 0 {
+		if isPIIncidentStateFlagChanged(cmd) && !flagGetPIWithIncidents {
+			return missingDependentFlagsf("--incident-state requires --with-incidents for keyed process-instance lookup")
+		}
+		if isPIIncidentErrorTypeFlagChanged(cmd) && !flagGetPIWithIncidents {
+			return missingDependentFlagsf("--incident-error-type requires --with-incidents for keyed process-instance lookup")
+		}
+		if isPIIncidentErrorMessageFlagChanged(cmd) && !flagGetPIWithIncidents {
+			return missingDependentFlagsf("--incident-error-message requires --with-incidents for keyed process-instance lookup")
+		}
+		return nil
+	}
+	if isPIIncidentStateFlagChanged(cmd) && !flagGetPIDirectIncidentsOnly {
+		return missingDependentFlagsf("--incident-state requires --direct-incidents-only for list/search process-instance filtering")
+	}
+	if isPIIncidentErrorTypeFlagChanged(cmd) && !flagGetPIDirectIncidentsOnly {
+		return missingDependentFlagsf("--incident-error-type requires --direct-incidents-only for list/search process-instance filtering")
+	}
+	if isPIIncidentErrorMessageFlagChanged(cmd) && !flagGetPIDirectIncidentsOnly {
+		return missingDependentFlagsf("--incident-error-message requires --direct-incidents-only for list/search process-instance filtering")
+	}
+	return nil
+}
+
 // isPIVarValueLimitFlagChanged detects whether variable truncation was supplied
 // so validation can reject a dangling --var-value-limit without --with-vars.
 func isPIVarValueLimitFlagChanged(cmd *cobra.Command) bool {
@@ -209,9 +230,6 @@ func validatePIKeyedModeLimit(keyCount int) error {
 
 // validatePIWithIncidentsUsage keeps incident enrichment out of modes that cannot attach details unambiguously.
 func validatePIWithIncidentsUsage(cmd *cobra.Command, keyCount int, filterFlagsSet bool) error {
-	if isPIIncidentStateFlagChanged(cmd) && keyCount == 0 {
-		return missingDependentFlagsf("--incident-state is only supported with --key for process-instance incident lookup; list/search process-instance results use the active hasIncident marker")
-	}
 	if !flagGetPIWithIncidents {
 		return nil
 	}
