@@ -14,7 +14,6 @@ import (
 	"github.com/grafvonb/c8volt/internal/services/common"
 	"github.com/grafvonb/c8volt/internal/services/httpc"
 	"github.com/grafvonb/c8volt/internal/services/incident/waiter"
-	"github.com/grafvonb/c8volt/toolx"
 )
 
 // GetIncident loads a single incident by key for direct resolution planning and confirmation.
@@ -53,26 +52,17 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 	return result, nil
 }
 
-// SearchProcessInstanceIncidents uses the scoped process-instance incident endpoint for active incident enrichment.
+// SearchProcessInstanceIncidents uses the scoped process-instance incident
+// endpoint for v8.8 but does not send an incident filter. Some v8.8 clusters
+// expose the endpoint but reject the filter object at runtime, so c8volt keeps
+// the request tenant-safe through the path and applies direct/state/tenant
+// filtering locally.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	callCfg := services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
-	tenantFilter, err := common.NewStringEqFilterPtr(s.cfg.App.Tenant)
-	if err != nil {
-		return nil, fmt.Errorf("building tenant incident filter: %w", err)
-	}
-	stateFilter, err := newIncidentSearchStateFilter(callCfg.IncidentState)
-	if err != nil {
-		return nil, fmt.Errorf("building incident state filter: %w", err)
-	}
-	filter := &camundav88.IncidentFilter{
-		State:    stateFilter,
-		TenantId: tenantFilter,
-	}
 	page := newSearchQueryPageRequest(d.ProcessInstancePageRequest{Size: 1000})
 	body := camundav88.SearchProcessInstanceIncidentsJSONRequestBody{
-		Page:   &page,
-		Filter: filter,
+		Page: &page,
 	}
 	resp, err := s.cc.SearchProcessInstanceIncidentsWithResponse(ctx, key, body)
 	if err != nil {
@@ -82,7 +72,35 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 	if err != nil {
 		return nil, err
 	}
-	return toolx.MapSlice(payload.Items, fromIncidentResult), nil
+	return filterIncidentResults(key, common.EffectiveTenant(s.cfg), callCfg.IncidentState, payload.Items), nil
+}
+
+func filterIncidentResults(key string, tenant string, state string, items []camundav88.IncidentResult) []d.ProcessInstanceIncidentDetail {
+	out := make([]d.ProcessInstanceIncidentDetail, 0, len(items))
+	for _, item := range items {
+		if item.ProcessInstanceKey != key {
+			continue
+		}
+		if tenant != "" && item.TenantId != tenant {
+			continue
+		}
+		if !incidentStateMatches(state, item.State) {
+			continue
+		}
+		out = append(out, fromIncidentResult(item))
+	}
+	return out
+}
+
+func incidentStateMatches(want string, got camundav88.IncidentStateEnum) bool {
+	switch strings.ToLower(strings.TrimSpace(want)) {
+	case "", "active":
+		return got == camundav88.IncidentStateEnumACTIVE
+	case "all":
+		return true
+	default:
+		return string(got) == strings.ToUpper(strings.TrimSpace(want))
+	}
 }
 
 func newIncidentSearchStateFilter(state string) (*camundav88.IncidentStateFilterProperty, error) {

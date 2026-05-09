@@ -141,17 +141,15 @@ func TestWaitForProcessInstanceIncidentsResolvedPollsInitialSetOnly(t *testing.T
 	svc := newTestService(t, mockIncidentClient{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 			require.Equal(t, "2251799813685250", key)
-			require.NotNil(t, body.Filter)
-			require.NotNil(t, body.Filter.State)
-			state, err := body.Filter.State.AsIncidentStateFilterProperty0()
-			require.NoError(t, err)
-			require.Equal(t, camundav88.IncidentStateEnumACTIVE, state)
+			require.Nil(t, body.Filter)
+			require.NotNil(t, body.Page)
 			attempts++
 			items := []camundav88.IncidentResult{
-				{IncidentKey: "other", ProcessInstanceKey: key, State: camundav88.IncidentStateEnumACTIVE},
+				{IncidentKey: "other", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE},
+				{IncidentKey: "resolved-target", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumRESOLVED},
 			}
 			if attempts == 1 {
-				items = append(items, camundav88.IncidentResult{IncidentKey: "2251799813685249", ProcessInstanceKey: key, State: camundav88.IncidentStateEnumACTIVE})
+				items = append(items, camundav88.IncidentResult{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE})
 			}
 			return &camundav88.SearchProcessInstanceIncidentsResponse{
 				HTTPResponse: testHTTPResponse(http.StatusOK),
@@ -172,16 +170,16 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		option    services.CallOption
-		wantState *camundav88.IncidentStateEnum
+		name     string
+		option   services.CallOption
+		wantKeys []string
 	}{
-		{name: "default active", wantState: ptrIncidentState88(camundav88.IncidentStateEnumACTIVE)},
-		{name: "pending", option: services.WithIncidentState("pending"), wantState: ptrIncidentState88(camundav88.IncidentStateEnumPENDING)},
-		{name: "resolved", option: services.WithIncidentState("resolved"), wantState: ptrIncidentState88(camundav88.IncidentStateEnumRESOLVED)},
-		{name: "migrated", option: services.WithIncidentState("migrated"), wantState: ptrIncidentState88(camundav88.IncidentStateEnumMIGRATED)},
-		{name: "unknown", option: services.WithIncidentState("unknown"), wantState: ptrIncidentState88(camundav88.IncidentStateEnumUNKNOWN)},
-		{name: "all", option: services.WithIncidentState("all"), wantState: nil},
+		{name: "default active", wantKeys: []string{"active"}},
+		{name: "pending", option: services.WithIncidentState("pending"), wantKeys: []string{"pending"}},
+		{name: "resolved", option: services.WithIncidentState("resolved"), wantKeys: []string{"resolved"}},
+		{name: "migrated", option: services.WithIncidentState("migrated"), wantKeys: []string{"migrated"}},
+		{name: "unknown", option: services.WithIncidentState("unknown"), wantKeys: []string{"unknown"}},
+		{name: "all", option: services.WithIncidentState("all"), wantKeys: []string{"active", "pending", "resolved", "migrated", "unknown"}},
 	}
 
 	for _, tt := range tests {
@@ -191,18 +189,18 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 			svc := newTestService(t, mockIncidentClient{
 				searchProcessInstanceIncidents: func(_ context.Context, key string, body camundav88.SearchProcessInstanceIncidentsJSONRequestBody, _ ...camundav88.RequestEditorFn) (*camundav88.SearchProcessInstanceIncidentsResponse, error) {
 					require.Equal(t, "2251799813685250", key)
-					require.NotNil(t, body.Filter)
-					if tt.wantState == nil {
-						require.Nil(t, body.Filter.State)
-					} else {
-						require.NotNil(t, body.Filter.State)
-						state, err := body.Filter.State.AsIncidentStateFilterProperty0()
-						require.NoError(t, err)
-						require.Equal(t, *tt.wantState, state)
-					}
+					require.Nil(t, body.Filter)
+					require.NotNil(t, body.Page)
 					return &camundav88.SearchProcessInstanceIncidentsResponse{
 						HTTPResponse: testHTTPResponse(http.StatusOK),
-						JSON200:      &camundav88.IncidentSearchQueryResult{Items: nil},
+						JSON200: &camundav88.IncidentSearchQueryResult{Items: []camundav88.IncidentResult{
+							{IncidentKey: "active", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumACTIVE},
+							{IncidentKey: "pending", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumPENDING},
+							{IncidentKey: "resolved", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumRESOLVED},
+							{IncidentKey: "migrated", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumMIGRATED},
+							{IncidentKey: "unknown", ProcessInstanceKey: "2251799813685250", State: camundav88.IncidentStateEnumUNKNOWN},
+							{IncidentKey: "child-active", ProcessInstanceKey: "child", State: camundav88.IncidentStateEnumACTIVE},
+						}},
 					}, nil
 				},
 			})
@@ -214,13 +212,17 @@ func TestSearchProcessInstanceIncidentsUsesRequestedStateScope(t *testing.T) {
 			got, err := svc.SearchProcessInstanceIncidents(context.Background(), "2251799813685250", opts...)
 
 			require.NoError(t, err)
-			require.Empty(t, got)
+			require.Equal(t, tt.wantKeys, incidentDetailKeys(got))
 		})
 	}
 }
 
-func ptrIncidentState88(v camundav88.IncidentStateEnum) *camundav88.IncidentStateEnum {
-	return &v
+func incidentDetailKeys(items []d.ProcessInstanceIncidentDetail) []string {
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
+		keys = append(keys, item.IncidentKey)
+	}
+	return keys
 }
 
 func TestResolveIncidentMapsHTTPError(t *testing.T) {
