@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -146,6 +147,155 @@ func TestGetIncidentCommand_NotFoundExitsWithNotFoundHelper(t *testing.T) {
 	Execute()
 }
 
+func TestGetIncidentCommand_SearchDefaultsToActiveState(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685300","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685249","processDefinitionId":"demo","processDefinitionKey":"2251799813685200","processInstanceKey":"2251799813711967","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"state":"ACTIVE"`)
+	require.Contains(t, output, "key=2251799813685249")
+	require.Contains(t, output, "state=ACTIVE")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_SearchStateAllOmitsStateFilter(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"resolved earlier","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685250","processInstanceKey":"2251799813711968","state":"RESOLVED","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "all",
+	)
+
+	require.Len(t, requests, 1)
+	require.NotContains(t, requests[0], `"state"`)
+	require.Contains(t, output, "state=RESOLVED")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_RejectsInvalidStateBeforeLookup(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", "--state", "done")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), `invalid value for --state: "done", valid values are: active, pending, resolved, migrated, unknown, all`)
+	require.Empty(t, output)
+}
+
+func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveErrorType(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"Mapping failed","errorType":"IO_MAPPING_ERROR","incidentKey":"2251799813685251","processInstanceKey":"2251799813711969","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--error-type", "io_mapping_error",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"errorType":"IO_MAPPING_ERROR"`)
+	require.Contains(t, output, "errorType=IO_MAPPING_ERROR")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_RejectsInvalidErrorTypeWithValidValues(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", "--error-type", "bad_type")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid input")
+	require.Contains(t, err.Error(), `invalid value for --error-type: "bad_type", valid values are:`)
+	require.Contains(t, err.Error(), "JOB_NO_RETRIES")
+	require.Empty(t, output)
+}
+
+func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"creationTime":"2026-03-23T18:01:00Z","elementId":"task-a","elementInstanceKey":"2251799813685303","errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685252","processDefinitionId":"order-process","processDefinitionKey":"2251799813685201","processInstanceKey":"2251799813711970","rootProcessInstanceKey":"2251799813711971","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--process-instance-key", "2251799813711970",
+		"--root-process-instance-key", "2251799813711971",
+		"--process-definition-key", "2251799813685201",
+		"--process-definition-id", "order-process",
+		"--flow-node-id", "task-a",
+		"--flow-node-instance-key", "2251799813685303",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], "2251799813711970")
+	require.NotContains(t, requests[0], "2251799813711971")
+	require.Contains(t, requests[0], "2251799813685201")
+	require.Contains(t, requests[0], "order-process")
+	require.Contains(t, requests[0], "task-a")
+	require.Contains(t, requests[0], "2251799813685303")
+	require.Contains(t, output, "key=2251799813685252")
+	require.Contains(t, output, "flowNodeId=task-a")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"third","incidentKey":"2251799813685255","processInstanceKey":"2251799813711974","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"fourth","incidentKey":"2251799813685256","processInstanceKey":"2251799813711975","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "2",
+		"--limit", "3",
+		"--auto-confirm",
+	)
+
+	require.Len(t, requests, 2)
+	require.Contains(t, requests[0], `"limit":2`)
+	require.Contains(t, requests[1], `"from":2`)
+	require.Contains(t, output, "key=2251799813685253")
+	require.Contains(t, output, "key=2251799813685254")
+	require.Contains(t, output, "key=2251799813685255")
+	require.NotContains(t, output, "key=2251799813685256")
+	require.Contains(t, output, "found: 3")
+}
+
+func TestGetIncidentCommand_RejectsKeyedLookupWithSearchFilter(t *testing.T) {
+	output, err := executeRootExpectErrorForIncidentTest(t,
+		"get", "incident",
+		"--key", "2251799813685249",
+		"--state", "resolved",
+	)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--key cannot be combined with search filters")
+	require.Empty(t, output)
+}
+
 func newIncidentLookupServer(t *testing.T, requests *[]string, responses map[string]string) *httptest.Server {
 	t.Helper()
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +310,24 @@ func newIncidentLookupServer(t *testing.T, requests *[]string, responses map[str
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(response))
+	}))
+}
+
+func newIncidentSearchCaptureServerWithResponses(t *testing.T, requests *[]string, responses ...string) *httptest.Server {
+	t.Helper()
+
+	served := 0
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/incidents/search", r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		*requests = append(*requests, string(body))
+		require.Less(t, served, len(responses), "unexpected extra incident search request")
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(responses[served]))
+		served++
 	}))
 }
 

@@ -346,16 +346,17 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			calls = append(calls, "search")
 			assert.Equal(t, d.IncidentFilter{
-				State:                "resolved",
-				ErrorType:            "io_mapping_error",
-				ErrorMessage:         "intentional",
-				ProcessInstanceKey:   "pi-a",
-				ProcessDefinitionKey: "pd-key",
-				ProcessDefinitionId:  "pd-id",
-				FlowNodeId:           "task-a",
-				FlowNodeInstanceKey:  "fni-a",
-				CreationTimeAfter:    "2026-05-09T09:00:00Z",
-				CreationTimeBefore:   "2026-05-09T11:00:00Z",
+				State:                  "resolved",
+				ErrorType:              "io_mapping_error",
+				ErrorMessage:           "intentional",
+				ProcessInstanceKey:     "pi-a",
+				RootProcessInstanceKey: "root-pi-a",
+				ProcessDefinitionKey:   "pd-key",
+				ProcessDefinitionId:    "pd-id",
+				FlowNodeId:             "task-a",
+				FlowNodeInstanceKey:    "fni-a",
+				CreationTimeAfter:      "2026-05-09T09:00:00Z",
+				CreationTimeBefore:     "2026-05-09T11:00:00Z",
 			}, filter)
 			assert.Equal(t, int32(50), size)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
@@ -367,16 +368,17 @@ func TestClient_GetIncidentAndSearchIncidentsMapServiceBoundary(t *testing.T) {
 	gotIncident, err := cli.GetIncident(ctx, "incident-a", options.WithVerbose())
 	require.NoError(t, err)
 	gotSearch, err := cli.SearchIncidents(ctx, IncidentFilter{
-		State:                "resolved",
-		ErrorType:            "io_mapping_error",
-		ErrorMessage:         "intentional",
-		ProcessInstanceKey:   "pi-a",
-		ProcessDefinitionKey: "pd-key",
-		ProcessDefinitionId:  "pd-id",
-		FlowNodeId:           "task-a",
-		FlowNodeInstanceKey:  "fni-a",
-		CreationTimeAfter:    "2026-05-09T09:00:00Z",
-		CreationTimeBefore:   "2026-05-09T11:00:00Z",
+		State:                  "resolved",
+		ErrorType:              "io_mapping_error",
+		ErrorMessage:           "intentional",
+		ProcessInstanceKey:     "pi-a",
+		RootProcessInstanceKey: "root-pi-a",
+		ProcessDefinitionKey:   "pd-key",
+		ProcessDefinitionId:    "pd-id",
+		FlowNodeId:             "task-a",
+		FlowNodeInstanceKey:    "fni-a",
+		CreationTimeAfter:      "2026-05-09T09:00:00Z",
+		CreationTimeBefore:     "2026-05-09T11:00:00Z",
 	}, 50, options.WithVerbose())
 
 	require.NoError(t, err)

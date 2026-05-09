@@ -650,14 +650,21 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 
 func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get", "incident"}, []string{
-		"Fetch Camunda incidents by key",
+		"Get Camunda incidents by key or by search criteria",
 		"repeated --key values or newline-separated keys from stdin with '-'",
+		"Search mode defaults to active incidents",
 		"./c8volt get incident --key 2251799813685249",
 		"./c8volt get inc --key 2251799813685249 --key 2251799813685250",
+		"./c8volt get incident --state resolved --error-type io_mapping_error",
 		"./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -",
 		"./c8volt --json get incident --key 2251799813685249",
 		"./c8volt --keys-only get incident --key 2251799813685249",
 		"--key strings",
+		"--state string",
+		"--error-type string",
+		"--process-instance-key string",
+		"--batch-size int32",
+		"--limit int32",
 		"--error-message-limit int",
 		"--json",
 		"--keys-only",

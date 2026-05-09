@@ -78,17 +78,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Add command tests for default active state, `--state all`, invalid states, and state output in `cmd/get_incident_test.go`
-- [ ] T027 [P] [US2] Add command tests for case-insensitive `--error-type` validation and generated valid-value messages in `cmd/get_incident_test.go`
-- [ ] T028 [P] [US2] Add command tests for process instance, root process instance, process definition, flow node, and flow node instance filters in `cmd/get_incident_test.go`
-- [ ] T029 [P] [US2] Add facade/service tests proving server-safe filter options are passed through in `c8volt/process/client_test.go` and `internal/services/incident/v89/incidents_test.go`
+- [x] T026 [P] [US2] Add command tests for default active state, `--state all`, invalid states, and state output in `cmd/get_incident_test.go`
+- [x] T027 [P] [US2] Add command tests for case-insensitive `--error-type` validation and generated valid-value messages in `cmd/get_incident_test.go`
+- [x] T028 [P] [US2] Add command tests for process instance, root process instance, process definition, flow node, and flow node instance filters in `cmd/get_incident_test.go`
+- [x] T029 [P] [US2] Add facade/service tests proving server-safe filter options are passed through in `c8volt/process/client_test.go` and `internal/services/incident/v89/incidents_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Add search/list flags and validation for state, error type, process context, and flow-node context in `cmd/get_incident.go`
-- [ ] T031 [US2] Reuse `internal/services/incidentfilter` for error type normalization and valid-value help text in `cmd/get_incident.go`
-- [ ] T032 [US2] Map validated search filters to facade/service options in `c8volt/process/client.go` and `internal/services/calloption.go`
-- [ ] T033 [US2] Preserve existing get pagination, limit, interactive, auto-confirm, and non-interactive behavior for incident search in `cmd/get_incident.go`
+- [x] T030 [US2] Add search/list flags and validation for state, error type, process context, and flow-node context in `cmd/get_incident.go`
+- [x] T031 [US2] Reuse `internal/services/incidentfilter` for error type normalization and valid-value help text in `cmd/get_incident.go`
+- [x] T032 [US2] Map validated search filters to facade/service options in `c8volt/process/client.go` and `internal/services/calloption.go`
+- [x] T033 [US2] Preserve existing get pagination, limit, interactive, auto-confirm, and non-interactive behavior for incident search in `cmd/get_incident.go`
 
 **Checkpoint**: User Story 2 is functional without relying on process-instance incident view extender flags.
 

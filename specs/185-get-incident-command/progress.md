@@ -5,6 +5,8 @@ Started: 2026-05-09 21:46:32
 
 ## Codebase Patterns
 
+- Plain `get incident` now switches to search/list mode only when no `--key` flags and no stdin `-` are provided; explicit keyed mode rejects search flags before client construction.
+- Incident search paging uses the same command/config batch-size source and continuation concepts as `get pi`, but advances offset by requested page size because service-local incident filtering can reduce returned page item counts.
 - Public process facade additions should update `c8volt/process/model.go`, `api.go`, `convert.go`, and concrete orchestration in `client.go`; command test stubs in `cmd/process_api_stub_test.go` must also satisfy the expanded `process.API`.
 - Top-level incident search now has incident-specific page/result models in the public facade and internal domain. v8.7 rejects search as unsupported, v8.8 uses the top-level search endpoint with only tenant-safe server filtering plus local filters, and v8.9 pushes safe state/error-type/process/flow-node/creation-time filters server-side while keeping root-process-instance and error-message filtering local.
 - Shared incident human row formatting lives behind `incidentHumanLineWithMessageLimit`, with `incidentHumanLine` preserving the existing process-instance incident flag behavior.
@@ -115,4 +117,32 @@ Started: 2026-05-09 21:46:32
 **Learnings**:
 - Direct incident lookup can be added as a thin command layer over the facade bulk `GetIncidents` method; using `--workers 1` in command tests makes deduplication request order deterministic.
 - Cobra `Args` semantic validation needs `silenceUsageForError` to preserve existing invalid-input behavior without printing full command usage.
+---
+
+---
+## Iteration 4 - 2026-05-09 22:20:25 CEST
+**User Story**: User Story 2 - Search Incidents By Core Fields
+**Tasks Completed**:
+- [x] T026: Add command tests for default active state, `--state all`, invalid states, and state output in `cmd/get_incident_test.go`
+- [x] T027: Add command tests for case-insensitive `--error-type` validation and generated valid-value messages in `cmd/get_incident_test.go`
+- [x] T028: Add command tests for process instance, root process instance, process definition, flow node, and flow node instance filters in `cmd/get_incident_test.go`
+- [x] T029: Add facade/service tests proving server-safe filter options are passed through in `c8volt/process/client_test.go` and `internal/services/incident/v89/incidents_test.go`
+- [x] T030: Add search/list flags and validation for state, error type, process context, and flow-node context in `cmd/get_incident.go`
+- [x] T031: Reuse `internal/services/incidentfilter` for error type normalization and valid-value help text in `cmd/get_incident.go`
+- [x] T032: Map validated search filters to facade/service options in `c8volt/process/client.go` and `internal/services/calloption.go`
+- [x] T033: Preserve existing get pagination, limit, interactive, auto-confirm, and non-interactive behavior for incident search in `cmd/get_incident.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/process/client_test.go
+- cmd/command_contract_test.go
+- cmd/get_incident.go
+- cmd/get_incident_search.go
+- cmd/get_incident_test.go
+- specs/185-get-incident-command/tasks.md
+- specs/185-get-incident-command/progress.md
+**Learnings**:
+- Generated top-level incident search request JSON serializes simple enum filters as direct values such as `"state":"ACTIVE"` and `"errorType":"IO_MAPPING_ERROR"`, not `$eq` wrapper objects.
+- Root process instance filtering remains service-local for v8.9, so command-level paging must not use the filtered item count to compute the next offset.
+- Core incident search filters already flow through the facade/domain incident filter model; service call options remain scoped to existing process-instance incident enrichment behavior.
 ---
