@@ -10,6 +10,16 @@
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
+## Release 3.7.x
+
+`3.7.x` was released on 2026-05-10.
+
+- update process-instance variables from inline JSON or a vars file, preview the plan with `--dry-run`, and confirm visibility by default
+- inspect jobs from incident output, then update retries or timeout with dry-run previews and unattended confirmation support
+- resolve incidents directly by incident key, or resolve the active incident set discovered for one or more process instances
+- list, fetch, count, and pipe incidents with `get incident`, including state, error-type, message, process, flow-node, and creation-time filters
+- keep incident diagnosis in context with refined process-instance incident scopes, direct-incident filtering, and incident state rendering
+
 ## Why c8volt
 
 Camunda operations rarely end when an API accepts a request. `c8volt` is shaped around the questions operators ask next:
@@ -29,6 +39,8 @@ That is the gap `c8volt` closes.
 - deploy BPMN and start using it immediately
 - run process instances and confirm they become active
 - update process-instance-scope variables and confirm visibility
+- inspect jobs from incident output and safely adjust retries or timeout
+- list, fetch, filter, and count incidents directly
 - inspect process trees with incidents and variables in context
 - resolve incident keys or process-instance incidents with dry-run previews
 - preview, cancel, and delete process-instance families safely
@@ -123,11 +135,7 @@ After the first command, jump to [Configuration Notes](#configuration-notes) for
 ./c8volt run pi -b C88_SimpleUserTask_Process
 ```
 
-By default, `c8volt` waits until the process instance is actually active. If you explicitly want asynchronous behavior:
-
-```bash
-./c8volt run pi -b C88_SimpleUserTask_Process --no-wait
-```
+By default, `c8volt` waits until the process instance is actually active.
 
 For batch execution:
 
@@ -139,17 +147,15 @@ For batch execution:
 
 ```bash
 ./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
+./c8volt update pi --key 2251799813711967 --vars-file ./vars.json --dry-run
+./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --auto-confirm
 ./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
 printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
 ```
 
-By default, `update pi` submits the variable mutation and waits until the requested process-instance-scope values are visible through the same lookup path used by `get pi --with-vars`. The `--vars` value must be a JSON object; repeated `--key` flags and stdin `-` keys are merged and deduplicated before the same variable map is applied to each target.
+By default, `update pi` loads current process-instance-scope variables, previews planned additions and changes, asks for confirmation, submits the mutation, and waits until the requested values are visible through the same lookup path used by `get pi --with-vars`. Provide exactly one payload source: `--vars` with a JSON object or `--vars-file` with a path to a JSON object file. Repeated `--key` flags and stdin `-` keys are merged and deduplicated before the same variable map is applied to each target.
 
-Use `--no-wait` when accepted/submitted output is enough:
-
-```bash
-./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --no-wait
-```
+Use `--dry-run` to preview without mutation, and `--auto-confirm` or `--automation` for unattended mutation.
 
 Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camunda `8.7` fails before mutation with an unsupported-version error.
 
@@ -161,23 +167,22 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 ./c8volt update job --key 2251799813711967 --retries 3 --dry-run
 ./c8volt update job --key 2251799813711967 --retries 3 --auto-confirm
 ./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm
-./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
 ```
 
-Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
+Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, and `--auto-confirm` or `--automation` for unattended mutations.
 
 ### Resolve Incidents
 
 ```bash
 ./c8volt resolve incident --key 2251799813685249 --dry-run
 ./c8volt resolve incident --key 2251799813685249
-./c8volt resolve inc --key 2251799813685249 --key 2251799813685250 --no-wait
+./c8volt resolve inc --key 2251799813685249 --key 2251799813685250
 ./c8volt resolve pi --key 2251799813711967 --dry-run
 ./c8volt resolve process-instance --key 2251799813711967
 printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt resolve pi -
 ```
 
-Use `resolve incident` when you already have incident keys from `get pi --with-incidents`. Use `resolve pi` when you want c8volt to discover the active incidents for each selected process instance at command start and resolve that fixed set. Both commands merge repeated `--key` values with stdin `-`, deduplicate keys, support JSON output, and wait for incident lookup to confirm resolution by default. Add `--dry-run` to preview the lookup-backed plan without mutation, or `--no-wait` when accepted/submitted output is enough.
+Use `resolve incident` when you already have incident keys from `get pi --with-incidents`. Use `resolve pi` when you want c8volt to discover the active incidents for each selected process instance at command start and resolve that fixed set. Both commands merge repeated `--key` values with stdin `-`, deduplicate keys, support JSON output, and wait for incident lookup to confirm resolution by default. Add `--dry-run` to preview the lookup-backed plan without mutation.
 
 ### Walk Before You Change
 
@@ -309,7 +314,7 @@ Use `--json` when a script needs stable fields and `--keys-only` when piping pro
 
 For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. List/search `--incidents-only` uses the active `hasIncident` process-instance marker; use `--direct-incidents-only` when the result set should be narrowed by actually loaded direct incidents instead. Direct active incident keys, states, and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-error-type <type>` to match a Camunda incident error type case-insensitively, and `--incident-error-message <text>` to match an error-message substring case-insensitively. In list/search mode, those incident detail filters refine `--direct-incidents-only`; in keyed mode, they refine displayed incidents under `--with-incidents`. Combine detail filters with `--total --direct-incidents-only` to count process instances with matching direct incidents. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages. For keyed ops inspection of incident history, add `--incident-state pending`, `resolved`, `migrated`, `unknown`, or `all`.
 
-When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`; use `--no-wait` when your script will verify later. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
+When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
 
 ### Inspect Incidents Directly
 
@@ -319,8 +324,9 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 ./c8volt get incident --state active
 ./c8volt get incident --error-type io_mapping_error --error-message failed
 ./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
+./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
 ./c8volt get incident --total --state resolved
-./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
+printf '%s\n' <incident-key-a> <incident-key-b> | ./c8volt get inc -
 ```
 
 Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, and `--total` preserve script-friendly output contracts.
@@ -484,11 +490,11 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ```bash
 ./c8volt capabilities --json
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
-./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
-./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --no-wait
+./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
+./c8volt --automation --json update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
 ./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt --automation --json resolve incident --key <incident-key> --dry-run
-./c8volt --automation --json resolve pi --key <process-instance-key> --no-wait
+./c8volt --automation --json resolve pi --key <process-instance-key>
 ./c8volt --automation --json get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
 ```
 
@@ -507,15 +513,15 @@ Useful pipeline controls:
 Examples:
 
 ```bash
-./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
-./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
+./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -
+./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --auto-confirm
 ./c8volt get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
-./c8volt update job --key <job-key> --retries 3 --no-wait --auto-confirm
+./c8volt update job --key <job-key> --retries 3 --auto-confirm
 ./c8volt get pi --key <process-instance-key> --with-incidents
 ./c8volt resolve pi --key <process-instance-key> --dry-run
-./c8volt resolve incident --key <incident-key> --no-wait
-./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --auto-confirm --no-wait -
+./c8volt resolve incident --key <incident-key>
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --auto-confirm -
 ```
 
 ## Command Map
@@ -586,19 +592,20 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 
 # Update process-instance-scope variables.
 ./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
-./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
+./c8volt update pi --key <process-instance-key> --vars-file ./vars.json --dry-run
+./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --auto-confirm
 
 # Inspect and update jobs from incident job keys.
 ./c8volt get job --key <job-key>
 ./c8volt update job --key <job-key> --retries 3 --dry-run
 ./c8volt update job --key <job-key> --timeout 5m --auto-confirm
-./c8volt update job --key <job-key> --retries 3 --no-wait --auto-confirm
+./c8volt update job --key <job-key> --retries 3 --auto-confirm
 
 # Preview and resolve incidents.
 ./c8volt resolve incident --key <incident-key> --dry-run
 ./c8volt resolve incident --key <incident-key>
 ./c8volt resolve pi --key <process-instance-key> --dry-run
-./c8volt resolve pi --key <process-instance-key> --no-wait
+./c8volt resolve pi --key <process-instance-key>
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
@@ -627,7 +634,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 # Preview and perform cancellation.
 ./c8volt cancel pi --key <process-instance-key> --dry-run
 ./c8volt cancel pi --key <process-instance-key> --force
-./c8volt get pi --state active --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
+./c8volt get pi --state active --keys-only | ./c8volt cancel pi --auto-confirm -
 
 # Preview and perform cleanup of completed instances.
 ./c8volt delete pi --state completed --end-date-older-days 7 --limit 25 --dry-run

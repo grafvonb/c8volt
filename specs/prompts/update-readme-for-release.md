@@ -40,6 +40,9 @@ Required workflow:
    configuration note, automation note, command map, or everyday command block.
 5. Add or update command examples for new commands, flags, output modes, filters,
    and behavior changes when they are user-facing.
+   Treat `--no-wait` as an exception-path flag: do not include it in README
+   examples or everyday workflow snippets unless the caller explicitly asks for
+   exception-path documentation.
 6. Remove or rewrite topics that no longer exist, are no longer accurate, or are
    contradicted by the current specs or command behavior.
 7. Keep the README deep enough to be useful, but still readable:
