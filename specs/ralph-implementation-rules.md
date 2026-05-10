@@ -65,8 +65,10 @@ Follow the existing direction of dependencies.
    - Converts public models to internal domain models in `convert.go` files.
    - Converts service/domain errors through `c8volt/ferrors.FromDomain`.
    - Receives public `foptions.FacadeOption` values and maps them to `internal/services.CallOption`.
-   - May orchestrate cross-service behavior when the behavior belongs to the user-facing concept, for example process facade resolving incidents through the incident service.
+   - May perform only thin user-facing orchestration: choose the internal service method, map inputs/options, delegate, map outputs, and normalize errors.
    - Must not expose generated client types, internal service config structs, or internal domain sentinels in public API signatures.
+   - Must not own backend execution mechanics such as worker pools, polling, wait loops, mutation confirmation, retry behavior, pagination-until-limit loops, impact analysis, or multi-step backend workflows.
+   - If an operation needs those mechanics, add or extend an internal service/use-case API and let the facade delegate to it.
 
 3. `internal/domain` is the version-neutral internal model layer.
    - Owns service-facing models, filters, page metadata, response summaries, and domain error sentinels.
@@ -270,7 +272,15 @@ Before adding helper code, search these locations.
 - Copy maps and slices when crossing boundaries if mutation by callers could leak internal state.
 - Use `foptions.FacadeOption` in public signatures and convert to `services.CallOption` internally.
 - Public facade methods should not expose generated client types or `internal/domain` types.
-- For bulk facade operations, deduplicate keys and determine worker counts before scheduling work.
+- Public facade methods should be thin: map facade inputs to domain inputs, call an internal service interface, map domain outputs back to facade outputs, and apply `ferrors.FromDomain`.
+- Facades must not call `toolx/pool.ExecuteSlice`, `toolx/pool.ExecuteNTimes`, `toolx/poller.WaitForCompletion`, waiter packages, or custom goroutine/channel/worker code.
+- Facades must not implement backend pagination loops that repeatedly call service methods until a limit, cursor, or overflow condition is reached. Put those loops in `internal/services/<area>` and return a domain page/list result.
+- Facades must not implement mutation confirmation workflows, wait-until-state logic, retry loops, or polling. These belong to `internal/services/<area>`, waiter subpackages, or narrowly named internal orchestration packages.
+- Facades must not implement bulk execution strategy. Deduplication, worker count selection, fail-fast behavior, and result ordering belong in internal services; the facade should pass `wantedWorkers` and call options through.
+- Facades must not implement process-definition delete impact analysis, dependency expansion, active-instance drain waiting, or cross-resource cleanup. Those are backend workflows and must live under `internal/services`.
+- Facades may perform small deterministic output-shaping that is purely public-model mapping, such as setting a missing key on a returned report before mapping it to the public type.
+- If facade code imports `toolx/pool`, `toolx/poller`, `toolx/logging` for activity orchestration, `internal/services/*/waiter`, `net/http` only for status decisions, or performs multi-step service loops, treat it as a layering smell and move the logic downward.
+- When adding or changing a facade method, first ask: "Could this logic be reused by another caller that bypasses the CLI?" If yes, it belongs in `internal/services`, not the facade.
 
 ## Internal Service Rules
 
