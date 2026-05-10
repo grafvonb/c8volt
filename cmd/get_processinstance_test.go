@@ -3427,6 +3427,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 		require.EqualValues(t, 2, pages[1]["from"])
 		require.Len(t, prompts, 1)
 		require.Contains(t, prompts[0], "More matching process instances remain")
+		require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2/3+ loaded)")
 		require.Contains(t, output, "page size: 1000, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 		require.Contains(t, output, "page size: 1000, current page: 1, total so far: 3, more matches: no, next step: complete")
 		require.Contains(t, output, "123")
@@ -3868,7 +3869,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 				require.Equal(t, true, parentFilter["$exists"])
 
 				require.Len(t, prompts, 1)
-				require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2 total so far)")
+				require.Contains(t, prompts[0], "Fetched 2 process instance(s) on this page (2 loaded)")
 				require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 				require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 			})

@@ -948,7 +948,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	}, cancelled.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[0], "You are about to cancel 2 process instance(s)")
-	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2/3+ requested, 2 including dependencies). More matching process instances remain. Continue?")
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 	require.NotContains(t, output, "next step: auto-continue")
