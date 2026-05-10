@@ -9,15 +9,15 @@ Fields:
 - `Keys`: unique incident keys from repeated `--key` flags and optional stdin `-`.
 - `Mode`: keyed lookup or search/list.
 - `Filters`: incident state, error type, error message substring, process context, flow-node context, and creation-time bounds.
-- `OutputMode`: human, JSON, keys-only, or total.
-- `MessageLimit`: optional human-only error message truncation limit.
+- `OutputMode`: default, JSON, keys-only, or total.
+- `MessageLimit`: optional error message truncation limit for default output.
 - `Limit` and paging settings inherited from existing get/list command conventions.
 
 Validation rules:
 
 - Keyed lookup cannot be combined with search/list filters.
 - `--total` cannot be combined with `--json` or `--keys-only`.
-- `--error-message-limit` requires human incident output.
+- `--error-message-limit` requires default incident output.
 - Date filters must parse before any remote request is issued.
 - State and error type values must validate before any remote request is issued.
 
@@ -74,7 +74,7 @@ Fields used by this feature:
 Relationships:
 
 - Incident Detail belongs to one process instance context when provided by Camunda.
-- Incident Detail may reference a job key; absent job keys render as `n/a` in human output.
+- Incident Detail may reference a job key; absent job keys render as `n/a` in default output.
 
 ## Incident Search Result
 
@@ -97,7 +97,7 @@ Validation rules:
 
 Represents the selected rendering contract.
 
-Human output:
+Default output:
 
 - One compact row per incident.
 - Includes key, tenant, state, error type, creation time, process instance key, flow node ID, flow node instance key, job key, message, and age.

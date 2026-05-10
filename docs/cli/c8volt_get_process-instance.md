@@ -73,8 +73,8 @@ c8volt get process-instance [flags]
       --has-user-tasks strings          user task key(s) whose owning process instances should be fetched
   -h, --help                            help for process-instance
       --incident-error-message string   case-insensitive incident error message substring filter for keyed --with-incidents or list/search --direct-incidents-only
-      --incident-error-type string      case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only: AD_HOC_SUB_PROCESS_NO_RETRIES, CALLED_DECISION_ERROR, CALLED_ELEMENT_ERROR, CONDITION_ERROR, DECISION_EVALUATION_ERROR, EXECUTION_LISTENER_NO_RETRIES, EXTRACT_VALUE_ERROR, FORM_NOT_FOUND, IO_MAPPING_ERROR, JOB_NO_RETRIES, MESSAGE_SIZE_EXCEEDED, RESOURCE_NOT_FOUND, TASK_LISTENER_NO_RETRIES, UNHANDLED_ERROR_EVENT, UNKNOWN, UNSPECIFIED
-      --incident-message-limit int      maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation
+      --incident-error-type string      case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only
+      --incident-message-limit int      maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation
       --incident-state string           incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
       --incidents-only                  show only process instances that have incidents
   -k, --key strings                     process instance key(s) to fetch
@@ -93,7 +93,7 @@ c8volt get process-instance [flags]
       --start-date-older-days int       only include process instances N days old or older (default -1)
   -s, --state string                    state to filter process instances: all, active, completed, canceled, terminated (default "all")
       --total                           return only the numeric total of matching process instances; capped backend totals are counted by paging
-      --var-value-limit int             maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
+      --var-value-limit int             maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output
   -w, --workers int                     maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))

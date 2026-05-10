@@ -268,7 +268,7 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 	require.NotContains(t, prompt, "\n\n")
 }
 
-// Non-human modes must fail without launching the recovery listing path.
+// Machine output modes must fail without launching the recovery listing path.
 func TestProcessDefinitionSelectorValidationError_MachineAndNonTTYModesDoNotPrompt(t *testing.T) {
 	tests := []struct {
 		name  string

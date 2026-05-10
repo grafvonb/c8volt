@@ -9,23 +9,23 @@ Started: 2026-05-09 21:46:32
 - Generated CLI docs are refreshed with `make docs-content`; adding a `get` subcommand updates the new child markdown, parent `c8volt_get.md`, sibling SEE ALSO text, and the synced docs home page from `README.md`.
 - `get incident` may reference `get pi --with-incidents` in examples for stdin pipelines, but process-instance incident flags must remain absent from the `get incident` option set.
 - Process-instance incident contracts are intentionally split: `--incidents-only` and `--no-incidents-only` use marker search filters, `--direct-incidents-only` loads direct incidents after process search, and `--with-incidents` enriches rendered rows without changing the process search filter.
-- Plain `get incident` human list rows now use `incidentListHumanLineWithMessageLimit` so they can include tenant, process context, flow-node context, job key, message, and creation-time age without changing existing process-instance and walk incident enrichment rows that use `incidentHumanLineWithMessageLimit`.
+- Plain `get incident` default list rows now use `incidentListHumanLineWithMessageLimit` so they can include tenant, process context, flow-node context, job key, message, and creation-time age without changing existing process-instance and walk incident enrichment rows that use `incidentHumanLineWithMessageLimit`.
 - Plain incident `--total` is a command-level page loop over `SearchIncidentsPage`; it uses exact reported totals only when the service reports them as exact and otherwise counts returned page items after service-owned local filtering.
 - Creation-time incident filters accept RFC3339/RFC3339Nano timestamps and YYYY-MM-DD values at the CLI boundary, flow through `process.IncidentFilter`, use v8.9 server-side `creationTime` ranges, and trigger page-loop fallback for local filtering paths such as v8.8.
 - Plain `get incident` now switches to search/list mode only when no `--key` flags and no stdin `-` are provided; explicit keyed mode rejects search flags before client construction.
 - Incident search paging uses the same command/config batch-size source and continuation concepts as `get pi`, but advances offset by requested page size because service-local incident filtering can reduce returned page item counts.
 - Public process facade additions should update `c8volt/process/model.go`, `api.go`, `convert.go`, and concrete orchestration in `client.go`; command test stubs in `cmd/process_api_stub_test.go` must also satisfy the expanded `process.API`.
 - Top-level incident search now has incident-specific page/result models in the public facade and internal domain. v8.7 rejects search as unsupported, v8.8 uses the top-level search endpoint with only tenant-safe server filtering plus local filters, and v8.9 pushes safe state/error-type/process/flow-node/creation-time filters server-side while keeping root-process-instance and error-message filtering local.
-- Shared incident human row formatting lives behind `incidentHumanLineWithMessageLimit`, with `incidentHumanLine` preserving the existing process-instance incident flag behavior.
+- Shared incident row formatting lives behind `incidentHumanLineWithMessageLimit`, with `incidentHumanLine` preserving the existing process-instance incident flag behavior.
 - Generated Camunda v8.8 and v8.9 clients both expose top-level `SearchIncidentsWithResponse(ctx, body)` and `GetIncidentWithResponse(ctx, incidentKey)` methods. Their `IncidentFilter` types include tenant, state, error type, error message, process definition, process instance, flow-node, job, incident key, and creation time fields; `IncidentSearchQueryResult` returns `Items` plus `Page` metadata.
 - `internal/services/incident.API` currently exposes direct lookup, resolution, process-instance scoped incident lookup, and wait helpers. v8.7 returns `domain.ErrUnsupported` for tenant-unsafe direct and process-instance incident lookup; v8.8 and v8.9 support direct lookup through `GetIncidentWithResponse`.
 - v8.8 process-instance incident lookup intentionally avoids sending the scoped endpoint `filter` object and filters tenant/state/error type/error message locally after paging. v8.9 sends safe tenant/state/error type filters server-side and applies error-message filtering locally with `incidentfilter.ErrorMessageContains`.
-- Existing incident conversion reuses `domain.ProcessInstanceIncidentDetail` / `process.ProcessInstanceIncidentDetail`; `CreationTime` is formatted as RFC3339Nano and nil job/root keys become empty strings before human rendering decides whether to show `n/a`.
+- Existing incident conversion reuses `domain.ProcessInstanceIncidentDetail` / `process.ProcessInstanceIncidentDetail`; `CreationTime` is formatted as RFC3339Nano and nil job/root keys become empty strings before default rendering decides whether to show `n/a`.
 - Process-instance command validation centralizes flag relationship errors in `cmd/get_processinstance_validation.go` using helpers such as `invalidFlagValuef`, `mutuallyExclusiveFlagsf`, and `missingDependentFlagsf`; incident enum validation delegates to `internal/services/incidentfilter`.
-- Human/list rendering uses `pickMode`, `itemView`, `listOrJSONFlat`, `renderJSONPayload`, `renderOutputLine`, and flat row helpers in `cmd/cmd_views_get.go`; totals print only the count through `processInstanceTotalView`.
+- Default/list rendering uses `pickMode`, `itemView`, `listOrJSONFlat`, `renderJSONPayload`, `renderOutputLine`, and flat row helpers in `cmd/cmd_views_get.go`; totals print only the count through `processInstanceTotalView`.
 - Process-instance pagination honors command/config page size, trims pages with local `--limit`, incrementally renders one-line and keys-only modes when appropriate, auto-continues for JSON/automation, and falls back to page-by-page counting for exact totals when local filters make backend totals unsafe.
 - Plain `get incident` keyed lookup is registered under `get` with aliases `incidents` and `inc`; command validation uses `silenceUsageForError` for semantic flag errors, stdin key handling reuses `readKeysIfDash`/`mergeAndValidateKeys`, and keyed facade calls go through `process.API.GetIncidents`.
-- Plain incident rendering now uses `listIncidentsView` in `cmd/cmd_views_get.go`, which delegates JSON, keys-only, and human list behavior to `listOrJSON` while reusing `incidentHumanLineWithMessageLimit` for compact rows.
+- Plain incident rendering now uses `listIncidentsView` in `cmd/cmd_views_get.go`, which delegates JSON, keys-only, and default list behavior to `listOrJSON` while reusing `incidentHumanLineWithMessageLimit` for compact rows.
 - Plain `get incident --error-message` is a search-mode filter only; v8.9 does not send `errorMessage` in top-level search filters, v8.8 sends only tenant-safe top-level filters, and facade/service list helpers continue paging until enough locally matched message results are collected or search is exhausted.
 
 ---
@@ -103,11 +103,11 @@ Started: 2026-05-09 21:46:32
 **User Story**: User Story 1 - Fetch Known Incidents
 **Tasks Completed**:
 - [x] T019: Add command tests for `get incident --key`, repeated `--key`, stdin `-`, deduplication, missing keys, and invalid keys in `cmd/get_incident_test.go`
-- [x] T020: Add human, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
+- [x] T020: Add default, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
 - [x] T021: Add command contract expectations for `get incident`, aliases `incidents` and `inc`, and inherited get flags in `cmd/command_contract_test.go`
 - [x] T022: Register `get incident` with aliases, examples, flags, and help text in `cmd/get_incident.go` and wire it from `cmd/get.go`
 - [x] T023: Implement keyed lookup parsing, stdin `-` handling, key merge, validation, and facade invocation in `cmd/get_incident.go`
-- [x] T024: Implement incident human, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T024: Implement incident default, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
 - [x] T025: Ensure keyed lookup not-found and partial lookup failures preserve existing get command exit/output conventions in `cmd/get_incident.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
@@ -215,14 +215,14 @@ Started: 2026-05-09 21:46:32
 ## Iteration 7 - 2026-05-09 22:40:57 CEST
 **User Story**: User Story 5 - Render Incident Lists And Counts
 **Tasks Completed**:
-- [x] T047: Add human row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
+- [x] T047: Add default row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
 - [x] T048: Add JSON output tests proving full `errorMessage` and `creationTime` are preserved in `cmd/get_incident_test.go`
 - [x] T049: Add keys-only and exact `--total` command tests, including local-filter totals, in `cmd/get_incident_test.go`
-- [x] T050: Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with non-human output in `cmd/get_incident_test.go`
+- [x] T050: Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with JSON, keys-only, or total output in `cmd/get_incident_test.go`
 - [x] T051: Add incident age calculation and missing or unparsable `creationTime` handling in `cmd/cmd_views_processinstance_incidents.go`
-- [x] T052: Add `--error-message-limit` handling for human incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T052: Add `--error-message-limit` handling for default incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
 - [x] T053: Implement exact `--total` output after all local filters in `cmd/get_incident.go` and `c8volt/process/client.go`
-- [x] T054: Ensure JSON output preserves full incident fields without human truncation in `cmd/cmd_views_get.go`
+- [x] T054: Ensure JSON output preserves full incident fields without default-output truncation in `cmd/cmd_views_get.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
 **Files Changed**:
@@ -235,7 +235,7 @@ Started: 2026-05-09 21:46:32
 - specs/185-get-incident-command/tasks.md
 - specs/185-get-incident-command/progress.md
 **Learnings**:
-- Plain incident output needed a separate human list formatter to meet the richer row contract while preserving existing process-instance and walk incident row expectations.
+- Plain incident output needed a separate default list formatter to meet the richer row contract while preserving existing process-instance and walk incident row expectations.
 - Exact incident totals can trust `IncidentReportedTotalKindExact` for server-complete filters and otherwise count service-filtered page items until `ProcessInstanceOverflowStateNoMore`.
 - Generated v8.9 creation-time request bodies use `$gte` and `$lte` property names in JSON, so command tests should assert that concrete wire shape.
 ---

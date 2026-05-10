@@ -13,7 +13,7 @@ import (
 var getClusterTopologyNestedCmd = &cobra.Command{
 	Use:   "topology",
 	Short: "Show connected cluster topology as a tree",
-	Long: "Show connected cluster topology as a sorted human-readable tree.\n\n" +
+	Long: "Show connected cluster topology as a sorted tree.\n\n" +
 		"This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster. Use --json for the structured topology payload.",
 	Example: `  ./c8volt get cluster topology
   ./c8volt get cluster topology --json`,

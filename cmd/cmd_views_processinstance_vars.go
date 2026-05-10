@@ -101,7 +101,7 @@ func truncateProcessInstanceVariableHumanValue(value string, limit int) (string,
 	return string(runes[:limit]) + "...", true
 }
 
-// processInstanceVariableTruncationLabels summarizes API-side and CLI-side truncation markers for human output.
+// processInstanceVariableTruncationLabels summarizes API-side and CLI-side truncation markers.
 func processInstanceVariableTruncationLabels(apiTruncated bool, cliTruncated bool) string {
 	switch {
 	case apiTruncated && cliTruncated:

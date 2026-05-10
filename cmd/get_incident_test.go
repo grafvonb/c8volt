@@ -405,13 +405,13 @@ func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveErrorType(t *testing.
 	require.Contains(t, output, "found: 1")
 }
 
-func TestGetIncidentCommand_RejectsInvalidErrorTypeWithValidValues(t *testing.T) {
+func TestGetIncidentCommand_RejectsInvalidErrorType(t *testing.T) {
 	output, err := executeRootExpectErrorForIncidentTest(t, "get", "incident", "--error-type", "bad_type")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid input")
-	require.Contains(t, err.Error(), `invalid value for --error-type: "bad_type", valid values are:`)
-	require.Contains(t, err.Error(), "JOB_NO_RETRIES")
+	require.Contains(t, err.Error(), `invalid value for --error-type: "bad_type"`)
+	require.NotContains(t, err.Error(), "JOB_NO_RETRIES")
 	require.Empty(t, output)
 }
 
@@ -426,12 +426,12 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 	output := executeRootForIncidentTest(t,
 		"--config", cfgPath,
 		"get", "incident",
-		"--process-instance-key", "2251799813711970",
-		"--root-process-instance-key", "2251799813711971",
-		"--process-definition-key", "2251799813685201",
-		"--process-definition-id", "order-process",
+		"--pi-key", "2251799813711970",
+		"--root-key", "2251799813711971",
+		"--pd-key", "2251799813685201",
+		"--bpmn-process-id", "order-process",
 		"--flow-node-id", "task-a",
-		"--flow-node-instance-key", "2251799813685303",
+		"--fni-key", "2251799813685303",
 	)
 
 	require.Len(t, requests, 1)
@@ -470,7 +470,7 @@ func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 	require.Contains(t, requests[0], `"$gte":"2026-05-09T09:00:00Z"`)
 	require.Contains(t, requests[0], `"$lte":"2026-05-09T11:00:00Z"`)
 	require.Contains(t, output, "2251799813685253")
-	require.Contains(t, output, "2026-05-09T10:15:00Z")
+	require.Contains(t, output, "2026-05-09T10:15:00+00:00")
 	require.Contains(t, output, "found: 1")
 }
 

@@ -34,7 +34,7 @@
 **Alternatives considered**:
 
 - Create a new standalone incident model: rejected because it would duplicate fields and conversion logic.
-- Return raw generated client payloads from the facade: rejected because JSON and human rendering should remain stable across generated client versions.
+- Return raw generated client payloads from the facade: rejected because JSON and default rendering should remain stable across generated client versions.
 
 ## Decision: Use Server-Side Filters Only When Semantics Are Safe
 
@@ -65,7 +65,7 @@
 
 ## Decision: Render Incident Age From `creationTime`
 
-**Rationale**: Recent `get pi --with-incidents` work added `creationTime`; this feature requires human rows to also include an age derived from it. Missing or unparsable `creationTime` should degrade the age field without crashing output.
+**Rationale**: Recent `get pi --with-incidents` work added `creationTime`; this feature requires default rows to also include an age derived from it. Missing or unparsable `creationTime` should degrade the age field without crashing output.
 
 **Alternatives considered**:
 

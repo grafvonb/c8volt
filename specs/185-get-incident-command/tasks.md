@@ -51,19 +51,19 @@
 
 **Goal**: Fetch explicit incident keys through `c8volt get incident`, `get incidents`, and `get inc`.
 
-**Independent Test**: Running `c8volt get incident --key <incident-key>` fetches one known incident; repeated flags and stdin deduplicate keys; human, JSON, and keys-only output work.
+**Independent Test**: Running `c8volt get incident --key <incident-key>` fetches one known incident; repeated flags and stdin deduplicate keys; default, JSON, and keys-only output work.
 
 ### Tests for User Story 1
 
 - [x] T019 [P] [US1] Add command tests for `get incident --key`, repeated `--key`, stdin `-`, deduplication, missing keys, and invalid keys in `cmd/get_incident_test.go`
-- [x] T020 [P] [US1] Add human, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
+- [x] T020 [P] [US1] Add default, JSON, and keys-only incident view tests in `cmd/cmd_views_get_test.go`
 - [x] T021 [P] [US1] Add command contract expectations for `get incident`, aliases `incidents` and `inc`, and inherited get flags in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
 - [x] T022 [US1] Register `get incident` with aliases, examples, flags, and help text in `cmd/get_incident.go` and wire it from `cmd/get.go`
 - [x] T023 [US1] Implement keyed lookup parsing, stdin `-` handling, key merge, validation, and facade invocation in `cmd/get_incident.go`
-- [x] T024 [US1] Implement incident human, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T024 [US1] Implement incident default, JSON, and keys-only rendering in `cmd/cmd_views_get.go` and `cmd/cmd_views_processinstance_incidents.go`
 - [x] T025 [US1] Ensure keyed lookup not-found and partial lookup failures preserve existing get command exit/output conventions in `cmd/get_incident.go`
 
 **Checkpoint**: User Story 1 is fully functional and independently testable.
@@ -141,23 +141,23 @@
 
 ## Phase 7: User Story 5 - Render Incident Lists And Counts (Priority: P5)
 
-**Goal**: Render incident human rows, JSON, keys-only, and exact totals.
+**Goal**: Render incident default rows, JSON, keys-only, and exact totals.
 
-**Independent Test**: The same filtered result set can be rendered as human rows, JSON, keys-only, and exact numeric totals, with full JSON messages and optional human truncation.
+**Independent Test**: The same filtered result set can be rendered as default rows, JSON, keys-only, and exact numeric totals, with full JSON messages and optional truncation.
 
 ### Tests for User Story 5
 
-- [x] T047 [P] [US5] Add human row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
+- [x] T047 [P] [US5] Add default row tests for tenant, state, error type, creation time, process context, flow-node context, job key `n/a`, message, and age in `cmd/cmd_views_get_test.go`
 - [x] T048 [P] [US5] Add JSON output tests proving full `errorMessage` and `creationTime` are preserved in `cmd/get_incident_test.go`
 - [x] T049 [P] [US5] Add keys-only and exact `--total` command tests, including local-filter totals, in `cmd/get_incident_test.go`
-- [x] T050 [P] [US5] Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with non-human output in `cmd/get_incident_test.go`
+- [x] T050 [P] [US5] Add validation tests rejecting `--total --json`, `--total --keys-only`, and `--error-message-limit` with JSON, keys-only, or total output in `cmd/get_incident_test.go`
 
 ### Implementation for User Story 5
 
 - [x] T051 [US5] Add incident age calculation and missing or unparsable `creationTime` handling in `cmd/cmd_views_processinstance_incidents.go`
-- [x] T052 [US5] Add `--error-message-limit` handling for human incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
+- [x] T052 [US5] Add `--error-message-limit` handling for default incident output in `cmd/get_incident.go` and `cmd/cmd_views_processinstance_incidents.go`
 - [x] T053 [US5] Implement exact `--total` output after all local filters in `cmd/get_incident.go` and `c8volt/process/client.go`
-- [x] T054 [US5] Ensure JSON output preserves full incident fields without human truncation in `cmd/cmd_views_get.go`
+- [x] T054 [US5] Ensure JSON output preserves full incident fields without default-output truncation in `cmd/cmd_views_get.go`
 
 **Checkpoint**: User Story 5 is complete for script and operator output modes.
 
@@ -237,7 +237,7 @@
 
 ```text
 Task: "Add command tests for get incident --key, repeated --key, stdin -, deduplication, missing keys, and invalid keys in cmd/get_incident_test.go"
-Task: "Add human, JSON, and keys-only incident view tests in cmd/cmd_views_get_test.go"
+Task: "Add default, JSON, and keys-only incident view tests in cmd/cmd_views_get_test.go"
 Task: "Add command contract expectations for get incident, aliases incidents and inc, and inherited get flags in cmd/command_contract_test.go"
 ```
 

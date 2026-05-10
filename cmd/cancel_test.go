@@ -89,8 +89,8 @@ func TestCancelProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireCancelDryRunPreviewPayload(t, payload, want)
 }
 
-// TestCancelProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose verifies human dry-run output keeps key lists verbose-only.
-func TestCancelProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *testing.T) {
+// TestCancelProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose verifies dry-run output keeps key lists verbose-only.
+func TestCancelProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -131,10 +131,10 @@ func TestCancelProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *te
 	require.NotContains(t, output, "no mutation submitted")
 }
 
-// TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances
+// TestCancelProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
 // verifies terminal selected instances are summarized without noisy key lists by
 // default.
-func TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
+func TestCancelProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -300,7 +300,7 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 }
 
 // TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
-// verifies partial ancestry details are surfaced in human output.
+// verifies partial ancestry details are surfaced in output.
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -494,7 +494,7 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 }
 
 // TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope verifies
-// aggregate human output preserves partial-scope warnings.
+// aggregate output preserves partial-scope warnings.
 func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

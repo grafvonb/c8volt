@@ -14,7 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const humanTimestampMillisLayout = "2006-01-02T15:04:05.000-07:00"
+const (
+	humanTimestampLayout       = "2006-01-02T15:04:05-07:00"
+	humanTimestampMillisLayout = "2006-01-02T15:04:05.000-07:00"
+)
 
 //nolint:unused
 func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error {
@@ -54,7 +57,7 @@ func listIncidentsView(cmd *cobra.Command, resp process.Incidents, messageLimit 
 	return nil
 }
 
-// renderProcessInstanceFlatRows shares aligned human output between collected lists and incremental search pages.
+// renderProcessInstanceFlatRows shares aligned process-instance rows between collected lists and incremental search pages.
 func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
 	for _, line := range formatProcessInstanceFlatRows(items) {
 		renderOutputLine(cmd, "%s", line)
@@ -83,7 +86,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 	}
 	eTag := ""
 	if it.EndDate != "" {
-		eTag = " e:" + processInstanceTimestampMillis(it.EndDate)
+		eTag = " e:" + humanTimestamp(it.EndDate)
 	}
 	vTag := ""
 	if it.ProcessVersionTag != "" {
@@ -107,7 +110,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 		it.BpmnProcessId,
 		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
 		string(it.State),
-		"s:" + processInstanceTimestampMillis(it.StartDate),
+		"s:" + humanTimestamp(it.StartDate),
 		strings.TrimSpace(eTag),
 		strings.TrimSpace(pTag),
 		strings.TrimSpace(incidentTag),
@@ -115,7 +118,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 	}
 }
 
-func processInstanceTimestampMillis(value string) string {
+func humanTimestamp(value string) string {
 	if value == "" {
 		return ""
 	}
@@ -123,7 +126,7 @@ func processInstanceTimestampMillis(value string) string {
 	if err != nil {
 		return value
 	}
-	return t.Format(humanTimestampMillisLayout)
+	return t.Format(humanTimestampLayout)
 }
 
 type processInstanceAgeMeta struct {
@@ -252,7 +255,7 @@ func tenantView(cmd *cobra.Command, item tenant.Tenant) error {
 	return itemView(cmd, item, pickMode(), oneLineTenant, func(it tenant.Tenant) string { return it.TenantId })
 }
 
-// oneLineTenant formats tenant rows for compact human output.
+// oneLineTenant formats compact tenant rows.
 func oneLineTenant(it tenant.Tenant) string {
 	return compactFlatRow(flatRowTenant(it))
 }

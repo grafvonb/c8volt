@@ -281,7 +281,7 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation",
+		Description: "maximum characters to show for variable values when --with-vars is set; 0 disables truncation",
 	})
 }
 
@@ -353,7 +353,7 @@ func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "truncate error messages in human output to this many characters; 0 keeps full messages",
+		Description: "maximum characters to show for error messages; 0 keeps full messages",
 	})
 
 	updateCapability := commandCapabilityForCommand(updateJobCmd)
@@ -431,14 +431,14 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum characters to show for human incident messages; 0 keeps full messages",
+		Description: "maximum characters to show for incident messages; 0 keeps full messages",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "with-no-error-message",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "omit error messages from human incident output",
+		Description: "omit error messages from incident output",
 	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
@@ -613,7 +613,7 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
 		"Inspect a Camunda job by key",
 		"Use the jobKey exposed by incident-aware process-instance output",
-		"--json returns the stable job payload",
+		"Use --json for the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
 		"./c8volt get job --key 2251799813711967",
@@ -669,7 +669,12 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"--key strings",
 		"--state string",
 		"--error-type string",
-		"--process-instance-key string",
+		"--bpmn-process-id string",
+		"--pd-key string",
+		"--pi-key string",
+		"--root-key string",
+		"--flow-node-id string",
+		"--fni-key string",
 		"--batch-size int32",
 		"--limit int32",
 		"--error-message-limit int",
@@ -679,6 +684,7 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 	require.Contains(t, output, "Aliases:")
 	require.Contains(t, output, "incidents")
 	require.Contains(t, output, "inc")
+	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
 }
 
 func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {

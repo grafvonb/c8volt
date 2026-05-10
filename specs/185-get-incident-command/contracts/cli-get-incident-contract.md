@@ -39,7 +39,7 @@ Output modifiers:
 
 - `--json` returns machine-readable incident details.
 - `--keys-only` prints only incident keys.
-- `--error-message-limit` applies only to human output.
+- `--error-message-limit` applies only to default output.
 
 ## Search/List
 
@@ -50,12 +50,12 @@ c8volt get incident --state resolved
 c8volt get incident --state all
 c8volt get incident --error-type io_mapping_error
 c8volt get incident --error-message "intentional incident"
-c8volt get incident --process-instance-key 2251799813748687
-c8volt get incident --root-process-instance-key 2251799813748682
-c8volt get incident --process-definition-key 2251799813687048
-c8volt get incident --process-definition-id C89_SimpleUserTaskWithIncident_Process
+c8volt get incident --pi-key 2251799813748687
+c8volt get incident --root-key 2251799813748682
+c8volt get incident --pd-key 2251799813687048
+c8volt get incident --bpmn-process-id C89_SimpleUserTaskWithIncident_Process
 c8volt get incident --flow-node-id SimpleUserTaskWithIncident_UserTask
-c8volt get incident --flow-node-instance-key 2251799813748691
+c8volt get incident --fni-key 2251799813748691
 c8volt get incident --creation-time-after 2026-05-08T00:00:00Z
 c8volt get incident --creation-time-before 2026-05-09T00:00:00Z
 ```
@@ -65,12 +65,12 @@ Filters:
 - `--state active|pending|resolved|migrated|unknown|all`
 - `--error-type <incident-error-type>`
 - `--error-message <substring>`
-- `--process-instance-key <key>`
-- `--root-process-instance-key <key>`
-- `--process-definition-key <key>`
-- `--process-definition-id <bpmn-process-id>`
+- `--pi-key <key>`
+- `--root-key <key>`
+- `--pd-key <key>`
+- `--bpmn-process-id <bpmn-process-id>`
 - `--flow-node-id <id>`
-- `--flow-node-instance-key <key>`
+- `--fni-key <key>`
 - `--creation-time-after <date-or-timestamp>`
 - `--creation-time-before <date-or-timestamp>`
 
@@ -93,7 +93,7 @@ Error message semantics:
 
 ## Output Modes
 
-Human row shape:
+Default row shape:
 
 ```text
 <incidentKey> <tenantId> <errorType> <state> j:<jobKey|n/a> <creationTime> (<age>) <bpmn-process-id> pi:<processInstanceKey> root:<rootProcessInstanceKey> fn:<flowNodeId> fni:<flowNodeInstanceKey> m:<errorMessage>
@@ -138,7 +138,7 @@ Total output:
 - `--key` lookup combined with search filters fails before remote calls.
 - `--total --json` fails before remote calls.
 - `--total --keys-only` fails before remote calls.
-- `--error-message-limit` with non-human output fails before remote calls.
+- `--error-message-limit` with JSON, keys-only, or total output fails before remote calls.
 - Invalid `--state` values fail with valid values in the message.
 - Invalid `--error-type` values fail with generated valid values in the message.
 - Invalid creation-time values fail before remote calls.

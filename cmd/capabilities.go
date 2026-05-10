@@ -83,7 +83,7 @@ func init() {
 		OutputModeContract{
 			Name:      RenderModeOneLine.String(),
 			Supported: true,
-			Notes:     "human-readable summary",
+			Notes:     "summary",
 		},
 	)
 }

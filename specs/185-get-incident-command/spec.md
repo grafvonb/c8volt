@@ -19,7 +19,7 @@ As a Camunda operator with one or more incident keys, I want to fetch incidents 
 
 **Why this priority**: Direct keyed lookup is the smallest useful command path and establishes the command, aliases, target selection, service facade, and output contracts.
 
-**Independent Test**: Can be tested by fetching one or more known incident keys through repeated flags or stdin and verifying human, JSON, and keys-only output without requiring search filters.
+**Independent Test**: Can be tested by fetching one or more known incident keys through repeated flags or stdin and verifying default, JSON, and keys-only output without requiring search filters.
 
 **Acceptance Scenarios**:
 
@@ -79,15 +79,15 @@ As an operator investigating incidents in a time window, I want to filter by inc
 
 ### User Story 5 - Render Incident Lists And Counts (Priority: P5)
 
-As an operator reading incident output or building scripts, I want human rows, JSON, keys-only, and totals to preserve the right fields so I can inspect or automate incident workflows.
+As an operator reading incident output or building scripts, I want default rows, JSON, keys-only, and totals to preserve the right fields so I can inspect or automate incident workflows.
 
 **Why this priority**: Output modifiers depend on fetched or searched incident results and must remain consistent with existing c8volt rendering conventions.
 
-**Independent Test**: Can be tested by running the same filtered result set with human output, `--json`, `--keys-only`, `--total`, and `--error-message-limit`.
+**Independent Test**: Can be tested by running the same filtered result set with default output, `--json`, `--keys-only`, `--total`, and `--error-message-limit`.
 
 **Acceptance Scenarios**:
 
-1. **Given** human incident output, **When** incidents are rendered, **Then** each row includes incident key, tenant, state, error type, creation time, process instance key, flow node ID, flow node instance key, job key as `n/a` when absent, message, and age from `creationTime`.
+1. **Given** default incident output, **When** incidents are rendered, **Then** each row includes incident key, tenant, state, error type, creation time, process instance key, flow node ID, flow node instance key, job key as `n/a` when absent, message, and age from `creationTime`.
 2. **Given** JSON output, **When** `--json` is used, **Then** c8volt preserves full incident fields, full `errorMessage`, and `creationTime` without truncation.
 3. **Given** count output, **When** `--total` is used, **Then** c8volt prints only the exact numeric count after all filters are applied.
 
@@ -118,8 +118,8 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 - Invalid error types report generated enum-backed valid values.
 - Local post-filtering never inspects only the first page; it continues until search is exhausted or the explicit command limit is reached.
 - Backend totals are used only when they remain exact after all filters; otherwise totals are counted after local filtering.
-- Long error messages are truncated in human output only when `--error-message-limit` is explicitly supplied.
-- `--error-message-limit` requires human incident output.
+- Long error messages are truncated only when `--error-message-limit` is explicitly supplied.
+- `--error-message-limit` requires default incident output.
 - `--total` cannot be combined with `--json` or `--keys-only`.
 - Missing or unparsable `creationTime` does not crash rendering or age calculation.
 
@@ -140,7 +140,7 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 - **FR-011**: Search/list mode MUST support `--error-message <substring>` using case-insensitive substring semantics from the user's point of view.
 - **FR-012**: Error-message filtering MUST NOT silently miss matches after the first page.
 - **FR-013**: Backend message filtering MUST be used only when backend behavior is confirmed compatible with required case-insensitive substring semantics; otherwise c8volt MUST page candidates and filter locally.
-- **FR-014**: Search/list mode MUST support `--process-instance-key`, `--root-process-instance-key`, `--process-definition-key`, `--process-definition-id`, `--flow-node-id`, and `--flow-node-instance-key`.
+- **FR-014**: Search/list mode MUST support `--pi-key`, `--root-key`, `--pd-key`, `--bpmn-process-id`, `--flow-node-id`, and `--fni-key`.
 - **FR-015**: Search/list mode MUST support `--creation-time-after` and `--creation-time-before` using the incident `creationTime` field.
 - **FR-016**: Invalid date or timestamp values MUST fail locally with clear flag validation errors before remote calls.
 - **FR-017**: v8.7 MUST fail clearly before unsupported tenant-safe incident operations.
@@ -148,15 +148,15 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 - **FR-019**: v8.9 SHOULD use server-side filters where semantics are safe, including tenant, state, error type, process context, flow node, and creation time bounds.
 - **FR-020**: Any local post-filtering MUST page through all relevant results until search is exhausted or the explicit command limit is reached.
 - **FR-021**: Search/list mode MUST follow existing `get pi` pagination, limit, interactive paging, auto-confirm, and non-interactive conventions where applicable.
-- **FR-022**: Human output MUST include compact incident rows with incident key, tenant, state, error type, creation time, process instance key, flow node ID, flow node instance key, job key, message, and age.
-- **FR-023**: Human output MUST render absent job keys as `n/a`.
-- **FR-024**: Human output MUST truncate long error messages only when `--error-message-limit <chars>` is explicitly supplied.
+- **FR-022**: Default output MUST include compact incident rows with incident key, tenant, state, error type, creation time, process instance key, flow node ID, flow node instance key, job key, message, and age.
+- **FR-023**: Default output MUST render absent job keys as `n/a`.
+- **FR-024**: Default output MUST truncate long error messages only when `--error-message-limit <chars>` is explicitly supplied.
 - **FR-025**: JSON output MUST preserve full incident fields, full `errorMessage`, and `creationTime` without truncation.
 - **FR-026**: `--keys-only` MUST print incident keys only.
 - **FR-027**: `--total` MUST print only the numeric count of matching incidents after all filters are applied.
 - **FR-028**: `--key` lookup MUST be rejected when combined with search filters.
 - **FR-029**: `--total` MUST be rejected with `--json` and with `--keys-only`.
-- **FR-030**: `--error-message-limit` MUST be rejected with non-human incident output using dependency wording consistent with c8volt commands.
+- **FR-030**: `--error-message-limit` MUST be rejected with JSON, keys-only, or total output using dependency wording consistent with c8volt commands.
 - **FR-031**: The implementation MUST reuse `internal/domain.ProcessInstanceIncidentDetail`, `c8volt/process.ProcessInstanceIncidentDetail`, existing `internal/services/incident` service boundaries, and existing facade option/call option patterns where relevant.
 - **FR-032**: Incident search logic MUST fit the incident service API rather than living primarily in command code.
 - **FR-033**: The implementation MUST NOT add `--with-incidents`, `--incidents-only`, or `--direct-incidents-only` to `get incident`.
@@ -169,18 +169,18 @@ As a c8volt user, I want `get incident` to follow existing command validation, h
 - **Incident Detail**: The reusable incident domain record exposed to command rendering and JSON output, including state, error type, error message, creation time, tenant, process context, flow-node context, and optional job key.
 - **Incident Filter**: The validated user intent for state, error type, error message, process context, flow node, and creation-time bounds.
 - **Incident Search Result**: A paginated result set after server-side and local filters are applied, including exact counts when requested.
-- **Incident Output View**: Human, JSON, keys-only, or total representation of the final incident result set.
+- **Incident Output View**: Default, JSON, keys-only, or total representation of the final incident result set.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: A user can fetch one or more known incidents with `get incident --key` and receive accurate human, JSON, or keys-only output.
+- **SC-001**: A user can fetch one or more known incidents with `get incident --key` and receive accurate default, JSON, or keys-only output.
 - **SC-002**: A user can list active incidents with `get incident` or `get incident --state active` without adding process-instance-specific incident flags.
 - **SC-003**: State, error type, process context, flow node, and creation-time filters return only matching incidents or fail locally with clear validation errors.
 - **SC-004**: Case-insensitive error-message substring filtering finds matches across all relevant pages up to the explicit command limit.
 - **SC-005**: `--total` returns an exact numeric count after all server-side and local filters are applied.
-- **SC-006**: Human incident rows include `creationTime` and an age derived from `creationTime`.
+- **SC-006**: Default incident rows include `creationTime` and an age derived from `creationTime`.
 - **SC-007**: JSON output preserves full incident details and does not truncate messages.
 - **SC-008**: v8.7 and incompatible v8.8 request paths fail or fall back before issuing known unsupported or broken requests.
 - **SC-009**: Existing process-instance incident behavior remains unchanged under regression tests.

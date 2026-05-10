@@ -164,7 +164,7 @@ Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camu
 ./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
 ```
 
-Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Human job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
+Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
 
 ### Resolve Incidents
 
@@ -190,7 +190,7 @@ Use `resolve incident` when you already have incident keys from `get pi --with-i
 
 Use `walk pi` before a risky action. It shows the process-instance family tree, which is usually where the real cancellation or deletion scope becomes obvious.
 
-For diagnosis, add `--with-incidents` and/or `--with-vars`. Human output stays compact; `--json` gives scripts the full structured details.
+For diagnosis, add `--with-incidents` and/or `--with-vars`. Use `--json` when scripts need the full structured details.
 
 ### Cancel Safely
 
@@ -242,7 +242,7 @@ Deletion in real environments often means preview the family scope, cancel-first
 ./c8volt delete pi --state completed --batch-size 250 --limit 25 --auto-confirm
 ```
 
-Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Human-oriented modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
+Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Interactive modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
 
 For bulk work, check the batch first, then act:
 
@@ -264,7 +264,7 @@ When a script only needs the count of matching process instances, `./c8volt get 
 ./c8volt get pi --has-user-tasks <user-task-key> --json
 ```
 
-`--has-user-tasks` resolves owning process instances through tenant-aware Camunda v2 user-task search first, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+`--has-user-tasks` resolves owning process instances through tenant-aware Camunda v2 user-task search first, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Default output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
 
 On Camunda `8.8` and `8.9`, a not-found v2 user-task result falls back to deprecated Tasklist V1 lookup for legacy user-task compatibility. Camunda `8.7` remains unsupported for `--has-user-tasks`, and non-not-found lookup failures are surfaced instead of being retried as fallback misses.
 
@@ -303,9 +303,9 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --end-date-before 2026-03-31 --state completed
 ```
 
-Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
+Process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
 
-Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
+Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. List output is optimized for scanning; walk output remains tree- or path-oriented.
 
 For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. List/search `--incidents-only` uses the active `hasIncident` process-instance marker; use `--direct-incidents-only` when the result set should be narrowed by actually loaded direct incidents instead. Direct active incident keys, states, and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-error-type <type>` to match a Camunda incident error type case-insensitively, and `--incident-error-message <text>` to match an error-message substring case-insensitively. In list/search mode, those incident detail filters refine `--direct-incidents-only`; in keyed mode, they refine displayed incidents under `--with-incidents`. Combine detail filters with `--total --direct-incidents-only` to count process instances with matching direct incidents. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages. For keyed ops inspection of incident history, add `--incident-state pending`, `resolved`, `migrated`, `unknown`, or `all`.
 
@@ -323,9 +323,9 @@ When incident output includes `jobKey`, use `get job --key <job-key>` for direct
 ./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
 ```
 
-Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Human rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, and `--total` preserve script-friendly output contracts.
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, and `--total` preserve script-friendly output contracts.
 
-For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Human values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
+For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
@@ -462,7 +462,7 @@ profiles:
 
 ## Automation And Pipelines
 
-Human-first discovery:
+Interactive discovery:
 
 ```bash
 ./c8volt --help

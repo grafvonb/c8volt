@@ -78,7 +78,7 @@ Render only keys:
 c8volt get incident --state active --keys-only
 ```
 
-Limit human error message length:
+Limit error message length:
 
 ```bash
 c8volt get incident --state active --error-message-limit 120

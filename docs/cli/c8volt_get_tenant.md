@@ -12,7 +12,7 @@ List tenants
 
 List tenants visible to the configured environment.
 
-Human output includes tenant ID, name, and description when available.
+Output includes tenant ID, name, and description when available.
 
 ```
 c8volt get tenant [flags]

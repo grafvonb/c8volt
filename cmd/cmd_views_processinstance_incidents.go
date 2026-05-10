@@ -69,7 +69,7 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 	return item.Item.Incident && len(item.Incidents) == 0
 }
 
-// incidentHumanLine formats a human-readable incident detail line with compact attributes.
+// incidentHumanLine formats an incident detail line with compact attributes.
 func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
 	return incidentHumanLineWithMessageLimit(incident, flagGetPIIncidentMessageLimit)
 }
@@ -98,7 +98,7 @@ func flatRowProcessInstanceIncident(incident process.ProcessInstanceIncidentDeta
 		incident.ErrorType,
 		incident.State,
 		"j:" + jobKey,
-		incident.CreationTime,
+		humanTimestamp(incident.CreationTime),
 		incidentAgeTag(incident.CreationTime),
 		prefixedIncidentField("root", incident.RootProcessInstanceKey),
 		prefixedIncidentField("fn", incident.FlowNodeId),
@@ -154,7 +154,7 @@ func flatRowIncident(incident process.ProcessInstanceIncidentDetail) flatRow {
 		incident.ErrorType,
 		incident.State,
 		"j:" + jobKey,
-		incident.CreationTime,
+		humanTimestamp(incident.CreationTime),
 		incidentAgeTag(incident.CreationTime),
 		incident.ProcessDefinitionId,
 		prefixedIncidentField("pi", incident.ProcessInstanceKey),
@@ -187,7 +187,7 @@ func formatFlatRowsWithTails(rows []flatRow, tails []string) []string {
 	return out
 }
 
-// truncateIncidentHumanMessage applies the human-only incident message display limit.
+// truncateIncidentHumanMessage applies the incident message display limit.
 func truncateIncidentHumanMessage(message string, limit int) string {
 	return truncateHumanMessage(message, limit)
 }

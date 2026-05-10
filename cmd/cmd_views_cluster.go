@@ -124,7 +124,7 @@ func newClusterVersionView(topology cluster.Topology, withBrokers bool) clusterV
 }
 
 // renderClusterLicenseFlat omits absent optional fields so missing API values stay distinct
-// from explicit false or zero values in human output.
+// from explicit false or zero values in formatted output.
 func renderClusterLicenseFlat(cmd *cobra.Command, license cluster.License) error {
 	renderOutputLine(cmd, "ValidLicense: %t", license.ValidLicense)
 	renderOutputLine(cmd, "LicenseType: %s", license.LicenseType)

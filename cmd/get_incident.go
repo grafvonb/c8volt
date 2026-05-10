@@ -14,23 +14,23 @@ import (
 )
 
 var (
-	flagGetIncidentKeys                   []string
-	flagGetIncidentMessageLimit           int
-	flagGetIncidentNoErrorMessage         bool
-	flagGetIncidentState                  string
-	flagGetIncidentErrorType              string
-	flagGetIncidentErrorMessage           string
-	flagGetIncidentProcessInstanceKey     string
-	flagGetIncidentRootProcessInstanceKey string
-	flagGetIncidentProcessDefinitionKey   string
-	flagGetIncidentProcessDefinitionID    string
-	flagGetIncidentFlowNodeID             string
-	flagGetIncidentFlowNodeInstanceKey    string
-	flagGetIncidentCreationTimeAfter      string
-	flagGetIncidentCreationTimeBefore     string
-	flagGetIncidentSize                   int32
-	flagGetIncidentLimit                  int32
-	flagGetIncidentTotal                  bool
+	flagGetIncidentKeys               []string
+	flagGetIncidentMessageLimit       int
+	flagGetIncidentNoErrorMessage     bool
+	flagGetIncidentState              string
+	flagGetIncidentErrorType          string
+	flagGetIncidentErrorMessage       string
+	flagGetIncidentPIKey              string
+	flagGetIncidentRootKey            string
+	flagGetIncidentPDKey              string
+	flagGetIncidentBpmnProcessID      string
+	flagGetIncidentFlowNodeID         string
+	flagGetIncidentFNIKey             string
+	flagGetIncidentCreationTimeAfter  string
+	flagGetIncidentCreationTimeBefore string
+	flagGetIncidentSize               int32
+	flagGetIncidentLimit              int32
+	flagGetIncidentTotal              bool
 )
 
 var getIncidentCmd = &cobra.Command{
@@ -39,7 +39,7 @@ var getIncidentCmd = &cobra.Command{
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
 		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
-		"Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages or --with-no-error-message to omit them.",
+		"Use --json for the stable incident payload, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
 	Example: `  ./c8volt get incident --key 2251799813685249
   ./c8volt get inc --key 2251799813685249 --key 2251799813685250
   printf '%s\n' 2251799813685249 2251799813685250 | ./c8volt get incident -
@@ -48,7 +48,7 @@ var getIncidentCmd = &cobra.Command{
   ./c8volt get incident --state resolved --error-type io_mapping_error
   ./c8volt get incident --error-message "no retries"
   ./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
-  ./c8volt get incident --process-instance-key 2251799813685249 --flow-node-id task-a
+  ./c8volt get incident --pi-key 2251799813685249 --flow-node-id task-a
   ./c8volt --json get incident --key 2251799813685249
   ./c8volt --keys-only get incident --key 2251799813685249`,
 	Aliases: []string{"incidents", "inc"},
@@ -134,21 +134,21 @@ func init() {
 	fs := getIncidentCmd.Flags()
 	fs.StringSliceVarP(&flagGetIncidentKeys, "key", "k", nil, "incident key(s) to fetch; repeat or combine with stdin '-'")
 	fs.StringVarP(&flagGetIncidentState, "state", "s", "active", "incident state scope for search: active, pending, resolved, migrated, unknown, all")
-	fs.StringVar(&flagGetIncidentErrorType, "error-type", "", fmt.Sprintf("case-insensitive incident error type filter for search: %s", incidentfilter.ValidErrorTypesString()))
+	fs.StringVar(&flagGetIncidentErrorType, "error-type", "", "case-insensitive incident error type filter for search")
 	fs.StringVar(&flagGetIncidentErrorMessage, "error-message", "", "case-insensitive incident error message substring filter for search")
-	fs.StringVar(&flagGetIncidentProcessInstanceKey, "process-instance-key", "", "process instance key to filter incidents")
-	fs.StringVar(&flagGetIncidentRootProcessInstanceKey, "root-process-instance-key", "", "root process instance key to filter incidents")
-	fs.StringVar(&flagGetIncidentProcessDefinitionKey, "process-definition-key", "", "process definition key to filter incidents")
-	fs.StringVar(&flagGetIncidentProcessDefinitionID, "process-definition-id", "", "process definition ID to filter incidents")
+	fs.StringVarP(&flagGetIncidentBpmnProcessID, "bpmn-process-id", "b", "", "BPMN process ID to filter incidents")
+	fs.StringVar(&flagGetIncidentPDKey, "pd-key", "", "process definition key to filter incidents")
+	fs.StringVar(&flagGetIncidentPIKey, "pi-key", "", "process instance key to filter incidents")
+	fs.StringVar(&flagGetIncidentRootKey, "root-key", "", "root process instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentFlowNodeID, "flow-node-id", "", "flow node ID to filter incidents")
-	fs.StringVar(&flagGetIncidentFlowNodeInstanceKey, "flow-node-instance-key", "", "flow node instance key to filter incidents")
+	fs.StringVar(&flagGetIncidentFNIKey, "fni-key", "", "flow node instance key to filter incidents")
 	fs.StringVar(&flagGetIncidentCreationTimeAfter, "creation-time-after", "", "only include incidents with creation time >= RFC3339 timestamp or YYYY-MM-DD")
 	fs.StringVar(&flagGetIncidentCreationTimeBefore, "creation-time-before", "", "only include incidents with creation time <= RFC3339 timestamp or YYYY-MM-DD")
 	fs.Int32VarP(&flagGetIncidentSize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of incidents to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
-	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for human incident messages; 0 keeps full messages")
-	fs.BoolVar(&flagGetIncidentNoErrorMessage, "with-no-error-message", false, "omit error messages from human incident output")
+	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for incident messages; 0 keeps full messages")
+	fs.BoolVar(&flagGetIncidentNoErrorMessage, "with-no-error-message", false, "omit error messages from incident output")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new incident lookups after the first error")
@@ -190,10 +190,10 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
 	}
 	for flag, value := range map[string]string{
-		"--process-instance-key":      flagGetIncidentProcessInstanceKey,
-		"--root-process-instance-key": flagGetIncidentRootProcessInstanceKey,
-		"--process-definition-key":    flagGetIncidentProcessDefinitionKey,
-		"--flow-node-instance-key":    flagGetIncidentFlowNodeInstanceKey,
+		"--pi-key":   flagGetIncidentPIKey,
+		"--root-key": flagGetIncidentRootKey,
+		"--pd-key":   flagGetIncidentPDKey,
+		"--fni-key":  flagGetIncidentFNIKey,
 	} {
 		if value == "" {
 			continue
@@ -239,7 +239,7 @@ func validateGetIncidentErrorTypeFlag(value string) error {
 	if _, ok := incidentfilter.NormalizeErrorType(value); ok {
 		return nil
 	}
-	return invalidFlagValuef("invalid value for --error-type: %q, valid values are: %s", value, incidentfilter.ValidErrorTypesString())
+	return invalidFlagValuef("invalid value for --error-type: %q", value)
 }
 
 func validateGetIncidentCreationTimeFlag(name string, value string) error {
@@ -267,12 +267,12 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 		"state",
 		"error-type",
 		"error-message",
-		"process-instance-key",
-		"root-process-instance-key",
-		"process-definition-key",
-		"process-definition-id",
+		"pi-key",
+		"root-key",
+		"pd-key",
+		"bpmn-process-id",
 		"flow-node-id",
-		"flow-node-instance-key",
+		"fni-key",
 		"creation-time-after",
 		"creation-time-before",
 		"batch-size",
@@ -291,12 +291,12 @@ func populateGetIncidentSearchFilter() process.IncidentFilter {
 		State:                  flagGetIncidentState,
 		ErrorType:              errorType,
 		ErrorMessage:           flagGetIncidentErrorMessage,
-		ProcessInstanceKey:     flagGetIncidentProcessInstanceKey,
-		RootProcessInstanceKey: flagGetIncidentRootProcessInstanceKey,
-		ProcessDefinitionKey:   flagGetIncidentProcessDefinitionKey,
-		ProcessDefinitionId:    flagGetIncidentProcessDefinitionID,
+		ProcessInstanceKey:     flagGetIncidentPIKey,
+		RootProcessInstanceKey: flagGetIncidentRootKey,
+		ProcessDefinitionKey:   flagGetIncidentPDKey,
+		ProcessDefinitionId:    flagGetIncidentBpmnProcessID,
 		FlowNodeId:             flagGetIncidentFlowNodeID,
-		FlowNodeInstanceKey:    flagGetIncidentFlowNodeInstanceKey,
+		FlowNodeInstanceKey:    flagGetIncidentFNIKey,
 		CreationTimeAfter:      flagGetIncidentCreationTimeAfter,
 		CreationTimeBefore:     flagGetIncidentCreationTimeBefore,
 	}
@@ -309,12 +309,12 @@ func resetGetIncidentFlagState() {
 	flagGetIncidentState = "active"
 	flagGetIncidentErrorType = ""
 	flagGetIncidentErrorMessage = ""
-	flagGetIncidentProcessInstanceKey = ""
-	flagGetIncidentRootProcessInstanceKey = ""
-	flagGetIncidentProcessDefinitionKey = ""
-	flagGetIncidentProcessDefinitionID = ""
+	flagGetIncidentPIKey = ""
+	flagGetIncidentRootKey = ""
+	flagGetIncidentPDKey = ""
+	flagGetIncidentBpmnProcessID = ""
 	flagGetIncidentFlowNodeID = ""
-	flagGetIncidentFlowNodeInstanceKey = ""
+	flagGetIncidentFNIKey = ""
 	flagGetIncidentCreationTimeAfter = ""
 	flagGetIncidentCreationTimeBefore = ""
 	flagGetIncidentSize = consts.MaxPISearchSize

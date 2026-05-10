@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add first-class read-only `c8volt get incident` commands for keyed incident lookup and searchable incident listing. The implementation extends the existing Go/Cobra `get` command family, reuses `c8volt/process.ProcessInstanceIncidentDetail`, `internal/services/incident`, and `internal/services/incidentfilter`, adds explicit version-aware incident search APIs, and keeps process-instance incident view/filter concepts separate from plain incident filters. The command must support human, JSON, keys-only, and exact total output with pagination-correct local filtering whenever backend semantics are not sufficient.
+Add first-class read-only `c8volt get incident` commands for keyed incident lookup and searchable incident listing. The implementation extends the existing Go/Cobra `get` command family, reuses `c8volt/process.ProcessInstanceIncidentDetail`, `internal/services/incident`, and `internal/services/incidentfilter`, adds explicit version-aware incident search APIs, and keeps process-instance incident view/filter concepts separate from plain incident filters. The command must support default, JSON, keys-only, and exact total output with pagination-correct local filtering whenever backend semantics are not sufficient.
 
 ## Technical Context
 
@@ -26,7 +26,7 @@ Add first-class read-only `c8volt get incident` commands for keyed incident look
 | Principle | Status | Notes |
 |-----------|--------|-------|
 | I. Operational Proof Over Intent | PASS | Feature is read-only; output and totals must reflect fully applied filters before reporting. |
-| II. CLI-First, Script-Safe Interfaces | PASS | New command uses Cobra, stable flags, aliases, exit behavior, human output, JSON output, keys-only output, and total output. |
+| II. CLI-First, Script-Safe Interfaces | PASS | New command uses Cobra, stable flags, aliases, exit behavior, default output, JSON output, keys-only output, and total output. |
 | III. Tests and Validation Are Mandatory | PASS | Plan requires command, service, facade, compatibility, pagination, docsgen, and regression tests. |
 | IV. Documentation Matches User Behavior | PASS | README, help text, and generated CLI docs are in scope. |
 | V. Small, Compatible, Repository-Native Changes | PASS | Work follows existing `get` command, process facade, incident service, view helper, and incident filter patterns. |

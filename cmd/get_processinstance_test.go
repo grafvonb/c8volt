@@ -39,7 +39,7 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "Direct key lookup stays strict")
 	require.Contains(t, output, "Use --with-incidents to include direct incident details under matching process-instance rows in keyed or list/search output.")
 	require.Contains(t, output, "Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.")
-	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten human incident messages")
+	require.NotContains(t, output, "Add --incident-message-limit <chars> to shorten incident messages")
 	require.Contains(t, output, "Run `c8volt get pi --help` for the complete flag reference.")
 	require.Contains(t, output, "./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active")
 	require.Contains(t, output, "./c8volt get pi --key <process-instance-key>")
@@ -60,18 +60,18 @@ func TestGetProcessInstanceHelp_DocumentsPagingAndAutomationSurface(t *testing.T
 	require.Contains(t, output, "--batch-size int32")
 	require.Contains(t, output, "number of process instances to fetch per page")
 	require.Contains(t, output, "--incident-message-limit int")
-	require.Contains(t, output, "maximum characters to show for human incident messages when --with-incidents is set")
+	require.Contains(t, output, "maximum characters to show for incident messages when --with-incidents is set")
 	require.Contains(t, output, "--incident-error-message string")
 	require.Contains(t, output, "case-insensitive incident error message substring filter for keyed --with-incidents or list/search --direct-incidents-only")
 	require.Contains(t, output, "--incident-error-type string")
-	require.Contains(t, output, "case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only: AD_HOC_SUB_PROCESS_NO_RETRIES")
-	require.Contains(t, output, "JOB_NO_RETRIES")
+	require.Contains(t, output, "case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only")
+	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
 	require.Contains(t, output, "--incident-state string")
 	require.Contains(t, output, "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
 	require.Contains(t, output, "--limit int32")
 	require.Contains(t, output, "maximum number of matching process instances to return or process across all pages")
 	require.Contains(t, output, "--var-value-limit int")
-	require.Contains(t, output, "maximum characters to show for human variable values when --with-vars is set")
+	require.Contains(t, output, "maximum characters to show for variable values when --with-vars is set")
 	require.Contains(t, output, "--with-incidents")
 	require.Contains(t, output, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
 	require.Contains(t, output, "--direct-incidents-only")
@@ -1113,7 +1113,7 @@ func TestGetProcessInstanceIncidentDetailFilterValidation(t *testing.T) {
 		{
 			name:   "rejects unsupported error type",
 			helper: "TestGetProcessInstanceIncidentErrorTypeInvalidHelper",
-			want:   `invalid value for --incident-error-type: "retry_error", valid values are:`,
+			want:   `invalid value for --incident-error-type: "retry_error"`,
 		},
 	}
 
@@ -1450,7 +1450,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00Z (48 days ago) fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00+00:00 (48 days ago) fn:task-a fni:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1724,7 +1724,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
-// JSON enrichment keeps variable metadata stable for automation even when human output has compact formatting.
+// JSON enrichment keeps variable metadata stable for automation even when compact formatting changes.
 func TestGetProcessInstanceWithVars_JSONOutputShowsEnrichedPayloadShapeAndMetadata(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1831,8 +1831,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00Z (48 days ago) fn:task-a fni:element-123 m:No retries left",
-				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00Z (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00+00:00 (48 days ago) fn:task-a fni:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00+00:00 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
 			},
 		},
 		{
