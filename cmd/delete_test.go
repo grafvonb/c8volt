@@ -867,7 +867,7 @@ func TestDeleteProcessInstanceCommand_RejectsRelativeDayFiltersOnV87(t *testing.
 // Verifies date-filtered search selection deletes matched instances and preserves descendant lookup behavior.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
-	var deleted safeSlice[string]
+	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -924,7 +924,7 @@ func TestDeleteProcessInstanceCommand_SearchSelectionUsesDateFiltersAndDeletesMa
 // Verifies relative-day search selection derives canonical end-date bounds before deleting matches.
 func TestDeleteProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndDeletesMatches(t *testing.T) {
 	var requests []string
-	var deleted safeSlice[string]
+	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1277,8 +1277,8 @@ func TestDeleteProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 // Verifies paged delete search prompts between pages and continues when confirmations are accepted.
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 	searchPage := 0
 	var searchMu sync.Mutex
 
@@ -1371,8 +1371,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 
 // Verifies v8.7 paged delete search fails once keyed tenant-safe impact checking reaches the unsupported direct-lookup seam.
 func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 	searchPage := 0
 	var searchMu sync.Mutex
 
@@ -1437,8 +1437,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 
 // Verifies paged delete search auto-continues without continuation prompts when --auto-confirm is set.
 func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1525,8 +1525,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 
 // TestDeleteProcessInstanceCommand_SearchPagingLimitFlow verifies delete search stops at the requested limit.
 func TestDeleteProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1614,8 +1614,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 
 // TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow verifies batch size and limit interact correctly.
 func TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1692,8 +1692,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 
 // TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow verifies automation mode auto-continues paged delete searches.
 func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1780,8 +1780,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 
 // Verifies paged delete reports a partial-completion summary when continuation is aborted.
 func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1852,8 +1852,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 
 // Verifies paged delete emits a warning-stop summary when overflow state is indeterminate.
 func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1922,8 +1922,8 @@ func TestDeleteProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 
 // Verifies direct --key deletion bypasses top-level search pagination logic.
 func TestDeleteProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
-	var requests safeSlice[string]
-	var deleted safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

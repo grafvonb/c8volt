@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -134,9 +133,9 @@ func TestResolveProcessInstancesWithPlan_ExpandsFamilyScopeAndPrompts(t *testing
 }
 
 func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t *testing.T) {
-	var incidentSearches safeSlice[string]
-	var resolvedIncidents safeSlice[string]
-	var childIncidentSearches atomic.Int32
+	var incidentSearches testx.SafeSlice[string]
+	var resolvedIncidents testx.SafeSlice[string]
+	var childIncidentSearches testx.AtomicCounter
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -147,7 +146,7 @@ func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t 
 		case "/v2/process-instances/2251799813735372/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
 			incidentSearches.Append("2251799813735372")
-			if childIncidentSearches.Add(1) == 1 {
+			if childIncidentSearches.Inc() == 1 {
 				_, _ = w.Write([]byte(incidentSearchJSON(
 					incidentSearchItemJSON("2251799813735377", "2251799813735372", "ACTIVE"),
 				)))
