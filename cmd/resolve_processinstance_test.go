@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -133,19 +134,20 @@ func TestResolveProcessInstancesWithPlan_ExpandsFamilyScopeAndPrompts(t *testing
 }
 
 func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t *testing.T) {
-	searchCounts := map[string]int{}
-	var sawResolve bool
+	var incidentSearches safeSlice[string]
+	var resolvedIncidents safeSlice[string]
+	var childIncidentSearches atomic.Int32
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v2/process-instances/2251799813735367/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
-			searchCounts["2251799813735367"]++
+			incidentSearches.Append("2251799813735367")
 			_, _ = w.Write([]byte(incidentSearchJSON()))
 		case "/v2/process-instances/2251799813735372/incidents/search":
 			require.Equal(t, http.MethodPost, r.Method)
-			searchCounts["2251799813735372"]++
-			if searchCounts["2251799813735372"] == 1 {
+			incidentSearches.Append("2251799813735372")
+			if childIncidentSearches.Add(1) == 1 {
 				_, _ = w.Write([]byte(incidentSearchJSON(
 					incidentSearchItemJSON("2251799813735377", "2251799813735372", "ACTIVE"),
 				)))
@@ -154,7 +156,7 @@ func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t 
 			_, _ = w.Write([]byte(incidentSearchJSON()))
 		case "/v2/incidents/2251799813735377/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
-			sawResolve = true
+			resolvedIncidents.Append("2251799813735377")
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			if handleResolveProcessInstanceFamilyFixture(t, w, r,
@@ -176,8 +178,8 @@ func TestResolveProcessInstanceCommand_ParentFamilyScopeResolvesChildIncident(t 
 		"--auto-confirm",
 	)
 
-	require.True(t, sawResolve)
-	require.Equal(t, map[string]int{"2251799813735367": 1, "2251799813735372": 2}, searchCounts)
+	require.Equal(t, []string{"2251799813735377"}, resolvedIncidents.Snapshot())
+	require.ElementsMatch(t, []string{"2251799813735367", "2251799813735372", "2251799813735372"}, incidentSearches.Snapshot())
 	require.Contains(t, output, "resolved process-instance 2251799813735367: skipped (no_active_incidents)")
 	require.Contains(t, output, "resolved process-instance 2251799813735372: confirmed (1 incident(s))")
 	require.Contains(t, output, "resolved process-instances: 2")
