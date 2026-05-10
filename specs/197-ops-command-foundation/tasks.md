@@ -16,10 +16,10 @@
 
 **Purpose**: Confirm command, contract, and documentation patterns before implementation.
 
-- [ ] T001 Inspect grouping command patterns in `cmd/get.go`, `cmd/resolve.go`, and `cmd/run.go`
-- [ ] T002 Inspect command metadata helpers in `cmd/command_contract.go` and existing expectations in `cmd/capabilities_test.go`
-- [ ] T003 Inspect top-level help and generated markdown tests in `cmd/root_test.go` and `docsgen/main_test.go`
-- [ ] T004 Record any reusable implementation discoveries in `specs/197-ops-command-foundation/progress.md`
+- [x] T001 Inspect grouping command patterns in `cmd/get.go`, `cmd/resolve.go`, and `cmd/run.go`
+- [x] T002 Inspect command metadata helpers in `cmd/command_contract.go` and existing expectations in `cmd/capabilities_test.go`
+- [x] T003 Inspect top-level help and generated markdown tests in `cmd/root_test.go` and `docsgen/main_test.go`
+- [x] T004 Record any reusable implementation discoveries in `specs/197-ops-command-foundation/progress.md`
 
 ---
 
