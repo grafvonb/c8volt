@@ -12,10 +12,9 @@ var opsCmd = &cobra.Command{
 
 The ops command family groups operational playbooks for execution, repair, and
 future maintenance workflows. This root command is intentionally discovery-only;
-target-specific subcommands define concrete behavior.`,
+target-specific subcommands will define concrete behavior as they are added.`,
 	Example: `  ./c8volt ops --help
-  ./c8volt ops execute --help
-  ./c8volt ops repair --help`,
+  ./c8volt capabilities --json`,
 	Aliases: []string{"operations"},
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {

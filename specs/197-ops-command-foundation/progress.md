@@ -14,6 +14,8 @@
 - Root help tests assert substrings with `assertHelpOutputContainsAll`/`assertHelpOutputOmitsAll`; generated markdown alignment tests render live Cobra commands with `renderMarkdownForCommand`.
 - Docs generator tests create a temporary markdown tree with `doc.GenMarkdownTreeCustom` and inspect generated command files by filename.
 - Grouping commands inherit global output modes such as `json` and `keys-only` in capability discovery, but unsupported contract support keeps JSON from being machine-preferred.
+- Root grouping help should avoid example invocations for child commands until those children are registered, so help stays truthful at each independently delivered story.
+- Help-path tests can prove config bypass by setting invalid runtime config environment values; `PersistentPreRunE` returns before config normalization when a help flag is present.
 
 ## Work Log
 
@@ -61,4 +63,26 @@
 - `ops` follows existing root grouping command patterns: package-level Cobra command, `RunE` returning help, hidden backoff flags, and explicit state-changing mutation metadata.
 - Root-level capability discovery inherits global output modes; unsupported contract support prevents those modes from being marked machine-preferred.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapabilitiesCommand_JSONIncludesOpsRootMetadata|TestRootHelp' -count=1`.
+---
+
+---
+## Iteration 3 - 2026-05-10 22:18:18 CEST
+**User Story**: US1 Discover Ops Command Family
+**Tasks Completed**:
+- [x] T009: Add/extend tests proving `c8volt ops --help` succeeds without runtime config in `cmd/ops_test.go`
+- [x] T010: Add/extend tests proving `ops` appears in root help while existing top-level commands remain discoverable in `cmd/root_test.go`
+- [x] T011: Finalize `ops` help copy and grouping behavior in `cmd/ops.go`
+- [x] T012: Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestRootHelp' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/ops.go
+- cmd/ops_test.go
+- cmd/root_test.go
+- specs/197-ops-command-foundation/tasks.md
+- specs/197-ops-command-foundation/progress.md
+**Learnings**:
+- Root ops help should mention future target-specific subcommands without listing unavailable child-command examples before those children exist.
+- `ops --help` can be validated without usable runtime configuration by pairing a temporary config-free environment with an invalid Camunda version env var.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestRootHelp' -count=1`.
 ---

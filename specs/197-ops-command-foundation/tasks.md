@@ -46,13 +46,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Add/extend tests proving `c8volt ops --help` succeeds without runtime config in `cmd/ops_test.go`
-- [ ] T010 [P] [US1] Add/extend tests proving `ops` appears in root help while existing top-level commands remain discoverable in `cmd/root_test.go`
+- [x] T009 [P] [US1] Add/extend tests proving `c8volt ops --help` succeeds without runtime config in `cmd/ops_test.go`
+- [x] T010 [P] [US1] Add/extend tests proving `ops` appears in root help while existing top-level commands remain discoverable in `cmd/root_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Finalize `ops` help copy and grouping behavior in `cmd/ops.go`
-- [ ] T012 [US1] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestRootHelp' -count=1`
+- [x] T011 [US1] Finalize `ops` help copy and grouping behavior in `cmd/ops.go`
+- [x] T012 [US1] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestRootHelp' -count=1`
 
 **Checkpoint**: User Story 1 is independently functional and verified.
 
