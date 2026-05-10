@@ -85,3 +85,37 @@ func TestOpsExecuteCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt ops execute")
 }
+
+// TestOpsRepairHelpDocumentsGroupingCommand verifies repair is only a discoverable parent for future remediation workflows.
+func TestOpsRepairHelpDocumentsGroupingCommand(t *testing.T) {
+	output := executeRootForTest(t, "ops", "repair", "--help")
+
+	assertHelpOutputContainsAll(t, output,
+		"Discover repair and remediation workflows",
+		"reserved for future workflows that repair",
+		"Target-specific subcommands will define their own target semantics",
+		"./c8volt ops repair --help",
+		"./c8volt capabilities --json",
+	)
+	assertHelpOutputOmitsAll(t, output,
+		"--key string",
+		"--key strings",
+		"repair incident",
+		"repair process-instance",
+	)
+}
+
+// TestOpsRepairCommandReturnsHelpForGroupingInvocation covers no-argument grouping behavior.
+func TestOpsRepairCommandReturnsHelpForGroupingInvocation(t *testing.T) {
+	output := executeRootForTest(t, "ops", "repair")
+
+	require.Contains(t, output, "Discover repair and remediation workflows")
+	require.Contains(t, output, "Usage:")
+	require.Contains(t, output, "c8volt ops repair")
+}
+
+// TestOpsRepairCommandDefinesNoTopLevelKeyFlag prevents ambiguous repair target semantics at the grouping level.
+func TestOpsRepairCommandDefinesNoTopLevelKeyFlag(t *testing.T) {
+	require.Nil(t, opsRepairCmd.Flags().Lookup("key"))
+	require.Nil(t, opsRepairCmd.PersistentFlags().Lookup("key"))
+}

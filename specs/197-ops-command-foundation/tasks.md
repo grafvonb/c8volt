@@ -87,14 +87,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Add repair grouping help tests, including no top-level `--key`, in `cmd/ops_test.go`
-- [ ] T019 [P] [US3] Add capabilities assertions for `ops repair` in `cmd/capabilities_test.go`
+- [x] T018 [P] [US3] Add repair grouping help tests, including no top-level `--key`, in `cmd/ops_test.go`
+- [x] T019 [P] [US3] Add capabilities assertions for `ops repair` in `cmd/capabilities_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Add `ops repair` grouping command registration, help text, examples, and metadata in `cmd/ops_repair.go`
-- [ ] T021 [US3] Ensure `cmd/ops_repair.go` defines no ambiguous top-level `--key` flag
-- [ ] T022 [US3] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
+- [x] T020 [US3] Add `ops repair` grouping command registration, help text, examples, and metadata in `cmd/ops_repair.go`
+- [x] T021 [US3] Ensure `cmd/ops_repair.go` defines no ambiguous top-level `--key` flag
+- [x] T022 [US3] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
 
 **Checkpoint**: User Story 3 is independently functional and verified.
 

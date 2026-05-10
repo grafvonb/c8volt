@@ -170,6 +170,16 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Equal(t, AutomationSupportUnsupported, execute.AutomationSupport)
 	require.Contains(t, execute.Summary, "Discover predefined operational playbooks")
 	require.Empty(t, execute.Children)
+	repair, ok := findCommandCapability(ops.Children, "ops repair")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, repair.Mutation)
+	require.Equal(t, ContractSupportUnsupported, repair.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, repair.AutomationSupport)
+	require.Contains(t, repair.Summary, "Discover repair and remediation workflows")
+	require.Empty(t, repair.Children)
+	for _, flag := range repair.Flags {
+		require.NotEqual(t, "key", flag.Name)
+	}
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "json", Supported: true})
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})

@@ -17,6 +17,7 @@
 - Root grouping help should avoid example invocations for child commands until those children are registered, so help stays truthful at each independently delivered story.
 - Help-path tests can prove config bypass by setting invalid runtime config environment values; `PersistentPreRunE` returns before config normalization when a help flag is present.
 - Child grouping commands attach to their parent command during package init, set their own mutation metadata, and should avoid naming unavailable future playbook commands in help copy.
+- Tests for absent top-level target flags should inspect the command's local and persistent flag sets directly when inherited global flags such as `--keys-only` would make help substring checks ambiguous.
 
 ## Work Log
 
@@ -108,5 +109,28 @@
 **Learnings**:
 - `ops execute` stays grouping-only by registering no children and returning Cobra help for both `ops execute` and `ops execute --help`.
 - Help text should describe the category of future playbooks without spelling out unavailable concrete workflow command names.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`.
+---
+
+---
+## Iteration 5 - 2026-05-10 22:24:49 CEST
+**User Story**: US3 Discover Repair Grouping Command
+**Tasks Completed**:
+- [x] T018: Add repair grouping help tests, including no top-level `--key`, in `cmd/ops_test.go`
+- [x] T019: Add capabilities assertions for `ops repair` in `cmd/capabilities_test.go`
+- [x] T020: Add `ops repair` grouping command registration, help text, examples, and metadata in `cmd/ops_repair.go`
+- [x] T021: Ensure `cmd/ops_repair.go` defines no ambiguous top-level `--key` flag
+- [x] T022: Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/ops_repair.go
+- cmd/ops_test.go
+- cmd/capabilities_test.go
+- specs/197-ops-command-foundation/tasks.md
+- specs/197-ops-command-foundation/progress.md
+**Learnings**:
+- `ops repair` follows the existing child grouping command pattern: parent registration during init, state-changing mutation metadata, no concrete children, and no workflow execution.
+- Local flag-set assertions are the precise way to guard against a future ambiguous repair `--key` while allowing inherited global output flags.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`.
 ---
