@@ -100,6 +100,31 @@ func TestGetIncidentCommand_KeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	require.Equal(t, "2251799813685249\n", output)
 }
 
+func TestGetIncidentCommand_PIKeysOnlyKeyedLookupUsesProcessInstanceKeys(t *testing.T) {
+	var requests []string
+	srv := newIncidentLookupServer(t, &requests, map[string]string{
+		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
+		"2251799813685250": incidentLookupResultJSON("2251799813685250", "", "Missing process instance key"),
+	})
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--workers", "1",
+		"--key", "2251799813685249",
+		"--key", "2251799813685250",
+		"--pi-keys-only",
+	)
+
+	require.Equal(t, []string{
+		"GET /v2/incidents/2251799813685249",
+		"GET /v2/incidents/2251799813685250",
+	}, requests)
+	require.Equal(t, "2251799813711967\n", output)
+}
+
 func TestGetIncidentCommand_SearchKeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
@@ -117,6 +142,56 @@ func TestGetIncidentCommand_SearchKeysOnlyOutputUsesIncidentKeys(t *testing.T) {
 
 	require.Len(t, requests, 1)
 	require.Equal(t, "2251799813685253\n2251799813685254\n", output)
+}
+
+func TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"missing","incidentKey":"2251799813685255","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "active",
+		"--pi-keys-only",
+	)
+
+	require.Len(t, requests, 1)
+	require.Equal(t, "2251799813711972\n2251799813711972\n", output)
+}
+
+func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing.T) {
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"first","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"second","incidentKey":"2251799813685254","processInstanceKey":"2251799813711973","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":true}}`,
+		`{"items":[{"errorMessage":"third","incidentKey":"2251799813685255","processInstanceKey":"2251799813711974","state":"ACTIVE","tenantId":"tenant-a"},{"errorMessage":"fourth","incidentKey":"2251799813685256","processInstanceKey":"2251799813711975","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":4,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+	promptCalls := 0
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		promptCalls++
+		require.False(t, autoConfirm)
+		require.Contains(t, prompt, "More matching incidents remain")
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--batch-size", "2",
+		"--pi-keys-only",
+	)
+
+	require.Len(t, requests, 2)
+	require.Equal(t, 1, promptCalls)
+	require.Equal(t, "2251799813711972\n2251799813711973\n2251799813711974\n2251799813711975\n", output)
+	require.NotContains(t, output, "found:")
 }
 
 func TestGetIncidentCommand_TotalUsesExactReportedBackendTotal(t *testing.T) {

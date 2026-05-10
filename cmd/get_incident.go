@@ -98,6 +98,12 @@ var getIncidentCmd = &cobra.Command{
 				}
 				return
 			}
+			if flagGetIncidentPIKeysOnly {
+				if err := renderIncidentProcessInstanceKeys(cmd, incidents.Items); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incident process instance keys: %w", err))
+				}
+				return
+			}
 			if err := listIncidentsView(cmd, incidents, flagGetIncidentMessageLimit, flagGetIncidentNoErrorMessage); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incidents: %w", err))
 			}

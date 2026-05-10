@@ -41,6 +41,9 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 }
 
 func listIncidentsView(cmd *cobra.Command, resp incident.Incidents, messageLimit int, omitMessage bool) error {
+	if flagGetIncidentPIKeysOnly {
+		return renderIncidentProcessInstanceKeys(cmd, resp.Items)
+	}
 	mode := pickMode()
 	switch mode {
 	case RenderModeJSON:

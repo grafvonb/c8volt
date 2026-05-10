@@ -37,17 +37,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Add keyed lookup and missing-process-instance-key skip tests for `--pi-keys-only` in `cmd/get_incident_test.go`
-- [ ] T008 [P] [US1] Add search/list tests proving `--pi-keys-only` emits process instance keys and preserves duplicate process instance keys in `cmd/get_incident_test.go`
-- [ ] T009 [P] [US1] Add view-level tests for process-instance-key rendering and duplicate preservation in `cmd/cmd_views_get_test.go`
-- [ ] T010 [US1] Add paging/incremental rendering coverage for `--pi-keys-only` in `cmd/get_incident_test.go`
+- [x] T007 [P] [US1] Add keyed lookup and missing-process-instance-key skip tests for `--pi-keys-only` in `cmd/get_incident_test.go`
+- [x] T008 [P] [US1] Add search/list tests proving `--pi-keys-only` emits process instance keys and preserves duplicate process instance keys in `cmd/get_incident_test.go`
+- [x] T009 [P] [US1] Add view-level tests for process-instance-key rendering and duplicate preservation in `cmd/cmd_views_get_test.go`
+- [x] T010 [US1] Add paging/incremental rendering coverage for `--pi-keys-only` in `cmd/get_incident_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Wire keyed lookup output to the process-instance-key rendering helper in `cmd/get_incident.go`
-- [ ] T012 [US1] Wire collected search/list output to the process-instance-key rendering helper in `cmd/cmd_views_get.go`
-- [ ] T013 [US1] Wire incremental search page output to process-instance-key rendering in `cmd/get_incident_search.go`
-- [ ] T014 [US1] Ensure `--pi-keys-only` incremental search omits `found:` summaries while preserving existing `--keys-only` summaries in `cmd/get_incident_search.go`
+- [x] T011 [US1] Wire keyed lookup output to the process-instance-key rendering helper in `cmd/get_incident.go`
+- [x] T012 [US1] Wire collected search/list output to the process-instance-key rendering helper in `cmd/cmd_views_get.go`
+- [x] T013 [US1] Wire incremental search page output to process-instance-key rendering in `cmd/get_incident_search.go`
+- [x] T014 [US1] Ensure `--pi-keys-only` incremental search omits `found:` summaries while preserving existing `--keys-only` summaries in `cmd/get_incident_search.go`
 
 **Checkpoint**: User Story 1 is independently usable for pipelines and preserves duplicate process instance keys.
 
