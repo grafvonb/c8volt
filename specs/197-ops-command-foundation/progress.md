@@ -18,6 +18,7 @@
 - Help-path tests can prove config bypass by setting invalid runtime config environment values; `PersistentPreRunE` returns before config normalization when a help flag is present.
 - Child grouping commands attach to their parent command during package init, set their own mutation metadata, and should avoid naming unavailable future playbook commands in help copy.
 - Tests for absent top-level target flags should inspect the command's local and persistent flag sets directly when inherited global flags such as `--keys-only` would make help substring checks ambiguous.
+- Shared ops workflow contracts live in `cmd/ops_contract.go` as command-layer report/status vocabulary only; resource-specific API traversal, mutation, polling, and generated-client behavior must stay below `cmd`.
 
 ## Work Log
 
@@ -132,5 +133,28 @@
 **Learnings**:
 - `ops repair` follows the existing child grouping command pattern: parent registration during init, state-changing mutation metadata, no concrete children, and no workflow execution.
 - Local flag-set assertions are the precise way to guard against a future ambiguous repair `--key` while allowing inherited global output flags.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-10 22:28:25 CEST
+**User Story**: US4 Establish Shared Ops Workflow Contracts
+**Tasks Completed**:
+- [x] T023: Add tests for shared ops step status values and report-format behavior in `cmd/ops_contract_test.go`
+- [x] T024: Add command contract tests proving grouping commands do not claim full automation support in `cmd/capabilities_test.go`
+- [x] T025: Add lightweight shared ops workflow/report contract types and comments in `cmd/ops_contract.go`
+- [x] T026: Keep resource-specific API logic out of `cmd/ops_contract.go` and record that boundary in `specs/197-ops-command-foundation/progress.md`
+- [x] T027: Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/ops_contract.go
+- cmd/ops_contract_test.go
+- cmd/capabilities_test.go
+- specs/197-ops-command-foundation/tasks.md
+- specs/197-ops-command-foundation/progress.md
+**Learnings**:
+- Shared ops step statuses are stable command-layer report tokens: `planned`, `skipped`, `submitted`, `confirmed`, `confirmation_failed`, `blocked`, and `failed`.
+- Report format inference is intentionally narrow: explicit valid formats win, `.json` selects JSON, `.md`/`.markdown`/empty paths select Markdown, and unsupported extensions fail fast.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`.
 ---

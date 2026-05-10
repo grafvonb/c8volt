@@ -108,14 +108,14 @@
 
 ### Tests for User Story 4
 
-- [ ] T023 [P] [US4] Add tests for shared ops step status values and report-format behavior in `cmd/ops_contract_test.go`
-- [ ] T024 [P] [US4] Add command contract tests proving grouping commands do not claim full automation support in `cmd/capabilities_test.go`
+- [x] T023 [P] [US4] Add tests for shared ops step status values and report-format behavior in `cmd/ops_contract_test.go`
+- [x] T024 [P] [US4] Add command contract tests proving grouping commands do not claim full automation support in `cmd/capabilities_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Add lightweight shared ops workflow/report contract types and comments in `cmd/ops_contract.go`
-- [ ] T026 [US4] Keep resource-specific API logic out of `cmd/ops_contract.go` and record that boundary in `specs/197-ops-command-foundation/progress.md`
-- [ ] T027 [US4] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
+- [x] T025 [US4] Add lightweight shared ops workflow/report contract types and comments in `cmd/ops_contract.go`
+- [x] T026 [US4] Keep resource-specific API logic out of `cmd/ops_contract.go` and record that boundary in `specs/197-ops-command-foundation/progress.md`
+- [x] T027 [US4] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
 
 **Checkpoint**: User Story 4 is independently functional and verified.
 

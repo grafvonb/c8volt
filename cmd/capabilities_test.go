@@ -185,6 +185,22 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
 }
 
+// TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation keeps grouping-only ops commands out of full automation contracts.
+func TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	for _, path := range []string{"ops", "ops execute", "ops repair"} {
+		capability, ok := findCommandCapability(doc.Commands, path)
+		require.True(t, ok, "expected %q to appear in capability discovery", path)
+		require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
+		require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+		require.Empty(t, capability.AutomationNotes)
+	}
+}
+
 func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.T) {
 	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--automation", "capabilities", "--json")
 
