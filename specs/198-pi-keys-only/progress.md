@@ -22,6 +22,7 @@ Started: 2026-05-10 23:58:09
 - Command capability metadata exposes command-local modes such as `--pi-keys-only` through `FlagContract` entries; global output modes remain limited to shared render modes like JSON and keys-only.
 - `make docs-content` regenerates per-command CLI markdown under `docs/cli/` and syncs README-derived homepage content to `docs/index.md`; it does not rewrite the static `docs/cli/index.md`.
 - Process-instance destructive command duplicate stdin coverage can assert command-boundary dedupe through dry-run `selected process instances` counts while serving minimal v8.8 lookup and child-search fixtures.
+- Repository validation is `make test`, which runs `go test ./... -race -count=1`; targeted command validation can use `GOCACHE=/tmp/c8volt-gocache` for sandbox-friendly cache writes.
 
 ---
 
@@ -158,4 +159,22 @@ Started: 2026-05-10 23:58:09
 - `delete pi` now mirrors `cancel pi` by deduping merged `--key` and stdin `-` input at the command boundary before keyed-mode validation and dry-run planning counts.
 - Dry-run command tests can prove boundary dedupe by passing duplicate flag/stdin input and checking `selected process instances` remains unique, even though the lower dry-run service also dedupes traversal work internally.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning|TestDeleteHelp_DocumentsDestructiveConfirmationPaths' -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
+---
+
+---
+## Iteration 7 - 2026-05-11 00:25:01 CEST
+**User Story**: Phase 7: Polish & Validation
+**Tasks Completed**:
+- [x] T027: Run targeted command tests with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncidentCommand_.*PIKeysOnly|TestListIncidentsView_.*PIKeysOnly|TestDeleteProcessInstanceCommand_.*Duplicate' -count=1`
+- [x] T028: Run broader affected validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./docsgen -count=1`
+- [x] T029: Run repository validation with `make test`
+- [x] T030: Review `git diff` to confirm the change remains focused on `--pi-keys-only`, docs, tests, and the local `delete pi` dedupe cleanup
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- specs/198-pi-keys-only/tasks.md
+- specs/198-pi-keys-only/progress.md
+**Learnings**:
+- Targeted validation, affected package validation, and full repository validation all passed.
+- The branch diff against `main` remains focused on the incident `--pi-keys-only` command path, generated and user-facing docs, tests, Spec Kit artifacts, and the local `delete pi` duplicate-key cleanup.
 ---

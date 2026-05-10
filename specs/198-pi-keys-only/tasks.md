@@ -117,10 +117,10 @@
 
 **Purpose**: Confirm behavior, docs, and repository validation.
 
-- [ ] T027 Run targeted command tests with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncidentCommand_.*PIKeysOnly|TestListIncidentsView_.*PIKeysOnly|TestDeleteProcessInstanceCommand_.*Duplicate' -count=1`
-- [ ] T028 Run broader affected validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./docsgen -count=1`
-- [ ] T029 Run repository validation with `make test`
-- [ ] T030 Review `git diff` to confirm the change remains focused on `--pi-keys-only`, docs, tests, and the local `delete pi` dedupe cleanup
+- [x] T027 Run targeted command tests with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncidentCommand_.*PIKeysOnly|TestListIncidentsView_.*PIKeysOnly|TestDeleteProcessInstanceCommand_.*Duplicate' -count=1`
+- [x] T028 Run broader affected validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./docsgen -count=1`
+- [x] T029 Run repository validation with `make test`
+- [x] T030 Review `git diff` to confirm the change remains focused on `--pi-keys-only`, docs, tests, and the local `delete pi` dedupe cleanup
 
 ---
 
