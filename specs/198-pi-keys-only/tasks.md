@@ -80,14 +80,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Update help and command contract expectations for `--pi-keys-only` in `cmd/command_contract_test.go`
-- [ ] T019 [P] [US3] Update generated docs tests for `--pi-keys-only` in `docsgen/main_test.go`
+- [x] T018 [P] [US3] Update help and command contract expectations for `--pi-keys-only` in `cmd/command_contract_test.go`
+- [x] T019 [P] [US3] Update generated docs tests for `--pi-keys-only` in `docsgen/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Update `get incident` long help and examples in `cmd/get_incident.go`
-- [ ] T021 [US3] Update incident pipeline examples in `README.md`
-- [ ] T022 [US3] Regenerate CLI reference docs with `make docs-content`, updating `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_incident.md`, and `docs/cli/index.md`
+- [x] T020 [US3] Update `get incident` long help and examples in `cmd/get_incident.go`
+- [x] T021 [US3] Update incident pipeline examples in `README.md`
+- [x] T022 [US3] Regenerate CLI reference docs with `make docs-content`, updating `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_incident.md`, and `docs/cli/index.md`
 
 **Checkpoint**: User Story 3 makes the new pipeline mode discoverable and documented.
 

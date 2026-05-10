@@ -16,7 +16,7 @@ The command accepts repeated --key values or newline-separated keys from stdin w
 
 When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.
 
-Use --json for the stable incident payload, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.
+Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.
 
 ```
 c8volt get incident [flags]
@@ -31,6 +31,8 @@ c8volt get incident [flags]
   ./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
   ./c8volt get incident --state active --limit 5
   ./c8volt get incident --state resolved --error-type io_mapping_error --limit 5
+  ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only
+  ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -
   ./c8volt get incident --error-message "intentional" --limit 5
   ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
   ./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
@@ -57,6 +59,7 @@ c8volt get incident [flags]
       --no-worker-limit               disable limiting the number of workers to GOMAXPROCS when --workers > 1
       --pd-key string                 process definition key to filter incidents
       --pi-key string                 process instance key to filter incidents
+      --pi-keys-only                  return only process instance keys for matching incidents
       --root-key string               root process instance key to filter incidents
   -s, --state string                  incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
       --total                         return only the exact numeric total of matching incidents

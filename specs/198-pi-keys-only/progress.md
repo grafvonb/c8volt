@@ -19,6 +19,8 @@ Started: 2026-05-10 23:58:09
 - Collected incident search/list `--pi-keys-only` output is selected in `listIncidentsView`, while incremental pages are selected in `renderIncidentSearchPage`.
 - Incremental incident search should keep `found:` only for one-line human output; `--pi-keys-only` and `--keys-only` remain footer-free.
 - Incident validation tests can assert pre-request failures by using a local capture server and requiring its request log stays empty.
+- Command capability metadata exposes command-local modes such as `--pi-keys-only` through `FlagContract` entries; global output modes remain limited to shared render modes like JSON and keys-only.
+- `make docs-content` regenerates per-command CLI markdown under `docs/cli/` and syncs README-derived homepage content to `docs/index.md`; it does not rewrite the static `docs/cli/index.md`.
 
 ---
 
@@ -104,4 +106,33 @@ Started: 2026-05-10 23:58:09
 - Existing `validateGetIncidentFlagValues` diagnostics already cover all specified `--pi-keys-only` conflicts, including message-format flags, so no production validator change was needed.
 - The new tests prove local validation runs before lookup/search by configuring a test server and asserting no requests are captured.
 - Validation checks passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncidentCommand_RejectsPIKeysOnly|TestGetIncidentCommand_RejectsJSONErrorMessageLimit|TestGetIncidentCommand_RejectsKeysOnlyErrorMessageLimit' -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
+---
+
+---
+## Iteration 5 - 2026-05-11 00:16:03 CEST
+**User Story**: User Story 3 - Keep docs and command metadata aligned
+**Tasks Completed**:
+- [x] T018: Update help and command contract expectations for `--pi-keys-only` in `cmd/command_contract_test.go`
+- [x] T019: Update generated docs tests for `--pi-keys-only` in `docsgen/main_test.go`
+- [x] T020: Update `get incident` long help and examples in `cmd/get_incident.go`
+- [x] T021: Update incident pipeline examples in `README.md`
+- [x] T022: Regenerate CLI reference docs with `make docs-content`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/get.go
+- cmd/get_incident.go
+- docsgen/main_test.go
+- README.md
+- docs/cli/c8volt_get.md
+- docs/cli/c8volt_get_incident.md
+- docs/cli/index.md
+- docs/index.md
+- specs/198-pi-keys-only/tasks.md
+- specs/198-pi-keys-only/progress.md
+**Learnings**:
+- `--pi-keys-only` documentation belongs in `get incident` command-local help and examples, while `--keys-only` remains the shared incident-key output mode.
+- Docs generation updated `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_incident.md`, and README-derived `docs/index.md`; `docs/cli/index.md` is static CLI guide content and was updated directly.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestCommandCapabilityForCommand_GetIncidentContract|TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -run TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput -count=1`, and `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./docsgen -count=1`.
 ---

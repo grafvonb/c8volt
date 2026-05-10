@@ -40,13 +40,15 @@ var getIncidentCmd = &cobra.Command{
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
 		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
-		"Use --json for the stable incident payload, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
+		"Use --json for the stable incident payload, --keys-only for incident keys, --pi-keys-only for process instance keys, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
 	Example: `  ./c8volt get incident --key <incident-key>
   ./c8volt get inc --key <incident-key> --key <another-incident-key>
   printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get incident -
   ./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
   ./c8volt get incident --state active --limit 5
   ./c8volt get incident --state resolved --error-type io_mapping_error --limit 5
+  ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only
+  ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -
   ./c8volt get incident --error-message "intentional" --limit 5
   ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
   ./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
