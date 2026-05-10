@@ -115,7 +115,7 @@ func New(opts ...Option) (API, error) {
 			}, nil
 		},
 	}
-	cl.ResourceAPI = resource.New(rAPI, cl.ProcessAPI, cl.BatchOperationAPI, c.log)
+	cl.ResourceAPI = resource.New(rAPI, pdAPI, piAPI, c.log)
 	return &cl, nil
 }
 

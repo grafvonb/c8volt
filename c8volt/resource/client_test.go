@@ -17,6 +17,9 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 	"github.com/grafvonb/c8volt/testx/activitysink"
 	"github.com/grafvonb/c8volt/toolx/logging"
@@ -152,7 +155,7 @@ func TestClient_DeleteProcessDefinition_UsesRootCancellationPlan(t *testing.T) {
 		},
 	}
 
-	cli := New(api, papi, nil, slog.Default())
+	cli := newResourceTestClient(api, papi)
 	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce())
 
 	require.NoError(t, err)
@@ -231,34 +234,12 @@ func TestClient_DeleteProcessDefinition_ForwardsContextToRootCancellation(t *tes
 		},
 	}
 
-	cli := New(api, papi, nil, slog.Default())
+	cli := newResourceTestClient(api, papi)
 	report, err := cli.DeleteProcessDefinition(ctx, "pd-1", options.WithForce())
 
 	require.NoError(t, err)
 	assert.True(t, report.Ok)
 	assert.Equal(t, int32(2), statsCalls.Load())
-}
-
-// TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose verifies warning details respect verbosity.
-func TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {
-	t.Parallel()
-
-	plan := process.DryRunPIKeyExpansion{
-		MissingAncestors: []process.MissingAncestor{
-			{Key: "missing-1", StartKey: "child-1"},
-			{Key: "missing-2", StartKey: "child-2"},
-		},
-		Warning: "one or more parent process instances were not found",
-	}
-
-	quiet := formatPartialCancellationImpactWarning("pd-1", plan, false)
-	verbose := formatPartialCancellationImpactWarning("pd-1", plan, true)
-
-	assert.Contains(t, quiet, "2 missing ancestor key(s)")
-	assert.Contains(t, quiet, "use --verbose to list keys")
-	assert.NotContains(t, quiet, "missing-1")
-	assert.NotContains(t, quiet, "missing-2")
-	assert.Contains(t, verbose, "missing ancestor keys: missing-1, missing-2")
 }
 
 // TestClient_PreviewDeleteProcessDefinition_UsesStatsForNonForceImpactCheck keeps
@@ -286,7 +267,7 @@ func TestClient_PreviewDeleteProcessDefinition_UsesStatsForNonForceImpactCheck(t
 		},
 	}
 
-	cli := New(api, papi, nil, slog.Default())
+	cli := newResourceTestClient(api, papi)
 	plan, err := cli.PreviewDeleteProcessDefinitions(ctx, typex.Keys{"pd-1"})
 
 	require.NoError(t, err)
@@ -354,7 +335,7 @@ func TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce(t *testing.
 		},
 	}
 
-	cli := New(api, papi, nil, slog.Default())
+	cli := newResourceTestClient(api, papi)
 	plan, err := cli.PreviewDeleteProcessDefinitions(ctx, typex.Keys{"pd-1"}, options.WithForce())
 
 	require.NoError(t, err)
@@ -398,6 +379,10 @@ func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 	}, msgs)
 }
 
+func newResourceTestClient(api rsvc.API, p stubProcessAPI) API {
+	return New(api, stubProcessDefinitionService{source: p}, stubProcessInstanceService{source: p}, slog.Default())
+}
+
 type stubResourceAPI struct {
 	get    func(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
 	delete func(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error)
@@ -426,6 +411,304 @@ func (s *stubResourceAPI) Get(ctx context.Context, resourceKey string, opts ...s
 }
 
 var _ rsvc.API = (*stubResourceAPI)(nil)
+
+type stubProcessDefinitionService struct {
+	source stubProcessAPI
+}
+
+func (s stubProcessDefinitionService) SearchProcessDefinitions(context.Context, d.ProcessDefinitionFilter, int32, ...services.CallOption) ([]d.ProcessDefinition, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessDefinitionService) SearchProcessDefinitionsLatest(context.Context, d.ProcessDefinitionFilter, ...services.CallOption) ([]d.ProcessDefinition, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessDefinitionService) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+	got, err := s.source.GetProcessDefinition(ctx, key, facadeOptionsFromCallOptions(opts)...)
+	return toDomainProcessDefinition(got), err
+}
+
+func (s stubProcessDefinitionService) GetProcessDefinitionXML(context.Context, string, ...services.CallOption) (string, error) {
+	panic("unexpected call")
+}
+
+var _ pdsvc.API = stubProcessDefinitionService{}
+
+type stubProcessInstanceService struct {
+	source stubProcessAPI
+}
+
+func (s stubProcessInstanceService) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) SearchProcessInstanceVariables(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) UpdateProcessInstanceVariables(context.Context, string, map[string]any, ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) GetDirectChildrenOfProcessInstance(context.Context, string, ...services.CallOption) ([]d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) FilterProcessInstanceWithOrphanParent(context.Context, []d.ProcessInstance, ...services.CallOption) ([]d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
+	got, err := s.source.SearchProcessInstancesPage(ctx, fromDomainProcessInstanceFilter(filter), process.ProcessInstancePageRequest(page), facadeOptionsFromCallOptions(opts)...)
+	return toDomainProcessInstancePage(got), err
+}
+
+func (s stubProcessInstanceService) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	got, err := s.source.SearchProcessInstances(ctx, fromDomainProcessInstanceFilter(filter), size, facadeOptionsFromCallOptions(opts)...)
+	return toDomainProcessInstances(got.Items), err
+}
+
+func (s stubProcessInstanceService) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+	got, err := s.source.CancelProcessInstances(ctx, typex.Keys{key}, 1, facadeOptionsFromCallOptions(opts)...)
+	if len(got.Items) == 0 {
+		return d.CancelResponse{}, nil, err
+	}
+	item := got.Items[0]
+	return d.CancelResponse{Ok: item.Ok, StatusCode: item.StatusCode, Status: item.Status}, nil, err
+}
+
+func (s stubProcessInstanceService) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	got, err := s.source.DeleteProcessInstances(ctx, typex.Keys{key}, 1, facadeOptionsFromCallOptions(opts)...)
+	if len(got.Items) == 0 {
+		return d.DeleteResponse{}, err
+	}
+	item := got.Items[0]
+	return d.DeleteResponse{Ok: item.Ok, StatusCode: item.StatusCode, Status: item.Status}, err
+}
+
+func (s stubProcessInstanceService) GetProcessInstanceStateByKey(context.Context, string, ...services.CallOption) (d.State, d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) WaitForProcessInstanceState(context.Context, string, d.States, ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) WaitForProcessInstanceExpectation(context.Context, string, d.ProcessInstanceExpectationRequest, ...services.CallOption) (d.ProcessInstanceExpectationResponse, d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) Ancestry(ctx context.Context, startKey string, opts ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error) {
+	plan, err := s.source.DryRunCancelOrDeletePlan(ctx, typex.Keys{startKey}, 1, facadeOptionsFromCallOptions(opts)...)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	root := startKey
+	if len(plan.Roots) > 0 {
+		root = plan.Roots[0]
+	}
+	chain := processInstancesByKey(processInstancesFromDryRunPlan(plan))
+	if _, ok := chain[startKey]; !ok {
+		chain[startKey] = d.ProcessInstance{Key: startKey, State: d.StateActive}
+	}
+	if _, ok := chain[root]; !ok {
+		chain[root] = d.ProcessInstance{Key: root, State: d.StateActive}
+	}
+	return root, typex.Keys{startKey, root}.Unique(), chain, nil
+}
+
+func (s stubProcessInstanceService) Descendants(ctx context.Context, rootKey string, opts ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	plan, err := s.source.DryRunCancelOrDeletePlan(ctx, typex.Keys{rootKey}, 1, facadeOptionsFromCallOptions(opts)...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	keys := append(typex.Keys{rootKey}, plan.Collected...)
+	keys = keys.Unique()
+	chain := processInstancesByKey(processInstancesFromDryRunPlan(plan))
+	for _, key := range keys {
+		if _, ok := chain[key]; !ok {
+			chain[key] = d.ProcessInstance{Key: key, State: d.StateActive}
+		}
+	}
+	return keys, nil, chain, nil
+}
+
+func (s stubProcessInstanceService) Family(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) AncestryResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildAncestryResult(ctx, s, startKey, opts...)
+}
+
+func (s stubProcessInstanceService) DescendantsResult(ctx context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return pitraversal.BuildDescendantsResult(ctx, s, rootKey, opts...)
+}
+
+func (s stubProcessInstanceService) FamilyResult(context.Context, string, ...services.CallOption) (pitraversal.Result, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) GetProcessInstances(context.Context, typex.Keys, int, ...services.CallOption) ([]d.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) WaitForProcessInstancesState(context.Context, typex.Keys, d.States, int, ...services.CallOption) (d.StateResponses, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessInstanceService) WaitForProcessInstancesExpectation(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error) {
+	panic("unexpected call")
+}
+
+var _ pisvc.API = stubProcessInstanceService{}
+
+func facadeOptionsFromCallOptions(opts []services.CallOption) []options.FacadeOption {
+	cfg := services.ApplyCallOptions(opts)
+	var out []options.FacadeOption
+	if cfg.NoStateCheck {
+		out = append(out, options.WithNoStateCheck())
+	}
+	if cfg.Force {
+		out = append(out, options.WithForce())
+	}
+	if cfg.NoWait {
+		out = append(out, options.WithNoWait())
+	}
+	if cfg.Run {
+		out = append(out, options.WithRun())
+	}
+	if cfg.FailFast {
+		out = append(out, options.WithFailFast())
+	}
+	if cfg.WithStat {
+		out = append(out, options.WithStat())
+	}
+	if cfg.DryRun {
+		out = append(out, options.WithDryRun())
+	}
+	if cfg.Verbose {
+		out = append(out, options.WithVerbose())
+	}
+	if cfg.NoWorkerLimit {
+		out = append(out, options.WithNoWorkerLimit())
+	}
+	if cfg.IgnoreTenant {
+		out = append(out, options.WithIgnoreTenant())
+	}
+	if cfg.IncidentState != "" {
+		out = append(out, options.WithIncidentState(cfg.IncidentState))
+	}
+	if cfg.IncidentErrorType != "" {
+		out = append(out, options.WithIncidentErrorType(cfg.IncidentErrorType))
+	}
+	if cfg.IncidentErrorMessage != "" {
+		out = append(out, options.WithIncidentErrorMessage(cfg.IncidentErrorMessage))
+	}
+	if cfg.AffectedProcessInstanceCount > 0 {
+		out = append(out, options.WithAffectedProcessInstanceCount(cfg.AffectedProcessInstanceCount))
+	}
+	return out
+}
+
+func toDomainProcessDefinition(x process.ProcessDefinition) d.ProcessDefinition {
+	return d.ProcessDefinition{
+		BpmnProcessId:     x.BpmnProcessId,
+		Key:               x.Key,
+		Name:              x.Name,
+		TenantId:          x.TenantId,
+		ProcessVersion:    x.ProcessVersion,
+		ProcessVersionTag: x.ProcessVersionTag,
+		Statistics:        toDomainProcessDefinitionStatistics(x.Statistics),
+	}
+}
+
+func toDomainProcessDefinitionStatistics(x *process.ProcessDefinitionStatistics) *d.ProcessDefinitionStatistics {
+	if x == nil {
+		return nil
+	}
+	return &d.ProcessDefinitionStatistics{
+		Active:                 x.Active,
+		Canceled:               x.Canceled,
+		Completed:              x.Completed,
+		Incidents:              x.Incidents,
+		IncidentCountSupported: x.IncidentCountSupported,
+	}
+}
+
+func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) process.ProcessInstanceFilter {
+	return process.ProcessInstanceFilter{
+		Key:                  x.Key,
+		BpmnProcessId:        x.BpmnProcessId,
+		ProcessVersion:       x.ProcessVersion,
+		ProcessVersionTag:    x.ProcessVersionTag,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		StartDateAfter:       x.StartDateAfter,
+		StartDateBefore:      x.StartDateBefore,
+		EndDateAfter:         x.EndDateAfter,
+		EndDateBefore:        x.EndDateBefore,
+		State:                process.State(x.State),
+		ParentKey:            x.ParentKey,
+		HasParent:            x.HasParent,
+		HasIncident:          x.HasIncident,
+	}
+}
+
+func toDomainProcessInstancePage(x process.ProcessInstancePage) d.ProcessInstancePage {
+	return d.ProcessInstancePage{
+		Items:         toDomainProcessInstances(x.Items),
+		Request:       d.ProcessInstancePageRequest(x.Request),
+		OverflowState: d.ProcessInstanceOverflowState(x.OverflowState),
+		ReportedTotal: nil,
+		EndCursor:     x.EndCursor,
+	}
+}
+
+func toDomainProcessInstances(items []process.ProcessInstance) []d.ProcessInstance {
+	out := make([]d.ProcessInstance, 0, len(items))
+	for _, item := range items {
+		out = append(out, toDomainProcessInstance(item))
+	}
+	return out
+}
+
+func toDomainProcessInstance(x process.ProcessInstance) d.ProcessInstance {
+	return d.ProcessInstance{
+		Key:                       x.Key,
+		ProcessDefinitionKey:      x.ProcessDefinitionKey,
+		BpmnProcessId:             x.BpmnProcessId,
+		ProcessVersion:            x.ProcessVersion,
+		ProcessVersionTag:         x.ProcessVersionTag,
+		State:                     d.State(x.State),
+		StartDate:                 x.StartDate,
+		EndDate:                   x.EndDate,
+		ParentKey:                 x.ParentKey,
+		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
+		RootProcessInstanceKey:    x.RootProcessInstanceKey,
+		TenantId:                  x.TenantId,
+		Incident:                  x.Incident,
+		Variables:                 x.Variables,
+	}
+}
+
+func processInstancesFromDryRunPlan(plan process.DryRunPIKeyExpansion) []d.ProcessInstance {
+	items := append([]process.ProcessInstance{}, plan.SelectedFinalState...)
+	items = append(items, plan.RequiresCancelBeforeDelete...)
+	return toDomainProcessInstances(items)
+}
+
+func processInstancesByKey(items []d.ProcessInstance) map[string]d.ProcessInstance {
+	out := make(map[string]d.ProcessInstance, len(items))
+	for _, item := range items {
+		out[item.Key] = item
+	}
+	return out
+}
 
 type stubBatchOperationAPI struct {
 	checkBatchOperationReadAccess func(context.Context, ...options.FacadeOption) error

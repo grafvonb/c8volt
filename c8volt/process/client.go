@@ -5,7 +5,6 @@ package process
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sort"
 
@@ -16,8 +15,6 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
-	"github.com/grafvonb/c8volt/toolx/logging"
-	"github.com/grafvonb/c8volt/toolx/pool"
 	types "github.com/grafvonb/c8volt/typex"
 )
 
@@ -91,73 +88,21 @@ func (c *client) GetIncident(ctx context.Context, key string, opts ...options.Fa
 	return fromDomainProcessInstanceIncidentDetail(incident), nil
 }
 
-// GetIncidents fetches unique incident keys with bounded parallelism.
 func (c *client) GetIncidents(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (Incidents, error) {
-	cfg := options.ApplyFacadeOptions(opts)
-	ukeys := keys.Unique()
-	workers := toolx.DetermineNoOfWorkers(len(ukeys), wantedWorkers, cfg.NoWorkerLimit)
-	logging.InfoIfVerbose(fmt.Sprintf("getting %d incident(s) using %d worker(s)", len(ukeys), workers), c.log, cfg.Verbose)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("getting %d incident(s)", len(ukeys)))
-	defer stopActivity()
-	items, err := pool.ExecuteSlice[string, ProcessInstanceIncidentDetail](ctx, ukeys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) (ProcessInstanceIncidentDetail, error) {
-		return c.GetIncident(ctx, key, opts...)
-	})
-	if err != nil {
-		return Incidents{}, err
-	}
-	return Incidents{
-		Total: int32(len(items)),
-		Items: items,
-	}, nil
-}
-
-// SearchIncidents exposes top-level incident list/search through the incident service boundary.
-func (c *client) SearchIncidents(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
-	if incidentSearchNeedsPagedLocalFiltering(filter) {
-		return c.searchIncidentPagesUntilLimit(ctx, filter, size, opts...)
-	}
-	incidents, err := c.incApi.SearchIncidents(ctx, toDomainIncidentFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
+	incidents, err := incsvc.GetIncidents(ctx, c.incApi, keys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return Incidents{}, ferr.FromDomain(err)
 	}
 	return fromDomainIncidents(incidents), nil
 }
 
-func (c *client) searchIncidentPagesUntilLimit(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
-	if size <= 0 {
-		return Incidents{}, nil
+// SearchIncidents exposes top-level incident list/search through the incident service boundary.
+func (c *client) SearchIncidents(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
+	incidents, err := incsvc.SearchIncidents(ctx, c.incApi, toDomainIncidentFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return Incidents{}, ferr.FromDomain(err)
 	}
-	req := IncidentPageRequest{Size: size}
-	out := make([]ProcessInstanceIncidentDetail, 0, size)
-	for {
-		page, err := c.SearchIncidentsPage(ctx, filter, req, opts...)
-		if err != nil {
-			return Incidents{}, err
-		}
-		for _, item := range page.Items {
-			if int32(len(out)) >= size {
-				return Incidents{Total: int32(len(out)), Items: out}, nil
-			}
-			out = append(out, item)
-		}
-		if page.OverflowState == ProcessInstanceOverflowStateNoMore {
-			return Incidents{Total: int32(len(out)), Items: out}, nil
-		}
-		req = nextIncidentFacadePageRequest(req, page)
-	}
-}
-
-func incidentSearchNeedsPagedLocalFiltering(filter IncidentFilter) bool {
-	return filter.ErrorMessage != "" ||
-		filter.CreationTimeAfter != "" ||
-		filter.CreationTimeBefore != ""
-}
-
-func nextIncidentFacadePageRequest(current IncidentPageRequest, page IncidentPage) IncidentPageRequest {
-	if page.EndCursor != "" {
-		return IncidentPageRequest{Size: current.Size, After: page.EndCursor}
-	}
-	return IncidentPageRequest{From: current.From + current.Size, Size: current.Size}
+	return fromDomainIncidents(incidents), nil
 }
 
 // SearchIncidentsPage exposes one top-level incident search page with service-owned request semantics.
@@ -188,37 +133,14 @@ func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string,
 }
 
 func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error) {
-	cfg := options.ApplyFacadeOptions(opts)
-	dreq := toDomainProcessInstanceVariableUpdateRequest(request)
-	resp, err := c.piApi.UpdateProcessInstanceVariables(ctx, dreq.Key, dreq.Variables, options.MapFacadeOptionsToCallOptions(opts)...)
-	result := fromDomainProcessInstanceVariableUpdateResponse(resp, request.Variables)
-	if result.Key == "" {
-		result.Key = request.Key
-	}
+	result, err := pisvc.UpdateProcessInstanceVariables(ctx, c.piApi, toDomainProcessInstanceVariableUpdateRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceVariableUpdateResult(result)
 	if err != nil {
 		updateErr := ferr.FromDomain(err)
-		result.Error = updateErr.Error()
-		if result.MutationAccepted {
-			result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
-			result.ConfirmationStatus = "failed"
-			return result, updateErr
-		}
-		result.Status = ProcessInstanceVariableUpdateStatusMutationFailed
-		result.MutationAccepted = false
-		if cfg.NoWait {
-			result.ConfirmationStatus = "skipped"
-			return result, nil
-		}
-		return result, updateErr
+		out.Error = updateErr.Error()
+		return out, updateErr
 	}
-	if cfg.NoWait {
-		result.Status = ProcessInstanceVariableUpdateStatusSubmitted
-		result.ConfirmationStatus = "skipped"
-		return result, nil
-	}
-	result.Status = ProcessInstanceVariableUpdateStatusConfirmed
-	result.ConfirmationStatus = "confirmed"
-	return result, nil
+	return out, nil
 }
 
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
@@ -435,50 +357,6 @@ func MapStateResponsesToReports(in d.StateResponses) StateReports {
 	}
 	for i, r := range in.Items {
 		out.Items[i] = MapStateResponseToReport(r)
-	}
-	return out
-}
-
-func mapDryRunTraversalWarning(results []TraversalResult) (warning string, missing []MissingAncestor, outcome TraversalOutcome) {
-	outcome = TraversalOutcomeComplete
-	for _, result := range results {
-		if len(result.MissingAncestors) > 0 {
-			missing = append(missing, result.MissingAncestors...)
-		}
-		if result.Warning != "" && warning == "" {
-			warning = result.Warning
-		}
-		switch result.Outcome {
-		case TraversalOutcomeUnresolved:
-			if outcome == TraversalOutcomeComplete {
-				outcome = TraversalOutcomeUnresolved
-			}
-		case TraversalOutcomePartial:
-			outcome = TraversalOutcomePartial
-		}
-	}
-	if len(missing) > 0 && warning == "" {
-		warning = "one or more parent process instances were not found"
-	}
-	if len(missing) == 0 {
-		return warning, nil, outcome
-	}
-	return warning, uniqueMissingAncestors(missing), outcome
-}
-
-func uniqueMissingAncestors(items []MissingAncestor) []MissingAncestor {
-	if len(items) == 0 {
-		return nil
-	}
-	seen := make(map[string]struct{}, len(items))
-	out := make([]MissingAncestor, 0, len(items))
-	for _, item := range items {
-		key := item.StartKey + ":" + item.Key
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		out = append(out, item)
 	}
 	return out
 }

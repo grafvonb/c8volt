@@ -127,5 +127,8 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	if c.IncidentErrorMessage != "" {
 		out = append(out, services.WithIncidentErrorMessage(c.IncidentErrorMessage))
 	}
+	if c.AffectedProcessInstanceCount > 0 {
+		out = append(out, services.WithAffectedProcessInstanceCount(c.AffectedProcessInstanceCount))
+	}
 	return out
 }
