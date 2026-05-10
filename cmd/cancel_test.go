@@ -299,6 +299,48 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestCancelProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning
+// documents the existing cancel command boundary behavior that delete mirrors.
+func TestCancelProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning(t *testing.T) {
+	const (
+		firstKey  = "2251799813711967"
+		secondKey = "2251799813711968"
+	)
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			switch key {
+			case firstKey, secondKey:
+				_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
+			default:
+				t.Fatalf("unexpected process-instance lookup key %s", key)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output := executeRootForProcessInstanceTestWithStdin(t,
+		firstKey+"\n"+secondKey+"\n"+secondKey+"\n",
+		"--config", cfgPath,
+		"cancel", "pi",
+		"--key", firstKey,
+		"-",
+		"--dry-run",
+	)
+
+	require.Contains(t, output, "selected process instances: 2")
+	require.NotContains(t, output, "selected process instances: 4")
+}
+
 // TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
 // verifies partial ancestry details are surfaced in output.
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {

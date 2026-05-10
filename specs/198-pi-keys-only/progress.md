@@ -21,6 +21,7 @@ Started: 2026-05-10 23:58:09
 - Incident validation tests can assert pre-request failures by using a local capture server and requiring its request log stays empty.
 - Command capability metadata exposes command-local modes such as `--pi-keys-only` through `FlagContract` entries; global output modes remain limited to shared render modes like JSON and keys-only.
 - `make docs-content` regenerates per-command CLI markdown under `docs/cli/` and syncs README-derived homepage content to `docs/index.md`; it does not rewrite the static `docs/cli/index.md`.
+- Process-instance destructive command duplicate stdin coverage can assert command-boundary dedupe through dry-run `selected process instances` counts while serving minimal v8.8 lookup and child-search fixtures.
 
 ---
 
@@ -135,4 +136,26 @@ Started: 2026-05-10 23:58:09
 - `--pi-keys-only` documentation belongs in `get incident` command-local help and examples, while `--keys-only` remains the shared incident-key output mode.
 - Docs generation updated `docs/cli/c8volt_get.md`, `docs/cli/c8volt_get_incident.md`, and README-derived `docs/index.md`; `docs/cli/index.md` is static CLI guide content and was updated directly.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestCommandCapabilityForCommand_GetIncidentContract|TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes' -count=1`, `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -run TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput -count=1`, and `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./docsgen -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-11 00:22:22 CEST
+**User Story**: User Story 4 - Normalize delete process-instance duplicate stdin handling
+**Tasks Completed**:
+- [x] T023: Add delete duplicate stdin regression coverage in `cmd/delete_test.go`
+- [x] T024: Add or update cancel duplicate stdin coverage only if needed to document existing parity in `cmd/cancel_test.go`
+- [x] T025: Update `cmd/delete_processinstance.go` to call `.Unique()` immediately after merged flag/stdin key validation
+- [x] T026: Update `delete pi --key` flag help to mention repeated flags and stdin `-` in `cmd/delete_processinstance.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/delete_processinstance.go
+- cmd/delete_test.go
+- cmd/cancel_test.go
+- specs/198-pi-keys-only/tasks.md
+- specs/198-pi-keys-only/progress.md
+**Learnings**:
+- `delete pi` now mirrors `cancel pi` by deduping merged `--key` and stdin `-` input at the command boundary before keyed-mode validation and dry-run planning counts.
+- Dry-run command tests can prove boundary dedupe by passing duplicate flag/stdin input and checking `selected process instances` remains unique, even though the lower dry-run service also dedupes traversal work internally.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(Delete|Cancel)ProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning|TestDeleteHelp_DocumentsDestructiveConfirmationPaths' -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---

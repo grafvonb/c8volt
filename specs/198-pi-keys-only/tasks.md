@@ -101,13 +101,13 @@
 
 ### Tests for User Story 4
 
-- [ ] T023 [P] [US4] Add delete duplicate stdin regression coverage in `cmd/delete_test.go`
-- [ ] T024 [P] [US4] Add or update cancel duplicate stdin coverage only if needed to document existing parity in `cmd/cancel_test.go`
+- [x] T023 [P] [US4] Add delete duplicate stdin regression coverage in `cmd/delete_test.go`
+- [x] T024 [P] [US4] Add or update cancel duplicate stdin coverage only if needed to document existing parity in `cmd/cancel_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Update `cmd/delete_processinstance.go` to call `.Unique()` immediately after merged flag/stdin key validation
-- [ ] T026 [US4] Update `delete pi --key` flag help to mention repeated flags and stdin `-` in `cmd/delete_processinstance.go`
+- [x] T025 [US4] Update `cmd/delete_processinstance.go` to call `.Unique()` immediately after merged flag/stdin key validation
+- [x] T026 [US4] Update `delete pi --key` flag help to mention repeated flags and stdin `-` in `cmd/delete_processinstance.go`
 
 **Checkpoint**: User Story 4 completes the small cleanup without changing incident output semantics.
 

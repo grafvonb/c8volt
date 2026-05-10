@@ -309,6 +309,50 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestDeleteProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning
+// verifies duplicate flag/stdin inputs are collapsed before command-local dry-run
+// planning counts are rendered.
+func TestDeleteProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning(t *testing.T) {
+	const (
+		firstKey  = "2251799813711967"
+		secondKey = "2251799813711968"
+	)
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			switch key {
+			case firstKey, secondKey:
+				_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","endDate":"2026-03-24T18:00:00Z","state":"COMPLETED","tenantId":"tenant"}`, key)))
+			default:
+				t.Fatalf("unexpected process-instance lookup key %s", key)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output := executeRootForProcessInstanceTestWithStdin(t,
+		firstKey+"\n"+secondKey+"\n"+secondKey+"\n",
+		"--config", cfgPath,
+		"delete", "pi",
+		"--key", firstKey,
+		"-",
+		"--dry-run",
+		"--no-state-check",
+	)
+
+	require.Contains(t, output, "selected process instances: 2")
+	require.NotContains(t, output, "selected process instances: 4")
+}
+
 // TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
 // verifies partial ancestry details are surfaced in output.
 func TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
@@ -645,6 +689,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"the whole delete batch is refused before mutation",
 		"Use --force to cancel the affected scope first",
 		"Use --auto-confirm for unattended destructive runs",
+		"process instance key(s) to delete; repeat or combine with stdin '-'",
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
 		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
