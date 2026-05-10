@@ -22,43 +22,6 @@ type ProcessInstance struct {
 	Variables                 map[string]any
 }
 
-type ProcessInstanceIncidentDetail struct {
-	IncidentKey            string
-	CreationTime           string
-	ProcessInstanceKey     string
-	TenantId               string
-	State                  string
-	ErrorType              string
-	ErrorMessage           string
-	FlowNodeId             string
-	FlowNodeInstanceKey    string
-	JobKey                 string
-	RootProcessInstanceKey string
-	ProcessDefinitionKey   string
-	ProcessDefinitionId    string
-}
-
-type IncidentFilter struct {
-	State                  string
-	ErrorType              string
-	ErrorMessage           string
-	ProcessInstanceKey     string
-	RootProcessInstanceKey string
-	ProcessDefinitionKey   string
-	ProcessDefinitionId    string
-	FlowNodeId             string
-	FlowNodeInstanceKey    string
-	CreationTimeAfter      string
-	CreationTimeBefore     string
-}
-
-type IncidentResolutionResponse struct {
-	Key        string
-	Ok         bool
-	StatusCode int
-	Status     string
-}
-
 type ProcessInstanceVariable struct {
 	Name               string
 	Value              string
@@ -146,32 +109,6 @@ type ProcessInstancePage struct {
 	Request       ProcessInstancePageRequest
 	OverflowState ProcessInstanceOverflowState
 	ReportedTotal *ProcessInstanceReportedTotal
-	EndCursor     string
-}
-
-type IncidentPageRequest struct {
-	From  int32
-	Size  int32
-	After string
-}
-
-type IncidentReportedTotalKind string
-
-const (
-	IncidentReportedTotalKindExact      IncidentReportedTotalKind = "exact"
-	IncidentReportedTotalKindLowerBound IncidentReportedTotalKind = "lower_bound"
-)
-
-type IncidentReportedTotal struct {
-	Count int64
-	Kind  IncidentReportedTotalKind
-}
-
-type IncidentPage struct {
-	Items         []ProcessInstanceIncidentDetail
-	Request       IncidentPageRequest
-	OverflowState ProcessInstanceOverflowState
-	ReportedTotal *IncidentReportedTotal
 	EndCursor     string
 }
 

@@ -3,41 +3,67 @@
 
 package domain
 
-import "github.com/grafvonb/c8volt/typex"
+type ProcessInstanceIncidentDetail struct {
+	IncidentKey            string
+	CreationTime           string
+	ProcessInstanceKey     string
+	TenantId               string
+	State                  string
+	ErrorType              string
+	ErrorMessage           string
+	FlowNodeId             string
+	FlowNodeInstanceKey    string
+	JobKey                 string
+	RootProcessInstanceKey string
+	ProcessDefinitionKey   string
+	ProcessDefinitionId    string
+}
 
-type Reporter struct {
+type IncidentFilter struct {
+	State                  string
+	ErrorType              string
+	ErrorMessage           string
+	ProcessInstanceKey     string
+	RootProcessInstanceKey string
+	ProcessDefinitionKey   string
+	ProcessDefinitionId    string
+	FlowNodeId             string
+	FlowNodeInstanceKey    string
+	CreationTimeAfter      string
+	CreationTimeBefore     string
+}
+
+type IncidentResolutionResponse struct {
 	Key        string
 	Ok         bool
 	StatusCode int
 	Status     string
 }
 
-type Reporters struct {
-	Items []Reporter
+type IncidentPageRequest struct {
+	From  int32
+	Size  int32
+	After string
 }
 
-type ProcessInstanceVariableUpdateStatus string
+type IncidentReportedTotalKind string
 
 const (
-	ProcessInstanceVariableUpdateStatusSubmitted          ProcessInstanceVariableUpdateStatus = "submitted"
-	ProcessInstanceVariableUpdateStatusConfirmed          ProcessInstanceVariableUpdateStatus = "confirmed"
-	ProcessInstanceVariableUpdateStatusMutationFailed     ProcessInstanceVariableUpdateStatus = "mutation_failed"
-	ProcessInstanceVariableUpdateStatusConfirmationFailed ProcessInstanceVariableUpdateStatus = "confirmation_failed"
+	IncidentReportedTotalKindExact      IncidentReportedTotalKind = "exact"
+	IncidentReportedTotalKindLowerBound IncidentReportedTotalKind = "lower_bound"
 )
 
-type ProcessInstanceVariableUpdateResult struct {
-	Key                string
-	Status             ProcessInstanceVariableUpdateStatus
-	MutationAccepted   bool
-	ConfirmationStatus string
-	StatusCode         int
-	Message            string
-	Error              string
-	Variables          map[string]any
+type IncidentReportedTotal struct {
+	Count int64
+	Kind  IncidentReportedTotalKind
 }
 
-type ProcessInstanceVariableUpdateResults struct {
-	Items []ProcessInstanceVariableUpdateResult
+type IncidentPage struct {
+	Items         []ProcessInstanceIncidentDetail
+	Request       IncidentPageRequest
+	OverflowState ProcessInstanceOverflowState
+	ReportedTotal *IncidentReportedTotal
+	EndCursor     string
 }
 
 type ResolutionOperation string
@@ -121,53 +147,4 @@ type ProcessInstanceResolutionResults struct {
 	Failed            int
 	DryRun            bool
 	MutationSubmitted bool
-}
-
-type TraversalOutcome string
-
-const (
-	TraversalOutcomeComplete   TraversalOutcome = "complete"
-	TraversalOutcomePartial    TraversalOutcome = "partial"
-	TraversalOutcomeUnresolved TraversalOutcome = "unresolved"
-)
-
-type MissingAncestor struct {
-	Key      string
-	StartKey string
-}
-
-type DryRunPIKeyExpansion struct {
-	Roots                      typex.Keys
-	Collected                  typex.Keys
-	SelectedFinalState         []ProcessInstance
-	RequiresCancelBeforeDelete []ProcessInstance
-	MissingAncestors           []MissingAncestor
-	Warning                    string
-	Outcome                    TraversalOutcome
-}
-
-func (r DryRunPIKeyExpansion) HasActionableResults() bool {
-	return len(r.Roots) > 0 || len(r.Collected) > 0
-}
-
-type DeleteProcessDefinitionPlan struct {
-	Items                 []DeleteProcessDefinitionPlanItem
-	StateCheckSkipped     bool
-	ProcessDefinitionKeys []string
-	Warnings              []string
-}
-
-type DeleteProcessDefinitionPlanItem struct {
-	Key                        string
-	ActiveProcessInstanceCount int64
-	ActiveProcessInstanceKeys  []string
-	CancellationPlan           DryRunPIKeyExpansion
-	Warnings                   []string
-}
-
-func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
-	if i.ActiveProcessInstanceCount > 0 {
-		return i.ActiveProcessInstanceCount
-	}
-	return int64(len(i.ActiveProcessInstanceKeys))
 }

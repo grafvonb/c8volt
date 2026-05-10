@@ -5,29 +5,29 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
-func renderIncidentResolutionResults(cmd *cobra.Command, results process.IncidentResolutionResults) error {
+func renderIncidentResolutionResults(cmd *cobra.Command, results incident.ResolutionResults) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, results)
 	}
 	for _, item := range results.Items {
 		switch item.Status {
-		case process.IncidentResolutionStatusPlanned:
+		case incident.ResolutionStatusPlanned:
 			renderHumanLine(cmd, "dry run: incident %s would be resolved", item.IncidentKey)
-		case process.IncidentResolutionStatusConfirmed:
+		case incident.ResolutionStatusConfirmed:
 			renderHumanLine(cmd, "resolved incident %s: confirmed", item.IncidentKey)
-		case process.IncidentResolutionStatusSubmitted:
+		case incident.ResolutionStatusSubmitted:
 			renderHumanLine(cmd, "resolved incident %s: submitted", item.IncidentKey)
-		case process.IncidentResolutionStatusSkipped:
+		case incident.ResolutionStatusSkipped:
 			renderHumanLine(cmd, "%s", incidentResolutionSkippedLine(item))
-		case process.IncidentResolutionStatusMutationFailed:
+		case incident.ResolutionStatusMutationFailed:
 			renderHumanLine(cmd, "resolved incident %s: mutation failed: %s", item.IncidentKey, item.Error)
-		case process.IncidentResolutionStatusConfirmationFailed:
+		case incident.ResolutionStatusConfirmationFailed:
 			renderHumanLine(cmd, "resolved incident %s: confirmation failed: %s", item.IncidentKey, item.Error)
 		default:
 			renderHumanLine(cmd, "resolved incident %s: %s", item.IncidentKey, item.Status)
@@ -48,7 +48,7 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results process.Inciden
 	return nil
 }
 
-func incidentResolutionSkippedLine(item process.IncidentResolutionResult) string {
+func incidentResolutionSkippedLine(item incident.ResolutionResult) string {
 	if strings.EqualFold(item.IncidentState, "RESOLVED") {
 		if item.Incident != nil && item.Incident.CreationTime != "" {
 			return fmt.Sprintf("incident %s already resolved (created %s): skipped", item.IncidentKey, item.Incident.CreationTime)
@@ -58,7 +58,7 @@ func incidentResolutionSkippedLine(item process.IncidentResolutionResult) string
 	return fmt.Sprintf("resolved incident %s: skipped (%s)", item.IncidentKey, incidentResolutionSkipReason(item))
 }
 
-func incidentResolutionSkipReason(item process.IncidentResolutionResult) string {
+func incidentResolutionSkipReason(item incident.ResolutionResult) string {
 	if item.IncidentState != "" {
 		return item.IncidentState
 	}
@@ -68,23 +68,23 @@ func incidentResolutionSkipReason(item process.IncidentResolutionResult) string 
 	return "not_active"
 }
 
-func renderProcessInstanceResolutionResults(cmd *cobra.Command, results process.ProcessInstanceResolutionResults) error {
+func renderProcessInstanceResolutionResults(cmd *cobra.Command, results incident.ProcessInstanceResolutionResults) error {
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderCommandResult(cmd, results)
 	}
 	for _, item := range results.Items {
 		switch item.Status {
-		case process.ProcessInstanceResolutionStatusPlanned:
+		case incident.ProcessInstanceResolutionStatusPlanned:
 			renderHumanLine(cmd, "dry run: process-instance %s would resolve %d incident(s)", item.ProcessInstanceKey, len(item.AttemptedIncidentKeys))
-		case process.ProcessInstanceResolutionStatusConfirmed:
+		case incident.ProcessInstanceResolutionStatusConfirmed:
 			renderHumanLine(cmd, "resolved process-instance %s: confirmed (%d incident(s))", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys))
-		case process.ProcessInstanceResolutionStatusSubmitted:
+		case incident.ProcessInstanceResolutionStatusSubmitted:
 			renderHumanLine(cmd, "resolved process-instance %s: submitted (%d incident(s))", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys))
-		case process.ProcessInstanceResolutionStatusSkipped:
+		case incident.ProcessInstanceResolutionStatusSkipped:
 			renderHumanLine(cmd, "resolved process-instance %s: skipped (%s)", item.ProcessInstanceKey, processInstanceResolutionSkipReason(item))
-		case process.ProcessInstanceResolutionStatusPartialFailed:
+		case incident.ProcessInstanceResolutionStatusPartialFailed:
 			renderHumanLine(cmd, "resolved process-instance %s: partial failure (resolved: %d, failed: %d): %s", item.ProcessInstanceKey, len(item.ResolvedIncidentKeys), len(item.FailedIncidentKeys), item.Error)
-		case process.ProcessInstanceResolutionStatusFailed:
+		case incident.ProcessInstanceResolutionStatusFailed:
 			renderHumanLine(cmd, "resolved process-instance %s: failed: %s", item.ProcessInstanceKey, item.Error)
 		default:
 			renderHumanLine(cmd, "resolved process-instance %s: %s", item.ProcessInstanceKey, item.Status)
@@ -105,7 +105,7 @@ func renderProcessInstanceResolutionResults(cmd *cobra.Command, results process.
 	return nil
 }
 
-func processInstanceResolutionSkipReason(item process.ProcessInstanceResolutionResult) string {
+func processInstanceResolutionSkipReason(item incident.ProcessInstanceResolutionResult) string {
 	if item.ConfirmationStatus != "" {
 		return item.ConfirmationStatus
 	}

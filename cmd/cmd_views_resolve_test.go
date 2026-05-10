@@ -6,9 +6,9 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"testing"
 
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -21,11 +21,11 @@ func TestRenderIncidentResolutionResults_HumanOutputShowsPerTargetStatuses(t *te
 	cmd := &cobra.Command{Use: "incident"}
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.IncidentResolutionResults{
-		Items: []process.IncidentResolutionResult{
-			{IncidentKey: "2251799813685249", Status: process.IncidentResolutionStatusConfirmed},
-			{IncidentKey: "2251799813685250", Status: process.IncidentResolutionStatusSubmitted},
-			{IncidentKey: "2251799813685251", Status: process.IncidentResolutionStatusSkipped, IncidentState: "RESOLVED", Incident: &process.ProcessInstanceIncidentDetail{CreationTime: "2026-05-06T15:43:59.260Z"}},
+	results := incident.ResolutionResults{
+		Items: []incident.ResolutionResult{
+			{IncidentKey: "2251799813685249", Status: incident.ResolutionStatusConfirmed},
+			{IncidentKey: "2251799813685250", Status: incident.ResolutionStatusSubmitted},
+			{IncidentKey: "2251799813685251", Status: incident.ResolutionStatusSkipped, IncidentState: "RESOLVED", Incident: &incident.ProcessInstanceIncidentDetail{CreationTime: "2026-05-06T15:43:59.260Z"}},
 		},
 	}
 
@@ -47,12 +47,12 @@ func TestRenderIncidentResolutionResults_JSONUsesSharedEnvelope(t *testing.T) {
 	setContractSupport(cmd, ContractSupportFull)
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.IncidentResolutionResults{
-		Operation: process.ResolutionOperationIncident,
-		Items: []process.IncidentResolutionResult{{
+	results := incident.ResolutionResults{
+		Operation: incident.ResolutionOperationIncident,
+		Items: []incident.ResolutionResult{{
 			IncidentKey:        "2251799813685249",
 			MutationAccepted:   true,
-			Status:             process.IncidentResolutionStatusConfirmed,
+			Status:             incident.ResolutionStatusConfirmed,
 			ConfirmationStatus: "resolved",
 			StatusCode:         204,
 			MutationSubmitted:  true,
@@ -88,11 +88,11 @@ func TestRenderIncidentResolutionResults_DryRunHumanOutputIsCompact(t *testing.T
 	cmd := &cobra.Command{Use: "incident"}
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.IncidentResolutionResults{
-		Operation: process.ResolutionOperationIncident,
-		Items: []process.IncidentResolutionResult{{
+	results := incident.ResolutionResults{
+		Operation: incident.ResolutionOperationIncident,
+		Items: []incident.ResolutionResult{{
 			IncidentKey:       "2251799813685249",
-			Status:            process.IncidentResolutionStatusPlanned,
+			Status:            incident.ResolutionStatusPlanned,
 			DryRun:            true,
 			MutationSubmitted: false,
 			WouldResolve:      true,
@@ -124,11 +124,11 @@ func TestRenderIncidentResolutionResults_JSONDryRunPayloadIgnoresVerbose(t *test
 	setContractSupport(cmd, ContractSupportFull)
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.IncidentResolutionResults{
-		Operation: process.ResolutionOperationIncident,
-		Items: []process.IncidentResolutionResult{{
+	results := incident.ResolutionResults{
+		Operation: incident.ResolutionOperationIncident,
+		Items: []incident.ResolutionResult{{
 			IncidentKey:       "2251799813685249",
-			Status:            process.IncidentResolutionStatusPlanned,
+			Status:            incident.ResolutionStatusPlanned,
 			DryRun:            true,
 			MutationSubmitted: false,
 			WouldResolve:      true,
@@ -159,11 +159,11 @@ func TestRenderProcessInstanceResolutionResults_HumanOutputShowsNoOpSuccessAndFa
 	cmd := &cobra.Command{Use: "process-instance"}
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.ProcessInstanceResolutionResults{
-		Items: []process.ProcessInstanceResolutionResult{
+	results := incident.ProcessInstanceResolutionResults{
+		Items: []incident.ProcessInstanceResolutionResult{
 			{
 				ProcessInstanceKey:    "2251799813685250",
-				Status:                process.ProcessInstanceResolutionStatusConfirmed,
+				Status:                incident.ProcessInstanceResolutionStatusConfirmed,
 				ResolvedIncidentKeys:  []string{"2251799813685249"},
 				ConfirmationStatus:    "resolved",
 				MutationSubmitted:     true,
@@ -171,12 +171,12 @@ func TestRenderProcessInstanceResolutionResults_HumanOutputShowsNoOpSuccessAndFa
 			},
 			{
 				ProcessInstanceKey: "2251799813685260",
-				Status:             process.ProcessInstanceResolutionStatusSkipped,
+				Status:             incident.ProcessInstanceResolutionStatusSkipped,
 				ConfirmationStatus: "no_active_incidents",
 			},
 			{
 				ProcessInstanceKey:   "2251799813685270",
-				Status:               process.ProcessInstanceResolutionStatusPartialFailed,
+				Status:               incident.ProcessInstanceResolutionStatusPartialFailed,
 				ResolvedIncidentKeys: []string{"2251799813685271"},
 				FailedIncidentKeys:   []string{"2251799813685272"},
 				Error:                "mutation rejected",
@@ -202,14 +202,14 @@ func TestRenderProcessInstanceResolutionResults_JSONUsesSharedEnvelope(t *testin
 	setContractSupport(cmd, ContractSupportFull)
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.ProcessInstanceResolutionResults{
-		Operation: process.ResolutionOperationProcessInstance,
-		Items: []process.ProcessInstanceResolutionResult{{
+	results := incident.ProcessInstanceResolutionResults{
+		Operation: incident.ResolutionOperationProcessInstance,
+		Items: []incident.ProcessInstanceResolutionResult{{
 			ProcessInstanceKey:    "2251799813685250",
 			AttemptedIncidentKeys: []string{"2251799813685249"},
 			ResolvedIncidentKeys:  []string{"2251799813685249"},
 			FailedIncidentKeys:    []string{},
-			Status:                process.ProcessInstanceResolutionStatusConfirmed,
+			Status:                incident.ProcessInstanceResolutionStatusConfirmed,
 			ConfirmationStatus:    "resolved",
 			MutationSubmitted:     true,
 		}},
@@ -243,12 +243,12 @@ func TestRenderProcessInstanceResolutionResults_DryRunHumanOutputIsCompact(t *te
 	cmd := &cobra.Command{Use: "process-instance"}
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.ProcessInstanceResolutionResults{
-		Operation: process.ResolutionOperationProcessInstance,
-		Items: []process.ProcessInstanceResolutionResult{{
+	results := incident.ProcessInstanceResolutionResults{
+		Operation: incident.ResolutionOperationProcessInstance,
+		Items: []incident.ProcessInstanceResolutionResult{{
 			ProcessInstanceKey:    "2251799813685250",
 			AttemptedIncidentKeys: []string{"2251799813685249", "2251799813685251"},
-			Status:                process.ProcessInstanceResolutionStatusPlanned,
+			Status:                incident.ProcessInstanceResolutionStatusPlanned,
 			DryRun:                true,
 			MutationSubmitted:     false,
 		}},
@@ -278,12 +278,12 @@ func TestRenderProcessInstanceResolutionResults_JSONDryRunPayloadIgnoresVerbose(
 	setContractSupport(cmd, ContractSupportFull)
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
-	results := process.ProcessInstanceResolutionResults{
-		Operation: process.ResolutionOperationProcessInstance,
-		Items: []process.ProcessInstanceResolutionResult{{
+	results := incident.ProcessInstanceResolutionResults{
+		Operation: incident.ResolutionOperationProcessInstance,
+		Items: []incident.ProcessInstanceResolutionResult{{
 			ProcessInstanceKey:    "2251799813685250",
 			AttemptedIncidentKeys: []string{"2251799813685249"},
-			Status:                process.ProcessInstanceResolutionStatusPlanned,
+			Status:                incident.ProcessInstanceResolutionStatusPlanned,
 			DryRun:                true,
 			MutationSubmitted:     false,
 		}},

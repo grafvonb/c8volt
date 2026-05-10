@@ -15,7 +15,6 @@ import (
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/toolx"
-	types "github.com/grafvonb/c8volt/typex"
 )
 
 type client struct {
@@ -79,43 +78,7 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 	return fromDomainProcessInstance(pi), nil
 }
 
-// GetIncident exposes direct incident lookup through the public facade error model.
-func (c *client) GetIncident(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstanceIncidentDetail, error) {
-	incident, err := c.incApi.GetIncident(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return ProcessInstanceIncidentDetail{}, ferr.FromDomain(err)
-	}
-	return fromDomainProcessInstanceIncidentDetail(incident), nil
-}
-
-func (c *client) GetIncidents(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (Incidents, error) {
-	incidents, err := incsvc.GetIncidents(ctx, c.incApi, keys, wantedWorkers, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return Incidents{}, ferr.FromDomain(err)
-	}
-	return fromDomainIncidents(incidents), nil
-}
-
-// SearchIncidents exposes top-level incident list/search through the incident service boundary.
-func (c *client) SearchIncidents(ctx context.Context, filter IncidentFilter, size int32, opts ...options.FacadeOption) (Incidents, error) {
-	incidents, err := incsvc.SearchIncidents(ctx, c.incApi, toDomainIncidentFilter(filter), size, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return Incidents{}, ferr.FromDomain(err)
-	}
-	return fromDomainIncidents(incidents), nil
-}
-
-// SearchIncidentsPage exposes one top-level incident search page with service-owned request semantics.
-func (c *client) SearchIncidentsPage(ctx context.Context, filter IncidentFilter, page IncidentPageRequest, opts ...options.FacadeOption) (IncidentPage, error) {
-	incidents, err := c.incApi.SearchIncidentsPage(ctx, toDomainIncidentFilter(filter), toDomainIncidentPageRequest(page), options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return IncidentPage{}, ferr.FromDomain(err)
-	}
-	return fromDomainIncidentPage(incidents), nil
-}
-
-// SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.
-func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
+func (c *client) searchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
 	incidents, err := c.incApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return nil, ferr.FromDomain(err)
@@ -147,7 +110,7 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
 	for _, pi := range pis.Items {
-		incidents, err := c.SearchProcessInstanceIncidents(ctx, pi.Key, opts...)
+		incidents, err := c.searchProcessInstanceIncidents(ctx, pi.Key, opts...)
 		if err != nil {
 			return IncidentEnrichedProcessInstances{}, err
 		}
@@ -189,7 +152,7 @@ func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result Traver
 		if !ok {
 			continue
 		}
-		incidents, err := c.SearchProcessInstanceIncidents(ctx, key, opts...)
+		incidents, err := c.searchProcessInstanceIncidents(ctx, key, opts...)
 		if err != nil {
 			return IncidentEnrichedTraversalResult{}, err
 		}

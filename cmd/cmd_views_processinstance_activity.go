@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -11,10 +12,10 @@ import (
 )
 
 type processInstanceActivityItem struct {
-	Item          process.ProcessInstance                 `json:"item"`
-	Variables     []process.ProcessInstanceVariable       `json:"variables,omitempty"`
-	Incidents     []process.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
-	ShowIncidents bool                                    `json:"-"`
+	Item          process.ProcessInstance                  `json:"item"`
+	Variables     []process.ProcessInstanceVariable        `json:"variables,omitempty"`
+	Incidents     []incident.ProcessInstanceIncidentDetail `json:"incidents,omitempty"`
+	ShowIncidents bool                                     `json:"-"`
 }
 
 type processInstanceActivityInstances struct {
@@ -75,7 +76,7 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 	return needsIndirectIncidentWarning
 }
 
-func formatProcessInstanceActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) ([]string, bool) {
+func formatProcessInstanceActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) ([]string, bool) {
 	hasVars := len(variables) > 0
 	hasIncidents := showIncidents && (len(incidents) > 0 || hasIncidentMarker)
 	sectionCount := 0
@@ -126,7 +127,7 @@ func treeChildPrefix(prefix string, branchIndex, totalBranches int) string {
 	return prefix + "│  "
 }
 
-func writeProcessInstanceActivityLines(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) bool {
+func writeProcessInstanceActivityLines(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) bool {
 	lines, needsWarning := formatProcessInstanceActivityLines(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren)
 	for _, line := range lines {
 		out.WriteByte('\n')
@@ -193,7 +194,7 @@ func processInstancesFromTraversal(result process.TraversalResult) process.Proce
 }
 
 func activityItemsFromTraversal(result process.TraversalResult, incidents process.IncidentEnrichedTraversalResult, variables process.VariableEnrichedProcessInstances, showIncidents bool) []processInstanceActivityItem {
-	incidentsByKey := make(map[string][]process.ProcessInstanceIncidentDetail, len(incidents.Items))
+	incidentsByKey := make(map[string][]incident.ProcessInstanceIncidentDetail, len(incidents.Items))
 	for _, item := range incidents.Items {
 		incidentsByKey[item.Item.Key] = item.Incidents
 	}

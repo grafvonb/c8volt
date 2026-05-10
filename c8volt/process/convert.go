@@ -99,33 +99,6 @@ func fromDomainProcessInstanceIncidentDetails(xs []d.ProcessInstanceIncidentDeta
 	return toolx.MapSlice(xs, fromDomainProcessInstanceIncidentDetail)
 }
 
-func fromDomainIncidents(xs []d.ProcessInstanceIncidentDetail) Incidents {
-	items := fromDomainProcessInstanceIncidentDetails(xs)
-	return Incidents{
-		Total: int32(len(items)),
-		Items: items,
-	}
-}
-
-func fromDomainIncidentPage(x d.IncidentPage) IncidentPage {
-	return IncidentPage{
-		Request: IncidentPageRequest{
-			From:  x.Request.From,
-			Size:  x.Request.Size,
-			After: x.Request.After,
-		},
-		OverflowState: ProcessInstanceOverflowState(x.OverflowState),
-		ReportedTotal: toolx.MapPtr(x.ReportedTotal, func(t d.IncidentReportedTotal) IncidentReportedTotal {
-			return IncidentReportedTotal{
-				Count: t.Count,
-				Kind:  IncidentReportedTotalKind(t.Kind),
-			}
-		}),
-		EndCursor: x.EndCursor,
-		Items:     fromDomainProcessInstanceIncidentDetails(x.Items),
-	}
-}
-
 func fromDomainProcessInstanceVariable(x d.ProcessInstanceVariable) ProcessInstanceVariable {
 	return ProcessInstanceVariable{
 		Name:               x.Name,
@@ -198,68 +171,6 @@ func fromDomainCancelReports(xs []d.Reporter) CancelReports {
 
 func fromDomainDeleteReports(xs []d.Reporter) DeleteReports {
 	return DeleteReports{Items: toolx.MapSlice(xs, func(x d.Reporter) DeleteReport { return fromDomainReporter(x) })}
-}
-
-func fromDomainIncidentResolutionResult(x d.IncidentResolutionResult) IncidentResolutionResult {
-	return IncidentResolutionResult{
-		IncidentKey:        x.IncidentKey,
-		ProcessInstanceKey: x.ProcessInstanceKey,
-		MutationAccepted:   x.MutationAccepted,
-		Status:             IncidentResolutionStatus(x.Status),
-		ConfirmationStatus: x.ConfirmationStatus,
-		StatusCode:         x.StatusCode,
-		Message:            x.Message,
-		Error:              x.Error,
-		DryRun:             x.DryRun,
-		MutationSubmitted:  x.MutationSubmitted,
-		WouldResolve:       x.WouldResolve,
-		IncidentState:      x.IncidentState,
-		Incident:           toolx.MapPtr(x.Incident, fromDomainProcessInstanceIncidentDetail),
-	}
-}
-
-func fromDomainIncidentResolutionResults(x d.IncidentResolutionResults) IncidentResolutionResults {
-	return IncidentResolutionResults{
-		Operation:         ResolutionOperation(x.Operation),
-		Items:             toolx.MapSlice(x.Items, fromDomainIncidentResolutionResult),
-		Total:             x.Total,
-		Submitted:         x.Submitted,
-		Confirmed:         x.Confirmed,
-		Skipped:           x.Skipped,
-		Failed:            x.Failed,
-		DryRun:            x.DryRun,
-		MutationSubmitted: x.MutationSubmitted,
-	}
-}
-
-func fromDomainProcessInstanceResolutionResult(x d.ProcessInstanceResolutionResult) ProcessInstanceResolutionResult {
-	return ProcessInstanceResolutionResult{
-		ProcessInstanceKey:    x.ProcessInstanceKey,
-		AttemptedIncidentKeys: append([]string(nil), x.AttemptedIncidentKeys...),
-		ResolvedIncidentKeys:  append([]string(nil), x.ResolvedIncidentKeys...),
-		SkippedIncidentKeys:   append([]string(nil), x.SkippedIncidentKeys...),
-		FailedIncidentKeys:    append([]string(nil), x.FailedIncidentKeys...),
-		ConfirmationStatus:    x.ConfirmationStatus,
-		Status:                ProcessInstanceResolutionStatus(x.Status),
-		Error:                 x.Error,
-		DryRun:                x.DryRun,
-		MutationSubmitted:     x.MutationSubmitted,
-		Incidents:             fromDomainProcessInstanceIncidentDetails(x.Incidents),
-	}
-}
-
-func fromDomainProcessInstanceResolutionResults(x d.ProcessInstanceResolutionResults) ProcessInstanceResolutionResults {
-	return ProcessInstanceResolutionResults{
-		Operation:         ResolutionOperation(x.Operation),
-		Items:             toolx.MapSlice(x.Items, fromDomainProcessInstanceResolutionResult),
-		Total:             x.Total,
-		Submitted:         x.Submitted,
-		Confirmed:         x.Confirmed,
-		Skipped:           x.Skipped,
-		Failed:            x.Failed,
-		DryRun:            x.DryRun,
-		MutationSubmitted: x.MutationSubmitted,
-	}
 }
 
 func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) DryRunPIKeyExpansion {
@@ -374,42 +285,6 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
-	}
-}
-
-func toDomainIncidentFilter(x IncidentFilter) d.IncidentFilter {
-	return d.IncidentFilter{
-		State:                  x.State,
-		ErrorType:              x.ErrorType,
-		ErrorMessage:           x.ErrorMessage,
-		ProcessInstanceKey:     x.ProcessInstanceKey,
-		RootProcessInstanceKey: x.RootProcessInstanceKey,
-		ProcessDefinitionKey:   x.ProcessDefinitionKey,
-		ProcessDefinitionId:    x.ProcessDefinitionId,
-		FlowNodeId:             x.FlowNodeId,
-		FlowNodeInstanceKey:    x.FlowNodeInstanceKey,
-		CreationTimeAfter:      x.CreationTimeAfter,
-		CreationTimeBefore:     x.CreationTimeBefore,
-	}
-}
-
-func toDomainIncidentPageRequest(x IncidentPageRequest) d.IncidentPageRequest {
-	return d.IncidentPageRequest{
-		From:  x.From,
-		Size:  x.Size,
-		After: x.After,
-	}
-}
-
-func toDomainProcessInstanceVariable(x ProcessInstanceVariable) d.ProcessInstanceVariable {
-	return d.ProcessInstanceVariable{
-		Name:               x.Name,
-		Value:              x.Value,
-		VariableKey:        x.VariableKey,
-		ProcessInstanceKey: x.ProcessInstanceKey,
-		ScopeKey:           x.ScopeKey,
-		TenantId:           x.TenantId,
-		APITruncated:       x.APITruncated,
 	}
 }
 

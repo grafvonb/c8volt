@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 	"testing"
 	"time"
@@ -262,7 +263,7 @@ func TestIncidentHumanLineWithMessageLimit_RendersAlignedIncidentListFieldsAndAg
 		relativeDayNow = prevNow
 	})
 
-	lines := formatIncidentListRows([]process.ProcessInstanceIncidentDetail{
+	lines := formatIncidentListRows([]incident.ProcessInstanceIncidentDetail{
 		{
 			IncidentKey:            "2251799813685249",
 			TenantId:               "tenant-a",
@@ -312,7 +313,7 @@ func TestIncidentHumanLineWithMessageLimit_RendersAlignedIncidentListFieldsAndAg
 }
 
 func TestIncidentHumanLineWithMessageLimit_SkipsAgeForMissingOrInvalidCreationTime(t *testing.T) {
-	line := incidentListHumanLineWithMessageLimit(process.ProcessInstanceIncidentDetail{
+	line := incidentListHumanLineWithMessageLimit(incident.ProcessInstanceIncidentDetail{
 		IncidentKey:  "2251799813685249",
 		CreationTime: "not-a-date",
 		ErrorMessage: "failed",
@@ -339,7 +340,7 @@ func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.
 		Total: 1,
 		Items: []process.IncidentEnrichedProcessInstance{{
 			Item: process.ProcessInstance{Key: "123"},
-			Incidents: []process.ProcessInstanceIncidentDetail{{
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
 				IncidentKey:        "incident-123",
 				ProcessInstanceKey: "123",
 				ErrorMessage:       "No retries left",
@@ -390,7 +391,7 @@ func TestIncidentEnrichedProcessInstancesView_JSONKeepsFullMessagesAndAgeMeta(t 
 				Key:       "2251799813758959",
 				StartDate: "2026-01-28T12:27:33.233Z",
 			},
-			Incidents: []process.ProcessInstanceIncidentDetail{{
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
 				IncidentKey:        "incident-123",
 				ProcessInstanceKey: "2251799813758959",
 				ErrorMessage:       longMessage,
@@ -437,7 +438,7 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 					StartDate:      "2026-03-23T18:00:00Z",
 					Incident:       true,
 				},
-				Incidents: []process.ProcessInstanceIncidentDetail{{
+				Incidents: []incident.ProcessInstanceIncidentDetail{{
 					IncidentKey:        "incident-123",
 					ProcessInstanceKey: "123",
 					State:              "ACTIVE",
@@ -454,7 +455,7 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 					StartDate:      "2026-03-23T18:05:00Z",
 					Incident:       true,
 				},
-				Incidents: []process.ProcessInstanceIncidentDetail{{
+				Incidents: []incident.ProcessInstanceIncidentDetail{{
 					IncidentKey:        "incident-124",
 					ProcessInstanceKey: "124",
 					State:              "ACTIVE",
@@ -550,7 +551,7 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 				ProcessInstanceKey: "123",
 				ScopeKey:           "123",
 			}},
-			Incidents: []process.ProcessInstanceIncidentDetail{{
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
 				IncidentKey:         "incident-123",
 				ProcessInstanceKey:  "123",
 				FlowNodeId:          "task-a",
@@ -706,7 +707,7 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 		flagGetPIIncidentMessageLimit = prevLimit
 	})
 
-	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
+	got := incidentHumanLine(incident.ProcessInstanceIncidentDetail{
 		IncidentKey:         "incident-123",
 		CreationTime:        "2026-05-06T09:29:42.711Z",
 		ErrorMessage:        "No retries left",
@@ -728,7 +729,7 @@ func TestIncidentHumanLine_RendersUnavailableJobKeyWhenMissing(t *testing.T) {
 		flagGetPIIncidentMessageLimit = prevLimit
 	})
 
-	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
+	got := incidentHumanLine(incident.ProcessInstanceIncidentDetail{
 		IncidentKey:         "incident-123",
 		ErrorMessage:        "Mapping failed",
 		FlowNodeId:          "task-a",
@@ -741,7 +742,7 @@ func TestIncidentHumanLine_RendersUnavailableJobKeyWhenMissing(t *testing.T) {
 }
 
 func TestIncidentHumanLineWithMessageLimit_ReusesSharedIncidentRowFormatter(t *testing.T) {
-	got := incidentHumanLineWithMessageLimit(process.ProcessInstanceIncidentDetail{
+	got := incidentHumanLineWithMessageLimit(incident.ProcessInstanceIncidentDetail{
 		IncidentKey:  "incident-123",
 		ErrorMessage: "Mapping failed in worker",
 		State:        "ACTIVE",
@@ -879,9 +880,9 @@ func TestTruncateIncidentHumanMessage(t *testing.T) {
 }
 
 func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
-	resp := process.Incidents{
+	resp := incident.Incidents{
 		Total: 2,
-		Items: []process.ProcessInstanceIncidentDetail{
+		Items: []incident.ProcessInstanceIncidentDetail{
 			{
 				IncidentKey:         "incident-123",
 				CreationTime:        "2026-05-06T09:29:42.711Z",

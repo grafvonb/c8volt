@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPI, func(it process.ProcessInstance) string { return it.Key })
 }
 
-func listIncidentsView(cmd *cobra.Command, resp process.Incidents, messageLimit int, omitMessage bool) error {
+func listIncidentsView(cmd *cobra.Command, resp incident.Incidents, messageLimit int, omitMessage bool) error {
 	mode := pickMode()
 	switch mode {
 	case RenderModeJSON:

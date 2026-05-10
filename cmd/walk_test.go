@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"io"
 	"net/http"
 	"os"
@@ -122,7 +123,7 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 	})
 
 	var out strings.Builder
-	writeIncidentLines(&out, "  ", []process.ProcessInstanceIncidentDetail{{
+	writeIncidentLines(&out, "  ", []incident.ProcessInstanceIncidentDetail{{
 		IncidentKey:         "incident-1",
 		CreationTime:        "2026-05-06T09:29:42.711Z",
 		ErrorMessage:        "Root job failed",

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -70,12 +71,12 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 }
 
 // incidentHumanLine formats an incident detail line with compact attributes.
-func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
+func incidentHumanLine(incident incident.ProcessInstanceIncidentDetail) string {
 	return incidentHumanLineWithMessageLimit(incident, flagGetPIIncidentMessageLimit)
 }
 
 // incidentHumanLineWithMessageLimit formats shared incident rows for process-instance and plain incident output.
-func incidentHumanLineWithMessageLimit(incident process.ProcessInstanceIncidentDetail, messageLimit int) string {
+func incidentHumanLineWithMessageLimit(incident incident.ProcessInstanceIncidentDetail, messageLimit int) string {
 	row := compactFlatRow(flatRowProcessInstanceIncident(incident))
 	message := "m:" + truncateIncidentHumanMessage(incident.ErrorMessage, messageLimit)
 	if row == "" {
@@ -84,7 +85,7 @@ func incidentHumanLineWithMessageLimit(incident process.ProcessInstanceIncidentD
 	return row + " " + message
 }
 
-func flatRowProcessInstanceIncident(incident process.ProcessInstanceIncidentDetail) flatRow {
+func flatRowProcessInstanceIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
@@ -117,15 +118,15 @@ func incidentAgeTag(creationTime string) string {
 	return fmt.Sprintf("(%d days ago)", age)
 }
 
-func incidentListHumanLineWithMessageLimit(incident process.ProcessInstanceIncidentDetail, messageLimit int) string {
-	lines := formatIncidentListRows([]process.ProcessInstanceIncidentDetail{incident}, messageLimit, false)
+func incidentListHumanLineWithMessageLimit(item incident.ProcessInstanceIncidentDetail, messageLimit int) string {
+	lines := formatIncidentListRows([]incident.ProcessInstanceIncidentDetail{item}, messageLimit, false)
 	if len(lines) == 0 {
 		return ""
 	}
 	return lines[0]
 }
 
-func formatIncidentListRows(incidents []process.ProcessInstanceIncidentDetail, messageLimit int, omitMessage bool) []string {
+func formatIncidentListRows(incidents []incident.ProcessInstanceIncidentDetail, messageLimit int, omitMessage bool) []string {
 	rows := make([]flatRow, 0, len(incidents))
 	tails := make([]string, 0, len(incidents))
 	for _, incident := range incidents {
@@ -139,7 +140,7 @@ func formatIncidentListRows(incidents []process.ProcessInstanceIncidentDetail, m
 	return formatFlatRowsWithTails(rows, tails)
 }
 
-func flatRowIncident(incident process.ProcessInstanceIncidentDetail) flatRow {
+func flatRowIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"

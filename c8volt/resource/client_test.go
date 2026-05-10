@@ -783,43 +783,7 @@ func (stubProcessAPI) LookupProcessInstance(context.Context, string, ...options.
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) GetIncident(context.Context, string, ...options.FacadeOption) (process.ProcessInstanceIncidentDetail, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) GetIncidents(context.Context, typex.Keys, int, ...options.FacadeOption) (process.Incidents, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) SearchIncidents(context.Context, process.IncidentFilter, int32, ...options.FacadeOption) (process.Incidents, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) SearchIncidentsPage(context.Context, process.IncidentFilter, process.IncidentPageRequest, ...options.FacadeOption) (process.IncidentPage, error) {
-	panic("unexpected call")
-}
-
 func (stubProcessAPI) LookupProcessInstanceStateByKey(context.Context, string, ...options.FacadeOption) (process.StateReport, process.ProcessInstance, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceIncidentDetail, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) ResolveIncident(context.Context, string, ...options.FacadeOption) (process.IncidentResolutionResult, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) ResolveIncidents(context.Context, typex.Keys, int, ...options.FacadeOption) (process.IncidentResolutionResults, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) ResolveProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) (process.ProcessInstanceResolutionResult, error) {
-	panic("unexpected call")
-}
-
-func (stubProcessAPI) ResolveProcessInstancesIncidents(context.Context, typex.Keys, int, ...options.FacadeOption) (process.ProcessInstanceResolutionResults, error) {
 	panic("unexpected call")
 }
 

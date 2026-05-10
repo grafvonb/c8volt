@@ -5,9 +5,9 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"time"
 
-	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
 	"github.com/spf13/cobra"
@@ -285,9 +285,9 @@ func hasGetIncidentSearchModeFlags(cmd *cobra.Command) bool {
 	return false
 }
 
-func populateGetIncidentSearchFilter() process.IncidentFilter {
+func populateGetIncidentSearchFilter() incident.Filter {
 	errorType, _ := incidentfilter.NormalizeErrorType(flagGetIncidentErrorType)
-	return process.IncidentFilter{
+	return incident.Filter{
 		State:                  flagGetIncidentState,
 		ErrorType:              errorType,
 		ErrorMessage:           flagGetIncidentErrorMessage,

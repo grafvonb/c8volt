@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
@@ -29,8 +29,8 @@ func pickIncidentSearchSize() int32 {
 	return flagGetIncidentSize
 }
 
-func newIncidentSearchPageRequest(cmd *cobra.Command, cfg *config.Config, from int32) process.IncidentPageRequest {
-	return process.IncidentPageRequest{
+func newIncidentSearchPageRequest(cmd *cobra.Command, cfg *config.Config, from int32) incident.PageRequest {
+	return incident.PageRequest{
 		From: from,
 		Size: resolveIncidentSearchSize(cmd, cfg),
 	}
@@ -51,7 +51,7 @@ func shouldAutoContinueIncidentSearchPages(cmd *cobra.Command) bool {
 	return shouldImplicitlyConfirm(cmd) || pickMode() == RenderModeJSON
 }
 
-func limitIncidentItems(items []process.ProcessInstanceIncidentDetail, cumulative int) []process.ProcessInstanceIncidentDetail {
+func limitIncidentItems(items []incident.ProcessInstanceIncidentDetail, cumulative int) []incident.ProcessInstanceIncidentDetail {
 	if flagGetIncidentLimit <= 0 {
 		return items
 	}
@@ -69,7 +69,7 @@ func isIncidentLimitReached(cumulative int) bool {
 	return flagGetIncidentLimit > 0 && cumulative >= int(flagGetIncidentLimit)
 }
 
-func nextIncidentSearchPageRequest(cmd *cobra.Command, cfg *config.Config, current process.IncidentPageRequest, page process.IncidentPage) process.IncidentPageRequest {
+func nextIncidentSearchPageRequest(cmd *cobra.Command, cfg *config.Config, current incident.PageRequest, page incident.Page) incident.PageRequest {
 	if page.EndCursor != "" {
 		req := newIncidentSearchPageRequest(cmd, cfg, 0)
 		req.After = page.EndCursor
@@ -78,14 +78,24 @@ func nextIncidentSearchPageRequest(cmd *cobra.Command, cfg *config.Config, curre
 	return newIncidentSearchPageRequest(cmd, cfg, current.From+current.Size)
 }
 
-func incidentSearchContinuationState(page process.IncidentPage, cumulative int, autoContinue bool) processInstanceContinuationState {
+func incidentSearchContinuationState(page incident.Page, cumulative int, autoContinue bool) processInstanceContinuationState {
 	if isIncidentLimitReached(cumulative) {
 		return processInstanceContinuationLimitReached
 	}
-	return pickPIContinuationState(page.OverflowState, autoContinue)
+	switch page.OverflowState {
+	case incident.OverflowStateHasMore:
+		if autoContinue {
+			return processInstanceContinuationAutoContinue
+		}
+		return processInstanceContinuationPrompt
+	case incident.OverflowStateIndeterminate:
+		return processInstanceContinuationWarningStop
+	default:
+		return processInstanceContinuationCompleted
+	}
 }
 
-func renderIncidentSearchPage(cmd *cobra.Command, items []process.ProcessInstanceIncidentDetail) error {
+func renderIncidentSearchPage(cmd *cobra.Command, items []incident.ProcessInstanceIncidentDetail) error {
 	switch pickMode() {
 	case RenderModeKeysOnly:
 		for _, item := range items {
@@ -99,11 +109,11 @@ func renderIncidentSearchPage(cmd *cobra.Command, items []process.ProcessInstanc
 	return nil
 }
 
-func canUseIncidentExactReportedTotal(page process.IncidentPage) bool {
-	return page.ReportedTotal != nil && page.ReportedTotal.Kind == process.IncidentReportedTotalKindExact
+func canUseIncidentExactReportedTotal(page incident.Page) bool {
+	return page.ReportedTotal != nil && page.ReportedTotal.Kind == incident.ReportedTotalKindExact
 }
 
-func searchIncidentsTotal(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.IncidentFilter) (int64, error) {
+func searchIncidentsTotal(cmd *cobra.Command, cli incident.API, cfg *config.Config, filter incident.Filter) (int64, error) {
 	pageReq := newIncidentSearchPageRequest(cmd, cfg, 0)
 	total := int64(0)
 	for {
@@ -115,7 +125,7 @@ func searchIncidentsTotal(cmd *cobra.Command, cli process.API, cfg *config.Confi
 			return page.ReportedTotal.Count, nil
 		}
 		total += int64(len(page.Items))
-		if page.OverflowState == process.ProcessInstanceOverflowStateNoMore {
+		if page.OverflowState == incident.OverflowStateNoMore {
 			return total, nil
 		}
 		pageReq = nextIncidentSearchPageRequest(cmd, cfg, pageReq, page)
@@ -125,18 +135,18 @@ func searchIncidentsTotal(cmd *cobra.Command, cli process.API, cfg *config.Confi
 // searchIncidentsWithPaging runs the list/search path for `get incident`.
 // Human and keys-only output may render page-by-page in interactive mode; JSON
 // collects all bounded results so the command emits one valid document.
-func searchIncidentsWithPaging(cmd *cobra.Command, cli process.API, cfg *config.Config, filter process.IncidentFilter) (process.Incidents, bool, error) {
+func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config.Config, filter incident.Filter) (incident.Incidents, bool, error) {
 	pageReq := newIncidentSearchPageRequest(cmd, cfg, 0)
-	var collected process.Incidents
+	var collected incident.Incidents
 	incremental := shouldRenderIncidentSearchPageIncrementally(cmd)
 	autoContinue := shouldAutoContinueIncidentSearchPages(cmd)
 	processedTotal := 0
-	printFoundAndReturn := func() (process.Incidents, bool, error) {
+	printFoundAndReturn := func() (incident.Incidents, bool, error) {
 		if incremental {
 			if pickMode() == RenderModeOneLine {
 				renderOutputLine(cmd, "found: %d", processedTotal)
 			}
-			return process.Incidents{}, true, nil
+			return incident.Incidents{}, true, nil
 		}
 		return collected, false, nil
 	}
@@ -144,12 +154,12 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli process.API, cfg *config.
 	for {
 		page, err := cli.SearchIncidentsPage(cmd.Context(), filter, pageReq, collectOptions()...)
 		if err != nil {
-			return process.Incidents{}, false, err
+			return incident.Incidents{}, false, err
 		}
 		items := limitIncidentItems(page.Items, processedTotal)
 		if incremental {
 			if err := renderIncidentSearchPage(cmd, items); err != nil {
-				return process.Incidents{}, false, err
+				return incident.Incidents{}, false, err
 			}
 		} else {
 			collected.Items = append(collected.Items, items...)
@@ -170,7 +180,7 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli process.API, cfg *config.
 				if isCmdAborted(err) {
 					return printFoundAndReturn()
 				}
-				return process.Incidents{}, false, err
+				return incident.Incidents{}, false, err
 			}
 			pageReq = nextIncidentSearchPageRequest(cmd, cfg, pageReq, page)
 		}
