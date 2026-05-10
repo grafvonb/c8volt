@@ -152,7 +152,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	getDoc := readGeneratedDocForTest(t, out, "c8volt_get.md")
 	for _, want := range []string{
 		"Inspect cluster, process, job, incident, tenant, and resource state without changing it.",
-		"./c8volt get incident --key 2251799813685249",
+		"./c8volt get incident --key <incident-key>",
 		"[c8volt get incident](c8volt_get_incident)",
 	} {
 		if !strings.Contains(getDoc, want) {
@@ -164,7 +164,7 @@ func TestGeneratedGetIncidentDocsDocumentLookupSearchAndOutput(t *testing.T) {
 	for _, want := range []string{
 		"List or fetch incidents",
 		"Get Camunda incidents by key or by search criteria.",
-		"./c8volt get inc --key 2251799813685249 --key 2251799813685250",
+		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error",
 		"--error-message string",
 		"case-insensitive incident error message substring filter for search",
@@ -210,7 +210,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	resolveDoc := readGeneratedDocForTest(t, out, "c8volt_resolve.md")
 	for _, want := range []string{
 		"Resolve operational incidents.",
-		"./c8volt resolve incident --key 2251799813685249",
+		"./c8volt resolve incident --key <incident-key>",
 		"[c8volt resolve incident](c8volt_resolve_incident)",
 		"[c8volt resolve process-instance](c8volt_resolve_process-instance)",
 	} {
@@ -223,7 +223,7 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	for _, want := range []string{
 		"Resolve incidents by key.",
 		"Each unique incident key is submitted for resolution and reported independently.",
-		"./c8volt resolve inc --key 2251799813685249 --key 2251799813685250",
+		"./c8volt resolve inc --key <incident-key> --key <another-incident-key>",
 		"--dry-run",
 		"preview incident resolutions without submitting mutation",
 		"--no-wait",

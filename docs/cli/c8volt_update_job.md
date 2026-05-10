@@ -12,7 +12,7 @@ Update a job by key
 
 Update a Camunda job by key.
 
-The command supports retries and timeout updates for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, asks for confirmation before material interactive mutations, and can return after acceptance with --no-wait. Retry updates are confirmed by reading the job by key by default; timeout updates report submitted milliseconds without deadline confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
+The command supports retries and timeout updates for Camunda 8.8 and 8.9. It builds a pre-mutation plan, supports --dry-run previews, and asks for confirmation before material interactive mutations. Retry updates are confirmed by reading the job by key by default; timeout updates report submitted milliseconds without deadline confirmation. JSON mutations require --dry-run, --auto-confirm, or --automation, and --json cannot be combined with --verbose. Camunda 8.7 returns an unsupported-version error before mutation.
 
 ```
 c8volt update job [flags]
@@ -21,14 +21,13 @@ c8volt update job [flags]
 ### Examples
 
 ```
-  ./c8volt update job --key 2251799813711967 --retries 3
-  ./c8volt update job --key 2251799813711967 --timeout 5m
-  ./c8volt update job --key 2251799813711967 --retries 3 --timeout 5m
-  ./c8volt update job --key 2251799813711967 --retries 3 --dry-run
-  ./c8volt update job --key 2251799813711967 --retries 3 --auto-confirm
-  ./c8volt update job --key 2251799813711967 --retries 3 --no-wait
-  ./c8volt --json update job --key 2251799813711967 --retries 3 --dry-run
-  ./c8volt --json update job --key 2251799813711967 --retries 3 --auto-confirm
+  ./c8volt update job --key <job-key> --retries 3
+  ./c8volt update job --key <job-key> --timeout 5m
+  ./c8volt update job --key <job-key> --retries 3 --timeout 5m
+  ./c8volt update job --key <job-key> --retries 3 --dry-run
+  ./c8volt update job --key <job-key> --retries 3 --auto-confirm
+  ./c8volt --json update job --key <job-key> --retries 3 --dry-run
+  ./c8volt --json update job --key <job-key> --retries 3 --auto-confirm
 ```
 
 ### Options

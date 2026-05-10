@@ -18,7 +18,7 @@ When --bpmn-process-id is set, c8volt applies the selector directly to the non-m
 
 Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.
 
-Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi`.
+Use --auto-confirm for unattended destructive runs.
 
 ```
 c8volt cancel process-instance [flags]
@@ -30,15 +30,12 @@ c8volt cancel process-instance [flags]
   ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --dry-run
   ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --batch-size 250
-  ./c8volt cancel pi --state active --batch-size 250 --limit 25
-  ./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run
-  ./c8volt cancel pi --state active --start-date-before 2026-03-31
-  ./c8volt cancel pi --state active --start-date-newer-days 30
-  ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --batch-size 200 --auto-confirm
-  ./c8volt cancel pi --state active --batch-size 200 --auto-confirm --no-wait
+  ./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel pi --state active --start-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt cancel pi --state active --start-date-newer-days 30 --limit 5 --dry-run
+  ./c8volt cancel pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 5 --auto-confirm
   ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -
 ```
 
 ### Options

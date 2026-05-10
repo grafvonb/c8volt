@@ -21,8 +21,8 @@ c8volt get job [flags]
 ### Examples
 
 ```
-  ./c8volt get job --key 2251799813711967
-  ./c8volt --json get job --key 2251799813711967
+  ./c8volt get job --key <job-key>
+  ./c8volt --json get job --key <job-key>
 ```
 
 ### Options

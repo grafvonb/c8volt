@@ -21,9 +21,9 @@ c8volt walk [flags]
 ### Examples
 
 ```
-  ./c8volt walk pi --key 2251799813711967
-  ./c8volt walk pi --key 2251799813711967 --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --children
+  ./c8volt walk pi --key <process-instance-key>
+  ./c8volt walk pi --key <process-instance-key> --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --children
 ```
 
 ### Options
