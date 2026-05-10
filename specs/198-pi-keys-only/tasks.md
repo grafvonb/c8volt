@@ -11,9 +11,9 @@
 
 **Purpose**: Confirm current command behavior and establish exact edit surfaces.
 
-- [ ] T001 Inspect existing incident output and validation paths in `cmd/get_incident.go`, `cmd/get_incident_search.go`, and `cmd/cmd_views_get.go`
-- [ ] T002 Inspect existing incident tests and docs expectations in `cmd/get_incident_test.go`, `cmd/cmd_views_get_test.go`, `cmd/command_contract_test.go`, and `docsgen/main_test.go`
-- [ ] T003 Inspect delete/cancel stdin dedupe behavior in `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/delete_test.go`, and `cmd/cancel_test.go`
+- [x] T001 Inspect existing incident output and validation paths in `cmd/get_incident.go`, `cmd/get_incident_search.go`, and `cmd/cmd_views_get.go`
+- [x] T002 Inspect existing incident tests and docs expectations in `cmd/get_incident_test.go`, `cmd/cmd_views_get_test.go`, `cmd/command_contract_test.go`, and `docsgen/main_test.go`
+- [x] T003 Inspect delete/cancel stdin dedupe behavior in `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/delete_test.go`, and `cmd/cancel_test.go`
 
 ---
 
