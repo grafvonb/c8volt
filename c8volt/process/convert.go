@@ -5,6 +5,7 @@ package process
 
 import (
 	d "github.com/grafvonb/c8volt/internal/domain"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
@@ -115,6 +116,66 @@ func fromDomainProcessInstanceVariables(xs []d.ProcessInstanceVariable) []Proces
 	return toolx.MapSlice(xs, fromDomainProcessInstanceVariable)
 }
 
+// fromDomainIncidentEnrichedProcessInstance maps one service-enriched process instance into the public facade model.
+func fromDomainIncidentEnrichedProcessInstance(x d.IncidentEnrichedProcessInstance) IncidentEnrichedProcessInstance {
+	return IncidentEnrichedProcessInstance{
+		Item:      fromDomainProcessInstance(x.Item),
+		Incidents: fromDomainProcessInstanceIncidentDetails(x.Incidents),
+	}
+}
+
+// fromDomainIncidentEnrichedProcessInstances maps service-enriched process instances into the public facade model.
+func fromDomainIncidentEnrichedProcessInstances(x d.IncidentEnrichedProcessInstances) IncidentEnrichedProcessInstances {
+	return IncidentEnrichedProcessInstances{
+		Total: x.Total,
+		Items: toolx.MapSlice(x.Items, fromDomainIncidentEnrichedProcessInstance),
+	}
+}
+
+// fromDomainVariableEnrichedProcessInstance maps one service-enriched process instance and its variables into the public facade model.
+func fromDomainVariableEnrichedProcessInstance(x d.VariableEnrichedProcessInstance) VariableEnrichedProcessInstance {
+	return VariableEnrichedProcessInstance{
+		Item:      fromDomainProcessInstance(x.Item),
+		Variables: fromDomainProcessInstanceVariables(x.Variables),
+	}
+}
+
+// fromDomainVariableEnrichedProcessInstances maps service-enriched variables into the public facade model.
+func fromDomainVariableEnrichedProcessInstances(x d.VariableEnrichedProcessInstances) VariableEnrichedProcessInstances {
+	return VariableEnrichedProcessInstances{
+		Total: x.Total,
+		Items: toolx.MapSlice(x.Items, fromDomainVariableEnrichedProcessInstance),
+	}
+}
+
+// fromDomainIncidentEnrichedTraversalItem maps one service-enriched traversal item into the public facade model.
+func fromDomainIncidentEnrichedTraversalItem(x d.IncidentEnrichedTraversalItem) IncidentEnrichedTraversalItem {
+	return IncidentEnrichedTraversalItem{
+		Item:      fromDomainProcessInstance(x.Item),
+		Incidents: fromDomainProcessInstanceIncidentDetails(x.Incidents),
+	}
+}
+
+// fromDomainIncidentEnrichedTraversalResult maps service-enriched traversal output into the public facade model.
+func fromDomainIncidentEnrichedTraversalResult(x d.IncidentEnrichedTraversalResult) IncidentEnrichedTraversalResult {
+	return IncidentEnrichedTraversalResult{
+		Mode:             TraversalMode(x.Mode),
+		Outcome:          TraversalOutcome(x.Outcome),
+		StartKey:         x.StartKey,
+		RootKey:          x.RootKey,
+		Keys:             append([]string(nil), x.Keys...),
+		Edges:            x.Edges,
+		Items:            toolx.MapSlice(x.Items, fromDomainIncidentEnrichedTraversalItem),
+		MissingAncestors: toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),
+		Warning:          x.Warning,
+	}
+}
+
+// fromDomainMissingAncestor maps one domain missing-ancestor marker into the public facade model.
+func fromDomainMissingAncestor(item d.MissingAncestor) MissingAncestor {
+	return MissingAncestor{Key: item.Key, StartKey: item.StartKey}
+}
+
 func fromDomainProcessInstanceVariableUpdateResult(x d.ProcessInstanceVariableUpdateResult) ProcessInstanceVariableUpdateResult {
 	return ProcessInstanceVariableUpdateResult{
 		Key:                x.Key,
@@ -210,6 +271,41 @@ func fromDomainProcessInstanceReportedTotal(x d.ProcessInstanceReportedTotal) Pr
 
 func fromDomainProcessInstanceMap(xs map[string]d.ProcessInstance) map[string]ProcessInstance {
 	return toolx.MapMap(xs, fromDomainProcessInstance)
+}
+
+// toDomainProcessInstanceMap maps public process-instance maps into domain values for service workflows.
+func toDomainProcessInstanceMap(xs map[string]ProcessInstance) map[string]d.ProcessInstance {
+	return toolx.MapMap(xs, toDomainProcessInstance)
+}
+
+// toServiceTraversalResult maps public traversal output back into service-layer traversal input for enrichment.
+func toServiceTraversalResult(in TraversalResult) pitraversal.Result {
+	return pitraversal.Result{
+		Mode:             pitraversal.Mode(in.Mode),
+		StartKey:         in.StartKey,
+		RootKey:          in.RootKey,
+		Keys:             append([]string(nil), in.Keys...),
+		Edges:            in.Edges,
+		Chain:            toDomainProcessInstanceMap(in.Chain),
+		MissingAncestors: toServiceMissingAncestors(in.MissingAncestors),
+		Warning:          in.Warning,
+		Outcome:          pitraversal.Outcome(in.Outcome),
+	}
+}
+
+// toServiceMissingAncestors maps public missing-ancestor markers into traversal package values.
+func toServiceMissingAncestors(in []MissingAncestor) []pitraversal.MissingAncestor {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]pitraversal.MissingAncestor, len(in))
+	for i, item := range in {
+		out[i] = pitraversal.MissingAncestor{
+			Key:      item.Key,
+			StartKey: item.StartKey,
+		}
+	}
+	return out
 }
 
 func fromDomainProcessInstanceExpectationResponse(x d.ProcessInstanceExpectationResponse) ProcessInstanceExpectationReport {

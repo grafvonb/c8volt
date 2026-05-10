@@ -6,7 +6,6 @@ package process
 import (
 	"context"
 	"log/slog"
-	"sort"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -78,14 +77,6 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 	return fromDomainProcessInstance(pi), nil
 }
 
-func (c *client) searchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
-	incidents, err := c.incApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
-	if err != nil {
-		return nil, ferr.FromDomain(err)
-	}
-	return fromDomainProcessInstanceIncidentDetails(incidents), nil
-}
-
 // SearchProcessInstanceVariables exposes the tenant-safe service variable lookup through the facade error model.
 func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceVariable, error) {
 	variables, err := c.piApi.SearchProcessInstanceVariables(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
@@ -108,95 +99,29 @@ func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request Pro
 
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
-	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
-	for _, pi := range pis.Items {
-		incidents, err := c.searchProcessInstanceIncidents(ctx, pi.Key, opts...)
-		if err != nil {
-			return IncidentEnrichedProcessInstances{}, err
-		}
-		items = append(items, IncidentEnrichedProcessInstance{
-			Item:      pi,
-			Incidents: incidentsForProcessInstance(pi.Key, incidents),
-		})
+	got, err := pisvc.EnrichProcessInstancesWithIncidents(ctx, c.incApi, toolx.MapSlice(pis.Items, toDomainProcessInstance), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return IncidentEnrichedProcessInstances{}, ferr.FromDomain(err)
 	}
-	return IncidentEnrichedProcessInstances{
-		Total: int32(len(items)),
-		Items: items,
-	}, nil
+	return fromDomainIncidentEnrichedProcessInstances(got), nil
 }
 
 // EnrichProcessInstancesWithVariables attaches process-scope variables to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithVariables(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (VariableEnrichedProcessInstances, error) {
-	items := make([]VariableEnrichedProcessInstance, 0, len(pis.Items))
-	for _, pi := range pis.Items {
-		variables, err := c.SearchProcessInstanceVariables(ctx, pi.Key, opts...)
-		if err != nil {
-			return VariableEnrichedProcessInstances{}, err
-		}
-		items = append(items, VariableEnrichedProcessInstance{
-			Item:      pi,
-			Variables: variablesForProcessInstance(pi.Key, variables),
-		})
+	got, err := pisvc.EnrichProcessInstancesWithVariables(ctx, c.piApi, toolx.MapSlice(pis.Items, toDomainProcessInstance), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return VariableEnrichedProcessInstances{}, ferr.FromDomain(err)
 	}
-	return VariableEnrichedProcessInstances{
-		Total: int32(len(items)),
-		Items: items,
-	}, nil
+	return fromDomainVariableEnrichedProcessInstances(got), nil
 }
 
 // EnrichTraversalWithIncidents overlays incident details onto walked items while preserving traversal metadata and warnings.
 func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result TraversalResult, opts ...options.FacadeOption) (IncidentEnrichedTraversalResult, error) {
-	items := make([]IncidentEnrichedTraversalItem, 0, len(result.Keys))
-	for _, key := range result.Keys {
-		pi, ok := result.Chain[key]
-		if !ok {
-			continue
-		}
-		incidents, err := c.searchProcessInstanceIncidents(ctx, key, opts...)
-		if err != nil {
-			return IncidentEnrichedTraversalResult{}, err
-		}
-		items = append(items, IncidentEnrichedTraversalItem{
-			Item:      pi,
-			Incidents: incidentsForProcessInstance(key, incidents),
-		})
+	got, err := pisvc.EnrichTraversalWithIncidents(ctx, c.incApi, toServiceTraversalResult(result), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return IncidentEnrichedTraversalResult{}, ferr.FromDomain(err)
 	}
-	return IncidentEnrichedTraversalResult{
-		Mode:             result.Mode,
-		Outcome:          result.Outcome,
-		StartKey:         result.StartKey,
-		RootKey:          result.RootKey,
-		Keys:             append([]string(nil), result.Keys...),
-		Edges:            result.Edges,
-		Items:            items,
-		MissingAncestors: append([]MissingAncestor(nil), result.MissingAncestors...),
-		Warning:          result.Warning,
-	}, nil
-}
-
-// incidentsForProcessInstance keeps only details owned by the requested key, guarding against broad backend incident responses.
-func incidentsForProcessInstance(key string, incidents []ProcessInstanceIncidentDetail) []ProcessInstanceIncidentDetail {
-	out := make([]ProcessInstanceIncidentDetail, 0, len(incidents))
-	for _, incident := range incidents {
-		if incident.ProcessInstanceKey == key {
-			out = append(out, incident)
-		}
-	}
-	return out
-}
-
-// variablesForProcessInstance keeps only process-scope variables owned by the requested key.
-func variablesForProcessInstance(key string, variables []ProcessInstanceVariable) []ProcessInstanceVariable {
-	out := make([]ProcessInstanceVariable, 0, len(variables))
-	for _, variable := range variables {
-		if variable.ProcessInstanceKey == key && variable.ScopeKey == key {
-			out = append(out, variable)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		return out[i].Name < out[j].Name
-	})
-	return out
+	return fromDomainIncidentEnrichedTraversalResult(got), nil
 }
 
 func (c *client) LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
@@ -216,16 +141,13 @@ func (c *client) CreateProcessInstance(ctx context.Context, data ProcessInstance
 	return fromDomainProcessInstanceCreation(pic), nil
 }
 
+// CreateProcessInstances maps public creation input and delegates ordered creation to the process-instance service.
 func (c *client) CreateProcessInstances(ctx context.Context, datas []ProcessInstanceData, opts ...options.FacadeOption) ([]ProcessInstance, error) {
-	pis := make([]ProcessInstance, 0, len(datas))
-	for _, data := range datas {
-		pic, err := c.piApi.CreateProcessInstance(ctx, toProcessInstanceData(data), options.MapFacadeOptionsToCallOptions(opts)...)
-		if err != nil {
-			return nil, ferr.FromDomain(err)
-		}
-		pis = append(pis, fromDomainProcessInstanceCreation(pic))
+	pics, err := pisvc.CreateProcessInstances(ctx, c.piApi, toolx.MapSlice(datas, toProcessInstanceData), options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return nil, ferr.FromDomain(err)
 	}
-	return pis, nil
+	return toolx.MapSlice(pics, fromDomainProcessInstanceCreation), nil
 }
 
 func (c *client) SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error) {

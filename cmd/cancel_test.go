@@ -717,7 +717,7 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 // Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -774,7 +774,7 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 // Verifies relative-day search selection derives canonical start-date bounds before cancelling matches.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -862,8 +862,8 @@ func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 // TestCancelProcessInstanceCommand_SearchPagingPromptFlow verifies paged cancel search prompts between pages.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var cancelled safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 	var searchMu sync.Mutex
 
@@ -948,7 +948,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	}, cancelled.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[0], "You are about to cancel 2 process instance(s)")
-	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2/3+ requested, 2 including dependencies). More matching process instances remain. Continue?")
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 	require.NotContains(t, output, "next step: auto-continue")
@@ -956,8 +956,8 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 
 // TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals verifies v8.7 paging includes dependency totals.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
-	var requests safeSlice[string]
-	var cancelled safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 	var searchMu sync.Mutex
 
@@ -1110,7 +1110,7 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 // TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow verifies --auto-confirm continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1198,7 +1198,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 // TestCancelProcessInstanceCommand_SearchPagingLimitFlow verifies cancel search stops at the requested limit.
 func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1287,7 +1287,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 // TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow verifies batch size and limit interact correctly.
 func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1365,7 +1365,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 // TestCancelProcessInstanceCommand_SearchPagingAutomationFlow verifies automation mode auto-continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1453,7 +1453,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 // TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary verifies aborted paging reports partial completion.
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1529,8 +1529,8 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 
 // TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary verifies indeterminate overflow emits a warning summary.
 func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
-	var requests safeSlice[string]
-	var cancelled safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1600,7 +1600,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 // TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging verifies direct keys do not use search paging.
 func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

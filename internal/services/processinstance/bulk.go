@@ -17,6 +17,10 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+type processInstanceCreator interface {
+	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
+}
+
 func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, data d.ProcessInstanceData, n int, wantedWorkers int, opts ...services.CallOption) ([]d.ProcessInstanceCreation, error) {
 	cfg := services.ApplyCallOptions(opts)
 	nw := toolx.DetermineNoOfWorkers(n, wantedWorkers, cfg.NoWorkerLimit)
@@ -30,6 +34,19 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 		log.Info(fmt.Sprintf("creation of %d process instances completed", n))
 	}
 	return pics, err
+}
+
+// CreateProcessInstances creates each requested process instance in input order and stops on the first error.
+func CreateProcessInstances(ctx context.Context, api processInstanceCreator, datas []d.ProcessInstanceData, opts ...services.CallOption) ([]d.ProcessInstanceCreation, error) {
+	pics := make([]d.ProcessInstanceCreation, 0, len(datas))
+	for _, data := range datas {
+		pic, err := api.CreateProcessInstance(ctx, data, opts...)
+		if err != nil {
+			return nil, err
+		}
+		pics = append(pics, pic)
+	}
+	return pics, nil
 }
 
 func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys typex.Keys, wantedWorkers int, affectedCount int, opts ...services.CallOption) ([]d.Reporter, error) {

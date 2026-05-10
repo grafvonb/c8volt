@@ -50,6 +50,45 @@ func TestClient_GetProcessDefinitionXML(t *testing.T) {
 	assert.Equal(t, "<definitions id=\"order-process\"/>", xml)
 }
 
+// TestClient_CreateProcessInstances_DelegatesOrderedCreation verifies create-many facade mapping stays thin and service-owned.
+func TestClient_CreateProcessInstances_DelegatesOrderedCreation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	seen := []d.ProcessInstanceData{}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.IgnoreTenant)
+			seen = append(seen, data)
+			return d.ProcessInstanceCreation{
+				Key:                      "created-" + data.BpmnProcessId,
+				BpmnProcessId:            data.BpmnProcessId,
+				ProcessDefinitionKey:     data.ProcessDefinitionSpecificId,
+				ProcessDefinitionVersion: data.ProcessDefinitionVersion,
+				TenantId:                 data.TenantId,
+				Variables:                data.Variables,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.CreateProcessInstances(ctx, []ProcessInstanceData{
+		{BpmnProcessId: "alpha", ProcessDefinitionSpecificId: "pd-alpha", ProcessDefinitionVersion: 1, TenantId: "tenant-a", Variables: map[string]any{"foo": "bar"}},
+		{BpmnProcessId: "beta", ProcessDefinitionSpecificId: "pd-beta", ProcessDefinitionVersion: 2, TenantId: "tenant-b"},
+	}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstanceData{
+		{BpmnProcessId: "alpha", ProcessDefinitionSpecificId: "pd-alpha", ProcessDefinitionVersion: 1, TenantId: "tenant-a", Variables: map[string]any{"foo": "bar"}},
+		{BpmnProcessId: "beta", ProcessDefinitionSpecificId: "pd-beta", ProcessDefinitionVersion: 2, TenantId: "tenant-b"},
+	}, seen)
+	require.Equal(t, []ProcessInstance{
+		{Key: "created-alpha", BpmnProcessId: "alpha", ProcessDefinitionKey: "pd-alpha", ProcessVersion: 1, TenantId: "tenant-a", Variables: map[string]any{"foo": "bar"}},
+		{Key: "created-beta", BpmnProcessId: "beta", ProcessDefinitionKey: "pd-beta", ProcessVersion: 2, TenantId: "tenant-b"},
+	}, got)
+}
+
 // TestClient_GetProcessDefinition_MapsIncidentCountSupportState protects the
 // distinction between an incident count of zero and a version where incident
 // counts are actually supported.
@@ -1541,6 +1580,7 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
+	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
@@ -1556,9 +1596,12 @@ type stubProcessInstanceAPI struct {
 	waitForProcessInstancesExpectation func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
 
-// CreateProcessInstance panics when a facade test accidentally starts a process instance.
-func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
-	panic("unexpected call")
+// CreateProcessInstance delegates to the per-test callback and panics when a facade test did not authorize creation.
+func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	if s.createProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.createProcessInstance(ctx, data, opts...)
 }
 
 // GetProcessInstance panics when a facade test accidentally performs direct lookup.

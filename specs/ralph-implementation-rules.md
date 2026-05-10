@@ -177,6 +177,7 @@ Before adding helper code, search these locations.
 - `toolx/pool.Reports` and `Reporter`: reusable report totals where report types implement `OK()`.
 - `internal/services/common.RunBulk`: generic ordered bulk runner used by internal services.
 - `testx.SafeSlice`: synchronized collection in httptest handlers that can be called concurrently.
+- `testx.AtomicCounter`: synchronized request-order counter for concurrent httptest fixtures that need simple branch decisions.
 - Prefer these helpers over custom goroutine/channel/WaitGroup code.
 
 ### Logging And Activity Helpers
@@ -216,7 +217,8 @@ Before adding helper code, search these locations.
 - For fail-fast behavior, stop scheduling new work while preserving already produced results and aggregated errors.
 - Do not create goroutines that can outlive the caller's context.
 - Do not share mutable slices or maps across worker goroutines without synchronization.
-- In tests for concurrent handlers, use `testx.SafeSlice` or a local mutex.
+- In concurrent `httptest` handlers, prefer `testx.SafeSlice` for captured observations and `testx.AtomicCounter` for simple branch counters.
+- Run the relevant `go test -race` target after touching worker-based command tests or shared test fixtures.
 - Avoid adding worker pools in `cmd`; command code should pass worker flags into facade methods.
 
 ## Error Handling Rules

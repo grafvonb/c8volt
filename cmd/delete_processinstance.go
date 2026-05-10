@@ -281,7 +281,7 @@ func planDeleteProcessInstanceSearchPages(cmd *cobra.Command, cli process.API, c
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 			continue
 		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%d requested so far, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, summary.CumulativeCount, cumulativeAffected)
+			prompt := fmt.Sprintf("Checked delete impact for %d process instance(s) on this page (%s, %d including dependencies); no changes made yet. More matching process instances remain. Continue checking?", summary.CurrentPageCount, formatProcessInstancePagingProgress(limitedPage, summary.CumulativeCount, "requested"), cumulativeAffected)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{
