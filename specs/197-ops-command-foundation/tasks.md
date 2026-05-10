@@ -146,11 +146,11 @@
 
 **Purpose**: Prove the complete feature before commit or PR handoff.
 
-- [ ] T033 Run full command package validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`
-- [ ] T034 Run docs generator validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
-- [ ] T035 Run generated docs refresh check with `make docs-content`
-- [ ] T036 Run repository validation with `make test`
-- [ ] T037 Review `git diff --check` and final changed files before committing
+- [x] T033 Run full command package validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`
+- [x] T034 Run docs generator validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T035 Run generated docs refresh check with `make docs-content`
+- [x] T036 Run repository validation with `make test`
+- [x] T037 Review `git diff --check` and final changed files before committing
 
 ---
 

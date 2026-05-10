@@ -21,6 +21,7 @@
 - Shared ops workflow contracts live in `cmd/ops_contract.go` as command-layer report/status vocabulary only; resource-specific API traversal, mutation, polling, and generated-client behavior must stay below `cmd`.
 - Generated CLI docs use Cobra's command path filenames such as `c8volt_ops.md`, `c8volt_ops_execute.md`, and `c8volt_ops_repair.md`; docsgen tests should generate into a temp tree and inspect those files directly.
 - README command overview changes sync into `docs/index.md` through `make docs-content`; generated CLI docs and docs index should be refreshed through the generator rather than hand-edited.
+- Final validation for this feature uses targeted `go test ./cmd`, `go test ./docsgen`, generated docs refresh, full `make test` race validation, and `git diff --check` before committing.
 
 ## Work Log
 
@@ -186,4 +187,25 @@
 - Ops generated docs are produced from the live Cobra tree and include SEE ALSO links from `c8volt ops` to the execute and repair grouping pages.
 - The README command map is the source for the docs index command overview, so adding `ops` there keeps README and published docs aligned after `make docs-content`.
 - Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops|TestRootHelp' -count=1`.
+---
+
+---
+## Iteration 9 - 2026-05-10 22:37:43 CEST
+**User Story**: Final Phase: Validation & Handoff
+**Tasks Completed**:
+- [x] T033: Run full command package validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`
+- [x] T034: Run docs generator validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T035: Run generated docs refresh check with `make docs-content`
+- [x] T036: Run repository validation with `make test`
+- [x] T037: Review `git diff --check` and final changed files before committing
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- docs/index.md
+- specs/197-ops-command-foundation/tasks.md
+- specs/197-ops-command-foundation/progress.md
+**Learnings**:
+- Full repository validation passed through `make test`, which runs `go test ./... -race -count=1`.
+- `make docs-content` refreshed generated `docs/index.md` build metadata from the current dirty working tree.
+- Final diff review found only generated docs metadata plus feature task/progress tracking changes before commit.
 ---
