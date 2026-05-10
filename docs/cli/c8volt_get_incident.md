@@ -16,7 +16,7 @@ The command accepts repeated --key values or newline-separated keys from stdin w
 
 When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.
 
-Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages.
+Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages or --with-no-error-message to omit them.
 
 ```
 c8volt get incident [flags]
@@ -60,6 +60,7 @@ c8volt get incident [flags]
       --root-process-instance-key string   root process instance key to filter incidents
   -s, --state string                       incident state scope for search: active, pending, resolved, migrated, unknown, all (default "active")
       --total                              return only the exact numeric total of matching incidents
+      --with-no-error-message              omit error messages from human incident output
   -w, --workers int                        maximum concurrent workers when fetching multiple incidents (default: min(count, GOMAXPROCS))
 ```
 

@@ -42,10 +42,10 @@ func TestGetIncidentCommand_KeyedLookupDeduplicatesFlagAndStdinKeys(t *testing.T
 		"GET /v2/incidents/2251799813685249",
 		"GET /v2/incidents/2251799813685250",
 	}, requests)
-	require.Contains(t, output, "key=2251799813685249")
-	require.Contains(t, output, "message=No retries left")
-	require.Contains(t, output, "key=2251799813685250")
-	require.Contains(t, output, "message=Mapping failed")
+	require.Contains(t, output, "2251799813685249")
+	require.Contains(t, output, "m:No retries left")
+	require.Contains(t, output, "2251799813685250")
+	require.Contains(t, output, "m:Mapping failed")
 	require.Contains(t, output, "found: 2")
 }
 
@@ -184,6 +184,48 @@ func TestGetIncidentCommand_RejectsKeysOnlyErrorMessageLimit(t *testing.T) {
 	require.Empty(t, output)
 }
 
+func TestGetIncidentCommand_WithNoErrorMessageOmitsHumanMessageTail(t *testing.T) {
+	var requests []string
+	srv := newIncidentLookupServer(t, &requests, map[string]string{
+		"2251799813685249": incidentLookupResultJSON("2251799813685249", "2251799813711967", "No retries left"),
+	})
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--key", "2251799813685249",
+		"--with-no-error-message",
+	)
+
+	require.Equal(t, []string{"GET /v2/incidents/2251799813685249"}, requests)
+	require.Contains(t, output, "2251799813685249")
+	require.NotContains(t, output, "m:")
+	require.NotContains(t, output, "No retries left")
+	require.Contains(t, output, "found: 1")
+}
+
+func TestGetIncidentCommand_RejectsWithNoErrorMessageMachineOutputAndLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "json", args: []string{"--json", "get", "incident", "--key", "2251799813685249", "--with-no-error-message"}, want: "--with-no-error-message cannot be combined with --json"},
+		{name: "keys only", args: []string{"--keys-only", "get", "incident", "--key", "2251799813685249", "--with-no-error-message"}, want: "--with-no-error-message cannot be combined with --keys-only"},
+		{name: "message limit", args: []string{"get", "incident", "--key", "2251799813685249", "--with-no-error-message", "--error-message-limit", "8"}, want: "--with-no-error-message cannot be combined with --error-message-limit"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := executeRootExpectErrorForIncidentTest(t, tc.args...)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+			require.Empty(t, output)
+		})
+	}
+}
+
 func TestGetIncidentCommand_RejectsTotalWithMachineOutput(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -309,8 +351,8 @@ func TestGetIncidentCommand_SearchDefaultsToActiveState(t *testing.T) {
 
 	require.Len(t, requests, 1)
 	require.Contains(t, requests[0], `"state":"ACTIVE"`)
-	require.Contains(t, output, "key=2251799813685249")
-	require.Contains(t, output, "state=ACTIVE")
+	require.Contains(t, output, "2251799813685249")
+	require.Contains(t, output, "ACTIVE")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -330,7 +372,7 @@ func TestGetIncidentCommand_SearchStateAllOmitsStateFilter(t *testing.T) {
 
 	require.Len(t, requests, 1)
 	require.NotContains(t, requests[0], `"state"`)
-	require.Contains(t, output, "state=RESOLVED")
+	require.Contains(t, output, "RESOLVED")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -359,7 +401,7 @@ func TestGetIncidentCommand_SearchNormalizesCaseInsensitiveErrorType(t *testing.
 
 	require.Len(t, requests, 1)
 	require.Contains(t, requests[0], `"errorType":"IO_MAPPING_ERROR"`)
-	require.Contains(t, output, "errorType=IO_MAPPING_ERROR")
+	require.Contains(t, output, "IO_MAPPING_ERROR")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -399,8 +441,12 @@ func TestGetIncidentCommand_SearchCoreProcessAndFlowNodeFilters(t *testing.T) {
 	require.Contains(t, requests[0], "order-process")
 	require.Contains(t, requests[0], "task-a")
 	require.Contains(t, requests[0], "2251799813685303")
-	require.Contains(t, output, "key=2251799813685252")
-	require.Contains(t, output, "flowNodeId=task-a")
+	require.Contains(t, output, "2251799813685252")
+	require.Contains(t, output, "fn:task-a")
+	require.Contains(t, output, "fni:2251799813685303")
+	require.Contains(t, output, "pi:2251799813711970")
+	require.Contains(t, output, "root:2251799813711971")
+	require.Contains(t, output, "order-process")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -423,8 +469,8 @@ func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 	require.Contains(t, requests[0], `"creationTime"`)
 	require.Contains(t, requests[0], `"$gte":"2026-05-09T09:00:00Z"`)
 	require.Contains(t, requests[0], `"$lte":"2026-05-09T11:00:00Z"`)
-	require.Contains(t, output, "key=2251799813685253")
-	require.Contains(t, output, "creationTime=2026-05-09T10:15:00Z")
+	require.Contains(t, output, "2251799813685253")
+	require.Contains(t, output, "2026-05-09T10:15:00Z")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -481,10 +527,10 @@ func TestGetIncidentCommand_SearchAutoConfirmContinuesPagesAndHonorsLimit(t *tes
 	require.Len(t, requests, 2)
 	require.Contains(t, requests[0], `"limit":2`)
 	require.Contains(t, requests[1], `"from":2`)
-	require.Contains(t, output, "key=2251799813685253")
-	require.Contains(t, output, "key=2251799813685254")
-	require.Contains(t, output, "key=2251799813685255")
-	require.NotContains(t, output, "key=2251799813685256")
+	require.Contains(t, output, "2251799813685253")
+	require.Contains(t, output, "2251799813685254")
+	require.Contains(t, output, "2251799813685255")
+	require.NotContains(t, output, "2251799813685256")
 	require.Contains(t, output, "found: 3")
 }
 
@@ -510,10 +556,10 @@ func TestGetIncidentCommand_SearchErrorMessageMatchesCaseInsensitiveAcrossPages(
 	require.NotContains(t, requests[0], "errorMessage")
 	require.Contains(t, requests[0], `"limit":2`)
 	require.Contains(t, requests[1], `"from":2`)
-	require.NotContains(t, output, "key=2251799813685257")
-	require.NotContains(t, output, "key=2251799813685258")
-	require.Contains(t, output, "key=2251799813685259")
-	require.Contains(t, output, "key=2251799813685260")
+	require.NotContains(t, output, "2251799813685257")
+	require.NotContains(t, output, "2251799813685258")
+	require.Contains(t, output, "2251799813685259")
+	require.Contains(t, output, "2251799813685260")
 	require.Contains(t, output, "found: 2")
 }
 

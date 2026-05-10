@@ -92,8 +92,8 @@ func renderIncidentSearchPage(cmd *cobra.Command, items []process.ProcessInstanc
 			renderOutputLine(cmd, "%s", item.IncidentKey)
 		}
 	default:
-		for _, item := range items {
-			renderOutputLine(cmd, "%s", incidentListHumanLineWithMessageLimit(item, flagGetIncidentMessageLimit))
+		for _, line := range formatIncidentListRows(items, flagGetIncidentMessageLimit, flagGetIncidentNoErrorMessage) {
+			renderOutputLine(cmd, "%s", line)
 		}
 	}
 	return nil

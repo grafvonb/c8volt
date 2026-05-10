@@ -16,6 +16,7 @@ import (
 var (
 	flagGetIncidentKeys                   []string
 	flagGetIncidentMessageLimit           int
+	flagGetIncidentNoErrorMessage         bool
 	flagGetIncidentState                  string
 	flagGetIncidentErrorType              string
 	flagGetIncidentErrorMessage           string
@@ -38,7 +39,7 @@ var getIncidentCmd = &cobra.Command{
 	Long: "Get Camunda incidents by key or by search criteria.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
 		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
-		"Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages.",
+		"Human output is compact for terminal diagnosis, while --json returns the stable incident payload for automation. Use --error-message-limit to shorten long human error messages or --with-no-error-message to omit them.",
 	Example: `  ./c8volt get incident --key 2251799813685249
   ./c8volt get inc --key 2251799813685249 --key 2251799813685250
   printf '%s\n' 2251799813685249 2251799813685250 | ./c8volt get incident -
@@ -96,7 +97,7 @@ var getIncidentCmd = &cobra.Command{
 				}
 				return
 			}
-			if err := listIncidentsView(cmd, incidents, flagGetIncidentMessageLimit); err != nil {
+			if err := listIncidentsView(cmd, incidents, flagGetIncidentMessageLimit, flagGetIncidentNoErrorMessage); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incidents: %w", err))
 			}
 			return
@@ -121,7 +122,7 @@ var getIncidentCmd = &cobra.Command{
 		if renderedIncrementally {
 			return
 		}
-		if err := listIncidentsView(cmd, incidents, flagGetIncidentMessageLimit); err != nil {
+		if err := listIncidentsView(cmd, incidents, flagGetIncidentMessageLimit, flagGetIncidentNoErrorMessage); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render incidents: %w", err))
 		}
 	},
@@ -147,6 +148,7 @@ func init() {
 	fs.Int32VarP(&flagGetIncidentLimit, "limit", "l", 0, "maximum number of matching incidents to return across all pages")
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for human incident messages; 0 keeps full messages")
+	fs.BoolVar(&flagGetIncidentNoErrorMessage, "with-no-error-message", false, "omit error messages from human incident output")
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new incident lookups after the first error")
@@ -203,11 +205,20 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	if flagGetIncidentMessageLimit < 0 {
 		return invalidFlagValuef("--error-message-limit must be non-negative")
 	}
+	if flagGetIncidentNoErrorMessage && cmd != nil && cmd.Flags().Changed("error-message-limit") {
+		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --error-message-limit")
+	}
 	if pickMode() == RenderModeJSON && cmd != nil && cmd.Flags().Changed("error-message-limit") {
 		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --json")
 	}
 	if pickMode() == RenderModeKeysOnly && cmd != nil && cmd.Flags().Changed("error-message-limit") {
 		return mutuallyExclusiveFlagsf("--error-message-limit cannot be combined with --keys-only")
+	}
+	if pickMode() == RenderModeJSON && flagGetIncidentNoErrorMessage {
+		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --json")
+	}
+	if pickMode() == RenderModeKeysOnly && flagGetIncidentNoErrorMessage {
+		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --keys-only")
 	}
 	if ok, firstBadKey, _ := validateKeys(flagGetIncidentKeys); !ok {
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)
@@ -294,6 +305,7 @@ func populateGetIncidentSearchFilter() process.IncidentFilter {
 func resetGetIncidentFlagState() {
 	flagGetIncidentKeys = nil
 	flagGetIncidentMessageLimit = 0
+	flagGetIncidentNoErrorMessage = false
 	flagGetIncidentState = "active"
 	flagGetIncidentErrorType = ""
 	flagGetIncidentErrorMessage = ""

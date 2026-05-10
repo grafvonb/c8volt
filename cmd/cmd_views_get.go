@@ -36,12 +36,22 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPI, func(it process.ProcessInstance) string { return it.Key })
 }
 
-func listIncidentsView(cmd *cobra.Command, resp process.Incidents, messageLimit int) error {
-	return listOrJSON(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstanceIncidentDetail) string {
-		return incidentListHumanLineWithMessageLimit(it, messageLimit)
-	}, func(it process.ProcessInstanceIncidentDetail) string {
-		return it.IncidentKey
-	})
+func listIncidentsView(cmd *cobra.Command, resp process.Incidents, messageLimit int, omitMessage bool) error {
+	mode := pickMode()
+	switch mode {
+	case RenderModeJSON:
+		return renderJSONPayload(cmd, mode, resp)
+	case RenderModeKeysOnly:
+		for _, it := range resp.Items {
+			renderOutputLine(cmd, "%s", it.IncidentKey)
+		}
+	default:
+		for _, line := range formatIncidentListRows(resp.Items, messageLimit, omitMessage) {
+			renderOutputLine(cmd, "%s", line)
+		}
+		renderOutputLine(cmd, "found: %d", len(resp.Items))
+	}
+	return nil
 }
 
 // renderProcessInstanceFlatRows shares aligned human output between collected lists and incremental search pages.

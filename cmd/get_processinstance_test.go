@@ -640,7 +640,7 @@ func TestGetProcessInstanceIncidentFlags_PreserveSearchAndEnrichmentContracts(t 
 				"POST /v2/process-instances/search",
 				"POST /v2/process-instances/123/incidents/search",
 			},
-			wantOutput: []string{"123 tenant demo v3 ACTIVE", "key=incident-123", "found: 1"},
+			wantOutput: []string{"123 tenant demo v3 ACTIVE", "incident-123", "found: 1"},
 		},
 		{
 			name:             "incidents only stays on marker filter and does not load direct incidents",
@@ -870,7 +870,7 @@ func TestGetProcessInstanceListWithVarsAndIncidents_HumanOutputShowsGroupedSecti
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:\n│  └─ hasIncident=true")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a m:No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -922,13 +922,13 @@ func TestGetProcessInstanceListWithIncidents_HumanOutputShowsDirectIncidentLines
 		"POST /v2/process-instances/124/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 state=ACTIVE jobKey=n/a message=Second key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-124 ACTIVE j:n/a m:Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
-	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "key=incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "incident-123"))
+	require.Less(t, strings.Index(output, "incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "incident-124"))
 }
 
 // TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows guards paging and --limit compatibility for incident lookups.
@@ -971,7 +971,7 @@ func TestGetProcessInstanceListWithIncidents_LooksUpOnlyLimitedRows(t *testing.T
 		"POST /v2/process-instances/123/incidents/search",
 	}, requests)
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:First key failed")
 	require.NotContains(t, output, "124 tenant")
 	require.Contains(t, output, "found: 1")
 }
@@ -1450,7 +1450,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 creationTime=2026-03-23T18:01:00Z flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00Z (48 days ago) fn:task-a fni:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1485,7 +1485,7 @@ func TestGetProcessInstanceWithIncidents_FiltersIncidentDetailsByTypeAndMessageC
 		"--incident-error-message", "intentional",
 	)
 
-	require.Contains(t, output, "key=incident-match")
+	require.Contains(t, output, "incident-match")
 	require.NotContains(t, output, "incident-type-miss")
 	require.NotContains(t, output, "incident-message-miss")
 }
@@ -1522,7 +1522,7 @@ func TestGetProcessInstanceWithIncidents_AllStateOmitsStateFilterAndShowsResolve
 
 	require.Len(t, incidentBodies, 1)
 	require.NotContains(t, incidentBodies[0], `"state"`)
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=RESOLVED jobKey=n/a message=resolved earlier")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 RESOLVED j:n/a m:resolved earlier")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1560,7 +1560,7 @@ func TestGetPIWithIncidents_AliasPreservesIncidentLookupOutput(t *testing.T) {
 	}, requests)
 	require.Contains(t, output, "2251799813711967 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=2251799813685249 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=2251799813685251 message=No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ 2251799813685249 JOB_NO_RETRIES ACTIVE j:2251799813685251 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1594,7 +1594,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitTruncatesMessa
 
 	require.Equal(t, []string{"GET /v2/process-instances/123", "POST /v2/process-instances/123/incidents/search"}, requests)
 	require.Contains(t, output, "123 tenant demo-process v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message=No retr...")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:No retr...")
 	require.NotContains(t, output, "No retries left after worker failure")
 }
 
@@ -1624,7 +1624,7 @@ func TestGetProcessInstanceWithIncidents_HumanIncidentMessageLimitDefaultLeavesM
 		"--with-incidents",
 	)
 
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 state=ACTIVE jobKey=n/a message="+fullMessage)
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:"+fullMessage)
 	require.NotContains(t, output, fullMessage[:7]+"...")
 }
 
@@ -1719,7 +1719,7 @@ func TestGetProcessInstanceWithVarsAndIncidents_HumanOutputShowsGroupedSections(
 	require.Contains(t, output, "│  ├─ businessKey=2234809392328")
 	require.Contains(t, output, "│  └─ hasIncident=true")
 	require.Contains(t, output, "└─ incidents:")
-	require.Contains(t, output, "   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=IO_MAPPING_ERROR jobKey=n/a message=No retries left")
+	require.Contains(t, output, "   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
@@ -1831,8 +1831,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ key=incident-123 creationTime=2026-03-23T18:01:00Z flowNodeId=task-a flowNodeInstanceKey=element-123 state=ACTIVE errorType=JOB_NO_RETRIES jobKey=n/a message=No retries left",
-				"└─ key=incident-124 creationTime=2026-03-23T18:02:00Z flowNodeId=task-b flowNodeInstanceKey=element-124 state=ACTIVE errorType=EXTRACT_VALUE_ERROR jobKey=n/a message=Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00Z (48 days ago) fn:task-a fni:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00Z (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
 			},
 		},
 		{

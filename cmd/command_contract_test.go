@@ -433,6 +433,13 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Repeated:    false,
 		Description: "maximum characters to show for human incident messages; 0 keeps full messages",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-no-error-message",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "omit error messages from human incident output",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,

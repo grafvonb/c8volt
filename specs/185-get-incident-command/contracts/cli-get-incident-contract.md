@@ -96,7 +96,7 @@ Error message semantics:
 Human row shape:
 
 ```text
-<incidentKey> <tenantId> state=<state> errorType=<errorType> creationTime=<timestamp> processInstanceKey=<key> flowNodeId=<id> flowNodeInstanceKey=<key> jobKey=<key|n/a> message=<message> (<age>)
+<incidentKey> <tenantId> <errorType> <state> j:<jobKey|n/a> <creationTime> (<age>) <bpmn-process-id> pi:<processInstanceKey> root:<rootProcessInstanceKey> fn:<flowNodeId> fni:<flowNodeInstanceKey> m:<errorMessage>
 ```
 
 JSON shape:
