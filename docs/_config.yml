@@ -38,6 +38,10 @@ aux_links:
 nav_external_links:
   - title: CLI Reference
     url: /cli/
+  - title: GitHub
+    url: https://github.com/grafvonb/c8volt
+  - title: Releases
+    url: https://github.com/grafvonb/c8volt/releases
   - title: README
     url: https://github.com/grafvonb/c8volt/blob/main/README.md
   - title: License

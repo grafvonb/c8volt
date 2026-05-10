@@ -22,6 +22,8 @@ import (
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
+	varsvc "github.com/grafvonb/c8volt/internal/services/variable"
+	varv88 "github.com/grafvonb/c8volt/internal/services/variable/v88"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
@@ -30,10 +32,11 @@ import (
 const wrongStateMessage400 = "Process instances needs to be in one of the states [COMPLETED, CANCELED]"
 
 type Service struct {
-	cc  GenProcessInstanceClientCamunda
-	co  GenProcessInstanceClientOperate
-	cfg *config.Config
-	log *slog.Logger
+	cc          GenProcessInstanceClientCamunda
+	co          GenProcessInstanceClientOperate
+	variableAPI varsvc.API
+	cfg         *config.Config
+	log         *slog.Logger
 }
 
 func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
@@ -67,6 +70,14 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+func WithVariableAPI(api varsvc.API) Option {
+	return func(s *Service) {
+		if api != nil {
+			s.variableAPI = api
+		}
+	}
+}
+
 func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...Option) (*Service, error) {
 	deps, err := common.PrepareServiceDeps(cfg, httpClient, log)
 	if err != nil {
@@ -95,6 +106,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 		return nil, err
 	}
 	s.log = logger
+	if s.variableAPI == nil {
+		variableOpts := []varv88.Option{}
+		if variableClient, ok := s.cc.(varv88.GenVariableClientCamunda); ok {
+			variableOpts = append(variableOpts, varv88.WithClientCamunda(variableClient))
+		}
+		variableAPI, err := varv88.New(s.cfg, deps.HTTPClient, s.log, variableOpts...)
+		if err != nil {
+			return nil, err
+		}
+		s.variableAPI = variableAPI
+	}
 	return s, nil
 }
 
@@ -208,6 +230,10 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-id filter: %w", err)
 	}
+	processDefinitionKeyFilter, err := common.NewProcessDefinitionKeyEqFilterPtr(filter.ProcessDefinitionKey)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-key filter: %w", err)
+	}
 	processDefinitionVersionFilter, err := common.NewIntegerEqFilterPtr(filter.ProcessVersion)
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version filter: %w", err)
@@ -237,6 +263,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		TenantId:                    tenantFilter,
 		ProcessInstanceKey:          processInstanceKeyFilter,
 		ProcessDefinitionId:         processDefinitionIDFilter,
+		ProcessDefinitionKey:        processDefinitionKeyFilter,
 		ProcessDefinitionVersion:    processDefinitionVersionFilter,
 		ProcessDefinitionVersionTag: processDefinitionVersionTagFilter,
 		StartDate:                   startDateFilter,
@@ -263,6 +290,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if bodyFilter.TenantId != nil ||
 		bodyFilter.ProcessInstanceKey != nil ||
 		bodyFilter.ProcessDefinitionId != nil ||
+		bodyFilter.ProcessDefinitionKey != nil ||
 		bodyFilter.ProcessDefinitionVersion != nil ||
 		bodyFilter.ProcessDefinitionVersionTag != nil ||
 		bodyFilter.StartDate != nil ||
@@ -329,14 +357,23 @@ func normalizeSearchState(state d.State) d.State {
 }
 
 func pickProcessInstanceOverflowState(page camundav88.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
 	visibleCount := int64(req.From) + int64(itemCount)
-	if page.HasMoreTotalItems {
-		return d.ProcessInstanceOverflowStateHasMore
+	if req.After != "" {
+		if page.EndCursor != nil {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
 	}
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.TotalItems == 0 && itemCount > 0 {
+	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 {
 		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	return d.ProcessInstanceOverflowStateNoMore

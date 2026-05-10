@@ -33,6 +33,9 @@ var (
 	flagGetPISize                 int32
 	flagGetPILimit                int32
 	flagGetPIWithIncidents        bool
+	flagGetPIIncidentState        string
+	flagGetPIIncidentErrorType    string
+	flagGetPIIncidentErrorMessage string
 	flagGetPIIncidentMessageLimit int
 	flagGetPIWithVars             bool
 	flagGetPIVarValueLimit        int
@@ -40,11 +43,12 @@ var (
 
 // command options
 var (
-	flagGetPIRootsOnly          bool
-	flagGetPIChildrenOnly       bool
-	flagGetPIOrphanChildrenOnly bool
-	flagGetPIIncidentsOnly      bool
-	flagGetPINoIncidentsOnly    bool
+	flagGetPIRootsOnly           bool
+	flagGetPIChildrenOnly        bool
+	flagGetPIOrphanChildrenOnly  bool
+	flagGetPIIncidentsOnly       bool
+	flagGetPIDirectIncidentsOnly bool
+	flagGetPINoIncidentsOnly     bool
 )
 
 var getProcessInstanceCmd = &cobra.Command{
@@ -58,25 +62,28 @@ var getProcessInstanceCmd = &cobra.Command{
 		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
-	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get pi --key <process-instance-key>
-  ./c8volt get pi --state active
-  ./c8volt get pi --state active --json
+  ./c8volt get pi --state active --limit 5
+  ./c8volt get pi --state active --json --limit 5
   ./c8volt get pi --state active --total
   ./c8volt get pi --has-user-tasks <user-task-key>
-  ./c8volt get pi --state active --batch-size 250 --limit 25
-  ./c8volt get pi --state active --limit 25 --auto-confirm
-  ./c8volt get pi --incidents-only --with-incidents
-  ./c8volt get pi --with-incidents --incident-message-limit 80
-  ./c8volt get pi --with-vars --var-value-limit 120
-  ./c8volt get pi --key 2251799813711967 --with-incidents
-  ./c8volt get pi --key 2251799813711967 --with-vars
-  ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
-  ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
-  ./c8volt get pi --key 2251799813711967 --json
-  ./c8volt get pi --key 2251799813711967 --with-incidents --json
-  ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
+  ./c8volt get pi --state active --batch-size 250 --limit 5
+  ./c8volt get pi --state active --limit 5 --auto-confirm
+  ./c8volt get pi --incidents-only --with-incidents --limit 5
+  ./c8volt get pi --direct-incidents-only --with-incidents --limit 5
+  ./c8volt get pi --with-incidents --incident-message-limit 80 --limit 5
+  ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
+  ./c8volt get pi --key <process-instance-key> --with-incidents
+  ./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all
+  ./c8volt get pi --key <process-instance-key> --with-vars
+  ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
+  ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt get pi --key <process-instance-key> --json
+  ./c8volt get pi --key <process-instance-key> --with-incidents --json
+  ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
+  ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -116,7 +123,10 @@ var getProcessInstanceCmd = &cobra.Command{
 		if err := validatePIHasUserTasksMode(cmd, ltk, lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
-		if err := validatePIWithIncidentsUsage(lk, filterFlagsSet); err != nil {
+		if err := validatePIIncidentDetailFilterUsage(cmd, lk); err != nil {
+			fail(err)
+		}
+		if err := validatePIWithIncidentsUsage(cmd, lk, filterFlagsSet); err != nil {
 			fail(err)
 		}
 		if err := validatePIWithVarsUsage(lk, filterFlagsSet); err != nil {
@@ -157,8 +167,8 @@ var getProcessInstanceCmd = &cobra.Command{
 			if flagGetPITotal {
 				fail(mutuallyExclusiveFlagsf("--total cannot be combined with --key"))
 			}
-			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal/preflight flows.
-			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
+			// Keyed lookups intentionally stay strict; partial orphan warnings are only for traversal and impact-check flows.
+			if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly {
 				fail(mutuallyExclusiveFlagsf("--key cannot be combined with other filters"))
 			}
 			if cmd.Flags().Changed("workers") {
@@ -290,10 +300,13 @@ func init() {
 	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to fetch per page (max limit %d enforced by server)", consts.MaxPISearchSize))
 	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to return or process across all pages")
 	fs.BoolVar(&flagGetPITotal, "total", false, "return only the numeric total of matching process instances; capped backend totals are counted by paging")
-	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys and messages for keyed or list/search process-instance output")
-	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
+	fs.BoolVar(&flagGetPIWithIncidents, "with-incidents", false, "include direct incident keys, states, and messages for keyed or list/search process-instance output")
+	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for keyed --with-incidents: active, pending, resolved, migrated, unknown, all")
+	fs.StringVar(&flagGetPIIncidentErrorType, "incident-error-type", "", "case-insensitive incident error type filter for keyed --with-incidents or list/search --direct-incidents-only")
+	fs.StringVar(&flagGetPIIncidentErrorMessage, "incident-error-message", "", "case-insensitive incident error message substring filter for keyed --with-incidents or list/search --direct-incidents-only")
+	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagGetPIWithVars, "with-vars", false, "include process-instance-scope variables for keyed or list/search process-instance output")
-	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation")
+	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
 
 	// filtering options
 	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to filter process instances")
@@ -305,6 +318,7 @@ func init() {
 	fs.BoolVar(&flagGetPIOrphanChildrenOnly, "orphan-children-only", false, "show only child instances with missing parents")
 
 	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "show only process instances that have incidents")
+	fs.BoolVar(&flagGetPIDirectIncidentsOnly, "direct-incidents-only", false, "show only process instances with direct incident details")
 	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "show only process instances that have no incidents")
 
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))")

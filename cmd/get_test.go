@@ -37,7 +37,7 @@ func TestGetCommand_CommandLocalBackoffTimeoutFlagOverridesEnvProfileAndConfig(t
 func TestGetHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "--help")
 
-	require.Contains(t, output, "Inspect cluster, process, tenant, and resource state")
+	require.Contains(t, output, "Inspect cluster, process, job, incident, tenant, and resource state")
 	require.Contains(t, output, "cluster")
 	require.NotContains(t, output, "cluster-topology")
 	require.Contains(t, output, "tenant")
@@ -163,24 +163,24 @@ func TestGetClusterHelp(t *testing.T) {
 	require.Contains(t, output, "./c8volt get cluster license")
 }
 
-// Verifies license help advertises the human default and structured JSON escape hatch.
+// Verifies license help advertises the default fields and structured JSON escape hatch.
 func TestGetClusterLicenseHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "license", "--help")
 
 	require.Contains(t, output, "Show connected cluster license")
-	require.Contains(t, output, "flat human-readable fields")
+	require.Contains(t, output, "flat fields")
 	require.Contains(t, output, "Use --json for the structured license payload")
 	require.Contains(t, output, "c8volt get cluster license")
 	require.Contains(t, output, "./c8volt get cluster license --json")
 	require.Contains(t, output, "./c8volt get cluster licence")
 }
 
-// Verifies `get cluster topology --help` describes the human default and JSON escape hatch.
+// Verifies `get cluster topology --help` describes the default tree and JSON escape hatch.
 func TestGetClusterTopologyHelp(t *testing.T) {
 	output := executeRootForTest(t, "get", "cluster", "topology", "--help")
 
-	require.Contains(t, output, "Show connected cluster topology as a sorted human-readable tree")
-	require.Contains(t, output, "sorted human-readable tree")
+	require.Contains(t, output, "Show connected cluster topology as a sorted tree")
+	require.Contains(t, output, "sorted tree")
 	require.Contains(t, output, "Use --json for the structured topology payload")
 	require.Contains(t, output, "./c8volt get cluster topology")
 	require.Contains(t, output, "./c8volt get cluster topology --json")
@@ -517,7 +517,7 @@ func TestGetResourceCommand_DefaultOutputRemainsPlainText(t *testing.T) {
 	require.NotContains(t, output, `"command"`)
 }
 
-// Verifies the human license default omits optional fields that the API did not send.
+// Verifies the license default omits optional fields that the API did not send.
 func TestGetClusterLicenseNestedCommand_Success(t *testing.T) {
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)

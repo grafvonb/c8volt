@@ -109,3 +109,6 @@ scripts/ralph/
 
 # AI temporary or backup files
 AGENTS.md.ai-tooling-backup-*
+
+# Local variables for development
+vars.json

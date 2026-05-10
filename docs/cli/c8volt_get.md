@@ -6,14 +6,14 @@ nav_exclude: true
 [CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt get
 
-Inspect cluster, process, tenant, and resource state
+Inspect cluster, process, incident, tenant, and resource state
 
 ### Synopsis
 
-Inspect cluster, process, tenant, and resource state without changing it.
+Inspect cluster, process, job, incident, tenant, and resource state without changing it.
 
 Check cluster health, list deployed process definitions, inspect process
-instances, list visible tenants, or fetch a known resource.
+instances, inspect jobs and incidents by key, list visible tenants, or fetch a known resource.
 
 ```
 c8volt get [flags]
@@ -24,7 +24,9 @@ c8volt get [flags]
 ```
   ./c8volt get cluster topology
   ./c8volt get pd --latest
-  ./c8volt get pi --state active
+  ./c8volt get pi --state active --limit 5
+  ./c8volt get job --key <job-key>
+  ./c8volt get incident --key <incident-key>
   ./c8volt get tenant
   ./c8volt get resource --id <resource-key>
 ```
@@ -57,6 +59,8 @@ c8volt get [flags]
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 * [c8volt get cluster](c8volt_get_cluster)	 - Inspect cluster-wide topology, version, and license information
+* [c8volt get incident](c8volt_get_incident)	 - List or fetch incidents
+* [c8volt get job](c8volt_get_job)	 - Inspect a job by key
 * [c8volt get process-definition](c8volt_get_process-definition)	 - List or fetch deployed process definitions
 * [c8volt get process-instance](c8volt_get_process-instance)	 - List or fetch process instances
 * [c8volt get resource](c8volt_get_resource)	 - Get a resource by id

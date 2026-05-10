@@ -12,7 +12,7 @@ Started: 2026-04-25 15:48:48
 - Process-instance flag validation should accept the current `*cobra.Command` when it needs `Flags().Changed(...)`; referencing package-level command variables from shared validation creates Go initialization cycles.
 - Removed process-instance flags should use `useInvalidInputFlagErrors` on the affected leaf commands so Cobra parse failures map to the repository invalid-input exit model.
 - `cancel process-instance` and `delete process-instance` register their own command flags but reuse get-side process-instance search globals and paging helpers for search-mode destructive workflows.
-- Multi-page process-instance tests use `newProcessInstanceSearchCaptureServerWithResponses`, `decodeCapturedPISearchPages`, `decodeCapturedTopLevelPISearchPages`, and `safeSlice` helpers to assert request paging, continuation prompts, and destructive side effects.
+- Multi-page process-instance tests use `newProcessInstanceSearchCaptureServerWithResponses`, `decodeCapturedPISearchPages`, `decodeCapturedTopLevelPISearchPages`, and `testx.SafeSlice` helpers to assert request paging, continuation prompts, and destructive side effects.
 - Command test helpers reset package-level Cobra flag globals with `resetProcessInstanceCommandGlobals`; future flag additions need reset coverage to avoid cross-test leakage.
 - Generated CLI docs under `docs/cli/` currently mirror Cobra command metadata and should be regenerated from command source after help/examples change, not hand-edited as the source of truth.
 - Total `--limit` enforcement belongs after local process-instance filters and before rendering or destructive page actions; progress summaries should count the limited page subset, not the raw backend page.

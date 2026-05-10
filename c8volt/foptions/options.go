@@ -32,11 +32,24 @@ func WithDryRun() FacadeOption { return func(c *FacadeCfg) { c.DryRun = true } }
 // WithNoWorkerLimit disables the default cap that keeps requested workers within the runtime worker policy.
 func WithNoWorkerLimit() FacadeOption { return func(c *FacadeCfg) { c.NoWorkerLimit = true } }
 
-// WithAllowInconsistent opts into eventually consistent or destructive API operations that are otherwise guarded.
-func WithAllowInconsistent() FacadeOption { return func(c *FacadeCfg) { c.AllowInconsistent = true } }
-func WithIgnoreTenant() FacadeOption      { return func(c *FacadeCfg) { c.IgnoreTenant = true } }
+func WithIgnoreTenant() FacadeOption { return func(c *FacadeCfg) { c.IgnoreTenant = true } }
 
-// WithAffectedProcessInstanceCount carries preflight expansion metadata for facade-level summaries.
+// WithIncidentState selects the incident state scope for process-instance incident enrichment.
+func WithIncidentState(state string) FacadeOption {
+	return func(c *FacadeCfg) { c.IncidentState = state }
+}
+
+// WithIncidentErrorType filters process-instance incident enrichment by error type.
+func WithIncidentErrorType(errorType string) FacadeOption {
+	return func(c *FacadeCfg) { c.IncidentErrorType = errorType }
+}
+
+// WithIncidentErrorMessage filters process-instance incident enrichment by message substring.
+func WithIncidentErrorMessage(message string) FacadeOption {
+	return func(c *FacadeCfg) { c.IncidentErrorMessage = message }
+}
+
+// WithAffectedProcessInstanceCount carries impact-check expansion metadata for facade-level summaries.
 func WithAffectedProcessInstanceCount(count int) FacadeOption {
 	return func(c *FacadeCfg) { c.AffectedProcessInstanceCount = count }
 }
@@ -53,8 +66,10 @@ type FacadeCfg struct {
 	Stat                         bool
 	DryRun                       bool
 	NoWorkerLimit                bool
-	AllowInconsistent            bool
 	IgnoreTenant                 bool
+	IncidentState                string
+	IncidentErrorType            string
+	IncidentErrorMessage         string
 	AffectedProcessInstanceCount int
 }
 
@@ -100,11 +115,20 @@ func MapFacadeOptionsToCallOptions(opts []FacadeOption) []services.CallOption {
 	if c.NoWorkerLimit {
 		out = append(out, services.WithNoWorkerLimit())
 	}
-	if c.AllowInconsistent {
-		out = append(out, services.WithAllowInconsistent())
-	}
 	if c.IgnoreTenant {
 		out = append(out, services.WithIgnoreTenant())
+	}
+	if c.IncidentState != "" {
+		out = append(out, services.WithIncidentState(c.IncidentState))
+	}
+	if c.IncidentErrorType != "" {
+		out = append(out, services.WithIncidentErrorType(c.IncidentErrorType))
+	}
+	if c.IncidentErrorMessage != "" {
+		out = append(out, services.WithIncidentErrorMessage(c.IncidentErrorMessage))
+	}
+	if c.AffectedProcessInstanceCount > 0 {
+		out = append(out, services.WithAffectedProcessInstanceCount(c.AffectedProcessInstanceCount))
 	}
 	return out
 }

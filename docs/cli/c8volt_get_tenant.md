@@ -12,7 +12,7 @@ List tenants
 
 List tenants visible to the configured environment.
 
-Human output includes tenant ID, name, and description when available.
+Output includes tenant ID, name, and description when available.
 
 ```
 c8volt get tenant [flags]
@@ -57,5 +57,5 @@ c8volt get tenant [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
 

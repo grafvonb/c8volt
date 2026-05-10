@@ -10,7 +10,7 @@ Show connected cluster topology as a tree
 
 ### Synopsis
 
-Show connected cluster topology as a sorted human-readable tree.
+Show connected cluster topology as a sorted tree.
 
 This command reports brokers, partitions, and gateway metadata for the configured Camunda cluster. Use --json for the structured topology payload.
 

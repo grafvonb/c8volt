@@ -13,27 +13,13 @@ type ProcessInstance struct {
 	ParentFlowNodeInstanceKey string
 	ParentKey                 string
 	ProcessDefinitionKey      string
+	RootProcessInstanceKey    string
 	ProcessVersion            int32
 	ProcessVersionTag         string
 	StartDate                 string
 	State                     State
 	TenantId                  string
 	Variables                 map[string]any
-}
-
-type ProcessInstanceIncidentDetail struct {
-	IncidentKey            string
-	ProcessInstanceKey     string
-	TenantId               string
-	State                  string
-	ErrorType              string
-	ErrorMessage           string
-	FlowNodeId             string
-	FlowNodeInstanceKey    string
-	JobKey                 string
-	RootProcessInstanceKey string
-	ProcessDefinitionKey   string
-	ProcessDefinitionId    string
 }
 
 type ProcessInstanceVariable struct {
@@ -44,6 +30,18 @@ type ProcessInstanceVariable struct {
 	ScopeKey           string
 	TenantId           string
 	APITruncated       bool
+}
+
+type ProcessInstanceVariableUpdateRequest struct {
+	Key       string
+	Variables map[string]any
+}
+
+type ProcessInstanceVariableUpdateResponse struct {
+	Key        string
+	Ok         bool
+	StatusCode int
+	Status     string
 }
 
 type ProcessInstanceFilter struct {

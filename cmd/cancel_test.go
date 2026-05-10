@@ -89,8 +89,8 @@ func TestCancelProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireCancelDryRunPreviewPayload(t, payload, want)
 }
 
-// TestCancelProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose verifies human dry-run output keeps key lists verbose-only.
-func TestCancelProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *testing.T) {
+// TestCancelProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose verifies dry-run output keeps key lists verbose-only.
+func TestCancelProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -131,10 +131,10 @@ func TestCancelProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *te
 	require.NotContains(t, output, "no mutation submitted")
 }
 
-// TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances
+// TestCancelProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
 // verifies terminal selected instances are summarized without noisy key lists by
 // default.
-func TestCancelProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
+func TestCancelProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -300,7 +300,7 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 }
 
 // TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
-// verifies partial ancestry details are surfaced in human output.
+// verifies partial ancestry details are surfaced in output.
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -494,7 +494,7 @@ func TestCancelProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 }
 
 // TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope verifies
-// aggregate human output preserves partial-scope warnings.
+// aggregate output preserves partial-scope warnings.
 func TestCancelProcessInstanceDryRun_SearchSummaryExplainsPartialScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -631,7 +631,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Cancel running process instances",
 		"--auto-confirm",
 		"waits for\nobserved cancellation",
-		"./c8volt cancel pi --state active --batch-size 200 --auto-confirm",
+		"./c8volt cancel pi --state active --limit 5 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -639,11 +639,10 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"validates the affected root and descendant instances",
 		"Use --force when a selected child must be escalated",
 		"Use --auto-confirm for unattended destructive runs",
-		"Add --no-wait to verify later with `get pi` or `expect pi`",
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
 		"./c8volt expect pi --key <process-instance-key> --state canceled",
-		"./c8volt cancel pi --state active --batch-size 250 --limit 25",
+		"./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -673,32 +672,21 @@ func TestCancelProcessInstanceSearchScaffold_UsesTempConfigAndCapturesSearchRequ
 	require.NotContains(t, output, "no process instance keys provided or found to cancel")
 }
 
-func TestCancelProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearch(t *testing.T) {
+func TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectly(t *testing.T) {
 	var requests []string
-	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r.Method+" "+r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/v2/process-definitions/search", r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-	}))
+	srv := newProcessInstanceSearchCaptureServer(t, &requests)
 	t.Cleanup(srv.Close)
 
 	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
 
-	output, err := testx.RunCmdSubprocess(t, "TestCancelProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearchHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": cfgPath,
-	})
+	output, err := executeCancelProcessInstanceSuccessHelper(t, "TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper", cfgPath)
 
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Equal(t, []string{"POST /v2/process-definitions/search"}, requests)
-	require.Contains(t, string(output), "no visible process definition matches the provided selector")
-	require.Contains(t, string(output), "[missing-process]")
-	require.NotContains(t, string(output), "bpmnProcessId:")
-	require.NotContains(t, string(output), "found: 0")
+	require.NoError(t, err)
+	require.Len(t, requests, 1)
+	filter := decodeCapturedPISearchFilter(t, requests)
+	require.Equal(t, "missing-process", filter["processDefinitionId"])
+	require.Contains(t, output, "found: 0")
+	require.NotContains(t, output, "no visible process definition matches the provided selector")
 }
 
 func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.T) {
@@ -706,15 +694,9 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r.Method+" "+r.URL.Path)
 		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/process-instances/search", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		switch r.URL.Path {
-		case "/v2/process-definitions/search":
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant-a","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
-		case "/v2/process-instances/search":
-			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
-		default:
-			t.Fatalf("unexpected request path: %s", r.URL.Path)
-		}
+		_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -727,20 +709,17 @@ func TestCancelProcessInstanceBpmnSelectorVisiblePreservesSearchNoOp(t *testing.
 		"--bpmn-process-id", "order-process",
 	)
 
-	require.Equal(t, []string{"POST /v2/process-definitions/search", "POST /v2/process-instances/search"}, requests)
+	require.Equal(t, []string{"POST /v2/process-instances/search"}, requests)
 	require.Equal(t, "found: 0\n", output)
 }
 
 // Verifies date-filtered search selection cancels matched instances and keeps descendant lookup behavior intact.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -794,13 +773,10 @@ func TestCancelProcessInstanceCommand_SearchSelectionUsesDateFiltersAndCancelsMa
 // Verifies relative-day search selection derives canonical start-date bounds before cancelling matches.
 func TestCancelProcessInstanceCommand_SearchSelectionUsesRelativeDayFiltersAndCancelsMatches(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"items":[{"processDefinitionId":"order-process","processDefinitionKey":"9001","tenantId":"tenant","version":3}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
@@ -885,8 +861,8 @@ func TestCancelProcessInstanceCommand_RelativeDayOnlyFiltersAreSufficient(t *tes
 
 // TestCancelProcessInstanceCommand_SearchPagingPromptFlow verifies paged cancel search prompts between pages.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
-	var requests safeSlice[string]
-	var cancelled safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 	var searchMu sync.Mutex
 
@@ -971,7 +947,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 	}, cancelled.Snapshot())
 	require.Len(t, prompts, 2)
 	require.Contains(t, prompts[0], "You are about to cancel 2 process instance(s)")
-	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2 requested so far, 2 including dependencies). More matching process instances remain. Continue?")
+	require.Contains(t, prompts[1], "Processed 2 process instance(s) on this page (2/3+ requested, 2 including dependencies). More matching process instances remain. Continue?")
 	require.Contains(t, output, "page size: 2, current page: 2, total so far: 2, more matches: yes, next step: prompt")
 	require.Contains(t, output, "page size: 2, current page: 1, total so far: 3, more matches: no, next step: complete")
 	require.NotContains(t, output, "next step: auto-continue")
@@ -979,8 +955,8 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlow(t *testing.T) {
 
 // TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals verifies v8.7 paging includes dependency totals.
 func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependencyTotals(t *testing.T) {
-	var requests safeSlice[string]
-	var cancelled safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 	var searchMu sync.Mutex
 
@@ -1039,8 +1015,8 @@ func TestCancelProcessInstanceCommand_SearchPagingPromptFlowV87IncludesDependenc
 	require.Contains(t, output, "process-instance direct lookup by key is not tenant-safe in Camunda 8.7")
 }
 
-// TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight verifies keyed preflight warnings are printed.
-func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *testing.T) {
+// TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck verifies keyed impact-check warnings are printed.
+func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	flagCmdAutoConfirm = true
@@ -1085,13 +1061,13 @@ func TestCancelProcessInstancesWithPlan_PrintsOrphanWarningForKeyedPreflight(t *
 	require.Len(t, got.Reports, 1)
 	require.Contains(t, prompt, "requested to cancel 1 process instance(s)")
 	require.Contains(t, prompt, "a total of 2 instance(s) with 1 root instance(s) will be canceled")
-	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
-// TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight verifies paged preflight warnings are printed.
-func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testing.T) {
+// TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck verifies paged impact-check warnings are printed.
+func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 	flagCmdAutoConfirm = true
@@ -1126,14 +1102,14 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedPreflight(t *testi
 	require.NoError(t, err)
 	require.Equal(t, processInstancePageImpact{Requested: 1, Affected: 1, Roots: 1}, got.Impact)
 	require.Len(t, got.Reports, 1)
-	require.Contains(t, buf.String(), "warning: one or more parent process instances were not found")
+	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
 // TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow verifies --auto-confirm continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1221,7 +1197,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 // TestCancelProcessInstanceCommand_SearchPagingLimitFlow verifies cancel search stops at the requested limit.
 func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1310,7 +1286,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 // TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow verifies batch size and limit interact correctly.
 func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1388,7 +1364,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 // TestCancelProcessInstanceCommand_SearchPagingAutomationFlow verifies automation mode auto-continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1476,7 +1452,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 // TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary verifies aborted paging reports partial completion.
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1552,15 +1528,15 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 
 // TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary verifies indeterminate overflow emits a warning summary.
 func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.T) {
-	var requests []string
-	var cancelled safeSlice[string]
+	var requests testx.SafeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1610,7 +1586,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 		"--batch-size", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/221/cancellation",
@@ -1623,7 +1599,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 // TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging verifies direct keys do not use search paging.
 func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
 	var requests []string
-	var cancelled safeSlice[string]
+	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1905,7 +1881,7 @@ func TestCancelProcessInstanceSearchScaffoldHelper(t *testing.T) {
 	Execute()
 }
 
-func TestCancelProcessInstanceProcessDefinitionSelectorMissingFailsBeforeSearchHelper(t *testing.T) {
+func TestCancelProcessInstanceBpmnSelectorSearchesInstancesDirectlyHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}

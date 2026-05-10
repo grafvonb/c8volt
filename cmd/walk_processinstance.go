@@ -32,14 +32,15 @@ var walkProcessInstanceCmd = &cobra.Command{
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
 		"Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
-	Example: `  ./c8volt walk pi --key 2251799813711967
-  ./c8volt walk pi --key 2251799813711967 --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --with-vars
-  ./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80
-  ./c8volt walk pi --key 2251799813711967 --flat
-  ./c8volt walk pi --key 2251799813711977 --parent
-  ./c8volt --json walk pi --key 2251799813711967 --children --with-incidents`,
+	Example: `  ./c8volt walk pi --key <process-instance-key>
+  ./c8volt walk pi --key <process-instance-key> --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --with-vars
+  ./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-message-limit 80
+  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-state all
+  ./c8volt walk pi --key <process-instance-key> --flat
+  ./c8volt walk pi --key <process-instance-key> --parent
+  ./c8volt --json walk pi --key <process-instance-key> --children --with-incidents`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -147,7 +148,7 @@ var walkProcessInstanceCmd = &cobra.Command{
 		if flagWalkPIWithIncidents || flagWalkPIWithVars {
 			var incidentEnriched process.IncidentEnrichedTraversalResult
 			if flagWalkPIWithIncidents {
-				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectOptions()...)
+				incidentEnriched, err = cli.EnrichTraversalWithIncidents(cmd.Context(), result, collectIncidentEnrichmentOptions()...)
 				if err != nil {
 					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 				}
@@ -204,10 +205,11 @@ func init() {
 	fs.BoolVar(&flagWalkPIModeParent, "parent", false, "show ancestry from the selected process instance toward the root")
 	fs.BoolVar(&flagWalkPIModeChildren, "children", false, "show descendants from the selected process instance")
 	fs.BoolVar(&flagWalkPIFlat, "flat", false, "render family output as a flat path instead of an ASCII tree")
-	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys and messages for keyed process-instance walks")
-	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation")
+	fs.BoolVar(&flagWalkPIWithIncidents, "with-incidents", false, "show incident keys, states, and messages for keyed process-instance walks")
+	fs.StringVar(&flagGetPIIncidentState, "incident-state", "active", "incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all")
+	fs.IntVar(&flagGetPIIncidentMessageLimit, "incident-message-limit", 0, "maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation")
 	fs.BoolVar(&flagWalkPIWithVars, "with-vars", false, "show process-instance-scope variables for keyed process-instance walks")
-	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation")
+	fs.IntVar(&flagGetPIVarValueLimit, "var-value-limit", 0, "maximum characters to show for variable values when --with-vars is set; 0 disables truncation")
 
 	setCommandMutation(walkProcessInstanceCmd, CommandMutationReadOnly)
 	setContractSupport(walkProcessInstanceCmd, ContractSupportFull)
@@ -239,8 +241,14 @@ func validateWalkPIWithIncidentsUsage(cmd *cobra.Command) error {
 	if flagGetPIIncidentMessageLimit < 0 {
 		return invalidFlagValuef("invalid value for --incident-message-limit: %d, expected non-negative integer", flagGetPIIncidentMessageLimit)
 	}
+	if err := validatePIIncidentStateFlag(flagGetPIIncidentState); err != nil {
+		return err
+	}
 	if isPIIncidentMessageLimitFlagChanged(cmd) && !flagWalkPIWithIncidents {
 		return missingDependentFlagsf("--incident-message-limit requires --with-incidents")
+	}
+	if isPIIncidentStateFlagChanged(cmd) && !flagWalkPIWithIncidents {
+		return missingDependentFlagsf("--incident-state requires --with-incidents")
 	}
 	if !flagWalkPIWithIncidents {
 		return nil

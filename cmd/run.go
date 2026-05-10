@@ -13,9 +13,9 @@ var runCmd = &cobra.Command{
 	Long: `Start process instances.
 
 The process-instance command waits for active instances by default.`,
-	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
-  ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b C88_SimpleUserTask_Process --no-wait`,
+	Example: `  ./c8volt run pi -b C89_SimpleUserTask_Process
+  ./c8volt run pi -b C89_SimpleUserTask_Process --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b C89_SimpleUserTask_Process -n 3 --workers 2`,
 	Aliases: []string{"r"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

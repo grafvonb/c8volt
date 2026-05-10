@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 	"testing"
 	"time"
@@ -70,8 +71,8 @@ func TestOneLinePI_RendersAgeToday(t *testing.T) {
 		BpmnProcessId:  "Process_18qgpch",
 		ProcessVersion: 6,
 		State:          process.StateTerminated,
-		StartDate:      "2026-02-01T07:00:00.000Z",
-		EndDate:        "2026-02-01T09:00:00.000Z",
+		StartDate:      "2026-02-01T07:00:00.000+00:00",
+		EndDate:        "2026-02-01T09:00:00.000+00:00",
 		Incident:       false,
 	})
 
@@ -87,7 +88,7 @@ func TestOneLinePI_UsesSingleSpacesBetweenRenderedTokens(t *testing.T) {
 		BpmnProcessId:  "Process_18qgpch",
 		ProcessVersion: 6,
 		State:          process.StateActive,
-		StartDate:      "2026-02-01T07:00:00.000Z",
+		StartDate:      "2026-02-01T07:00:00.000+00:00",
 	})
 
 	require.NotContains(t, line, "  ")
@@ -129,7 +130,7 @@ func TestListProcessInstancesView_AlignsFlatRowsDynamically(t *testing.T) {
 				BpmnProcessId:  "Short",
 				ProcessVersion: 1,
 				State:          process.StateActive,
-				StartDate:      "2026-02-01T07:00:00.000Z",
+				StartDate:      "2026-02-01T07:00:00.000+00:00",
 			},
 			{
 				Key:               "22",
@@ -138,7 +139,7 @@ func TestListProcessInstancesView_AlignsFlatRowsDynamically(t *testing.T) {
 				ProcessVersion:    12,
 				ProcessVersionTag: "stable",
 				State:             process.StateCompleted,
-				StartDate:         "2026-01-30T07:00:00.000Z",
+				StartDate:         "2026-01-30T07:00:00.000+00:00",
 				ParentKey:         "1",
 				Incident:          true,
 			},
@@ -147,8 +148,8 @@ func TestListProcessInstancesView_AlignsFlatRowsDynamically(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, ""+
-		"1  tenant Short             v1         ACTIVE    s:2026-02-01T07:00:00.000Z p:<root>      (today)\n"+
-		"22 tenant MuchLongerProcess v12/stable COMPLETED s:2026-01-30T07:00:00.000Z p:1      inc! (2 days ago)\n"+
+		"1  tenant Short             v1         ACTIVE    s:2026-02-01T07:00:00+00:00 p:<root>      (today)\n"+
+		"22 tenant MuchLongerProcess v12/stable COMPLETED s:2026-01-30T07:00:00+00:00 p:1      inc! (2 days ago)\n"+
 		"found: 2\n", buf.String())
 }
 
@@ -197,7 +198,7 @@ func TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists(t *testing.T) {
 		BpmnProcessId:  "Process_18qgpch",
 		ProcessVersion: 6,
 		State:          process.StateActive,
-		StartDate:      "2026-02-01T07:00:00.000Z",
+		StartDate:      "2026-02-01T07:00:00.000+00:00",
 	}
 
 	line := oneLinePI(base)
@@ -210,7 +211,7 @@ func TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists(t *testing.T) {
 	require.NotContains(t, line, "i:true")
 }
 
-func TestOneLinePI_RendersStartAndEndDateWithThreeDigitMilliseconds(t *testing.T) {
+func TestOneLinePI_RendersStartAndEndDateWithOffsetSeconds(t *testing.T) {
 	line := oneLinePI(process.ProcessInstance{
 		Key:            "2251799813758959",
 		TenantId:       "<default>",
@@ -221,13 +222,15 @@ func TestOneLinePI_RendersStartAndEndDateWithThreeDigitMilliseconds(t *testing.T
 		EndDate:        "2026-04-13T18:03:24Z",
 	})
 
-	require.Contains(t, line, "s:2026-04-13T18:03:24.360Z")
-	require.Contains(t, line, "e:2026-04-13T18:03:24.000Z")
+	require.Contains(t, line, "s:2026-04-13T18:03:24+00:00")
+	require.Contains(t, line, "e:2026-04-13T18:03:24+00:00")
+	require.NotContains(t, line, ".360")
+	require.NotContains(t, line, "Z")
 }
 
-func TestProcessInstanceTimestampMillis_LeavesInvalidValuesUnchanged(t *testing.T) {
-	require.Equal(t, "not-a-date", processInstanceTimestampMillis("not-a-date"))
-	require.Equal(t, "", processInstanceTimestampMillis(""))
+func TestHumanTimestamp_LeavesInvalidValuesUnchanged(t *testing.T) {
+	require.Equal(t, "not-a-date", humanTimestamp("not-a-date"))
+	require.Equal(t, "", humanTimestamp(""))
 }
 
 func TestProcessInstancesWithAgeMeta(t *testing.T) {
@@ -251,6 +254,76 @@ func TestProcessInstancesWithAgeMeta(t *testing.T) {
 	require.Equal(t, 4, payload.Meta.AgeDaysBy["2251799813758959"])
 }
 
+func TestIncidentHumanLineWithMessageLimit_RendersAlignedIncidentListFieldsAndAge(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 9, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	lines := formatIncidentListRows([]incident.ProcessInstanceIncidentDetail{
+		{
+			IncidentKey:            "2251799813685249",
+			TenantId:               "tenant-a",
+			State:                  "ACTIVE",
+			ErrorType:              "JOB_NO_RETRIES",
+			ErrorMessage:           "No retries left for a long-running job",
+			CreationTime:           "2026-05-05T10:15:00Z",
+			ProcessInstanceKey:     "2251799813711967",
+			RootProcessInstanceKey: "2251799813711960",
+			ProcessDefinitionKey:   "2251799813685200",
+			ProcessDefinitionId:    "demo-process",
+			FlowNodeId:             "task-a",
+			FlowNodeInstanceKey:    "2251799813685300",
+		},
+		{
+			IncidentKey:         "9",
+			TenantId:            "<default>",
+			State:               "RESOLVED",
+			ErrorType:           "IO_MAPPING_ERROR",
+			ErrorMessage:        "short",
+			CreationTime:        "2026-05-08T10:15:00Z",
+			ProcessInstanceKey:  "1",
+			ProcessDefinitionId: "tiny-demo",
+		},
+	}, 15, false)
+
+	require.Len(t, lines, 2)
+	require.Contains(t, lines[0], "2251799813685249 tenant-a  JOB_NO_RETRIES   ACTIVE   j:n/a")
+	require.Contains(t, lines[0], "j:n/a 2026-05-05T10:15:00+00:00 (4 days ago) demo-process pi:2251799813711967 root:2251799813711960")
+	require.Contains(t, lines[0], "fn:task-a fni:2251799813685300 m:No retries left...")
+	require.Contains(t, lines[1], "9                <default> IO_MAPPING_ERROR RESOLVED j:n/a")
+	require.Contains(t, lines[1], "j:n/a 2026-05-08T10:15:00+00:00 (1 days ago) tiny-demo    pi:1")
+	require.Contains(t, lines[1], "m:short")
+	require.Less(t, strings.Index(lines[0], "ACTIVE"), strings.Index(lines[0], "j:n/a"))
+	require.Less(t, strings.Index(lines[0], "j:n/a"), strings.Index(lines[0], "2026-05-05T10:15:00+00:00"))
+	require.Less(t, strings.Index(lines[0], "2026-05-05T10:15:00+00:00"), strings.Index(lines[0], "demo-process"))
+	require.Less(t, strings.Index(lines[0], "demo-process"), strings.Index(lines[0], "pi:2251799813711967"))
+	require.Less(t, strings.Index(lines[0], "pi:2251799813711967"), strings.Index(lines[0], "root:2251799813711960"))
+	require.Less(t, strings.Index(lines[0], "root:2251799813711960"), strings.Index(lines[0], "fn:task-a"))
+	require.Less(t, strings.Index(lines[0], "fn:task-a"), strings.Index(lines[0], "fni:2251799813685300"))
+	require.Less(t, strings.Index(lines[0], "fni:2251799813685300"), strings.Index(lines[0], "m:No"))
+	require.Equal(t, strings.Index(lines[0], "2026-05-05T10:15:00+00:00"), strings.Index(lines[1], "2026-05-08T10:15:00+00:00"))
+	require.NotContains(t, lines[0], "2251799813685200")
+	require.NotContains(t, lines[0], "err:")
+	require.Contains(t, lines[0], "m:No")
+	require.NotContains(t, lines[0], "m: ")
+}
+
+func TestIncidentHumanLineWithMessageLimit_SkipsAgeForMissingOrInvalidCreationTime(t *testing.T) {
+	line := incidentListHumanLineWithMessageLimit(incident.ProcessInstanceIncidentDetail{
+		IncidentKey:  "2251799813685249",
+		CreationTime: "not-a-date",
+		ErrorMessage: "failed",
+	}, 0)
+
+	require.Contains(t, line, "not-a-date")
+	require.NotContains(t, line, "days ago")
+	require.NotContains(t, line, "(today)")
+}
+
 func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.T) {
 	prevJSON := flagViewAsJson
 	flagViewAsJson = true
@@ -267,7 +340,7 @@ func TestIncidentEnrichedProcessInstancesView_JSONUsesSharedEnvelope(t *testing.
 		Total: 1,
 		Items: []process.IncidentEnrichedProcessInstance{{
 			Item: process.ProcessInstance{Key: "123"},
-			Incidents: []process.ProcessInstanceIncidentDetail{{
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
 				IncidentKey:        "incident-123",
 				ProcessInstanceKey: "123",
 				ErrorMessage:       "No retries left",
@@ -318,7 +391,7 @@ func TestIncidentEnrichedProcessInstancesView_JSONKeepsFullMessagesAndAgeMeta(t 
 				Key:       "2251799813758959",
 				StartDate: "2026-01-28T12:27:33.233Z",
 			},
-			Incidents: []process.ProcessInstanceIncidentDetail{{
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
 				IncidentKey:        "incident-123",
 				ProcessInstanceKey: "2251799813758959",
 				ErrorMessage:       longMessage,
@@ -365,9 +438,10 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 					StartDate:      "2026-03-23T18:00:00Z",
 					Incident:       true,
 				},
-				Incidents: []process.ProcessInstanceIncidentDetail{{
+				Incidents: []incident.ProcessInstanceIncidentDetail{{
 					IncidentKey:        "incident-123",
 					ProcessInstanceKey: "123",
+					State:              "ACTIVE",
 					ErrorMessage:       "First key failed",
 				}},
 			},
@@ -381,9 +455,10 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 					StartDate:      "2026-03-23T18:05:00Z",
 					Incident:       true,
 				},
-				Incidents: []process.ProcessInstanceIncidentDetail{{
+				Incidents: []incident.ProcessInstanceIncidentDetail{{
 					IncidentKey:        "incident-124",
 					ProcessInstanceKey: "124",
+					State:              "ACTIVE",
 					ErrorMessage:       "Second key failed",
 				}},
 			},
@@ -393,13 +468,13 @@ func TestIncidentEnrichedProcessInstancesView_HumanRowsKeepPerRowIncidentAssocia
 	require.NoError(t, err)
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo-a v3 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 message=First key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 ACTIVE j:n/a m:First key failed")
 	require.Contains(t, output, "124 tenant demo-b v4 ACTIVE")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-124 message=Second key failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-124 ACTIVE j:n/a m:Second key failed")
 	require.Contains(t, output, "found: 2")
-	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "key=incident-123"))
-	require.Less(t, strings.Index(output, "key=incident-123"), strings.Index(output, "124 tenant demo-b"))
-	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "key=incident-124"))
+	require.Less(t, strings.Index(output, "123 tenant demo-a"), strings.Index(output, "incident-123"))
+	require.Less(t, strings.Index(output, "incident-123"), strings.Index(output, "124 tenant demo-b"))
+	require.Less(t, strings.Index(output, "124 tenant demo-b"), strings.Index(output, "incident-124"))
 }
 
 func TestVariableEnrichedProcessInstancesView_HumanRowsRenderIndentedSortedVariables(t *testing.T) {
@@ -476,11 +551,12 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 				ProcessInstanceKey: "123",
 				ScopeKey:           "123",
 			}},
-			Incidents: []process.ProcessInstanceIncidentDetail{{
+			Incidents: []incident.ProcessInstanceIncidentDetail{{
 				IncidentKey:         "incident-123",
 				ProcessInstanceKey:  "123",
 				FlowNodeId:          "task-a",
 				FlowNodeInstanceKey: "element-123",
+				State:               "ACTIVE",
 				ErrorType:           "IO_MAPPING_ERROR",
 				ErrorMessage:        "failed",
 			}},
@@ -492,7 +568,7 @@ func TestProcessInstanceActivityInstancesView_HumanRowsGroupVarsBeforeIncidents(
 	output := buf.String()
 	require.Contains(t, output, "123 tenant demo v3 ACTIVE")
 	require.Contains(t, output, "├─ vars:\n│  └─ businessKey=2234809392328")
-	require.Contains(t, output, "└─ incidents:\n   └─ key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=IO_MAPPING_ERROR message=failed")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:failed")
 	require.Less(t, strings.Index(output, "├─ vars:"), strings.Index(output, "└─ incidents:"))
 }
 
@@ -631,17 +707,48 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 		flagGetPIIncidentMessageLimit = prevLimit
 	})
 
-	got := incidentHumanLine(process.ProcessInstanceIncidentDetail{
+	got := incidentHumanLine(incident.ProcessInstanceIncidentDetail{
 		IncidentKey:         "incident-123",
+		CreationTime:        "2026-05-06T09:29:42.711Z",
 		ErrorMessage:        "No retries left",
 		FlowNodeId:          "task-a",
 		FlowNodeInstanceKey: "element-123",
+		State:               "ACTIVE",
 		ErrorType:           "JOB_NO_RETRIES",
 		JobKey:              "job-123",
 	})
 
-	require.Equal(t, "key=incident-123 flowNodeId=task-a flowNodeInstanceKey=element-123 errorType=JOB_NO_RETRIES jobKey=job-123 message=No retries left", got)
+	require.Equal(t, "incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42+00:00 (4 days ago) fn:task-a fni:element-123 m:No retries left", got)
 	require.NotContains(t, got, "incident incident-123:")
+}
+
+func TestIncidentHumanLine_RendersUnavailableJobKeyWhenMissing(t *testing.T) {
+	prevLimit := flagGetPIIncidentMessageLimit
+	flagGetPIIncidentMessageLimit = 0
+	t.Cleanup(func() {
+		flagGetPIIncidentMessageLimit = prevLimit
+	})
+
+	got := incidentHumanLine(incident.ProcessInstanceIncidentDetail{
+		IncidentKey:         "incident-123",
+		ErrorMessage:        "Mapping failed",
+		FlowNodeId:          "task-a",
+		FlowNodeInstanceKey: "element-123",
+		State:               "ACTIVE",
+		ErrorType:           "IO_MAPPING_ERROR",
+	})
+
+	require.Equal(t, "incident-123 IO_MAPPING_ERROR ACTIVE j:n/a fn:task-a fni:element-123 m:Mapping failed", got)
+}
+
+func TestIncidentHumanLineWithMessageLimit_ReusesSharedIncidentRowFormatter(t *testing.T) {
+	got := incidentHumanLineWithMessageLimit(incident.ProcessInstanceIncidentDetail{
+		IncidentKey:  "incident-123",
+		ErrorMessage: "Mapping failed in worker",
+		State:        "ACTIVE",
+	}, 7)
+
+	require.Equal(t, "incident-123 ACTIVE j:n/a m:Mapping...", got)
 }
 
 func TestIncidentEnrichedProcessInstancesView_HumanIndirectMarkerRendersRowNote(t *testing.T) {
@@ -770,4 +877,112 @@ func TestTruncateIncidentHumanMessage(t *testing.T) {
 			require.Equal(t, tt.want, truncateIncidentHumanMessage(tt.message, tt.limit))
 		})
 	}
+}
+
+func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
+	resp := incident.Incidents{
+		Total: 2,
+		Items: []incident.ProcessInstanceIncidentDetail{
+			{
+				IncidentKey:         "incident-123",
+				CreationTime:        "2026-05-06T09:29:42.711Z",
+				ProcessInstanceKey:  "pi-123",
+				TenantId:            "tenant-a",
+				State:               "ACTIVE",
+				ErrorType:           "JOB_NO_RETRIES",
+				ErrorMessage:        "No retries left",
+				FlowNodeId:          "task-a",
+				FlowNodeInstanceKey: "element-123",
+				JobKey:              "job-123",
+			},
+			{
+				IncidentKey:  "incident-124",
+				State:        "RESOLVED",
+				ErrorMessage: "Mapping failed",
+			},
+		},
+	}
+
+	t.Run("human", func(t *testing.T) {
+		resetViewModeFlags(t)
+		cmd := newGetViewTestCommand("incident")
+
+		require.NoError(t, listIncidentsView(cmd, resp, 10, false))
+		output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+		require.Contains(t, output, "incident-123")
+		require.Contains(t, output, "2026-05-06T09:29:42+00:00")
+		require.Contains(t, output, "fn:task-a")
+		require.Contains(t, output, "JOB_NO_RETRIES")
+		require.Contains(t, output, "j:job-123")
+		require.Contains(t, output, "m:No retries...")
+		require.Contains(t, output, "incident-124")
+		require.Contains(t, output, "j:n/a")
+		require.Contains(t, output, "found: 2")
+	})
+
+	t.Run("default without messages", func(t *testing.T) {
+		resetViewModeFlags(t)
+		cmd := newGetViewTestCommand("incident")
+
+		require.NoError(t, listIncidentsView(cmd, resp, 10, true))
+		output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+		require.Contains(t, output, "incident-123")
+		require.NotContains(t, output, "m:")
+		require.NotContains(t, output, "No retries")
+		require.Contains(t, output, "found: 2")
+	})
+
+	t.Run("json", func(t *testing.T) {
+		resetViewModeFlags(t)
+		flagViewAsJson = true
+		cmd := newGetViewTestCommand("incident")
+		setContractSupport(cmd, ContractSupportFull)
+
+		require.NoError(t, listIncidentsView(cmd, resp, 4, false))
+		output := cmd.OutOrStdout().(*bytes.Buffer).String()
+
+		var envelope map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+		require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+		payload := requireJSONObject(t, envelope["payload"])
+		items, ok := payload["items"].([]any)
+		require.True(t, ok)
+		first := requireJSONObject(t, items[0])
+		require.Equal(t, "No retries left", first["errorMessage"])
+		require.Equal(t, "2026-05-06T09:29:42.711Z", first["creationTime"])
+	})
+
+	t.Run("keys only", func(t *testing.T) {
+		resetViewModeFlags(t)
+		flagViewKeysOnly = true
+		cmd := newGetViewTestCommand("incident")
+
+		require.NoError(t, listIncidentsView(cmd, resp, 0, false))
+
+		require.Equal(t, "incident-123\nincident-124\n", cmd.OutOrStdout().(*bytes.Buffer).String())
+	})
+}
+
+func newGetViewTestCommand(use string) *cobra.Command {
+	cmd := &cobra.Command{Use: use}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	parent := &cobra.Command{Use: "get"}
+	parent.AddCommand(cmd)
+	return cmd
+}
+
+func resetViewModeFlags(t *testing.T) {
+	t.Helper()
+	prevJSON := flagViewAsJson
+	prevKeysOnly := flagViewKeysOnly
+	t.Cleanup(func() {
+		flagViewAsJson = prevJSON
+		flagViewKeysOnly = prevKeysOnly
+	})
+	flagViewAsJson = false
+	flagViewKeysOnly = false
 }

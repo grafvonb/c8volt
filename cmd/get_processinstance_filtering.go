@@ -128,8 +128,34 @@ func applyPISearchResultFilters(cmd *cobra.Command, cli process.API, pis process
 	if flagGetPIIncidentsOnly {
 		pis = pis.FilterByHavingIncidents(true)
 	}
+	if flagGetPIDirectIncidentsOnly {
+		pis, err = filterProcessInstancesWithDirectIncidents(cmd, cli, pis)
+		if err != nil {
+			return process.ProcessInstances{}, err
+		}
+	}
 	if flagGetPINoIncidentsOnly {
 		pis = pis.FilterByHavingIncidents(false)
 	}
 	return pis, nil
+}
+
+func filterProcessInstancesWithDirectIncidents(cmd *cobra.Command, cli process.API, pis process.ProcessInstances) (process.ProcessInstances, error) {
+	if len(pis.Items) == 0 {
+		pis.Total = 0
+		return pis, nil
+	}
+	stopActivity := startCommandActivity(cmd, fmt.Sprintf("checking direct incidents for %d process instance(s)", len(pis.Items)))
+	enriched, err := cli.EnrichProcessInstancesWithIncidents(cmd.Context(), pis, collectIncidentEnrichmentOptions()...)
+	stopActivity()
+	if err != nil {
+		return process.ProcessInstances{}, fmt.Errorf("error filtering direct incidents: %w", err)
+	}
+	out := make([]process.ProcessInstance, 0, len(enriched.Items))
+	for _, item := range enriched.Items {
+		if len(item.Incidents) > 0 {
+			out = append(out, item.Item)
+		}
+	}
+	return process.ProcessInstances{Total: int32(len(out)), Items: out}, nil
 }

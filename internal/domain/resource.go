@@ -11,3 +11,12 @@ type Resource struct {
 	Version    int32  `json:"version,omitempty"`
 	VersionTag string `json:"versionTag,omitempty"`
 }
+
+type ResourceDeleteResponse struct {
+	Ok                bool
+	StatusCode        int
+	Status            string
+	BatchOperationKey string
+	BatchState        string
+	DeleteHistory     bool
+}

@@ -26,17 +26,16 @@ import (
 )
 
 var (
-	flagViewAsJson        bool
-	flagViewKeysOnly      bool
-	flagQuiet             bool
-	flagVerbose           bool
-	flagDebug             bool
-	flagNoIndicator       bool
-	flagNoErrCodes        bool
-	flagCmdAutomation     bool
-	flagCmdAutoConfirm    bool
-	flagAllowInconsistent bool
-	flagHTTPTimeout       = "30s"
+	flagViewAsJson     bool
+	flagViewKeysOnly   bool
+	flagQuiet          bool
+	flagVerbose        bool
+	flagDebug          bool
+	flagNoIndicator    bool
+	flagNoErrCodes     bool
+	flagCmdAutomation  bool
+	flagCmdAutoConfirm bool
+	flagHTTPTimeout    = "30s"
 )
 
 type configSourceDescription struct {
@@ -87,7 +86,7 @@ command contract.`,
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
   ./c8volt embed deploy --all --run
-  ./c8volt run pi -b C88_SimpleUserTask_Process
+  ./c8volt run pi -b C89_SimpleUserTask_Process
   ./c8volt capabilities --json
   ./c8volt get --help`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -240,6 +239,8 @@ func Execute() {
 }
 
 func init() {
+	useInvalidInputFlagErrors(rootCmd)
+
 	pf := rootCmd.PersistentFlags()
 	pf.BoolVarP(&flagQuiet, "quiet", "q", false, "suppress output except errors")
 	pf.BoolVar(&flagCmdAutomation, "automation", false, "enable non-interactive mode for commands that explicitly support it")

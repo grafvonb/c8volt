@@ -20,6 +20,7 @@ This section is the generated command reference for `c8volt`. It is best read as
 
 - deploy BPMN and use it immediately
 - start process instances and confirm activation
+- resolve incidents by key or by process instance
 - inspect process families before changing them
 - cancel with root escalation when Camunda requires it
 - delete thoroughly instead of partially
@@ -35,6 +36,8 @@ If you are new to `c8volt`, start with the workflows that define the tool:
 - [deploy bundled BPMN fixtures](./c8volt_embed_deploy)
 - [deploy BPMN files](./c8volt_deploy_process-definition)
 - [run process instances](./c8volt_run_process-instance)
+- [update process-instance variables](./c8volt_update_process-instance)
+- [resolve incidents](./c8volt_resolve)
 - [walk process trees](./c8volt_walk_process-instance)
 - [cancel process instances](./c8volt_cancel_process-instance)
 - [delete process instances](./c8volt_delete_process-instance)
@@ -47,6 +50,12 @@ These are the workflows where `c8volt` stands apart from a basic CRUD-oriented C
   Bootstrap a local environment with bundled BPMN fixtures.
 - `run process-instance`
   Start process instances and confirm they are actually active.
+- `update process-instance`
+  Update process-instance variables and confirm requested values are visible.
+- `resolve incident`
+  Resolve known incident keys with dry-run previews and per-target results.
+- `resolve process-instance`
+  Discover and resolve active incidents for selected process instances.
 - `walk process-instance`
   Inspect parent/child structure before changing a live tree.
 - `cancel process-instance --force`
@@ -63,13 +72,15 @@ The following implemented commands are also especially useful:
 - [show config](./c8volt_config_show)
   Render sanitized effective `c8volt` config, validate it, or print a copy-paste-ready template.
 - [get cluster topology](./c8volt_get_cluster_topology)
-  Verify the connected Camunda cluster shape quickly as a human-readable tree.
+  Verify the connected Camunda cluster shape quickly as a sorted tree.
 - [get cluster version](./c8volt_get_cluster_version)
   Show the gateway version, optionally including sorted broker versions.
 - [get cluster license](./c8volt_get_cluster_license)
   Inspect license details from the connected cluster; `licence` works as an alias.
 - [get process definition](./c8volt_get_process-definition)
   List definitions, fetch latest versions, or retrieve raw XML for one key.
+- [get incident](./c8volt_get_incident)
+  List active incidents, filter by incident fields, or fetch known incident keys.
 - [get resource](./c8volt_get_resource)
   Fetch a single resource by id.
 - [embed export](./c8volt_embed_export)
@@ -85,6 +96,10 @@ Tenant-aware operations are supported through the global `--tenant` flag and the
   Deploy BPMN process definitions from files or stdin.
 - [run commands](./c8volt_run)
   Start process instances and confirm activation by default.
+- [update commands](./c8volt_update)
+  Update existing resources.
+- [resolve commands](./c8volt_resolve)
+  Resolve operational incidents by incident key or process-instance key.
 - [walk commands](./c8volt_walk)
   Inspect ancestors, descendants, and full family trees.
 - [cancel commands](./c8volt_cancel)
@@ -94,7 +109,7 @@ Tenant-aware operations are supported through the global `--tenant` flag and the
 - [expect commands](./c8volt_expect)
   Wait until process instances reach a target state.
 - [get commands](./c8volt_get)
-  Read cluster, definition, instance, and resource data.
+  Read cluster, definition, instance, incident, and resource data.
 - [config commands](./c8volt_config)
   Inspect, validate, and template `c8volt` configuration.
 - [version command](./c8volt_version)

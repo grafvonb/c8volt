@@ -8,11 +8,14 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
@@ -40,11 +43,50 @@ func TestClient_GetProcessDefinitionXML(t *testing.T) {
 		},
 	}
 
-	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
 	xml, err := cli.GetProcessDefinitionXML(ctx, "2251799813685255", options.WithVerbose(), options.WithStat())
 
 	require.NoError(t, err)
 	assert.Equal(t, "<definitions id=\"order-process\"/>", xml)
+}
+
+// TestClient_CreateProcessInstances_DelegatesOrderedCreation verifies create-many facade mapping stays thin and service-owned.
+func TestClient_CreateProcessInstances_DelegatesOrderedCreation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	seen := []d.ProcessInstanceData{}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.IgnoreTenant)
+			seen = append(seen, data)
+			return d.ProcessInstanceCreation{
+				Key:                      "created-" + data.BpmnProcessId,
+				BpmnProcessId:            data.BpmnProcessId,
+				ProcessDefinitionKey:     data.ProcessDefinitionSpecificId,
+				ProcessDefinitionVersion: data.ProcessDefinitionVersion,
+				TenantId:                 data.TenantId,
+				Variables:                data.Variables,
+			}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.CreateProcessInstances(ctx, []ProcessInstanceData{
+		{BpmnProcessId: "alpha", ProcessDefinitionSpecificId: "pd-alpha", ProcessDefinitionVersion: 1, TenantId: "tenant-a", Variables: map[string]any{"foo": "bar"}},
+		{BpmnProcessId: "beta", ProcessDefinitionSpecificId: "pd-beta", ProcessDefinitionVersion: 2, TenantId: "tenant-b"},
+	}, options.WithIgnoreTenant())
+
+	require.NoError(t, err)
+	require.Equal(t, []d.ProcessInstanceData{
+		{BpmnProcessId: "alpha", ProcessDefinitionSpecificId: "pd-alpha", ProcessDefinitionVersion: 1, TenantId: "tenant-a", Variables: map[string]any{"foo": "bar"}},
+		{BpmnProcessId: "beta", ProcessDefinitionSpecificId: "pd-beta", ProcessDefinitionVersion: 2, TenantId: "tenant-b"},
+	}, seen)
+	require.Equal(t, []ProcessInstance{
+		{Key: "created-alpha", BpmnProcessId: "alpha", ProcessDefinitionKey: "pd-alpha", ProcessVersion: 1, TenantId: "tenant-a", Variables: map[string]any{"foo": "bar"}},
+		{Key: "created-beta", BpmnProcessId: "beta", ProcessDefinitionKey: "pd-beta", ProcessVersion: 2, TenantId: "tenant-b"},
+	}, got)
 }
 
 // TestClient_GetProcessDefinition_MapsIncidentCountSupportState protects the
@@ -72,7 +114,7 @@ func TestClient_GetProcessDefinition_MapsIncidentCountSupportState(t *testing.T)
 		},
 	}
 
-	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
 	pd, err := cli.GetProcessDefinition(ctx, "2251799813685255", options.WithStat())
 
 	require.NoError(t, err)
@@ -111,7 +153,7 @@ func TestClient_SearchProcessDefinitions_PreservesUnsupportedIncidentCountBounda
 		},
 	}
 
-	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
 	items, err := cli.SearchProcessDefinitions(ctx, ProcessDefinitionFilter{BpmnProcessId: "order-process"}, options.WithStat())
 
 	require.NoError(t, err)
@@ -142,7 +184,7 @@ func TestClient_SearchProcessDefinitions_MapsProcessDefinitionSelectorFilter(t *
 		},
 	}
 
-	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
 	items, err := cli.SearchProcessDefinitions(ctx, ProcessDefinitionFilter{
 		BpmnProcessId:     "order-process",
 		ProcessVersion:    7,
@@ -171,7 +213,7 @@ func TestClient_SearchProcessDefinitionsLatest_MapsProcessDefinitionSelectorFilt
 		},
 	}
 
-	cli := New(pdAPI, stubProcessInstanceAPI{}, slog.Default())
+	cli := New(pdAPI, stubProcessInstanceAPI{}, stubIncidentAPI{}, slog.Default())
 	items, err := cli.SearchProcessDefinitionsLatest(ctx, ProcessDefinitionFilter{
 		BpmnProcessId:     "order-process",
 		ProcessVersionTag: "stable",
@@ -211,7 +253,7 @@ func TestClient_SearchProcessInstances_MapsDateBoundsToDomainFilter(t *testing.T
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	_, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
 		BpmnProcessId:        "order-process",
 		ProcessDefinitionKey: "2251799813685255",
@@ -250,7 +292,7 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	_, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
 		StartDateAfter:  "2026-03-11",
 		StartDateBefore: "2026-04-03",
@@ -261,63 +303,13 @@ func TestClient_SearchProcessInstances_PreservesDerivedRelativeDayBoundsAsCanoni
 	require.NoError(t, err)
 }
 
-// TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions verifies the facade keeps incident detail fields and call options intact.
-func TestClient_SearchProcessInstanceIncidents_MapsDomainDetailsAndOptions(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	piAPI := stubProcessInstanceAPI{
-		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-			assert.Equal(t, "2251799813711967", key)
-			assert.True(t, services.ApplyCallOptions(opts).Verbose)
-			return []d.ProcessInstanceIncidentDetail{
-				{
-					IncidentKey:            "4503599627370497",
-					ProcessInstanceKey:     "2251799813711967",
-					TenantId:               "tenant-a",
-					State:                  "ACTIVE",
-					ErrorType:              "JOB_NO_RETRIES",
-					ErrorMessage:           "No retries left",
-					FlowNodeId:             "task-a",
-					FlowNodeInstanceKey:    "2251799813711999",
-					JobKey:                 "2251799813712000",
-					RootProcessInstanceKey: "2251799813711967",
-					ProcessDefinitionKey:   "2251799813685255",
-					ProcessDefinitionId:    "order-process",
-				},
-			}, nil
-		},
-	}
-
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
-	got, err := cli.SearchProcessInstanceIncidents(ctx, "2251799813711967", options.WithVerbose())
-
-	require.NoError(t, err)
-	require.Equal(t, []ProcessInstanceIncidentDetail{
-		{
-			IncidentKey:            "4503599627370497",
-			ProcessInstanceKey:     "2251799813711967",
-			TenantId:               "tenant-a",
-			State:                  "ACTIVE",
-			ErrorType:              "JOB_NO_RETRIES",
-			ErrorMessage:           "No retries left",
-			FlowNodeId:             "task-a",
-			FlowNodeInstanceKey:    "2251799813711999",
-			JobKey:                 "2251799813712000",
-			RootProcessInstanceKey: "2251799813711967",
-			ProcessDefinitionKey:   "2251799813685255",
-			ProcessDefinitionId:    "order-process",
-		},
-	}, got)
-}
-
 // TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation prevents incident details from leaking across keyed results.
 func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	var calls []string
-	piAPI := stubProcessInstanceAPI{
+	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			calls = append(calls, key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
@@ -336,7 +328,7 @@ func TestClient_EnrichProcessInstancesWithIncidents_PreservesOrderAndPerKeyAssoc
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
 	got, err := cli.EnrichProcessInstancesWithIncidents(ctx, ProcessInstances{
 		Total: 2,
 		Items: []ProcessInstance{
@@ -384,7 +376,7 @@ func TestClient_EnrichProcessInstancesWithVariables_PreservesOrderAndPerKeyAssoc
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
 		Total: 2,
 		Items: []ProcessInstance{
@@ -421,7 +413,7 @@ func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJS
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	got, err := cli.EnrichProcessInstancesWithVariables(ctx, ProcessInstances{
 		Total: 1,
 		Items: []ProcessInstance{{Key: "123", BpmnProcessId: "order-process"}},
@@ -434,13 +426,204 @@ func TestClient_EnrichProcessInstancesWithVariables_SortsVariablesAndPreservesJS
 	}, got.Items[0].Variables)
 }
 
+func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{
+				"foo":    "bar",
+				"nested": map[string]any{"count": float64(2)},
+			}, variables)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key: "123",
+		Variables: map[string]any{
+			"foo":    "bar",
+			"nested": map[string]any{"count": float64(2)},
+		},
+	}, options.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, ProcessInstanceVariableUpdateResult{
+		Key:                "123",
+		Status:             ProcessInstanceVariableUpdateStatusConfirmed,
+		MutationAccepted:   true,
+		ConfirmationStatus: "confirmed",
+		StatusCode:         204,
+		Message:            "204 No Content",
+		Variables: map[string]any{
+			"foo":    "bar",
+			"nested": map[string]any{"count": float64(2)},
+		},
+	}, got)
+}
+
+func TestUpdateProcessInstanceVariablesMultipleKeysRespectWorkersAndFailFastOptions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	var active int32
+	var maxActive int32
+	var updates int32
+	seen := make(chan string, 3)
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			cfg := services.ApplyCallOptions(opts)
+			if !cfg.FailFast {
+				return d.ProcessInstanceVariableUpdateResponse{}, errors.New("expected fail-fast call option")
+			}
+			if !cfg.NoWorkerLimit {
+				return d.ProcessInstanceVariableUpdateResponse{}, errors.New("expected no-worker-limit call option")
+			}
+			if variables["foo"] != "bar" || len(variables) != 1 {
+				return d.ProcessInstanceVariableUpdateResponse{}, errors.New("unexpected variables payload")
+			}
+
+			current := atomic.AddInt32(&active, 1)
+			for {
+				previous := atomic.LoadInt32(&maxActive)
+				if current <= previous || atomic.CompareAndSwapInt32(&maxActive, previous, current) {
+					break
+				}
+			}
+			time.Sleep(10 * time.Millisecond)
+			atomic.AddInt32(&active, -1)
+			atomic.AddInt32(&updates, 1)
+			seen <- key
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			cfg := services.ApplyCallOptions(opts)
+			if !cfg.FailFast {
+				return nil, errors.New("expected fail-fast call option")
+			}
+			if !cfg.NoWorkerLimit {
+				return nil, errors.New("expected no-worker-limit call option")
+			}
+			return []d.ProcessInstanceVariable{{Name: "foo", Value: `"bar"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.UpdateProcessInstancesVariables(ctx,
+		typex.Keys{"2251799813711967", "2251799813711968", "2251799813711967", "2251799813711969"},
+		map[string]any{"foo": "bar"},
+		2,
+		options.WithFailFast(),
+		options.WithNoWorkerLimit(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 3)
+	require.Equal(t, int32(3), atomic.LoadInt32(&updates))
+	require.LessOrEqual(t, atomic.LoadInt32(&maxActive), int32(2))
+	close(seen)
+	require.ElementsMatch(t, []string{"2251799813711967", "2251799813711968", "2251799813711969"}, drainStringChannel(seen))
+	for _, item := range got.Items {
+		require.Equal(t, ProcessInstanceVariableUpdateStatusConfirmed, item.Status)
+		require.True(t, item.MutationAccepted)
+		require.Equal(t, "confirmed", item.ConfirmationStatus)
+	}
+}
+
+func TestUpdateProcessInstanceVariablesNoWaitReportsMutationFailurePerKey(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"foo": "bar"}, variables)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return d.ProcessInstanceVariableUpdateResponse{
+				Key:        key,
+				Ok:         false,
+				StatusCode: 500,
+				Status:     "500 Internal Server Error",
+			}, errors.New("mutation rejected")
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.UpdateProcessInstancesVariables(ctx,
+		typex.Keys{"123"},
+		map[string]any{"foo": "bar"},
+		1,
+		options.WithNoWait(),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, got.Items, 1)
+	require.Equal(t, ProcessInstanceVariableUpdateResult{
+		Key:                "123",
+		Status:             ProcessInstanceVariableUpdateStatusMutationFailed,
+		MutationAccepted:   false,
+		ConfirmationStatus: "skipped",
+		StatusCode:         500,
+		Message:            "500 Internal Server Error",
+		Error:              "mutation rejected",
+		Variables:          map[string]any{"foo": "bar"},
+	}, got.Items[0])
+	require.False(t, got.Items[0].OK())
+}
+
+func TestUpdateProcessInstanceVariablesConfirmationTimeoutReportsPerKeyFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"foo": "bar"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, context.DeadlineExceeded
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key:       "123",
+		Variables: map[string]any{"foo": "bar"},
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "operation timed out")
+	require.Contains(t, err.Error(), context.DeadlineExceeded.Error())
+	require.Equal(t, ProcessInstanceVariableUpdateResult{
+		Key:                "123",
+		Status:             ProcessInstanceVariableUpdateStatusConfirmationFailed,
+		MutationAccepted:   true,
+		ConfirmationStatus: "failed",
+		StatusCode:         204,
+		Message:            "204 No Content",
+		Error:              "operation timed out: context deadline exceeded",
+		Variables:          map[string]any{"foo": "bar"},
+	}, got)
+	require.False(t, got.OK())
+}
+
+func drainStringChannel(ch <-chan string) []string {
+	out := make([]string, 0)
+	for s := range ch {
+		out = append(out, s)
+	}
+	return out
+}
+
 // TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation keeps walk metadata stable while adding incidents per walked key.
 func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKeyAssociation(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	var calls []string
-	piAPI := stubProcessInstanceAPI{
+	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			calls = append(calls, key)
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
@@ -459,7 +642,7 @@ func TestClient_EnrichTraversalWithIncidents_PreservesTraversalMetadataAndPerKey
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
 	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
 		Mode:     TraversalModeDescendants,
 		Outcome:  TraversalOutcomePartial,
@@ -501,7 +684,7 @@ func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLo
 
 	ctx := context.Background()
 	var calls []string
-	piAPI := stubProcessInstanceAPI{
+	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			calls = append(calls, key)
 			cfg := services.ApplyCallOptions(opts)
@@ -511,7 +694,7 @@ func TestClient_EnrichTraversalWithIncidents_PassesConfiguredOptionsToIncidentLo
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
 	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
 		Mode:    TraversalModeDescendants,
 		Outcome: TraversalOutcomeComplete,
@@ -533,7 +716,7 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 
 	ctx := context.Background()
 	var calls []string
-	piAPI := stubProcessInstanceAPI{
+	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			calls = append(calls, key)
 			switch key {
@@ -546,7 +729,7 @@ func TestClient_EnrichTraversalWithIncidents_LooksUpOnlyTraversalResultKeys(t *t
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
 	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
 		Mode:    TraversalModeDescendants,
 		Outcome: TraversalOutcomeComplete,
@@ -572,7 +755,7 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 	ctx := context.Background()
 	lookupErr := errors.New("incident lookup failed")
 	var calls []string
-	piAPI := stubProcessInstanceAPI{
+	incAPI := stubIncidentAPI{
 		searchProcessInstanceIncidents: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 			calls = append(calls, key)
 			if key == "child" {
@@ -582,7 +765,7 @@ func TestClient_EnrichTraversalWithIncidents_PropagatesIncidentLookupFailure(t *
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, stubProcessInstanceAPI{}, incAPI, slog.Default())
 	got, err := cli.EnrichTraversalWithIncidents(ctx, TraversalResult{
 		Mode:    TraversalModeDescendants,
 		Outcome: TraversalOutcomeComplete,
@@ -620,7 +803,7 @@ func TestClient_WaitForProcessInstancesExpectation_MapsIncidentTrueRequestAndRep
 			}, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 
 	got, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123", "123"}, ProcessInstanceExpectationRequest{Incident: &wantIncident}, 1, options.WithVerbose())
 
@@ -651,7 +834,7 @@ func TestClient_WaitForProcessInstancesExpectation_MapsIncidentFalseRequestAndRe
 			}, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 
 	got, err := cli.WaitForProcessInstancesExpectation(ctx, typex.Keys{"123", "123"}, ProcessInstanceExpectationRequest{Incident: &wantIncident}, 1, options.WithVerbose())
 
@@ -682,7 +865,7 @@ func TestClient_WaitForProcessInstancesExpectation_MapsStateAndIncidentRequestAn
 			}, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 
 	got, err := cli.WaitForProcessInstancesExpectation(
 		ctx,
@@ -727,7 +910,7 @@ func TestClient_SearchProcessInstancesPage_MapsPagingMetadata(t *testing.T) {
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
 	}, ProcessInstancePageRequest{From: 25, Size: 10, After: "cursor-0"}, options.WithVerbose())
@@ -764,7 +947,7 @@ func TestClient_SearchProcessInstancesPage_LeavesReportedTotalNilWhenUnavailable
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
 	}, ProcessInstancePageRequest{Size: 1})
@@ -800,7 +983,7 @@ func TestClient_SearchProcessInstancesPage_MapsLowerBoundReportedTotal(t *testin
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
 	}, ProcessInstancePageRequest{From: 100, Size: 25}, options.WithVerbose())
@@ -840,7 +1023,7 @@ func TestClient_SearchProcessInstancesPage_MapsPresenceFiltersToDomainFilter(t *
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		HasParent:   hasParent,
 		HasIncident: hasIncident,
@@ -872,7 +1055,7 @@ func TestClient_SearchProcessInstancesPage_PreservesCrossVersionOverflowStates(t
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	page, err := cli.SearchProcessInstancesPage(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
 	}, ProcessInstancePageRequest{Size: 2})
@@ -905,7 +1088,7 @@ func TestClient_SearchProcessInstances_UsesPagedSearchWrapper(t *testing.T) {
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	items, err := cli.SearchProcessInstances(ctx, ProcessInstanceFilter{
 		BpmnProcessId: "order-process",
 	}, 2, options.WithVerbose())
@@ -935,7 +1118,7 @@ func TestClient_LookupProcessInstance_UsesSearchBackedLookup(t *testing.T) {
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	pi, err := cli.LookupProcessInstance(ctx, "2251799813711967", options.WithVerbose())
 
 	require.NoError(t, err)
@@ -961,7 +1144,7 @@ func TestClient_LookupProcessInstanceStateByKey_MapsSearchBackedState(t *testing
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	report, pi, err := cli.LookupProcessInstanceStateByKey(ctx, "2251799813711967")
 
 	require.NoError(t, err)
@@ -1004,8 +1187,8 @@ func TestClient_DryRunCancelOrDeleteGetPIKeys_DeduplicatesRootsAndCollected(t *t
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
-	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(ctx, typex.Keys{"c1", "c2", "c3"})
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	roots, collected, err := cli.DryRunCancelOrDeleteGetPIKeys(ctx, typex.Keys{"c1", "c2", "c3"}, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, typex.Keys{"r1", "r2"}, roots)
@@ -1037,7 +1220,7 @@ func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 	got, err := cli.AncestryResult(ctx, "child")
 
 	require.NoError(t, err)
@@ -1051,7 +1234,7 @@ func TestClient_AncestryResult_MapsStructuredTraversalContract(t *testing.T) {
 }
 
 // TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion exercises the
-// full cancellation/deletion preflight: selected children resolve to roots,
+// full cancellation/deletion impact check: selected children resolve to roots,
 // descendants expand per root, and partial ancestry warnings are preserved.
 func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T) {
 	t.Parallel()
@@ -1110,8 +1293,8 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
-	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"})
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"}, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
@@ -1125,6 +1308,109 @@ func TestClient_DryRunCancelOrDeletePlan_ReturnsStructuredExpansion(t *testing.T
 	}, got.RequiresCancelBeforeDelete)
 	assert.Equal(t, TraversalOutcomePartial, got.Outcome)
 	assert.NotEmpty(t, got.Warning)
+}
+
+// TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal keeps
+// impact checks on the same worker path as the later mutation, because both
+// ancestry and descendant expansion are pure IO.
+func TestClient_DryRunCancelOrDeletePlan_UsesWorkersForStructuredTraversal(t *testing.T) {
+	ctx := context.Background()
+
+	var ancestryActive atomic.Int32
+	var ancestryMax atomic.Int32
+	var ancestryReleased atomic.Bool
+	ancestryRelease := make(chan struct{})
+
+	var descendantsActive atomic.Int32
+	var descendantsMax atomic.Int32
+	var descendantsReleased atomic.Bool
+	descendantsRelease := make(chan struct{})
+
+	waitForTraversalOverlap := func(active, max *atomic.Int32, released *atomic.Bool, release chan struct{}, phase string) func() {
+		current := active.Add(1)
+		for {
+			seen := max.Load()
+			if current <= seen || max.CompareAndSwap(seen, current) {
+				break
+			}
+		}
+		if current >= 2 && released.CompareAndSwap(false, true) {
+			close(release)
+		}
+		select {
+		case <-release:
+		case <-time.After(2 * time.Second):
+			if released.CompareAndSwap(false, true) {
+				close(release)
+			}
+			t.Errorf("%s did not use concurrent workers", phase)
+		}
+		return func() {
+			active.Add(-1)
+		}
+	}
+
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			defer waitForTraversalOverlap(&ancestryActive, &ancestryMax, &ancestryReleased, ancestryRelease, "ancestry")()
+			switch startKey {
+			case "c1":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "c1",
+					RootKey:  "r1",
+					Keys:     []string{"c1", "r1"},
+					Chain:    map[string]d.ProcessInstance{"c1": {Key: "c1", State: d.StateActive}, "r1": {Key: "r1", State: d.StateActive}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			case "c2":
+				return pitraversal.Result{
+					Mode:     pitraversal.ModeAncestry,
+					StartKey: "c2",
+					RootKey:  "r2",
+					Keys:     []string{"c2", "r2"},
+					Chain:    map[string]d.ProcessInstance{"c2": {Key: "c2", State: d.StateActive}, "r2": {Key: "r2", State: d.StateActive}},
+					Outcome:  pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected key %q", startKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			defer waitForTraversalOverlap(&descendantsActive, &descendantsMax, &descendantsReleased, descendantsRelease, "descendants")()
+			switch rootKey {
+			case "r1":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "r1",
+					Keys:    []string{"r1", "c1"},
+					Chain:   map[string]d.ProcessInstance{"r1": {Key: "r1", State: d.StateActive}, "c1": {Key: "c1", State: d.StateActive}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			case "r2":
+				return pitraversal.Result{
+					Mode:    pitraversal.ModeDescendants,
+					RootKey: "r2",
+					Keys:    []string{"r2", "c2"},
+					Chain:   map[string]d.ProcessInstance{"r2": {Key: "r2", State: d.StateActive}, "c2": {Key: "c2", State: d.StateActive}},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			default:
+				t.Fatalf("unexpected root %q", rootKey)
+				return pitraversal.Result{}, nil
+			}
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1", "c2"}, 2)
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), ancestryMax.Load())
+	assert.Equal(t, int32(2), descendantsMax.Load())
+	assert.Equal(t, typex.Keys{"r1", "r2"}, got.Roots)
+	assert.Equal(t, typex.Keys{"r1", "c1", "r2", "c2"}, got.Collected)
 }
 
 // TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve keeps
@@ -1147,8 +1433,8 @@ func TestClient_DryRunCancelOrDeletePlan_FailsWhenNoActionableResultsResolve(t *
 		},
 	}
 
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
-	_, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1"})
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	_, err := cli.DryRunCancelOrDeletePlan(ctx, typex.Keys{"c1"}, 0)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no process instances resolved during dependency expansion")
@@ -1167,7 +1453,7 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 			return d.CancelResponse{Ok: true, StatusCode: 202, Status: "202 Accepted"}, nil, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
 
 	reports, err := cli.CancelProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4), options.WithVerbose())
 
@@ -1190,7 +1476,7 @@ func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 			return d.CancelResponse{Ok: true, StatusCode: 202, Status: "202 Accepted"}, nil, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.Default())
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
 
 	_, err := cli.CancelProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
 
@@ -1214,7 +1500,7 @@ func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
 
 	reports, err := cli.DeleteProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4), options.WithVerbose())
 
@@ -1238,7 +1524,7 @@ func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScop
 			return d.DeleteResponse{StatusCode: 409, Status: "409 Conflict"}, nil
 		},
 	}
-	cli := New(&stubProcessDefinitionAPI{}, piAPI, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.New(logging.NewPlainHandler(&logBuf, slog.LevelDebug)))
 
 	reports, err := cli.DeleteProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
 
@@ -1294,10 +1580,11 @@ func (s *stubProcessDefinitionAPI) GetProcessDefinitionXML(ctx context.Context, 
 var _ pdsvc.API = (*stubProcessDefinitionAPI)(nil)
 
 type stubProcessInstanceAPI struct {
+	createProcessInstance              func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	searchForProcessInstances          func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchForProcessInstancesPage      func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
-	searchProcessInstanceIncidents     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	searchProcessInstanceVariables     func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceVariable, error)
+	updateProcessInstanceVariables     func(context.Context, string, map[string]any, ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error)
 	ancestry                           func(context.Context, string, ...services.CallOption) (string, []string, map[string]d.ProcessInstance, error)
 	descendants                        func(context.Context, string, ...services.CallOption) ([]string, map[string][]string, map[string]d.ProcessInstance, error)
 	cancelProcessInstance              func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
@@ -1309,22 +1596,17 @@ type stubProcessInstanceAPI struct {
 	waitForProcessInstancesExpectation func(context.Context, typex.Keys, d.ProcessInstanceExpectationRequest, int, ...services.CallOption) (d.ProcessInstanceExpectationResponses, error)
 }
 
-// CreateProcessInstance panics when a facade test accidentally starts a process instance.
-func (stubProcessInstanceAPI) CreateProcessInstance(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error) {
-	panic("unexpected call")
+// CreateProcessInstance delegates to the per-test callback and panics when a facade test did not authorize creation.
+func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	if s.createProcessInstance == nil {
+		panic("unexpected call")
+	}
+	return s.createProcessInstance(ctx, data, opts...)
 }
 
 // GetProcessInstance panics when a facade test accidentally performs direct lookup.
 func (stubProcessInstanceAPI) GetProcessInstance(context.Context, string, ...services.CallOption) (d.ProcessInstance, error) {
 	panic("unexpected call")
-}
-
-// SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.
-func (s stubProcessInstanceAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	if s.searchProcessInstanceIncidents == nil {
-		panic("unexpected call")
-	}
-	return s.searchProcessInstanceIncidents(ctx, key, opts...)
 }
 
 // SearchProcessInstanceVariables delegates to the per-test callback used by variable enrichment facade tests.
@@ -1333,6 +1615,82 @@ func (s stubProcessInstanceAPI) SearchProcessInstanceVariables(ctx context.Conte
 		panic("unexpected call")
 	}
 	return s.searchProcessInstanceVariables(ctx, key, opts...)
+}
+
+type stubIncidentAPI struct {
+	getIncident                    func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
+	resolveIncident                func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	searchIncidents                func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	searchIncidentsPage            func(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error)
+	searchProcessInstanceIncidents func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	waitForIncidentResolved        func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	waitForPIIncidentsResolved     func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+}
+
+// GetIncident delegates to the per-test callback used by direct incident resolution facade tests.
+func (s stubIncidentAPI) GetIncident(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+	if s.getIncident == nil {
+		panic("unexpected call")
+	}
+	return s.getIncident(ctx, key, opts...)
+}
+
+// ResolveIncident delegates to the per-test callback used by incident mutation facade tests.
+func (s stubIncidentAPI) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.resolveIncident == nil {
+		panic("unexpected call")
+	}
+	return s.resolveIncident(ctx, key, opts...)
+}
+
+// SearchIncidents delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchIncidents == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidents(ctx, filter, size, opts...)
+}
+
+// SearchIncidentsPage delegates to the per-test callback used by incident search facade tests.
+func (s stubIncidentAPI) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilter, page d.IncidentPageRequest, opts ...services.CallOption) (d.IncidentPage, error) {
+	if s.searchIncidentsPage == nil {
+		panic("unexpected call")
+	}
+	return s.searchIncidentsPage(ctx, filter, page, opts...)
+}
+
+// SearchProcessInstanceIncidents delegates to the per-test callback used by incident enrichment facade tests.
+func (s stubIncidentAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchProcessInstanceIncidents == nil {
+		panic("unexpected call")
+	}
+	return s.searchProcessInstanceIncidents(ctx, key, opts...)
+}
+
+// WaitForIncidentResolved delegates to the per-test callback used by incident confirmation facade tests.
+func (s stubIncidentAPI) WaitForIncidentResolved(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.waitForIncidentResolved == nil {
+		panic("unexpected call")
+	}
+	return s.waitForIncidentResolved(ctx, key, opts...)
+}
+
+// WaitForProcessInstanceIncidentsResolved delegates to the per-test callback used by process-instance resolution facade tests.
+func (s stubIncidentAPI) WaitForProcessInstanceIncidentsResolved(ctx context.Context, key string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.waitForPIIncidentsResolved == nil {
+		panic("unexpected call")
+	}
+	return s.waitForPIIncidentsResolved(ctx, key, incidentKeys, opts...)
+}
+
+var _ incsvc.API = stubIncidentAPI{}
+
+// UpdateProcessInstanceVariables delegates to the per-test callback and panics on unexpected update calls.
+func (s stubProcessInstanceAPI) UpdateProcessInstanceVariables(ctx context.Context, key string, variables map[string]any, opts ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+	if s.updateProcessInstanceVariables == nil {
+		panic("unexpected call")
+	}
+	return s.updateProcessInstanceVariables(ctx, key, variables, opts...)
 }
 
 // GetDirectChildrenOfProcessInstance panics when a test takes the direct-children path unexpectedly.

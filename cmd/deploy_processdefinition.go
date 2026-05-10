@@ -19,13 +19,11 @@ var deployProcessDefinitionCmd = &cobra.Command{
 	Use:   "process-definition",
 	Short: "Deploy BPMN process definition files",
 	Long: "Deploy BPMN process definition files and report the deployed definitions.\n\n" +
-		"By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.\n\n" +
-		"Add --no-wait to verify later with `get pd`.",
-	Example: `  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --no-wait
-  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json`,
+		"By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.",
+	Example: `  ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn --run
+  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --json`,
 	Aliases: []string{"pd"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -85,5 +83,5 @@ func init() {
 
 	setCommandMutation(deployProcessDefinitionCmd, CommandMutationStateChanging)
 	setContractSupport(deployProcessDefinitionCmd, ContractSupportFull)
-	setAutomationSupport(deployProcessDefinitionCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
+	setAutomationSupport(deployProcessDefinitionCmd, AutomationSupportFull, "supports shared machine output and accepted results")
 }

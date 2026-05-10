@@ -26,7 +26,7 @@ c8volt get process-definition [flags]
 
 ```
   ./c8volt get pd --latest
-  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest
+  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest
   ./c8volt get pd --key <process-definition-key> --json
   ./c8volt get pd --key <process-definition-key> --xml
 ```
@@ -64,5 +64,5 @@ c8volt get process-definition [flags]
 
 ### SEE ALSO
 
-* [c8volt get](c8volt_get)	 - Inspect cluster, process, tenant, and resource state
+* [c8volt get](c8volt_get)	 - Inspect cluster, process, incident, tenant, and resource state
 

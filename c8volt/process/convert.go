@@ -5,6 +5,7 @@ package process
 
 import (
 	d "github.com/grafvonb/c8volt/internal/domain"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
@@ -47,6 +48,7 @@ func fromDomainProcessInstance(x d.ProcessInstance) ProcessInstance {
 		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
 		ParentKey:                 x.ParentKey,
 		ProcessDefinitionKey:      x.ProcessDefinitionKey,
+		RootProcessInstanceKey:    x.RootProcessInstanceKey,
 		ProcessVersion:            x.ProcessVersion,
 		ProcessVersionTag:         x.ProcessVersionTag,
 		StartDate:                 x.StartDate,
@@ -79,6 +81,7 @@ func fromDomainProcessInstances(xs []d.ProcessInstance) ProcessInstances {
 func fromDomainProcessInstanceIncidentDetail(x d.ProcessInstanceIncidentDetail) ProcessInstanceIncidentDetail {
 	return ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
+		CreationTime:           x.CreationTime,
 		ProcessInstanceKey:     x.ProcessInstanceKey,
 		TenantId:               x.TenantId,
 		State:                  x.State,
@@ -113,6 +116,138 @@ func fromDomainProcessInstanceVariables(xs []d.ProcessInstanceVariable) []Proces
 	return toolx.MapSlice(xs, fromDomainProcessInstanceVariable)
 }
 
+// fromDomainIncidentEnrichedProcessInstance maps one service-enriched process instance into the public facade model.
+func fromDomainIncidentEnrichedProcessInstance(x d.IncidentEnrichedProcessInstance) IncidentEnrichedProcessInstance {
+	return IncidentEnrichedProcessInstance{
+		Item:      fromDomainProcessInstance(x.Item),
+		Incidents: fromDomainProcessInstanceIncidentDetails(x.Incidents),
+	}
+}
+
+// fromDomainIncidentEnrichedProcessInstances maps service-enriched process instances into the public facade model.
+func fromDomainIncidentEnrichedProcessInstances(x d.IncidentEnrichedProcessInstances) IncidentEnrichedProcessInstances {
+	return IncidentEnrichedProcessInstances{
+		Total: x.Total,
+		Items: toolx.MapSlice(x.Items, fromDomainIncidentEnrichedProcessInstance),
+	}
+}
+
+// fromDomainVariableEnrichedProcessInstance maps one service-enriched process instance and its variables into the public facade model.
+func fromDomainVariableEnrichedProcessInstance(x d.VariableEnrichedProcessInstance) VariableEnrichedProcessInstance {
+	return VariableEnrichedProcessInstance{
+		Item:      fromDomainProcessInstance(x.Item),
+		Variables: fromDomainProcessInstanceVariables(x.Variables),
+	}
+}
+
+// fromDomainVariableEnrichedProcessInstances maps service-enriched variables into the public facade model.
+func fromDomainVariableEnrichedProcessInstances(x d.VariableEnrichedProcessInstances) VariableEnrichedProcessInstances {
+	return VariableEnrichedProcessInstances{
+		Total: x.Total,
+		Items: toolx.MapSlice(x.Items, fromDomainVariableEnrichedProcessInstance),
+	}
+}
+
+// fromDomainIncidentEnrichedTraversalItem maps one service-enriched traversal item into the public facade model.
+func fromDomainIncidentEnrichedTraversalItem(x d.IncidentEnrichedTraversalItem) IncidentEnrichedTraversalItem {
+	return IncidentEnrichedTraversalItem{
+		Item:      fromDomainProcessInstance(x.Item),
+		Incidents: fromDomainProcessInstanceIncidentDetails(x.Incidents),
+	}
+}
+
+// fromDomainIncidentEnrichedTraversalResult maps service-enriched traversal output into the public facade model.
+func fromDomainIncidentEnrichedTraversalResult(x d.IncidentEnrichedTraversalResult) IncidentEnrichedTraversalResult {
+	return IncidentEnrichedTraversalResult{
+		Mode:             TraversalMode(x.Mode),
+		Outcome:          TraversalOutcome(x.Outcome),
+		StartKey:         x.StartKey,
+		RootKey:          x.RootKey,
+		Keys:             append([]string(nil), x.Keys...),
+		Edges:            x.Edges,
+		Items:            toolx.MapSlice(x.Items, fromDomainIncidentEnrichedTraversalItem),
+		MissingAncestors: toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),
+		Warning:          x.Warning,
+	}
+}
+
+// fromDomainMissingAncestor maps one domain missing-ancestor marker into the public facade model.
+func fromDomainMissingAncestor(item d.MissingAncestor) MissingAncestor {
+	return MissingAncestor{Key: item.Key, StartKey: item.StartKey}
+}
+
+func fromDomainProcessInstanceVariableUpdateResult(x d.ProcessInstanceVariableUpdateResult) ProcessInstanceVariableUpdateResult {
+	return ProcessInstanceVariableUpdateResult{
+		Key:                x.Key,
+		Status:             ProcessInstanceVariableUpdateStatus(x.Status),
+		MutationAccepted:   x.MutationAccepted,
+		ConfirmationStatus: x.ConfirmationStatus,
+		StatusCode:         x.StatusCode,
+		Message:            x.Message,
+		Error:              x.Error,
+		Variables:          toolx.CopyMap(x.Variables),
+	}
+}
+
+func fromDomainProcessInstanceVariableUpdateResults(x d.ProcessInstanceVariableUpdateResults) ProcessInstanceVariableUpdateResults {
+	return ProcessInstanceVariableUpdateResults{
+		Items: toolx.MapSlice(x.Items, fromDomainProcessInstanceVariableUpdateResult),
+	}
+}
+
+func fromDomainProcessInstanceVariableUpdateResponse(x d.ProcessInstanceVariableUpdateResponse, variables map[string]any) ProcessInstanceVariableUpdateResult {
+	status := ProcessInstanceVariableUpdateStatusSubmitted
+	if !x.Ok {
+		status = ProcessInstanceVariableUpdateStatusMutationFailed
+	}
+	return ProcessInstanceVariableUpdateResult{
+		Key:              x.Key,
+		Status:           status,
+		MutationAccepted: x.Ok,
+		StatusCode:       x.StatusCode,
+		Message:          x.Status,
+		Variables:        toolx.CopyMap(variables),
+	}
+}
+
+func toDomainProcessInstanceVariableUpdateRequest(x ProcessInstanceVariableUpdateRequest) d.ProcessInstanceVariableUpdateRequest {
+	return d.ProcessInstanceVariableUpdateRequest{
+		Key:       x.Key,
+		Variables: toolx.CopyMap(x.Variables),
+	}
+}
+
+func fromDomainReporter(x d.Reporter) Reporter {
+	return Reporter{
+		Key:        x.Key,
+		Ok:         x.Ok,
+		StatusCode: x.StatusCode,
+		Status:     x.Status,
+	}
+}
+
+func fromDomainCancelReports(xs []d.Reporter) CancelReports {
+	return CancelReports{Items: toolx.MapSlice(xs, func(x d.Reporter) CancelReport { return fromDomainReporter(x) })}
+}
+
+func fromDomainDeleteReports(xs []d.Reporter) DeleteReports {
+	return DeleteReports{Items: toolx.MapSlice(xs, func(x d.Reporter) DeleteReport { return fromDomainReporter(x) })}
+}
+
+func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) DryRunPIKeyExpansion {
+	return DryRunPIKeyExpansion{
+		Roots:                      append([]string(nil), x.Roots...),
+		Collected:                  append([]string(nil), x.Collected...),
+		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
+		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),
+		MissingAncestors: toolx.MapSlice(x.MissingAncestors, func(item d.MissingAncestor) MissingAncestor {
+			return MissingAncestor{Key: item.Key, StartKey: item.StartKey}
+		}),
+		Warning: x.Warning,
+		Outcome: TraversalOutcome(x.Outcome),
+	}
+}
+
 func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage {
 	return ProcessInstancePage{
 		Request: ProcessInstancePageRequest{
@@ -136,6 +271,41 @@ func fromDomainProcessInstanceReportedTotal(x d.ProcessInstanceReportedTotal) Pr
 
 func fromDomainProcessInstanceMap(xs map[string]d.ProcessInstance) map[string]ProcessInstance {
 	return toolx.MapMap(xs, fromDomainProcessInstance)
+}
+
+// toDomainProcessInstanceMap maps public process-instance maps into domain values for service workflows.
+func toDomainProcessInstanceMap(xs map[string]ProcessInstance) map[string]d.ProcessInstance {
+	return toolx.MapMap(xs, toDomainProcessInstance)
+}
+
+// toServiceTraversalResult maps public traversal output back into service-layer traversal input for enrichment.
+func toServiceTraversalResult(in TraversalResult) pitraversal.Result {
+	return pitraversal.Result{
+		Mode:             pitraversal.Mode(in.Mode),
+		StartKey:         in.StartKey,
+		RootKey:          in.RootKey,
+		Keys:             append([]string(nil), in.Keys...),
+		Edges:            in.Edges,
+		Chain:            toDomainProcessInstanceMap(in.Chain),
+		MissingAncestors: toServiceMissingAncestors(in.MissingAncestors),
+		Warning:          in.Warning,
+		Outcome:          pitraversal.Outcome(in.Outcome),
+	}
+}
+
+// toServiceMissingAncestors maps public missing-ancestor markers into traversal package values.
+func toServiceMissingAncestors(in []MissingAncestor) []pitraversal.MissingAncestor {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]pitraversal.MissingAncestor, len(in))
+	for i, item := range in {
+		out[i] = pitraversal.MissingAncestor{
+			Key:      item.Key,
+			StartKey: item.StartKey,
+		}
+	}
+	return out
 }
 
 func fromDomainProcessInstanceExpectationResponse(x d.ProcessInstanceExpectationResponse) ProcessInstanceExpectationReport {
@@ -171,6 +341,7 @@ func toDomainProcessInstance(x ProcessInstance) d.ProcessInstance {
 		ParentFlowNodeInstanceKey: x.ParentFlowNodeInstanceKey,
 		ParentKey:                 x.ParentKey,
 		ProcessDefinitionKey:      x.ProcessDefinitionKey,
+		RootProcessInstanceKey:    x.RootProcessInstanceKey,
 		ProcessVersion:            x.ProcessVersion,
 		ProcessVersionTag:         x.ProcessVersionTag,
 		StartDate:                 x.StartDate,
@@ -198,6 +369,7 @@ func toDomainIncidentExpectation(x *IncidentExpectation) *bool {
 func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.ProcessInstanceIncidentDetail {
 	return d.ProcessInstanceIncidentDetail{
 		IncidentKey:            x.IncidentKey,
+		CreationTime:           x.CreationTime,
 		ProcessInstanceKey:     x.ProcessInstanceKey,
 		TenantId:               x.TenantId,
 		State:                  x.State,
@@ -209,18 +381,6 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
-	}
-}
-
-func toDomainProcessInstanceVariable(x ProcessInstanceVariable) d.ProcessInstanceVariable {
-	return d.ProcessInstanceVariable{
-		Name:               x.Name,
-		Value:              x.Value,
-		VariableKey:        x.VariableKey,
-		ProcessInstanceKey: x.ProcessInstanceKey,
-		ScopeKey:           x.ScopeKey,
-		TenantId:           x.TenantId,
-		APITruncated:       x.APITruncated,
 	}
 }
 

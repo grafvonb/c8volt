@@ -14,7 +14,6 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/internal/services/common"
-	"github.com/grafvonb/c8volt/internal/services/httpc"
 	resourcepayload "github.com/grafvonb/c8volt/internal/services/resource/payload"
 )
 
@@ -73,23 +72,11 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	return s, nil
 }
 
-// Delete removes a resource only when AllowInconsistent is set in opts.
-// resourceKey is passed directly to the v8.7 resource deletion endpoint; without AllowInconsistent the method is a no-op
-// to preserve the facade's safety boundary around eventually consistent deletion.
-func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) error {
-	cCfg := services.ApplyCallOptions(opts)
+// Delete rejects resource deletion because v8.7 has no history-safe process-definition deletion path.
+func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	_ = services.ApplyCallOptions(opts)
 
-	if cCfg.AllowInconsistent {
-		resp, err := s.c.PostResourcesResourceKeyDeletionWithResponse(ctx, resourceKey, camundav87.PostResourcesResourceKeyDeletionJSONRequestBody{})
-		if err != nil {
-			return err
-		}
-		if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-			return err
-		}
-		return nil
-	}
-	return nil
+	return d.ResourceDeleteResponse{}, fmt.Errorf("%w: process-definition history-safe deletion requires Camunda 8.8 or newer", d.ErrUnsupported)
 }
 
 // Get fetches a resource by Camunda resource key and maps the generated response to the internal domain model.

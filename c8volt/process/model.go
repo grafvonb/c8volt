@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
@@ -66,6 +67,7 @@ type ProcessInstance struct {
 	ParentKey                 string         `json:"parentKey,omitempty"`
 	ParentProcessInstanceKey  string         `json:"parentProcessInstanceKey,omitempty"`
 	ProcessDefinitionKey      string         `json:"processDefinitionKey,omitempty"`
+	RootProcessInstanceKey    string         `json:"rootProcessInstanceKey,omitempty"`
 	ProcessVersion            int32          `json:"processVersion,omitempty"`
 	ProcessVersionTag         string         `json:"processVersionTag,omitempty"`
 	StartDate                 string         `json:"startDate,omitempty"`
@@ -74,20 +76,7 @@ type ProcessInstance struct {
 	Variables                 map[string]any `json:"variables,omitempty"`
 }
 
-type ProcessInstanceIncidentDetail struct {
-	IncidentKey            string `json:"incidentKey,omitempty"`
-	ProcessInstanceKey     string `json:"processInstanceKey"`
-	TenantId               string `json:"tenantId,omitempty"`
-	State                  string `json:"state,omitempty"`
-	ErrorType              string `json:"errorType,omitempty"`
-	ErrorMessage           string `json:"errorMessage"`
-	FlowNodeId             string `json:"flowNodeId,omitempty"`
-	FlowNodeInstanceKey    string `json:"flowNodeInstanceKey,omitempty"`
-	JobKey                 string `json:"jobKey,omitempty"`
-	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
-	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
-	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
-}
+type ProcessInstanceIncidentDetail = incident.ProcessInstanceIncidentDetail
 
 type ProcessInstanceVariable struct {
 	Name               string `json:"name"`
@@ -97,6 +86,43 @@ type ProcessInstanceVariable struct {
 	ScopeKey           string `json:"scopeKey"`
 	TenantId           string `json:"tenantId,omitempty"`
 	APITruncated       bool   `json:"apiTruncated"`
+}
+
+type ProcessInstanceVariableUpdateStatus string
+
+const (
+	ProcessInstanceVariableUpdateStatusSubmitted          ProcessInstanceVariableUpdateStatus = "submitted"
+	ProcessInstanceVariableUpdateStatusConfirmed          ProcessInstanceVariableUpdateStatus = "confirmed"
+	ProcessInstanceVariableUpdateStatusMutationFailed     ProcessInstanceVariableUpdateStatus = "mutation_failed"
+	ProcessInstanceVariableUpdateStatusConfirmationFailed ProcessInstanceVariableUpdateStatus = "confirmation_failed"
+)
+
+type ProcessInstanceVariableUpdateRequest struct {
+	Key       string         `json:"key"`
+	Variables map[string]any `json:"variables"`
+}
+
+type ProcessInstanceVariableUpdateResult struct {
+	Key                string                              `json:"key"`
+	Status             ProcessInstanceVariableUpdateStatus `json:"status"`
+	MutationAccepted   bool                                `json:"mutationAccepted"`
+	ConfirmationStatus string                              `json:"confirmationStatus,omitempty"`
+	StatusCode         int                                 `json:"statusCode,omitempty"`
+	Message            string                              `json:"message,omitempty"`
+	Error              string                              `json:"error,omitempty"`
+	Variables          map[string]any                      `json:"variables,omitempty"`
+}
+
+func (r ProcessInstanceVariableUpdateResult) OK() bool {
+	return r.MutationAccepted && r.Status != ProcessInstanceVariableUpdateStatusMutationFailed && r.Status != ProcessInstanceVariableUpdateStatusConfirmationFailed
+}
+
+type ProcessInstanceVariableUpdateResults struct {
+	Items []ProcessInstanceVariableUpdateResult `json:"items,omitempty"`
+}
+
+func (r ProcessInstanceVariableUpdateResults) Totals() (total int, oks int, noks int) {
+	return TotalsOf(r.Items)
 }
 
 type IncidentEnrichedProcessInstance struct {

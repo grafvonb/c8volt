@@ -23,6 +23,7 @@ func variableEnrichedProcessInstancesView(cmd *cobra.Command, resp process.Varia
 	return nil
 }
 
+// renderVariableEnrichedProcessInstanceRows renders aligned process-instance rows followed by their enriched variables.
 func renderVariableEnrichedProcessInstanceRows(cmd *cobra.Command, resp process.VariableEnrichedProcessInstances) {
 	rows := make([]flatRow, 0, len(resp.Items))
 	for _, it := range resp.Items {
@@ -72,6 +73,7 @@ func processInstanceVariableHumanLine(variable process.ProcessInstanceVariable) 
 	return fmt.Sprintf("%s=%s", variable.Name, value)
 }
 
+// compactProcessInstanceVariableValue JSON-compacts object and array values while leaving other values unchanged.
 func compactProcessInstanceVariableValue(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -87,6 +89,7 @@ func compactProcessInstanceVariableValue(value string) string {
 	return buf.String()
 }
 
+// truncateProcessInstanceVariableHumanValue applies the CLI display limit and reports whether truncation occurred.
 func truncateProcessInstanceVariableHumanValue(value string, limit int) (string, bool) {
 	if limit <= 0 {
 		return value, false
@@ -98,6 +101,7 @@ func truncateProcessInstanceVariableHumanValue(value string, limit int) (string,
 	return string(runes[:limit]) + "...", true
 }
 
+// processInstanceVariableTruncationLabels summarizes API-side and CLI-side truncation markers.
 func processInstanceVariableTruncationLabels(apiTruncated bool, cliTruncated bool) string {
 	switch {
 	case apiTruncated && cliTruncated:

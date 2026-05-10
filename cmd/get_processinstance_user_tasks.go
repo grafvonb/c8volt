@@ -18,7 +18,7 @@ func validatePIHasUserTasksMode(cmd *cobra.Command, taskKeyCount, keyCount int, 
 	if keyCount > 0 {
 		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with --key or stdin key input")
 	}
-	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly {
+	if filterFlagsSet || flagGetPIRootsOnly || flagGetPIChildrenOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly {
 		return mutuallyExclusiveFlagsf("--has-user-tasks cannot be combined with process-instance search filters")
 	}
 	if flagGetPITotal {

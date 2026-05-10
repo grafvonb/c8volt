@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -111,11 +112,11 @@ func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrich
 }
 
 // writeIncidentLines appends formatted incident lines as tree children.
-func writeIncidentLines(out *strings.Builder, prefix string, incidents []process.ProcessInstanceIncidentDetail) {
+func writeIncidentLines(out *strings.Builder, prefix string, incidents []incident.ProcessInstanceIncidentDetail) {
 	writeIncidentTreeLines(out, prefix, incidents, 0)
 }
 
-func writeIncidentTreeLines(out *strings.Builder, prefix string, incidents []process.ProcessInstanceIncidentDetail, followingChildren int) {
+func writeIncidentTreeLines(out *strings.Builder, prefix string, incidents []incident.ProcessInstanceIncidentDetail, followingChildren int) {
 	for i, incident := range incidents {
 		out.WriteByte('\n')
 		out.WriteString(prefix)
@@ -259,7 +260,7 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 	return nil
 }
 
-func formatMustActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []process.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) []string {
+func formatMustActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) []string {
 	lines, _ := formatProcessInstanceActivityLines(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren)
 	return lines
 }

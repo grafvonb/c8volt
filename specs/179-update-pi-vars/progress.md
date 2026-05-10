@@ -1,0 +1,268 @@
+# Ralph Progress Log
+
+Feature: 179-update-pi-vars
+Started: 2026-05-07 17:46:04
+
+## Codebase Patterns
+
+- Repository-wide `make test` runs with `-race`; command tests with concurrent `httptest` handlers must protect shared maps/counters with synchronization.
+- Expanding `c8volt/process.API` can require panic-on-unexpected-call methods in downstream facade test stubs outside process and cmd packages, including `c8volt/resource`.
+- `make docs-content` may refresh generated `docs/index.md` build metadata even when the command reference pages are already current.
+- Required flag discovery can use `setFlagContractRequired` when command-owned validation must preserve shared invalid-input error handling instead of Cobra required-flag pre-run failures.
+- `make docs-content` is the source of truth for generated CLI reference pages and `docs/index.md`; update `README.md` first when changing the docs homepage content.
+- Prefer command-owned validation for required state-changing inputs when the shared error model needs an invalid-input exit; Cobra `MarkFlagRequired` returns generic pre-run errors outside command-local classification.
+- Command tests that call `resetCommandTreeFlags(root)` after adding `StringSlice` flags must also reset the corresponding package globals; pflag default reset can otherwise leave a literal `[]` value in the bound slice.
+- Update process-instance target selection should let `mergeAndValidateKeys(...).Unique()` feed the facade bulk method directly; command-local single-key caps conflict with shared repeated-flag and stdin key behavior.
+- CLI stdin-key tests can replace `os.Stdin` with an `os.Pipe`; `readKeysIfDash` intentionally checks the real stdin file descriptor with `term.IsTerminal`.
+- Facade bulk update behavior is owned by `UpdateProcessInstancesVariables`, which deduplicates `typex.Keys`, computes worker count with `toolx.DetermineNoOfWorkers`, and maps `fail-fast`/`no-worker-limit` through shared facade options.
+- Foundation command shells can expose Cobra metadata and required flags before full story behavior lands; tests should cover metadata while later story tasks own parsing, mutation, confirmation, and rendering behavior.
+- Expanding facade/service interfaces requires updating strict test stubs in `cmd/process_api_stub_test.go` and `c8volt/process/client_test.go` with panic-on-unexpected-call methods to preserve unrelated test signal.
+- Supported-version service API additions can compile with temporary domain-level unsupported stubs in `v88`/`v89` until story-specific tasks wire generated client calls.
+- Root command families register with Cobra globals in `cmd/<verb>.go`, call `rootCmd.AddCommand(...)` in `init`, bind shared backoff flags via `addBackoffFlagsAndBindings`, and set state-changing metadata with `setCommandMutation(..., CommandMutationStateChanging)`.
+- Leaf command metadata uses `setContractSupport(..., ContractSupportFull)` and `setAutomationSupport(..., AutomationSupportFull, "...")` when shared machine output and unattended execution are supported.
+- Process-instance commands use `validateOptionalDashArg(args)`, `readKeysIfDash(args)`, `mergeAndValidateKeys(...)`, and `typex.Keys.Unique()` for repeated `--key` plus stdin `-` target handling.
+- Worker controls are shared through global flags `flagWorkers`, `flagFailFast`, and `flagNoWorkerLimit`; `collectOptions()` maps fail-fast/no-worker-limit/no-wait into facade call options.
+- `get process-instance --with-vars` confirms process-scope variables through `EnrichProcessInstancesWithVariables` -> `SearchProcessInstanceVariables`, filters returned variables where `ProcessInstanceKey == key && ScopeKey == key`, sorts by name, and renders via `cmd_views_processinstance_activity.go` / `cmd_views_processinstance_vars.go`.
+- Process facade/service additions should extend `c8volt/process.API`, `internal/services/processinstance.API`, and all versioned `v87`/`v88`/`v89` service contracts with compile-time assertions preserved.
+- v8.8 and v8.9 generated clients expose `CreateElementInstanceVariablesWithResponse(ctx, elementInstanceKey, body, ...)` for `PUT /element-instances/{elementInstanceKey}/variables`; responses have status/status-code helpers and no success JSON payload.
+- Camunda 8.7 unsupported behavior is represented by errors wrapping `domain.ErrUnsupported`, with message text naming the unsupported operation before mutation.
+- CLI docs are generated from Cobra metadata by `go run -ldflags "$(LDFLAGS)" ./docsgen -out ./docs/cli -format markdown`; `make docs-content` also syncs `docs/index.md` from `README.md`.
+- Generated element-instance variable update responses should be validated with `httpc.HttpStatusErr`; successful calls can return `204 No Content` with an empty body.
+- Single-key update confirmation can reuse `SearchProcessInstanceVariables` and the existing process-scope filter helper, then compare only requested variable names after normalizing JSON values.
+- Shared JSON command envelopes are emitted by `renderCommandResult`; human output needs an explicit view helper because `renderCommandResult` intentionally does nothing outside machine-readable modes.
+- `--no-wait` update behavior should pass through `collectOptions()`/`options.WithNoWait()` and skip `SearchProcessInstanceVariables`, reporting `submitted` with `confirmationStatus: "skipped"` instead of confirmed.
+- No-wait mutation failures should remain per-key result data so command output can report the failed target without implying confirmation polling.
+
+---
+## Iteration 1 - 2026-05-07 17:47:53 CEST
+**User Story**: Phase 1: Setup (Shared Discovery)
+**Tasks Completed**:
+- [x] T001: Inspect root command registration and mutation metadata patterns
+- [x] T002: Inspect process-instance key/stdin, worker, fail-fast, and no-worker-limit behavior
+- [x] T003: Inspect process-instance variable lookup and rendering paths
+- [x] T004: Inspect process facade models and service interface patterns
+- [x] T005: Inspect generated v8.8/v8.9 update client methods and v8.7 unsupported patterns
+- [x] T006: Inspect README, generated docs, and docs generation workflow
+**Tasks Remaining in Story**: None - story complete
+**Commit**: No commit - sandbox cannot write `.git/index.lock`
+**Files Changed**:
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Setup is discovery-only; no production code changed and no targeted Go package behavior was affected.
+- The future update command should reuse existing PI target selection and output metadata instead of adding command-local parsing or docs generation paths.
+- Commit was blocked by filesystem permissions on `.git`; `git add` failed with `Unable to create '.git/index.lock': Operation not permitted`.
+---
+---
+## Iteration 2 - 2026-05-07 17:55:20 CEST
+**User Story**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T007: Add the `update` root command with aliases, examples, backoff bindings, and state-changing metadata
+- [x] T008: Add process-instance variable update request/result domain models
+- [x] T009: Add facade-level process-instance variable update request/result models
+- [x] T010: Extend process facade interface and client stubs for update/confirmation orchestration
+- [x] T011: Extend process-instance service API and compile-time implementation assertions for variable update support
+- [x] T012: Add unsupported Camunda 8.7 update method behavior
+- [x] T013: Add command contract discovery tests for the new update root and process-instance metadata
+- [x] T014: Run foundational targeted validation and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update.go
+- cmd/update_processinstance.go
+- cmd/command_contract_test.go
+- cmd/process_api_stub_test.go
+- c8volt/process/api.go
+- c8volt/process/bulk.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- c8volt/process/convert.go
+- c8volt/process/model.go
+- internal/domain/processinstance.go
+- internal/services/processinstance/api.go
+- internal/services/processinstance/v87/contract.go
+- internal/services/processinstance/v87/service.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/variables.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/variables.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- The foundational leaf command is metadata-only in this iteration; US1 still owns request parsing, service mutation calls, confirmation lookup, and output rendering.
+- Interface expansion surfaced strict test stubs immediately, which is useful for keeping command and facade tests explicit about unexpected update calls.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(CommandCapability|Update|Unsupported)' -count=1` passed.
+- `GOCACHE=/tmp/c8volt-gocache go test ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -run 'Test(Update|Unsupported)' -count=1` passed for compile coverage on touched versioned services.
+---
+---
+## Iteration 3 - 2026-05-07 18:06:13 CEST
+**User Story**: User Story 1 - Update Variables For One Process Instance
+**Tasks Completed**:
+- [x] T015: Add command test for `update pi --key <key> --vars '{"foo":"bar"}'` submitting the v8.8 update request and confirming through variable lookup
+- [x] T016: Add command test proving `update process-instance` and `update pi` behave identically for a single key
+- [x] T017: Add v8.8 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key
+- [x] T018: Add v8.9 service test for `PUT /v2/element-instances/{elementInstanceKey}/variables` using the process instance key
+- [x] T019: Add facade test for normalized JSON confirmation comparing requested values to returned process-instance variables
+- [x] T020: Add the executable update process-instance command surface for one key
+- [x] T021: Parse and validate single-key `--vars` JSON object input before mutation
+- [x] T022: Implement v8.8 variable update service call
+- [x] T023: Implement v8.9 variable update service call
+- [x] T024: Implement facade update and default confirmation flow
+- [x] T025: Render single-key confirmed update results for human and JSON output
+- [x] T026: Run the US1 targeted validation command and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_processinstance.go
+- cmd/cmd_views_processinstance_update.go
+- cmd/update_processinstance_test.go
+- cmd/process_api_stub_test.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/v88/contract.go
+- internal/services/processinstance/v88/variables.go
+- internal/services/processinstance/v88/service_test.go
+- internal/services/processinstance/v89/contract.go
+- internal/services/processinstance/v89/variables.go
+- internal/services/processinstance/v89/service_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- The generated Camunda update method uses the process instance key as an `ElementInstanceKey` path parameter and returns no success payload, so domain results need to carry status metadata from the HTTP response.
+- The prescribed US1 test regex requires test names beginning with `TestUpdateProcessInstance`, `TestUpdatePI`, `TestElementInstanceVariables`, or `TestVariableConfirmation` to avoid silently skipping new coverage.
+- US1 intentionally keeps the command to one unique target key; repeated-key, stdin merge/dedup, and worker-controlled multi-key behavior remain in the next user story.
+---
+---
+## Iteration 4 - 2026-05-07 18:12:20 CEST
+**User Story**: User Story 2 - Update Multiple Selected Process Instances
+**Tasks Completed**:
+- [x] T027: Add command test for multiple repeated `--key` values applying one `--vars` payload to each unique key
+- [x] T028: Add command test for stdin `-` keys merged and deduplicated with `--key` values
+- [x] T029: Add facade test for multi-key update respecting worker count and fail-fast options
+- [x] T030: Reuse existing stdin key parsing, validation, merge, and deduplication behavior for update targets
+- [x] T031: Apply the same parsed variable map to every unique target key through facade/service calls
+- [x] T032: Reuse existing worker, `--workers`, `--fail-fast`, and `--no-worker-limit` option mapping for multi-key updates
+- [x] T033: Render multi-key human and JSON results with independent per-key statuses
+- [x] T034: Run the US2 targeted validation command and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_processinstance.go
+- cmd/update_processinstance_test.go
+- c8volt/process/client_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- The US2 implementation only needed to remove the command's temporary single-key guard because the existing facade bulk path already deduplicates keys, applies worker settings, and preserves per-key results.
+- The sandbox blocks local TCP listeners, so server-backed command tests in `./cmd` are skipped here; the targeted command still passes, and the non-network facade worker/dedup test exercises the executable bulk path.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*(Multiple|Stdin|Dedup|Workers|FailFast))' -count=1` passed.
+---
+---
+## Iteration 5 - 2026-05-07 18:17:26 CEST
+**User Story**: User Story 3 - Return Accepted Output Without Waiting
+**Tasks Completed**:
+- [x] T035: Add command test proving `--no-wait` returns accepted/submitted output without variable confirmation lookup
+- [x] T036: Add JSON output test for `--no-wait` submitted results
+- [x] T037: Add facade test proving mutation errors still report per-key failure when `--no-wait` is set
+- [x] T038: Wire `--no-wait` into update request options and skip confirmation after accepted mutation
+- [x] T039: Distinguish submitted, confirmed, mutation-failed, and confirmation-failed statuses in result models
+- [x] T040: Ensure human and JSON renderers show submitted status without implying read-model confirmation
+- [x] T041: Run the US3 targeted validation command and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_processinstance_test.go
+- c8volt/process/client.go
+- c8volt/process/client_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Existing command option collection already forwards `--no-wait`; the missing hardening was preserving mutation failures as per-key no-wait results.
+- Server-backed no-wait command tests should fail on `/v2/variables/search` so accidental confirmation polling is caught directly.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process -run 'Test(UpdateProcessInstance.*NoWait|NoWait.*Update)' -count=1` passed.
+---
+---
+## Iteration 6 - 2026-05-07 18:25:24 CEST
+**User Story**: User Story 4 - Reject Invalid Or Unsupported Updates
+**Tasks Completed**:
+- [x] T042: Add command validation tests for missing `--vars`, malformed JSON, and non-object JSON
+- [x] T043: Add command validation tests for missing `--key` and missing stdin input via `-`
+- [x] T044: Add v8.7 unsupported-version service test proving mutation is not attempted
+- [x] T045: Add facade timeout confirmation failure test
+- [x] T046: Add regression coverage for `run --vars` and reuse existing `get process-instance --with-vars` coverage
+- [x] T047: Reject missing `--vars`, malformed JSON, and non-object JSON through command-owned validation
+- [x] T048: Reject missing target keys through existing key target validation behavior
+- [x] T049: Ensure v8.7 returns unsupported-version errors before mutation
+- [x] T050: Report confirmation timeout as per-key confirmation failure
+- [x] T051: Run US4 targeted validation and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/update_processinstance.go
+- cmd/update_processinstance_test.go
+- cmd/get_processinstance_test.go
+- cmd/run_test.go
+- c8volt/process/client_test.go
+- internal/services/processinstance/v87/service_test.go
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Missing `--vars` should be handled by `parseUpdateProcessInstanceVariables` so it is classified as invalid input consistently with malformed and non-object JSON.
+- Resetting command tree flags alone is not enough for new bound `StringSlice` globals; the process-instance global reset helper must include update command flags.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 -run 'Test(UpdateProcessInstance.*(Invalid|Missing|Unsupported|Timeout)|RunProcessInstance.*Vars|GetProcessInstance.*WithVars)' -count=1` passed.
+---
+---
+## Iteration 7 - 2026-05-07 18:31:49 CEST
+**User Story**: Phase 7: Documentation & Command Discovery
+**Tasks Completed**:
+- [x] T052: Add help examples and command contract metadata coverage for `update`, `update process-instance`, and `update pi`
+- [x] T053: Update README examples and automation guidance for process-instance variable updates
+- [x] T054: Update site documentation source examples for process-instance variable updates
+- [x] T055: Regenerate generated CLI documentation under `docs/cli/` with `make docs-content`
+- [x] T056: Run docs/help targeted validation and fix regressions
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- cmd/command_contract.go
+- cmd/command_contract_test.go
+- cmd/update.go
+- cmd/update_processinstance.go
+- docs/cli/c8volt.md
+- docs/cli/c8volt_update.md
+- docs/cli/c8volt_update_process-instance.md
+- docs/cli/index.md
+- docs/index.md
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Contract-only required metadata keeps `--vars` visible as required to `capabilities --json` without moving validation into Cobra's generic pre-run required flag path.
+- Generated docs now include the new `c8volt update` and `c8volt update process-instance` pages; the site homepage content was refreshed from `README.md`.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test(CommandCapability|UpdateProcessInstance.*Help|VersionHelp)' -count=1` passed.
+---
+---
+## Iteration 8 - 2026-05-07 18:37:20 CEST
+**User Story**: Phase 8: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T057: Run gofmt on touched Go files
+- [x] T058: Run targeted process-instance update package validation
+- [x] T059: Run `make docs-content`
+- [x] T060: Run `make test` and fix repository validation failures
+- [x] T061: Review `quickstart.md` against implemented behavior
+- [x] T062: Verify diff scope before commit
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/resource/client_test.go
+- cmd/update_processinstance_test.go
+- docs/index.md
+- specs/179-update-pi-vars/tasks.md
+- specs/179-update-pi-vars/progress.md
+**Learnings**:
+- Resource facade tests need strict panic methods for both singular and bulk process variable update methods after the process facade interface expansion.
+- Multi-key command tests can issue concurrent handler calls under worker fan-out; `make test` catches unsynchronized request counters with the race detector.
+- `quickstart.md` already matched the implemented update, no-wait, JSON, validation, unsupported-version, docs, and final validation workflows.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/process ./internal/services/processinstance/v87 ./internal/services/processinstance/v88 ./internal/services/processinstance/v89 -count=1` passed.
+- `GOCACHE=/tmp/c8volt-gocache go test ./cmd ./c8volt/resource -race -count=1` passed after the repository-wide validation fixes.
+- `make docs-content` and `make test` passed.
+---

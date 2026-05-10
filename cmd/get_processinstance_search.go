@@ -107,7 +107,7 @@ func searchProcessInstancesWithPaging(cmd *cobra.Command, cli process.API, cfg *
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 			continue
 		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Fetched %d process instance(s) on this page (%d total so far). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount)
+			prompt := fmt.Sprintf("Fetched %d process instance(s) on this page (%s). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(summaryPage, summary.CumulativeCount, "loaded"))
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{

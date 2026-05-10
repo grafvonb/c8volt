@@ -22,21 +22,18 @@ var cancelProcessInstanceCmd = &cobra.Command{
 	Short: "Cancel process instances by key or filters",
 	Long: "Cancel process instances by key or search filters.\n\n" +
 		"By default c8volt validates the affected root and descendant instances, asks for confirmation, and waits until cancellation is observed. Use --force when a selected child must be escalated to its root instance.\n\n" +
-		"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation. A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.\n\n" +
+		"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no cancellation request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, and partial-scope instances without cancelling.\n\n" +
-		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi`.",
+		"Use --auto-confirm for unattended destructive runs.",
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --dry-run
   ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --batch-size 250
-  ./c8volt cancel pi --state active --batch-size 250 --limit 25
-  ./c8volt cancel pi --state active --batch-size 250 --limit 25 --dry-run
-  ./c8volt cancel pi --state active --start-date-before 2026-03-31
-  ./c8volt cancel pi --state active --start-date-newer-days 30
-  ./c8volt cancel pi --bpmn-process-id C88_SimpleUserTask_Process --state active --batch-size 200 --auto-confirm
-  ./c8volt cancel pi --state active --batch-size 200 --auto-confirm --no-wait
+  ./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run
+  ./c8volt cancel pi --state active --start-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt cancel pi --state active --start-date-newer-days 30 --limit 5 --dry-run
+  ./c8volt cancel pi --bpmn-process-id C89_SimpleUserTask_Process --state active --limit 5 --auto-confirm
   ./c8volt expect pi --key <process-instance-key> --state canceled
-  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -`,
+  ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm -`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)
@@ -79,11 +76,6 @@ var cancelProcessInstanceCmd = &cobra.Command{
 			if err := validatePISearchVersionSupport(cfg); err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
-			result, err := validateProcessDefinitionSelectors(cmd.Context(), cli, newPIProcessDefinitionSelectorValidationRequest(), collectOptions()...)
-			if err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
-			}
-			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 			searchFilterOpts := populatePISearchFilterOpts()
 			results, err := processPISearchPagesWithAction(cmd, cli, cfg, searchFilterOpts, func(page process.ProcessInstancePage, firstPage bool) (processInstancePageActionResult, error) {
 				keys := make(types.Keys, 0, len(page.Items))

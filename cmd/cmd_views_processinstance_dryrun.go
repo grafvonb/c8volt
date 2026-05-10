@@ -72,7 +72,7 @@ func planProcessInstanceDryRunPreview(cmd *cobra.Command, cli process.API, opera
 	stopActivity := startCommandActivity(cmd, fmt.Sprintf("preparing %s dry-run scope for %d process instance(s)", operation, len(keys)))
 	defer stopActivity()
 
-	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, collectOptions()...)
+	plan, err := cli.DryRunCancelOrDeletePlan(context.Background(), keys, flagWorkers, collectOptions()...)
 	if err != nil {
 		return processInstanceDryRunPlanResult{}, fmt.Errorf("%s validation: %w", operation, err)
 	}
@@ -278,7 +278,7 @@ func renderProcessInstanceDryRunResult[T any](cmd *cobra.Command, payload T) err
 	return renderSucceededResult(cmd, payload)
 }
 
-// printProcessInstanceDryRunKeys writes a labeled verbose dry-run key list for human output.
+// printProcessInstanceDryRunKeys writes a labeled verbose dry-run key list.
 func printProcessInstanceDryRunKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {
 		renderHumanLine(cmd, "%s: none", label)
@@ -371,7 +371,7 @@ func formatProcessInstanceDryRunSelectedFinalState(items []processInstanceDryRun
 	return strings.Join(out, ", ")
 }
 
-// printProcessInstanceDryRunScope writes the traversal completeness line for human dry-run output.
+// printProcessInstanceDryRunScope writes the traversal completeness line for dry-run output.
 func printProcessInstanceDryRunScope(cmd *cobra.Command, outcome process.TraversalOutcome, warning string, missingAncestors []processInstanceDryRunMissingAncestor) {
 	renderHumanLine(cmd, "scope: %s", formatProcessInstanceDryRunScope(outcome, warning, missingAncestors))
 }

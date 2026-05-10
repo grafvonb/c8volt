@@ -9,10 +9,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/batchoperation"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
+	batchsvc "github.com/grafvonb/c8volt/internal/services/batchoperation"
 	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
@@ -20,6 +25,7 @@ import (
 	utsvc "github.com/grafvonb/c8volt/internal/services/usertask"
 
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/task"
 )
@@ -71,11 +77,23 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	incAPI, err := incsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
 	rAPI, err := rsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
 		return nil, err
 	}
+	batchAPI, err := batchsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
 	tAPI, err := tsvc.New(c.cfg, c.http, c.log)
+	if err != nil {
+		return nil, err
+	}
+	jAPI, err := jsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +103,13 @@ func New(opts ...Option) (API, error) {
 	}
 
 	cl := client{
-		ClusterAPI: cluster.New(cAPI, c.log),
-		ProcessAPI: process.New(pdAPI, piAPI, c.log),
-		TaskAPI:    task.New(pdAPI, piAPI, utAPI, c.log),
-		TenantAPI:  tenant.New(tAPI, c.log),
+		ClusterAPI:        cluster.New(cAPI, c.log),
+		ProcessAPI:        process.New(pdAPI, piAPI, incAPI, c.log),
+		IncidentAPI:       incident.New(incAPI, c.log),
+		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
+		JobAPI:            job.New(jAPI, c.log),
+		BatchOperationAPI: batchoperation.New(batchAPI, c.log),
+		TenantAPI:         tenant.New(tAPI, c.log),
 		capsFunc: func(context.Context) (Capabilities, error) {
 			return Capabilities{
 				CamundaVersion: string(c.cfg.App.CamundaVersion),
@@ -96,7 +117,7 @@ func New(opts ...Option) (API, error) {
 			}, nil
 		},
 	}
-	cl.ResourceAPI = resource.New(rAPI, cl.ProcessAPI, c.log)
+	cl.ResourceAPI = resource.New(rAPI, pdAPI, piAPI, c.log)
 	return &cl, nil
 }
 
@@ -108,16 +129,22 @@ type cfg struct {
 
 type ClusterAPI = cluster.API
 type ProcessAPI = process.API
+type IncidentAPI = incident.API
 type TaskAPI = task.API
 type ResourceAPI = resource.API
 type TenantAPI = tenant.API
+type JobAPI = job.API
+type BatchOperationAPI = batchoperation.API
 
 var _ API = (*client)(nil)
 
 type client struct {
 	ClusterAPI
 	ProcessAPI
+	IncidentAPI
 	TaskAPI
+	JobAPI
+	BatchOperationAPI
 	ResourceAPI
 	TenantAPI
 

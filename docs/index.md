@@ -5,9 +5,9 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.6.0-alpha3-1-g7284384-dirty`, commit `7284384`, built `2026-05-06T19:38:55Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-17-ge5937e5-dirty`, commit `e5937e5`, built `2026-05-10T06:41:29Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
-<img src="./logo/c8volt_logo_transparent_w_shadow_400x244_dim.png" alt="c8volt logo" />
+<img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
 # c8volt Camunda 8 CLI
 
@@ -37,7 +37,9 @@ That is the gap `c8volt` closes.
 
 - deploy BPMN and start using it immediately
 - run process instances and confirm they become active
+- update process-instance-scope variables and confirm visibility
 - inspect process trees with incidents and variables in context
+- resolve incident keys or process-instance incidents with dry-run previews
 - preview, cancel, and delete process-instance families safely
 - wait for state or incident conditions in scripts
 - search, page, count, and batch process-instance results
@@ -48,50 +50,39 @@ That is the gap `c8volt` closes.
 
 ## Fast Start
 
-This is the happy path: copy one file, edit two values, validate, test the connection, then run one harmless read command.
+From zero to a real Camunda read in a few minutes. Download the matching archive from [c8volt Releases](https://github.com/grafvonb/c8volt/releases), unpack it, then:
 
 ```bash
-# 1. Copy the starter config. Pick the path that matches how you got c8volt.
-# Release archive:
+# 1. Install: make sure the unpacked binary runs.
+./c8volt version
+
+# 2. Create a config next to the binary.
 cp config.example.yaml config.yaml
 
-# Source checkout:
+# 3. Edit only the essentials:
+#    app.camunda_version: "8.9"
+#    apis.camunda_api.base_url: "http://localhost:8080"
+#    auth.mode: "none"
+#
+#    Use auth.mode: "oauth2" for protected clusters and fill the oauth2 block.
+./c8volt config validate
+
+# 4. Test the real connection.
+./c8volt config test-connection
+
+# 5. Run the first safe command.
+./c8volt get cluster version
+```
+
+When `config.yaml` sits next to the `c8volt` executable, it is loaded automatically. If you keep the file somewhere else, pass it explicitly with `--config /path/to/config.yaml`.
+
+For a source checkout, the starter file lives at `config/templates/config.example.yaml`:
+
+```bash
 cp config/templates/config.example.yaml config.yaml
-
-# 2. Edit config.yaml:
-# - app.camunda_version: "8.9"
-# - apis.camunda_api.base_url: "http://localhost:8080"
-# - auth.mode: none for local/dev, oauth2 for protected clusters
-
-# 3. Check local config shape before touching Camunda.
-./c8volt --config ./config.yaml config validate
-
-# 4. Test the real connection and confirm the profile/base URL/version.
-./c8volt --config ./config.yaml config test-connection
-
-# 5. Run one safe read command.
-./c8volt --config ./config.yaml get cluster version
 ```
 
-For scripts or CI, keep stdout machine-readable and logs on stderr:
-
-```bash
-./c8volt --config ./config.yaml config test-connection --json
-```
-
-### 1. Install
-
-Download the appropriate archive from [c8volt Releases](https://github.com/grafvonb/c8volt/releases), unpack it, then verify the binary:
-
-```bash
-./c8volt version
-```
-
-Each release archive includes a ready-to-edit `config.example.yaml` next to the binary. Source checkouts keep the same starter file at `config/templates/config.example.yaml`.
-
-### 2. Configure
-
-For local Camunda 8 Run, Docker Compose, Kind, or another unsecured development cluster, the smallest useful config is:
+The smallest local/dev config is this:
 
 ```yaml
 app:
@@ -100,63 +91,29 @@ apis:
   camunda_api:
     base_url: "http://localhost:8080"
 auth:
-  mode: none
-log:
-  level: info
+  mode: "none"
 ```
 
-For most environments, set only `apis.camunda_api.base_url`. `c8volt` derives:
-
-- Camunda API as `.../v2`
-- Operate API as `.../v1`
-- Tasklist API as `.../v1`
-
-Common config locations:
-
-- `./config.yaml`
-- `$HOME/.c8volt/config.yaml`
-- `$HOME/.config/c8volt/config.yaml`
-
-You can also point to a file explicitly:
+Once that works, look around:
 
 ```bash
-./c8volt --config ./config.yaml config validate
-```
-
-Useful setup commands, in the order you normally need them:
-
-```bash
-./c8volt config template
-./c8volt --config ./config.yaml config show
-./c8volt --config ./config.yaml config validate
-./c8volt --config ./config.yaml config test-connection
-./c8volt --config ./config.yaml config test-connection --json
-./c8volt --profile prod config show
-```
-
-### 3. Verify Connectivity
-
-```bash
-./c8volt config test-connection
 ./c8volt get cluster topology
-./c8volt get cluster version
-./c8volt get cluster license
-./c8volt get cluster licence
+./c8volt get pd --latest
 ```
 
-`config test-connection` logs the config source, selected profile, tested Camunda base URL, and warns when the configured Camunda version differs from the gateway version. Cluster topology and license commands use human-readable output by default. Add `--json` when scripts need structured output.
-
-### 4. Get A Runnable Environment
-
-Deploy bundled BPMN fixtures directly from the binary:
+Need something runnable in an empty dev cluster? Deploy the bundled BPMN examples:
 
 ```bash
-./c8volt embed list
-./c8volt embed deploy --all
 ./c8volt embed deploy --all --run
 ```
 
-This is the quickest path from a clean environment to real process instances you can inspect, wait for, cancel, and delete.
+For scripts or CI, add `--json` when stdout should be data and logs should stay on stderr:
+
+```bash
+./c8volt config test-connection --json
+```
+
+After the first command, jump to [Configuration Notes](#configuration-notes) for profiles, OAuth, tenants, and precedence.
 
 ## Supported Camunda Versions
 
@@ -164,7 +121,7 @@ This is the quickest path from a clean environment to real process instances you
 
 `8.9` is a first-class runtime target. The everyday operator loop is covered: cluster metadata, definitions, resources, process-instance search, wait, walk, run, cancel, delete, tenant handling, and JSON output for automation.
 
-`8.8` remains the established baseline. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
+`8.8` remains the established baseline. Process-instance variable updates, incident resolution, and `get job`/`update job` commands are supported on Camunda `8.8` and `8.9`; Camunda `8.7` returns an unsupported-version error for those state-changing job, variable update, and incident resolution commands. `8.7` remains supported with known upstream limitations where tenant-safe direct keyed process-instance behavior is not available.
 
 ## Core Workflows
 
@@ -187,6 +144,50 @@ For batch execution:
 ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
 ```
 
+### Update Runtime Variables
+
+```bash
+./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}'
+./c8volt update process-instance --key 2251799813711967 --vars '{"customerTier":"gold"}'
+printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt update pi - --vars '{"customerTier":"gold"}'
+```
+
+By default, `update pi` submits the variable mutation and waits until the requested process-instance-scope values are visible through the same lookup path used by `get pi --with-vars`. The `--vars` value must be a JSON object; repeated `--key` flags and stdin `-` keys are merged and deduplicated before the same variable map is applied to each target.
+
+Use `--no-wait` when accepted/submitted output is enough:
+
+```bash
+./c8volt update pi --key 2251799813711967 --vars '{"customerTier":"gold"}' --no-wait
+```
+
+Process-instance variable updates are available on Camunda `8.8` and `8.9`. Camunda `8.7` fails before mutation with an unsupported-version error.
+
+### Inspect And Update Jobs
+
+```bash
+./c8volt get job --key 2251799813711967
+./c8volt --json get job --key 2251799813711967
+./c8volt update job --key 2251799813711967 --retries 3 --dry-run
+./c8volt update job --key 2251799813711967 --retries 3 --auto-confirm
+./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm
+./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm
+```
+
+Use `get job` with the `jobKey` from incident-aware process-instance output to inspect the matching runtime job directly. Job output keeps the full error message by default; use `--error-message-limit` when terminal output should be shortened. `update job` supports retry and timeout changes on Camunda `8.8` and `8.9`; retry changes are confirmed by reading the job by key by default, while timeout changes report submitted milliseconds without claiming deadline confirmation. Use `--dry-run` to preview the plan without mutation, `--auto-confirm` or `--automation` for unattended mutations, and `--no-wait` when accepted/submitted output is enough.
+
+### Resolve Incidents
+
+```bash
+./c8volt resolve incident --key 2251799813685249 --dry-run
+./c8volt resolve incident --key 2251799813685249
+./c8volt resolve inc --key 2251799813685249 --key 2251799813685250 --no-wait
+./c8volt resolve pi --key 2251799813711967 --dry-run
+./c8volt resolve process-instance --key 2251799813711967
+printf '%s\n' 2251799813711967 2251799813711968 | ./c8volt resolve pi -
+```
+
+Use `resolve incident` when you already have incident keys from `get pi --with-incidents`. Use `resolve pi` when you want c8volt to discover the active incidents for each selected process instance at command start and resolve that fixed set. Both commands merge repeated `--key` values with stdin `-`, deduplicate keys, support JSON output, and wait for incident lookup to confirm resolution by default. Add `--dry-run` to preview the lookup-backed plan without mutation, or `--no-wait` when accepted/submitted output is enough.
+
 ### Walk Before You Change
 
 ```bash
@@ -198,7 +199,7 @@ For batch execution:
 
 Use `walk pi` before a risky action. It shows the process-instance family tree, which is usually where the real cancellation or deletion scope becomes obvious.
 
-For diagnosis, add `--with-incidents` and/or `--with-vars`. Human output stays compact; `--json` gives scripts the full structured details.
+For diagnosis, add `--with-incidents` and/or `--with-vars`. Use `--json` when scripts need the full structured details.
 
 ### Cancel Safely
 
@@ -250,7 +251,7 @@ Deletion in real environments often means preview the family scope, cancel-first
 ./c8volt delete pi --state completed --batch-size 250 --limit 25 --auto-confirm
 ```
 
-Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Human-oriented modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
+Search-based `get pi`, `cancel pi`, and `delete pi` work page by page instead of silently stopping at the first large result set. Interactive modes prompt before continuing unless `--auto-confirm` or `--json` is set. JSON mode consumes remaining pages and returns one aggregated result.
 
 For bulk work, check the batch first, then act:
 
@@ -272,7 +273,7 @@ When a script only needs the count of matching process instances, `./c8volt get 
 ./c8volt get pi --has-user-tasks <user-task-key> --json
 ```
 
-`--has-user-tasks` resolves owning process instances through tenant-aware Camunda v2 user-task search first, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Human output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
+`--has-user-tasks` resolves owning process instances through tenant-aware Camunda v2 user-task search first, then renders the process instances through the same keyed path as `get pi --key <process-instance-key>`. Default output, JSON output, `--keys-only`, tenant handling, and process-instance not-found behavior therefore stay aligned with direct keyed lookup.
 
 On Camunda `8.8` and `8.9`, a not-found v2 user-task result falls back to deprecated Tasklist V1 lookup for legacy user-task compatibility. Camunda `8.7` remains unsupported for `--has-user-tasks`, and non-not-found lookup failures are surfaced instead of being retried as fallback misses.
 
@@ -291,8 +292,12 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ```bash
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --incidents-only --with-incidents
+./c8volt get pi --direct-incidents-only --with-incidents
 ./c8volt get pi --with-incidents --incident-message-limit 80
+./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message failed
+./c8volt get pi --total --direct-incidents-only --incident-error-type io_mapping_error
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all
 ./c8volt get pi --key <process-instance-key> --with-incidents --json
 ./c8volt get pi --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars
@@ -307,13 +312,29 @@ For `get pd --stat`, Camunda `8.8` and `8.9` report process-instance counts for 
 ./c8volt get pi --end-date-before 2026-03-31 --state completed
 ```
 
-Human process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
+Process-instance lists mark only incident-bearing instances with `inc!`; instances without incidents omit the incident marker to keep long lists scannable.
 
-Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. Human list output is optimized for scanning; walk output remains tree- or path-oriented.
+Use `--json` when a script needs stable fields and `--keys-only` when piping process-instance keys into another command. List output is optimized for scanning; walk output remains tree- or path-oriented.
 
-For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. Direct incident keys and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages.
+For incident diagnosis, add `--with-incidents` to keyed or list/search `get pi` output. List/search `--incidents-only` uses the active `hasIncident` process-instance marker; use `--direct-incidents-only` when the result set should be narrowed by actually loaded direct incidents instead. Direct active incident keys, states, and messages appear beneath the matching process-instance row. If the row only tells you there is an incident somewhere in the tree, jump to `walk pi --key <key> --with-incidents`. Add `--incident-error-type <type>` to match a Camunda incident error type case-insensitively, and `--incident-error-message <text>` to match an error-message substring case-insensitively. In list/search mode, those incident detail filters refine `--direct-incidents-only`; in keyed mode, they refine displayed incidents under `--with-incidents`. Combine detail filters with `--total --direct-incidents-only` to count process instances with matching direct incidents. Add `--incident-message-limit <chars>` for terminal-friendly output; JSON keeps full messages. For keyed ops inspection of incident history, add `--incident-state pending`, `resolved`, `migrated`, `unknown`, or `all`.
 
-For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Human values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
+When incident output includes `jobKey`, use `get job --key <job-key>` for direct job details. To remediate job retries or timeout, preview with `update job --dry-run`, then submit with `--auto-confirm` or `--automation`; use `--no-wait` when your script will verify later. To resolve the incident itself, preview with `resolve incident --dry-run` or let `resolve pi --dry-run` discover the active incident set for a process instance first.
+
+### Inspect Incidents Directly
+
+```bash
+./c8volt get incident --key <incident-key>
+./c8volt get incident --key <incident-key> --json
+./c8volt get incident --state active
+./c8volt get incident --error-type io_mapping_error --error-message failed
+./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
+./c8volt get incident --total --state resolved
+./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
+```
+
+Use `get incident` when the incident itself is the target. Repeated `--key` values and stdin `-` are merged and deduplicated for keyed lookup. Without keys, the command lists incidents with plain incident filters such as `--state`, `--error-type`, `--error-message`, process and flow-node selectors, and creation-time bounds. Rows include tenant, state, type, creation time, process context, job key, message, and age; `--json`, `--keys-only`, and `--total` preserve script-friendly output contracts.
+
+For variable inspection, add `--with-vars` to keyed or list/search `get pi` output, or to keyed `walk pi` output. Combine it with `--with-incidents` when you need runtime data and failure context in one view. Values are full by default; add `--var-value-limit <chars>` for noisy payloads. JSON keeps received values and metadata intact.
 
 The `--start-date-*` and `--end-date-*` flags are inclusive `YYYY-MM-DD` bounds for search/list usage. Relative day filters use `--*-date-older-days N` for `N` days old or older and `--*-date-newer-days N` for `N` days old or newer.
 
@@ -337,13 +358,13 @@ Use the setup commands as three small gates:
 
 ```bash
 # 1. Shape: is config.yaml valid YAML with supported values?
-./c8volt --config ./config.yaml config validate
+./c8volt config validate
 
 # 2. Effective config: what will c8volt actually use after flags/env/profiles?
-./c8volt --config ./config.yaml config show
+./c8volt config show
 
 # 3. Network: can c8volt reach Camunda with that exact config?
-./c8volt --config ./config.yaml config test-connection
+./c8volt config test-connection
 ```
 
 When the network gate succeeds, `config test-connection` reports the selected profile, the tested Camunda base URL, and the cluster gateway version. If the configured Camunda version and gateway version differ by major/minor version, fix the config unless you have a very good reason not to; Camunda APIs can differ between versions.
@@ -351,7 +372,7 @@ When the network gate succeeds, `config test-connection` reports the selected pr
 For automation:
 
 ```bash
-./c8volt --config ./config.yaml config test-connection --json
+./c8volt config test-connection --json
 ```
 
 ### Process-Instance Page Size
@@ -450,7 +471,7 @@ profiles:
 
 ## Automation And Pipelines
 
-Human-first discovery:
+Interactive discovery:
 
 ```bash
 ./c8volt --help
@@ -473,6 +494,10 @@ For supported command paths, combine `--automation` with `--json` when you need 
 ./c8volt capabilities --json
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process
 ./c8volt --automation --json run pi -b C88_SimpleUserTask_Process --no-wait
+./c8volt --automation --json update pi --key <process-instance-key> --vars '{"customerTier":"gold"}' --no-wait
+./c8volt --automation --json update job --key <job-key> --retries 3 --auto-confirm
+./c8volt --automation --json resolve incident --key <incident-key> --dry-run
+./c8volt --automation --json resolve pi --key <process-instance-key> --no-wait
 ./c8volt --automation --json get pi --bpmn-process-id C88_SimpleUserTask_Process --state active
 ```
 
@@ -492,7 +517,14 @@ Examples:
 
 ```bash
 ./c8volt get pi --key <process-instance-key> --keys-only | ./c8volt cancel pi --auto-confirm --no-wait -
-./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --allow-inconsistent --auto-confirm --no-wait -
+./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
+./c8volt get job --key <job-key>
+./c8volt update job --key <job-key> --retries 3 --dry-run
+./c8volt update job --key <job-key> --retries 3 --no-wait --auto-confirm
+./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt resolve pi --key <process-instance-key> --dry-run
+./c8volt resolve incident --key <incident-key> --no-wait
+./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --keys-only | ./c8volt delete pd --auto-confirm --no-wait -
 ```
 
 ## Command Map
@@ -507,6 +539,12 @@ c8volt
 |   `-- pd                    Deploy BPMN process definitions
 |-- run                       Start runnable resources
 |   `-- pi                    Start process instances and confirm activation by default
+|-- update                    Update existing resources
+|   |-- pi                    Update process-instance variables and confirm visibility by default
+|   `-- job                   Update job retries and timeout by key
+|-- resolve                   Resolve operational incidents
+|   |-- incident              Resolve incidents by key
+|   `-- process-instance      Resolve active incidents discovered for process instances
 |-- walk                      Inspect parent/child relationships
 |   `-- pi                    Walk ancestors, descendants, or full family trees
 |-- cancel                    Cancel resources and wait for confirmation
@@ -522,6 +560,8 @@ c8volt
 |   |-- cluster license       Show cluster license details
 |   |-- process-definition    List definitions, fetch latest versions, or retrieve XML
 |   |-- process-instance      List, fetch, and enrich process instances
+|   |-- job                   Inspect a job by key
+|   |-- incident              List or fetch incidents
 |   |-- tenant                List, filter, or fetch visible tenants
 |   `-- resource              Fetch a single resource by id
 |-- capabilities              Describe the public CLI contract for automation and discovery
@@ -553,11 +593,30 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt run pi -b <bpmn-process-id> --vars '{"customerId":"1234"}'
 ./c8volt run pi -b <bpmn-process-id> -n 25 --workers 5
 
+# Update process-instance-scope variables.
+./c8volt update pi --key <process-instance-key> --vars '{"customerTier":"gold"}'
+./c8volt get pi --state active --keys-only | ./c8volt update pi - --vars '{"priority":"high"}' --no-wait
+
+# Inspect and update jobs from incident job keys.
+./c8volt get job --key <job-key>
+./c8volt update job --key <job-key> --retries 3 --dry-run
+./c8volt update job --key <job-key> --timeout 5m --auto-confirm
+./c8volt update job --key <job-key> --retries 3 --no-wait --auto-confirm
+
+# Preview and resolve incidents.
+./c8volt resolve incident --key <incident-key> --dry-run
+./c8volt resolve incident --key <incident-key>
+./c8volt resolve pi --key <process-instance-key> --dry-run
+./c8volt resolve pi --key <process-instance-key> --no-wait
+
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt --automation --json get pi --bpmn-process-id <bpmn-process-id> --state active
 ./c8volt get pi --state active --incidents-only
 ./c8volt get pi --key <process-instance-key> --with-incidents
+./c8volt get incident --key <incident-key>
+./c8volt get incident --state active --error-message failed
+./c8volt get incident --total --state resolved
 ./c8volt get pi --state active --with-vars
 ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
 ./c8volt get pi --state active --total

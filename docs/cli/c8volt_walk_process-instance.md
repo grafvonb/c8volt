@@ -25,14 +25,15 @@ c8volt walk process-instance [flags]
 ### Examples
 
 ```
-  ./c8volt walk pi --key 2251799813711967
-  ./c8volt walk pi --key 2251799813711967 --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --with-vars
-  ./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80
-  ./c8volt walk pi --key 2251799813711967 --flat
-  ./c8volt walk pi --key 2251799813711977 --parent
-  ./c8volt --json walk pi --key 2251799813711967 --children --with-incidents
+  ./c8volt walk pi --key <process-instance-key>
+  ./c8volt walk pi --key <process-instance-key> --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --with-vars
+  ./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-message-limit 80
+  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-state all
+  ./c8volt walk pi --key <process-instance-key> --flat
+  ./c8volt walk pi --key <process-instance-key> --parent
+  ./c8volt --json walk pi --key <process-instance-key> --children --with-incidents
 ```
 
 ### Options
@@ -41,11 +42,12 @@ c8volt walk process-instance [flags]
       --children                     show descendants from the selected process instance
       --flat                         render family output as a flat path instead of an ASCII tree
   -h, --help                         help for process-instance
-      --incident-message-limit int   maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation
+      --incident-message-limit int   maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation
+      --incident-state string        incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
   -k, --key string                   start walking from this process instance key
       --parent                       show ancestry from the selected process instance toward the root
-      --var-value-limit int          maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
-      --with-incidents               show incident keys and messages for keyed process-instance walks
+      --var-value-limit int          maximum characters to show for variable values when --with-vars is set; 0 disables truncation
+      --with-incidents               show incident keys, states, and messages for keyed process-instance walks
       --with-vars                    show process-instance-scope variables for keyed process-instance walks
 ```
 

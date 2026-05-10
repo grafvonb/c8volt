@@ -14,8 +14,6 @@ Deploy BPMN process definition files and report the deployed definitions.
 
 By default c8volt waits for deployment confirmation. Use --run to start one process instance for each deployed definition.
 
-Add --no-wait to verify later with `get pd`.
-
 ```
 c8volt deploy process-definition [flags]
 ```
@@ -23,11 +21,10 @@ c8volt deploy process-definition [flags]
 ### Examples
 
 ```
-  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --no-wait
-  ./c8volt get pd --bpmn-process-id C88_SimpleUserTask_Process --latest --json
+  ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn --run
+  ./c8volt get pd --bpmn-process-id C89_SimpleUserTask_Process --latest --json
 ```
 
 ### Options

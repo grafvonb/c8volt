@@ -241,7 +241,7 @@ func isCmdAborted(err error) bool {
 // run after the page is fetched, so totals from Operate would overstate the final
 // output for those modes.
 func canUsePIReportedTotal() bool {
-	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPINoIncidentsOnly)
+	return !(flagGetPIChildrenOnly || flagGetPIRootsOnly || flagGetPIOrphanChildrenOnly || flagGetPIIncidentsOnly || flagGetPIDirectIncidentsOnly || flagGetPINoIncidentsOnly || hasPIIncidentDetailFilters())
 }
 
 // canUsePIExactReportedTotal guards the fast total path used by count-style
@@ -433,7 +433,7 @@ func processPISearchPagesWithAction(
 			pageReq = newPISearchPageRequest(cmd, cfg, pageReq.From+int32(len(page.Items)))
 			continue
 		case processInstanceContinuationPrompt:
-			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%d requested so far, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, summary.CumulativeCount, cumulativeAffected)
+			prompt := fmt.Sprintf("Processed %d process instance(s) on this page (%s, %d including dependencies). More matching process instances remain. Continue?", summary.CurrentPageCount, formatProcessInstancePagingProgress(limitedPage, summary.CumulativeCount, "requested"), cumulativeAffected)
 			if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 				if isCmdAborted(err) {
 					printPISearchProgress(cmd, processInstanceProgressSummary{

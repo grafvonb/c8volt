@@ -13,7 +13,7 @@ Cancel running process instances
 Cancel running process instances.
 
 Validates the affected tree, prompts before destructive changes, and waits for
-observed cancellation unless you opt out.
+observed cancellation.
 
 ```
 c8volt cancel [flags]
@@ -24,7 +24,7 @@ c8volt cancel [flags]
 ```
   ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --batch-size 200 --auto-confirm
+  ./c8volt cancel pi --state active --limit 5 --auto-confirm
 ```
 
 ### Options

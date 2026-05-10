@@ -29,7 +29,19 @@ type DeploymentUnitData struct {
 	Data        []byte
 }
 
-type DeleteReport = process.Reporter
+type DeleteReport struct {
+	Key               string `json:"key,omitempty"`
+	Ok                bool   `json:"ok,omitempty"`
+	StatusCode        int    `json:"statusCode,omitempty"`
+	Status            string `json:"status,omitempty"`
+	DeleteHistory     bool   `json:"deleteHistory,omitempty"`
+	BatchOperationKey string `json:"batchOperationKey,omitempty"`
+	BatchState        string `json:"batchState,omitempty"`
+}
+
+func (r DeleteReport) OK() bool {
+	return r.Ok
+}
 
 type DeleteReports struct {
 	Items []DeleteReport `json:"items,omitempty"`
@@ -37,4 +49,46 @@ type DeleteReports struct {
 
 func (c DeleteReports) Totals() (total int, oks int, noks int) {
 	return process.TotalsOf(c.Items)
+}
+
+type DeleteProcessDefinitionPlan struct {
+	Items                 []DeleteProcessDefinitionPlanItem `json:"items,omitempty"`
+	StateCheckSkipped     bool                              `json:"stateCheckSkipped,omitempty"`
+	ProcessDefinitionKeys []string                          `json:"processDefinitionKeys,omitempty"`
+	Warnings              []string                          `json:"warnings,omitempty"`
+}
+
+type DeleteProcessDefinitionPlanItem struct {
+	Key                        string                       `json:"key,omitempty"`
+	ActiveProcessInstanceCount int64                        `json:"activeProcessInstanceCount,omitempty"`
+	ActiveProcessInstanceKeys  []string                     `json:"activeProcessInstanceKeys,omitempty"`
+	CancellationPlan           process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`
+	Warnings                   []string                     `json:"warnings,omitempty"`
+}
+
+func (i DeleteProcessDefinitionPlanItem) ActiveProcessInstances() int64 {
+	if i.ActiveProcessInstanceCount > 0 {
+		return i.ActiveProcessInstanceCount
+	}
+	return int64(len(i.ActiveProcessInstanceKeys))
+}
+
+func (p DeleteProcessDefinitionPlan) Totals() DeleteProcessDefinitionPlanTotals {
+	totals := DeleteProcessDefinitionPlanTotals{ProcessDefinitions: len(p.Items)}
+	for _, item := range p.Items {
+		totals.ActiveProcessInstances += item.ActiveProcessInstances()
+		totals.CancellationRoots += len(item.CancellationPlan.Roots)
+		totals.CancellationAffected += len(item.CancellationPlan.Collected)
+		totals.Warnings += len(item.Warnings)
+	}
+	totals.Warnings += len(p.Warnings)
+	return totals
+}
+
+type DeleteProcessDefinitionPlanTotals struct {
+	ProcessDefinitions     int   `json:"processDefinitions"`
+	ActiveProcessInstances int64 `json:"activeProcessInstances"`
+	CancellationRoots      int   `json:"cancellationRoots"`
+	CancellationAffected   int   `json:"cancellationAffected"`
+	Warnings               int   `json:"warnings"`
 }

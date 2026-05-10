@@ -281,8 +281,448 @@ func TestCommandCapabilityForCommand_ProcessInstanceVariableFlags(t *testing.T) 
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum characters to show for human variable values when --with-vars is set; 0 disables truncation",
+		Description: "maximum characters to show for variable values when --with-vars is set; 0 disables truncation",
 	})
+}
+
+func TestCommandCapabilityForCommand_UpdateProcessInstanceContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(updateProcessInstanceCmd)
+
+	require.Equal(t, "update process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to update; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "vars",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "JSON object with variables to set on each process instance",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "vars-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "path to JSON object file with variables to set on each process instance",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview variable updates without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the update request is accepted without variable confirmation",
+	})
+}
+
+func TestCommandCapabilityForCommand_GetAndUpdateJobContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	getCapability := commandCapabilityForCommand(getJobCmd)
+	require.Equal(t, "get job", getCapability.Path)
+	require.Equal(t, CommandMutationReadOnly, getCapability.Mutation)
+	require.Equal(t, ContractSupportFull, getCapability.ContractSupport)
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "job key to inspect",
+	})
+	require.Contains(t, getCapability.Flags, FlagContract{
+		Name:        "error-message-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum characters to show for error messages; 0 keeps full messages",
+	})
+
+	updateCapability := commandCapabilityForCommand(updateJobCmd)
+	require.Equal(t, "update job", updateCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, updateCapability.Mutation)
+	require.Equal(t, ContractSupportFull, updateCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updateCapability.AutomationSupport)
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "key",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "job key to update",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "retries",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "retry count to set on the job",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "timeout",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "timeout duration to submit for the job, for example 60s, 5m, or 1h",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview job updates without submitting mutation",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the update request is accepted without retry confirmation",
+	})
+	require.Contains(t, updateCapability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
+	})
+}
+
+func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	t.Cleanup(resetGetIncidentFlagState)
+
+	capability := commandCapabilityForCommand(getIncidentCmd)
+	require.Equal(t, "get incident", capability.Path)
+	require.Contains(t, capability.Aliases, "incidents")
+	require.Contains(t, capability.Aliases, "inc")
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to fetch; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "error-message-limit",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum characters to show for incident messages; 0 keeps full messages",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-no-error-message",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "omit error messages from incident output",
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "keys-only",
+		Supported: true,
+	})
+}
+
+func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	update, ok := findCommandCapability(doc.Commands, "update")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, update.Mutation)
+	require.Equal(t, ContractSupportLimited, update.ContractSupport)
+	require.Contains(t, update.Aliases, "u")
+
+	updatePI, ok := findCommandCapability(doc.Commands, "update process-instance")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, updatePI.Mutation)
+	require.Equal(t, ContractSupportFull, updatePI.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updatePI.AutomationSupport)
+
+	updateJob, ok := findCommandCapability(doc.Commands, "update job")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, updateJob.Mutation)
+	require.Equal(t, ContractSupportFull, updateJob.ContractSupport)
+	require.Equal(t, AutomationSupportFull, updateJob.AutomationSupport)
+}
+
+func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(resolveIncidentCmd)
+
+	require.Equal(t, "resolve incident", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "inc")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to resolve; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when resolving multiple incidents (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview incident resolutions without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after the resolution request is accepted without incident confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling new incident resolutions after the first error",
+	})
+}
+
+func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(resolveProcessInstanceCmd)
+
+	require.Equal(t, "resolve process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to resolve; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when resolving multiple process instances (default: min(count, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview process-instance incident resolutions without submitting mutation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after resolution requests are accepted without incident confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling new process-instance resolutions after the first error",
+	})
+}
+
+func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	doc := capabilityDocumentForRoot(root)
+
+	resolve, ok := findCommandCapability(doc.Commands, "resolve")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, resolve.Mutation)
+	require.Equal(t, ContractSupportLimited, resolve.ContractSupport)
+	require.Contains(t, resolve.Aliases, "res")
+
+	incident, ok := findCommandCapability(doc.Commands, "resolve incident")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, incident.Mutation)
+	require.Equal(t, ContractSupportFull, incident.ContractSupport)
+	require.Equal(t, AutomationSupportFull, incident.AutomationSupport)
+	require.Contains(t, incident.Aliases, "inc")
+
+	processInstance, ok := findCommandCapability(doc.Commands, "resolve process-instance")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, processInstance.Mutation)
+	require.Equal(t, ContractSupportFull, processInstance.ContractSupport)
+	require.Equal(t, AutomationSupportFull, processInstance.AutomationSupport)
+	require.Contains(t, processInstance.Aliases, "pi")
+}
+
+func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"get"}, []string{
+		"Inspect cluster, process, job, incident, tenant, and resource state",
+		"./c8volt get job --key <job-key>",
+	}, nil)
+	require.Contains(t, output, "job")
+
+	output = assertCommandHelpOutput(t, []string{"get", "job"}, []string{
+		"Inspect a Camunda job by key",
+		"Use the jobKey exposed by incident-aware process-instance output",
+		"Use --json for the stable job payload",
+		"--error-message-limit",
+		"Camunda 8.8 and 8.9",
+		"./c8volt get job --key <job-key>",
+		"./c8volt --json get job --key <job-key>",
+		"--key string",
+		"--error-message-limit int",
+	}, nil)
+
+	output = assertCommandHelpOutput(t, []string{"update"}, []string{
+		"Update existing resources",
+		"job retries and timeout by key",
+		"dry-run planning",
+		"submitted output",
+		"./c8volt update job --key <job-key> --retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --timeout 5m --auto-confirm",
+	}, nil)
+	require.Contains(t, output, "job")
+
+	output = assertCommandHelpOutput(t, []string{"update", "job"}, []string{
+		"Update a Camunda job by key",
+		"supports retries and timeout updates",
+		"pre-mutation plan",
+		"--dry-run previews",
+		"Retry updates are confirmed by reading the job by key by default",
+		"timeout updates report submitted milliseconds without deadline confirmation",
+		"JSON mutations require --dry-run, --auto-confirm, or --automation",
+		"--json cannot be combined with --verbose",
+		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update job --key <job-key> --retries 3 --dry-run",
+		"./c8volt --json update job --key <job-key> --retries 3 --auto-confirm",
+		"--key string",
+		"--retries int32",
+		"--timeout string",
+		"--dry-run",
+		"--auto-confirm",
+	}, nil)
+}
+
+func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"get", "incident"}, []string{
+		"Get Camunda incidents by key or by search criteria",
+		"repeated --key values or newline-separated keys from stdin with '-'",
+		"Search mode defaults to active incidents",
+		"./c8volt get incident --key <incident-key>",
+		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
+		"./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -",
+		"./c8volt --json get incident --key <incident-key>",
+		"./c8volt --keys-only get incident --key <incident-key>",
+		"--key strings",
+		"--state string",
+		"--error-type string",
+		"--bpmn-process-id string",
+		"--pd-key string",
+		"--pi-key string",
+		"--root-key string",
+		"--flow-node-id string",
+		"--fni-key string",
+		"--batch-size int32",
+		"--limit int32",
+		"--error-message-limit int",
+		"--json",
+		"--keys-only",
+	}, nil)
+	require.Contains(t, output, "Aliases:")
+	require.Contains(t, output, "incidents")
+	require.Contains(t, output, "inc")
+	require.NotContains(t, output, "AD_HOC_SUB_PROCESS_NO_RETRIES")
+}
+
+func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T) {
+	output := assertCommandHelpOutput(t, []string{"update"}, []string{
+		"Update existing resources",
+		"Camunda 8.8 and 8.9",
+		"unsupported-version error before these mutations",
+		"./c8volt update process-instance --key <process-instance-key> --vars",
+		"./c8volt update pi --key <process-instance-key> --vars-file",
+		"./c8volt --automation --json update pi --key <process-instance-key> --vars",
+	}, nil)
+	require.Contains(t, output, "process-instance")
+
+	output = assertCommandHelpOutput(t, []string{"update", "process-instance"}, []string{
+		"Update process-instance variables by key",
+		"Provide exactly one variable payload source",
+		"--vars with a JSON object or --vars-file with a path",
+		"repeated --key values or newline-separated keys from stdin with '-'",
+		"loads current process-instance-scope variables",
+		"Use --dry-run to preview without mutating",
+		"--auto-confirm for unattended mutation",
+		"Camunda 8.7 returns an unsupported-version error before mutation",
+		"./c8volt update pi --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
+		"./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars",
+		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" | ./c8volt update pi --key \"$PROCESS_INSTANCE_KEY_B\" - --vars",
+		"--workers",
+		"--dry-run",
+		"--fail-fast",
+	}, nil)
+	require.Contains(t, output, "Aliases:")
+	require.Contains(t, output, "pi")
+
+	aliasOutput := assertCommandHelpOutput(t, []string{"update", "pi"}, []string{
+		"Update process-instance variables by key",
+		"--vars string",
+		"--vars-file string",
+		"--dry-run",
+		"--no-wait",
+	}, nil)
+	require.Contains(t, aliasOutput, "Aliases:")
+	require.Contains(t, aliasOutput, "pi")
 }
 
 func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
@@ -304,16 +744,16 @@ func TestProcessInstanceSelectorValidationHelpContract(t *testing.T) {
 			name: "cancel pi",
 			args: []string{"cancel", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning cancellation.",
-				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
+				"If no matching instances are found, no cancellation request is submitted.",
 			},
 		},
 		{
 			name: "delete pi",
 			args: []string{"delete", "pi", "--help"},
 			wants: []string{
-				"When --bpmn-process-id is set, c8volt validates that the process definition is visible before planning deletion.",
-				"A missing selector fails before mutation and automation-oriented modes never prompt for recovery output.",
+				"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search.",
+				"If no matching instances are found, no deletion request is submitted.",
 			},
 		},
 		{

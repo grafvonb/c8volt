@@ -27,11 +27,11 @@ var runProcessInstanceCmd = &cobra.Command{
 	Long: "Start process instances and confirm activation.\n\n" +
 		"Run by BPMN process ID for the latest version, or by process definition key for an exact definition.\n\n" +
 		"When running by BPMN process ID, c8volt validates all requested process definitions before creating anything. Mixed visible and missing BPMN IDs fail as one request, so no partial process instances are started; automation-oriented modes never prompt for recovery output.\n\n" +
-		"By default c8volt waits for active instances. Add --no-wait to verify later with `get pi`, `expect pi`, or `walk pi`.",
-	Example: `  ./c8volt run pi -b C88_SimpleUserTask_Process
-  ./c8volt run pi -b C88_SimpleUserTask_Process --vars '{"customerId":"1234"}'
-  ./c8volt run pi -b C88_SimpleUserTask_Process -n 100 --workers 8
-  ./c8volt --json run pi -b C88_SimpleUserTask_Process --no-wait
+		"By default c8volt waits for active instances.",
+	Example: `  ./c8volt run pi -b C89_SimpleUserTask_Process
+  ./c8volt run pi -b C89_SimpleUserTask_Process --vars '{"customerId":"1234"}'
+  ./c8volt run pi -b C89_SimpleUserTask_Process -n 3 --workers 2
+  ./c8volt --json run pi -b C89_SimpleUserTask_Process --vars '{"customerId":"1234"}'
   ./c8volt expect pi --key <process-instance-key> --state active`,
 	Aliases: []string{"pi"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -151,5 +151,5 @@ func init() {
 
 	setCommandMutation(runProcessInstanceCmd, CommandMutationStateChanging)
 	setContractSupport(runProcessInstanceCmd, ContractSupportFull)
-	setAutomationSupport(runProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results with --no-wait")
+	setAutomationSupport(runProcessInstanceCmd, AutomationSupportFull, "supports shared machine output and accepted results")
 }

@@ -13,10 +13,10 @@ var cancelCmd = &cobra.Command{
 	Long: `Cancel running process instances.
 
 Validates the affected tree, prompts before destructive changes, and waits for
-observed cancellation unless you opt out.`,
+observed cancellation.`,
 	Example: `  ./c8volt cancel pi --key <process-instance-key>
   ./c8volt cancel pi --key <process-instance-key> --force
-  ./c8volt cancel pi --state active --batch-size 200 --auto-confirm`,
+  ./c8volt cancel pi --state active --limit 5 --auto-confirm`,
 	Aliases: []string{"c", "cn", "stop", "abort"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

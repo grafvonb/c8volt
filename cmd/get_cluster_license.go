@@ -15,7 +15,7 @@ var getClusterLicenseCmd = &cobra.Command{
 	Aliases: []string{"licence"},
 	Short:   "Show connected cluster license",
 	Long: "Show connected cluster license.\n\n" +
-		"This command prints flat human-readable fields returned by the configured Camunda cluster. Use --json for the structured license payload.",
+		"This command prints flat fields returned by the configured Camunda cluster. Use --json for the structured license payload.",
 	Example: `  ./c8volt get cluster license
   ./c8volt get cluster license --json
   ./c8volt get cluster licence`,

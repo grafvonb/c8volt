@@ -23,80 +23,13 @@ func fromProcessInstanceResult(r camundav89.ProcessInstanceResult) d.ProcessInst
 		ParentFlowNodeInstanceKey: valueOrEmpty(r.ParentElementInstanceKey),
 		ParentKey:                 valueOrEmpty(r.ParentProcessInstanceKey),
 		ProcessDefinitionKey:      r.ProcessDefinitionKey,
+		RootProcessInstanceKey:    valueOrEmpty(r.RootProcessInstanceKey),
 		ProcessVersion:            r.ProcessDefinitionVersion,
 		ProcessVersionTag:         valueOrEmpty(r.ProcessDefinitionVersionTag),
 		StartDate:                 formatTime(r.StartDate),
 		State:                     d.State(r.State),
 		TenantId:                  r.TenantId,
 	}
-}
-
-func fromIncidentResult(r camundav89.IncidentResult) d.ProcessInstanceIncidentDetail {
-	return d.ProcessInstanceIncidentDetail{
-		IncidentKey:            r.IncidentKey,
-		ProcessInstanceKey:     r.ProcessInstanceKey,
-		TenantId:               r.TenantId,
-		State:                  string(r.State),
-		ErrorType:              string(r.ErrorType),
-		ErrorMessage:           r.ErrorMessage,
-		FlowNodeId:             r.ElementId,
-		FlowNodeInstanceKey:    r.ElementInstanceKey,
-		JobKey:                 valueOrEmpty(r.JobKey),
-		RootProcessInstanceKey: valueOrEmpty(r.RootProcessInstanceKey),
-		ProcessDefinitionKey:   r.ProcessDefinitionKey,
-		ProcessDefinitionId:    r.ProcessDefinitionId,
-	}
-}
-
-type variableSearchQueryResult struct {
-	Items []variableSearchResult             `json:"items"`
-	Page  camundav89.SearchQueryPageResponse `json:"page"`
-}
-
-type variableSearchResult struct {
-	Name               string `json:"name"`
-	Value              string `json:"value"`
-	VariableKey        string `json:"variableKey"`
-	ProcessInstanceKey string `json:"processInstanceKey"`
-	ScopeKey           string `json:"scopeKey"`
-	TenantId           string `json:"tenantId"`
-	IsTruncated        *bool  `json:"isTruncated,omitempty"`
-	Truncated          *bool  `json:"truncated,omitempty"`
-}
-
-func fromVariableSearchResult(r variableSearchResult) d.ProcessInstanceVariable {
-	return d.ProcessInstanceVariable{
-		Name:               r.Name,
-		Value:              r.Value,
-		VariableKey:        r.VariableKey,
-		ProcessInstanceKey: r.ProcessInstanceKey,
-		ScopeKey:           r.ScopeKey,
-		TenantId:           r.TenantId,
-		APITruncated:       variableAPITruncated(r),
-	}
-}
-
-// decodeSearchVariablesResponse reads raw JSON because the generated v8.9 model drops value and truncation fields.
-func decodeSearchVariablesResponse(body []byte, page *camundav89.VariableSearchQueryResult) (variableSearchQueryResult, error) {
-	if len(bytesTrimSpace(body)) == 0 {
-		return variableSearchQueryResult{}, d.ErrMalformedResponse
-	}
-	var result variableSearchQueryResult
-	if err := json.Unmarshal(body, &result); err != nil {
-		return variableSearchQueryResult{}, err
-	}
-	if page != nil {
-		result.Page = page.Page
-	}
-	return result, nil
-}
-
-// variableAPITruncated accepts both observed field names so older and newer API payloads keep the same display contract.
-func variableAPITruncated(r variableSearchResult) bool {
-	if r.IsTruncated != nil {
-		return *r.IsTruncated
-	}
-	return toolx.Deref(r.Truncated, false)
 }
 
 func formatTime(t time.Time) string {
@@ -174,6 +107,7 @@ type processInstanceFilter struct {
 	TenantId                    *camundav89.StringFilterProperty               `json:"tenantId,omitempty"`
 	ProcessInstanceKey          *camundav89.ProcessInstanceKeyFilterProperty   `json:"processInstanceKey,omitempty"`
 	ProcessDefinitionId         *camundav89.StringFilterProperty               `json:"processDefinitionId,omitempty"`
+	ProcessDefinitionKey        *camundav89.ProcessDefinitionKeyFilterProperty `json:"processDefinitionKey,omitempty"`
 	ProcessDefinitionVersion    *camundav89.IntegerFilterProperty              `json:"processDefinitionVersion,omitempty"`
 	ProcessDefinitionVersionTag *camundav89.StringFilterProperty               `json:"processDefinitionVersionTag,omitempty"`
 	StartDate                   *camundav89.DateTimeFilterProperty             `json:"startDate,omitempty"`
@@ -188,6 +122,7 @@ func (f *processInstanceFilter) isEmpty() bool {
 		f.TenantId == nil &&
 		f.ProcessInstanceKey == nil &&
 		f.ProcessDefinitionId == nil &&
+		f.ProcessDefinitionKey == nil &&
 		f.ProcessDefinitionVersion == nil &&
 		f.ProcessDefinitionVersionTag == nil &&
 		f.StartDate == nil &&
@@ -245,6 +180,17 @@ func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyF
 	}
 	var f camundav89.ProcessInstanceKeyFilterProperty
 	if err := f.FromProcessInstanceKeyFilterProperty0(v); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinitionKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ProcessDefinitionKeyFilterProperty
+	if err := f.FromProcessDefinitionKeyFilterProperty0(v); err != nil {
 		return nil, err
 	}
 	return new(f), nil

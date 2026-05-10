@@ -51,6 +51,7 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 			}
 
 			res, err := fn(ctx, i)
+			out[i] = res
 			if err != nil {
 				errs[i] = err
 				if failFast && sawErr.CompareAndSwap(false, true) {
@@ -58,7 +59,6 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 				}
 				continue
 			}
-			out[i] = res
 		}
 	}
 

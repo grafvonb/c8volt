@@ -37,7 +37,7 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Equal(t, "discovery command for automation support", capabilitiesCapability.AutomationNotes)
 	require.Equal(t, []OutputModeContract{
 		{Name: "json", Supported: true, MachinePreferred: true, Notes: "full discovery format"},
-		{Name: "one-line", Supported: true, Notes: "human-readable summary"},
+		{Name: "one-line", Supported: true, Notes: "summary"},
 	}, capabilitiesCapability.OutputModes)
 
 	require.Equal(t, "get", getCapability.Path)
@@ -101,6 +101,53 @@ func TestCapabilitiesCommand_JSONOutput(t *testing.T) {
 	require.Equal(t, ContractSupportLimited, walkCapability.ContractSupport)
 	require.Equal(t, CommandMutationReadOnly, walkCapability.Mutation)
 	require.Equal(t, AutomationSupportUnsupported, walkCapability.AutomationSupport)
+}
+
+func TestCapabilitiesCommand_JSONIncludesResolveMetadata(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	resolve, ok := findCommandCapability(doc.Commands, "resolve")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, resolve.Mutation)
+	require.Equal(t, ContractSupportLimited, resolve.ContractSupport)
+	require.Contains(t, resolve.Aliases, "res")
+
+	incident, ok := findCommandCapability(doc.Commands, "resolve incident")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, incident.Mutation)
+	require.Equal(t, ContractSupportFull, incident.ContractSupport)
+	require.Equal(t, AutomationSupportFull, incident.AutomationSupport)
+	require.Contains(t, incident.Aliases, "inc")
+	require.Contains(t, incident.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Description: "preview incident resolutions without submitting mutation",
+	})
+	require.Contains(t, incident.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Description: "return after the resolution request is accepted without incident confirmation",
+	})
+
+	processInstance, ok := findCommandCapability(doc.Commands, "resolve process-instance")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, processInstance.Mutation)
+	require.Equal(t, ContractSupportFull, processInstance.ContractSupport)
+	require.Equal(t, AutomationSupportFull, processInstance.AutomationSupport)
+	require.Contains(t, processInstance.Aliases, "pi")
+	require.Contains(t, processInstance.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Description: "preview process-instance incident resolutions without submitting mutation",
+	})
+	require.Contains(t, processInstance.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Description: "return after resolution requests are accepted without incident confirmation",
+	})
 }
 
 func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.T) {

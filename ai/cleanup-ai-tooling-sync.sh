@@ -169,11 +169,18 @@ do
     fi
 done
 
-for managed_file in scripts/ralph/ralph.sh scripts/ralph/doctor.sh scripts/ralph/prompt.md; do
-    if [ ! -e "$SOURCE_ROOT/$managed_file" ]; then
-        delete_path "$REPO_ROOT/$managed_file"
-    fi
+for legacy_managed_file in \
+    scripts/ralph/ralph.sh \
+    scripts/ralph/doctor.sh \
+    scripts/ralph/prompt.md \
+    scripts/ralph/prd.json.example
+do
+    delete_path "$REPO_ROOT/$legacy_managed_file"
 done
+
+if [ "$DRY_RUN" -eq 0 ] && [ -d "$REPO_ROOT/scripts/ralph" ]; then
+    find "$REPO_ROOT/scripts/ralph" -depth -type d -empty -delete
+fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
     echo "Dry run complete."

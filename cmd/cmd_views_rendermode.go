@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// RenderMode selects how view commands render command results.
 type RenderMode int
 
 const (
@@ -20,6 +21,7 @@ const (
 	RenderModeTree
 )
 
+// String returns the CLI-facing name for the render mode.
 func (m RenderMode) String() string {
 	switch m {
 	case RenderModeJSON:
@@ -35,6 +37,7 @@ func (m RenderMode) String() string {
 	}
 }
 
+// pickMode resolves the active view mode from the current output flags.
 func pickMode() RenderMode {
 	switch {
 	case flagViewAsJson:
@@ -46,6 +49,7 @@ func pickMode() RenderMode {
 	}
 }
 
+// machineReadableModeEnabled reports whether the selected mode is intended for structured consumers.
 func machineReadableModeEnabled(mode RenderMode) bool {
 	return mode == RenderModeJSON
 }
@@ -55,17 +59,31 @@ func renderOutputLine(cmd *cobra.Command, format string, args ...any) {
 	cmd.Println(strings.TrimRight(fmt.Sprintf(format, args...), "\n"))
 }
 
-// renderHumanLine writes human-readable command output through the activity-aware renderer.
+// renderHumanLine writes command output through the activity-aware renderer.
 func renderHumanLine(cmd *cobra.Command, format string, args ...any) {
 	renderHumanLogLine(cmd, false, format, args...)
 }
 
-// renderHumanWarningLine writes human-readable warnings through the activity-aware renderer.
+// renderHumanWarningLine writes warnings through the activity-aware renderer.
 func renderHumanWarningLine(cmd *cobra.Command, format string, args ...any) {
-	renderHumanLogLine(cmd, true, format, args...)
+	renderHumanLogLine(cmd, true, "%s", normalizeWarningText(fmt.Sprintf(format, args...)))
 }
 
-// renderHumanLogLine routes human output through the logger when command context provides one.
+func normalizeWarningText(msg string) string {
+	msg = strings.TrimSpace(msg)
+	lower := strings.ToLower(msg)
+	for _, prefix := range []string{"warning:", "warning -", "warning"} {
+		if lower == prefix {
+			return ""
+		}
+		if strings.HasPrefix(lower, prefix+" ") {
+			return strings.TrimSpace(msg[len(prefix):])
+		}
+	}
+	return msg
+}
+
+// renderHumanLogLine routes output through the logger when command context provides one.
 func renderHumanLogLine(cmd *cobra.Command, warn bool, format string, args ...any) {
 	msg := strings.TrimRight(fmt.Sprintf(format, args...), "\n")
 	log, err := logging.FromContext(cmd.Context())
@@ -82,6 +100,7 @@ func renderHumanLogLine(cmd *cobra.Command, warn bool, format string, args ...an
 	cmd.Println(msg)
 }
 
+// itemView renders a single item using shared JSON, key-only, and one-line view conventions.
 func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:
@@ -94,6 +113,7 @@ func itemView[Item any](cmd *cobra.Command, item Item, mode RenderMode, oneLine 
 	return nil
 }
 
+// listOrJSON renders a collection in the selected mode while keeping JSON output on the full response payload.
 func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, oneLine func(Item) string, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:
@@ -111,9 +131,10 @@ func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item,
 	return nil
 }
 
+// flatRow represents a single display row before optional column alignment is applied.
 type flatRow []string
 
-// listOrJSONFlat keeps machine modes unchanged while letting human list views align columns from the whole result set.
+// listOrJSONFlat keeps machine modes unchanged while letting list views align columns from the whole result set.
 func listOrJSONFlat[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, rowOf func(Item) flatRow, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:

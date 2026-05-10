@@ -22,15 +22,18 @@ import (
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/waiter"
 	"github.com/grafvonb/c8volt/internal/services/processinstance/walker"
+	varsvc "github.com/grafvonb/c8volt/internal/services/variable"
+	varv89 "github.com/grafvonb/c8volt/internal/services/variable/v89"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/typex"
 )
 
 type Service struct {
-	cc  GenProcessInstanceClientCamunda
-	cfg *config.Config
-	log *slog.Logger
+	cc          GenProcessInstanceClientCamunda
+	variableAPI varsvc.API
+	cfg         *config.Config
+	log         *slog.Logger
 }
 
 func (s *Service) ClientCamunda() GenProcessInstanceClientCamunda { return s.cc }
@@ -51,6 +54,14 @@ func WithLogger(logger *slog.Logger) Option {
 	return func(s *Service) {
 		if logger != nil {
 			s.log = logger
+		}
+	}
+}
+
+func WithVariableAPI(api varsvc.API) Option {
+	return func(s *Service) {
+		if api != nil {
+			s.variableAPI = api
 		}
 	}
 }
@@ -76,6 +87,17 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 		return nil, err
 	}
 	s.log = logger
+	if s.variableAPI == nil {
+		variableOpts := []varv89.Option{}
+		if variableClient, ok := s.cc.(varv89.GenVariableClientCamunda); ok {
+			variableOpts = append(variableOpts, varv89.WithClientCamunda(variableClient))
+		}
+		variableAPI, err := varv89.New(s.cfg, deps.HTTPClient, s.log, variableOpts...)
+		if err != nil {
+			return nil, err
+		}
+		s.variableAPI = variableAPI
+	}
 	return s, nil
 }
 
@@ -199,6 +221,10 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-id filter: %w", err)
 	}
+	processDefinitionKeyFilter, err := newProcessDefinitionKeyEqFilterPtr(filter.ProcessDefinitionKey)
+	if err != nil {
+		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-key filter: %w", err)
+	}
 	processDefinitionVersionFilter, err := newIntegerEqFilterPtr(filter.ProcessVersion)
 	if err != nil {
 		return d.ProcessInstancePage{}, fmt.Errorf("building process-definition-version filter: %w", err)
@@ -228,6 +254,7 @@ func (s *Service) SearchForProcessInstancesPage(ctx context.Context, filter d.Pr
 		TenantId:                    tenantFilter,
 		ProcessInstanceKey:          processInstanceKeyFilter,
 		ProcessDefinitionId:         processDefinitionIDFilter,
+		ProcessDefinitionKey:        processDefinitionKeyFilter,
 		ProcessDefinitionVersion:    processDefinitionVersionFilter,
 		ProcessDefinitionVersionTag: processDefinitionVersionTagFilter,
 		StartDate:                   startDateFilter,
@@ -323,14 +350,23 @@ func normalizeSearchState(state d.State) d.State {
 }
 
 func pickProcessInstanceOverflowState(page camundav89.SearchQueryPageResponse, req d.ProcessInstancePageRequest, itemCount int) d.ProcessInstanceOverflowState {
+	if itemCount == 0 {
+		return d.ProcessInstanceOverflowStateNoMore
+	}
 	visibleCount := int64(req.From) + int64(itemCount)
-	if page.HasMoreTotalItems {
-		return d.ProcessInstanceOverflowStateHasMore
+	if req.After != "" {
+		if page.EndCursor != nil {
+			return d.ProcessInstanceOverflowStateHasMore
+		}
+		return d.ProcessInstanceOverflowStateNoMore
 	}
 	if page.TotalItems > visibleCount {
 		return d.ProcessInstanceOverflowStateHasMore
 	}
-	if page.TotalItems == 0 && itemCount > 0 {
+	if page.HasMoreTotalItems && req.Size > 0 && itemCount >= int(req.Size) {
+		return d.ProcessInstanceOverflowStateHasMore
+	}
+	if page.TotalItems == 0 {
 		return d.ProcessInstanceOverflowStateIndeterminate
 	}
 	return d.ProcessInstanceOverflowStateNoMore
