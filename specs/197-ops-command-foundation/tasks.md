@@ -129,14 +129,14 @@
 
 ### Tests for User Story 5
 
-- [ ] T028 [P] [US5] Add or update docs generator expectations for ops command pages in `docsgen/main_test.go`
-- [ ] T029 [P] [US5] Add README-facing command overview updates if needed in `README.md`
+- [x] T028 [P] [US5] Add or update docs generator expectations for ops command pages in `docsgen/main_test.go`
+- [x] T029 [P] [US5] Add README-facing command overview updates if needed in `README.md`
 
 ### Implementation for User Story 5
 
-- [ ] T030 [US5] Regenerate CLI docs with `make docs-content`, updating generated files under `docs/cli/` and `docs/index.md`
-- [ ] T031 [US5] Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
-- [ ] T032 [US5] Run command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops|TestRootHelp' -count=1`
+- [x] T030 [US5] Regenerate CLI docs with `make docs-content`, updating generated files under `docs/cli/` and `docs/index.md`
+- [x] T031 [US5] Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T032 [US5] Run command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops|TestRootHelp' -count=1`
 
 **Checkpoint**: User Story 5 is independently functional and verified.
 

@@ -19,6 +19,8 @@
 - Child grouping commands attach to their parent command during package init, set their own mutation metadata, and should avoid naming unavailable future playbook commands in help copy.
 - Tests for absent top-level target flags should inspect the command's local and persistent flag sets directly when inherited global flags such as `--keys-only` would make help substring checks ambiguous.
 - Shared ops workflow contracts live in `cmd/ops_contract.go` as command-layer report/status vocabulary only; resource-specific API traversal, mutation, polling, and generated-client behavior must stay below `cmd`.
+- Generated CLI docs use Cobra's command path filenames such as `c8volt_ops.md`, `c8volt_ops_execute.md`, and `c8volt_ops_repair.md`; docsgen tests should generate into a temp tree and inspect those files directly.
+- README command overview changes sync into `docs/index.md` through `make docs-content`; generated CLI docs and docs index should be refreshed through the generator rather than hand-edited.
 
 ## Work Log
 
@@ -157,4 +159,31 @@
 - Shared ops step statuses are stable command-layer report tokens: `planned`, `skipped`, `submitted`, `confirmed`, `confirmation_failed`, `blocked`, and `failed`.
 - Report format inference is intentionally narrow: explicit valid formats win, `.json` selects JSON, `.md`/`.markdown`/empty paths select Markdown, and unsupported extensions fail fast.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`.
+---
+
+---
+## Iteration 8 - 2026-05-10 22:34:05 CEST
+**User Story**: US5 Regenerate User-Facing Command Documentation
+**Tasks Completed**:
+- [x] T028: Add or update docs generator expectations for ops command pages in `docsgen/main_test.go`
+- [x] T029: Add README-facing command overview updates if needed in `README.md`
+- [x] T030: Regenerate CLI docs with `make docs-content`, updating generated files under `docs/cli/` and `docs/index.md`
+- [x] T031: Run docs validation with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1`
+- [x] T032: Run command validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops|TestRootHelp' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- README.md
+- docs/cli/c8volt.md
+- docs/cli/c8volt_ops.md
+- docs/cli/c8volt_ops_execute.md
+- docs/cli/c8volt_ops_repair.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/197-ops-command-foundation/tasks.md
+- specs/197-ops-command-foundation/progress.md
+**Learnings**:
+- Ops generated docs are produced from the live Cobra tree and include SEE ALSO links from `c8volt ops` to the execute and repair grouping pages.
+- The README command map is the source for the docs index command overview, so adding `ops` there keeps README and published docs aligned after `make docs-content`.
+- Validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./docsgen -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops|TestRootHelp' -count=1`.
 ---

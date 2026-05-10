@@ -255,6 +255,72 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 	}
 }
 
+// TestGeneratedOpsDocsDocumentGroupingCommands protects generated docs for the ops command foundation.
+func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	opsDoc := readGeneratedDocForTest(t, out, "c8volt_ops.md")
+	for _, want := range []string{
+		"Discover high-level operational workflows",
+		"./c8volt ops --help",
+		"[c8volt ops execute](c8volt_ops_execute)",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(opsDoc, want) {
+			t.Fatalf("expected generated ops docs to contain %q, got %q", want, opsDoc)
+		}
+	}
+
+	executeDoc := readGeneratedDocForTest(t, out, "c8volt_ops_execute.md")
+	for _, want := range []string{
+		"Discover predefined operational playbooks",
+		"target sets and execute existing c8volt resource actions",
+		"./c8volt ops execute --help",
+	} {
+		if !strings.Contains(executeDoc, want) {
+			t.Fatalf("expected generated ops execute docs to contain %q, got %q", want, executeDoc)
+		}
+	}
+
+	repairDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair.md")
+	for _, want := range []string{
+		"Discover repair and remediation workflows",
+		"Target-specific subcommands will define their own target semantics",
+		"./c8volt ops repair --help",
+	} {
+		if !strings.Contains(repairDoc, want) {
+			t.Fatalf("expected generated ops repair docs to contain %q, got %q", want, repairDoc)
+		}
+	}
+
+	for _, unwanted := range []string{
+		"orphan-cleanup",
+		"retention-policy",
+		"smoke-test",
+		"--key string",
+		"--key strings",
+		"repair incident",
+		"repair process-instance",
+	} {
+		if strings.Contains(opsDoc, unwanted) || strings.Contains(executeDoc, unwanted) || strings.Contains(repairDoc, unwanted) {
+			t.Fatalf("expected generated ops docs to omit %q", unwanted)
+		}
+	}
+}
+
 // TestGeneratedConfigDocsDocumentSplitDiagnostics protects generated command docs for config diagnostics.
 func TestGeneratedConfigDocsDocumentSplitDiagnostics(t *testing.T) {
 	out := t.TempDir()
