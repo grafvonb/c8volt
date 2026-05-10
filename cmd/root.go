@@ -86,7 +86,7 @@ command contract.`,
   ./c8volt --config ./config.yaml config show --validate
   ./c8volt get cluster topology
   ./c8volt embed deploy --all --run
-  ./c8volt run pi -b C88_SimpleUserTask_Process
+  ./c8volt run pi -b C89_SimpleUserTask_Process
   ./c8volt capabilities --json
   ./c8volt get --help`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

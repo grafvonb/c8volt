@@ -40,17 +40,17 @@ var getIncidentCmd = &cobra.Command{
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is fetched once and rendered through the shared get output modes.\n\n" +
 		"When no keys are supplied, incidents are searched by state, error type, error message, process context, flow-node context, and creation time. Search mode defaults to active incidents and follows the shared get paging and limit conventions.\n\n" +
 		"Use --json for the stable incident payload, --error-message-limit to shorten long error messages, or --with-no-error-message to omit them.",
-	Example: `  ./c8volt get incident --key 2251799813685249
-  ./c8volt get inc --key 2251799813685249 --key 2251799813685250
-  printf '%s\n' 2251799813685249 2251799813685250 | ./c8volt get incident -
+	Example: `  ./c8volt get incident --key <incident-key>
+  ./c8volt get inc --key <incident-key> --key <another-incident-key>
+  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt get incident -
   ./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -
-  ./c8volt get incident
-  ./c8volt get incident --state resolved --error-type io_mapping_error
-  ./c8volt get incident --error-message "no retries"
-  ./c8volt get incident --creation-time-after 2026-05-08T00:00:00Z --creation-time-before 2026-05-09T00:00:00Z
-  ./c8volt get incident --pi-key 2251799813685249 --flow-node-id task-a
-  ./c8volt --json get incident --key 2251799813685249
-  ./c8volt --keys-only get incident --key 2251799813685249`,
+  ./c8volt get incident --state active --limit 5
+  ./c8volt get incident --state resolved --error-type io_mapping_error --limit 5
+  ./c8volt get incident --error-message "intentional" --limit 5
+  ./c8volt get incident --creation-time-after 2026-05-01T00:00:00Z --creation-time-before 2026-05-31T00:00:00Z --limit 5
+  ./c8volt get incident --pi-key <process-instance-key> --flow-node-id <flow-node-id>
+  ./c8volt --json get incident --key <incident-key>
+  ./c8volt --keys-only get incident --key <incident-key>`,
 	Aliases: []string{"incidents", "inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := validateOptionalDashArg(args); err != nil {

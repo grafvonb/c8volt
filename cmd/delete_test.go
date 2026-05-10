@@ -635,7 +635,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"Delete process instances or process definitions",
 		"--auto-confirm",
 		"show verification examples",
-		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm",
+		"./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 	require.Contains(t, output, "process-definition")
@@ -645,11 +645,10 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"the whole delete batch is refused before mutation",
 		"Use --force to cancel the affected scope first",
 		"Use --auto-confirm for unattended destructive runs",
-		"Add --no-wait to verify later with `get pi` or `expect pi --state absent`",
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
-		"./c8volt delete pi --state completed --batch-size 250 --limit 25",
-		"./c8volt delete pi --state completed --batch-size 200 --auto-confirm --no-wait",
+		"./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run",
+		"./c8volt delete pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")
@@ -660,8 +659,7 @@ func TestDeleteHelp_DocumentsDestructiveConfirmationPaths(t *testing.T) {
 		"checks delete impact without changing anything",
 		"associated history",
 		"Use --auto-confirm for unattended destructive runs",
-		"Add --no-wait to return after Camunda accepts the deletion and verify later with `get pd`",
-		"./c8volt delete pd --bpmn-process-id C88_SimpleUserTask_Process --latest --auto-confirm --no-wait",
+		"./c8volt delete pd --bpmn-process-id C89_SimpleUserTask_Process --latest --auto-confirm",
 	}, nil)
 	require.NotContains(t, output, "--allow-inconsistent")
 }

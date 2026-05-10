@@ -77,16 +77,16 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"walk"}, []string{
 		"Inspect process-instance relationships",
 		"Inspect ancestry, descendants",
-		"./c8volt walk pi --key 2251799813711967",
+		"./c8volt walk pi --key <process-instance-key>",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
 	output = assertCommandHelpOutput(t, []string{"walk", "process-instance"}, []string{
 		"By default, walk shows the full process-instance family as an ASCII tree",
 		"returns the partial tree plus a warning",
-		"./c8volt walk pi --key 2251799813711967 --with-incidents",
-		"./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80",
-		"./c8volt walk pi --key 2251799813711967 --with-incidents --incident-state all",
+		"./c8volt walk pi --key <process-instance-key> --with-incidents",
+		"./c8volt walk pi --key <process-instance-key> --with-incidents --incident-message-limit 80",
+		"./c8volt walk pi --key <process-instance-key> --with-incidents --incident-state all",
 	}, nil)
 	require.Contains(t, output, "--flat")
 	require.Contains(t, output, "--incident-message-limit int")

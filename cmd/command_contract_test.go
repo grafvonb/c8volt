@@ -606,7 +606,7 @@ func TestCapabilityDocumentForRoot_ResolveCommandFamily(t *testing.T) {
 func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T) {
 	output := assertCommandHelpOutput(t, []string{"get"}, []string{
 		"Inspect cluster, process, job, incident, tenant, and resource state",
-		"./c8volt get job --key 2251799813711967",
+		"./c8volt get job --key <job-key>",
 	}, nil)
 	require.Contains(t, output, "job")
 
@@ -616,8 +616,8 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Use --json for the stable job payload",
 		"--error-message-limit",
 		"Camunda 8.8 and 8.9",
-		"./c8volt get job --key 2251799813711967",
-		"./c8volt --json get job --key 2251799813711967",
+		"./c8volt get job --key <job-key>",
+		"./c8volt --json get job --key <job-key>",
 		"--key string",
 		"--error-message-limit int",
 	}, nil)
@@ -626,10 +626,9 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"Update existing resources",
 		"job retries and timeout by key",
 		"dry-run planning",
-		"optional no-wait submitted output",
-		"./c8volt update job --key 2251799813711967 --retries 3 --dry-run",
-		"./c8volt update job --key 2251799813711967 --timeout 5m --auto-confirm",
-		"./c8volt update job --key 2251799813711967 --retries 3 --no-wait --auto-confirm",
+		"submitted output",
+		"./c8volt update job --key <job-key> --retries 3 --dry-run",
+		"./c8volt update job --key <job-key> --timeout 5m --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "job")
 
@@ -638,19 +637,17 @@ func TestGetJobAndUpdateJobHelp_DocumentsDiscoveryAndMutationGuards(t *testing.T
 		"supports retries and timeout updates",
 		"pre-mutation plan",
 		"--dry-run previews",
-		"--no-wait",
 		"Retry updates are confirmed by reading the job by key by default",
 		"timeout updates report submitted milliseconds without deadline confirmation",
 		"JSON mutations require --dry-run, --auto-confirm, or --automation",
 		"--json cannot be combined with --verbose",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
-		"./c8volt update job --key 2251799813711967 --retries 3 --dry-run",
-		"./c8volt --json update job --key 2251799813711967 --retries 3 --auto-confirm",
+		"./c8volt update job --key <job-key> --retries 3 --dry-run",
+		"./c8volt --json update job --key <job-key> --retries 3 --auto-confirm",
 		"--key string",
 		"--retries int32",
 		"--timeout string",
 		"--dry-run",
-		"--no-wait",
 		"--auto-confirm",
 	}, nil)
 }
@@ -660,12 +657,12 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"Get Camunda incidents by key or by search criteria",
 		"repeated --key values or newline-separated keys from stdin with '-'",
 		"Search mode defaults to active incidents",
-		"./c8volt get incident --key 2251799813685249",
-		"./c8volt get inc --key 2251799813685249 --key 2251799813685250",
-		"./c8volt get incident --state resolved --error-type io_mapping_error",
+		"./c8volt get incident --key <incident-key>",
+		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
+		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
 		"./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -",
-		"./c8volt --json get incident --key 2251799813685249",
-		"./c8volt --keys-only get incident --key 2251799813685249",
+		"./c8volt --json get incident --key <incident-key>",
+		"./c8volt --keys-only get incident --key <incident-key>",
 		"--key strings",
 		"--state string",
 		"--error-type string",
@@ -692,9 +689,9 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"Update existing resources",
 		"Camunda 8.8 and 8.9",
 		"unsupported-version error before these mutations",
-		"./c8volt update process-instance --key 2251799813711967 --vars",
-		"./c8volt update pi --key 2251799813711967 --vars-file",
-		"./c8volt --automation --json update pi --key 2251799813711967 --vars",
+		"./c8volt update process-instance --key <process-instance-key> --vars",
+		"./c8volt update pi --key <process-instance-key> --vars-file",
+		"./c8volt --automation --json update pi --key <process-instance-key> --vars",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -706,11 +703,10 @@ func TestUpdateProcessInstanceHelp_DocumentsVariableUpdateDiscovery(t *testing.T
 		"loads current process-instance-scope variables",
 		"Use --dry-run to preview without mutating",
 		"--auto-confirm for unattended mutation",
-		"--no-wait to return after the update request is accepted",
 		"Camunda 8.7 returns an unsupported-version error before mutation",
-		"./c8volt update pi --key 2251799813711967 --vars '{\"customerTier\":\"gold\"}' --dry-run",
-		"./c8volt update pi --key 2251799813711967 --key 2251799813711968 --vars",
-		"printf '%s\\n' 2251799813711967 | ./c8volt update pi --key 2251799813711968 - --vars",
+		"./c8volt update pi --key <process-instance-key> --vars '{\"customerTier\":\"gold\"}' --dry-run",
+		"./c8volt update pi --key <process-instance-key-a> --key <process-instance-key-b> --vars",
+		"printf '%s\\n' \"$PROCESS_INSTANCE_KEY_A\" | ./c8volt update pi --key \"$PROCESS_INSTANCE_KEY_B\" - --vars",
 		"--workers",
 		"--dry-run",
 		"--fail-fast",

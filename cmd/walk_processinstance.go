@@ -32,15 +32,15 @@ var walkProcessInstanceCmd = &cobra.Command{
 		"By default, walk shows the full process-instance family as an ASCII tree. Use --parent for ancestry, --children for descendants, or --flat for a path-style family view.\n\n" +
 		"Add --with-incidents and/or --with-vars to keyed walks to show incident details and process-instance-scope variables below matching rows.\n\n" +
 		"When an ancestor is missing but reachable family data still exists, walk returns the partial tree plus a warning. Direct single-resource lookups stay strict.",
-	Example: `  ./c8volt walk pi --key 2251799813711967
-  ./c8volt walk pi --key 2251799813711967 --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --with-vars
-  ./c8volt walk pi --key 2251799813711967 --with-vars --with-incidents
-  ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-message-limit 80
-  ./c8volt walk pi --key 2251799813711967 --with-incidents --incident-state all
-  ./c8volt walk pi --key 2251799813711967 --flat
-  ./c8volt walk pi --key 2251799813711977 --parent
-  ./c8volt --json walk pi --key 2251799813711967 --children --with-incidents`,
+	Example: `  ./c8volt walk pi --key <process-instance-key>
+  ./c8volt walk pi --key <process-instance-key> --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --with-vars
+  ./c8volt walk pi --key <process-instance-key> --with-vars --with-incidents
+  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-message-limit 80
+  ./c8volt walk pi --key <process-instance-key> --with-incidents --incident-state all
+  ./c8volt walk pi --key <process-instance-key> --flat
+  ./c8volt walk pi --key <process-instance-key> --parent
+  ./c8volt --json walk pi --key <process-instance-key> --children --with-incidents`,
 	Aliases: []string{"pi", "pis"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

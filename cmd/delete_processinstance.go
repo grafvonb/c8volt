@@ -26,16 +26,12 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		"By default c8volt validates the complete affected tree before submitting any delete request, prompts before deletion, and waits until deletion is observed. If any affected process instance is not in a final state, the whole delete batch is refused before mutation. Use --force to cancel the affected scope first, then delete it.\n\n" +
 		"When --bpmn-process-id is set, c8volt applies the selector directly to the non-mutating process-instance search. If no matching instances are found, no deletion request is submitted.\n\n" +
 		"Use --dry-run to preview selected, in-scope, final-state, non-final, and partial-scope instances without deleting or cancelling.\n\n" +
-		"Use --auto-confirm for unattended destructive runs. Add --no-wait to verify later with `get pi` or `expect pi --state absent`.",
-	Example: `  ./c8volt delete pi --key 2251799813711967 --force
-  ./c8volt delete pi --key 2251799813711967 --dry-run
-  ./c8volt delete pi --state completed --batch-size 250
-  ./c8volt delete pi --state completed --batch-size 250 --limit 25
-  ./c8volt delete pi --state completed --batch-size 250 --limit 25 --dry-run
-  ./c8volt delete pi --state completed --end-date-after 2026-01-01 --end-date-before 2026-01-31 --auto-confirm
-  ./c8volt delete pi --state completed --end-date-older-days 7 --end-date-newer-days 60 --auto-confirm
-  ./c8volt delete pi --bpmn-process-id C88_SimpleUserTask_Process --state completed --batch-size 200 --auto-confirm
-  ./c8volt delete pi --state completed --batch-size 200 --auto-confirm --no-wait
+		"Use --auto-confirm for unattended destructive runs.",
+	Example: `  ./c8volt delete pi --key <process-instance-key> --force
+  ./c8volt delete pi --key <process-instance-key> --dry-run
+  ./c8volt delete pi --state terminated --batch-size 250 --limit 5 --dry-run
+  ./c8volt delete pi --state terminated --end-date-after 2026-05-01 --end-date-before 2026-05-31 --limit 5 --dry-run
+  ./c8volt delete pi --bpmn-process-id C89_SimpleUserTask_Process --state terminated --batch-size 250 --limit 5 --dry-run
   ./c8volt expect pi --key <process-instance-key> --state absent`,
 	Aliases: []string{"pi"},
 	Args: func(cmd *cobra.Command, args []string) error {

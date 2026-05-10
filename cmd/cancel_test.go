@@ -631,7 +631,7 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"Cancel running process instances",
 		"--auto-confirm",
 		"waits for\nobserved cancellation",
-		"./c8volt cancel pi --state active --batch-size 200 --auto-confirm",
+		"./c8volt cancel pi --state active --limit 5 --auto-confirm",
 	}, nil)
 	require.Contains(t, output, "process-instance")
 
@@ -639,11 +639,10 @@ func TestCancelHelp_DocumentsConfirmationAndNoWaitSemantics(t *testing.T) {
 		"validates the affected root and descendant instances",
 		"Use --force when a selected child must be escalated",
 		"Use --auto-confirm for unattended destructive runs",
-		"Add --no-wait to verify later with `get pi` or `expect pi`",
 		"number of process instances to process per page",
 		"maximum number of matching process instances to process across all pages",
 		"./c8volt expect pi --key <process-instance-key> --state canceled",
-		"./c8volt cancel pi --state active --batch-size 250 --limit 25",
+		"./c8volt cancel pi --state active --batch-size 250 --limit 5 --dry-run",
 	}, []string{"--count"})
 	require.Contains(t, output, "--force")
 	require.Contains(t, output, "--batch-size int32")

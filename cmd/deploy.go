@@ -21,8 +21,8 @@ var deployCmd = &cobra.Command{
 
 Use ` + "`deploy pd`" + ` for local BPMN files or stdin. Use ` + "`embed deploy`" + ` for bundled
 fixtures.`,
-	Example: `  ./c8volt embed export --file processdefinitions/C88_SimpleUserTaskProcess.bpmn --out ./fixtures
-  ./c8volt deploy pd --file ./fixtures/processdefinitions/C88_SimpleUserTaskProcess.bpmn --run
+	Example: `  ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures
+  ./c8volt deploy pd --file ./fixtures/processdefinitions/C89_SimpleUserTaskProcess.bpmn --run
   ./c8volt embed deploy --all --run`,
 	Aliases: []string{"dep"},
 	RunE: func(cmd *cobra.Command, args []string) error {

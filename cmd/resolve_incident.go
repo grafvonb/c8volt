@@ -19,10 +19,10 @@ var resolveIncidentCmd = &cobra.Command{
 	Long: "Resolve incidents by key.\n\n" +
 		"The command accepts repeated --key values or newline-separated keys from stdin with '-'. Each unique incident key is submitted for resolution and reported independently.\n\n" +
 		"By default c8volt waits until each incident is no longer active by polling incident lookup through the incident service.",
-	Example: `  ./c8volt resolve incident --key 2251799813685249
-  ./c8volt resolve inc --key 2251799813685249 --key 2251799813685250
-  printf '%s\n' 2251799813685249 2251799813685250 | ./c8volt resolve incident -
-  printf '%s\n' 2251799813685249 | ./c8volt resolve inc --key 2251799813685250 -`,
+	Example: `  ./c8volt resolve incident --key <incident-key>
+  ./c8volt resolve inc --key <incident-key> --key <another-incident-key>
+  printf '%s\n' "$INCIDENT_KEY_A" "$INCIDENT_KEY_B" | ./c8volt resolve incident -
+  printf '%s\n' "$INCIDENT_KEY_A" | ./c8volt resolve inc --key "$INCIDENT_KEY_B" -`,
 	Aliases: []string{"inc"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

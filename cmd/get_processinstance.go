@@ -62,29 +62,28 @@ var getProcessInstanceCmd = &cobra.Command{
 		"Use --with-vars to include process-instance-scope variables under matching process-instance rows in keyed or list/search output.\n\n" +
 		"Use --has-user-tasks to fetch process instances by their owning user-task keys.\n\n" +
 		"Run `c8volt get pi --help` for the complete flag reference.",
-	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active
+	Example: `  ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5
   ./c8volt get pi --key <process-instance-key>
-  ./c8volt get pi --state active
-  ./c8volt get pi --state active --json
+  ./c8volt get pi --state active --limit 5
+  ./c8volt get pi --state active --json --limit 5
   ./c8volt get pi --state active --total
   ./c8volt get pi --has-user-tasks <user-task-key>
-  ./c8volt get pi --state active --batch-size 250 --limit 25
-  ./c8volt get pi --state active --limit 25 --auto-confirm
-  ./c8volt get pi --incidents-only --with-incidents
-  ./c8volt get pi --direct-incidents-only --with-incidents
-  ./c8volt get pi --with-incidents --incident-message-limit 80
-  ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message failed
-  ./c8volt get pi --total --direct-incidents-only --incident-error-type io_mapping_error
-  ./c8volt get pi --with-vars --var-value-limit 120
-  ./c8volt get pi --key 2251799813711967 --with-incidents
-  ./c8volt get pi --key 2251799813711967 --with-incidents --incident-state all
-  ./c8volt get pi --key 2251799813711967 --with-vars
-  ./c8volt get pi --key 2251799813711967 --with-vars --with-incidents
-  ./c8volt get pi --key 2251799813711967 --with-vars --var-value-limit 120
-  ./c8volt get pi --key 2251799813711967 --json
-  ./c8volt get pi --key 2251799813711967 --with-incidents --json
-  ./c8volt get pi --start-date-after 2026-01-01 --start-date-before 2026-01-31
-  ./c8volt get pi --key 2251799813711967 --key 2251799813711977`,
+  ./c8volt get pi --state active --batch-size 250 --limit 5
+  ./c8volt get pi --state active --limit 5 --auto-confirm
+  ./c8volt get pi --incidents-only --with-incidents --limit 5
+  ./c8volt get pi --direct-incidents-only --with-incidents --limit 5
+  ./c8volt get pi --with-incidents --incident-message-limit 80 --limit 5
+  ./c8volt get pi --direct-incidents-only --incident-error-type io_mapping_error --incident-error-message intentional --limit 5
+  ./c8volt get pi --state active --with-vars --var-value-limit 120 --limit 5
+  ./c8volt get pi --key <process-instance-key> --with-incidents
+  ./c8volt get pi --key <process-instance-key> --with-incidents --incident-state all
+  ./c8volt get pi --key <process-instance-key> --with-vars
+  ./c8volt get pi --key <process-instance-key> --with-vars --with-incidents
+  ./c8volt get pi --key <process-instance-key> --with-vars --var-value-limit 120
+  ./c8volt get pi --key <process-instance-key> --json
+  ./c8volt get pi --key <process-instance-key> --with-incidents --json
+  ./c8volt get pi --start-date-after 2026-05-01 --start-date-before 2026-05-31 --limit 5
+  ./c8volt get pi --key <process-instance-key> --key <another-process-instance-key>`,
 	Aliases: []string{"process-instances", "pi", "pis"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return validateOptionalDashArg(args)

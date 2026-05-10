@@ -20,8 +20,8 @@ var getJobCmd = &cobra.Command{
 	Short: "Inspect a job by key",
 	Long: "Inspect a Camunda job by key.\n\n" +
 		"Use the jobKey exposed by incident-aware process-instance output to inspect the matching runtime job directly. Use --json for the stable job payload, or --error-message-limit to shorten long error messages. Getting jobs by key is supported for Camunda 8.8 and 8.9; Camunda 8.7 returns an unsupported-version error.",
-	Example: `  ./c8volt get job --key 2251799813711967
-  ./c8volt --json get job --key 2251799813711967`,
+	Example: `  ./c8volt get job --key <job-key>
+  ./c8volt --json get job --key <job-key>`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateGetJobFlags(cmd); err != nil {
