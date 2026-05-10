@@ -18,6 +18,7 @@ Started: 2026-05-10 23:58:09
 - Keyed incident `--pi-keys-only` output returns early from `get_incident.go` after lookup and before shared human/list rendering.
 - Collected incident search/list `--pi-keys-only` output is selected in `listIncidentsView`, while incremental pages are selected in `renderIncidentSearchPage`.
 - Incremental incident search should keep `found:` only for one-line human output; `--pi-keys-only` and `--keys-only` remain footer-free.
+- Incident validation tests can assert pre-request failures by using a local capture server and requiring its request log stays empty.
 
 ---
 
@@ -84,4 +85,23 @@ Started: 2026-05-10 23:58:09
 - `--pi-keys-only` uses the existing incident result rows and does not require service or model changes.
 - Command-level tests that start local HTTP servers are skipped in this sandbox because binding `127.0.0.1` is not permitted; direct renderer coverage and `go test ./cmd` still pass.
 - The incremental search footer guard should check `!flagGetIncidentPIKeysOnly` so default one-line searches still print `found:` while process-instance-key pipelines stay line-only.
+---
+
+---
+## Iteration 4 - 2026-05-11 00:12:12 CEST
+**User Story**: User Story 2 - Avoid ambiguous output mode combinations
+**Tasks Completed**:
+- [x] T015: Add validation tests for `--pi-keys-only` with `--json`, `--keys-only`, and `--total` in `cmd/get_incident_test.go`
+- [x] T016: Add validation tests for `--pi-keys-only` with `--error-message-limit` and `--with-no-error-message` in `cmd/get_incident_test.go`
+- [x] T017: Finalize local mutual-exclusion diagnostics for all incompatible `--pi-keys-only` combinations in `cmd/get_incident.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_incident_test.go
+- specs/198-pi-keys-only/tasks.md
+- specs/198-pi-keys-only/progress.md
+**Learnings**:
+- Existing `validateGetIncidentFlagValues` diagnostics already cover all specified `--pi-keys-only` conflicts, including message-format flags, so no production validator change was needed.
+- The new tests prove local validation runs before lookup/search by configuring a test server and asserting no requests are captured.
+- Validation checks passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'TestGetIncidentCommand_RejectsPIKeysOnly|TestGetIncidentCommand_RejectsJSONErrorMessageLimit|TestGetIncidentCommand_RejectsKeysOnlyErrorMessageLimit' -count=1` and `GOCACHE=/tmp/c8volt-gocache go test ./cmd -count=1`.
 ---

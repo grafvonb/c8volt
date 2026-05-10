@@ -61,12 +61,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Add validation tests for `--pi-keys-only` with `--json`, `--keys-only`, and `--total` in `cmd/get_incident_test.go`
-- [ ] T016 [P] [US2] Add validation tests for `--pi-keys-only` with `--error-message-limit` and `--with-no-error-message` in `cmd/get_incident_test.go`
+- [x] T015 [P] [US2] Add validation tests for `--pi-keys-only` with `--json`, `--keys-only`, and `--total` in `cmd/get_incident_test.go`
+- [x] T016 [P] [US2] Add validation tests for `--pi-keys-only` with `--error-message-limit` and `--with-no-error-message` in `cmd/get_incident_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Finalize local mutual-exclusion diagnostics for all incompatible `--pi-keys-only` combinations in `cmd/get_incident.go`
+- [x] T017 [US2] Finalize local mutual-exclusion diagnostics for all incompatible `--pi-keys-only` combinations in `cmd/get_incident.go`
 
 **Checkpoint**: User Story 2 protects pipeline output mode semantics before remote calls.
 

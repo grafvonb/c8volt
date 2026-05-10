@@ -259,6 +259,77 @@ func TestGetIncidentCommand_RejectsKeysOnlyErrorMessageLimit(t *testing.T) {
 	require.Empty(t, output)
 }
 
+func TestGetIncidentCommand_RejectsPIKeysOnlyMachineOutputModesBeforeRequest(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "json",
+			args: []string{"--json", "get", "incident", "--key", "2251799813685249", "--pi-keys-only"},
+			want: "--pi-keys-only cannot be combined with --json",
+		},
+		{
+			name: "keys only",
+			args: []string{"--keys-only", "get", "incident", "--key", "2251799813685249", "--pi-keys-only"},
+			want: "--pi-keys-only cannot be combined with --keys-only",
+		},
+		{
+			name: "total",
+			args: []string{"get", "incident", "--key", "2251799813685249", "--pi-keys-only", "--total"},
+			want: "--pi-keys-only cannot be combined with --total",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []string
+			srv := newIncidentUnexpectedRequestServer(t, &requests)
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tc.args...)
+
+			output, err := executeRootExpectErrorForIncidentTest(t, args...)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+			require.Empty(t, output)
+			require.Empty(t, requests)
+		})
+	}
+}
+
+func TestGetIncidentCommand_RejectsPIKeysOnlyMessageOutputModifiersBeforeRequest(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "error message limit",
+			args: []string{"get", "incident", "--key", "2251799813685249", "--pi-keys-only", "--error-message-limit", "8"},
+			want: "--pi-keys-only cannot be combined with --error-message-limit",
+		},
+		{
+			name: "with no error message",
+			args: []string{"get", "incident", "--key", "2251799813685249", "--pi-keys-only", "--with-no-error-message"},
+			want: "--pi-keys-only cannot be combined with --with-no-error-message",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []string
+			srv := newIncidentUnexpectedRequestServer(t, &requests)
+			t.Cleanup(srv.Close)
+			args := append([]string{"--config", writeTestConfigForVersion(t, srv.URL, "8.9")}, tc.args...)
+
+			output, err := executeRootExpectErrorForIncidentTest(t, args...)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.want)
+			require.Empty(t, output)
+			require.Empty(t, requests)
+		})
+	}
+}
+
 func TestGetIncidentCommand_WithNoErrorMessageOmitsHumanMessageTail(t *testing.T) {
 	var requests []string
 	srv := newIncidentLookupServer(t, &requests, map[string]string{
@@ -682,6 +753,14 @@ func newIncidentSearchCaptureServerWithResponses(t *testing.T, requests *[]strin
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(responses[served]))
 		served++
+	}))
+}
+
+func newIncidentUnexpectedRequestServer(t *testing.T, requests *[]string) *httptest.Server {
+	t.Helper()
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*requests = append(*requests, r.Method+" "+r.URL.Path)
+		http.Error(w, `{"message":"unexpected request"}`, http.StatusInternalServerError)
 	}))
 }
 
