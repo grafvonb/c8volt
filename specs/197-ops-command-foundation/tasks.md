@@ -29,10 +29,10 @@
 
 **CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T005 Add `ops` root grouping command registration, help text, examples, aliases if warranted, and mutation metadata in `cmd/ops.go`
-- [ ] T006 [P] Add base ops command help tests in `cmd/ops_test.go`
-- [ ] T007 [P] Add ops root discovery metadata assertions in `cmd/capabilities_test.go`
-- [ ] T008 Update root help discovery expectations for `ops` in `cmd/root_test.go`
+- [x] T005 Add `ops` root grouping command registration, help text, examples, aliases if warranted, and mutation metadata in `cmd/ops.go`
+- [x] T006 [P] Add base ops command help tests in `cmd/ops_test.go`
+- [x] T007 [P] Add ops root discovery metadata assertions in `cmd/capabilities_test.go`
+- [x] T008 Update root help discovery expectations for `ops` in `cmd/root_test.go`
 
 **Checkpoint**: The top-level ops command exists as a grouping command and is visible in help/discovery.
 

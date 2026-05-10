@@ -150,6 +150,25 @@ func TestCapabilitiesCommand_JSONIncludesResolveMetadata(t *testing.T) {
 	})
 }
 
+func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	ops, ok := findCommandCapability(doc.Commands, "ops")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, ops.Mutation)
+	require.Equal(t, ContractSupportUnsupported, ops.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, ops.AutomationSupport)
+	require.Contains(t, ops.Aliases, "operations")
+	require.Contains(t, ops.Summary, "Discover high-level operational workflows")
+	require.Empty(t, ops.Children)
+	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "json", Supported: true})
+	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+}
+
 func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.T) {
 	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--automation", "capabilities", "--json")
 
