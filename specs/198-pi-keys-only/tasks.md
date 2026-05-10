@@ -21,9 +21,9 @@
 
 **Purpose**: Add shared command-local state and helpers used by every `--pi-keys-only` story.
 
-- [ ] T004 Add `flagGetIncidentPIKeysOnly` registration and help text in `cmd/get_incident.go`
-- [ ] T005 Add local validation in `cmd/get_incident.go` rejecting `--pi-keys-only` with `--keys-only`, `--json`, `--total`, `--error-message-limit`, or `--with-no-error-message`
-- [ ] T006 Add a small incident process-instance-key rendering helper in `cmd/cmd_views_get.go` that emits non-empty `ProcessInstanceKey` values and preserves duplicates
+- [x] T004 Add `flagGetIncidentPIKeysOnly` registration and help text in `cmd/get_incident.go`
+- [x] T005 Add local validation in `cmd/get_incident.go` rejecting `--pi-keys-only` with `--keys-only`, `--json`, `--total`, `--error-message-limit`, or `--with-no-error-message`
+- [x] T006 Add a small incident process-instance-key rendering helper in `cmd/cmd_views_get.go` that emits non-empty `ProcessInstanceKey` values and preserves duplicates
 
 **Checkpoint**: Command parses and validates `--pi-keys-only`; rendering helper exists but stories wire it into concrete flows.
 

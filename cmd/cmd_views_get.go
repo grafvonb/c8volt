@@ -58,6 +58,16 @@ func listIncidentsView(cmd *cobra.Command, resp incident.Incidents, messageLimit
 	return nil
 }
 
+func renderIncidentProcessInstanceKeys(cmd *cobra.Command, items []incident.ProcessInstanceIncidentDetail) error {
+	for _, it := range items {
+		if it.ProcessInstanceKey == "" {
+			continue
+		}
+		renderOutputLine(cmd, "%s", it.ProcessInstanceKey)
+	}
+	return nil
+}
+
 // renderProcessInstanceFlatRows shares aligned process-instance rows between collected lists and incremental search pages.
 func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
 	for _, line := range formatProcessInstanceFlatRows(items) {

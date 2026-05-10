@@ -15,6 +15,7 @@ import (
 
 var (
 	flagGetIncidentKeys               []string
+	flagGetIncidentPIKeysOnly         bool
 	flagGetIncidentMessageLimit       int
 	flagGetIncidentNoErrorMessage     bool
 	flagGetIncidentState              string
@@ -133,6 +134,7 @@ func init() {
 
 	fs := getIncidentCmd.Flags()
 	fs.StringSliceVarP(&flagGetIncidentKeys, "key", "k", nil, "incident key(s) to fetch; repeat or combine with stdin '-'")
+	fs.BoolVar(&flagGetIncidentPIKeysOnly, "pi-keys-only", false, "return only process instance keys for matching incidents")
 	fs.StringVarP(&flagGetIncidentState, "state", "s", "active", "incident state scope for search: active, pending, resolved, migrated, unknown, all")
 	fs.StringVar(&flagGetIncidentErrorType, "error-type", "", "case-insensitive incident error type filter for search")
 	fs.StringVar(&flagGetIncidentErrorMessage, "error-message", "", "case-insensitive incident error message substring filter for search")
@@ -186,6 +188,17 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 			return mutuallyExclusiveFlagsf("--total cannot be combined with --keys-only")
 		}
 	}
+	if flagGetIncidentPIKeysOnly {
+		if flagGetIncidentTotal {
+			return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --total")
+		}
+		switch pickMode() {
+		case RenderModeJSON:
+			return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --json")
+		case RenderModeKeysOnly:
+			return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --keys-only")
+		}
+	}
 	if len(flagGetIncidentKeys) > 0 && hasGetIncidentSearchModeFlags(cmd) {
 		return mutuallyExclusiveFlagsf("--key cannot be combined with search filters")
 	}
@@ -204,6 +217,12 @@ func validateGetIncidentFlagValues(cmd *cobra.Command) error {
 	}
 	if flagGetIncidentMessageLimit < 0 {
 		return invalidFlagValuef("--error-message-limit must be non-negative")
+	}
+	if flagGetIncidentPIKeysOnly && cmd != nil && cmd.Flags().Changed("error-message-limit") {
+		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --error-message-limit")
+	}
+	if flagGetIncidentPIKeysOnly && flagGetIncidentNoErrorMessage {
+		return mutuallyExclusiveFlagsf("--pi-keys-only cannot be combined with --with-no-error-message")
 	}
 	if flagGetIncidentNoErrorMessage && cmd != nil && cmd.Flags().Changed("error-message-limit") {
 		return mutuallyExclusiveFlagsf("--with-no-error-message cannot be combined with --error-message-limit")
@@ -304,6 +323,7 @@ func populateGetIncidentSearchFilter() incident.Filter {
 
 func resetGetIncidentFlagState() {
 	flagGetIncidentKeys = nil
+	flagGetIncidentPIKeysOnly = false
 	flagGetIncidentMessageLimit = 0
 	flagGetIncidentNoErrorMessage = false
 	flagGetIncidentState = "active"

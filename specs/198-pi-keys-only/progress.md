@@ -13,23 +13,44 @@ Started: 2026-05-10 23:58:09
 - View tests use `newGetViewTestCommand`, `resetViewModeFlags`, and direct `listIncidentsView` calls to verify render modes.
 - Docs expectations are protected by `docsgen/main_test.go` generated markdown substring checks and command capability expectations are protected in `cmd/command_contract_test.go`.
 - `cancel pi` dedupes merged flag/stdin process-instance keys at command boundary with `.Unique()`, while `delete pi` currently validates merged keys without `.Unique()`.
+- Incident command-local flags must be reset in `resetGetIncidentFlagState`; output-mode conflicts are validated in `validateGetIncidentFlagValues` before any lookup or search.
+- Incident process-instance-key rendering can live beside `listIncidentsView` and should skip empty `ProcessInstanceKey` values while preserving duplicate non-empty values.
 
 ---
 
 ---
 ## Iteration 1 - 2026-05-10 23:59:50 CEST
 **User Story**: Phase 1: Setup
-**Tasks Completed**: 
+**Tasks Completed**:
 - [x] T001: Inspect existing incident output and validation paths in `cmd/get_incident.go`, `cmd/get_incident_search.go`, and `cmd/cmd_views_get.go`
 - [x] T002: Inspect existing incident tests and docs expectations in `cmd/get_incident_test.go`, `cmd/cmd_views_get_test.go`, `cmd/command_contract_test.go`, and `docsgen/main_test.go`
 - [x] T003: Inspect delete/cancel stdin dedupe behavior in `cmd/delete_processinstance.go`, `cmd/cancel_processinstance.go`, `cmd/delete_test.go`, and `cmd/cancel_test.go`
 **Tasks Remaining in Story**: None - story complete
 **Commit**: Recorded in Git history for this iteration
-**Files Changed**: 
+**Files Changed**:
 - specs/198-pi-keys-only/tasks.md
 - specs/198-pi-keys-only/progress.md
 **Learnings**:
 - `--pi-keys-only` can be added as command-local incident state without changing global render modes; keyed lookup, collected search, and incremental search each need explicit wiring.
 - Missing process-instance-key skip and duplicate preservation belong in a small incident rendering helper, not in key merge/dedupe utilities.
 - `delete pi` parity with `cancel pi` is likely a one-line `.Unique()` change after merged stdin/flag validation plus focused dry-run/planning coverage.
+---
+
+---
+## Iteration 2 - 2026-05-11 00:02:48 CEST
+**User Story**: Phase 2: Foundational
+**Tasks Completed**:
+- [x] T004: Add `flagGetIncidentPIKeysOnly` registration and help text in `cmd/get_incident.go`
+- [x] T005: Add local validation in `cmd/get_incident.go` rejecting `--pi-keys-only` with `--keys-only`, `--json`, `--total`, `--error-message-limit`, or `--with-no-error-message`
+- [x] T006: Add a small incident process-instance-key rendering helper in `cmd/cmd_views_get.go` that emits non-empty `ProcessInstanceKey` values and preserves duplicates
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_incident.go
+- cmd/cmd_views_get.go
+- specs/198-pi-keys-only/tasks.md
+- specs/198-pi-keys-only/progress.md
+**Learnings**:
+- `--pi-keys-only` validation is intentionally command-local and can reuse `pickMode()` to guard shared `--json` and `--keys-only` modes.
+- The rendering helper returns `nil` to match existing view signatures even though `renderOutputLine` itself does not surface write errors.
 ---
