@@ -66,14 +66,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Add execute grouping help tests in `cmd/ops_test.go`
-- [ ] T014 [P] [US2] Add capabilities assertions for `ops execute` in `cmd/capabilities_test.go`
+- [x] T013 [P] [US2] Add execute grouping help tests in `cmd/ops_test.go`
+- [x] T014 [P] [US2] Add capabilities assertions for `ops execute` in `cmd/capabilities_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Add `ops execute` grouping command registration, help text, examples, and metadata in `cmd/ops_execute.go`
-- [ ] T016 [US2] Ensure no concrete execute playbook commands are registered in `cmd/ops_execute.go`
-- [ ] T017 [US2] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
+- [x] T015 [US2] Add `ops execute` grouping command registration, help text, examples, and metadata in `cmd/ops_execute.go`
+- [x] T016 [US2] Ensure no concrete execute playbook commands are registered in `cmd/ops_execute.go`
+- [x] T017 [US2] Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
 
 **Checkpoint**: User Story 2 is independently functional and verified.
 

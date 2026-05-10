@@ -16,6 +16,7 @@
 - Grouping commands inherit global output modes such as `json` and `keys-only` in capability discovery, but unsupported contract support keeps JSON from being machine-preferred.
 - Root grouping help should avoid example invocations for child commands until those children are registered, so help stays truthful at each independently delivered story.
 - Help-path tests can prove config bypass by setting invalid runtime config environment values; `PersistentPreRunE` returns before config normalization when a help flag is present.
+- Child grouping commands attach to their parent command during package init, set their own mutation metadata, and should avoid naming unavailable future playbook commands in help copy.
 
 ## Work Log
 
@@ -85,4 +86,27 @@
 - Root ops help should mention future target-specific subcommands without listing unavailable child-command examples before those children exist.
 - `ops --help` can be validated without usable runtime configuration by pairing a temporary config-free environment with an invalid Camunda version env var.
 - Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestRootHelp' -count=1`.
+---
+
+---
+## Iteration 4 - 2026-05-10 22:21:17 CEST
+**User Story**: US2 Discover Execute Grouping Command
+**Tasks Completed**:
+- [x] T013: Add execute grouping help tests in `cmd/ops_test.go`
+- [x] T014: Add capabilities assertions for `ops execute` in `cmd/capabilities_test.go`
+- [x] T015: Add `ops execute` grouping command registration, help text, examples, and metadata in `cmd/ops_execute.go`
+- [x] T016: Ensure no concrete execute playbook commands are registered in `cmd/ops_execute.go`
+- [x] T017: Run targeted validation with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/ops_execute.go
+- cmd/ops_test.go
+- cmd/capabilities_test.go
+- specs/197-ops-command-foundation/tasks.md
+- specs/197-ops-command-foundation/progress.md
+**Learnings**:
+- `ops execute` stays grouping-only by registering no children and returning Cobra help for both `ops execute` and `ops execute --help`.
+- Help text should describe the category of future playbooks without spelling out unavailable concrete workflow command names.
+- Targeted validation passed with `GOCACHE=/tmp/c8volt-gocache go test ./cmd -run 'Test.*Ops|TestCapability.*Ops' -count=1`.
 ---

@@ -58,3 +58,30 @@ func TestOpsCommandReturnsHelpForGroupingInvocation(t *testing.T) {
 	require.Contains(t, output, "Usage:")
 	require.Contains(t, output, "c8volt ops")
 }
+
+// TestOpsExecuteHelpDocumentsGroupingCommand verifies execute is only a discoverable parent for future playbooks.
+func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
+	output := executeRootForTest(t, "ops", "execute", "--help")
+
+	assertHelpOutputContainsAll(t, output,
+		"Discover predefined operational playbooks",
+		"reserved for future playbooks that discover",
+		"target sets and execute existing c8volt resource actions",
+		"./c8volt ops execute --help",
+		"./c8volt capabilities --json",
+	)
+	assertHelpOutputOmitsAll(t, output,
+		"orphan-cleanup",
+		"retention-policy",
+		"smoke-test",
+	)
+}
+
+// TestOpsExecuteCommandReturnsHelpForGroupingInvocation covers no-argument grouping behavior.
+func TestOpsExecuteCommandReturnsHelpForGroupingInvocation(t *testing.T) {
+	output := executeRootForTest(t, "ops", "execute")
+
+	require.Contains(t, output, "Discover predefined operational playbooks")
+	require.Contains(t, output, "Usage:")
+	require.Contains(t, output, "c8volt ops execute")
+}
