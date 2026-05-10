@@ -59,12 +59,12 @@ func renderOutputLine(cmd *cobra.Command, format string, args ...any) {
 	cmd.Println(strings.TrimRight(fmt.Sprintf(format, args...), "\n"))
 }
 
-// renderHumanLine writes human-readable command output through the activity-aware renderer.
+// renderHumanLine writes command output through the activity-aware renderer.
 func renderHumanLine(cmd *cobra.Command, format string, args ...any) {
 	renderHumanLogLine(cmd, false, format, args...)
 }
 
-// renderHumanWarningLine writes human-readable warnings through the activity-aware renderer.
+// renderHumanWarningLine writes warnings through the activity-aware renderer.
 func renderHumanWarningLine(cmd *cobra.Command, format string, args ...any) {
 	renderHumanLogLine(cmd, true, "%s", normalizeWarningText(fmt.Sprintf(format, args...)))
 }
@@ -83,7 +83,7 @@ func normalizeWarningText(msg string) string {
 	return msg
 }
 
-// renderHumanLogLine routes human output through the logger when command context provides one.
+// renderHumanLogLine routes output through the logger when command context provides one.
 func renderHumanLogLine(cmd *cobra.Command, warn bool, format string, args ...any) {
 	msg := strings.TrimRight(fmt.Sprintf(format, args...), "\n")
 	log, err := logging.FromContext(cmd.Context())
@@ -134,7 +134,7 @@ func listOrJSON[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item,
 // flatRow represents a single display row before optional column alignment is applied.
 type flatRow []string
 
-// listOrJSONFlat keeps machine modes unchanged while letting human list views align columns from the whole result set.
+// listOrJSONFlat keeps machine modes unchanged while letting list views align columns from the whole result set.
 func listOrJSONFlat[Resp any, Item any](cmd *cobra.Command, resp Resp, items []Item, mode RenderMode, rowOf func(Item) flatRow, keyOf func(Item) string) error {
 	switch mode {
 	case RenderModeJSON:

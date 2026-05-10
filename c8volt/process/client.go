@@ -78,8 +78,7 @@ func (c *client) LookupProcessInstance(ctx context.Context, key string, opts ...
 	return fromDomainProcessInstance(pi), nil
 }
 
-// SearchProcessInstanceIncidents exposes the tenant-safe service incident lookup through the facade error model.
-func (c *client) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
+func (c *client) searchProcessInstanceIncidents(ctx context.Context, key string, opts ...options.FacadeOption) ([]ProcessInstanceIncidentDetail, error) {
 	incidents, err := c.incApi.SearchProcessInstanceIncidents(ctx, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return nil, ferr.FromDomain(err)
@@ -97,44 +96,21 @@ func (c *client) SearchProcessInstanceVariables(ctx context.Context, key string,
 }
 
 func (c *client) UpdateProcessInstanceVariables(ctx context.Context, request ProcessInstanceVariableUpdateRequest, opts ...options.FacadeOption) (ProcessInstanceVariableUpdateResult, error) {
-	cfg := options.ApplyFacadeOptions(opts)
-	dreq := toDomainProcessInstanceVariableUpdateRequest(request)
-	resp, err := c.piApi.UpdateProcessInstanceVariables(ctx, dreq.Key, dreq.Variables, options.MapFacadeOptionsToCallOptions(opts)...)
-	result := fromDomainProcessInstanceVariableUpdateResponse(resp, request.Variables)
-	if result.Key == "" {
-		result.Key = request.Key
-	}
+	result, err := pisvc.UpdateProcessInstanceVariables(ctx, c.piApi, toDomainProcessInstanceVariableUpdateRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainProcessInstanceVariableUpdateResult(result)
 	if err != nil {
 		updateErr := ferr.FromDomain(err)
-		result.Error = updateErr.Error()
-		if result.MutationAccepted {
-			result.Status = ProcessInstanceVariableUpdateStatusConfirmationFailed
-			result.ConfirmationStatus = "failed"
-			return result, updateErr
-		}
-		result.Status = ProcessInstanceVariableUpdateStatusMutationFailed
-		result.MutationAccepted = false
-		if cfg.NoWait {
-			result.ConfirmationStatus = "skipped"
-			return result, nil
-		}
-		return result, updateErr
+		out.Error = updateErr.Error()
+		return out, updateErr
 	}
-	if cfg.NoWait {
-		result.Status = ProcessInstanceVariableUpdateStatusSubmitted
-		result.ConfirmationStatus = "skipped"
-		return result, nil
-	}
-	result.Status = ProcessInstanceVariableUpdateStatusConfirmed
-	result.ConfirmationStatus = "confirmed"
-	return result, nil
+	return out, nil
 }
 
 // EnrichProcessInstancesWithIncidents attaches direct incident details to selected process-instance results without reordering them.
 func (c *client) EnrichProcessInstancesWithIncidents(ctx context.Context, pis ProcessInstances, opts ...options.FacadeOption) (IncidentEnrichedProcessInstances, error) {
 	items := make([]IncidentEnrichedProcessInstance, 0, len(pis.Items))
 	for _, pi := range pis.Items {
-		incidents, err := c.SearchProcessInstanceIncidents(ctx, pi.Key, opts...)
+		incidents, err := c.searchProcessInstanceIncidents(ctx, pi.Key, opts...)
 		if err != nil {
 			return IncidentEnrichedProcessInstances{}, err
 		}
@@ -176,7 +152,7 @@ func (c *client) EnrichTraversalWithIncidents(ctx context.Context, result Traver
 		if !ok {
 			continue
 		}
-		incidents, err := c.SearchProcessInstanceIncidents(ctx, key, opts...)
+		incidents, err := c.searchProcessInstanceIncidents(ctx, key, opts...)
 		if err != nil {
 			return IncidentEnrichedTraversalResult{}, err
 		}
@@ -344,50 +320,6 @@ func MapStateResponsesToReports(in d.StateResponses) StateReports {
 	}
 	for i, r := range in.Items {
 		out.Items[i] = MapStateResponseToReport(r)
-	}
-	return out
-}
-
-func mapDryRunTraversalWarning(results []TraversalResult) (warning string, missing []MissingAncestor, outcome TraversalOutcome) {
-	outcome = TraversalOutcomeComplete
-	for _, result := range results {
-		if len(result.MissingAncestors) > 0 {
-			missing = append(missing, result.MissingAncestors...)
-		}
-		if result.Warning != "" && warning == "" {
-			warning = result.Warning
-		}
-		switch result.Outcome {
-		case TraversalOutcomeUnresolved:
-			if outcome == TraversalOutcomeComplete {
-				outcome = TraversalOutcomeUnresolved
-			}
-		case TraversalOutcomePartial:
-			outcome = TraversalOutcomePartial
-		}
-	}
-	if len(missing) > 0 && warning == "" {
-		warning = "one or more parent process instances were not found"
-	}
-	if len(missing) == 0 {
-		return warning, nil, outcome
-	}
-	return warning, uniqueMissingAncestors(missing), outcome
-}
-
-func uniqueMissingAncestors(items []MissingAncestor) []MissingAncestor {
-	if len(items) == 0 {
-		return nil
-	}
-	seen := make(map[string]struct{}, len(items))
-	out := make([]MissingAncestor, 0, len(items))
-	for _, item := range items {
-		key := item.StartKey + ":" + item.Key
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		out = append(out, item)
 	}
 	return out
 }

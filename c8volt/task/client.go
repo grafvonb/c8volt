@@ -42,14 +42,9 @@ func (c *client) ResolveProcessInstanceKeyFromUserTask(ctx context.Context, task
 
 // ResolveProcessInstanceKeysFromUserTasks resolves user tasks through the native task API and returns their owning process-instance keys in input order.
 func (c *client) ResolveProcessInstanceKeysFromUserTasks(ctx context.Context, taskKeys types.Keys, opts ...options.FacadeOption) (types.Keys, error) {
-	processInstanceKeys := make(types.Keys, 0, len(taskKeys))
-	callOpts := options.MapFacadeOptionsToCallOptions(opts)
-	for _, taskKey := range taskKeys {
-		task, err := c.utApi.GetUserTask(ctx, taskKey, callOpts...)
-		if err != nil {
-			return nil, ferr.FromDomain(err)
-		}
-		processInstanceKeys = append(processInstanceKeys, task.ProcessInstanceKey)
+	keys, err := utsvc.ResolveProcessInstanceKeys(ctx, c.utApi, taskKeys, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return nil, ferr.FromDomain(err)
 	}
-	return processInstanceKeys, nil
+	return keys, nil
 }

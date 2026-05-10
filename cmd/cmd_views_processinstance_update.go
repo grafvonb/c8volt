@@ -94,7 +94,7 @@ func renderUpdateProcessInstanceVariablePreview(cmd *cobra.Command, preview proc
 	return nil
 }
 
-// renderUpdateProcessInstanceVariablePlan renders the pre-mutation confirmation plan in human form.
+// renderUpdateProcessInstanceVariablePlan renders the pre-mutation confirmation plan.
 func renderUpdateProcessInstanceVariablePlan(cmd *cobra.Command, preview processInstanceVariableUpdatePreview) error {
 	renderProcessInstanceVariableUpdatePlanHuman(cmd, preview, "plan")
 	return nil

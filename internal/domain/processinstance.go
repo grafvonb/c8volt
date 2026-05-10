@@ -22,29 +22,6 @@ type ProcessInstance struct {
 	Variables                 map[string]any
 }
 
-type ProcessInstanceIncidentDetail struct {
-	IncidentKey            string
-	CreationTime           string
-	ProcessInstanceKey     string
-	TenantId               string
-	State                  string
-	ErrorType              string
-	ErrorMessage           string
-	FlowNodeId             string
-	FlowNodeInstanceKey    string
-	JobKey                 string
-	RootProcessInstanceKey string
-	ProcessDefinitionKey   string
-	ProcessDefinitionId    string
-}
-
-type IncidentResolutionResponse struct {
-	Key        string
-	Ok         bool
-	StatusCode int
-	Status     string
-}
-
 type ProcessInstanceVariable struct {
 	Name               string
 	Value              string

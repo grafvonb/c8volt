@@ -6,6 +6,7 @@ package incident_test
 import (
 	"log/slog"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/grafvonb/c8volt/config"
@@ -72,4 +73,13 @@ func TestFactory_CurrentDefaultVersionStillUsesV88(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, svc)
 	require.IsType(t, &v88.Service{}, svc)
+}
+
+func TestFactory_APIExposesTopLevelIncidentSearch(t *testing.T) {
+	apiType := reflect.TypeOf((*incident.API)(nil)).Elem()
+
+	_, ok := apiType.MethodByName("SearchIncidents")
+	require.True(t, ok)
+	_, ok = apiType.MethodByName("SearchIncidentsPage")
+	require.True(t, ok)
 }

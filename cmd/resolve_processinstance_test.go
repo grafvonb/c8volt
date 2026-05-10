@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"io"
 	"net/http"
 	"os"
@@ -100,20 +101,20 @@ func TestResolveProcessInstancesWithPlan_ExpandsFamilyScopeAndPrompts(t *testing
 				Outcome:   process.TraversalOutcomeComplete,
 			}, nil
 		},
-		resolveProcessInstancesIncidents: func(_ context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.ProcessInstanceResolutionResults, error) {
+		resolveProcessInstancesIncidents: func(_ context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
 			resolvedKeys = append(types.Keys(nil), keys...)
 			require.Zero(t, wantedWorkers)
 			cfg := options.ApplyFacadeOptions(opts)
 			require.False(t, cfg.DryRun)
 			require.Equal(t, 2, cfg.AffectedProcessInstanceCount)
-			return process.ProcessInstanceResolutionResults{
-				Operation: process.ResolutionOperationProcessInstance,
+			return incident.ProcessInstanceResolutionResults{
+				Operation: incident.ResolutionOperationProcessInstance,
 				Total:     2,
 				Confirmed: 1,
 				Skipped:   1,
-				Items: []process.ProcessInstanceResolutionResult{
-					{ProcessInstanceKey: "2251799813735367", Status: process.ProcessInstanceResolutionStatusSkipped, ConfirmationStatus: "no_active_incidents"},
-					{ProcessInstanceKey: "2251799813735372", Status: process.ProcessInstanceResolutionStatusConfirmed, ResolvedIncidentKeys: []string{"2251799813735377"}},
+				Items: []incident.ProcessInstanceResolutionResult{
+					{ProcessInstanceKey: "2251799813735367", Status: incident.ProcessInstanceResolutionStatusSkipped, ConfirmationStatus: "no_active_incidents"},
+					{ProcessInstanceKey: "2251799813735372", Status: incident.ProcessInstanceResolutionStatusConfirmed, ResolvedIncidentKeys: []string{"2251799813735377"}},
 				},
 				MutationSubmitted: true,
 			}, nil

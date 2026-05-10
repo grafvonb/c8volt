@@ -19,7 +19,7 @@ import (
 )
 
 // TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand protects the root help text as a UX contract.
-// The command groups and Cobra's shell completion command must stay discoverable for humans, while
+// The command groups and Cobra's shell completion command must stay discoverable for users, while
 // internal completion plumbing remains hidden.
 func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 	output := executeRootForTest(t, "--help")

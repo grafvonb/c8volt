@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	"github.com/grafvonb/c8volt/c8volt/cluster"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/job"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
@@ -18,6 +19,7 @@ import (
 type API interface {
 	Capabilities(ctx context.Context) (Capabilities, error)
 	process.API
+	incident.API
 	task.API
 	cluster.API
 	job.API

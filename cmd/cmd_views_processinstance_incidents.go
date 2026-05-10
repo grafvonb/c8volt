@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -69,44 +70,125 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 	return item.Item.Incident && len(item.Incidents) == 0
 }
 
-// incidentHumanLine formats a human-readable incident detail line with compact attributes.
-func incidentHumanLine(incident process.ProcessInstanceIncidentDetail) string {
+// incidentHumanLine formats an incident detail line with compact attributes.
+func incidentHumanLine(incident incident.ProcessInstanceIncidentDetail) string {
+	return incidentHumanLineWithMessageLimit(incident, flagGetPIIncidentMessageLimit)
+}
+
+// incidentHumanLineWithMessageLimit formats shared incident rows for process-instance and plain incident output.
+func incidentHumanLineWithMessageLimit(incident incident.ProcessInstanceIncidentDetail, messageLimit int) string {
+	row := compactFlatRow(flatRowProcessInstanceIncident(incident))
+	message := "m:" + truncateIncidentHumanMessage(incident.ErrorMessage, messageLimit)
+	if row == "" {
+		return message
+	}
+	return row + " " + message
+}
+
+func flatRowProcessInstanceIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
-	}
-	message := truncateIncidentHumanMessage(incident.ErrorMessage, flagGetPIIncidentMessageLimit)
-	fields := incidentHumanFields(incident, key)
-	return fmt.Sprintf("%s message=%s", fields, message)
-}
-
-func incidentHumanFields(incident process.ProcessInstanceIncidentDetail, key string) string {
-	fields := make([]string, 0, 5)
-	fields = append(fields, "key="+key)
-	if incident.CreationTime != "" {
-		fields = append(fields, "creationTime="+incident.CreationTime)
-	}
-	if incident.FlowNodeId != "" {
-		fields = append(fields, "flowNodeId="+incident.FlowNodeId)
-	}
-	if incident.FlowNodeInstanceKey != "" {
-		fields = append(fields, "flowNodeInstanceKey="+incident.FlowNodeInstanceKey)
-	}
-	if incident.State != "" {
-		fields = append(fields, "state="+incident.State)
-	}
-	if incident.ErrorType != "" {
-		fields = append(fields, "errorType="+incident.ErrorType)
 	}
 	jobKey := incident.JobKey
 	if jobKey == "" {
 		jobKey = "n/a"
 	}
-	fields = append(fields, "jobKey="+jobKey)
-	return strings.Join(fields, " ")
+	return flatRow{
+		key,
+		incident.ErrorType,
+		incident.State,
+		"j:" + jobKey,
+		humanTimestamp(incident.CreationTime),
+		incidentAgeTag(incident.CreationTime),
+		prefixedIncidentField("root", incident.RootProcessInstanceKey),
+		prefixedIncidentField("fn", incident.FlowNodeId),
+		prefixedIncidentField("fni", incident.FlowNodeInstanceKey),
+	}
 }
 
-// truncateIncidentHumanMessage applies the human-only incident message display limit.
+func incidentAgeTag(creationTime string) string {
+	age, ok := processInstanceAgeDays(creationTime)
+	if !ok {
+		return ""
+	}
+	if age == 0 {
+		return "(today)"
+	}
+	return fmt.Sprintf("(%d days ago)", age)
+}
+
+func incidentListHumanLineWithMessageLimit(item incident.ProcessInstanceIncidentDetail, messageLimit int) string {
+	lines := formatIncidentListRows([]incident.ProcessInstanceIncidentDetail{item}, messageLimit, false)
+	if len(lines) == 0 {
+		return ""
+	}
+	return lines[0]
+}
+
+func formatIncidentListRows(incidents []incident.ProcessInstanceIncidentDetail, messageLimit int, omitMessage bool) []string {
+	rows := make([]flatRow, 0, len(incidents))
+	tails := make([]string, 0, len(incidents))
+	for _, incident := range incidents {
+		rows = append(rows, flatRowIncident(incident))
+		if omitMessage {
+			tails = append(tails, "")
+			continue
+		}
+		tails = append(tails, "m:"+truncateIncidentHumanMessage(incident.ErrorMessage, messageLimit))
+	}
+	return formatFlatRowsWithTails(rows, tails)
+}
+
+func flatRowIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
+	key := incident.IncidentKey
+	if key == "" {
+		key = "unknown"
+	}
+	jobKey := incident.JobKey
+	if jobKey == "" {
+		jobKey = "n/a"
+	}
+	return flatRow{
+		key,
+		incident.TenantId,
+		incident.ErrorType,
+		incident.State,
+		"j:" + jobKey,
+		humanTimestamp(incident.CreationTime),
+		incidentAgeTag(incident.CreationTime),
+		incident.ProcessDefinitionId,
+		prefixedIncidentField("pi", incident.ProcessInstanceKey),
+		prefixedIncidentField("root", incident.RootProcessInstanceKey),
+		prefixedIncidentField("fn", incident.FlowNodeId),
+		prefixedIncidentField("fni", incident.FlowNodeInstanceKey),
+	}
+}
+
+func prefixedIncidentField(prefix string, value string) string {
+	if value == "" {
+		return ""
+	}
+	return prefix + ":" + value
+}
+
+func formatFlatRowsWithTails(rows []flatRow, tails []string) []string {
+	prefixes := formatFlatRows(rows)
+	out := make([]string, 0, len(prefixes))
+	for i, prefix := range prefixes {
+		line := strings.TrimRight(prefix, " ")
+		if i < len(tails) && tails[i] != "" {
+			if line != "" {
+				line += " "
+			}
+			line += tails[i]
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// truncateIncidentHumanMessage applies the incident message display limit.
 func truncateIncidentHumanMessage(message string, limit int) string {
 	return truncateHumanMessage(message, limit)
 }

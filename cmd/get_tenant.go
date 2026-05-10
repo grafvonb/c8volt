@@ -21,7 +21,7 @@ var getTenantCmd = &cobra.Command{
 	Use:   "tenant",
 	Short: "List tenants",
 	Long: "List tenants visible to the configured environment.\n\n" +
-		"Human output includes tenant ID, name, and description when available.",
+		"Output includes tenant ID, name, and description when available.",
 	Example: `  ./c8volt get tenant
   ./c8volt get tenant --key <tenant-id>
   ./c8volt get tenant --filter demo

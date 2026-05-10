@@ -58,6 +58,54 @@ func newIncidentErrorTypeEqFilterPtr(v camundav89.IncidentErrorTypeEnum) (*camun
 	return new(f), nil
 }
 
+func newProcessInstanceKeyEqFilterPtr(v string) (*camundav89.ProcessInstanceKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ProcessInstanceKeyFilterProperty
+	if err := f.FromProcessInstanceKeyFilterProperty0(camundav89.ProcessInstanceKey(v)); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newProcessDefinitionKeyEqFilterPtr(v string) (*camundav89.ProcessDefinitionKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ProcessDefinitionKeyFilterProperty
+	if err := f.FromProcessDefinitionKeyFilterProperty0(camundav89.ProcessDefinitionKey(v)); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newElementInstanceKeyEqFilterPtr(v string) (*camundav89.ElementInstanceKeyFilterProperty, error) {
+	if v == "" {
+		return nil, nil
+	}
+	var f camundav89.ElementInstanceKeyFilterProperty
+	if err := f.FromElementInstanceKeyFilterProperty0(camundav89.ElementInstanceKey(v)); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
+func newDateTimeRangeFilterPtr(after, before *time.Time, exists *bool) (*camundav89.DateTimeFilterProperty, error) {
+	if after == nil && before == nil && exists == nil {
+		return nil, nil
+	}
+	var f camundav89.DateTimeFilterProperty
+	if err := f.FromAdvancedDateTimeFilter(camundav89.AdvancedDateTimeFilter{
+		Gte:    after,
+		Lte:    before,
+		Exists: exists,
+	}); err != nil {
+		return nil, err
+	}
+	return new(f), nil
+}
+
 func valueOrEmpty[T ~string](v *T) T {
 	if v == nil {
 		return ""

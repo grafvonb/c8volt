@@ -115,6 +115,25 @@ func fromDomainProcessInstanceVariables(xs []d.ProcessInstanceVariable) []Proces
 	return toolx.MapSlice(xs, fromDomainProcessInstanceVariable)
 }
 
+func fromDomainProcessInstanceVariableUpdateResult(x d.ProcessInstanceVariableUpdateResult) ProcessInstanceVariableUpdateResult {
+	return ProcessInstanceVariableUpdateResult{
+		Key:                x.Key,
+		Status:             ProcessInstanceVariableUpdateStatus(x.Status),
+		MutationAccepted:   x.MutationAccepted,
+		ConfirmationStatus: x.ConfirmationStatus,
+		StatusCode:         x.StatusCode,
+		Message:            x.Message,
+		Error:              x.Error,
+		Variables:          toolx.CopyMap(x.Variables),
+	}
+}
+
+func fromDomainProcessInstanceVariableUpdateResults(x d.ProcessInstanceVariableUpdateResults) ProcessInstanceVariableUpdateResults {
+	return ProcessInstanceVariableUpdateResults{
+		Items: toolx.MapSlice(x.Items, fromDomainProcessInstanceVariableUpdateResult),
+	}
+}
+
 func fromDomainProcessInstanceVariableUpdateResponse(x d.ProcessInstanceVariableUpdateResponse, variables map[string]any) ProcessInstanceVariableUpdateResult {
 	status := ProcessInstanceVariableUpdateStatusSubmitted
 	if !x.Ok {
@@ -134,6 +153,37 @@ func toDomainProcessInstanceVariableUpdateRequest(x ProcessInstanceVariableUpdat
 	return d.ProcessInstanceVariableUpdateRequest{
 		Key:       x.Key,
 		Variables: toolx.CopyMap(x.Variables),
+	}
+}
+
+func fromDomainReporter(x d.Reporter) Reporter {
+	return Reporter{
+		Key:        x.Key,
+		Ok:         x.Ok,
+		StatusCode: x.StatusCode,
+		Status:     x.Status,
+	}
+}
+
+func fromDomainCancelReports(xs []d.Reporter) CancelReports {
+	return CancelReports{Items: toolx.MapSlice(xs, func(x d.Reporter) CancelReport { return fromDomainReporter(x) })}
+}
+
+func fromDomainDeleteReports(xs []d.Reporter) DeleteReports {
+	return DeleteReports{Items: toolx.MapSlice(xs, func(x d.Reporter) DeleteReport { return fromDomainReporter(x) })}
+}
+
+func fromDomainDryRunPIKeyExpansion(x d.DryRunPIKeyExpansion) DryRunPIKeyExpansion {
+	return DryRunPIKeyExpansion{
+		Roots:                      append([]string(nil), x.Roots...),
+		Collected:                  append([]string(nil), x.Collected...),
+		SelectedFinalState:         toolx.MapSlice(x.SelectedFinalState, fromDomainProcessInstance),
+		RequiresCancelBeforeDelete: toolx.MapSlice(x.RequiresCancelBeforeDelete, fromDomainProcessInstance),
+		MissingAncestors: toolx.MapSlice(x.MissingAncestors, func(item d.MissingAncestor) MissingAncestor {
+			return MissingAncestor{Key: item.Key, StartKey: item.StartKey}
+		}),
+		Warning: x.Warning,
+		Outcome: TraversalOutcome(x.Outcome),
 	}
 }
 
@@ -235,18 +285,6 @@ func toDomainProcessInstanceIncidentDetail(x ProcessInstanceIncidentDetail) d.Pr
 		RootProcessInstanceKey: x.RootProcessInstanceKey,
 		ProcessDefinitionKey:   x.ProcessDefinitionKey,
 		ProcessDefinitionId:    x.ProcessDefinitionId,
-	}
-}
-
-func toDomainProcessInstanceVariable(x ProcessInstanceVariable) d.ProcessInstanceVariable {
-	return d.ProcessInstanceVariable{
-		Name:               x.Name,
-		Value:              x.Value,
-		VariableKey:        x.VariableKey,
-		ProcessInstanceKey: x.ProcessInstanceKey,
-		ScopeKey:           x.ScopeKey,
-		TenantId:           x.TenantId,
-		APITruncated:       x.APITruncated,
 	}
 }
 

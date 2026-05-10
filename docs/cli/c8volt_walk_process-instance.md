@@ -42,11 +42,11 @@ c8volt walk process-instance [flags]
       --children                     show descendants from the selected process instance
       --flat                         render family output as a flat path instead of an ASCII tree
   -h, --help                         help for process-instance
-      --incident-message-limit int   maximum characters to show for human incident messages when --with-incidents is set; 0 disables truncation
+      --incident-message-limit int   maximum characters to show for incident messages when --with-incidents is set; 0 disables truncation
       --incident-state string        incident state scope for --with-incidents: active, pending, resolved, migrated, unknown, all (default "active")
   -k, --key string                   start walking from this process instance key
       --parent                       show ancestry from the selected process instance toward the root
-      --var-value-limit int          maximum characters to show for human variable values when --with-vars is set; 0 disables truncation
+      --var-value-limit int          maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-incidents               show incident keys, states, and messages for keyed process-instance walks
       --with-vars                    show process-instance-scope variables for keyed process-instance walks
 ```

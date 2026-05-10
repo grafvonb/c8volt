@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 
 	processOptions "github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/process"
@@ -15,6 +16,11 @@ import (
 var (
 	flagResolvePIKeys []string
 )
+
+type resolveProcessInstanceAPI interface {
+	process.API
+	incident.API
+}
 
 var resolveProcessInstanceCmd = &cobra.Command{
 	Use:   "process-instance",
@@ -65,16 +71,16 @@ var resolveProcessInstanceCmd = &cobra.Command{
 	},
 }
 
-func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys types.Keys, firstPage bool) (process.ProcessInstanceResolutionResults, error) {
+func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli resolveProcessInstanceAPI, keys types.Keys, firstPage bool) (incident.ProcessInstanceResolutionResults, error) {
 	planned, err := planProcessInstanceDryRunPreview(cmd, cli, "resolve", keys)
 	if err != nil {
-		return process.ProcessInstanceResolutionResults{}, err
+		return incident.ProcessInstanceResolutionResults{}, err
 	}
 	plan := planned.Plan
 	if flagDryRun {
 		if pickMode() != RenderModeJSON {
 			if err := renderProcessInstanceDryRunPreview(cmd, planned.Preview); err != nil {
-				return process.ProcessInstanceResolutionResults{}, fmt.Errorf("render resolve dry-run scope: %w", err)
+				return incident.ProcessInstanceResolutionResults{}, fmt.Errorf("render resolve dry-run scope: %w", err)
 			}
 		}
 		opts := append(collectOptions(), processOptions.WithAffectedProcessInstanceCount(len(plan.Collected)))
@@ -98,7 +104,7 @@ func resolveProcessInstancesWithPlan(cmd *cobra.Command, cli process.API, keys t
 			prompt = fmt.Sprintf("You have requested to resolve incidents for %d process instance(s), but due to the process-instance family scope, %d instance(s) with %d root instance(s) will be inspected and active incidents found in that family will be resolved. Do you want to proceed?", requestedCount, affectedCount, rootCount)
 		}
 		if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
-			return process.ProcessInstanceResolutionResults{}, err
+			return incident.ProcessInstanceResolutionResults{}, err
 		}
 	}
 

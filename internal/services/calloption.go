@@ -22,23 +22,27 @@ func WithIncidentErrorType(errorType string) CallOption {
 func WithIncidentErrorMessage(message string) CallOption {
 	return func(c *CallCfg) { c.IncidentErrorMessage = message }
 }
+func WithAffectedProcessInstanceCount(count int) CallOption {
+	return func(c *CallCfg) { c.AffectedProcessInstanceCount = count }
+}
 
 type CallOption func(*CallCfg)
 
 type CallCfg struct {
-	NoStateCheck         bool
-	Force                bool
-	NoWait               bool
-	Run                  bool
-	FailFast             bool
-	WithStat             bool
-	DryRun               bool
-	Verbose              bool
-	NoWorkerLimit        bool
-	IgnoreTenant         bool
-	IncidentState        string
-	IncidentErrorType    string
-	IncidentErrorMessage string
+	NoStateCheck                 bool
+	Force                        bool
+	NoWait                       bool
+	Run                          bool
+	FailFast                     bool
+	WithStat                     bool
+	DryRun                       bool
+	Verbose                      bool
+	NoWorkerLimit                bool
+	IgnoreTenant                 bool
+	IncidentState                string
+	IncidentErrorType            string
+	IncidentErrorMessage         string
+	AffectedProcessInstanceCount int
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

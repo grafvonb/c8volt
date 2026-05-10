@@ -101,8 +101,8 @@ func TestDeleteProcessInstanceDryRunPreviewPayloadMapping(t *testing.T) {
 	requireDeleteDryRunPreviewPayload(t, payload, want)
 }
 
-// TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose verifies human dry-run output keeps key lists verbose-only.
-func TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *testing.T) {
+// TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose verifies dry-run output keeps key lists verbose-only.
+func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -143,10 +143,10 @@ func TestDeleteProcessInstanceDryRun_HumanOutputHidesScopeKeysUntilVerbose(t *te
 	require.NotContains(t, output, "no mutation submitted")
 }
 
-// TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances
+// TestDeleteProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
 // verifies terminal selected instances are summarized without noisy key lists by
 // default.
-func TestDeleteProcessInstanceDryRun_HumanOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
+func TestDeleteProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
 
@@ -310,7 +310,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 }
 
 // TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
-// verifies partial ancestry details are surfaced in human output.
+// verifies partial ancestry details are surfaced in output.
 func TestDeleteProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)
@@ -504,7 +504,7 @@ func TestDeleteProcessInstanceDryRun_SearchPagesAggregateStructuredOutput(t *tes
 }
 
 // TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope verifies
-// aggregate human output explains non-final delete blockers.
+// aggregate output explains non-final delete blockers.
 func TestDeleteProcessInstanceDryRun_SearchSummaryExplainsNonFinalScope(t *testing.T) {
 	resetProcessInstanceCommandGlobals()
 	t.Cleanup(resetProcessInstanceCommandGlobals)

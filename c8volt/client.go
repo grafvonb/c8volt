@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
@@ -104,6 +105,7 @@ func New(opts ...Option) (API, error) {
 	cl := client{
 		ClusterAPI:        cluster.New(cAPI, c.log),
 		ProcessAPI:        process.New(pdAPI, piAPI, incAPI, c.log),
+		IncidentAPI:       incident.New(incAPI, c.log),
 		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),
 		BatchOperationAPI: batchoperation.New(batchAPI, c.log),
@@ -115,7 +117,7 @@ func New(opts ...Option) (API, error) {
 			}, nil
 		},
 	}
-	cl.ResourceAPI = resource.New(rAPI, cl.ProcessAPI, cl.BatchOperationAPI, c.log)
+	cl.ResourceAPI = resource.New(rAPI, pdAPI, piAPI, c.log)
 	return &cl, nil
 }
 
@@ -127,6 +129,7 @@ type cfg struct {
 
 type ClusterAPI = cluster.API
 type ProcessAPI = process.API
+type IncidentAPI = incident.API
 type TaskAPI = task.API
 type ResourceAPI = resource.API
 type TenantAPI = tenant.API
@@ -138,6 +141,7 @@ var _ API = (*client)(nil)
 type client struct {
 	ClusterAPI
 	ProcessAPI
+	IncidentAPI
 	TaskAPI
 	JobAPI
 	BatchOperationAPI

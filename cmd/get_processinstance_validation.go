@@ -179,7 +179,7 @@ func validatePIIncidentErrorTypeFlag(value string) error {
 	if _, ok := incidentfilter.NormalizeErrorType(value); ok {
 		return nil
 	}
-	return invalidFlagValuef("invalid value for --incident-error-type: %q, valid values are: %s", value, incidentfilter.ValidErrorTypesString())
+	return invalidFlagValuef("invalid value for --incident-error-type: %q", value)
 }
 
 func hasPIIncidentDetailFilters() bool {

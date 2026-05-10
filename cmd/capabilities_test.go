@@ -37,7 +37,7 @@ func TestCapabilityDocumentForRoot_BuildsNestedDiscoveryMetadata(t *testing.T) {
 	require.Equal(t, "discovery command for automation support", capabilitiesCapability.AutomationNotes)
 	require.Equal(t, []OutputModeContract{
 		{Name: "json", Supported: true, MachinePreferred: true, Notes: "full discovery format"},
-		{Name: "one-line", Supported: true, Notes: "human-readable summary"},
+		{Name: "one-line", Supported: true, Notes: "summary"},
 	}, capabilitiesCapability.OutputModes)
 
 	require.Equal(t, "get", getCapability.Path)

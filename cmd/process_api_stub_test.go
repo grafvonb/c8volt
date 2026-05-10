@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"testing"
 
 	options "github.com/grafvonb/c8volt/c8volt/foptions"
@@ -26,7 +27,7 @@ type stubProcessAPI struct {
 	enrichProcessInstances           func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.IncidentEnrichedProcessInstances, error)
 	enrichProcessInstanceVars        func(context.Context, process.ProcessInstances, ...options.FacadeOption) (process.VariableEnrichedProcessInstances, error)
 	updateProcessInstancesVars       func(context.Context, types.Keys, map[string]any, int, ...options.FacadeOption) (process.ProcessInstanceVariableUpdateResults, error)
-	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (process.ProcessInstanceResolutionResults, error)
+	resolveProcessInstancesIncidents func(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error)
 }
 
 type stubTaskAPI struct {
@@ -181,23 +182,39 @@ func (stubProcessAPI) LookupProcessInstance(context.Context, string, ...options.
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]process.ProcessInstanceIncidentDetail, error) {
+func (stubProcessAPI) GetIncident(context.Context, string, ...options.FacadeOption) (incident.ProcessInstanceIncidentDetail, error) {
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) ResolveIncident(context.Context, string, ...options.FacadeOption) (process.IncidentResolutionResult, error) {
+func (stubProcessAPI) GetIncidents(context.Context, types.Keys, int, ...options.FacadeOption) (incident.Incidents, error) {
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) ResolveIncidents(context.Context, types.Keys, int, ...options.FacadeOption) (process.IncidentResolutionResults, error) {
+func (stubProcessAPI) SearchIncidents(context.Context, incident.Filter, int32, ...options.FacadeOption) (incident.Incidents, error) {
 	panic("unexpected call")
 }
 
-func (stubProcessAPI) ResolveProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) (process.ProcessInstanceResolutionResult, error) {
+func (stubProcessAPI) SearchIncidentsPage(context.Context, incident.Filter, incident.PageRequest, ...options.FacadeOption) (incident.Page, error) {
 	panic("unexpected call")
 }
 
-func (s stubProcessAPI) ResolveProcessInstancesIncidents(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.ProcessInstanceResolutionResults, error) {
+func (stubProcessAPI) SearchProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) ([]incident.ProcessInstanceIncidentDetail, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) ResolveIncident(context.Context, string, ...options.FacadeOption) (incident.ResolutionResult, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) ResolveIncidents(context.Context, types.Keys, int, ...options.FacadeOption) (incident.ResolutionResults, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) ResolveProcessInstanceIncidents(context.Context, string, ...options.FacadeOption) (incident.ProcessInstanceResolutionResult, error) {
+	panic("unexpected call")
+}
+
+func (s stubProcessAPI) ResolveProcessInstancesIncidents(ctx context.Context, keys types.Keys, wantedWorkers int, opts ...options.FacadeOption) (incident.ProcessInstanceResolutionResults, error) {
 	if s.resolveProcessInstancesIncidents == nil {
 		panic("unexpected call")
 	}
