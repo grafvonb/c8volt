@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -116,9 +117,14 @@ func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T)
 }
 
 func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC)
+	}
 	prevLimit := flagGetPIIncidentMessageLimit
 	flagGetPIIncidentMessageLimit = 0
 	t.Cleanup(func() {
+		relativeDayNow = prevNow
 		flagGetPIIncidentMessageLimit = prevLimit
 	})
 

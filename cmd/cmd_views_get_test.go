@@ -701,9 +701,14 @@ func TestProcessInstanceVariableHumanLine_RendersAPIAndCombinedTruncationLabels(
 }
 
 func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC)
+	}
 	prevLimit := flagGetPIIncidentMessageLimit
 	flagGetPIIncidentMessageLimit = 0
 	t.Cleanup(func() {
+		relativeDayNow = prevNow
 		flagGetPIIncidentMessageLimit = prevLimit
 	})
 
