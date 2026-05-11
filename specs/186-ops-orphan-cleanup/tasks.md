@@ -24,15 +24,15 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Define internal orphan-purge request/result domain models in `internal/domain/ops_orphan_purge.go`
-- [ ] T004 [P] Define public ops facade request/result models in `c8volt/ops/model.go`
-- [ ] T005 [P] Define public ops facade API in `c8volt/ops/api.go`
-- [ ] T006 Define internal ops service interface and constructor in `internal/services/ops/api.go`
-- [ ] T007 Implement public ops facade conversions in `c8volt/ops/convert.go`
-- [ ] T008 Implement thin public ops facade client in `c8volt/ops/client.go`
-- [ ] T009 Wire ops facade creation and API embedding in `c8volt/client.go` and `c8volt/contract.go`
-- [ ] T010 [P] Add foundational ops facade wiring tests in `c8volt/ops/client_test.go`
-- [ ] T011 [P] Add foundational internal ops service tests in `internal/services/ops/orphan_purge_test.go`
+- [x] T003 [P] Define internal orphan-purge request/result domain models in `internal/domain/ops_orphan_purge.go`
+- [x] T004 [P] Define public ops facade request/result models in `c8volt/ops/model.go`
+- [x] T005 [P] Define public ops facade API in `c8volt/ops/api.go`
+- [x] T006 Define internal ops service interface and constructor in `internal/services/ops/api.go`
+- [x] T007 Implement public ops facade conversions in `c8volt/ops/convert.go`
+- [x] T008 Implement thin public ops facade client in `c8volt/ops/client.go`
+- [x] T009 Wire ops facade creation and API embedding in `c8volt/client.go` and `c8volt/contract.go`
+- [x] T010 [P] Add foundational ops facade wiring tests in `c8volt/ops/client_test.go`
+- [x] T011 [P] Add foundational internal ops service tests in `internal/services/ops/orphan_purge_test.go`
 
 **Checkpoint**: Ops workflow model, facade, and service boundary are available for story implementation.
 

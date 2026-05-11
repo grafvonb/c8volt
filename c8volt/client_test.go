@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ferrors"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
@@ -47,4 +49,11 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, gotTenants.Items)
 	require.IsType(t, tenant.Tenants{}, gotTenants)
+
+	gotPurge, err := cli.PurgeOrphanProcessInstances(context.Background(), ops.OrphanPurgeRequest{
+		CommandName: "ops purge orphan-process-instances",
+		DryRun:      true,
+	})
+	require.ErrorIs(t, err, ferrors.ErrUnsupported)
+	require.Equal(t, "ops purge orphan-process-instances", gotPurge.Request.CommandName)
 }
