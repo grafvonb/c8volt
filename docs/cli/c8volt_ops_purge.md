@@ -1,36 +1,37 @@
 ---
-title: "c8volt ops"
+title: "c8volt ops purge"
 nav_exclude: true
 ---
 
 [CLI Reference]({{ "/cli/" | relative_url }})
-## c8volt ops
+## c8volt ops purge
 
-Discover high-level operational workflows
+Discover destructive operational cleanup workflows
 
 ### Synopsis
 
-Discover high-level operational workflows.
+Discover destructive operational cleanup workflows.
 
-The ops command family groups operational playbooks for execution, repair, and
-future maintenance workflows. This root command is intentionally discovery-only;
-target-specific subcommands will define concrete behavior as they are added.
+The purge command group is reserved for workflows that remove operational
+targets through target-specific subcommands. This grouping command only shows
+available purge workflows and never performs cleanup by itself.
 
 ```
-c8volt ops [flags]
+c8volt ops purge [flags]
 ```
 
 ### Examples
 
 ```
-  ./c8volt ops --help
-  ./c8volt capabilities --json
+  ./c8volt ops purge --help
+  ./c8volt ops purge orphan-process-instances --dry-run
+  ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.md
 ```
 
 ### Options
 
 ```
-  -h, --help   help for ops
+  -h, --help   help for purge
 ```
 
 ### Options inherited from parent commands
@@ -53,8 +54,6 @@ c8volt ops [flags]
 
 ### SEE ALSO
 
-* [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
-* [c8volt ops execute](c8volt_ops_execute)	 - Discover predefined operational playbooks
-* [c8volt ops purge](c8volt_ops_purge)	 - Discover destructive operational cleanup workflows
-* [c8volt ops repair](c8volt_ops_repair)	 - Discover repair and remediation workflows
+* [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
+* [c8volt ops purge orphan-process-instances](c8volt_ops_purge_orphan-process-instances)	 - Purge orphan child process instances
 

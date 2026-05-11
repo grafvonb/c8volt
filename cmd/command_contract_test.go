@@ -480,7 +480,7 @@ func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *t
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "preview orphan process-instance cleanup without submitting deletion requests",
+		Description: "discover and validate orphan process-instance cleanup without submitting deletion requests",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "auto-confirm",

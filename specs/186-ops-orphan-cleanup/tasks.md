@@ -139,12 +139,12 @@
 
 **Purpose**: Documentation, validation, cleanup, and final feature readiness.
 
-- [ ] T045 [P] Update command examples and user-facing help text in `cmd/ops_purge.go` and `cmd/ops_purge_orphan_processinstances.go`
-- [ ] T046 Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
-- [ ] T047 Run targeted command tests for `cmd/` with `go test ./cmd -run 'TestOps|TestCommandContract' -count=1`
-- [ ] T048 Run facade and service tests for `c8volt/ops`, `internal/services/ops`, and `internal/services/processinstance`
-- [ ] T049 Run repository validation through `Makefile` with `make test`
-- [ ] T050 Update final implementation notes and completed validation in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T045 [P] Update command examples and user-facing help text in `cmd/ops_purge.go` and `cmd/ops_purge_orphan_processinstances.go`
+- [x] T046 Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T047 Run targeted command tests for `cmd/` with `go test ./cmd -run 'TestOps|TestCommandContract' -count=1`
+- [x] T048 Run facade and service tests for `c8volt/ops`, `internal/services/ops`, and `internal/services/processinstance`
+- [x] T049 Run repository validation through `Makefile` with `make test`
+- [x] T050 Update final implementation notes and completed validation in `specs/186-ops-orphan-cleanup/progress.md`
 
 ---
 

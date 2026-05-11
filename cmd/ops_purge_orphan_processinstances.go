@@ -25,12 +25,15 @@ var (
 
 var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 	Use:   "orphan-process-instances",
-	Short: "Preview orphan process-instance cleanup",
-	Long: "Preview orphan child process-instance cleanup.\n\n" +
-		"The dry-run workflow discovers child process instances with missing parents, validates the delete plan that would be used for the frozen discovered key set, and reports the planned purge without submitting deletion requests.",
+	Short: "Purge orphan child process instances",
+	Long: "Purge orphan child process instances.\n\n" +
+		"The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm for unattended deletion, --automation with --json for deterministic machine output, and --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --dry-run --state active --limit 10
-  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --json`,
+  ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
+  ./c8volt ops purge orphan-process-instances --auto-confirm
+  ./c8volt ops purge orphan-process-instances --automation --auto-confirm --json
+  ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
+  ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json`,
 	Aliases: []string{"orphan-pi", "orphan-pis"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -109,7 +112,7 @@ func init() {
 	useInvalidInputFlagErrors(opsPurgeOrphanProcessInstancesCmd)
 
 	fs := opsPurgeOrphanProcessInstancesCmd.Flags()
-	fs.BoolVar(&flagDryRun, "dry-run", false, "preview orphan process-instance cleanup without submitting deletion requests")
+	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate orphan process-instance cleanup without submitting deletion requests")
 	registerPISharedProcessDefinitionFilterFlags(fs)
 	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
 	registerPISharedDateRangeFlags(fs)

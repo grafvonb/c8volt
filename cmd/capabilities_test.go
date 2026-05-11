@@ -185,7 +185,7 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	require.Equal(t, CommandMutationStateChanging, purge.Mutation)
 	require.Equal(t, ContractSupportLimited, purge.ContractSupport)
 	require.Equal(t, AutomationSupportUnsupported, purge.AutomationSupport)
-	require.Contains(t, purge.Summary, "Discover destructive cleanup workflows")
+	require.Contains(t, purge.Summary, "Discover destructive operational cleanup workflows")
 	orphanPurge, ok := findCommandCapability(purge.Children, "ops purge orphan-process-instances")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, orphanPurge.Mutation)

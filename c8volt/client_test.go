@@ -5,6 +5,7 @@ package c8volt
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -18,20 +19,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type clientTestRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f clientTestRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
 // TestNew_V89WiresSupportedRuntime ensures the top-level client factory wires
 // every facade for the newest supported runtime. The calls intentionally fail
-// against localhost, but reaching those methods proves the v8.9 services were
-// constructed instead of rejected as unsupported.
+// through a local transport, but reaching those methods proves the v8.9
+// services were constructed instead of rejected as unsupported.
 func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.New()
 	cfg.App.CamundaVersion = toolx.V89
 	cfg.APIs.Camunda.BaseURL = "http://localhost:8080/v2"
+	transportErr := errors.New("test transport blocked")
 
 	cli, err := New(
 		WithConfig(cfg),
-		WithHTTPClient(&http.Client{}),
+		WithHTTPClient(&http.Client{Transport: clientTestRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return nil, transportErr
+		})}),
 		WithLogger(slog.Default()),
 	)
 
@@ -54,6 +62,7 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 		CommandName: "ops purge orphan-process-instances",
 		DryRun:      true,
 	})
-	require.ErrorIs(t, err, ferrors.ErrUnsupported)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ferrors.ErrUnsupported)
 	require.Equal(t, "ops purge orphan-process-instances", gotPurge.Request.CommandName)
 }

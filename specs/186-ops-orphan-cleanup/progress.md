@@ -14,6 +14,9 @@
 
 ## Codebase Patterns
 
+- Generated CLI docs mirror the live Cobra command tree; when adding command help or new subcommands, update source help first, run `make docs-content`, and expect new `docs/cli/c8volt_<path>.md` pages plus `docs/cli/*` SEE ALSO changes.
+- Command capability tests assert user-facing summaries and flag descriptions, so help text changes require synchronized contract expectations in `cmd/capabilities_test.go` and `cmd/command_contract_test.go`.
+- Top-level `c8volt.New` wiring tests should inject a local failing `http.RoundTripper` instead of relying on real localhost requests; this proves facade construction while staying sandbox-safe.
 - Ops purge audit reports are written by command-layer helpers after the facade returns its structured report; the command enriches the report with CLI build/config identity and writes requested files before rendering normal stdout.
 - Automation-safe destructive ops commands should plan/discover first, then block `--automation` without `--auto-confirm` before confirmation or mutation when concrete targets exist; zero-target and dry-run flows remain allowed.
 - Confirmed orphan purge keeps discovery immutable by allowing the command to pass a frozen `DiscoveredKeys` set into the ops facade after an interactive pre-plan; the service skips rediscovery when that set is present.
@@ -221,4 +224,35 @@
 - Report format inference now matches the feature contract: explicit `json` or `markdown` wins, `.json` infers JSON, `.md`/`.markdown` infer Markdown, and unknown extensions default to Markdown.
 - The command can still write a requested audit report when failures occur after discovery by using the partial facade result and marking local pre-mutation failures as blocked or confirmation_failed.
 - Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd -run 'TestOpsWorkflowReportFormatForPath|TestOpsPurgeOrphanProcessInstances.*Report|TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure' -count=1`, `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`, and `git diff --check`.
+---
+
+---
+## Iteration 7 - 2026-05-11 21:41:42 CEST
+**User Story**: Phase 7: Polish & Cross-Cutting Concerns
+**Tasks Completed**:
+- [x] T045: Update command examples and user-facing help text in `cmd/ops_purge.go` and `cmd/ops_purge_orphan_processinstances.go`
+- [x] T046: Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T047: Run targeted command tests for `cmd/` with `go test ./cmd -run 'TestOps|TestCommandContract' -count=1`
+- [x] T048: Run facade and service tests for `c8volt/ops`, `internal/services/ops`, and `internal/services/processinstance`
+- [x] T049: Run repository validation through `Makefile` with `make test`
+- [x] T050: Update final implementation notes and completed validation in `specs/186-ops-orphan-cleanup/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/client_test.go
+- cmd/capabilities_test.go
+- cmd/command_contract_test.go
+- cmd/ops_purge.go
+- cmd/ops_purge_orphan_processinstances.go
+- docs/cli/c8volt_delete_process-instance.md
+- docs/cli/c8volt_ops.md
+- docs/cli/c8volt_ops_purge.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/index.md
+- specs/186-ops-orphan-cleanup/tasks.md
+- specs/186-ops-orphan-cleanup/progress.md
+**Learnings**:
+- `make docs-content` creates new command pages for added Cobra subcommands and refreshes related SEE ALSO links; generated docs may also refresh existing command flag descriptions from source metadata.
+- `make test` now passes after isolating `TestNew_V89WiresSupportedRuntime` from real localhost access and updating stale capability assertions for the refined help text.
+- Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd -run 'TestOps|TestCommandContract' -count=1`, `GOCACHE=/tmp/go-build-cache go test ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`, `GOCACHE=/tmp/go-build-cache go test ./c8volt -run TestNew_V89WiresSupportedRuntime -count=1`, `GOCACHE=/tmp/go-build-cache make test`, and final `git diff --check`.
 ---
