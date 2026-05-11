@@ -4,12 +4,17 @@
 package cmd
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
 )
@@ -123,6 +128,96 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmNoTargetsSkipsDelete(t *testin
 	require.Contains(t, output, "delete plan: skipped")
 	require.Contains(t, output, "outcome: planned; no targets deleted")
 	require.Empty(t, deleted.Snapshot())
+}
+
+func TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMutation(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMutationHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "requires --auto-confirm")
+	require.Empty(t, deleted.Snapshot())
+}
+
+func TestOpsPurgeOrphanProcessInstancesAutomationJSONAutoConfirmUsesEnvelope(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--automation",
+		"--json",
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--no-wait",
+	)
+
+	require.Empty(t, stderr)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "ops purge orphan-process-instances", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "deleted", payload["outcome"])
+	require.Equal(t, true, payload["deleteRequested"])
+	require.NotContains(t, stdout, "purge orphan process-instances\n")
+	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
+}
+
+func TestOpsPurgeOrphanProcessInstancesAutomationGuardRequiresAutoConfirmForTargets(t *testing.T) {
+	err := validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
+		CommandName: opsPurgeOrphanProcessInstancesCommandName,
+		Automation:  true,
+	}, 1)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "requires --auto-confirm")
+}
+
+func TestOpsPurgeOrphanProcessInstancesAutomationGuardAllowsDryRunAndNoTargets(t *testing.T) {
+	require.NoError(t, validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
+		CommandName: opsPurgeOrphanProcessInstancesCommandName,
+		Automation:  true,
+		DryRun:      true,
+	}, 1))
+	require.NoError(t, validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
+		CommandName: opsPurgeOrphanProcessInstancesCommandName,
+		Automation:  true,
+	}, 0))
+	require.NoError(t, validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
+		CommandName: opsPurgeOrphanProcessInstancesCommandName,
+		Automation:  true,
+		AutoConfirm: true,
+	}, 1))
+}
+
+func TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMutationHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"--automation",
+		"ops", "purge", "orphan-process-instances",
+		"--no-wait",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
 }
 
 func newOpsOrphanPurgeServer(t *testing.T, requests *testx.SafeSlice[string], withOrphan bool) *httptest.Server {

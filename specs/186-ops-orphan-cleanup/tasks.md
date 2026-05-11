@@ -96,16 +96,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Add automation-without-auto-confirm pre-mutation failure test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T031 [P] [US3] Add `--automation --json --auto-confirm` deterministic stdout test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T032 [P] [US3] Add command contract metadata test for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T030 [P] [US3] Add automation-without-auto-confirm pre-mutation failure test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T031 [P] [US3] Add `--automation --json --auto-confirm` deterministic stdout test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T032 [P] [US3] Add command contract metadata test for state-changing and automation support in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Add automation validation and pre-mutation guard in `cmd/ops_purge_orphan_processinstances.go`
-- [ ] T034 [US3] Set mutation, contract, output-mode, and automation metadata in `cmd/ops_purge_orphan_processinstances.go`
-- [ ] T035 [US3] Ensure JSON rendering uses existing shared result envelope in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
-- [ ] T036 [US3] Mark US3 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T033 [US3] Add automation validation and pre-mutation guard in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T034 [US3] Set mutation, contract, output-mode, and automation metadata in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T035 [US3] Ensure JSON rendering uses existing shared result envelope in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T036 [US3] Mark US3 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
 
 **Checkpoint**: Automation behavior is independently testable and script-safe.
 

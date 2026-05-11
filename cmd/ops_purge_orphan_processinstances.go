@@ -59,6 +59,9 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 			}
 			if planned.Discovery.Count > 0 {
+				if err := validateOpsPurgeAutomationConfirmation(request, planned.Discovery.Count); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
 				prompt := fmt.Sprintf("You are about to delete %d orphan process instance(s). Do you want to proceed?", len(planned.DeletionPlan.AffectedKeys))
 				if len(planned.DeletionPlan.AffectedKeys) > planned.Discovery.Count {
 					prompt = fmt.Sprintf("You have requested to delete %d orphan process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletionPlan.AffectedKeys), len(planned.DeletionPlan.RootKeys))
@@ -103,4 +106,11 @@ func init() {
 	setCommandMutation(opsPurgeOrphanProcessInstancesCmd, CommandMutationStateChanging)
 	setContractSupport(opsPurgeOrphanProcessInstancesCmd, ContractSupportFull)
 	setAutomationSupport(opsPurgeOrphanProcessInstancesCmd, AutomationSupportFull, "supports unattended dry-run previews and auto-confirmed purges with shared machine output")
+}
+
+func validateOpsPurgeAutomationConfirmation(request ops.OrphanPurgeRequest, discoveredCount int) error {
+	if request.DryRun || request.AutoConfirm || !request.Automation || discoveredCount == 0 {
+		return nil
+	}
+	return missingDependentFlagsf("%s --automation requires --auto-confirm when deletion targets are discovered", request.CommandName)
 }

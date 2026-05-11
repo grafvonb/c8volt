@@ -14,6 +14,7 @@
 
 ## Codebase Patterns
 
+- Automation-safe destructive ops commands should plan/discover first, then block `--automation` without `--auto-confirm` before confirmation or mutation when concrete targets exist; zero-target and dry-run flows remain allowed.
 - Confirmed orphan purge keeps discovery immutable by allowing the command to pass a frozen `DiscoveredKeys` set into the ops facade after an interactive pre-plan; the service skips rediscovery when that set is present.
 - `internal/services/ops/orphan_purge.go` now submits deletion through `internal/services/processinstance.DeleteProcessInstances`, preserving worker/fail-fast/no-wait/force option behavior and using the dry-run expansion as the mutation scope.
 - `cmd/ops_purge_orphan_processinstances.go` reuses process-instance delete plan validation (`rejectDeletePlanRequiringForce`) and root confirmation helpers for non-`--auto-confirm` destructive runs; `--no-wait` and `--force` are exposed for parity with the delete path.
@@ -165,4 +166,29 @@
 - Confirmed deletion can reuse the process-instance bulk delete service once the orphan key set is frozen and the dry-run dependency expansion has validated the mutation scope.
 - The command can preserve interactive confirmation semantics by planning with dry-run first, validating with existing delete-plan helpers, then passing the frozen discovered keys into the confirmed service call.
 - Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; final iteration validation runs after this progress entry.
+---
+
+---
+## Iteration 5 - 2026-05-11 21:27:08 CEST
+**User Story**: User Story 3 - Run Cleanup In Automation
+**Tasks Completed**:
+- [x] T030: Add automation-without-auto-confirm pre-mutation failure test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T031: Add `--automation --json --auto-confirm` deterministic stdout test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T032: Add command contract metadata test for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T033: Add automation validation and pre-mutation guard in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T034: Set mutation, contract, output-mode, and automation metadata in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T035: Ensure JSON rendering uses existing shared result envelope in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T036: Mark US3 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- specs/186-ops-orphan-cleanup/tasks.md
+- specs/186-ops-orphan-cleanup/progress.md
+**Learnings**:
+- `--automation` remains an automation-mode signal but is not destructive confirmation for orphan purge when targets are found; the command now requires explicit `--auto-confirm` before mutation.
+- JSON rendering for orphan purge already uses the shared result envelope through `renderSucceededResult`; US3 coverage now protects the envelope shape for `--automation --json --auto-confirm`.
+- Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd -run 'TestOpsPurgeOrphanProcessInstances|TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract|TestCapabilitiesCommand_OpsCommandFamilyMetadata' -count=1`, `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`, and `git diff --check`.
 ---
