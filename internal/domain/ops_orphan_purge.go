@@ -31,18 +31,19 @@ const (
 )
 
 type OrphanPurgeRequest struct {
-	CommandName  string
-	DryRun       bool
-	AutoConfirm  bool
-	Automation   bool
-	OutputMode   string
-	Selection    ProcessInstanceFilter
-	BatchSize    int32
-	Limit        int32
-	Workers      int
-	ReportFile   string
-	ReportFormat string
-	StartedAt    time.Time
+	CommandName    string
+	DryRun         bool
+	AutoConfirm    bool
+	Automation     bool
+	OutputMode     string
+	Selection      ProcessInstanceFilter
+	BatchSize      int32
+	Limit          int32
+	Workers        int
+	ReportFile     string
+	ReportFormat   string
+	DiscoveredKeys typex.Keys
+	StartedAt      time.Time
 }
 
 type OrphanDiscoveryResult struct {

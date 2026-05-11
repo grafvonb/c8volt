@@ -72,17 +72,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Add confirmed cleanup command test for exact discovered-key deletion in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T023 [P] [US2] Add immutable discovered-set service test in `internal/services/ops/orphan_purge_test.go`
-- [ ] T024 [P] [US2] Add no-target confirmed cleanup test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T025 [P] [US2] Add process-instance delete delegation test in `c8volt/ops/client_test.go`
+- [x] T022 [P] [US2] Add confirmed cleanup command test for exact discovered-key deletion in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T023 [P] [US2] Add immutable discovered-set service test in `internal/services/ops/orphan_purge_test.go`
+- [x] T024 [P] [US2] Add no-target confirmed cleanup test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T025 [P] [US2] Add process-instance delete delegation test in `c8volt/ops/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Implement confirmed delete orchestration through existing process-instance delete behavior in `internal/services/ops/orphan_purge.go`
-- [ ] T027 [US2] Reuse destructive confirmation and delete-plan validation from process-instance command helpers in `cmd/ops_purge_orphan_processinstances.go`
-- [ ] T028 [US2] Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
-- [ ] T029 [US2] Mark US2 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T026 [US2] Implement confirmed delete orchestration through existing process-instance delete behavior in `internal/services/ops/orphan_purge.go`
+- [x] T027 [US2] Reuse destructive confirmation and delete-plan validation from process-instance command helpers in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T028 [US2] Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T029 [US2] Mark US2 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 

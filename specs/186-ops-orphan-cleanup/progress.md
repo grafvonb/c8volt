@@ -14,9 +14,13 @@
 
 ## Codebase Patterns
 
+- Confirmed orphan purge keeps discovery immutable by allowing the command to pass a frozen `DiscoveredKeys` set into the ops facade after an interactive pre-plan; the service skips rediscovery when that set is present.
+- `internal/services/ops/orphan_purge.go` now submits deletion through `internal/services/processinstance.DeleteProcessInstances`, preserving worker/fail-fast/no-wait/force option behavior and using the dry-run expansion as the mutation scope.
+- `cmd/ops_purge_orphan_processinstances.go` reuses process-instance delete plan validation (`rejectDeletePlanRequiringForce`) and root confirmation helpers for non-`--auto-confirm` destructive runs; `--no-wait` and `--force` are exposed for parity with the delete path.
+- Human rendering for orphan purge now distinguishes dry-run previews, confirmed no-op runs, submitted deletion requests, and deleted outcomes.
 - `internal/services/processinstance/orphan_discovery.go` now owns paged orphan-child discovery for ops workflows: it forces child-only selection with `HasParent=true`, applies the caller's compatible filters, honors batch size/limit, and delegates parent existence checks to `FilterProcessInstanceWithOrphanParent`.
-- `internal/services/ops/orphan_purge.go` orchestrates dry-run purge discovery and delete-plan validation by composing process-instance discovery with `DryRunCancelOrDeletePlan`; confirmed deletion remains blocked for a later story.
-- `cmd/ops_purge_orphan_processinstances.go` uses the public ops facade rather than process command helpers directly; the command currently requires `--dry-run` until the confirmed-delete story is implemented.
+- `internal/services/ops/orphan_purge.go` orchestrates purge discovery, delete-plan validation, dry-run skipping, and confirmed deletion while keeping resource-specific traversal and deletion mechanics in process-instance services.
+- `cmd/ops_purge_orphan_processinstances.go` uses the public ops facade rather than process command helpers directly; dry-run and confirmed purge share one request/result model.
 - Adding a concrete child under a discovery-only ops grouping command makes the parent capability contract `limited` while the grouping command itself remains automation-unsupported.
 - `cmd/ops.go`, `cmd/ops_execute.go`, and `cmd/ops_repair.go` already define discovery-only grouping commands and shared ops foundation from issue #197.
 - This feature should add `cmd/ops_purge.go` for destructive cleanup workflows while preserving `ops execute` for non-purge playbooks such as smoke tests.
@@ -129,4 +133,36 @@
 - The command package test suite must use `GOCACHE=/tmp/go-build-cache` in this sandbox; the default macOS Go cache path can be unreadable.
 - `go test ./c8volt ./c8volt/ops ./internal/services/ops -count=1` is blocked by the existing `TestNew_V89WiresSupportedRuntime` localhost connection under this sandbox, but the touched package pass ran successfully.
 - Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance ./internal/domain -count=1` and `git diff --check`.
+---
+
+---
+## Iteration 4 - 2026-05-11 21:21:48 CEST
+**User Story**: User Story 2 - Run Confirmed Orphan Purge
+**Tasks Completed**:
+- [x] T022: Add confirmed cleanup command test for exact discovered-key deletion in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T023: Add immutable discovered-set service test in `internal/services/ops/orphan_purge_test.go`
+- [x] T024: Add no-target confirmed cleanup test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T025: Add process-instance delete delegation test in `c8volt/ops/client_test.go`
+- [x] T026: Implement confirmed delete orchestration through existing process-instance delete behavior in `internal/services/ops/orphan_purge.go`
+- [x] T027: Reuse destructive confirmation and delete-plan validation from process-instance command helpers in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T028: Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T029: Mark US2 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/domain/ops_orphan_purge.go
+- internal/services/ops/orphan_purge.go
+- internal/services/ops/orphan_purge_test.go
+- c8volt/ops/model.go
+- c8volt/ops/convert.go
+- c8volt/ops/client_test.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- specs/186-ops-orphan-cleanup/tasks.md
+- specs/186-ops-orphan-cleanup/progress.md
+**Learnings**:
+- Confirmed deletion can reuse the process-instance bulk delete service once the orphan key set is frozen and the dry-run dependency expansion has validated the mutation scope.
+- The command can preserve interactive confirmation semantics by planning with dry-run first, validating with existing delete-plan helpers, then passing the frozen discovered keys into the confirmed service call.
+- Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; final iteration validation runs after this progress entry.
 ---

@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -23,15 +24,23 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 	}
 	result := newOrphanPurgeResult(request)
 
-	discovery, err := pisvc.DiscoverOrphanProcessInstances(ctx, s.piAPI, pisvc.OrphanDiscoveryRequest{
-		Filter:    request.Selection,
-		BatchSize: request.BatchSize,
-		Limit:     request.Limit,
-	}, opts...)
-	if err != nil {
-		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
-		result.Discovery.Errors = []string{err.Error()}
-		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomeFailed, err)
+	discovery := pisvc.OrphanDiscovery{
+		Filter: request.Selection,
+	}
+	if request.DiscoveredKeys != nil {
+		discovery.Keys = request.DiscoveredKeys.Unique()
+	} else {
+		var err error
+		discovery, err = pisvc.DiscoverOrphanProcessInstances(ctx, s.piAPI, pisvc.OrphanDiscoveryRequest{
+			Filter:    request.Selection,
+			BatchSize: request.BatchSize,
+			Limit:     request.Limit,
+		}, opts...)
+		if err != nil {
+			result.Discovery.Status = d.OpsWorkflowStepStatusFailed
+			result.Discovery.Errors = []string{err.Error()}
+			return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomeFailed, err)
+		}
 	}
 
 	result.Discovery = d.OrphanDiscoveryResult{
@@ -52,7 +61,7 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		RequestedKeys:        discovery.Keys,
 		AffectedKeys:         plan.Collected,
 		RootKeys:             plan.Roots,
-		RequiresConfirmation: false,
+		RequiresConfirmation: !request.DryRun,
 		DryRunPreview:        plan,
 	}
 	if err != nil {
@@ -66,10 +75,27 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomePlanned, nil)
 	}
 
-	result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
-	err = fmt.Errorf("%w: confirmed orphan process-instance purge is not implemented yet", d.ErrUnsupported)
-	result.Errors = append(result.Errors, err.Error())
-	return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomeFailed, err)
+	cfg := services.ApplyCallOptions(opts)
+	if !cfg.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
+		err = fmt.Errorf("refusing to delete orphan process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", len(plan.RequiresCancelBeforeDelete))
+		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
+		result.Deletion.Errors = []string{err.Error()}
+		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomeFailed, err)
+	}
+
+	result.DeleteRequested = true
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, slog.Default(), plan.Roots, request.Workers, len(plan.Collected), opts...)
+	result.Deletion = d.DeletionResult{
+		Status:    deletionStatusForReports(reports, cfg.NoWait, err),
+		Items:     reports,
+		Errors:    deletionErrors(err),
+		Submitted: len(reports) > 0,
+		Confirmed: err == nil && !cfg.NoWait && allReportsOK(reports),
+	}
+	if err != nil {
+		return finishOrphanPurgeResult(result, deletionOutcomeForReports(reports), fmt.Errorf("delete orphan process instances: %w", err))
+	}
+	return finishOrphanPurgeResult(result, deletionOutcomeForReports(reports), nil)
 }
 
 func newOrphanPurgeResult(request d.OrphanPurgeRequest) d.OrphanPurgeResult {
@@ -117,4 +143,53 @@ func appendIfMissing(items []string, value string) []string {
 		}
 	}
 	return append(items, value)
+}
+
+func deletionStatusForReports(reports []d.Reporter, noWait bool, err error) d.OpsWorkflowStepStatus {
+	if err != nil || !allReportsOK(reports) {
+		return d.OpsWorkflowStepStatusFailed
+	}
+	if noWait {
+		return d.OpsWorkflowStepStatusSubmitted
+	}
+	return d.OpsWorkflowStepStatusConfirmed
+}
+
+func deletionOutcomeForReports(reports []d.Reporter) d.OrphanPurgeOutcome {
+	if len(reports) == 0 {
+		return d.OrphanPurgeOutcomeFailed
+	}
+	ok := 0
+	for _, report := range reports {
+		if report.Ok {
+			ok++
+		}
+	}
+	switch ok {
+	case len(reports):
+		return d.OrphanPurgeOutcomeDeleted
+	case 0:
+		return d.OrphanPurgeOutcomeFailed
+	default:
+		return d.OrphanPurgeOutcomePartiallyFailed
+	}
+}
+
+func deletionErrors(err error) []string {
+	if err == nil {
+		return nil
+	}
+	return []string{err.Error()}
+}
+
+func allReportsOK(reports []d.Reporter) bool {
+	if len(reports) == 0 {
+		return false
+	}
+	for _, report := range reports {
+		if !report.Ok {
+			return false
+		}
+	}
+	return true
 }

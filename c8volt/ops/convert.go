@@ -7,10 +7,11 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/process"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
-	return d.OrphanPurgeRequest{
+	out := d.OrphanPurgeRequest{
 		CommandName:  x.CommandName,
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
@@ -24,6 +25,10 @@ func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 		ReportFormat: x.ReportFormat,
 		StartedAt:    x.StartedAt,
 	}
+	if x.DiscoveredKeys != nil {
+		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
+	}
+	return out
 }
 
 func fromDomainOrphanPurgeResult(x d.OrphanPurgeResult) OrphanPurgeResult {
@@ -40,7 +45,7 @@ func fromDomainOrphanPurgeResult(x d.OrphanPurgeResult) OrphanPurgeResult {
 }
 
 func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
-	return OrphanPurgeRequest{
+	out := OrphanPurgeRequest{
 		CommandName:  x.CommandName,
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
@@ -54,6 +59,10 @@ func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 		ReportFormat: x.ReportFormat,
 		StartedAt:    x.StartedAt,
 	}
+	if x.DiscoveredKeys != nil {
+		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
+	}
+	return out
 }
 
 func fromDomainOrphanDiscoveryResult(x d.OrphanDiscoveryResult) OrphanDiscoveryResult {

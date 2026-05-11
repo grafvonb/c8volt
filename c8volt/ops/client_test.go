@@ -14,6 +14,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	opsvc "github.com/grafvonb/c8volt/internal/services/ops"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +43,10 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 				Workers:      4,
 				ReportFile:   "report.json",
 				ReportFormat: "json",
-				StartedAt:    started,
+				DiscoveredKeys: typex.Keys{
+					"2251799813685249",
+				},
+				StartedAt: started,
 			}, request)
 			require.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.OrphanPurgeResult{
@@ -64,7 +68,15 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 						Outcome:   d.TraversalOutcomeComplete,
 					},
 				},
-				Outcome: d.OrphanPurgeOutcomePlanned,
+				Deletion: d.DeletionResult{
+					Status:    d.OpsWorkflowStepStatusSubmitted,
+					Submitted: true,
+					Items: []d.Reporter{
+						{Key: "2251799813685248", Ok: true, StatusCode: 202, Status: "accepted"},
+					},
+				},
+				DeleteRequested: true,
+				Outcome:         d.OrphanPurgeOutcomePlanned,
 			}, nil
 		},
 	}
@@ -87,7 +99,10 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 		Workers:      4,
 		ReportFile:   "report.json",
 		ReportFormat: "json",
-		StartedAt:    started,
+		DiscoveredKeys: typex.Keys{
+			"2251799813685249",
+		},
+		StartedAt: started,
 	}, foptions.WithVerbose())
 
 	require.NoError(t, err)
@@ -95,6 +110,9 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.Keys))
 	require.Equal(t, []string{"2251799813685248"}, []string(got.DeletionPlan.RootKeys))
 	require.Equal(t, process.TraversalOutcomeComplete, got.DeletionPlan.DryRunPreview.Outcome)
+	require.True(t, got.DeleteRequested)
+	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
+	require.Equal(t, []process.DeleteReport{{Key: "2251799813685248", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Deletion.Items)
 }
 
 type stubOpsService struct {

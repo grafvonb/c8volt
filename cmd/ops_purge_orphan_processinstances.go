@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/consts"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -35,10 +36,6 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 		if err := validatePISearchFlags(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		if !flagDryRun {
-			handleCommandError(cmd, log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("--dry-run is required until confirmed orphan purge is implemented")))
-		}
-
 		request := ops.OrphanPurgeRequest{
 			CommandName: opsPurgeOrphanProcessInstancesCommandName,
 			DryRun:      flagDryRun,
@@ -50,6 +47,27 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			Limit:       flagGetPILimit,
 			Workers:     flagWorkers,
 			StartedAt:   time.Now().UTC(),
+		}
+		if !flagDryRun && !flagCmdAutoConfirm {
+			planRequest := request
+			planRequest.DryRun = true
+			planned, err := cli.PurgeOrphanProcessInstances(cmd.Context(), planRequest, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge orphan process instances: %w", err))
+			}
+			if err := rejectDeletePlanRequiringForce(planned.DeletionPlan.DryRunPreview); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if planned.Discovery.Count > 0 {
+				prompt := fmt.Sprintf("You are about to delete %d orphan process instance(s). Do you want to proceed?", len(planned.DeletionPlan.AffectedKeys))
+				if len(planned.DeletionPlan.AffectedKeys) > planned.Discovery.Count {
+					prompt = fmt.Sprintf("You have requested to delete %d orphan process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletionPlan.AffectedKeys), len(planned.DeletionPlan.RootKeys))
+				}
+				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+			}
+			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.Keys...)
 		}
 		result, err := cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
 		if err != nil {
@@ -79,8 +97,10 @@ func init() {
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when validating the delete plan (default: min(targets, GOMAXPROCS))")
 	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling validation work after the first error")
+	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")
+	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
 	setCommandMutation(opsPurgeOrphanProcessInstancesCmd, CommandMutationStateChanging)
 	setContractSupport(opsPurgeOrphanProcessInstancesCmd, ContractSupportFull)
-	setAutomationSupport(opsPurgeOrphanProcessInstancesCmd, AutomationSupportFull, "supports unattended dry-run previews with shared machine output")
+	setAutomationSupport(opsPurgeOrphanProcessInstancesCmd, AutomationSupportFull, "supports unattended dry-run previews and auto-confirmed purges with shared machine output")
 }

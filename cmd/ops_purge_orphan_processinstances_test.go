@@ -84,7 +84,52 @@ func TestOpsPurgeOrphanProcessInstancesDryRunAppliesCompatibleFilters(t *testing
 	require.Contains(t, filter, "parentProcessInstanceKey")
 }
 
+func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesDiscoveredKeys(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--no-wait",
+	)
+
+	require.Contains(t, output, "purge orphan process-instances")
+	require.Contains(t, output, "discovered orphan process instances: 1")
+	require.Contains(t, output, "delete plan: planned")
+	require.Contains(t, output, "deletion: submitted (requests: 1)")
+	require.Contains(t, output, "outcome: deleted")
+	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
+	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsOrphanParentKey)
+}
+
+func TestOpsPurgeOrphanProcessInstancesAutoConfirmNoTargetsSkipsDelete(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, false, "TERMINATED")
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--no-wait",
+	)
+
+	require.Contains(t, output, "discovered orphan process instances: 0")
+	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "outcome: planned; no targets deleted")
+	require.Empty(t, deleted.Snapshot())
+}
+
 func newOpsOrphanPurgeServer(t *testing.T, requests *testx.SafeSlice[string], withOrphan bool) *httptest.Server {
+	return newOpsOrphanPurgeServerWithState(t, requests, nil, withOrphan, "ACTIVE")
+}
+
+func newOpsOrphanPurgeServerWithState(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], withOrphan bool, orphanState string) *httptest.Server {
 	t.Helper()
 
 	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -98,14 +143,19 @@ func newOpsOrphanPurgeServer(t *testing.T, requests *testx.SafeSlice[string], wi
 				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
 				return
 			}
-			_, _ = w.Write([]byte(`{"items":[` + opsOrphanProcessInstanceJSON(opsOrphanChildKey, opsOrphanParentKey, "ACTIVE") + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			_, _ = w.Write([]byte(`{"items":[` + opsOrphanProcessInstanceJSON(opsOrphanChildKey, opsOrphanParentKey, orphanState) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsOrphanChildKey:
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(opsOrphanProcessInstanceJSON(opsOrphanChildKey, opsOrphanParentKey, "ACTIVE")))
+			_, _ = w.Write([]byte(opsOrphanProcessInstanceJSON(opsOrphanChildKey, opsOrphanParentKey, orphanState)))
 		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsOrphanParentKey:
 			requests.Append(r.Method + " " + r.URL.Path)
 			http.NotFound(w, r)
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/"+opsOrphanChildKey+"/deletion":
+			if deleted != nil {
+				deleted.Append(r.URL.Path)
+			}
+			w.WriteHeader(http.StatusOK)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
