@@ -299,6 +299,48 @@ func TestCancelProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
 
+// TestCancelProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning
+// documents the existing cancel command boundary behavior that delete mirrors.
+func TestCancelProcessInstanceCommand_DuplicateStdinKeysDeduplicateBeforePlanning(t *testing.T) {
+	const (
+		firstKey  = "2251799813711967"
+		secondKey = "2251799813711968"
+	)
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-instances/")
+			switch key {
+			case firstKey, secondKey:
+				_, _ = w.Write([]byte(fmt.Sprintf(`{"processInstanceKey":"%s","processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}`, key)))
+			default:
+				t.Fatalf("unexpected process-instance lookup key %s", key)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output := executeRootForProcessInstanceTestWithStdin(t,
+		firstKey+"\n"+secondKey+"\n"+secondKey+"\n",
+		"--config", cfgPath,
+		"cancel", "pi",
+		"--key", firstKey,
+		"-",
+		"--dry-run",
+	)
+
+	require.Contains(t, output, "selected process instances: 2")
+	require.NotContains(t, output, "selected process instances: 4")
+}
+
 // TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor
 // verifies partial ancestry details are surfaced in output.
 func TestCancelProcessInstanceDryRun_PartialOrphanParentRendersWarningAndMissingAncestor(t *testing.T) {
@@ -1108,7 +1150,7 @@ func TestCancelProcessInstancePage_PrintsOrphanWarningForPagedImpactCheck(t *tes
 
 // TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow verifies --auto-confirm continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
@@ -1117,7 +1159,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1180,7 +1222,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 		"--batch-size", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 2, pages[1]["from"])
@@ -1196,7 +1238,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutoConfirmFlow(t *testing.T) 
 
 // TestCancelProcessInstanceCommand_SearchPagingLimitFlow verifies cancel search stops at the requested limit.
 func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
@@ -1205,7 +1247,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1269,7 +1311,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 		"--limit", "3",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 2, pages[1]["from"])
@@ -1285,7 +1327,7 @@ func TestCancelProcessInstanceCommand_SearchPagingLimitFlow(t *testing.T) {
 
 // TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow verifies batch size and limit interact correctly.
 func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1293,7 +1335,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1349,7 +1391,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 		"--limit", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
 	require.EqualValues(t, 4, pages[0]["limit"])
 	require.Equal(t, 1, promptCalls)
@@ -1363,7 +1405,7 @@ func TestCancelProcessInstanceCommand_SearchPagingBatchSizeLimitFlow(t *testing.
 
 // TestCancelProcessInstanceCommand_SearchPagingAutomationFlow verifies automation mode auto-continues paged cancel searches.
 func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	var cancelled testx.SafeSlice[string]
 	searchPage := 0
 
@@ -1372,7 +1414,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1435,7 +1477,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 		"--batch-size", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 2)
 	require.EqualValues(t, 2, pages[0]["limit"])
 	require.EqualValues(t, 2, pages[1]["from"])
@@ -1451,7 +1493,7 @@ func TestCancelProcessInstanceCommand_SearchPagingAutomationFlow(t *testing.T) {
 
 // TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary verifies aborted paging reports partial completion.
 func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1459,7 +1501,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
@@ -1516,7 +1558,7 @@ func TestCancelProcessInstanceCommand_SearchPagingPartialCompletionSummary(t *te
 		"--batch-size", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Len(t, pages, 1)
 	require.ElementsMatch(t, []string{
 		"/v2/process-instances/211/cancellation",
@@ -1598,7 +1640,7 @@ func TestCancelProcessInstanceCommand_SearchPagingWarningStopSummary(t *testing.
 
 // TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging verifies direct keys do not use search paging.
 func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *testing.T) {
-	var requests []string
+	var requests testx.SafeSlice[string]
 	var cancelled testx.SafeSlice[string]
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1606,7 +1648,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			requests = append(requests, string(body))
+			requests.Append(string(body))
 			searchBody := decodeCapturedPISearchRequest(t, string(body))
 			filter, _ := searchBody["filter"].(map[string]any)
 			w.Header().Set("Content-Type", "application/json")
@@ -1645,7 +1687,7 @@ func TestCancelProcessInstanceCommand_DirectKeyBypassesTopLevelSearchPaging(t *t
 		"--batch-size", "2",
 	)
 
-	pages := decodeCapturedTopLevelPISearchPages(t, requests)
+	pages := decodeCapturedTopLevelPISearchPages(t, requests.Snapshot())
 	require.Empty(t, pages)
 	require.Equal(t, []string{"/v2/process-instances/301/cancellation"}, cancelled.Snapshot())
 	var got map[string]any

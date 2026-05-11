@@ -80,7 +80,7 @@ The following implemented commands are also especially useful:
 - [get process definition](./c8volt_get_process-definition)
   List definitions, fetch latest versions, or retrieve raw XML for one key.
 - [get incident](./c8volt_get_incident)
-  List active incidents, filter by incident fields, or fetch known incident keys.
+  List active incidents, filter by incident fields, fetch known incident keys, or emit process-instance keys for pipelines.
 - [get resource](./c8volt_get_resource)
   Fetch a single resource by id.
 - [embed export](./c8volt_embed_export)

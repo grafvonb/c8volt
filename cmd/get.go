@@ -19,6 +19,7 @@ instances, inspect jobs and incidents by key, list visible tenants, or fetch a k
   ./c8volt get pi --state active --limit 5
   ./c8volt get job --key <job-key>
   ./c8volt get incident --key <incident-key>
+  ./c8volt get incident --state active --error-type job_no_retries --pi-keys-only
   ./c8volt get tenant
   ./c8volt get resource --id <resource-key>`,
 	Aliases: []string{"g", "read"},

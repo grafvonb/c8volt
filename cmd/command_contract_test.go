@@ -440,6 +440,13 @@ func TestCommandCapabilityForCommand_GetIncidentContract(t *testing.T) {
 		Repeated:    false,
 		Description: "omit error messages from incident output",
 	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pi-keys-only",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return only process instance keys for matching incidents",
+	})
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
 		Supported:        true,
@@ -661,9 +668,13 @@ func TestGetIncidentHelp_DocumentsAliasesPipelinesAndInheritedOutputModes(t *tes
 		"./c8volt get inc --key <incident-key> --key <another-incident-key>",
 		"./c8volt get incident --state resolved --error-type io_mapping_error --limit 5",
 		"./c8volt get pi --with-incidents --keys-only | ./c8volt get inc -",
+		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only",
+		"./c8volt get incident --state active --error-type job_no_retries --pi-keys-only | ./c8volt cancel pi --dry-run -",
 		"./c8volt --json get incident --key <incident-key>",
 		"./c8volt --keys-only get incident --key <incident-key>",
 		"--key strings",
+		"--pi-keys-only",
+		"return only process instance keys for matching incidents",
 		"--state string",
 		"--error-type string",
 		"--bpmn-process-id string",

@@ -13,7 +13,7 @@ The c8volt use-case board is where operational workflows are shaped before they 
 
 ## Ops use cases
 
-### [Repair commands](https://github.com/grafvonb/c8volt/discussions/191) <span class="status-badge status-accepted">status: accepted</span>
+### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-accepted">status: accepted</span>
 
 High-level repair workflows for operator-safe remediation. The goal is to turn multi-step recovery work into explicit `c8volt ops repair ...` commands with dry-run previews, confirmation controls, automation support, and a final report that shows what was selected, attempted, skipped, and changed.
 
@@ -21,7 +21,7 @@ High-level repair workflows for operator-safe remediation. The goal is to turn m
 
 Automated cleanup for orphan child process instances. The planned flow selects candidates with `get pi --orphan-children-only --keys-only`, then passes those keys into `delete pi --keys`, reusing existing delete behavior for root traversal, duplicate removal, dry-run reporting, `--auto-confirm`, and `--automation`.
 
-### [Retention policy](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-accepted">status: accepted</span>
+### [Retention policy](https://github.com/grafvonb/c8volt/discussions/191) <span class="status-badge status-accepted">status: accepted</span>
 
 Home-grown retention cleanup for completed process instances older than a configured number of days. The planned flow selects keys with `get pi --end-date-older-days --keys-only`, then deletes them through the existing process-instance delete service so c8volt keeps full control over filtering, concurrency, traversal, reporting, and execution timing.
 
