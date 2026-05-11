@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -175,6 +176,91 @@ func TestOpsPurgeOrphanProcessInstancesAutomationJSONAutoConfirmUsesEnvelope(t *
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 }
 
+func TestOpsPurgeOrphanProcessInstancesWritesMarkdownReport(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServer(t, &requests, true)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-purge.md")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "purge", "orphan-process-instances",
+		"--dry-run",
+		"--report-file", reportPath,
+	)
+
+	require.Contains(t, output, "outcome: planned; no changes applied")
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# Orphan Process Instance Purge Audit Report")
+	require.Contains(t, report, "- Command: ops purge orphan-process-instances")
+	require.Contains(t, report, "- Dry Run: true")
+	require.Contains(t, report, "- Outcome: planned")
+	require.Contains(t, report, "- Camunda Version: 8.8")
+	require.Contains(t, report, "- Profile: default")
+	require.Contains(t, report, "  - "+opsOrphanChildKey)
+}
+
+func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-purge.json")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--no-wait",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Contains(t, output, "outcome: deleted")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "ops.orphan-process-instances.v1", report["schemaVersion"])
+	require.Equal(t, "ops purge orphan-process-instances", report["commandName"])
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, true, report["deleteRequested"])
+	require.Equal(t, false, report["dryRun"])
+	require.Equal(t, "8.9", report["camundaVersion"])
+	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, float64(1), discovery["count"])
+	keys := discovery["keys"].([]any)
+	require.Equal(t, opsOrphanChildKey, keys[0])
+	deletion := requireJSONObject(t, report["deletion"])
+	require.Equal(t, "submitted", deletion["status"])
+}
+
+func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "ACTIVE")
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-purge-failed.json")
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailureHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_REPORT": reportPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "refusing to delete orphan process-instance scope")
+	require.Empty(t, deleted.Snapshot())
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "failed", report["outcome"])
+	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, float64(1), discovery["count"])
+	deletion := requireJSONObject(t, report["deletion"])
+	require.Equal(t, "blocked", deletion["status"])
+	require.NotEmpty(t, report["errors"])
+}
+
 func TestOpsPurgeOrphanProcessInstancesAutomationGuardRequiresAutoConfirmForTargets(t *testing.T) {
 	err := validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
 		CommandName: opsPurgeOrphanProcessInstancesCommandName,
@@ -218,6 +304,33 @@ func TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMu
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
+}
+
+func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailureHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"ops", "purge", "orphan-process-instances",
+		"--auto-confirm",
+		"--report-file", os.Getenv("C8VOLT_TEST_REPORT"),
+		"--report-format", "json",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func readReportFile(t *testing.T, path string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return string(data)
 }
 
 func newOpsOrphanPurgeServer(t *testing.T, requests *testx.SafeSlice[string], withOrphan bool) *httptest.Server {

@@ -4099,6 +4099,8 @@ func resetProcessInstanceCommandGlobals() {
 	flagWorkers = 0
 	flagNoWorkerLimit = false
 	flagFailFast = false
+	flagOpsPurgeOrphanReportFile = ""
+	flagOpsPurgeOrphanReportFormat = ""
 	flagExpectPIKeys = nil
 	flagExpectPIStates = nil
 	flagExpectPIIncident = ""

@@ -73,9 +73,9 @@ func TestOpsWorkflowReportFormatForPath(t *testing.T) {
 			wantErr: `unsupported ops workflow report format "yaml"`,
 		},
 		{
-			name:    "unsupported extension",
-			path:    "run.txt",
-			wantErr: `unsupported ops workflow report file extension ".txt"`,
+			name: "unknown extension defaults to markdown",
+			path: "run.txt",
+			want: OpsWorkflowReportFormatMarkdown,
 		},
 	}
 

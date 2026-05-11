@@ -119,17 +119,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T037 [P] [US4] Add report format inference and validation tests in `cmd/ops_contract_test.go`
-- [ ] T038 [P] [US4] Add Markdown report rendering test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T039 [P] [US4] Add JSON report rendering test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T040 [P] [US4] Add post-discovery failure report-write test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T037 [P] [US4] Add report format inference and validation tests in `cmd/ops_contract_test.go`
+- [x] T038 [P] [US4] Add Markdown report rendering test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T039 [P] [US4] Add JSON report rendering test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T040 [P] [US4] Add post-discovery failure report-write test in `cmd/ops_purge_orphan_processinstances_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Extend stable ops audit report model in `cmd/ops_contract.go`
-- [ ] T042 [US4] Implement Markdown and JSON report renderers in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
-- [ ] T043 [US4] Implement `--report-file` and `--report-format` command flags and write path in `cmd/ops_purge_orphan_processinstances.go`
-- [ ] T044 [US4] Mark US4 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T041 [US4] Extend stable ops audit report model in `cmd/ops_contract.go`
+- [x] T042 [US4] Implement Markdown and JSON report renderers in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T043 [US4] Implement `--report-file` and `--report-format` command flags and write path in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T044 [US4] Mark US4 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
 
 **Checkpoint**: Audit reports are independently functional for dry-run, success, and failure paths.
 

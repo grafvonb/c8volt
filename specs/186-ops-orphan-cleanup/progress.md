@@ -14,6 +14,7 @@
 
 ## Codebase Patterns
 
+- Ops purge audit reports are written by command-layer helpers after the facade returns its structured report; the command enriches the report with CLI build/config identity and writes requested files before rendering normal stdout.
 - Automation-safe destructive ops commands should plan/discover first, then block `--automation` without `--auto-confirm` before confirmation or mutation when concrete targets exist; zero-target and dry-run flows remain allowed.
 - Confirmed orphan purge keeps discovery immutable by allowing the command to pass a frozen `DiscoveredKeys` set into the ops facade after an interactive pre-plan; the service skips rediscovery when that set is present.
 - `internal/services/ops/orphan_purge.go` now submits deletion through `internal/services/processinstance.DeleteProcessInstances`, preserving worker/fail-fast/no-wait/force option behavior and using the dry-run expansion as the mutation scope.
@@ -191,4 +192,33 @@
 - `--automation` remains an automation-mode signal but is not destructive confirmation for orphan purge when targets are found; the command now requires explicit `--auto-confirm` before mutation.
 - JSON rendering for orphan purge already uses the shared result envelope through `renderSucceededResult`; US3 coverage now protects the envelope shape for `--automation --json --auto-confirm`.
 - Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd -run 'TestOpsPurgeOrphanProcessInstances|TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract|TestCapabilitiesCommand_OpsCommandFamilyMetadata' -count=1`, `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`, and `git diff --check`.
+---
+
+---
+## Iteration 6 - 2026-05-11 21:34:39 CEST
+**User Story**: User Story 4 - Produce Audit Reports
+**Tasks Completed**:
+- [x] T037: Add report format inference and validation tests in `cmd/ops_contract_test.go`
+- [x] T038: Add Markdown report rendering test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T039: Add JSON report rendering test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T040: Add post-discovery failure report-write test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T041: Extend stable ops audit report model in `cmd/ops_contract.go`
+- [x] T042: Implement Markdown and JSON report renderers in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T043: Implement `--report-file` and `--report-format` command flags and write path in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T044: Mark US4 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/ops_contract.go
+- cmd/ops_contract_test.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/get_processinstance_test.go
+- specs/186-ops-orphan-cleanup/tasks.md
+- specs/186-ops-orphan-cleanup/progress.md
+**Learnings**:
+- Report format inference now matches the feature contract: explicit `json` or `markdown` wins, `.json` infers JSON, `.md`/`.markdown` infer Markdown, and unknown extensions default to Markdown.
+- The command can still write a requested audit report when failures occur after discovery by using the partial facade result and marking local pre-mutation failures as blocked or confirmation_failed.
+- Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd -run 'TestOpsWorkflowReportFormatForPath|TestOpsPurgeOrphanProcessInstances.*Report|TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure' -count=1`, `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`, and `git diff --check`.
 ---

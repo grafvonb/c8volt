@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // OpsWorkflowStepStatus is the shared status vocabulary for future ops workflow report steps.
@@ -88,11 +89,21 @@ func (f OpsWorkflowReportFormat) IsValid() bool {
 	}
 }
 
-// OpsWorkflowReport is the workflow-neutral report shape future ops commands can render or encode.
+// OpsWorkflowReport is the workflow-neutral report shape ops commands can render or encode.
 type OpsWorkflowReport struct {
-	Workflow string                  `json:"workflow"`
-	DryRun   bool                    `json:"dryRun,omitempty"`
-	Steps    []OpsWorkflowReportStep `json:"steps,omitempty"`
+	SchemaVersion   string                  `json:"schemaVersion,omitempty"`
+	CommandName     string                  `json:"commandName,omitempty"`
+	Workflow        string                  `json:"workflow,omitempty"`
+	StartedAt       time.Time               `json:"startedAt,omitempty"`
+	FinishedAt      time.Time               `json:"finishedAt,omitempty"`
+	Duration        string                  `json:"duration,omitempty"`
+	DryRun          bool                    `json:"dryRun,omitempty"`
+	C8voltVersion   string                  `json:"c8voltVersion,omitempty"`
+	CamundaVersion  string                  `json:"camundaVersion,omitempty"`
+	ProfileIdentity string                  `json:"profileIdentity,omitempty"`
+	Steps           []OpsWorkflowReportStep `json:"steps,omitempty"`
+	Errors          []string                `json:"errors,omitempty"`
+	Outcome         string                  `json:"outcome,omitempty"`
 }
 
 // OpsWorkflowReportStep captures one workflow step without embedding resource-specific API details.
@@ -118,6 +129,6 @@ func opsWorkflowReportFormatForPath(reportPath string, requested OpsWorkflowRepo
 	case ".md", ".markdown", "":
 		return OpsWorkflowReportFormatMarkdown, nil
 	default:
-		return "", fmt.Errorf("unsupported ops workflow report file extension %q", filepath.Ext(reportPath))
+		return OpsWorkflowReportFormatMarkdown, nil
 	}
 }
