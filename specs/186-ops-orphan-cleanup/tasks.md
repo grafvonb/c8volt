@@ -13,8 +13,8 @@
 
 **Purpose**: Capture required implementation context and codebase patterns before code changes.
 
-- [ ] T001 Record mandatory Ralph context and issue traceability in `specs/186-ops-orphan-cleanup/progress.md`
-- [ ] T002 Inspect existing ops foundation from issue #197, process-instance search, process-instance delete, command contract, and docs generation patterns; record reusable discoveries in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T001 Record mandatory Ralph context and issue traceability in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T002 Inspect existing ops foundation from issue #197, process-instance search, process-instance delete, command contract, and docs generation patterns; record reusable discoveries in `specs/186-ops-orphan-cleanup/progress.md`
 
 ---
 
