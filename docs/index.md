@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-40-g9adf67a-dirty`, commit `9adf67a`, built `2026-05-10T22:16:55Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-43-g9214849-dirty`, commit `9214849`, built `2026-05-10T20:36:20Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -52,6 +52,7 @@ That is the gap `c8volt` closes.
 - list, fetch, filter, and count incidents directly
 - inspect process trees with incidents and variables in context
 - resolve incident keys or process-instance incidents with dry-run previews
+- discover high-level ops workflow groups before concrete playbooks are added
 - preview, cancel, and delete process-instance families safely
 - wait for state or incident conditions in scripts
 - search, page, count, and batch process-instance results
@@ -556,6 +557,9 @@ c8volt
 |-- resolve                   Resolve operational incidents
 |   |-- incident              Resolve incidents by key
 |   `-- process-instance      Resolve active incidents discovered for process instances
+|-- ops                       Discover high-level operational workflows
+|   |-- execute               Discover predefined operational playbooks
+|   `-- repair                Discover repair and remediation workflows
 |-- walk                      Inspect parent/child relationships
 |   `-- pi                    Walk ancestors, descendants, or full family trees
 |-- cancel                    Cancel resources and wait for confirmation

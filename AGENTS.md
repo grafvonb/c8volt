@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/198-pi-keys-only/plan.md`
+- Active implementation plan: `specs/197-ops-command-foundation/plan.md`
 <!-- SPECKIT END -->

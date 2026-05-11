@@ -150,6 +150,57 @@ func TestCapabilitiesCommand_JSONIncludesResolveMetadata(t *testing.T) {
 	})
 }
 
+func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	ops, ok := findCommandCapability(doc.Commands, "ops")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, ops.Mutation)
+	require.Equal(t, ContractSupportUnsupported, ops.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, ops.AutomationSupport)
+	require.Contains(t, ops.Aliases, "operations")
+	require.Contains(t, ops.Summary, "Discover high-level operational workflows")
+	execute, ok := findCommandCapability(ops.Children, "ops execute")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, execute.Mutation)
+	require.Equal(t, ContractSupportUnsupported, execute.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, execute.AutomationSupport)
+	require.Contains(t, execute.Summary, "Discover predefined operational playbooks")
+	require.Empty(t, execute.Children)
+	repair, ok := findCommandCapability(ops.Children, "ops repair")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, repair.Mutation)
+	require.Equal(t, ContractSupportUnsupported, repair.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, repair.AutomationSupport)
+	require.Contains(t, repair.Summary, "Discover repair and remediation workflows")
+	require.Empty(t, repair.Children)
+	for _, flag := range repair.Flags {
+		require.NotEqual(t, "key", flag.Name)
+	}
+	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
+	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "json", Supported: true})
+	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
+}
+
+// TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation keeps grouping-only ops commands out of full automation contracts.
+func TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation(t *testing.T) {
+	output := executeRootForTest(t, "capabilities", "--json")
+
+	var doc CapabilityDocument
+	require.NoError(t, json.Unmarshal([]byte(output), &doc))
+
+	for _, path := range []string{"ops", "ops execute", "ops repair"} {
+		capability, ok := findCommandCapability(doc.Commands, path)
+		require.True(t, ok, "expected %q to appear in capability discovery", path)
+		require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
+		require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+		require.Empty(t, capability.AutomationNotes)
+	}
+}
+
 func TestCapabilitiesCommand_AutomationJSONUsesOnlyStdoutForDocument(t *testing.T) {
 	stdout, stderr := executeRootWithSeparateOutputsForTest(t, "--automation", "capabilities", "--json")
 
