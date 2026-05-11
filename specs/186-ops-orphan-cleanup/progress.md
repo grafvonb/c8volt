@@ -14,6 +14,10 @@
 
 ## Codebase Patterns
 
+- `internal/services/processinstance/orphan_discovery.go` now owns paged orphan-child discovery for ops workflows: it forces child-only selection with `HasParent=true`, applies the caller's compatible filters, honors batch size/limit, and delegates parent existence checks to `FilterProcessInstanceWithOrphanParent`.
+- `internal/services/ops/orphan_purge.go` orchestrates dry-run purge discovery and delete-plan validation by composing process-instance discovery with `DryRunCancelOrDeletePlan`; confirmed deletion remains blocked for a later story.
+- `cmd/ops_purge_orphan_processinstances.go` uses the public ops facade rather than process command helpers directly; the command currently requires `--dry-run` until the confirmed-delete story is implemented.
+- Adding a concrete child under a discovery-only ops grouping command makes the parent capability contract `limited` while the grouping command itself remains automation-unsupported.
 - `cmd/ops.go`, `cmd/ops_execute.go`, and `cmd/ops_repair.go` already define discovery-only grouping commands and shared ops foundation from issue #197.
 - This feature should add `cmd/ops_purge.go` for destructive cleanup workflows while preserving `ops execute` for non-purge playbooks such as smoke tests.
 - `cmd/ops_contract.go` already defines shared ops workflow step statuses and report-format primitives.
@@ -86,4 +90,43 @@
 - The current iteration intentionally adds only the ops boundary and unsupported placeholder behavior; `ops purge` command behavior starts with US1.
 - The public facade maps process-instance filter and dry-run plan fields explicitly because process facade conversion helpers are package-private.
 - Validation passed with `go test ./c8volt/ops ./internal/services/ops ./c8volt -count=1`, `go test ./internal/domain -count=1`, and `go test ./cmd -run 'TestOps|TestCommandContract' -count=1`.
+---
+
+---
+## Iteration 3 - 2026-05-11 20:59:21 CEST
+**User Story**: User Story 1 - Preview Orphan Cleanup Safely
+**Tasks Completed**:
+- [x] T012: Add dry-run command tests for discovered orphan keys and no delete request in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T013: Add no-target dry-run command test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T014: Add compatible filter narrowing test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T015: Add orphan discovery and delete-plan service tests in `internal/services/ops/orphan_purge_test.go`
+- [x] T016: Add process-instance orphan discovery primitive or reuse wrapper in `internal/services/processinstance/orphan_discovery.go`
+- [x] T017: Implement dry-run discovery and plan orchestration in `internal/services/ops/orphan_purge.go`
+- [x] T018: Map dry-run ops facade inputs and outputs in `c8volt/ops/client.go`
+- [x] T019: Add `ops purge` grouping command in `cmd/ops_purge.go` and `ops purge orphan-process-instances` Cobra command, dry-run flag handling, and compatible selection flags in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T020: Add human and JSON rendering for dry-run purge results in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T021: Mark US1 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/domain/ops_orphan_purge.go
+- internal/services/processinstance/orphan_discovery.go
+- internal/services/ops/api.go
+- internal/services/ops/orphan_purge.go
+- internal/services/ops/orphan_purge_test.go
+- c8volt/ops/model.go
+- c8volt/ops/convert.go
+- c8volt/ops/client_test.go
+- cmd/ops_purge.go
+- cmd/ops_purge_orphan_processinstances.go
+- cmd/cmd_views_ops_purge_orphan_processinstances.go
+- cmd/ops_purge_orphan_processinstances_test.go
+- cmd/capabilities_test.go
+- specs/186-ops-orphan-cleanup/tasks.md
+- specs/186-ops-orphan-cleanup/progress.md
+**Learnings**:
+- Dry-run purge can compose existing process-instance primitives without shelling out or duplicating delete mechanics: discover once, freeze the orphan key set, and validate through `DryRunCancelOrDeletePlan`.
+- The command package test suite must use `GOCACHE=/tmp/go-build-cache` in this sandbox; the default macOS Go cache path can be unreadable.
+- `go test ./c8volt ./c8volt/ops ./internal/services/ops -count=1` is blocked by the existing `TestNew_V89WiresSupportedRuntime` localhost connection under this sandbox, but the touched package pass ran successfully.
+- Validation passed with `GOCACHE=/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance ./internal/domain -count=1` and `git diff --check`.
 ---

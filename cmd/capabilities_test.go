@@ -159,7 +159,7 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	ops, ok := findCommandCapability(doc.Commands, "ops")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, ops.Mutation)
-	require.Equal(t, ContractSupportUnsupported, ops.ContractSupport)
+	require.Equal(t, ContractSupportLimited, ops.ContractSupport)
 	require.Equal(t, AutomationSupportUnsupported, ops.AutomationSupport)
 	require.Contains(t, ops.Aliases, "operations")
 	require.Contains(t, ops.Summary, "Discover high-level operational workflows")
@@ -180,6 +180,17 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	for _, flag := range repair.Flags {
 		require.NotEqual(t, "key", flag.Name)
 	}
+	purge, ok := findCommandCapability(ops.Children, "ops purge")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, purge.Mutation)
+	require.Equal(t, ContractSupportLimited, purge.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, purge.AutomationSupport)
+	require.Contains(t, purge.Summary, "Discover destructive cleanup workflows")
+	orphanPurge, ok := findCommandCapability(purge.Children, "ops purge orphan-process-instances")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, orphanPurge.Mutation)
+	require.Equal(t, ContractSupportFull, orphanPurge.ContractSupport)
+	require.Equal(t, AutomationSupportFull, orphanPurge.AutomationSupport)
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "one-line", Supported: true})
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "json", Supported: true})
 	require.Contains(t, ops.OutputModes, OutputModeContract{Name: "keys-only", Supported: true})
@@ -192,10 +203,17 @@ func TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation(t *test
 	var doc CapabilityDocument
 	require.NoError(t, json.Unmarshal([]byte(output), &doc))
 
-	for _, path := range []string{"ops", "ops execute", "ops repair"} {
+	for _, path := range []string{"ops execute", "ops repair"} {
 		capability, ok := findCommandCapability(doc.Commands, path)
 		require.True(t, ok, "expected %q to appear in capability discovery", path)
 		require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
+		require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+		require.Empty(t, capability.AutomationNotes)
+	}
+	for _, path := range []string{"ops", "ops purge"} {
+		capability, ok := findCommandCapability(doc.Commands, path)
+		require.True(t, ok, "expected %q to appear in capability discovery", path)
+		require.Equal(t, ContractSupportLimited, capability.ContractSupport)
 		require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
 		require.Empty(t, capability.AutomationNotes)
 	}

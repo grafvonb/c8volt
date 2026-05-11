@@ -46,19 +46,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add dry-run command tests for discovered orphan keys and no delete request in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T013 [P] [US1] Add no-target dry-run command test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T014 [P] [US1] Add compatible filter narrowing test in `cmd/ops_purge_orphan_processinstances_test.go`
-- [ ] T015 [P] [US1] Add orphan discovery and delete-plan service tests in `internal/services/ops/orphan_purge_test.go`
+- [x] T012 [P] [US1] Add dry-run command tests for discovered orphan keys and no delete request in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T013 [P] [US1] Add no-target dry-run command test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T014 [P] [US1] Add compatible filter narrowing test in `cmd/ops_purge_orphan_processinstances_test.go`
+- [x] T015 [P] [US1] Add orphan discovery and delete-plan service tests in `internal/services/ops/orphan_purge_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Add process-instance orphan discovery primitive or reuse wrapper in `internal/services/processinstance/orphan_discovery.go`
-- [ ] T017 [US1] Implement dry-run discovery and plan orchestration in `internal/services/ops/orphan_purge.go`
-- [ ] T018 [US1] Map dry-run ops facade inputs and outputs in `c8volt/ops/client.go`
-- [ ] T019 [US1] Add `ops purge` grouping command in `cmd/ops_purge.go` and `ops purge orphan-process-instances` Cobra command, dry-run flag handling, and compatible selection flags in `cmd/ops_purge_orphan_processinstances.go`
-- [ ] T020 [US1] Add human and JSON rendering for dry-run purge results in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
-- [ ] T021 [US1] Mark US1 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
+- [x] T016 [US1] Add process-instance orphan discovery primitive or reuse wrapper in `internal/services/processinstance/orphan_discovery.go`
+- [x] T017 [US1] Implement dry-run discovery and plan orchestration in `internal/services/ops/orphan_purge.go`
+- [x] T018 [US1] Map dry-run ops facade inputs and outputs in `c8volt/ops/client.go`
+- [x] T019 [US1] Add `ops purge` grouping command in `cmd/ops_purge.go` and `ops purge orphan-process-instances` Cobra command, dry-run flag handling, and compatible selection flags in `cmd/ops_purge_orphan_processinstances.go`
+- [x] T020 [US1] Add human and JSON rendering for dry-run purge results in `cmd/cmd_views_ops_purge_orphan_processinstances.go`
+- [x] T021 [US1] Mark US1 tasks complete and record validation notes in `specs/186-ops-orphan-cleanup/progress.md`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

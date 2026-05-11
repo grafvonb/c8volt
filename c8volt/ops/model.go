@@ -38,6 +38,9 @@ type OrphanPurgeRequest struct {
 	Automation   bool                          `json:"automation,omitempty"`
 	OutputMode   string                        `json:"outputMode,omitempty"`
 	Selection    process.ProcessInstanceFilter `json:"selection,omitempty"`
+	BatchSize    int32                         `json:"batchSize,omitempty"`
+	Limit        int32                         `json:"limit,omitempty"`
+	Workers      int                           `json:"workers,omitempty"`
 	ReportFile   string                        `json:"reportFile,omitempty"`
 	ReportFormat string                        `json:"reportFormat,omitempty"`
 	StartedAt    time.Time                     `json:"startedAt,omitempty"`

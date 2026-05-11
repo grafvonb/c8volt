@@ -37,6 +37,9 @@ type OrphanPurgeRequest struct {
 	Automation   bool
 	OutputMode   string
 	Selection    ProcessInstanceFilter
+	BatchSize    int32
+	Limit        int32
+	Workers      int
 	ReportFile   string
 	ReportFormat string
 	StartedAt    time.Time
