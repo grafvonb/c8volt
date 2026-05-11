@@ -701,9 +701,14 @@ func TestProcessInstanceVariableHumanLine_RendersAPIAndCombinedTruncationLabels(
 }
 
 func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC)
+	}
 	prevLimit := flagGetPIIncidentMessageLimit
 	flagGetPIIncidentMessageLimit = 0
 	t.Cleanup(func() {
+		relativeDayNow = prevNow
 		flagGetPIIncidentMessageLimit = prevLimit
 	})
 
@@ -965,6 +970,37 @@ func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
 	})
 }
 
+func TestListIncidentsView_PIKeysOnlySkipsMissingProcessInstanceKeys(t *testing.T) {
+	resetViewModeFlags(t)
+	flagGetIncidentPIKeysOnly = true
+	cmd := newGetViewTestCommand("incident")
+
+	err := listIncidentsView(cmd, incident.Incidents{
+		Items: []incident.ProcessInstanceIncidentDetail{
+			{IncidentKey: "incident-123", ProcessInstanceKey: "pi-123"},
+			{IncidentKey: "incident-124"},
+		},
+	}, 0, false)
+
+	require.NoError(t, err)
+	require.Equal(t, "pi-123\n", cmd.OutOrStdout().(*bytes.Buffer).String())
+}
+
+func TestRenderIncidentProcessInstanceKeys_PreservesDuplicatesAndSkipsMissing(t *testing.T) {
+	resetViewModeFlags(t)
+	cmd := newGetViewTestCommand("incident")
+
+	err := renderIncidentProcessInstanceKeys(cmd, []incident.ProcessInstanceIncidentDetail{
+		{IncidentKey: "incident-123", ProcessInstanceKey: "pi-123"},
+		{IncidentKey: "incident-124", ProcessInstanceKey: "pi-123"},
+		{IncidentKey: "incident-125"},
+		{IncidentKey: "incident-126", ProcessInstanceKey: "pi-126"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "pi-123\npi-123\npi-126\n", cmd.OutOrStdout().(*bytes.Buffer).String())
+}
+
 func newGetViewTestCommand(use string) *cobra.Command {
 	cmd := &cobra.Command{Use: use}
 	buf := &bytes.Buffer{}
@@ -979,10 +1015,13 @@ func resetViewModeFlags(t *testing.T) {
 	t.Helper()
 	prevJSON := flagViewAsJson
 	prevKeysOnly := flagViewKeysOnly
+	prevPIKeysOnly := flagGetIncidentPIKeysOnly
 	t.Cleanup(func() {
 		flagViewAsJson = prevJSON
 		flagViewKeysOnly = prevKeysOnly
+		flagGetIncidentPIKeysOnly = prevPIKeysOnly
 	})
 	flagViewAsJson = false
 	flagViewKeysOnly = false
+	flagGetIncidentPIKeysOnly = false
 }

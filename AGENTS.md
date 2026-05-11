@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/185-get-incident-command/plan.md`
+- Active implementation plan: `specs/198-pi-keys-only/plan.md`
 <!-- SPECKIT END -->

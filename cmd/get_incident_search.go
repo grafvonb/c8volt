@@ -40,6 +40,9 @@ func shouldRenderIncidentSearchPageIncrementally(cmd *cobra.Command) bool {
 	if flagCmdAutoConfirm {
 		return false
 	}
+	if flagGetIncidentPIKeysOnly {
+		return true
+	}
 	mode := pickMode()
 	if automationModeEnabled(cmd) {
 		return mode == RenderModeOneLine || mode == RenderModeKeysOnly
@@ -96,6 +99,9 @@ func incidentSearchContinuationState(page incident.Page, cumulative int, autoCon
 }
 
 func renderIncidentSearchPage(cmd *cobra.Command, items []incident.ProcessInstanceIncidentDetail) error {
+	if flagGetIncidentPIKeysOnly {
+		return renderIncidentProcessInstanceKeys(cmd, items)
+	}
 	switch pickMode() {
 	case RenderModeKeysOnly:
 		for _, item := range items {
@@ -143,7 +149,7 @@ func searchIncidentsWithPaging(cmd *cobra.Command, cli incident.API, cfg *config
 	processedTotal := 0
 	printFoundAndReturn := func() (incident.Incidents, bool, error) {
 		if incremental {
-			if pickMode() == RenderModeOneLine {
+			if pickMode() == RenderModeOneLine && !flagGetIncidentPIKeysOnly {
 				renderOutputLine(cmd, "found: %d", processedTotal)
 			}
 			return incident.Incidents{}, true, nil

@@ -53,7 +53,7 @@ var deleteProcessInstanceCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
-		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg)
+		keys := mergeAndValidateKeys(flagDeletePIKeys, stdinKeys, log, cfg).Unique()
 		if err := validatePIKeyedModeDateFilters(len(keys)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
@@ -401,7 +401,7 @@ func init() {
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion is accepted")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking the current state of the process instance before deleting it")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview delete scope without submitting deletion or cancel-before-delete requests")
-	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete")
+	fs.StringSliceVarP(&flagDeletePIKeys, "key", "k", nil, "process instance key(s) to delete; repeat or combine with stdin '-'")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
 
 	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))")

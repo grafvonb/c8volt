@@ -1412,6 +1412,14 @@ apis:
 
 // TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident verifies the direct incident line includes the incident key.
 func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
 	var requests []string
 	var incidentBodies []string
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1817,6 +1825,14 @@ func TestGetProcessInstanceWithVars_JSONOutputKeepsReceivedValuesWhenVarValueLim
 
 // TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents covers both direct incident rendering and tree-propagated incident warnings.
 func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
 	tests := []struct {
 		name             string
 		incidentResponse string
