@@ -10,16 +10,19 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 )
 
 const retentionPolicyReportSchemaVersion = "ops.retention-policy.v1"
 
 func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.RetentionPolicyRequest, opts ...services.CallOption) (d.RetentionPolicyResult, error) {
-	_ = ctx
 	started := request.StartedAt
 	if started.IsZero() {
 		started = time.Now().UTC()
 		request.StartedAt = started
+	}
+	if request.DerivedEndDateBoundary == "" {
+		request.DerivedEndDateBoundary = deriveRetentionEndDateBoundary(started, request.RetentionDays)
 	}
 	request = withRetentionPolicyOptionControls(request, opts...)
 	result := newRetentionPolicyResult(request)
@@ -32,10 +35,39 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
 	}
 
-	result.Discovery.Status = d.OpsWorkflowStepStatusSkipped
+	filter := request.Selection
+	filter.EndDateBefore = request.DerivedEndDateBoundary
+	discovery, err := pisvc.DiscoverRetentionProcessInstances(ctx, s.piAPI, pisvc.RetentionDiscoveryRequest{
+		Filter:    filter,
+		BatchSize: request.BatchSize,
+		Limit:     request.Limit,
+	}, opts...)
+	if err != nil {
+		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
+		result.Discovery.RetentionDays = request.RetentionDays
+		result.Discovery.DerivedEndDateBoundary = request.DerivedEndDateBoundary
+		result.Discovery.Filters = filter
+		result.Discovery.Errors = []string{err.Error()}
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
+	}
+
+	result.Discovery = d.RetentionDiscoveryResult{
+		Status:                 d.OpsWorkflowStepStatusPlanned,
+		RetentionDays:          request.RetentionDays,
+		DerivedEndDateBoundary: request.DerivedEndDateBoundary,
+		Filters:                discovery.Filter,
+		SeedKeys:               discovery.Keys,
+		Count:                  len(discovery.Keys),
+	}
 	result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 	return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
+}
+
+func deriveRetentionEndDateBoundary(now time.Time, retentionDays int) string {
+	return now.UTC().AddDate(0, 0, -retentionDays).Format(time.DateOnly)
 }
 
 func validateRetentionPolicyRequest(request d.RetentionPolicyRequest) error {

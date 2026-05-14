@@ -4,13 +4,16 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,6 +99,41 @@ func TestOpsExecuteRetentionPolicyInvalidRetentionDaysHelper(t *testing.T) {
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
+}
+
+func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
+	var out bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&out)
+
+	err := renderOpsExecuteRetentionPolicyResult(cmd, ops.RetentionPolicyResult{
+		Request: ops.RetentionPolicyRequest{
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+		},
+		Discovery: ops.RetentionDiscoveryResult{
+			Status:        ops.WorkflowStepStatusPlanned,
+			RetentionDays: 90,
+			SeedKeys:      []string{"seed-1", "seed-2"},
+			Count:         2,
+		},
+		DeletePlan: ops.RetentionDeletePlan{
+			Status: ops.WorkflowStepStatusSkipped,
+		},
+		Deletion: ops.RetentionDeletionResult{
+			Status: ops.WorkflowStepStatusSkipped,
+		},
+		Outcome: ops.RetentionPolicyOutcomePlanned,
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "retention policy: planned")
+	require.Contains(t, out.String(), "retention days: 90")
+	require.Contains(t, out.String(), "retention boundary: endDate <= 2026-02-13")
+	require.Contains(t, out.String(), "retention discovery: planned")
+	require.Contains(t, out.String(), "retention seeds: 2")
+	require.Contains(t, out.String(), "delete plan: skipped")
+	require.Contains(t, out.String(), "deletion: skipped")
 }
 
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {

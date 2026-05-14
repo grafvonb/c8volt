@@ -47,6 +47,10 @@ type TenantSafeLookupSearcher interface {
 	SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error)
 }
 
+type RetentionDiscoveryAPI interface {
+	SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error)
+}
+
 func TenantSafeLookupUnsupported(operation string) error {
 	return fmt.Errorf("%w: %s", d.ErrUnsupported, operation)
 }

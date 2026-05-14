@@ -160,10 +160,14 @@ func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {
 			return d.RetentionPolicyResult{
 				Request: request,
 				Discovery: d.RetentionDiscoveryResult{
-					Status:        d.OpsWorkflowStepStatusPlanned,
-					RetentionDays: 90,
-					SeedKeys:      []string{"2251799813685249"},
-					Count:         1,
+					Status:                 d.OpsWorkflowStepStatusPlanned,
+					RetentionDays:          90,
+					DerivedEndDateBoundary: "2026-02-13T00:00:00Z",
+					Filters: d.ProcessInstanceFilter{
+						EndDateBefore: "2026-02-13T00:00:00Z",
+					},
+					SeedKeys: []string{"2251799813685249"},
+					Count:    1,
 				},
 				DeletePlan: d.RetentionDeletePlan{
 					Status:               d.OpsWorkflowStepStatusPlanned,
@@ -218,6 +222,8 @@ func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, RetentionPolicyOutcomePlanned, got.Outcome)
 	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.SeedKeys))
+	require.Equal(t, "2026-02-13T00:00:00Z", got.Discovery.DerivedEndDateBoundary)
+	require.Equal(t, process.ProcessInstanceFilter{EndDateBefore: "2026-02-13T00:00:00Z"}, got.Discovery.Filters)
 	require.Equal(t, []string{"2251799813685248"}, []string(got.DeletePlan.ResolvedRootKeys))
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
 	require.True(t, got.Deletion.NoWait)

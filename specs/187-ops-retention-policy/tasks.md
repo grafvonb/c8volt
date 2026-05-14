@@ -69,18 +69,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Add process-instance retention discovery service tests in `internal/services/processinstance/retention_discovery_test.go`
-- [ ] T020 [P] [US2] Add ops service dry-run discovery tests for seed freezing and no delete calls in `internal/services/ops/retention_policy_test.go`
-- [ ] T021 [P] [US2] Add command dry-run discovery output tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T019 [P] [US2] Add process-instance retention discovery service tests in `internal/services/processinstance/retention_discovery_test.go`
+- [x] T020 [P] [US2] Add ops service dry-run discovery tests for seed freezing and no delete calls in `internal/services/ops/retention_policy_test.go`
+- [x] T021 [P] [US2] Add command dry-run discovery output tests in `cmd/ops_execute_retention_policy_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Add process-instance retention discovery primitive using existing end-date older-days search semantics in `internal/services/processinstance/retention_discovery.go`
-- [ ] T023 [US2] Expose retention discovery through the process-instance service interface in `internal/services/processinstance/api.go`
-- [ ] T024 [US2] Implement dry-run discovery orchestration and seed freezing in `internal/services/ops/retention_policy.go`
-- [ ] T025 [US2] Map dry-run discovery request and result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
-- [ ] T026 [US2] Render compact human and JSON discovery output in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T027 [US2] Mark US2 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T022 [US2] Add process-instance retention discovery primitive using existing end-date older-days search semantics in `internal/services/processinstance/retention_discovery.go`
+- [x] T023 [US2] Expose retention discovery through the process-instance service interface in `internal/services/processinstance/api.go`
+- [x] T024 [US2] Implement dry-run discovery orchestration and seed freezing in `internal/services/ops/retention_policy.go`
+- [x] T025 [US2] Map dry-run discovery request and result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T026 [US2] Render compact human and JSON discovery output in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T027 [US2] Mark US2 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Retention discovery works independently with dry-run and mutates nothing.
 

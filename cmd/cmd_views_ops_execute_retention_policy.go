@@ -16,8 +16,12 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 	}
 	cmd.Printf("retention policy: %s\n", result.Outcome)
 	cmd.Printf("retention days: %d\n", result.Request.RetentionDays)
+	if result.Request.DerivedEndDateBoundary != "" {
+		cmd.Printf("retention boundary: endDate <= %s\n", result.Request.DerivedEndDateBoundary)
+	}
 	if result.Discovery.Status != "" {
 		cmd.Printf("retention discovery: %s\n", result.Discovery.Status)
+		cmd.Printf("retention seeds: %d\n", result.Discovery.Count)
 	}
 	if result.DeletePlan.Status != "" {
 		cmd.Printf("delete plan: %s\n", result.DeletePlan.Status)

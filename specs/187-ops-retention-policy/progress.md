@@ -24,6 +24,7 @@
 - Existing delete execution uses `processinstance.DeleteProcessInstances`, `toolx.DetermineNoOfWorkers`, `toolx/pool.ExecuteSlice`, `services.ApplyCallOptions`, `FailFast`, `NoWorkerLimit`, `NoWait`, and logger/activity helpers; command code should pass controls rather than owning worker logic.
 - Process-instance search flag conversion is centralized in `cmd/get_processinstance_filtering.go`; `populatePISearchFilterOpts` resolves relative-day flags to concrete date bounds and preserves local fallback filters for roots/children/incidents.
 - Generated CLI docs are protected by `docsgen/main_test.go` and produced via `make docs-content`; generated files under `docs/cli/` and `docs/index.md` should not be hand-edited after command metadata changes.
+- Retention discovery now has a service-owned paged helper in `internal/services/processinstance/retention_discovery.go`; it accepts an already-normalized `EndDateBefore` filter from command/ops orchestration, skips items without `EndDate`, freezes unique seed keys, honors batch-size/limit semantics, and is exposed through a narrow `RetentionDiscoveryAPI` in `internal/services/processinstance/api.go`.
 
 ## Status
 
@@ -114,4 +115,36 @@
 - `ops execute` capability discovery now becomes limited because it has a full-contract child command, while the grouping command itself still does not claim automation support.
 - `--retention-days` uses command-owned validation plus `setFlagContractRequired`; Cobra parse errors are mapped with `useInvalidInputFlagErrors` and semantic errors go through `failBeforeCli`.
 - Targeted validation passed with sandbox-local Go cache: `go test ./cmd -count=1` and `go test ./c8volt/ops ./internal/services/ops -count=1`.
+---
+---
+## Iteration 4 - 2026-05-14 12:51:18 CEST
+**User Story**: User Story 2 - Discover Retention Seeds
+**Tasks Completed**:
+- [x] T019: Add process-instance retention discovery service tests in `internal/services/processinstance/retention_discovery_test.go`
+- [x] T020: Add ops service dry-run discovery tests for seed freezing and no delete calls in `internal/services/ops/retention_policy_test.go`
+- [x] T021: Add command dry-run discovery output tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T022: Add process-instance retention discovery primitive using existing end-date older-days search semantics in `internal/services/processinstance/retention_discovery.go`
+- [x] T023: Expose retention discovery through the process-instance service interface in `internal/services/processinstance/api.go`
+- [x] T024: Implement dry-run discovery orchestration and seed freezing in `internal/services/ops/retention_policy.go`
+- [x] T025: Map dry-run discovery request and result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T026: Render compact human and JSON discovery output in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T027: Mark US2 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/client_test.go
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- internal/services/ops/retention_policy.go
+- internal/services/ops/retention_policy_test.go
+- internal/services/processinstance/api.go
+- internal/services/processinstance/retention_discovery.go
+- internal/services/processinstance/retention_discovery_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention discovery uses the same normalized `EndDateBefore` boundary produced from retention days, while future US3 selection filters can add to that filter without replacing the retention age constraint.
+- The service discovery helper filters out no-`EndDate` items defensively, then freezes a unique seed-key set for downstream planning.
+- Targeted validation passed with sandbox-local Go cache: `go test ./internal/services/processinstance ./internal/services/ops ./c8volt/ops ./cmd -run 'TestDiscoverRetentionProcessInstances|TestExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestOpsExecuteRetentionPolicy|TestCommandContract|TestCommandCapability|TestOpsPurge|TestRoot|TestNewCli' -count=1`.
 ---

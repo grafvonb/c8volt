@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +20,7 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
 	Long: "Execute process-instance retention cleanup.\n\n" +
-		"The workflow discovers process instances older than the required retention age, freezes that seed set, and uses existing c8volt delete planning before any later deletion support is allowed. Use --dry-run to validate the command surface without mutation.",
+		"The workflow discovers process instances older than the required retention age, freezes that seed set, and skips deletion until later delete planning and execution stages are available. Use --dry-run to inspect discovery without mutation.",
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --automation --json`,
 	Args: cobra.NoArgs,
@@ -34,14 +35,19 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		boundary := pickPIDateUpperBound("", flagOpsExecuteRetentionPolicyRetentionDays)
 		request := ops.RetentionPolicyRequest{
-			CommandName:   opsExecuteRetentionPolicyCommandName,
-			RetentionDays: flagOpsExecuteRetentionPolicyRetentionDays,
-			DryRun:        flagDryRun,
-			AutoConfirm:   flagCmdAutoConfirm,
-			Automation:    automationModeEnabled(cmd),
-			OutputMode:    pickMode().String(),
-			StartedAt:     time.Now().UTC(),
+			CommandName:            opsExecuteRetentionPolicyCommandName,
+			RetentionDays:          flagOpsExecuteRetentionPolicyRetentionDays,
+			DerivedEndDateBoundary: boundary,
+			DryRun:                 flagDryRun,
+			AutoConfirm:            flagCmdAutoConfirm,
+			Automation:             automationModeEnabled(cmd),
+			OutputMode:             pickMode().String(),
+			Selection: process.ProcessInstanceFilter{
+				EndDateBefore: boundary,
+			},
+			StartedAt: time.Now().UTC(),
 		}
 		result, err := cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
 		if err != nil {

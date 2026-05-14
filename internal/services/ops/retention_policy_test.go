@@ -66,6 +66,23 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 	t.Parallel()
 
 	started := time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC)
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, d.ProcessInstanceFilter{
+				BpmnProcessId: "invoice",
+				State:         d.StateCompleted,
+				EndDateBefore: "2026-05-14T00:00:00Z",
+			}, filter)
+			require.EqualValues(t, 100, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "2251799813685249", EndDate: "2026-05-13T09:00:00Z"},
+				},
+			}, nil
+		},
+	}
 	request := d.RetentionPolicyRequest{
 		CommandName:            "ops execute retention-policy",
 		RetentionDays:          0,
@@ -86,7 +103,7 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 		StartedAt:    started,
 	}
 
-	got, err := New(stubProcessInstanceAPI{}).ExecuteRetentionPolicy(
+	got, err := New(piAPI).ExecuteRetentionPolicy(
 		context.Background(),
 		request,
 		services.WithNoWait(),
@@ -99,9 +116,11 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 	require.NoError(t, err)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Report.Outcome)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Discovery.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.SeedKeys))
+	require.Equal(t, 1, got.Discovery.Count)
 	require.Equal(t, started, got.Request.StartedAt)
 	require.True(t, got.Request.NoWait)
 	require.True(t, got.Request.NoStateCheck)
@@ -116,4 +135,49 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 	require.Equal(t, 0, got.Report.RetentionDays)
 	require.Equal(t, "2026-05-14T00:00:00Z", got.Report.DerivedEndDateBoundary)
 	require.Equal(t, d.ProcessInstanceFilter{BpmnProcessId: "invoice", State: d.StateCompleted}, got.Report.SelectionFilters)
+}
+
+func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, "2026-02-13", filter.EndDateBefore)
+			require.EqualValues(t, 1000, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "seed-1", EndDate: "2026-02-12"},
+					{Key: "seed-2", EndDate: "2026-02-11"},
+				},
+			}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 true,
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+	require.Equal(t, d.RetentionDiscoveryResult{
+		Status:                 d.OpsWorkflowStepStatusPlanned,
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		Filters: d.ProcessInstanceFilter{
+			EndDateBefore: "2026-02-13",
+		},
+		SeedKeys: []string{"seed-1", "seed-2"},
+		Count:    2,
+	}, got.Discovery)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+	require.Empty(t, got.Errors)
 }
