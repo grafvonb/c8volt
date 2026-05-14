@@ -6,11 +6,17 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/spf13/cobra"
@@ -60,6 +66,12 @@ func TestOpsExecuteRetentionPolicyInvalidRetentionDays(t *testing.T) {
 			args:   []string{"ops", "execute", "retention-policy", "--retention-days", "not-a-number"},
 			want:   "invalid argument \"not-a-number\" for \"--retention-days\" flag",
 		},
+		{
+			name:   "explicit key",
+			helper: "TestOpsExecuteRetentionPolicyInvalidRetentionDaysHelper",
+			args:   []string{"ops", "execute", "retention-policy", "--retention-days", "90", "--key", "2251799813685249"},
+			want:   "retention policy discovers eligible process instances and does not accept explicit process-instance keys",
+		},
 	}
 
 	for _, tt := range tests {
@@ -101,6 +113,44 @@ func TestOpsExecuteRetentionPolicyInvalidRetentionDaysHelper(t *testing.T) {
 	}
 }
 
+func TestOpsExecuteRetentionPolicyDryRunAppliesCompatibleFilters(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 14, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() { relativeDayNow = prevNow })
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRetentionPolicySearchServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--dry-run",
+		"--bpmn-process-id", "order-process",
+		"--state", "completed",
+		"--batch-size", "25",
+		"--limit", "1",
+		"--no-incidents-only",
+	)
+
+	require.Contains(t, output, "retention discovery: planned")
+	require.Contains(t, output, "selection filters:")
+	snapshot := requests.Snapshot()
+	require.Len(t, snapshot, 1)
+	request := decodeCapturedPISearchRequest(t, strings.TrimPrefix(snapshot[0], "POST /v2/process-instances/search "))
+	filter := request["filter"].(map[string]any)
+	page := request["page"].(map[string]any)
+	require.Equal(t, "order-process", filter["processDefinitionId"])
+	require.Equal(t, "COMPLETED", filter["state"])
+	require.Equal(t, false, filter["hasIncident"])
+	requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-02-13T23:59:59.999999999Z")
+	requireCapturedPISearchDateExists(t, filter, "endDate")
+	require.Equal(t, float64(25), page["limit"])
+}
+
 func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 	var out bytes.Buffer
 	cmd := &cobra.Command{}
@@ -114,8 +164,12 @@ func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 		Discovery: ops.RetentionDiscoveryResult{
 			Status:        ops.WorkflowStepStatusPlanned,
 			RetentionDays: 90,
-			SeedKeys:      []string{"seed-1", "seed-2"},
-			Count:         2,
+			Filters: process.ProcessInstanceFilter{
+				BpmnProcessId: "invoice",
+				EndDateBefore: "2026-02-13",
+			},
+			SeedKeys: []string{"seed-1", "seed-2"},
+			Count:    2,
 		},
 		DeletePlan: ops.RetentionDeletePlan{
 			Status: ops.WorkflowStepStatusSkipped,
@@ -130,6 +184,7 @@ func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, out.String(), "retention policy: planned")
 	require.Contains(t, out.String(), "retention days: 90")
 	require.Contains(t, out.String(), "retention boundary: endDate <= 2026-02-13")
+	require.Contains(t, out.String(), "selection filters: {bpmnProcessId=\"invoice\", endDateBefore=\"2026-02-13\"}")
 	require.Contains(t, out.String(), "retention discovery: planned")
 	require.Contains(t, out.String(), "retention seeds: 2")
 	require.Contains(t, out.String(), "delete plan: skipped")
@@ -142,4 +197,21 @@ func marshalRetentionArgsForEnv(t *testing.T, args []string) string {
 	data, err := json.Marshal(args)
 	require.NoError(t, err)
 	return string(data)
+}
+
+func newOpsRetentionPolicySearchServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
 }

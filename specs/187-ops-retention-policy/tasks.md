@@ -94,17 +94,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add selection filter narrowing tests in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T029 [P] [US3] Add unsupported explicit `--key` invalid-input subprocess test in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T030 [P] [US3] Add service tests for normalized retention filters in `internal/services/ops/retention_policy_test.go`
+- [x] T028 [P] [US3] Add selection filter narrowing tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T029 [P] [US3] Add unsupported explicit `--key` invalid-input subprocess test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T030 [P] [US3] Add service tests for normalized retention filters in `internal/services/ops/retention_policy_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Add compatible process-instance selection flags to `cmd/ops_execute_retention_policy.go`
-- [ ] T032 [US3] Map selection flags into the retention request without allowing explicit keys in `cmd/ops_execute_retention_policy.go`
-- [ ] T033 [US3] Apply normalized filters during retention discovery in `internal/services/processinstance/retention_discovery.go`
-- [ ] T034 [US3] Include selected filters in human, JSON, and report-ready retention output in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T035 [US3] Mark US3 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T031 [US3] Add compatible process-instance selection flags to `cmd/ops_execute_retention_policy.go`
+- [x] T032 [US3] Map selection flags into the retention request without allowing explicit keys in `cmd/ops_execute_retention_policy.go`
+- [x] T033 [US3] Apply normalized filters during retention discovery in `internal/services/processinstance/retention_discovery.go`
+- [x] T034 [US3] Include selected filters in human, JSON, and report-ready retention output in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T035 [US3] Mark US3 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Retention age plus selection filters is independently testable.
 

@@ -181,3 +181,70 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 	require.Equal(t, got.Discovery, got.Report.Discovery)
 	require.Empty(t, got.Errors)
 }
+
+func TestExecuteRetentionPolicyCombinesSelectionFiltersWithRetentionBoundary(t *testing.T) {
+	t.Parallel()
+
+	hasParent := true
+	hasIncident := false
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, d.ProcessInstanceFilter{
+				BpmnProcessId:        "invoice",
+				ProcessVersion:       7,
+				ProcessVersionTag:    "stable",
+				ProcessDefinitionKey: "2251799813685201",
+				State:                d.StateCompleted,
+				ParentKey:            "2251799813685249",
+				HasParent:            &hasParent,
+				HasIncident:          &hasIncident,
+				EndDateBefore:        "2026-02-13",
+			}, filter)
+			require.EqualValues(t, 25, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "seed-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 true,
+		Selection: d.ProcessInstanceFilter{
+			BpmnProcessId:        "invoice",
+			ProcessVersion:       7,
+			ProcessVersionTag:    "stable",
+			ProcessDefinitionKey: "2251799813685201",
+			State:                d.StateCompleted,
+			ParentKey:            "2251799813685249",
+			HasParent:            &hasParent,
+			HasIncident:          &hasIncident,
+			EndDateBefore:        "operator-supplied-date-is-ignored",
+		},
+		BatchSize: 25,
+		Limit:     1,
+		StartedAt: time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+	require.Equal(t, d.ProcessInstanceFilter{
+		BpmnProcessId:        "invoice",
+		ProcessVersion:       7,
+		ProcessVersionTag:    "stable",
+		ProcessDefinitionKey: "2251799813685201",
+		State:                d.StateCompleted,
+		ParentKey:            "2251799813685249",
+		HasParent:            &hasParent,
+		HasIncident:          &hasIncident,
+		EndDateBefore:        "2026-02-13",
+	}, got.Discovery.Filters)
+	require.Equal(t, []string{"seed-1"}, []string(got.Discovery.SeedKeys))
+}

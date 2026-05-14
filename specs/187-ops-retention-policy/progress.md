@@ -9,6 +9,8 @@
 
 ## Codebase Patterns
 
+- Retention selection filters now reuse shared process-instance search flags and validation from `cmd/get_processinstance_*`: command code registers only compatible filters, rejects explicit `--key` before client construction, maps flags through `populatePISearchFilterOpts`, and then overwrites `EndDateBefore` with the required retention boundary.
+- Human retention output prints `result.Discovery.Filters.String()` when filters are available; JSON and report-ready output already carry filters through the structured retention discovery/report model.
 - Retention policy foundation now mirrors #186 boundaries: domain models in `internal/domain/ops_retention_policy.go`, public models/API/conversions in `c8volt/ops`, and a validation-only service seam in `internal/services/ops/retention_policy.go`.
 - Foundational retention service validation rejects negative retention days and explicit process-instance key selection with `domain.ErrValidation`; the public ops facade maps those through `ferrors.FromDomain` to invalid-input behavior.
 - Mandatory Ralph implementation context is `specs/ralph-implementation-rules.md`; commit subjects for this feature must use Conventional Commits and end with `#187`.
@@ -147,4 +149,31 @@
 - Retention discovery uses the same normalized `EndDateBefore` boundary produced from retention days, while future US3 selection filters can add to that filter without replacing the retention age constraint.
 - The service discovery helper filters out no-`EndDate` items defensively, then freezes a unique seed-key set for downstream planning.
 - Targeted validation passed with sandbox-local Go cache: `go test ./internal/services/processinstance ./internal/services/ops ./c8volt/ops ./cmd -run 'TestDiscoverRetentionProcessInstances|TestExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestOpsExecuteRetentionPolicy|TestCommandContract|TestCommandCapability|TestOpsPurge|TestRoot|TestNewCli' -count=1`.
+---
+---
+## Iteration 5 - 2026-05-14 12:59:44 CEST
+**User Story**: User Story 3 - Apply Compatible Selection Filters
+**Tasks Completed**:
+- [x] T028: Add selection filter narrowing tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T029: Add unsupported explicit `--key` invalid-input subprocess test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T030: Add service tests for normalized retention filters in `internal/services/ops/retention_policy_test.go`
+- [x] T031: Add compatible process-instance selection flags to `cmd/ops_execute_retention_policy.go`
+- [x] T032: Map selection flags into the retention request without allowing explicit keys in `cmd/ops_execute_retention_policy.go`
+- [x] T033: Apply normalized filters during retention discovery in `internal/services/processinstance/retention_discovery.go`
+- [x] T034: Include selected filters in human, JSON, and report-ready retention output in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T035: Mark US3 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- internal/services/ops/retention_policy_test.go
+- internal/services/processinstance/retention_discovery_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention policy selection filters should stay on the existing process-instance search path: shared command validation owns state, batch-size, limit, process-definition selector, roots/children, and incident selector checks.
+- The retention service deliberately overwrites any request `Selection.EndDateBefore` with the derived retention boundary, so compatible filters narrow discovery without replacing the required age threshold.
+- Targeted validation passed with sandbox-local Go cache: `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1` and `go test ./cmd -run 'TestOpsExecuteRetentionPolicy|TestCommandContract|TestCommandCapability|TestRoot|TestNewCli' -count=1`.
 ---

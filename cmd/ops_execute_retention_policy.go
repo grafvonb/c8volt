@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
-	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +28,9 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 		if err := validateOpsExecuteRetentionPolicyFlags(cmd); err != nil {
 			failBeforeCli(cmd, err)
 		}
+		if err := validatePISearchFlags(cmd); err != nil {
+			failBeforeCli(cmd, err)
+		}
 		cli, log, cfg, err := NewCli(cmd)
 		if err != nil {
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
@@ -36,6 +39,8 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		boundary := pickPIDateUpperBound("", flagOpsExecuteRetentionPolicyRetentionDays)
+		selection := populatePISearchFilterOpts()
+		selection.EndDateBefore = boundary
 		request := ops.RetentionPolicyRequest{
 			CommandName:            opsExecuteRetentionPolicyCommandName,
 			RetentionDays:          flagOpsExecuteRetentionPolicyRetentionDays,
@@ -44,10 +49,10 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			AutoConfirm:            flagCmdAutoConfirm,
 			Automation:             automationModeEnabled(cmd),
 			OutputMode:             pickMode().String(),
-			Selection: process.ProcessInstanceFilter{
-				EndDateBefore: boundary,
-			},
-			StartedAt: time.Now().UTC(),
+			Selection:              selection,
+			BatchSize:              resolvePISearchSize(cmd, cfg),
+			Limit:                  flagGetPILimit,
+			StartedAt:              time.Now().UTC(),
 		}
 		result, err := cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
 		if err != nil {
@@ -66,6 +71,17 @@ func init() {
 	fs := opsExecuteRetentionPolicyCmd.Flags()
 	fs.IntVar(&flagOpsExecuteRetentionPolicyRetentionDays, "retention-days", 0, "required non-negative age in days for process-instance retention eligibility")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "discover and validate retention cleanup without submitting deletion requests")
+	fs.StringSliceVarP(&flagGetPIKeys, "key", "k", nil, "unsupported explicit process-instance key selector")
+	registerPISharedProcessDefinitionFilterFlags(fs)
+	fs.StringVar(&flagGetPIProcessDefinitionKey, "pd-key", "", "process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)")
+	fs.Int32VarP(&flagGetPISize, "batch-size", "n", consts.MaxPISearchSize, fmt.Sprintf("number of process instances to inspect per page (max limit %d enforced by server)", consts.MaxPISearchSize))
+	fs.Int32VarP(&flagGetPILimit, "limit", "l", 0, "maximum number of matching process instances to inspect across all pages")
+	fs.StringVar(&flagGetPIParentKey, "parent-key", "", "parent process instance key to narrow retention discovery")
+	fs.StringVarP(&flagGetPIState, "state", "s", "all", "state to filter process instances: all, active, completed, canceled, terminated")
+	fs.BoolVar(&flagGetPIRootsOnly, "roots-only", false, "discover only root process instances")
+	fs.BoolVar(&flagGetPIChildrenOnly, "children-only", false, "discover only child process instances")
+	fs.BoolVar(&flagGetPIIncidentsOnly, "incidents-only", false, "discover only process instances that have incidents")
+	fs.BoolVar(&flagGetPINoIncidentsOnly, "no-incidents-only", false, "discover only process instances that have no incidents")
 
 	setCommandMutation(opsExecuteRetentionPolicyCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteRetentionPolicyCmd, ContractSupportFull)
@@ -79,6 +95,9 @@ func validateOpsExecuteRetentionPolicyFlags(cmd *cobra.Command) error {
 	}
 	if flagOpsExecuteRetentionPolicyRetentionDays < 0 {
 		return invalidFlagValuef("invalid value for --retention-days: %d, expected non-negative integer", flagOpsExecuteRetentionPolicyRetentionDays)
+	}
+	if len(flagGetPIKeys) > 0 {
+		return invalidFlagValuef("retention policy discovers eligible process instances and does not accept explicit process-instance keys")
 	}
 	return nil
 }

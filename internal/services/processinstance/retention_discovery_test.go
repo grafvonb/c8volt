@@ -88,6 +88,47 @@ func TestDiscoverRetentionProcessInstancesLimitCountsEligibleSeeds(t *testing.T)
 	require.Equal(t, []string{"seed-1", "seed-2"}, []string(got.Keys))
 }
 
+func TestDiscoverRetentionProcessInstancesPreservesSelectionFilters(t *testing.T) {
+	t.Parallel()
+
+	hasParent := false
+	hasIncident := true
+	wantFilter := d.ProcessInstanceFilter{
+		BpmnProcessId:        "invoice",
+		ProcessVersion:       7,
+		ProcessVersionTag:    "stable",
+		ProcessDefinitionKey: "2251799813685201",
+		State:                d.StateCompleted,
+		ParentKey:            "2251799813685249",
+		HasParent:            &hasParent,
+		HasIncident:          &hasIncident,
+		EndDateBefore:        "2026-02-13",
+	}
+	api := stubRetentionDiscoveryAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, wantFilter, filter)
+			require.EqualValues(t, 25, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "seed-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+	}
+
+	got, err := DiscoverRetentionProcessInstances(context.Background(), api, RetentionDiscoveryRequest{
+		Filter:    wantFilter,
+		BatchSize: 25,
+		Limit:     1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, wantFilter, got.Filter)
+	require.Equal(t, []string{"seed-1"}, []string(got.Keys))
+}
+
 type stubRetentionDiscoveryAPI struct {
 	searchPage func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 }
