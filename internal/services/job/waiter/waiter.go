@@ -21,7 +21,7 @@ type JobGetter interface {
 
 func WaitForRetries(ctx context.Context, s JobGetter, cfg *config.Config, log *slog.Logger, key string, retries int32, opts ...services.CallOption) (d.Job, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for job %s retries to be %d", key, retries))
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for job %s retries %d", key, retries))
 	defer stopActivity()
 
 	backoff := cfg.App.Backoff
@@ -52,7 +52,7 @@ func WaitForRetries(ctx context.Context, s JobGetter, cfg *config.Config, log *s
 		if job.Key != "" && job.Retries == retries {
 			return job, nil
 		}
-		logging.InfoIfVerbose(fmt.Sprintf("job %s retries currently %d; waiting for %d... (attempt #%d)", key, job.Retries, retries, attempts), log, cCfg.Verbose)
+		logging.InfoIfVerbose(fmt.Sprintf("job %s waiting; retries %d, target %d, attempt %d", key, job.Retries, retries, attempts), log, cCfg.Verbose)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
 			elapsed := time.Since(start)
 			return job, fmt.Errorf("exceeded max_retries (%d) waiting for job %s retries to be %d after %d attempts in %s", backoff.MaxRetries, key, retries, attempts, elapsed)

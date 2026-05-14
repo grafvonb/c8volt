@@ -42,7 +42,7 @@ func runGetClusterLicense(cmd *cobra.Command, args []string) {
 	if err != nil {
 		handleNewCliError(cmd, log, cfg, err)
 	}
-	log.Debug("fetching cluster license")
+	log.Debug("getting cluster license")
 	license, err := cli.GetClusterLicense(cmd.Context())
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster license: %w", err))

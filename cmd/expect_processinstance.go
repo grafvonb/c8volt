@@ -74,15 +74,15 @@ var expectProcessInstanceCmd = &cobra.Command{
 			if incidentSet {
 				expectationLabel := processInstanceExpectationLogLabel(len(states) > 0)
 				logging.InfoOrVerbose(
-					fmt.Sprintf("waiting for %d process instance(s) to satisfy %s", len(keys), expectationLabel),
-					fmt.Sprintf("waiting for %d process instance(s) [%s] to satisfy %s", len(keys), keys, expectationLabel),
+					fmt.Sprintf("waiting for %d pi; expectations %s", len(keys), expectationLabel),
+					fmt.Sprintf("waiting for %d pi [%s]; expectations %s", len(keys), keys, expectationLabel),
 					log,
 					flagVerbose,
 				)
 			} else {
 				logging.InfoOrVerbose(
-					fmt.Sprintf("waiting for %d process instance(s) to reach one of %d desired state(s)", len(keys), len(states)),
-					fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states),
+					fmt.Sprintf("waiting for %d pi; states %d", len(keys), len(states)),
+					fmt.Sprintf("waiting for %d pi [%s]; states [%s]", len(keys), keys, states),
 					log,
 					flagVerbose,
 				)
@@ -99,8 +99,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 			if !commandUsesSharedEnvelope(cmd, pickMode()) {
 				expectationLabel := processInstanceExpectationLogLabel(len(states) > 0)
 				logging.InfoOrVerbose(
-					fmt.Sprintf("%d process instance(s) satisfied %s", len(keys), expectationLabel),
-					fmt.Sprintf("%d process instance(s) [%s] satisfied %s", len(keys), keys, expectationLabel),
+					fmt.Sprintf("%d pi satisfied; expectations %s", len(keys), expectationLabel),
+					fmt.Sprintf("%d pi [%s] satisfied; expectations %s", len(keys), keys, expectationLabel),
 					log,
 					flagVerbose,
 				)
@@ -116,8 +116,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 		}
 		if !commandUsesSharedEnvelope(cmd, pickMode()) {
 			logging.InfoOrVerbose(
-				fmt.Sprintf("%d process instance(s) reached desired state(s)", len(keys)),
-				fmt.Sprintf("%d process instance(s) [%s] reached desired state(s) [%s]", len(keys), keys, states),
+				fmt.Sprintf("%d pi reached states", len(keys)),
+				fmt.Sprintf("%d pi [%s] reached states [%s]", len(keys), keys, states),
 				log,
 				flagVerbose,
 			)

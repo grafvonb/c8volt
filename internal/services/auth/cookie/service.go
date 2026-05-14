@@ -41,7 +41,7 @@ func New(cfg *config.Config, httpClient *http.Client, log *slog.Logger, opts ...
 	if log == nil {
 		return nil, errors.New("logger must not be nil")
 	}
-	log.Debug("Using 'cookie' authenticator: session cookie-based authentication")
+	log.Debug("auth cookie")
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -75,7 +75,7 @@ func (s *Service) Init(ctx context.Context) error {
 		return nil
 	}
 
-	s.log.Debug(fmt.Sprintf("initializing session cookie auth at %s", s.baseURL.Host))
+	s.log.Debug(fmt.Sprintf("auth cookie init; host %s", s.baseURL.Host))
 	loginURL := *s.baseURL
 	loginURL.Path = strings.TrimRight(loginURL.Path, "/") + "/api/login"
 

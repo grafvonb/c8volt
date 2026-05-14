@@ -56,7 +56,7 @@ Use --json for a structured diagnostic payload on stdout; logs remain on stderr.
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("config test-connection: %w", err))
 		}
 
-		log.Info(fmt.Sprintf("connection to configured Camunda cluster succeeded base_url=%s", cfg.APIs.Camunda.BaseURL))
+		log.Info(fmt.Sprintf("camunda connection ok; base URL %s", cfg.APIs.Camunda.BaseURL))
 		warnings := camundaMajorMinorMismatchWarnings(string(cfg.App.CamundaVersion), topology.GatewayVersion)
 		for _, warning := range warnings {
 			log.Warn(warning)

@@ -22,7 +22,7 @@ func (s *Service) GetProcessInstances(ctx context.Context, keys typex.Keys, want
 	lk := len(ukeys)
 
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	logging.InfoIfVerbose(fmt.Sprintf("getting process instances requested for %d unique key(s) using %d worker(s)", lk, nw), s.log, cCfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("getting pi: requested %d, workers %d", lk, nw), s.log, cCfg.Verbose)
 	rs, err := pool.ExecuteSlice[string, d.ProcessInstance](ctx, ukeys, nw, cCfg.FailFast, func(ctx context.Context, key string, _ int) (d.ProcessInstance, error) {
 		return s.GetProcessInstance(ctx, key, opts...)
 	})

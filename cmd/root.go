@@ -149,12 +149,12 @@ command contract.`,
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(config.FormatValidationError("configuration is invalid", err)))
 		}
 		if cfg.ActiveProfile != "" {
-			log.Debug("using configuration profile: " + cfg.ActiveProfile)
+			log.Debug("config profile " + cfg.ActiveProfile)
 		} else {
-			log.Debug("no active profile provided in configuration, using default settings")
+			log.Debug("config profile default")
 		}
-		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
-		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
+		log.Debug("camunda version " + string(cfg.App.CamundaVersion))
+		log.Debug("tenant " + cfg.App.ViewTenant())
 
 		ctx, err = installRemoteCommandServices(ctx, cfg, log)
 		if err != nil {

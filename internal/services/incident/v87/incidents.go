@@ -15,7 +15,7 @@ import (
 func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
 	_ = ctx
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("rejecting direct incident lookup for key %s because Camunda 8.7 has no tenant-safe endpoint", key))
+	s.log.Debug(fmt.Sprintf("incident %s lookup rejected; v8.7 not tenant-safe", key))
 	return d.ProcessInstanceIncidentDetail{}, fmt.Errorf("%w: direct incident lookup is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
@@ -23,7 +23,7 @@ func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.
 func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	_ = ctx
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("rejecting incident resolution for key %s because Camunda 8.7 has no supported endpoint", key))
+	s.log.Debug(fmt.Sprintf("incident %s resolve rejected; v8.7 unsupported", key))
 	return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, fmt.Errorf("%w: incident resolution is not supported in Camunda 8.7", d.ErrUnsupported)
 }
 
@@ -33,7 +33,7 @@ func (s *Service) SearchIncidents(ctx context.Context, filter d.IncidentFilter, 
 	_ = filter
 	_ = size
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug("rejecting incident search because Camunda 8.7 has no tenant-safe endpoint")
+	s.log.Debug("incident search rejected; v8.7 not tenant-safe")
 	return nil, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
@@ -43,7 +43,7 @@ func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilt
 	_ = filter
 	_ = page
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug("rejecting incident page search because Camunda 8.7 has no tenant-safe endpoint")
+	s.log.Debug("incident page search rejected; v8.7 not tenant-safe")
 	return d.IncidentPage{}, fmt.Errorf("%w: incident search is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
@@ -51,7 +51,7 @@ func (s *Service) SearchIncidentsPage(ctx context.Context, filter d.IncidentFilt
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	_ = ctx
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("rejecting incident lookup for process instance with key %s because Camunda 8.7 has no tenant-safe endpoint", key))
+	s.log.Debug(fmt.Sprintf("pi %s incident lookup rejected; v8.7 not tenant-safe", key))
 	return nil, fmt.Errorf("%w: process-instance incident lookup is not tenant-safe in Camunda 8.7", d.ErrUnsupported)
 }
 
@@ -59,7 +59,7 @@ func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string
 func (s *Service) WaitForIncidentResolved(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	_ = ctx
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("rejecting incident resolution wait for key %s because Camunda 8.7 has no tenant-safe endpoint", key))
+	s.log.Debug(fmt.Sprintf("incident %s resolve wait rejected; v8.7 not tenant-safe", key))
 	return d.IncidentResolutionResponse{Key: key, Ok: false, Status: "unsupported"}, fmt.Errorf("%w: incident resolution confirmation is not supported in Camunda 8.7", d.ErrUnsupported)
 }
 
@@ -68,6 +68,6 @@ func (s *Service) WaitForProcessInstanceIncidentsResolved(ctx context.Context, p
 	_ = ctx
 	_ = incidentKeys
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("rejecting process-instance incident resolution wait for key %s because Camunda 8.7 has no tenant-safe endpoint", processInstanceKey))
+	s.log.Debug(fmt.Sprintf("pi %s incident resolve wait rejected; v8.7 not tenant-safe", processInstanceKey))
 	return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: "unsupported"}, fmt.Errorf("%w: process-instance incident resolution confirmation is not supported in Camunda 8.7", d.ErrUnsupported)
 }

@@ -89,7 +89,7 @@ var getIncidentCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("incident key %q is not a valid key", firstBadKey))
 			}
 
-			log.Debug(fmt.Sprintf("fetching incidents for key(s) [%s], render mode: %s", keys, pickMode()))
+			log.Debug(fmt.Sprintf("getting incidents; keys [%s], mode %s", keys, pickMode()))
 			incidents, err := cli.GetIncidents(cmd.Context(), keys, flagWorkers, collectOptions()...)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get incidents: %w", err))
@@ -113,7 +113,7 @@ var getIncidentCmd = &cobra.Command{
 		}
 
 		filter := populateGetIncidentSearchFilter()
-		log.Debug(fmt.Sprintf("searching incidents, render mode: %s", pickMode()))
+		log.Debug(fmt.Sprintf("searching incidents; mode %s", pickMode()))
 		if flagGetIncidentTotal {
 			total, err := searchIncidentsTotal(cmd, cli, cfg, filter)
 			if err != nil {

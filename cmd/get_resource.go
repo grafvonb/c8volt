@@ -45,7 +45,7 @@ func runGetResource(cmd *cobra.Command, args []string) {
 }
 
 func runGetResourceByID(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, id string) {
-	log.Debug(fmt.Sprintf("fetching resource by id: %s", id))
+	log.Debug(fmt.Sprintf("getting resource %s", id))
 	resource, err := cli.GetResource(cmd.Context(), id, collectOptions()...)
 	if err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get resource: %w", err))

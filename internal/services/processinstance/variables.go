@@ -21,7 +21,7 @@ func UpdateProcessInstancesVariables(ctx context.Context, api API, log *slog.Log
 	ukeys := keys.Unique()
 	lk := len(ukeys)
 	nw := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cfg.NoWorkerLimit)
-	logging.InfoIfVerbose(fmt.Sprintf("updating variables for %d unique process instance(s) using %d worker(s)", lk, nw), log, cfg.Verbose)
+	logging.InfoIfVerbose(fmt.Sprintf("updating pi variables: requested %d, workers %d", lk, nw), log, cfg.Verbose)
 	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("updating variables for", lk, 0))
 	defer stopActivity()
 	rs, err := pool.ExecuteSlice[string, d.ProcessInstanceVariableUpdateResult](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ProcessInstanceVariableUpdateResult, error) {

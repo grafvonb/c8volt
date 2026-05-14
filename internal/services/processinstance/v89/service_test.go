@@ -506,9 +506,9 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		quietLog := runForceCancelLogTest(t, false)
 		verboseLog := runForceCancelLogTest(t, true)
 
-		assert.Contains(t, quietLog, "force flag is set, cancelling 2 process instances")
+		assert.Contains(t, quietLog, "force: cancelling 2 pi")
 		assert.NotContains(t, quietLog, "with keys [123 124]")
-		assert.Contains(t, verboseLog, "force flag is set, cancelling 2 process instances with keys [123 124]")
+		assert.Contains(t, verboseLog, "force: cancelling 2 pi; keys [123 124]")
 	})
 
 	t.Run("DeleteNoWait", func(t *testing.T) {
@@ -661,8 +661,8 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		quietLog := runDeleteWrongStateLogTest(t, false)
 		verboseLog := runDeleteWrongStateLogTest(t, true)
 
-		assert.NotContains(t, quietLog, "cannot delete, process instance 123 is not in one of terminated states")
-		assert.Contains(t, verboseLog, "cannot delete, process instance 123 is not in one of terminated states")
+		assert.NotContains(t, quietLog, "pi 123 delete blocked; state not terminal")
+		assert.Contains(t, verboseLog, "pi 123 delete blocked; state not terminal")
 	})
 }
 

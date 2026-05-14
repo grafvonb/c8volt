@@ -50,7 +50,7 @@ func runGetTenant(cmd *cobra.Command, args []string) {
 
 // runGetTenantByKey fetches one tenant and renders it through the shared tenant view contract.
 func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, tenantID string) {
-	log.Debug(fmt.Sprintf("getting tenant by id: %s", tenantID))
+	log.Debug(fmt.Sprintf("getting tenant %s", tenantID))
 	tenant, err := cli.GetTenant(cmd.Context(), tenantID, collectOptions()...)
 	if err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("get tenant: %w", err))
@@ -62,7 +62,7 @@ func runGetTenantByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noE
 
 // runSearchTenants fetches visible tenants with the optional literal filter and renders the list output.
 func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter tenant.TenantFilter) {
-	log.Debug(fmt.Sprintf("searching tenants with filter: %+v", filter))
+	log.Debug(fmt.Sprintf("searching tenants; filter %+v", filter))
 	tenants, err := cli.SearchTenants(cmd.Context(), filter, collectOptions()...)
 	if err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("search tenants: %w", err))
@@ -71,7 +71,7 @@ func runSearchTenants(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noEr
 	if err := listTenantsView(cmd, tenants); err != nil {
 		handleCommandError(cmd, log, noErrCodes, fmt.Errorf("render tenants: %w", err))
 	}
-	log.Debug(fmt.Sprintf("fetched tenants, found: %d items", tenants.Total))
+	log.Debug(fmt.Sprintf("tenant search done; found %d", tenants.Total))
 }
 
 // warnIfUnfilteredTenantSearchReturnedEmpty explains empty unfiltered tenant lists, which usually indicate access restrictions.
@@ -79,7 +79,7 @@ func warnIfUnfilteredTenantSearchReturnedEmpty(log *slog.Logger, filter tenant.T
 	if log == nil || strings.TrimSpace(filter.NameContains) != "" || len(tenants.Items) > 0 {
 		return
 	}
-	log.Warn("tenant search returned no tenants; Camunda creates a reserved <default> tenant, so the configured client may not have access to tenant resources")
+	log.Warn("tenant search empty; <default> may be reserved or inaccessible")
 }
 
 // init registers the tenant discovery command and its read-only automation metadata.
