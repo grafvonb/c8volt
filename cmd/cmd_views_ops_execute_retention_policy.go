@@ -26,6 +26,9 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 	if result.Discovery.Status != "" {
 		cmd.Printf("retention discovery: %s\n", result.Discovery.Status)
 		cmd.Printf("retention seeds: %d\n", result.Discovery.Count)
+		if result.Discovery.Count == 0 {
+			cmd.Printf("no retention cleanup targets found\n")
+		}
 	}
 	if result.DeletePlan.Status != "" {
 		cmd.Printf("delete plan: %s (seeds: %d, roots: %d, affected: %d)\n",
@@ -56,7 +59,18 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		}
 	}
 	if result.Deletion.Status != "" {
-		cmd.Printf("deletion: %s\n", result.Deletion.Status)
+		if !result.Deletion.Submitted {
+			cmd.Printf("deletion: %s; no deletion request submitted\n", result.Deletion.Status)
+		} else {
+			cmd.Printf("deletion: %s\n", result.Deletion.Status)
+		}
+	}
+	if result.Outcome != "" {
+		if !result.Deletion.Submitted && result.Outcome == ops.RetentionPolicyOutcomePlanned {
+			cmd.Printf("outcome: %s; no changes applied\n", result.Outcome)
+		} else {
+			cmd.Printf("outcome: %s\n", result.Outcome)
+		}
 	}
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])

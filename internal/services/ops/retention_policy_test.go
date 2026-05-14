@@ -195,6 +195,46 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 	require.Empty(t, got.Errors)
 }
 
+func TestExecuteRetentionPolicyDryRunNoTargetsSkipsPlanAndDeletion(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, "2026-02-13", filter.EndDateBefore)
+			require.EqualValues(t, 1000, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items:         nil,
+			}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 true,
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Report.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
+	require.Equal(t, 0, got.Discovery.Count)
+	require.Empty(t, got.Discovery.SeedKeys)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Empty(t, got.DeletePlan.SeedKeys)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.False(t, got.Deletion.Submitted)
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+	require.Equal(t, got.Deletion, got.Report.Deletion)
+	require.Empty(t, got.Errors)
+}
+
 func TestExecuteRetentionPolicyCombinesSelectionFiltersWithRetentionBoundary(t *testing.T) {
 	t.Parallel()
 

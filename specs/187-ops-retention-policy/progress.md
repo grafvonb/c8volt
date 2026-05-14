@@ -9,6 +9,7 @@
 
 ## Codebase Patterns
 
+- Retention dry-run/no-target command output now explicitly reports skipped deletion and `outcome: planned; no changes applied`; detailed retention seed/root/affected key lists remain gated behind `--verbose`, while JSON output keeps the complete structured model through the shared result envelope.
 - Retention delete planning now calls the existing `processinstance.DryRunCancelOrDeletePlan` from the ops service after discovery, maps the frozen seeds into `RetentionDeletePlan`, preserves duplicate resolved roots via `DryRunPIKeyExpansion.DuplicateRoots`, and blocks non-dry-run mutation with `domain.ErrPrecondition` when non-final affected instances exist without force.
 - Retention selection filters now reuse shared process-instance search flags and validation from `cmd/get_processinstance_*`: command code registers only compatible filters, rejects explicit `--key` before client construction, maps flags through `populatePISearchFilterOpts`, and then overwrites `EndDateBefore` with the required retention boundary.
 - Human retention output prints `result.Discovery.Filters.String()` when filters are available; JSON and report-ready output already carry filters through the structured retention discovery/report model.
@@ -205,4 +206,28 @@
 - Retention planning should stay on the existing process-instance delete planning path; the only shared primitive extension needed for US4 was exposing duplicate resolved roots from the existing ancestry results.
 - Non-final affected instances are preserved in the retention delete plan and block non-dry-run mutation with `domain.ErrPrecondition` until a later execution story wires the force/delete controls.
 - Targeted validation passed with sandbox-local Go cache: `go test ./internal/services/ops -run 'TestExecuteRetentionPolicy' -count=1`, `go test ./internal/services/processinstance -run 'Test.*DryRun|TestDiscoverRetentionProcessInstances' -count=1`, `go test ./cmd -run 'TestOpsExecuteRetentionPolicy' -count=1`, and `go test ./c8volt/ops -run 'TestClientExecuteRetentionPolicy' -count=1`.
+---
+---
+## Iteration 7 - 2026-05-14 13:12:36 CEST
+**User Story**: User Story 5 - Support Dry Run Output
+**Tasks Completed**:
+- [x] T044: Add no-target dry-run success test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T045: Add `--dry-run --json` deterministic output test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T046: Add dry-run no prompt/no mutation test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T047: Implement dry-run command orchestration through the ops facade in `cmd/ops_execute_retention_policy.go`
+- [x] T048: Add planned/skipped/final outcome status handling for dry-run and no-target flows in `internal/services/ops/retention_policy.go`
+- [x] T049: Keep detailed key lists behind verbose output while preserving complete JSON data in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T050: Mark US5 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- internal/services/ops/retention_policy_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention dry-run command coverage now exercises no-target success, JSON envelope structure, and matching-seed no-mutation behavior through HTTP fakes.
+- Dry-run human output now has an explicit no-target line plus skipped deletion/final outcome wording, while existing verbose-only key-list behavior remains intact.
+- Targeted validation passed with sandbox-local Go cache: `go test ./cmd ./internal/services/ops -run 'TestOpsExecuteRetentionPolicy|TestExecuteRetentionPolicy' -count=1`, `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1`, and `go test ./cmd -count=1`.
 ---

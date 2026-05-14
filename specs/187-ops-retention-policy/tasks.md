@@ -142,16 +142,16 @@
 
 ### Tests for User Story 5
 
-- [ ] T044 [P] [US5] Add no-target dry-run success test in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T045 [P] [US5] Add `--dry-run --json` deterministic output test in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T046 [P] [US5] Add dry-run no prompt/no mutation test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T044 [P] [US5] Add no-target dry-run success test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T045 [P] [US5] Add `--dry-run --json` deterministic output test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T046 [P] [US5] Add dry-run no prompt/no mutation test in `cmd/ops_execute_retention_policy_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T047 [US5] Implement dry-run command orchestration through the ops facade in `cmd/ops_execute_retention_policy.go`
-- [ ] T048 [US5] Add planned/skipped/final outcome status handling for dry-run and no-target flows in `internal/services/ops/retention_policy.go`
-- [ ] T049 [US5] Keep detailed key lists behind verbose output while preserving complete JSON data in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T050 [US5] Mark US5 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T047 [US5] Implement dry-run command orchestration through the ops facade in `cmd/ops_execute_retention_policy.go`
+- [x] T048 [US5] Add planned/skipped/final outcome status handling for dry-run and no-target flows in `internal/services/ops/retention_policy.go`
+- [x] T049 [US5] Keep detailed key lists behind verbose output while preserving complete JSON data in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T050 [US5] Mark US5 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Dry-run retention cleanup is operator-usable and script-safe.
 

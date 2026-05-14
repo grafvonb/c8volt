@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const opsRetentionPolicySeedKey = "2251799813685249"
+
 func TestOpsExecuteRetentionPolicyHelpDocumentsCommand(t *testing.T) {
 	output := executeRootForProcessInstanceTest(t, "ops", "execute", "--help")
 
@@ -151,6 +153,97 @@ func TestOpsExecuteRetentionPolicyDryRunAppliesCompatibleFilters(t *testing.T) {
 	require.Equal(t, float64(25), page["limit"])
 }
 
+func TestOpsExecuteRetentionPolicyDryRunNoTargetsReportsNoOp(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsRetentionPolicySearchServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--dry-run",
+	)
+
+	require.Contains(t, output, "retention discovery: planned")
+	require.Contains(t, output, "retention seeds: 0")
+	require.Contains(t, output, "no retention cleanup targets found")
+	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "deletion: skipped; no deletion request submitted")
+	require.Contains(t, output, "outcome: planned; no changes applied")
+	snapshot := requests.Snapshot()
+	require.Len(t, snapshot, 1)
+	require.True(t, strings.HasPrefix(snapshot[0], "POST /v2/process-instances/search "))
+}
+
+func TestOpsExecuteRetentionPolicyDryRunJSONOutputIsStructured(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 5, 14, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() { relativeDayNow = prevNow })
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRetentionPolicySearchServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--json",
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--dry-run",
+	)
+
+	require.Empty(t, strings.TrimSpace(stderr))
+	require.NotContains(t, stdout, "retention discovery:")
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "ops execute retention-policy", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "planned", payload["outcome"])
+
+	request := requireJSONObject(t, payload["request"])
+	require.Equal(t, true, request["dryRun"])
+	require.Equal(t, float64(90), request["retentionDays"])
+	require.Equal(t, "2026-02-13", request["derivedEndDateBoundary"])
+
+	discovery := requireJSONObject(t, payload["discovery"])
+	require.Equal(t, "planned", discovery["status"])
+	require.Equal(t, float64(0), discovery["count"])
+	require.Equal(t, float64(90), discovery["retentionDays"])
+	require.Equal(t, "2026-02-13", discovery["derivedEndDateBoundary"])
+
+	deletePlan := requireJSONObject(t, payload["deletePlan"])
+	require.Equal(t, "skipped", deletePlan["status"])
+	deletion := requireJSONObject(t, payload["deletion"])
+	require.Equal(t, "skipped", deletion["status"])
+	require.NotContains(t, deletion, "submitted")
+	report := requireJSONObject(t, payload["report"])
+	require.Equal(t, "planned", report["outcome"])
+}
+
+func TestOpsExecuteRetentionPolicyDryRunDoesNotPromptOrMutate(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--dry-run",
+	)
+
+	require.Contains(t, output, "delete plan: planned")
+	require.Contains(t, output, "deletion: skipped; no deletion request submitted")
+	require.Contains(t, output, "outcome: planned; no changes applied")
+	require.Empty(t, deleted.Snapshot())
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
+}
+
 func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 	var out bytes.Buffer
 	cmd := &cobra.Command{}
@@ -188,7 +281,8 @@ func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, out.String(), "retention discovery: planned")
 	require.Contains(t, out.String(), "retention seeds: 2")
 	require.Contains(t, out.String(), "delete plan: skipped")
-	require.Contains(t, out.String(), "deletion: skipped")
+	require.Contains(t, out.String(), "deletion: skipped; no deletion request submitted")
+	require.Contains(t, out.String(), "outcome: planned; no changes applied")
 }
 
 func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
@@ -264,4 +358,39 @@ func newOpsRetentionPolicySearchServer(t *testing.T, requests *testx.SafeSlice[s
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
+}
+
+func newOpsRetentionPolicyServerWithSeed(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			w.Header().Set("Content-Type", "application/json")
+			if strings.Contains(string(body), "parentProcessInstanceKey") {
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[` + opsRetentionPolicyProcessInstanceJSON(opsRetentionPolicySeedKey) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsRetentionPolicySeedKey:
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(opsRetentionPolicyProcessInstanceJSON(opsRetentionPolicySeedKey)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/"+opsRetentionPolicySeedKey+"/deletion":
+			if deleted != nil {
+				deleted.Append(r.URL.Path)
+			}
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+func opsRetentionPolicyProcessInstanceJSON(key string) string {
+	return `{"processInstanceKey":"` + key + `","processDefinitionId":"retention-process","processDefinitionKey":"9001","processDefinitionName":"retention-process","processDefinitionVersion":3,"startDate":"2026-01-11T12:00:00Z","endDate":"2026-02-12T12:00:00Z","state":"COMPLETED","tenantId":"tenant"}`
 }
