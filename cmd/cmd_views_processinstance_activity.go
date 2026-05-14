@@ -60,14 +60,15 @@ func processInstanceActivityInstancesWithAgeMeta(resp processInstanceActivityIns
 
 func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstanceActivityItem) bool {
 	rows := make([]flatRow, 0, len(items))
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	for _, it := range items {
-		rows = append(rows, flatRowPI(it.Item))
+		rows = append(rows, flatRowPIWithTimezone(it.Item, showTimezoneOffset))
 	}
 	lines := formatFlatRows(rows)
 	needsIndirectIncidentWarning := false
 	for i, it := range items {
 		renderOutputLine(cmd, "%s", lines[i])
-		detailLines, needsWarning := formatProcessInstanceActivityLines("", it.Variables, it.Incidents, it.ShowIncidents, it.Item.Incident, 0)
+		detailLines, needsWarning := formatProcessInstanceActivityLinesWithTimezone("", it.Variables, it.Incidents, it.ShowIncidents, it.Item.Incident, 0, showTimezoneOffset)
 		for _, line := range detailLines {
 			renderOutputLine(cmd, "%s", line)
 		}
@@ -77,6 +78,10 @@ func renderProcessInstanceActivityRows(cmd *cobra.Command, items []processInstan
 }
 
 func formatProcessInstanceActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) ([]string, bool) {
+	return formatProcessInstanceActivityLinesWithTimezone(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, false)
+}
+
+func formatProcessInstanceActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) ([]string, bool) {
 	hasVars := len(variables) > 0
 	hasIncidents := showIncidents && (len(incidents) > 0 || hasIncidentMarker)
 	sectionCount := 0
@@ -110,7 +115,7 @@ func formatProcessInstanceActivityLines(prefix string, variables []process.Proce
 		lines = append(lines, prefix+branch+"incidents:")
 		if len(incidents) > 0 {
 			for i, incident := range incidents {
-				lines = append(lines, childPrefix+incidentTreeBranch(i, len(incidents))+incidentHumanLine(incident))
+				lines = append(lines, childPrefix+incidentTreeBranch(i, len(incidents))+incidentHumanLineWithTimezone(incident, showTimezoneOffset))
 			}
 		} else {
 			lines = append(lines, childPrefix+"└─ "+indirectProcessTreeIncidentNote)
@@ -128,7 +133,11 @@ func treeChildPrefix(prefix string, branchIndex, totalBranches int) string {
 }
 
 func writeProcessInstanceActivityLines(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) bool {
-	lines, needsWarning := formatProcessInstanceActivityLines(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren)
+	return writeProcessInstanceActivityLinesWithTimezone(out, prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, false)
+}
+
+func writeProcessInstanceActivityLinesWithTimezone(out *strings.Builder, prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) bool {
+	lines, needsWarning := formatProcessInstanceActivityLinesWithTimezone(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
 	for _, line := range lines {
 		out.WriteByte('\n')
 		out.WriteString(line)

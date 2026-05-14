@@ -8,6 +8,8 @@ app:
   camunda_version: "8.9"
   # Optional default tenant for tenant-aware commands
   tenant: ""
+  # Include timezone offsets in human timestamp output.
+  show_timezone_offset: false
 auth:
   # Use "none" for local c8run or unsecured development clusters.
   # Use "oauth2" for Camunda SaaS or protected self-managed clusters.

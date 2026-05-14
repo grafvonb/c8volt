@@ -555,7 +555,7 @@ func TestGetClusterLicenseNestedCommand_SuccessWithOptionalFields(t *testing.T) 
 
 	require.Contains(t, output, "ValidLicense: true")
 	require.Contains(t, output, "LicenseType: Enterprise")
-	require.Contains(t, output, "ExpiresAt: 2030-01-02T03:04:05+00:00")
+	require.Contains(t, output, "ExpiresAt: 2030-01-02T03:04:05.000")
 	require.Contains(t, output, "IsCommercial: true")
 	require.NotContains(t, output, `"ValidLicense"`)
 }

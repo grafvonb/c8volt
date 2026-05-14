@@ -149,10 +149,10 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		}
 		pi.StartDate = created.StartDate
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
-		s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s; start %s, confirmed %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, toolx.FormatNumericZoneTimestamp(pi.StartDate), toolx.FormatNumericZoneTimestamp(pi.StartConfirmedAt)))
+		s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s; start %s, confirmed %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, toolx.FormatTimestamp(pi.StartDate, s.cfg.App.ShowTimezoneOffset), toolx.FormatTimestamp(pi.StartConfirmedAt, s.cfg.App.ShowTimezoneOffset)))
 	} else {
 		pi.StartDate = time.Now().UTC().Format(time.RFC3339)
-		s.log.Info(fmt.Sprintf("pi %s create requested; pd %s %s v%d %s; start %s, no-wait", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, toolx.FormatNumericZoneTimestamp(pi.StartDate)))
+		s.log.Info(fmt.Sprintf("pi %s create requested; pd %s %s v%d %s; start %s, no-wait", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId, toolx.FormatTimestamp(pi.StartDate, s.cfg.App.ShowTimezoneOffset)))
 	}
 	return pi, nil
 }

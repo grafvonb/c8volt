@@ -108,7 +108,7 @@ func renderIncidentSearchPage(cmd *cobra.Command, items []incident.ProcessInstan
 			renderOutputLine(cmd, "%s", item.IncidentKey)
 		}
 	default:
-		for _, line := range formatIncidentListRows(items, flagGetIncidentMessageLimit, flagGetIncidentNoErrorMessage) {
+		for _, line := range formatIncidentListRowsWithTimezone(items, flagGetIncidentMessageLimit, flagGetIncidentNoErrorMessage, commandShowTimezoneOffset(cmd)) {
 			renderOutputLine(cmd, "%s", line)
 		}
 	}

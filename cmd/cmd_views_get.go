@@ -21,7 +21,9 @@ func processInstanceView(cmd *cobra.Command, item process.ProcessInstance) error
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstanceWithAgeMeta(item))
 	}
-	return itemView(cmd, item, pickMode(), oneLinePI, func(it process.ProcessInstance) string { return it.Key })
+	return itemView(cmd, item, pickMode(), func(it process.ProcessInstance) string {
+		return oneLinePIWithTimezone(it, commandShowTimezoneOffset(cmd))
+	}, func(it process.ProcessInstance) string { return it.Key })
 }
 
 func processInstanceTotalView(cmd *cobra.Command, total int64) error {
@@ -33,7 +35,9 @@ func listProcessInstancesView(cmd *cobra.Command, resp process.ProcessInstances)
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, processInstancesWithAgeMeta(resp))
 	}
-	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), flatRowPI, func(it process.ProcessInstance) string { return it.Key })
+	return listOrJSONFlat(cmd, resp, resp.Items, pickMode(), func(it process.ProcessInstance) flatRow {
+		return flatRowPIWithTimezone(it, commandShowTimezoneOffset(cmd))
+	}, func(it process.ProcessInstance) string { return it.Key })
 }
 
 func listIncidentsView(cmd *cobra.Command, resp incident.Incidents, messageLimit int, omitMessage bool) error {
@@ -49,7 +53,7 @@ func listIncidentsView(cmd *cobra.Command, resp incident.Incidents, messageLimit
 			renderOutputLine(cmd, "%s", it.IncidentKey)
 		}
 	default:
-		for _, line := range formatIncidentListRows(resp.Items, messageLimit, omitMessage) {
+		for _, line := range formatIncidentListRowsWithTimezone(resp.Items, messageLimit, omitMessage, commandShowTimezoneOffset(cmd)) {
 			renderOutputLine(cmd, "%s", line)
 		}
 		renderOutputLine(cmd, "found: %d", len(resp.Items))
@@ -69,7 +73,7 @@ func renderIncidentProcessInstanceKeys(cmd *cobra.Command, items []incident.Proc
 
 // renderProcessInstanceFlatRows shares aligned process-instance rows between collected lists and incremental search pages.
 func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessInstance) error {
-	for _, line := range formatProcessInstanceFlatRows(items) {
+	for _, line := range formatProcessInstanceFlatRowsWithTimezone(items, commandShowTimezoneOffset(cmd)) {
 		renderOutputLine(cmd, "%s", line)
 	}
 	return nil
@@ -77,26 +81,38 @@ func renderProcessInstanceFlatRows(cmd *cobra.Command, items []process.ProcessIn
 
 // formatProcessInstanceFlatRows keeps process-instance page rendering list-aware without changing machine modes.
 func formatProcessInstanceFlatRows(items []process.ProcessInstance) []string {
+	return formatProcessInstanceFlatRowsWithTimezone(items, false)
+}
+
+func formatProcessInstanceFlatRowsWithTimezone(items []process.ProcessInstance, showTimezoneOffset bool) []string {
 	rows := make([]flatRow, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, flatRowPI(it))
+		rows = append(rows, flatRowPIWithTimezone(it, showTimezoneOffset))
 	}
 	return formatFlatRows(rows)
 }
 
 func oneLinePI(it process.ProcessInstance) string {
-	return compactFlatRow(flatRowPI(it))
+	return oneLinePIWithTimezone(it, false)
+}
+
+func oneLinePIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) string {
+	return compactFlatRow(flatRowPIWithTimezone(it, showTimezoneOffset))
 }
 
 // flatRowPI defines the process-instance scan order, keeping BPMN IDs before operational state columns.
 func flatRowPI(it process.ProcessInstance) flatRow {
+	return flatRowPIWithTimezone(it, false)
+}
+
+func flatRowPIWithTimezone(it process.ProcessInstance, showTimezoneOffset bool) flatRow {
 	pTag := " p:<root>"
 	if it.ParentKey != "" {
 		pTag = " p:" + it.ParentKey
 	}
 	eTag := ""
 	if it.EndDate != "" {
-		eTag = " e:" + toolx.FormatNumericZoneTimestamp(it.EndDate)
+		eTag = " e:" + toolx.FormatTimestamp(it.EndDate, showTimezoneOffset)
 	}
 	vTag := ""
 	if it.ProcessVersionTag != "" {
@@ -120,7 +136,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 		it.BpmnProcessId,
 		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
 		string(it.State),
-		"s:" + toolx.FormatNumericZoneTimestamp(it.StartDate),
+		"s:" + toolx.FormatTimestamp(it.StartDate, showTimezoneOffset),
 		strings.TrimSpace(eTag),
 		strings.TrimSpace(pTag),
 		strings.TrimSpace(incidentTag),

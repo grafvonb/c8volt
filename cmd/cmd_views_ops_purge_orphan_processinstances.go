@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
@@ -74,13 +75,13 @@ func renderOpsPurgeOrphanProcessInstancesJSONReport(report ops.OrphanPurgeReport
 	return buf.Bytes(), nil
 }
 
-func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeReport) ([]byte, error) {
+func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeReport, cfg *config.Config) ([]byte, error) {
 	var out strings.Builder
 	out.WriteString("# Orphan Process Instance Purge Audit Report\n\n")
 	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
 	writeMarkdownReportField(&out, "Command", report.CommandName)
-	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt))
-	writeMarkdownReportField(&out, "Finished", formatOpsPurgeReportTime(report.FinishedAt))
+	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))
+	writeMarkdownReportField(&out, "Finished", formatOpsPurgeReportTime(report.FinishedAt, cfg))
 	writeMarkdownReportField(&out, "Duration", report.Duration)
 	writeMarkdownReportField(&out, "Dry Run", fmt.Sprintf("%t", report.DryRun))
 	writeMarkdownReportField(&out, "C8volt Version", report.C8voltVersion)
@@ -142,9 +143,13 @@ func writeMarkdownReportList(out *strings.Builder, name string, values []string)
 	}
 }
 
-func formatOpsPurgeReportTime(t time.Time) string {
+func formatOpsPurgeReportTime(t time.Time, cfg *config.Config) string {
 	if t.IsZero() {
 		return ""
 	}
-	return toolx.FormatNumericZoneTime(t.UTC())
+	showTimezoneOffset := false
+	if cfg != nil {
+		showTimezoneOffset = cfg.App.ShowTimezoneOffset
+	}
+	return toolx.FormatTime(t.UTC(), showTimezoneOffset)
 }

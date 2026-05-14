@@ -205,7 +205,7 @@ func writeOpsPurgeOrphanProcessInstancesReport(result ops.OrphanPurgeResult, cfg
 	case OpsWorkflowReportFormatJSON:
 		data, err = renderOpsPurgeOrphanProcessInstancesJSONReport(report)
 	case OpsWorkflowReportFormatMarkdown:
-		data, err = renderOpsPurgeOrphanProcessInstancesMarkdownReport(report)
+		data, err = renderOpsPurgeOrphanProcessInstancesMarkdownReport(report, cfg)
 	default:
 		err = fmt.Errorf("unsupported ops workflow report format %q", format)
 	}

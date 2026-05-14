@@ -25,7 +25,7 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results incident.Resolu
 		case incident.ResolutionStatusSubmitted:
 			renderHumanLine(cmd, "resolved incident %s: submitted", item.IncidentKey)
 		case incident.ResolutionStatusSkipped:
-			renderHumanLine(cmd, "%s", incidentResolutionSkippedLine(item))
+			renderHumanLine(cmd, "%s", incidentResolutionSkippedLineWithTimezone(item, commandShowTimezoneOffset(cmd)))
 		case incident.ResolutionStatusMutationFailed:
 			renderHumanLine(cmd, "resolved incident %s: mutation failed: %s", item.IncidentKey, item.Error)
 		case incident.ResolutionStatusConfirmationFailed:
@@ -50,9 +50,13 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results incident.Resolu
 }
 
 func incidentResolutionSkippedLine(item incident.ResolutionResult) string {
+	return incidentResolutionSkippedLineWithTimezone(item, false)
+}
+
+func incidentResolutionSkippedLineWithTimezone(item incident.ResolutionResult, showTimezoneOffset bool) string {
 	if strings.EqualFold(item.IncidentState, "RESOLVED") {
 		if item.Incident != nil && item.Incident.CreationTime != "" {
-			return fmt.Sprintf("incident %s already resolved (created %s): skipped", item.IncidentKey, toolx.FormatNumericZoneTimestamp(item.Incident.CreationTime))
+			return fmt.Sprintf("incident %s already resolved (created %s): skipped", item.IncidentKey, toolx.FormatTimestamp(item.Incident.CreationTime, showTimezoneOffset))
 		}
 		return fmt.Sprintf("incident %s already resolved: skipped", item.IncidentKey)
 	}

@@ -1457,7 +1457,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00+00:00 (48 days ago) fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1846,8 +1846,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00+00:00 (48 days ago) fn:task-a fni:element-123 m:No retries left",
-				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00+00:00 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
 			},
 		},
 		{

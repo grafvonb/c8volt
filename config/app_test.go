@@ -34,6 +34,17 @@ func TestAppNormalize_DefaultsMissingCamundaVersionToCurrentVersion(t *testing.T
 	require.Equal(t, toolx.CurrentCamundaVersion, app.CamundaVersion)
 }
 
+func TestAppNormalize_DefaultsTimezoneOffsetOutputToFalse(t *testing.T) {
+	t.Parallel()
+
+	app := &App{}
+
+	err := app.Normalize()
+
+	require.NoError(t, err)
+	require.False(t, app.ShowTimezoneOffset)
+}
+
 func TestAppNormalize_PreservesPositiveProcessInstancePageSize(t *testing.T) {
 	t.Parallel()
 

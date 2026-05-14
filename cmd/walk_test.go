@@ -140,7 +140,7 @@ func TestWalkIncidentLines_RenderGroupedIncidentDetails(t *testing.T) {
 		JobKey:              "job-123",
 	}})
 
-	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711+00:00 (4 days ago) fn:task-a fni:element-123 m:Root job failed", out.String())
+	require.Equal(t, "\n  └─ incident-1 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) fn:task-a fni:element-123 m:Root job failed", out.String())
 	require.NotContains(t, out.String(), "incident incident-1:")
 }
 

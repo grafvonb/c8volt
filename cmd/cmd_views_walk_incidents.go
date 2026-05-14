@@ -86,12 +86,13 @@ func walkActivityView(cmd *cobra.Command, mode string, result process.TraversalR
 
 func activityPathView(cmd *cobra.Command, items []processInstanceActivityItem, sep string) error {
 	var out strings.Builder
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	for i, item := range items {
 		if i > 0 {
 			out.WriteString(sep)
 		}
-		out.WriteString(oneLinePI(item.Item))
-		writeProcessInstanceActivityLines(&out, "", item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, 0)
+		out.WriteString(oneLinePIWithTimezone(item.Item, showTimezoneOffset))
+		writeProcessInstanceActivityLinesWithTimezone(&out, "", item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, 0, showTimezoneOffset)
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
@@ -100,12 +101,13 @@ func activityPathView(cmd *cobra.Command, items []processInstanceActivityItem, s
 // incidentEnrichedPathView renders incident details under their matching path rows.
 func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrichedTraversalItem, sep string) error {
 	var out strings.Builder
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
 	for i, item := range items {
 		if i > 0 {
 			out.WriteString(sep)
 		}
-		out.WriteString(oneLinePI(item.Item))
-		writeProcessInstanceActivityLines(&out, "", nil, item.Incidents, true, item.Item.Incident, 0)
+		out.WriteString(oneLinePIWithTimezone(item.Item, showTimezoneOffset))
+		writeProcessInstanceActivityLinesWithTimezone(&out, "", nil, item.Incidents, true, item.Item.Incident, 0, showTimezoneOffset)
 	}
 	renderOutputLine(cmd, "%s", out.String())
 	return nil
@@ -113,15 +115,19 @@ func incidentEnrichedPathView(cmd *cobra.Command, items []process.IncidentEnrich
 
 // writeIncidentLines appends formatted incident lines as tree children.
 func writeIncidentLines(out *strings.Builder, prefix string, incidents []incident.ProcessInstanceIncidentDetail) {
-	writeIncidentTreeLines(out, prefix, incidents, 0)
+	writeIncidentTreeLinesWithTimezone(out, prefix, incidents, 0, false)
 }
 
 func writeIncidentTreeLines(out *strings.Builder, prefix string, incidents []incident.ProcessInstanceIncidentDetail, followingChildren int) {
+	writeIncidentTreeLinesWithTimezone(out, prefix, incidents, followingChildren, false)
+}
+
+func writeIncidentTreeLinesWithTimezone(out *strings.Builder, prefix string, incidents []incident.ProcessInstanceIncidentDetail, followingChildren int, showTimezoneOffset bool) {
 	for i, incident := range incidents {
 		out.WriteByte('\n')
 		out.WriteString(prefix)
 		out.WriteString(incidentTreeBranch(i, len(incidents)+followingChildren))
-		out.WriteString(incidentHumanLine(incident))
+		out.WriteString(incidentHumanLineWithTimezone(incident, showTimezoneOffset))
 	}
 }
 
@@ -172,9 +178,10 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 	if !ok {
 		return fmt.Errorf("root %s not found in enriched traversal items", rootKey)
 	}
-	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	renderOutputLine(cmd, "%s", oneLinePIWithTimezone(rootItem.Item, showTimezoneOffset))
 	rootChildren := edges[rootKey]
-	for _, line := range formatMustActivityLines("", nil, rootItem.Incidents, true, rootItem.Item.Incident, len(rootChildren)) {
+	for _, line := range formatMustActivityLinesWithTimezone("", nil, rootItem.Incidents, true, rootItem.Item.Incident, len(rootChildren), showTimezoneOffset) {
 		renderOutputLine(cmd, "%s", line)
 	}
 
@@ -200,9 +207,9 @@ func renderIncidentEnrichedFamilyTree(cmd *cobra.Command, rootKey string, edges 
 			var out strings.Builder
 			out.WriteString(prefix)
 			out.WriteString(branch)
-			out.WriteString(oneLinePI(item.Item))
+			out.WriteString(oneLinePIWithTimezone(item.Item, showTimezoneOffset))
 			out.WriteString(marker)
-			writeProcessInstanceActivityLines(&out, nextPrefix, nil, item.Incidents, true, item.Item.Incident, len(edges[childKey]))
+			writeProcessInstanceActivityLinesWithTimezone(&out, nextPrefix, nil, item.Incidents, true, item.Item.Incident, len(edges[childKey]), showTimezoneOffset)
 			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
@@ -221,9 +228,10 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 	if !ok {
 		return fmt.Errorf("root %s not found in enriched traversal items", rootKey)
 	}
-	renderOutputLine(cmd, "%s", oneLinePI(rootItem.Item))
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	renderOutputLine(cmd, "%s", oneLinePIWithTimezone(rootItem.Item, showTimezoneOffset))
 	rootChildren := edges[rootKey]
-	for _, line := range formatMustActivityLines("", rootItem.Variables, rootItem.Incidents, rootItem.ShowIncidents, rootItem.Item.Incident, len(rootChildren)) {
+	for _, line := range formatMustActivityLinesWithTimezone("", rootItem.Variables, rootItem.Incidents, rootItem.ShowIncidents, rootItem.Item.Incident, len(rootChildren), showTimezoneOffset) {
 		renderOutputLine(cmd, "%s", line)
 	}
 
@@ -249,9 +257,9 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 			var out strings.Builder
 			out.WriteString(prefix)
 			out.WriteString(branch)
-			out.WriteString(oneLinePI(item.Item))
+			out.WriteString(oneLinePIWithTimezone(item.Item, showTimezoneOffset))
 			out.WriteString(marker)
-			writeProcessInstanceActivityLines(&out, nextPrefix, item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, len(edges[childKey]))
+			writeProcessInstanceActivityLinesWithTimezone(&out, nextPrefix, item.Variables, item.Incidents, item.ShowIncidents, item.Item.Incident, len(edges[childKey]), showTimezoneOffset)
 			renderOutputLine(cmd, "%s", out.String())
 			walk(childKey, nextPrefix)
 		}
@@ -262,5 +270,10 @@ func renderActivityFamilyTree(cmd *cobra.Command, rootKey string, edges map[stri
 
 func formatMustActivityLines(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int) []string {
 	lines, _ := formatProcessInstanceActivityLines(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren)
+	return lines
+}
+
+func formatMustActivityLinesWithTimezone(prefix string, variables []process.ProcessInstanceVariable, incidents []incident.ProcessInstanceIncidentDetail, showIncidents bool, hasIncidentMarker bool, followingChildren int, showTimezoneOffset bool) []string {
+	lines, _ := formatProcessInstanceActivityLinesWithTimezone(prefix, variables, incidents, showIncidents, hasIncidentMarker, followingChildren, showTimezoneOffset)
 	return lines
 }

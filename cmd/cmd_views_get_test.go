@@ -5,13 +5,15 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -148,9 +150,40 @@ func TestListProcessInstancesView_AlignsFlatRowsDynamically(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, ""+
-		"1  tenant Short             v1         ACTIVE    s:2026-02-01T07:00:00+00:00 p:<root>      (today)\n"+
-		"22 tenant MuchLongerProcess v12/stable COMPLETED s:2026-01-30T07:00:00+00:00 p:1      inc! (2 days ago)\n"+
+		"1  tenant Short             v1         ACTIVE    s:2026-02-01T07:00:00.000 p:<root>      (today)\n"+
+		"22 tenant MuchLongerProcess v12/stable COMPLETED s:2026-01-30T07:00:00.000 p:1      inc! (2 days ago)\n"+
 		"found: 2\n", buf.String())
+}
+
+func TestListProcessInstancesView_UsesConfiguredTimezoneOffset(t *testing.T) {
+	prevNow := relativeDayNow
+	relativeDayNow = func() time.Time {
+		return time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	}
+	t.Cleanup(func() {
+		relativeDayNow = prevNow
+	})
+
+	cmd := &cobra.Command{Use: "process-instance"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cfg := config.New()
+	cfg.App.ShowTimezoneOffset = true
+	cmd.SetContext(cfg.ToContext(context.Background()))
+
+	err := listProcessInstancesView(cmd, process.ProcessInstances{
+		Items: []process.ProcessInstance{{
+			Key:            "1",
+			TenantId:       "tenant",
+			BpmnProcessId:  "Short",
+			ProcessVersion: 1,
+			State:          process.StateActive,
+			StartDate:      "2026-02-01T07:00:00Z",
+		}},
+	})
+
+	require.NoError(t, err)
+	require.Contains(t, buf.String(), "s:2026-02-01T07:00:00.000+00:00")
 }
 
 // Verifies process-definition scan output uses the same dynamic alignment as process-instance lists.
@@ -211,7 +244,7 @@ func TestOneLinePI_IncidentMarkerOnlyWhenIncidentExists(t *testing.T) {
 	require.NotContains(t, line, "i:true")
 }
 
-func TestOneLinePI_RendersStartAndEndDateWithOffsetSeconds(t *testing.T) {
+func TestOneLinePI_RendersStartAndEndDateWithMilliseconds(t *testing.T) {
 	line := oneLinePI(process.ProcessInstance{
 		Key:            "2251799813758959",
 		TenantId:       "<default>",
@@ -222,9 +255,10 @@ func TestOneLinePI_RendersStartAndEndDateWithOffsetSeconds(t *testing.T) {
 		EndDate:        "2026-04-13T18:03:24Z",
 	})
 
-	require.Contains(t, line, "s:2026-04-13T18:03:24.36+00:00")
-	require.Contains(t, line, "e:2026-04-13T18:03:24+00:00")
+	require.Contains(t, line, "s:2026-04-13T18:03:24.360")
+	require.Contains(t, line, "e:2026-04-13T18:03:24.000")
 	require.NotContains(t, line, "Z")
+	require.NotContains(t, line, "+00:00")
 }
 
 func TestProcessInstancesWithAgeMeta(t *testing.T) {
@@ -286,20 +320,20 @@ func TestIncidentHumanLineWithMessageLimit_RendersAlignedIncidentListFieldsAndAg
 
 	require.Len(t, lines, 2)
 	require.Contains(t, lines[0], "2251799813685249 tenant-a  JOB_NO_RETRIES   ACTIVE   j:n/a")
-	require.Contains(t, lines[0], "j:n/a 2026-05-05T10:15:00+00:00 (4 days ago) demo-process pi:2251799813711967 root:2251799813711960")
+	require.Contains(t, lines[0], "j:n/a 2026-05-05T10:15:00.000 (4 days ago) demo-process pi:2251799813711967 root:2251799813711960")
 	require.Contains(t, lines[0], "fn:task-a fni:2251799813685300 m:No retries left...")
 	require.Contains(t, lines[1], "9                <default> IO_MAPPING_ERROR RESOLVED j:n/a")
-	require.Contains(t, lines[1], "j:n/a 2026-05-08T10:15:00+00:00 (1 days ago) tiny-demo    pi:1")
+	require.Contains(t, lines[1], "j:n/a 2026-05-08T10:15:00.000 (1 days ago) tiny-demo    pi:1")
 	require.Contains(t, lines[1], "m:short")
 	require.Less(t, strings.Index(lines[0], "ACTIVE"), strings.Index(lines[0], "j:n/a"))
-	require.Less(t, strings.Index(lines[0], "j:n/a"), strings.Index(lines[0], "2026-05-05T10:15:00+00:00"))
-	require.Less(t, strings.Index(lines[0], "2026-05-05T10:15:00+00:00"), strings.Index(lines[0], "demo-process"))
+	require.Less(t, strings.Index(lines[0], "j:n/a"), strings.Index(lines[0], "2026-05-05T10:15:00.000"))
+	require.Less(t, strings.Index(lines[0], "2026-05-05T10:15:00.000"), strings.Index(lines[0], "demo-process"))
 	require.Less(t, strings.Index(lines[0], "demo-process"), strings.Index(lines[0], "pi:2251799813711967"))
 	require.Less(t, strings.Index(lines[0], "pi:2251799813711967"), strings.Index(lines[0], "root:2251799813711960"))
 	require.Less(t, strings.Index(lines[0], "root:2251799813711960"), strings.Index(lines[0], "fn:task-a"))
 	require.Less(t, strings.Index(lines[0], "fn:task-a"), strings.Index(lines[0], "fni:2251799813685300"))
 	require.Less(t, strings.Index(lines[0], "fni:2251799813685300"), strings.Index(lines[0], "m:No"))
-	require.Equal(t, strings.Index(lines[0], "2026-05-05T10:15:00+00:00"), strings.Index(lines[1], "2026-05-08T10:15:00+00:00"))
+	require.Equal(t, strings.Index(lines[0], "2026-05-05T10:15:00.000"), strings.Index(lines[1], "2026-05-08T10:15:00.000"))
 	require.NotContains(t, lines[0], "2251799813685200")
 	require.NotContains(t, lines[0], "err:")
 	require.Contains(t, lines[0], "m:No")
@@ -717,7 +751,7 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 		JobKey:              "job-123",
 	})
 
-	require.Equal(t, "incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711+00:00 (4 days ago) fn:task-a fni:element-123 m:No retries left", got)
+	require.Equal(t, "incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711 (4 days ago) fn:task-a fni:element-123 m:No retries left", got)
 	require.NotContains(t, got, "incident incident-123:")
 }
 
@@ -910,7 +944,7 @@ func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
 		output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 		require.Contains(t, output, "incident-123")
-		require.Contains(t, output, "2026-05-06T09:29:42.711+00:00")
+		require.Contains(t, output, "2026-05-06T09:29:42.711")
 		require.Contains(t, output, "fn:task-a")
 		require.Contains(t, output, "JOB_NO_RETRIES")
 		require.Contains(t, output, "j:job-123")

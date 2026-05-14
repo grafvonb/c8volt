@@ -298,6 +298,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	v.SetDefault("log.with_request_body", false)
 	v.SetDefault("http.timeout", "30s")
 	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
+	v.SetDefault("app.show_timezone_offset", false)
 
 	v.SetEnvPrefix("c8volt")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
