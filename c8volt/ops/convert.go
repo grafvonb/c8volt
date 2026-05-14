@@ -120,6 +120,146 @@ func fromDomainOrphanPurgeReport(x d.OrphanPurgeReport) OrphanPurgeReport {
 	}
 }
 
+func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyRequest {
+	return d.RetentionPolicyRequest{
+		CommandName:            x.CommandName,
+		RetentionDays:          x.RetentionDays,
+		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
+		DryRun:                 x.DryRun,
+		AutoConfirm:            x.AutoConfirm,
+		Automation:             x.Automation,
+		OutputMode:             x.OutputMode,
+		Selection:              toDomainProcessInstanceFilter(x.Selection),
+		BatchSize:              x.BatchSize,
+		Limit:                  x.Limit,
+		Workers:                x.Workers,
+		NoWait:                 x.NoWait,
+		NoStateCheck:           x.NoStateCheck,
+		Force:                  x.Force,
+		FailFast:               x.FailFast,
+		NoWorkerLimit:          x.NoWorkerLimit,
+		ReportFile:             x.ReportFile,
+		ReportFormat:           x.ReportFormat,
+		StartedAt:              x.StartedAt,
+	}
+}
+
+func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyResult {
+	return RetentionPolicyResult{
+		Request:    fromDomainRetentionPolicyRequest(x.Request),
+		Discovery:  fromDomainRetentionDiscoveryResult(x.Discovery),
+		DeletePlan: fromDomainRetentionDeletePlan(x.DeletePlan),
+		Deletion:   fromDomainRetentionDeletionResult(x.Deletion),
+		Report:     fromDomainRetentionAuditReport(x.Report),
+		Outcome:    RetentionPolicyOutcome(x.Outcome),
+		Errors:     append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolicyRequest {
+	return RetentionPolicyRequest{
+		CommandName:            x.CommandName,
+		RetentionDays:          x.RetentionDays,
+		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
+		DryRun:                 x.DryRun,
+		AutoConfirm:            x.AutoConfirm,
+		Automation:             x.Automation,
+		OutputMode:             x.OutputMode,
+		Selection:              fromDomainProcessInstanceFilter(x.Selection),
+		BatchSize:              x.BatchSize,
+		Limit:                  x.Limit,
+		Workers:                x.Workers,
+		NoWait:                 x.NoWait,
+		NoStateCheck:           x.NoStateCheck,
+		Force:                  x.Force,
+		FailFast:               x.FailFast,
+		NoWorkerLimit:          x.NoWorkerLimit,
+		ReportFile:             x.ReportFile,
+		ReportFormat:           x.ReportFormat,
+		StartedAt:              x.StartedAt,
+	}
+}
+
+func fromDomainRetentionDiscoveryResult(x d.RetentionDiscoveryResult) RetentionDiscoveryResult {
+	return RetentionDiscoveryResult{
+		Status:                 WorkflowStepStatus(x.Status),
+		RetentionDays:          x.RetentionDays,
+		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
+		Filters:                fromDomainProcessInstanceFilter(x.Filters),
+		SeedKeys:               append([]string(nil), x.SeedKeys...),
+		Count:                  x.Count,
+		Notices:                toolx.MapSlice(x.Notices, fromDomainRetentionWorkflowNotice),
+		Errors:                 append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainRetentionDeletePlan(x d.RetentionDeletePlan) RetentionDeletePlan {
+	return RetentionDeletePlan{
+		Status:                WorkflowStepStatus(x.Status),
+		SeedKeys:              append([]string(nil), x.SeedKeys...),
+		ResolvedRootKeys:      append([]string(nil), x.ResolvedRootKeys...),
+		AffectedKeys:          append([]string(nil), x.AffectedKeys...),
+		DuplicateKeys:         append([]string(nil), x.DuplicateKeys...),
+		FinalStateItems:       toolx.MapSlice(x.FinalStateItems, fromDomainProcessInstance),
+		NonFinalAffectedItems: toolx.MapSlice(x.NonFinalAffectedItems, fromDomainProcessInstance),
+		MissingAncestors:      toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),
+		TraversalWarnings:     append([]string(nil), x.TraversalWarnings...),
+		RequiresConfirmation:  x.RequiresConfirmation,
+		Errors:                append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainRetentionDeletionResult(x d.RetentionDeletionResult) RetentionDeletionResult {
+	return RetentionDeletionResult{
+		Status:            WorkflowStepStatus(x.Status),
+		SubmittedRootKeys: append([]string(nil), x.SubmittedRootKeys...),
+		Items:             toolx.MapSlice(x.Items, fromDomainDeleteReport),
+		Submitted:         x.Submitted,
+		Confirmed:         x.Confirmed,
+		NoWait:            x.NoWait,
+		Errors:            append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainRetentionAuditReport(x d.RetentionAuditReport) RetentionAuditReport {
+	return RetentionAuditReport{
+		SchemaVersion:          x.SchemaVersion,
+		CommandName:            x.CommandName,
+		StartedAt:              x.StartedAt,
+		FinishedAt:             x.FinishedAt,
+		Duration:               x.Duration,
+		DryRun:                 x.DryRun,
+		C8voltVersion:          x.C8voltVersion,
+		CamundaVersion:         x.CamundaVersion,
+		ProfileIdentity:        x.ProfileIdentity,
+		TenantID:               x.TenantID,
+		RetentionDays:          x.RetentionDays,
+		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
+		SelectionFilters:       fromDomainProcessInstanceFilter(x.SelectionFilters),
+		Discovery:              fromDomainRetentionDiscoveryResult(x.Discovery),
+		DeletePlan:             fromDomainRetentionDeletePlan(x.DeletePlan),
+		Deletion:               fromDomainRetentionDeletionResult(x.Deletion),
+		AutoConfirm:            x.AutoConfirm,
+		Automation:             x.Automation,
+		NoWait:                 x.NoWait,
+		NoStateCheck:           x.NoStateCheck,
+		Force:                  x.Force,
+		FailFast:               x.FailFast,
+		NoWorkerLimit:          x.NoWorkerLimit,
+		Errors:                 append([]string(nil), x.Errors...),
+		Outcome:                RetentionPolicyOutcome(x.Outcome),
+	}
+}
+
+func fromDomainRetentionWorkflowNotice(x d.RetentionWorkflowNotice) RetentionWorkflowNotice {
+	return RetentionWorkflowNotice{
+		Code:     x.Code,
+		Severity: x.Severity,
+		Message:  x.Message,
+		Details:  toolx.CopyMap(x.Details),
+	}
+}
+
 func toDomainProcessInstanceFilter(x process.ProcessInstanceFilter) d.ProcessInstanceFilter {
 	return d.ProcessInstanceFilter{
 		Key:                  x.Key,

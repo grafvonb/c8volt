@@ -24,14 +24,14 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Define internal retention request/result domain models in `internal/domain/ops_retention_policy.go`
-- [ ] T004 [P] Define public ops retention request/result models in `c8volt/ops/model.go`
-- [ ] T005 [P] Extend public ops facade API for retention policy in `c8volt/ops/api.go`
-- [ ] T006 Extend internal ops service interface for retention policy in `internal/services/ops/api.go`
-- [ ] T007 Implement public/internal retention model conversions in `c8volt/ops/convert.go`
-- [ ] T008 Implement thin public ops facade retention method in `c8volt/ops/client.go`
-- [ ] T009 [P] Add foundational ops facade wiring tests for retention policy in `c8volt/ops/client_test.go`
-- [ ] T010 [P] Add foundational internal ops service tests for retention policy request validation in `internal/services/ops/retention_policy_test.go`
+- [x] T003 [P] Define internal retention request/result domain models in `internal/domain/ops_retention_policy.go`
+- [x] T004 [P] Define public ops retention request/result models in `c8volt/ops/model.go`
+- [x] T005 [P] Extend public ops facade API for retention policy in `c8volt/ops/api.go`
+- [x] T006 Extend internal ops service interface for retention policy in `internal/services/ops/api.go`
+- [x] T007 Implement public/internal retention model conversions in `c8volt/ops/convert.go`
+- [x] T008 Implement thin public ops facade retention method in `c8volt/ops/client.go`
+- [x] T009 [P] Add foundational ops facade wiring tests for retention policy in `c8volt/ops/client_test.go`
+- [x] T010 [P] Add foundational internal ops service tests for retention policy request validation in `internal/services/ops/retention_policy_test.go`
 
 **Checkpoint**: Retention workflow model, facade, and service boundary are available for story implementation.
 

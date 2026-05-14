@@ -9,6 +9,8 @@
 
 ## Codebase Patterns
 
+- Retention policy foundation now mirrors #186 boundaries: domain models in `internal/domain/ops_retention_policy.go`, public models/API/conversions in `c8volt/ops`, and a validation-only service seam in `internal/services/ops/retention_policy.go`.
+- Foundational retention service validation rejects negative retention days and explicit process-instance key selection with `domain.ErrValidation`; the public ops facade maps those through `ferrors.FromDomain` to invalid-input behavior.
 - Mandatory Ralph implementation context is `specs/ralph-implementation-rules.md`; commit subjects for this feature must use Conventional Commits and end with `#187`.
 - `ops execute` is currently a grouping command in `cmd/ops_execute.go`; it is state-changing metadata only, renders help from `RunE`, and currently has no child workflow commands.
 - Existing #186 ops purge command wiring lives in `cmd/ops_purge_orphan_processinstances.go`: command files own Cobra flags, validation, `NewCli`, automation support checks, report-path planning validation, confirmation, facade calls, report writing, and final rendering.
@@ -28,7 +30,7 @@
 - Speckit specification created from GitHub issue #187.
 - Clarification gate completed with no critical ambiguities worth formal questioning.
 - Planning artifacts generated for Ralph-sized implementation work.
-- No implementation tasks have been started.
+- Phase 1 setup and Phase 2 foundational model/facade/service tasks are complete.
 
 ## Ralph Notes
 
@@ -51,4 +53,35 @@
 - Phase 1 is a documentation/setup work unit only; no Go source changes were needed.
 - Issue traceability is persisted in `spec.md`, `plan.md`, `tasks.md`, and this progress file as `#187`.
 - The next iteration should begin with Phase 2 foundational model/facade/service boundary tasks and should not start US1 until Phase 2 is complete.
+---
+---
+## Iteration 2 - 2026-05-14 12:36:33 CEST
+**User Story**: Phase 2: Foundational (Blocking Prerequisites)
+**Tasks Completed**:
+- [x] T003: Define internal retention request/result domain models in `internal/domain/ops_retention_policy.go`
+- [x] T004: Define public ops retention request/result models in `c8volt/ops/model.go`
+- [x] T005: Extend public ops facade API for retention policy in `c8volt/ops/api.go`
+- [x] T006: Extend internal ops service interface for retention policy in `internal/services/ops/api.go`
+- [x] T007: Implement public/internal retention model conversions in `c8volt/ops/convert.go`
+- [x] T008: Implement thin public ops facade retention method in `c8volt/ops/client.go`
+- [x] T009: Add foundational ops facade wiring tests for retention policy in `c8volt/ops/client_test.go`
+- [x] T010: Add foundational internal ops service tests for retention policy request validation in `internal/services/ops/retention_policy_test.go`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/api.go
+- c8volt/ops/client.go
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- internal/domain/ops_retention_policy.go
+- internal/services/ops/api.go
+- internal/services/ops/retention_policy.go
+- internal/services/ops/retention_policy_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention foundation is intentionally validation-only; discovery and mutation remain unimplemented for later user-story work units.
+- Targeted validation passed: `go test ./c8volt/ops -count=1`, `go test ./internal/services/ops -count=1`, `go test ./c8volt -count=1`, and `go test ./cmd -run 'TestCommandCapability|TestOpsPurge|TestRoot|TestNewCli' -count=1`.
+- The next iteration can begin US1 command registration now that the retention model, facade, and service seam exist.
 ---

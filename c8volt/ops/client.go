@@ -29,3 +29,12 @@ func (c *client) PurgeOrphanProcessInstances(ctx context.Context, request Orphan
 	}
 	return out, nil
 }
+
+func (c *client) ExecuteRetentionPolicy(ctx context.Context, request RetentionPolicyRequest, opts ...options.FacadeOption) (RetentionPolicyResult, error) {
+	result, err := c.api.ExecuteRetentionPolicy(ctx, toDomainRetentionPolicyRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainRetentionPolicyResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
