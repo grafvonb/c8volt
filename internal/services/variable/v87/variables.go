@@ -19,7 +19,7 @@ import (
 // SearchProcessInstanceVariables returns process-scope variables for a v8.7 process instance.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using operate client", key))
+	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
 	keyInt, err := processInstanceKeyInt64(key)
 	if err != nil {
 		return nil, err

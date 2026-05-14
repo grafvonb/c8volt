@@ -42,7 +42,7 @@ func ExecuteBulkOperation[R Reporter](ctx context.Context, keys []string, wanted
 	lk := len(ukeys)
 
 	workers := toolx.DetermineNoOfWorkers(lk, wantedWorkers, cCfg.NoWorkerLimit)
-	log.Info(fmt.Sprintf("%s requested for %d unique key(s) using %d worker(s)", operationName, len(ukeys), workers))
+	log.Info(fmt.Sprintf("%s: requested %d, workers %d", operationName, len(ukeys), workers))
 
 	rs, err := ExecuteSlice[string, R](ctx, ukeys, workers, failFast, func(ctx context.Context, key string, _ int) (R, error) {
 		return fn(ctx, key, opts...)
@@ -58,7 +58,7 @@ func ExecuteBulkOperation[R Reporter](ctx context.Context, keys []string, wanted
 			}
 		}
 		noks = total - oks
-		log.Info(fmt.Sprintf("%s completed: %d succeeded, %d failed", operationName, oks, noks))
+		log.Info(fmt.Sprintf("%s done; ok %d, failed %d", operationName, oks, noks))
 	}
 
 	return rs, err

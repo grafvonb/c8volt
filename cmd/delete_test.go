@@ -2097,7 +2097,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.NotContains(t, string(output), "either --key")
 	require.NotContains(t, string(output), "WARN WARNING")
 	require.NotContains(t, string(output), "WARNING:")
-	require.Contains(t, string(output), "deleting 1 process definitions completed")
+	require.Contains(t, string(output), "deleting pd done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
 }

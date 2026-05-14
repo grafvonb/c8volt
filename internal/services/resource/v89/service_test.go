@@ -492,7 +492,7 @@ func TestService_ProcessDefinitionDeployPoller(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, poller.JobPollStatus{
 			Success: true,
-			Message: "process definitions visible: [proc-1]",
+			Message: "pd visible [proc-1]",
 		}, status)
 	})
 }

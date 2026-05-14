@@ -22,12 +22,12 @@ func VerboseLog(ctx context.Context, callCfg *services.CallCfg, log *slog.Logger
 func ProcessDefinitionStatsActivity(bpmnProcessId, key string) string {
 	switch {
 	case bpmnProcessId != "" && key != "":
-		return fmt.Sprintf("retrieving process definition stats for %s (%s)", bpmnProcessId, key)
+		return fmt.Sprintf("getting pd stats %s (%s)", bpmnProcessId, key)
 	case bpmnProcessId != "":
-		return fmt.Sprintf("retrieving process definition stats for %s", bpmnProcessId)
+		return fmt.Sprintf("getting pd stats %s", bpmnProcessId)
 	case key != "":
-		return fmt.Sprintf("retrieving process definition stats for key %s", key)
+		return fmt.Sprintf("getting pd stats %s", key)
 	default:
-		return "retrieving process definition stats"
+		return "getting pd stats"
 	}
 }

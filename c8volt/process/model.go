@@ -9,6 +9,7 @@ import (
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/toolx"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 type ProcessDefinition struct {
@@ -199,6 +200,18 @@ type ProcessInstancePage struct {
 	ReportedTotal *ProcessInstanceReportedTotal `json:"reportedTotal,omitempty"`
 	EndCursor     string                        `json:"endCursor,omitempty"`
 	Items         []ProcessInstance             `json:"items,omitempty"`
+}
+
+type OrphanDiscoveryRequest struct {
+	Filter    ProcessInstanceFilter `json:"filter,omitempty"`
+	BatchSize int32                 `json:"batchSize,omitempty"`
+	Limit     int32                 `json:"limit,omitempty"`
+}
+
+type OrphanDiscovery struct {
+	Filter ProcessInstanceFilter `json:"filter,omitempty"`
+	Items  []ProcessInstance     `json:"items,omitempty"`
+	Keys   typex.Keys            `json:"keys,omitempty"`
 }
 
 type ProcessInstanceFilter struct {

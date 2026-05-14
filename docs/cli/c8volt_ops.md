@@ -55,5 +55,6 @@ c8volt ops [flags]
 
 * [c8volt](c8volt)	 - Operate Camunda 8 workflows from the command line
 * [c8volt ops execute](c8volt_ops_execute)	 - Discover predefined operational playbooks
+* [c8volt ops purge](c8volt_ops_purge)	 - Discover destructive operational cleanup workflows
 * [c8volt ops repair](c8volt_ops_repair)	 - Discover repair and remediation workflows
 

@@ -294,7 +294,7 @@ func TestClient_PreviewDeleteProcessDefinitions_UsesActivityIndicator(t *testing
 	started, stopped, msgs := sink.Snapshot()
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
-	assert.Equal(t, []string{"checking delete impact for 2 process definition(s); process-instance state check is skipped; no changes are being made"}, msgs)
+	assert.Equal(t, []string{"checking 2 pd delete impact; pi state skipped, dry run"}, msgs)
 }
 
 // TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce verifies
@@ -347,7 +347,7 @@ func TestClient_PreviewDeleteProcessDefinitions_ExpandsRootsForForce(t *testing.
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
 	assert.Equal(t, []string{
-		"checking active process instances and cancellation roots for 1 process definition(s); no changes are being made",
+		"checking active pi and roots for 1 pd; dry run",
 	}, msgs)
 }
 
@@ -373,9 +373,9 @@ func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 	assert.Equal(t, 3, started)
 	assert.Equal(t, 3, stopped)
 	assert.Equal(t, []string{
-		"deleting 2 process definition(s)",
-		"checking delete impact for 1 process definition(s); process-instance state check is skipped; no changes are being made",
-		"checking delete impact for 1 process definition(s); process-instance state check is skipped; no changes are being made",
+		"deleting 2 pd",
+		"checking 1 pd delete impact; pi state skipped, dry run",
+		"checking 1 pd delete impact; pi state skipped, dry run",
 	}, msgs)
 }
 
@@ -836,6 +836,10 @@ func (stubProcessAPI) GetDirectChildrenOfProcessInstance(context.Context, string
 }
 
 func (stubProcessAPI) FilterProcessInstanceWithOrphanParent(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error) {
+	panic("unexpected call")
+}
+
+func (stubProcessAPI) DiscoverOrphanProcessInstances(context.Context, process.OrphanDiscoveryRequest, ...options.FacadeOption) (process.OrphanDiscovery, error) {
 	panic("unexpected call")
 }
 

@@ -334,8 +334,8 @@ func TestConfigTestConnectionCommand_SuccessLogsAndPrintsTopology(t *testing.T) 
 		"│  └─ Partition 2: role=leader health=healthy\n"+
 		"└─ Broker 3: broker-c.internal:26503 version=8.8.0\n", stdout)
 	require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
-	require.Contains(t, stderr, "INFO no active profile provided in configuration, using default settings")
-	require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded base_url="+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO config profile default")
+	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
 	require.NotContains(t, stderr, "WARN")
 }
 
@@ -386,7 +386,7 @@ profiles:
 	require.NotContains(t, stdout, "INFO")
 	require.Contains(t, stdout, `"ok": true`)
 	require.Contains(t, stdout, `"base_url": "`+srv.URL+`/v2"`)
-	require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded base_url="+srv.URL+"/v2")
+	require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
 }
 
 func TestConfigTestConnectionCommand_JSONIncludesVersionMismatchWarning(t *testing.T) {
@@ -449,7 +449,7 @@ func TestConfigTestConnectionCommand_LogsConfigSource(t *testing.T) {
 		_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "config", "test-connection")
 
 		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
-		require.Contains(t, stderr, "INFO no active profile provided in configuration, using default settings")
+		require.Contains(t, stderr, "INFO config profile default")
 	})
 
 	t.Run("active profile", func(t *testing.T) {
@@ -478,8 +478,8 @@ profiles:
 		_, stderr := executeRootWithSeparateOutputsForTest(t, "--config", cfgPath, "--profile", "prod", "config", "test-connection")
 
 		require.Contains(t, stderr, "INFO config loaded: "+cfgPath)
-		require.Contains(t, stderr, "INFO using configuration profile: prod")
-		require.Contains(t, stderr, "INFO connection to configured Camunda cluster succeeded base_url="+srv.URL+"/v2")
+		require.Contains(t, stderr, "INFO config profile prod")
+		require.Contains(t, stderr, "INFO camunda connection ok; base URL "+srv.URL+"/v2")
 	})
 
 	t.Run("no config file loaded", func(t *testing.T) {
@@ -498,7 +498,7 @@ profiles:
 		_, stderr := executeRootWithSeparateOutputsForTest(t, "config", "test-connection")
 
 		require.Contains(t, stderr, "INFO no config file loaded, using defaults and environment variables")
-		require.Contains(t, stderr, "INFO no active profile provided in configuration, using default settings")
+		require.Contains(t, stderr, "INFO config profile default")
 	})
 }
 

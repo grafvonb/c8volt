@@ -22,7 +22,7 @@ import (
 // SearchProcessInstanceVariables returns untruncated process-scope variables for a v8.9 process instance.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
 	processInstanceKeyFilter, err := newProcessInstanceKeyEqFilterPtr(key)
 	if err != nil {
 		return nil, fmt.Errorf("building process-instance variable filter: %w", err)

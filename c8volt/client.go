@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/batchoperation"
 	"github.com/grafvonb/c8volt/c8volt/incident"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
 	"github.com/grafvonb/c8volt/config"
@@ -18,6 +19,7 @@ import (
 	csvc "github.com/grafvonb/c8volt/internal/services/cluster"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
+	opsvc "github.com/grafvonb/c8volt/internal/services/ops"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
@@ -97,6 +99,7 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
+	opsAPI := opsvc.New(piAPI, c.log)
 	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
 		return nil, err
@@ -108,6 +111,7 @@ func New(opts ...Option) (API, error) {
 		IncidentAPI:       incident.New(incAPI, c.log),
 		TaskAPI:           task.New(pdAPI, piAPI, utAPI, c.log),
 		JobAPI:            job.New(jAPI, c.log),
+		OpsAPI:            ops.New(opsAPI, c.log),
 		BatchOperationAPI: batchoperation.New(batchAPI, c.log),
 		TenantAPI:         tenant.New(tAPI, c.log),
 		capsFunc: func(context.Context) (Capabilities, error) {
@@ -135,6 +139,7 @@ type ResourceAPI = resource.API
 type TenantAPI = tenant.API
 type JobAPI = job.API
 type BatchOperationAPI = batchoperation.API
+type OpsAPI = ops.API
 
 var _ API = (*client)(nil)
 
@@ -144,6 +149,7 @@ type client struct {
 	IncidentAPI
 	TaskAPI
 	JobAPI
+	OpsAPI
 	BatchOperationAPI
 	ResourceAPI
 	TenantAPI

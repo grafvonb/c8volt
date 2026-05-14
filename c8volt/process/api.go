@@ -79,6 +79,7 @@ type API interface {
 	LookupProcessInstanceStateByKey(ctx context.Context, key string, opts ...options.FacadeOption) (StateReport, ProcessInstance, error)
 	SearchProcessInstancesPage(ctx context.Context, filter ProcessInstanceFilter, page ProcessInstancePageRequest, opts ...options.FacadeOption) (ProcessInstancePage, error)
 	SearchProcessInstances(ctx context.Context, filter ProcessInstanceFilter, size int32, opts ...options.FacadeOption) (ProcessInstances, error)
+	DiscoverOrphanProcessInstances(ctx context.Context, request OrphanDiscoveryRequest, opts ...options.FacadeOption) (OrphanDiscovery, error)
 	CancelProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (CancelReport, ProcessInstances, error)
 	DeleteProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (DeleteReport, error)
 	GetDirectChildrenOfProcessInstance(ctx context.Context, key string, opts ...options.FacadeOption) (ProcessInstances, error)

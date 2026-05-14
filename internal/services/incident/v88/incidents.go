@@ -22,7 +22,7 @@ import (
 // GetIncident loads a single incident by key for direct resolution planning and confirmation.
 func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("getting incident with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("getting incident %s", key))
 	resp, err := s.cc.GetIncidentWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessInstanceIncidentDetail{}, err
@@ -37,7 +37,7 @@ func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.
 // ResolveIncident submits direct incident resolution without doing confirmation polling.
 func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("resolving incident with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("resolving incident %s", key))
 	resp, err := s.cc.ResolveIncidentWithResponse(ctx, key, camundav88.ResolveIncidentJSONRequestBody{})
 	if err != nil {
 		return d.IncidentResolutionResponse{Key: key}, err
@@ -62,7 +62,7 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 // filtering locally.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	callCfg := services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("searching pi %s incidents", key))
 	return s.searchProcessInstanceIncidentsPages(ctx, key, common.EffectiveTenant(s.cfg), callCfg)
 }
 

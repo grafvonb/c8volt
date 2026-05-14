@@ -149,12 +149,12 @@ command contract.`,
 			return silenceUsageForError(cmd, bootstrapLocalPrecondition(config.FormatValidationError("configuration is invalid", err)))
 		}
 		if cfg.ActiveProfile != "" {
-			log.Debug("using configuration profile: " + cfg.ActiveProfile)
+			log.Debug("config profile " + cfg.ActiveProfile)
 		} else {
-			log.Debug("no active profile provided in configuration, using default settings")
+			log.Debug("config profile default")
 		}
-		log.Debug("working with Camunda version: " + string(cfg.App.CamundaVersion))
-		log.Debug("using tenant ID: " + cfg.App.ViewTenant())
+		log.Debug("camunda version " + string(cfg.App.CamundaVersion))
+		log.Debug("tenant " + cfg.App.ViewTenant())
 
 		ctx, err = installRemoteCommandServices(ctx, cfg, log)
 		if err != nil {
@@ -298,6 +298,7 @@ func initViper(v *viper.Viper, cmd *cobra.Command) (*resolverBindings, error) {
 	v.SetDefault("log.with_request_body", false)
 	v.SetDefault("http.timeout", "30s")
 	v.SetDefault("app.process_instance_page_size", consts.MaxPISearchSize)
+	v.SetDefault("app.show_timezone_offset", false)
 
 	v.SetEnvPrefix("c8volt")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))

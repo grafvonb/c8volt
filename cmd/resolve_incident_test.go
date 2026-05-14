@@ -80,7 +80,7 @@ func TestResolveIncidentCommand_SkipsNonActiveIncidentBeforeMutation(t *testing.
 
 	require.False(t, sawResolve)
 	require.Empty(t, stdout)
-	require.Contains(t, stderr, "incident 2251799813685249 already resolved (created 2026-03-23T18:01:00Z): skipped")
+	require.Contains(t, stderr, "incident 2251799813685249 already resolved (created 2026-03-23T18:01:00.000): skipped")
 	require.Contains(t, stderr, "resolved: 1 (confirmed/submitted/skipped: 1, failed: 0)")
 }
 
@@ -363,7 +363,7 @@ func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *tes
 	require.Error(t, err)
 	require.Equal(t, 2, getCount)
 	require.Contains(t, string(output), "confirmation failed")
-	require.Contains(t, string(output), "exceeded max_retries (1)")
+	require.Contains(t, string(output), "wait exceeded retries; max 1")
 }
 
 func TestResolveIncidentCommand_InvalidFlagKeyHelper(t *testing.T) {

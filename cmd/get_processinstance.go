@@ -138,11 +138,11 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 		}
 
-		log.Debug(fmt.Sprintf("fetching process instances, render mode: %s", pickMode()))
+		log.Debug(fmt.Sprintf("getting pi; mode %s", pickMode()))
 		var pis process.ProcessInstances
 		switch {
 		case ltk > 0:
-			log.Debug(fmt.Sprintf("resolving process instance key(s) from user task key(s) [%s]", taskKeys))
+			log.Debug(fmt.Sprintf("resolving pi keys from user tasks [%s]", taskKeys))
 			processInstanceKeys, err := cli.ResolveProcessInstanceKeysFromUserTasks(ctx, taskKeys, collectOptions()...)
 			if err != nil {
 				fail(fmt.Errorf("resolve process instance key(s) from user task key(s): %w", err))
@@ -157,7 +157,7 @@ var getProcessInstanceCmd = &cobra.Command{
 				fail(fmt.Errorf("get process instance(s) resolved from user task key(s) [%s]: %w", taskKeys, err))
 			}
 		case lk > 0:
-			log.Debug(fmt.Sprintf("searching for key(s) [%s]", keys))
+			log.Debug(fmt.Sprintf("getting pi keys [%s]", keys))
 			if err := validatePIKeyedModeDateFilters(lk); err != nil {
 				fail(err)
 			}
@@ -223,8 +223,18 @@ var getProcessInstanceCmd = &cobra.Command{
 			}
 			handleProcessDefinitionSelectorValidationError(cmd, log, cfg.App.NoErrCodes, cli, result)
 			filter := populatePISearchFilterOpts()
-			log.Debug(fmt.Sprintf("using process instance search filter: %s", filter.String()))
+			log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 			if flagGetPITotal {
+				if flagGetPIOrphanChildrenOnly {
+					pis, _, err := searchOrphanProcessInstancesWithSharedDiscovery(cmd, cli, cfg, filter)
+					if err != nil {
+						fail(fmt.Errorf("get process instances total: %w", err))
+					}
+					if err := processInstanceTotalView(cmd, int64(len(pis.Items))); err != nil {
+						fail(fmt.Errorf("render process instance total: %w", err))
+					}
+					return
+				}
 				total, err := searchProcessInstancesTotal(cmd, log, cli, cfg, filter)
 				if err != nil {
 					fail(fmt.Errorf("get process instances total: %w", err))
@@ -235,7 +245,11 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			var renderedIncrementally bool
-			pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
+			if flagGetPIOrphanChildrenOnly {
+				pis, renderedIncrementally, err = searchOrphanProcessInstancesWithSharedDiscovery(cmd, cli, cfg, filter)
+			} else {
+				pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
+			}
 			if err != nil {
 				fail(fmt.Errorf("get process instances: %w", err))
 			}

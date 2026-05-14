@@ -37,7 +37,7 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 		return errors.New("poll function is required")
 	}
 	startedAt := time.Now()
-	log.Debug(fmt.Sprintf("waiting for completion started with timeout %s", timeout.String()))
+	log.Debug(fmt.Sprintf("waiting for completion; timeout %s", timeout.String()))
 	var activity logging.ActivitySink
 	if !noProgress {
 		activity = logging.ActivityFromContext(ctx)
@@ -56,14 +56,14 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 		if !noProgress && activity == nil {
 			fmt.Fprint(os.Stderr, ".")
 		}
-		log.Debug(fmt.Sprintf("waiting for completion loop: %d attempt(s), already running since %s for %s", attempt, startedAt.String(), duration.String()))
+		log.Debug(fmt.Sprintf("waiting for completion; attempt %d, started %s, elapsed %s", attempt, startedAt.String(), duration.String()))
 
 		if err := ctx.Err(); err != nil {
-			log.Debug(fmt.Sprintf("waiting for completion canceled by context err: %s", err))
+			log.Debug(fmt.Sprintf("waiting for completion stopped; reason context, error %s", err))
 			return err
 		}
 		if time.Now().After(deadline) {
-			log.Debug(fmt.Sprint("waiting for completion canceled by timeout after attempts=", attempt))
+			log.Debug(fmt.Sprintf("waiting for completion stopped; reason timeout, attempts %d", attempt))
 			return errors.New("timeout while waiting for completion for backend jobs to finish")
 		}
 
@@ -77,10 +77,10 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 			if !noProgress && activity == nil {
 				fmt.Fprintf(os.Stderr, "completed after: %s\n", duration.String())
 			}
-			log.Debug(fmt.Sprintf("waiting for completion completed successfully after %d attempts in %s", attempt, duration.String()))
+			log.Debug(fmt.Sprintf("waiting for completion done; attempts %d, elapsed %s", attempt, duration.String()))
 			return nil
 		}
-		log.Debug(fmt.Sprintf("waiting for completion due to: %s", status.Message))
+		log.Debug(fmt.Sprintf("waiting for completion; reason %s", status.Message))
 
 		jitterRange := defaultJitterMaxRatio - defaultJitterMinRatio
 		jitterFactor := defaultJitterMinRatio + rand.Float64()*jitterRange
@@ -88,7 +88,7 @@ func WaitForCompletion(ctx context.Context, log *slog.Logger, timeout time.Durat
 
 		select {
 		case <-ctx.Done():
-			log.Debug("waiting for completion canceled by context during sleep")
+			log.Debug("waiting for completion stopped; reason context during sleep")
 			return ctx.Err()
 		case <-time.After(sleep):
 		}

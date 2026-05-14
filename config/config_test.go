@@ -87,6 +87,32 @@ func TestConfigWithProfile_PreservesBaseValuesForUnsetProfileFields(t *testing.T
 	require.Equal(t, ModeOAuth2, effective.Auth.Mode)
 }
 
+func TestResolveEffectiveConfig_LoadsShowTimezoneOffsetFromConfig(t *testing.T) {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(strings.NewReader(`
+app:
+  show_timezone_offset: true
+auth:
+  mode: none
+apis:
+  camunda_api:
+    base_url: http://base.example.test
+`))
+	require.NoError(t, err)
+
+	cfg, err := ResolveEffectiveConfig(
+		v,
+		func(string) bool { return false },
+		func(activeProfile, key string) bool {
+			return v.InConfig("profiles." + activeProfile + "." + key)
+		},
+	)
+	require.NoError(t, err)
+
+	require.True(t, cfg.App.ShowTimezoneOffset)
+}
+
 func TestResolveEffectiveConfig_UsesCommandLocalBackoffValuesInSharedResolver(t *testing.T) {
 	v := viper.New()
 	v.SetConfigType("yaml")

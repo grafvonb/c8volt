@@ -44,7 +44,7 @@ func NewProcessDefinitionVisibilityPoller(keys []string, get func(context.Contex
 		if len(keys) == 0 {
 			return poller.JobPollStatus{
 				Success: true,
-				Message: "no process definitions in deployment; nothing to wait for",
+				Message: "no pd in deployment",
 			}, nil
 		}
 		missing := make([]string, 0)
@@ -71,12 +71,12 @@ func NewProcessDefinitionVisibilityPoller(keys []string, get func(context.Contex
 		if len(missing) > 0 {
 			return poller.JobPollStatus{
 				Success: false,
-				Message: fmt.Sprintf("process definitions not visible yet, waiting: %v", missing),
+				Message: fmt.Sprintf("pd not visible; waiting %v", missing),
 			}, nil
 		}
 		return poller.JobPollStatus{
 			Success: true,
-			Message: fmt.Sprintf("process definitions visible: %v", keys),
+			Message: fmt.Sprintf("pd visible %v", keys),
 		}, nil
 	}
 }

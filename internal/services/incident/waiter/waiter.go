@@ -24,7 +24,7 @@ type IncidentWaiter interface {
 
 func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for incident %s to resolve", key))
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for incident %s resolve", key))
 	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -41,33 +41,33 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 	delay := backoff.InitialDelay
 	for {
 		if err := ctx.Err(); err != nil {
-			status := fmt.Sprintf("stopped waiting for incident %s after %d attempts in %s due to context error", key, attempts, time.Since(start))
+			status := fmt.Sprintf("incident %s wait stopped; attempts %d, elapsed %s, reason context error", key, attempts, time.Since(start))
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		attempts++
 		incident, err := s.GetIncident(ctx, key, opts...)
 		if err == nil && !incidentIsActive(incident) {
-			status := fmt.Sprintf("incident %s resolved after %d checks in %s", key, attempts, time.Since(start))
+			status := fmt.Sprintf("incident %s resolved; checks %d, elapsed %s", key, attempts, time.Since(start))
 			if attempts == 1 {
-				status = fmt.Sprintf("incident %s is already resolved", key)
+				status = fmt.Sprintf("incident %s resolved", key)
 			}
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: key, Ok: true, Status: status}, nil
 		}
 		if err != nil {
 			if isIncidentAbsentErr(err) {
-				status := fmt.Sprintf("incident %s no longer exists after %d checks in %s", key, attempts, time.Since(start))
+				status := fmt.Sprintf("incident %s absent; checks %d, elapsed %s", key, attempts, time.Since(start))
 				log.Debug(status)
 				return d.IncidentResolutionResponse{Key: key, Ok: true, Status: status}, nil
 			}
-			status := fmt.Sprintf("stopped waiting for incident %s after %d attempts in %s due to error", key, attempts, time.Since(start))
+			status := fmt.Sprintf("incident %s wait stopped; attempts %d, elapsed %s, reason error", key, attempts, time.Since(start))
 			log.Error(status)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
-		logging.InfoIfVerbose(fmt.Sprintf("incident %s currently in state %s; waiting... (attempt #%d)", key, incident.State, attempts), log, cCfg.Verbose)
+		logging.InfoIfVerbose(fmt.Sprintf("incident %s waiting; state %s, attempt %d", key, incident.State, attempts), log, cCfg.Verbose)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
-			status := fmt.Sprintf("exceeded max_retries (%d) waiting for incident %s to resolve after %d attempts in %s", backoff.MaxRetries, key, attempts, time.Since(start))
+			status := fmt.Sprintf("incident %s wait exceeded retries; max %d, attempts %d, elapsed %s", key, backoff.MaxRetries, attempts, time.Since(start))
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, errors.New(status)
 		}
@@ -75,7 +75,7 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 		case <-time.After(delay):
 			delay = backoff.NextDelay(delay)
 		case <-ctx.Done():
-			status := fmt.Sprintf("stopped waiting for incident %s after %d attempts in %s due to context done", key, attempts, time.Since(start))
+			status := fmt.Sprintf("incident %s wait stopped; attempts %d, elapsed %s, reason context done", key, attempts, time.Since(start))
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: key, Ok: false, Status: status}, fmt.Errorf("%w: %s", ctx.Err(), status)
 		}
@@ -84,7 +84,7 @@ func WaitForIncidentResolved(ctx context.Context, s IncidentWaiter, cfg *config.
 
 func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWaiter, cfg *config.Config, log *slog.Logger, processInstanceKey string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	cCfg := services.ApplyCallOptions(opts)
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for process instance %s incidents to resolve", processInstanceKey))
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for pi %s incidents resolve", processInstanceKey))
 	defer stopActivity()
 	backoff := cfg.App.Backoff
 	start := time.Now()
@@ -102,29 +102,29 @@ func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWait
 	delay := backoff.InitialDelay
 	for {
 		if err := ctx.Err(); err != nil {
-			status := fmt.Sprintf("stopped waiting for process instance %s incidents after %d attempts in %s due to context error", processInstanceKey, attempts, time.Since(start))
+			status := fmt.Sprintf("pi %s incident wait stopped; attempts %d, elapsed %s, reason context error", processInstanceKey, attempts, time.Since(start))
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		attempts++
 		incidents, err := s.SearchProcessInstanceIncidents(ctx, processInstanceKey, opts...)
 		if err != nil {
-			status := fmt.Sprintf("stopped waiting for process instance %s incidents after %d attempts in %s due to error", processInstanceKey, attempts, time.Since(start))
+			status := fmt.Sprintf("pi %s incident wait stopped; attempts %d, elapsed %s, reason error", processInstanceKey, attempts, time.Since(start))
 			log.Error(status)
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: status}, fmt.Errorf("%w: %s", err, status)
 		}
 		active := activeTargetIncidentKeys(processInstanceKey, targets, incidents)
 		if len(active) == 0 {
-			status := fmt.Sprintf("process instance %s incidents resolved after %d checks in %s", processInstanceKey, attempts, time.Since(start))
+			status := fmt.Sprintf("pi %s incidents resolved; checks %d, elapsed %s", processInstanceKey, attempts, time.Since(start))
 			if attempts == 1 {
-				status = fmt.Sprintf("process instance %s incidents are already resolved", processInstanceKey)
+				status = fmt.Sprintf("pi %s incidents resolved", processInstanceKey)
 			}
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: true, Status: status}, nil
 		}
-		logging.InfoIfVerbose(fmt.Sprintf("process instance %s still has active incident(s) %v; waiting... (attempt #%d)", processInstanceKey, active, attempts), log, cCfg.Verbose)
+		logging.InfoIfVerbose(fmt.Sprintf("pi %s incidents waiting; active %v, attempt %d", processInstanceKey, active, attempts), log, cCfg.Verbose)
 		if backoff.MaxRetries > 0 && attempts >= backoff.MaxRetries {
-			status := fmt.Sprintf("exceeded max_retries (%d) waiting for process instance %s incidents to resolve after %d attempts in %s", backoff.MaxRetries, processInstanceKey, attempts, time.Since(start))
+			status := fmt.Sprintf("pi %s incident wait exceeded retries; max %d, attempts %d, elapsed %s", processInstanceKey, backoff.MaxRetries, attempts, time.Since(start))
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: status}, errors.New(status)
 		}
@@ -132,7 +132,7 @@ func WaitForProcessInstanceIncidentsResolved(ctx context.Context, s IncidentWait
 		case <-time.After(delay):
 			delay = backoff.NextDelay(delay)
 		case <-ctx.Done():
-			status := fmt.Sprintf("stopped waiting for process instance %s incidents after %d attempts in %s due to context done", processInstanceKey, attempts, time.Since(start))
+			status := fmt.Sprintf("pi %s incident wait stopped; attempts %d, elapsed %s, reason context done", processInstanceKey, attempts, time.Since(start))
 			log.Debug(status)
 			return d.IncidentResolutionResponse{Key: processInstanceKey, Ok: false, Status: status}, fmt.Errorf("%w: %s", ctx.Err(), status)
 		}

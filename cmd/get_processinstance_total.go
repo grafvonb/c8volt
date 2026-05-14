@@ -77,7 +77,7 @@ func logPITotalPage(cmd *cobra.Command, log *slog.Logger, req process.ProcessIns
 		reportedKind = string(page.ReportedTotal.Kind)
 	}
 	log.DebugContext(cmd.Context(), fmt.Sprintf(
-		"process-instance total page: mode=%s, from=%d, after=%q, limit=%d, items=%d, total before=%d, total after=%d, overflow=%s, reported total=%d, reported kind=%s, end cursor=%q",
+		"pi total page; mode %s, from %d, after %q, limit %d, items %d, total before %d, total after %d, overflow %s, reported total %d, reported kind %s, end cursor %q",
 		mode,
 		req.From,
 		req.After,

@@ -129,7 +129,7 @@ func renderClusterLicenseFlat(cmd *cobra.Command, license cluster.License) error
 	renderOutputLine(cmd, "ValidLicense: %t", license.ValidLicense)
 	renderOutputLine(cmd, "LicenseType: %s", license.LicenseType)
 	if license.ExpiresAt != nil {
-		renderOutputLine(cmd, "ExpiresAt: %s", license.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"))
+		renderOutputLine(cmd, "ExpiresAt: %s", formatCommandTime(cmd, *license.ExpiresAt))
 	}
 	if license.IsCommercial != nil {
 		renderOutputLine(cmd, "IsCommercial: %t", *license.IsCommercial)

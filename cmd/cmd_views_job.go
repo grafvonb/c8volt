@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +17,7 @@ func jobView(cmd *cobra.Command, item job.Job) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, item)
 	}
-	renderOutputLine(cmd, "%s", oneLineJob(item))
+	renderOutputLine(cmd, "%s", oneLineJobWithTimezone(item, commandShowTimezoneOffset(cmd)))
 	return nil
 }
 
@@ -78,10 +79,18 @@ func jobUpdatePlanHumanStatus(plan job.UpdatePlan, label string) string {
 }
 
 func oneLineJob(item job.Job) string {
-	return compactFlatRow(flatRowJob(item))
+	return oneLineJobWithTimezone(item, false)
+}
+
+func oneLineJobWithTimezone(item job.Job, showTimezoneOffset bool) string {
+	return compactFlatRow(flatRowJobWithTimezone(item, showTimezoneOffset))
 }
 
 func flatRowJob(item job.Job) flatRow {
+	return flatRowJobWithTimezone(item, false)
+}
+
+func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
 	parts := flatRow{item.Key}
 	if item.TenantId != "" {
 		parts = append(parts, item.TenantId)
@@ -97,7 +106,7 @@ func flatRowJob(item job.Job) flatRow {
 	}
 	parts = append(parts, "r:"+strconv.FormatInt(int64(item.Retries), 10))
 	if item.Deadline != nil {
-		parts = append(parts, "d:"+item.Deadline.Format(humanTimestampMillisLayout))
+		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
 	}
 	if item.ErrorCode != "" {
 		parts = append(parts, "ec:"+item.ErrorCode)

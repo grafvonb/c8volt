@@ -117,6 +117,6 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 	if err != nil {
 		return d.Deployment{}, err
 	}
-	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), vtenantId))
+	s.log.Debug(fmt.Sprintf("deployment confirmed; resources %d, tenant %s", len(units), vtenantId))
 	return fromDeploymentResult(*payload), nil
 }

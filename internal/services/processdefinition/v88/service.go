@@ -155,7 +155,7 @@ func (s *Service) GetProcessDefinitionXML(ctx context.Context, key string, opts 
 
 // retrieveProcessDefinitionStats populates exact process-instance statistics for one process definition.
 func (s *Service) retrieveProcessDefinitionStats(ctx context.Context, pd *d.ProcessDefinition) error {
-	s.log.Debug(fmt.Sprintf("retrieving process definition stats for key %q", pd.Key))
+	s.log.Debug(fmt.Sprintf("getting pd %s stats", pd.Key))
 	stopActivity := logging.StartActivity(ctx, common.ProcessDefinitionStatsActivity(pd.BpmnProcessId, pd.Key))
 	defer stopActivity()
 
@@ -259,7 +259,7 @@ func (s *Service) logProcessDefinitionStatsPage(ctx context.Context, pd d.Proces
 	items := len(resp.JSON200.Items)
 	page := resp.JSON200.Page
 	s.log.DebugContext(ctx, fmt.Sprintf(
-		"process-definition stats page: process definition key=%s, bpmn process id=%s, bucket=%s, mode=%s, from=%d, after=%q, limit=%d, items=%d, total before=%d, total after=%d, reported total=%d, has more total items=%t, end cursor=%q",
+		"pd stats page; key %s, bpmn %s, bucket %s, mode %s, from %d, after %q, limit %d, items %d, total before %d, total after %d, reported total %d, has more %t, end cursor %q",
 		pd.Key,
 		pd.BpmnProcessId,
 		label,

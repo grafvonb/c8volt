@@ -616,7 +616,7 @@ func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 	require.Contains(t, requests[0], `"$gte":"2026-05-09T09:00:00Z"`)
 	require.Contains(t, requests[0], `"$lte":"2026-05-09T11:00:00Z"`)
 	require.Contains(t, output, "2251799813685253")
-	require.Contains(t, output, "2026-05-09T10:15:00+00:00")
+	require.Contains(t, output, "2026-05-09T10:15:00.000")
 	require.Contains(t, output, "found: 1")
 }
 

@@ -462,10 +462,10 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		)
 
 		require.Equal(t, "3\n", stdout)
-		require.Contains(t, stderr, `DEBUG process-instance total page: mode=offset, from=0, after="", limit=2, items=2, total before=0, total after=2`)
-		require.Contains(t, stderr, `reported total=10000, reported kind=lower_bound, end cursor="cursor-1"`)
-		require.Contains(t, stderr, `DEBUG process-instance total page: mode=cursor, from=0, after="cursor-1", limit=2, items=1, total before=2, total after=3`)
-		require.Contains(t, stderr, `DEBUG process-instance total page: mode=cursor, from=0, after="cursor-2", limit=2, items=0, total before=3, total after=3`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode offset, from 0, after "", limit 2, items 2, total before 0, total after 2`)
+		require.Contains(t, stderr, `reported total 10000, reported kind lower_bound, end cursor "cursor-1"`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 0, after "cursor-1", limit 2, items 1, total before 2, total after 3`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 0, after "cursor-2", limit 2, items 0, total before 3, total after 3`)
 		require.NotContains(t, stderr, "INFO page size:")
 	})
 
@@ -1242,6 +1242,48 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, msgs)
 }
 
+func TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery(t *testing.T) {
+	var searchRequests []string
+	var getPaths []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchRequests = append(searchRequests, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","parentProcessInstanceKey":"456","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/456":
+			getPaths = append(getPaths, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"not found"}`))
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "pi",
+		"--orphan-children-only",
+	)
+
+	require.NotContains(t, stderr, "process client does not support shared orphan discovery")
+	require.NotContains(t, stderr, "internal error")
+	require.Contains(t, stdout, "123")
+	require.Equal(t, []string{"/v2/process-instances/456"}, getPaths)
+	filters := decodeCapturedPISearchRequests(t, searchRequests)
+	require.Len(t, filters, 1)
+	topLevelFilter, ok := filters[0]["filter"].(map[string]any)
+	require.True(t, ok)
+	require.NotContains(t, topLevelFilter, "processInstanceKey")
+	require.Contains(t, topLevelFilter, "parentProcessInstanceKey")
+}
+
 func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testing.T) {
 	sink := &activitysink.Sink{}
 	cmd := &cobra.Command{}
@@ -1457,7 +1499,7 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsOneIncident(t *testing.
 	require.Contains(t, output, "123")
 	require.Contains(t, output, "demo v3")
 	require.Contains(t, output, "inc!")
-	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00+00:00 (48 days ago) fn:task-a fni:element-123 m:No retries left")
+	require.Contains(t, output, "└─ incidents:\n   └─ incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left")
 	require.Contains(t, output, "found: 1")
 }
 
@@ -1846,8 +1888,8 @@ func TestGetProcessInstanceWithIncidents_HumanOutputShowsMultipleAndNoIncidents(
 			],"page":{"totalItems":2,"hasMoreTotalItems":false}}`,
 			wantMessages: []string{
 				"└─ incidents:",
-				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00+00:00 (48 days ago) fn:task-a fni:element-123 m:No retries left",
-				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00+00:00 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
+				"├─ incident-123 JOB_NO_RETRIES ACTIVE j:n/a 2026-03-23T18:01:00.000 (48 days ago) fn:task-a fni:element-123 m:No retries left",
+				"└─ incident-124 EXTRACT_VALUE_ERROR ACTIVE j:n/a 2026-03-23T18:02:00.000 (48 days ago) fn:task-b fni:element-124 m:Gateway failed",
 			},
 		},
 		{
@@ -3829,7 +3871,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 
 				topLevelFilter, ok := filters[0]["filter"].(map[string]any)
 				require.True(t, ok)
-				require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
+				require.Contains(t, topLevelFilter, "parentProcessInstanceKey")
 				require.NotContains(t, topLevelFilter, "processInstanceKey")
 				require.Equal(t, []string{"/v2/process-instances/456"}, getPaths)
 
@@ -4099,6 +4141,8 @@ func resetProcessInstanceCommandGlobals() {
 	flagWorkers = 0
 	flagNoWorkerLimit = false
 	flagFailFast = false
+	flagOpsPurgeOrphanReportFile = ""
+	flagOpsPurgeOrphanReportFormat = ""
 	flagExpectPIKeys = nil
 	flagExpectPIStates = nil
 	flagExpectPIIncident = ""

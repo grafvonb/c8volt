@@ -5,10 +5,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -72,12 +73,20 @@ func processInstanceHasIndirectIncidentMarker(item process.IncidentEnrichedProce
 
 // incidentHumanLine formats an incident detail line with compact attributes.
 func incidentHumanLine(incident incident.ProcessInstanceIncidentDetail) string {
-	return incidentHumanLineWithMessageLimit(incident, flagGetPIIncidentMessageLimit)
+	return incidentHumanLineWithTimezone(incident, false)
+}
+
+func incidentHumanLineWithTimezone(incident incident.ProcessInstanceIncidentDetail, showTimezoneOffset bool) string {
+	return incidentHumanLineWithMessageLimitAndTimezone(incident, flagGetPIIncidentMessageLimit, showTimezoneOffset)
 }
 
 // incidentHumanLineWithMessageLimit formats shared incident rows for process-instance and plain incident output.
 func incidentHumanLineWithMessageLimit(incident incident.ProcessInstanceIncidentDetail, messageLimit int) string {
-	row := compactFlatRow(flatRowProcessInstanceIncident(incident))
+	return incidentHumanLineWithMessageLimitAndTimezone(incident, messageLimit, false)
+}
+
+func incidentHumanLineWithMessageLimitAndTimezone(incident incident.ProcessInstanceIncidentDetail, messageLimit int, showTimezoneOffset bool) string {
+	row := compactFlatRow(flatRowProcessInstanceIncidentWithTimezone(incident, showTimezoneOffset))
 	message := "m:" + truncateIncidentHumanMessage(incident.ErrorMessage, messageLimit)
 	if row == "" {
 		return message
@@ -86,6 +95,10 @@ func incidentHumanLineWithMessageLimit(incident incident.ProcessInstanceIncident
 }
 
 func flatRowProcessInstanceIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
+	return flatRowProcessInstanceIncidentWithTimezone(incident, false)
+}
+
+func flatRowProcessInstanceIncidentWithTimezone(incident incident.ProcessInstanceIncidentDetail, showTimezoneOffset bool) flatRow {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
@@ -99,7 +112,7 @@ func flatRowProcessInstanceIncident(incident incident.ProcessInstanceIncidentDet
 		incident.ErrorType,
 		incident.State,
 		"j:" + jobKey,
-		humanTimestamp(incident.CreationTime),
+		toolx.FormatTimestamp(incident.CreationTime, showTimezoneOffset),
 		incidentAgeTag(incident.CreationTime),
 		prefixedIncidentField("root", incident.RootProcessInstanceKey),
 		prefixedIncidentField("fn", incident.FlowNodeId),
@@ -127,10 +140,14 @@ func incidentListHumanLineWithMessageLimit(item incident.ProcessInstanceIncident
 }
 
 func formatIncidentListRows(incidents []incident.ProcessInstanceIncidentDetail, messageLimit int, omitMessage bool) []string {
+	return formatIncidentListRowsWithTimezone(incidents, messageLimit, omitMessage, false)
+}
+
+func formatIncidentListRowsWithTimezone(incidents []incident.ProcessInstanceIncidentDetail, messageLimit int, omitMessage bool, showTimezoneOffset bool) []string {
 	rows := make([]flatRow, 0, len(incidents))
 	tails := make([]string, 0, len(incidents))
 	for _, incident := range incidents {
-		rows = append(rows, flatRowIncident(incident))
+		rows = append(rows, flatRowIncidentWithTimezone(incident, showTimezoneOffset))
 		if omitMessage {
 			tails = append(tails, "")
 			continue
@@ -141,6 +158,10 @@ func formatIncidentListRows(incidents []incident.ProcessInstanceIncidentDetail, 
 }
 
 func flatRowIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
+	return flatRowIncidentWithTimezone(incident, false)
+}
+
+func flatRowIncidentWithTimezone(incident incident.ProcessInstanceIncidentDetail, showTimezoneOffset bool) flatRow {
 	key := incident.IncidentKey
 	if key == "" {
 		key = "unknown"
@@ -155,7 +176,7 @@ func flatRowIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
 		incident.ErrorType,
 		incident.State,
 		"j:" + jobKey,
-		humanTimestamp(incident.CreationTime),
+		toolx.FormatTimestamp(incident.CreationTime, showTimezoneOffset),
 		incidentAgeTag(incident.CreationTime),
 		incident.ProcessDefinitionId,
 		prefixedIncidentField("pi", incident.ProcessInstanceKey),

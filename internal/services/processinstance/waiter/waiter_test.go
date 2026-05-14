@@ -486,8 +486,8 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		quietLog := run(t)
 		verboseLog := run(t, services.WithVerbose())
 
-		assert.NotContains(t, quietLog, "process instance 123 currently in state ACTIVE")
-		assert.Contains(t, verboseLog, "process instance 123 currently in state ACTIVE")
+		assert.NotContains(t, quietLog, "pi 123 waiting; state ACTIVE")
+		assert.Contains(t, verboseLog, "pi 123 waiting; state ACTIVE")
 	})
 
 	t.Run("uses command activity while waiting for a single instance", func(t *testing.T) {
@@ -513,7 +513,7 @@ func TestWaitForProcessInstanceState(t *testing.T) {
 		started, stopped, msgs := sink.Snapshot()
 		assert.Equal(t, 1, started)
 		assert.Equal(t, 1, stopped)
-		assert.Equal(t, []string{"waiting for process instance 123 to reach desired state(s)"}, msgs)
+		assert.Equal(t, []string{"waiting for pi 123 state"}, msgs)
 	})
 }
 
@@ -541,7 +541,7 @@ func TestWaitForProcessInstancesState_UsesAggregateCommandActivity(t *testing.T)
 	require.NoError(t, err)
 	started, stopped, msgs := sink.Snapshot()
 	assert.Equal(t, started, stopped)
-	assert.Contains(t, msgs, "waiting for 2 process instance(s) to reach desired state(s)")
+	assert.Contains(t, msgs, "waiting for 2 pi state")
 }
 
 // testConfig builds a waiter config with explicit retry timing for unit tests.

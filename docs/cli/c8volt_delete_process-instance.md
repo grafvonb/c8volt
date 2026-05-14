@@ -48,7 +48,7 @@ c8volt delete process-instance [flags]
       --fail-fast                   stop scheduling new instances after the first error
       --force                       force cancellation of the process instance(s), prior to deletion
   -h, --help                        help for process-instance
-  -k, --key strings                 process instance key(s) to delete
+  -k, --key strings                 process instance key(s) to delete; repeat or combine with stdin '-'
   -l, --limit int32                 maximum number of matching process instances to process across all pages
       --no-state-check              skip checking the current state of the process instance before deleting it
       --no-wait                     return after deletion is accepted
