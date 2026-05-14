@@ -156,6 +156,8 @@ type RetentionDeletePlan struct {
 	DuplicateKeys         typex.Keys                `json:"duplicateKeys,omitempty"`
 	FinalStateItems       []process.ProcessInstance `json:"finalStateItems,omitempty"`
 	NonFinalAffectedItems []process.ProcessInstance `json:"nonFinalAffectedItems,omitempty"`
+	SkippedSeedKeys       typex.Keys                `json:"skippedSeedKeys,omitempty"`
+	SkippedNonFinalRoots  []process.ProcessInstance `json:"skippedNonFinalRoots,omitempty"`
 	MissingAncestors      []process.MissingAncestor `json:"missingAncestors,omitempty"`
 	TraversalWarnings     []string                  `json:"traversalWarnings,omitempty"`
 	RequiresConfirmation  bool                      `json:"requiresConfirmation,omitempty"`

@@ -433,7 +433,7 @@ func TestOpsExecuteRetentionPolicyExistingReportFailsBeforePreflight(t *testing.
 func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsRetentionPolicyServerWithSeedState(t, &requests, &deleted, "ACTIVE")
+	srv := newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t, &requests, &deleted)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "retention-failed.json")
 
@@ -453,6 +453,7 @@ func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testi
 	require.True(t, ok)
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "refusing to delete retention process-instance scope")
+	require.Contains(t, string(output), "non-final descendant process instance(s) in otherwise final-root retention scope")
 	require.Empty(t, deleted.Snapshot())
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
@@ -486,7 +487,7 @@ func TestOpsExecuteRetentionPolicyReportHelper(t *testing.T) {
 func TestOpsExecuteRetentionPolicyBlocksNonFinalScopeBeforeMutation(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
-	srv := newOpsRetentionPolicyServerWithSeedState(t, &requests, &deleted, "ACTIVE")
+	srv := newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t, &requests, &deleted)
 	t.Cleanup(srv.Close)
 
 	output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteRetentionPolicyBlocksNonFinalScopeBeforeMutationHelper", map[string]string{
@@ -499,6 +500,7 @@ func TestOpsExecuteRetentionPolicyBlocksNonFinalScopeBeforeMutation(t *testing.T
 	require.Equal(t, exitcode.Error, exitErr.ExitCode())
 	require.Contains(t, string(output), "local precondition failed")
 	require.Contains(t, string(output), "refusing to delete retention process-instance scope")
+	require.Contains(t, string(output), "non-final descendant process instance(s) in otherwise final-root retention scope")
 	require.Empty(t, deleted.Snapshot())
 }
 
@@ -603,7 +605,7 @@ func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
 	got := out.String()
 	require.Contains(t, got, "delete plan: planned (seeds: 2, roots: 1, affected: 3)")
 	require.Contains(t, got, "duplicate roots: 1")
-	require.Contains(t, got, "process instances not in final state: 1 (use --force to cancel before delete)")
+	require.Contains(t, got, "non-final descendants in final-root scope: 1 (use --force to cancel before delete)")
 	require.Contains(t, got, "missing ancestors: 1")
 	require.Contains(t, got, "traversal warning: one or more parent process instances were not found")
 	require.Contains(t, got, "confirmation required: true")
@@ -611,6 +613,36 @@ func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
 	require.Contains(t, got, "resolved root keys: root-1")
 	require.Contains(t, got, "affected process-instance keys: root-1, child-1, child-2")
 	require.Contains(t, got, "deletion: blocked")
+}
+
+func TestOpsExecuteRetentionPolicyNonFinalBlockerMessageHonorsVerbose(t *testing.T) {
+	prevVerbose := flagVerbose
+	t.Cleanup(func() { flagVerbose = prevVerbose })
+
+	plan := ops.RetentionDeletePlan{
+		SeedKeys:              []string{"seed-1", "seed-2"},
+		ResolvedRootKeys:      []string{"root-1"},
+		AffectedKeys:          []string{"root-1", "seed-1", "seed-2", "active-1"},
+		NonFinalAffectedItems: []process.ProcessInstance{{Key: "active-1", State: process.StateActive}},
+	}
+
+	flagVerbose = false
+	got := formatOpsExecuteRetentionPolicyNonFinalScope(plan)
+	require.Contains(t, got, "retention matched 2 ended seed(s)")
+	require.Contains(t, got, "delete planning expanded to 4 affected process instance(s) across 1 root(s)")
+	require.Contains(t, got, "1 non-final descendant process instance(s) in otherwise final-root retention scope")
+	require.Contains(t, got, "states: ACTIVE")
+	require.Contains(t, got, "use --verbose to list keys")
+	require.NotContains(t, got, "active-1=ACTIVE")
+
+	flagVerbose = true
+	got = formatOpsExecuteRetentionPolicyNonFinalScope(plan)
+	require.Contains(t, got, "retention matched 2 ended seed(s)")
+	require.Contains(t, got, "delete planning expanded to 4 affected process instance(s) across 1 root(s)")
+	require.Contains(t, got, "1 non-final descendant process instance(s) in otherwise final-root retention scope")
+	require.Contains(t, got, "states: ACTIVE")
+	require.Contains(t, got, "active-1=ACTIVE")
+	require.NotContains(t, got, "use --verbose to list keys")
 }
 
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {
@@ -639,6 +671,7 @@ func newOpsRetentionPolicySearchServer(t *testing.T, requests *testx.SafeSlice[s
 }
 
 const opsRetentionPolicyChangedSeedKey = "2251799813685251"
+const opsRetentionPolicyActiveChildKey = "2251799813685252"
 
 func newOpsRetentionPolicyServerWithSeed(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
 	return newOpsRetentionPolicyServerWithSeedState(t, requests, deleted, "COMPLETED")
@@ -663,6 +696,46 @@ func newOpsRetentionPolicyServerWithSeedState(t *testing.T, requests *testx.Safe
 			requests.Append(r.Method + " " + r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(opsRetentionPolicyProcessInstanceJSON(opsRetentionPolicySeedKey, state)))
+		case (r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/"+opsRetentionPolicySeedKey+"/deletion") ||
+			(r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/"+opsRetentionPolicySeedKey):
+			if deleted != nil {
+				deleted.Append(r.URL.Path)
+			}
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+func newOpsRetentionPolicyServerWithFinalRootAndActiveChild(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			payload := string(body)
+			requests.Append(r.Method + " " + r.URL.Path + " " + payload)
+			w.Header().Set("Content-Type", "application/json")
+			switch {
+			case strings.Contains(payload, "parentProcessInstanceKey") && strings.Contains(payload, opsRetentionPolicySeedKey):
+				_, _ = w.Write([]byte(`{"items":[` + opsRetentionPolicyProcessInstanceJSONWithParent(opsRetentionPolicyActiveChildKey, "ACTIVE", opsRetentionPolicySeedKey) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			case strings.Contains(payload, "parentProcessInstanceKey"):
+				_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+			default:
+				_, _ = w.Write([]byte(`{"items":[` + opsRetentionPolicyProcessInstanceJSON(opsRetentionPolicySeedKey, "COMPLETED") + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+			}
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsRetentionPolicySeedKey:
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(opsRetentionPolicyProcessInstanceJSON(opsRetentionPolicySeedKey, "COMPLETED")))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsRetentionPolicyActiveChildKey:
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(opsRetentionPolicyProcessInstanceJSONWithParent(opsRetentionPolicyActiveChildKey, "ACTIVE", opsRetentionPolicySeedKey)))
 		case (r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/"+opsRetentionPolicySeedKey+"/deletion") ||
 			(r.Method == http.MethodDelete && r.URL.Path == "/v1/process-instances/"+opsRetentionPolicySeedKey):
 			if deleted != nil {
@@ -716,5 +789,13 @@ func newOpsRetentionPolicyChangingSeedServer(t *testing.T, requests *testx.SafeS
 }
 
 func opsRetentionPolicyProcessInstanceJSON(key string, state string) string {
-	return `{"processInstanceKey":"` + key + `","processDefinitionId":"retention-process","processDefinitionKey":"9001","processDefinitionName":"retention-process","processDefinitionVersion":3,"startDate":"2026-01-11T12:00:00Z","endDate":"2026-02-12T12:00:00Z","state":"` + state + `","tenantId":"tenant"}`
+	return opsRetentionPolicyProcessInstanceJSONWithParent(key, state, "")
+}
+
+func opsRetentionPolicyProcessInstanceJSONWithParent(key string, state string, parentKey string) string {
+	parentField := ""
+	if parentKey != "" {
+		parentField = `,"parentProcessInstanceKey":"` + parentKey + `","rootProcessInstanceKey":"` + opsRetentionPolicySeedKey + `"`
+	}
+	return `{"processInstanceKey":"` + key + `","processDefinitionId":"retention-process","processDefinitionKey":"9001","processDefinitionName":"retention-process","processDefinitionVersion":3,"startDate":"2026-01-11T12:00:00Z","endDate":"2026-02-12T12:00:00Z","state":"` + state + `","tenantId":"tenant"` + parentField + `}`
 }

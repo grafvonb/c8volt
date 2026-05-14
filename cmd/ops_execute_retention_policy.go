@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -95,11 +96,12 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
 				return
 			}
-			if planned.Discovery.Count > 0 {
-				prompt := fmt.Sprintf("You are about to delete %d retention process instance(s). Do you want to proceed?", len(planned.DeletePlan.AffectedKeys))
-				if len(planned.DeletePlan.AffectedKeys) > planned.Discovery.Count {
-					prompt = fmt.Sprintf("You have requested to delete %d retention process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletePlan.AffectedKeys), len(planned.DeletePlan.ResolvedRootKeys))
+			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
+				prompt := fmt.Sprintf("Retention matched %d ended seed(s); delete planning will delete %d affected instance(s) across %d final root(s).", planned.Discovery.Count, len(planned.DeletePlan.AffectedKeys), len(planned.DeletePlan.ResolvedRootKeys))
+				if len(planned.DeletePlan.SkippedSeedKeys) > 0 {
+					prompt = fmt.Sprintf("%s %d seed(s) were skipped because their root is not final.", prompt, len(planned.DeletePlan.SkippedSeedKeys))
 				}
+				prompt += " Do you want to proceed?"
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
 					return
@@ -177,7 +179,27 @@ func rejectOpsExecuteRetentionPolicyPlanRequiringForce(plan ops.RetentionDeleteP
 	if flagForce || len(plan.NonFinalAffectedItems) == 0 {
 		return nil
 	}
-	return localPreconditionError(fmt.Errorf("refusing to delete retention process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", len(plan.NonFinalAffectedItems)))
+	return localPreconditionError(fmt.Errorf(
+		"refusing to delete retention process-instance scope: %s; no delete request was submitted; use --force to cancel the non-final affected scope before delete",
+		formatOpsExecuteRetentionPolicyNonFinalScope(plan),
+	))
+}
+
+func formatOpsExecuteRetentionPolicyNonFinalScope(plan ops.RetentionDeletePlan) string {
+	items := plan.NonFinalAffectedItems
+	blockers := newProcessInstanceDryRunRequiresCancelBeforeDelete(items)
+	details := []string{
+		fmt.Sprintf("retention matched %d ended seed(s)", len(plan.SeedKeys)),
+		fmt.Sprintf("delete planning expanded to %d affected process instance(s) across %d root(s)", len(plan.AffectedKeys), len(plan.ResolvedRootKeys)),
+		fmt.Sprintf("%d non-final descendant process instance(s) in otherwise final-root retention scope", len(items)),
+		fmt.Sprintf("states: %s", formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates(blockers)),
+	}
+	if flagVerbose {
+		details = append(details, formatProcessInstanceDryRunRequiresCancelBeforeDelete(blockers))
+	} else {
+		details = append(details, "use --verbose to list keys")
+	}
+	return strings.Join(details, "; ")
 }
 
 func abortOpsExecuteRetentionPolicyAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.RetentionPolicyResult, err error) {

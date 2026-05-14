@@ -60,6 +60,8 @@ type RetentionDeletePlan struct {
 	DuplicateKeys         typex.Keys
 	FinalStateItems       []ProcessInstance
 	NonFinalAffectedItems []ProcessInstance
+	SkippedSeedKeys       typex.Keys
+	SkippedNonFinalRoots  []ProcessInstance
 	MissingAncestors      []MissingAncestor
 	TraversalWarnings     []string
 	RequiresConfirmation  bool

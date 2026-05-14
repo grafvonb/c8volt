@@ -433,7 +433,7 @@ func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *te
 				Keys:     []string{key, "root-1"},
 				Chain: map[string]d.ProcessInstance{
 					"root-1": {Key: "root-1", State: d.StateCompleted},
-					key:      {Key: key, State: d.StateActive},
+					key:      {Key: key, State: d.StateCompleted},
 				},
 				Outcome: pitraversal.OutcomeComplete,
 			}, nil
@@ -443,10 +443,11 @@ func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *te
 				Mode:     pitraversal.ModeDescendants,
 				StartKey: rootKey,
 				RootKey:  rootKey,
-				Keys:     []string{"root-1", "child-1"},
+				Keys:     []string{"root-1", "child-1", "child-2"},
 				Chain: map[string]d.ProcessInstance{
 					"root-1":  {Key: "root-1", State: d.StateCompleted},
-					"child-1": {Key: "child-1", State: d.StateActive},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+					"child-2": {Key: "child-2", State: d.StateActive},
 				},
 				Outcome: pitraversal.OutcomeComplete,
 			}, nil
@@ -464,19 +465,87 @@ func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *te
 
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
-	require.Contains(t, err.Error(), "affected process instance(s) are not in a final state")
+	require.Contains(t, err.Error(), "retention matched 1 ended seed(s)")
+	require.Contains(t, err.Error(), "delete planning expanded to 3 affected process instance(s) across 1 root(s)")
+	require.Contains(t, err.Error(), "non-final descendant process instance(s) in otherwise final-root retention scope")
+	require.Contains(t, err.Error(), "states: ACTIVE")
+	require.Contains(t, err.Error(), "child-2=ACTIVE")
 	require.Equal(t, d.RetentionPolicyOutcomeFailed, got.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
 	require.Equal(t, []string{"child-1"}, []string(got.DeletePlan.SeedKeys))
 	require.Equal(t, []string{"root-1"}, []string(got.DeletePlan.ResolvedRootKeys))
-	require.Equal(t, []string{"root-1", "child-1"}, []string(got.DeletePlan.AffectedKeys))
+	require.Equal(t, []string{"root-1", "child-1", "child-2"}, []string(got.DeletePlan.AffectedKeys))
 	require.Len(t, got.DeletePlan.NonFinalAffectedItems, 1)
-	require.Equal(t, "child-1", got.DeletePlan.NonFinalAffectedItems[0].Key)
+	require.Equal(t, "child-2", got.DeletePlan.NonFinalAffectedItems[0].Key)
 	require.True(t, got.DeletePlan.RequiresConfirmation)
 	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
 	require.Len(t, got.Deletion.Errors, 1)
 	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
 	require.Equal(t, got.Deletion, got.Report.Deletion)
+}
+
+func TestExecuteRetentionPolicySkipsSeedWhenRootIsNonFinal(t *testing.T) {
+	t.Parallel()
+
+	descendantsCalled := false
+	deleteCalled := false
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1": {Key: "root-1", State: d.StateActive},
+					key:      {Key: key, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(context.Context, string, ...services.CallOption) (pitraversal.Result, error) {
+			descendantsCalled = true
+			return pitraversal.Result{}, nil
+		},
+		deleteProcessInstance: func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error) {
+			deleteCalled = true
+			return d.DeleteResponse{}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 false,
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+
+	require.NoError(t, err)
+	require.False(t, descendantsCalled)
+	require.False(t, deleteCalled)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"child-1"}, []string(got.DeletePlan.SeedKeys))
+	require.Empty(t, got.DeletePlan.ResolvedRootKeys)
+	require.Empty(t, got.DeletePlan.AffectedKeys)
+	require.Equal(t, []string{"child-1"}, []string(got.DeletePlan.SkippedSeedKeys))
+	require.Len(t, got.DeletePlan.SkippedNonFinalRoots, 1)
+	require.Equal(t, "root-1", got.DeletePlan.SkippedNonFinalRoots[0].Key)
+	require.Equal(t, d.StateActive, got.DeletePlan.SkippedNonFinalRoots[0].State)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.False(t, got.Deletion.Submitted)
+	require.Empty(t, got.Errors)
 }
 
 func TestExecuteRetentionPolicyDeletesResolvedRootsWithNoWait(t *testing.T) {

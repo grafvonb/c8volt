@@ -45,7 +45,10 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 			cmd.Printf("duplicate roots: %d\n", len(result.DeletePlan.DuplicateKeys))
 		}
 		if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
-			cmd.Printf("process instances not in final state: %d (use --force to cancel before delete)\n", len(result.DeletePlan.NonFinalAffectedItems))
+			cmd.Printf("non-final descendants in final-root scope: %d (use --force to cancel before delete)\n", len(result.DeletePlan.NonFinalAffectedItems))
+		}
+		if len(result.DeletePlan.SkippedSeedKeys) > 0 {
+			cmd.Printf("skipped retention seeds with non-final roots: %d\n", len(result.DeletePlan.SkippedSeedKeys))
 		}
 		if len(result.DeletePlan.MissingAncestors) > 0 {
 			cmd.Printf("missing ancestors: %d\n", len(result.DeletePlan.MissingAncestors))
@@ -58,6 +61,8 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		cmd.Printf("confirmation required: %t\n", result.DeletePlan.RequiresConfirmation)
 		if flagVerbose {
 			printOpsExecuteRetentionPolicyKeys(cmd, "retention seed keys", result.DeletePlan.SeedKeys)
+			printOpsExecuteRetentionPolicyKeys(cmd, "skipped retention seed keys", result.DeletePlan.SkippedSeedKeys)
+			printOpsExecuteRetentionPolicyItems(cmd, "skipped non-final roots", result.DeletePlan.SkippedNonFinalRoots)
 			printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
 			printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 		}
@@ -94,6 +99,14 @@ func printOpsExecuteRetentionPolicyKeys(cmd *cobra.Command, label string, keys [
 		return
 	}
 	cmd.Printf("%s: %s\n", label, strings.Join(keys, ", "))
+}
+
+func printOpsExecuteRetentionPolicyItems(cmd *cobra.Command, label string, items []process.ProcessInstance) {
+	if len(items) == 0 {
+		cmd.Printf("%s: none\n", label)
+		return
+	}
+	cmd.Printf("%s: %s\n", label, strings.Join(retentionProcessInstanceItems(items), ", "))
 }
 
 func renderOpsExecuteRetentionPolicyReportFile(cmd *cobra.Command, result ops.RetentionPolicyResult) {
@@ -155,6 +168,8 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	writeMarkdownReportList(&out, "Duplicate Keys", report.DeletePlan.DuplicateKeys)
 	writeMarkdownReportList(&out, "Final State Items", retentionProcessInstanceItems(report.DeletePlan.FinalStateItems))
 	writeMarkdownReportList(&out, "Non-Final Affected Items", retentionProcessInstanceItems(report.DeletePlan.NonFinalAffectedItems))
+	writeMarkdownReportList(&out, "Skipped Seed Keys", report.DeletePlan.SkippedSeedKeys)
+	writeMarkdownReportList(&out, "Skipped Non-Final Roots", retentionProcessInstanceItems(report.DeletePlan.SkippedNonFinalRoots))
 	writeMarkdownReportList(&out, "Missing Ancestors", retentionMissingAncestorItems(report.DeletePlan.MissingAncestors))
 	writeMarkdownReportList(&out, "Traversal Warnings", report.DeletePlan.TraversalWarnings)
 	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)

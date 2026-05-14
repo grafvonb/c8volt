@@ -210,6 +210,8 @@ func fromDomainRetentionDeletePlan(x d.RetentionDeletePlan) RetentionDeletePlan 
 		DuplicateKeys:         append([]string(nil), x.DuplicateKeys...),
 		FinalStateItems:       toolx.MapSlice(x.FinalStateItems, fromDomainProcessInstance),
 		NonFinalAffectedItems: toolx.MapSlice(x.NonFinalAffectedItems, fromDomainProcessInstance),
+		SkippedSeedKeys:       append([]string(nil), x.SkippedSeedKeys...),
+		SkippedNonFinalRoots:  toolx.MapSlice(x.SkippedNonFinalRoots, fromDomainProcessInstance),
 		MissingAncestors:      toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),
 		TraversalWarnings:     append([]string(nil), x.TraversalWarnings...),
 		RequiresConfirmation:  x.RequiresConfirmation,
