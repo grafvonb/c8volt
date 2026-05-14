@@ -28,11 +28,11 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
 	Long: "Execute process-instance retention cleanup.\n\n" +
-		"The workflow discovers process instances older than the required retention age, freezes that seed set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.",
+		"The workflow discovers process instances older than the required retention age, freezes that candidate set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Use compatible process-instance filters to narrow discovery, --auto-confirm or --automation for unattended deletion, and --report-file to write an audit report.",
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run
-  ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --no-wait
-  ./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait
+  ./c8volt ops execute retention-policy --retention-days 90 --automation --json --dry-run
+  ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm
   ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --force --workers 4
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
   ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --report-file retention-report.json --report-format json`,
@@ -97,9 +97,9 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
-				prompt := fmt.Sprintf("Retention matched %d ended seed(s); delete planning will delete %d affected instance(s) across %d final root(s).", planned.Discovery.Count, len(planned.DeletePlan.AffectedKeys), len(planned.DeletePlan.ResolvedRootKeys))
+				prompt := fmt.Sprintf("Retention matched %d candidate process instance(s); delete planning will delete %d affected process instance(s) across %d final root(s).", planned.Discovery.Count, len(planned.DeletePlan.AffectedKeys), len(planned.DeletePlan.ResolvedRootKeys))
 				if len(planned.DeletePlan.SkippedSeedKeys) > 0 {
-					prompt = fmt.Sprintf("%s %d seed(s) were skipped because their root is not final.", prompt, len(planned.DeletePlan.SkippedSeedKeys))
+					prompt = fmt.Sprintf("%s %d candidate(s) were skipped because their root is not final.", prompt, len(planned.DeletePlan.SkippedSeedKeys))
 				}
 				prompt += " Do you want to proceed?"
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
@@ -189,7 +189,7 @@ func formatOpsExecuteRetentionPolicyNonFinalScope(plan ops.RetentionDeletePlan) 
 	items := plan.NonFinalAffectedItems
 	blockers := newProcessInstanceDryRunRequiresCancelBeforeDelete(items)
 	details := []string{
-		fmt.Sprintf("retention matched %d ended seed(s)", len(plan.SeedKeys)),
+		fmt.Sprintf("retention matched %d candidate process instance(s)", len(plan.SeedKeys)),
 		fmt.Sprintf("delete planning expanded to %d affected process instance(s) across %d root(s)", len(plan.AffectedKeys), len(plan.ResolvedRootKeys)),
 		fmt.Sprintf("%d non-final descendant process instance(s) in otherwise final-root retention scope", len(items)),
 		fmt.Sprintf("states: %s", formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates(blockers)),

@@ -36,6 +36,7 @@ type OrphanPurgeRequest struct {
 	DryRun         bool                          `json:"dryRun,omitempty"`
 	AutoConfirm    bool                          `json:"autoConfirm,omitempty"`
 	Automation     bool                          `json:"automation,omitempty"`
+	NoWait         bool                          `json:"noWait,omitempty"`
 	OutputMode     string                        `json:"outputMode,omitempty"`
 	Selection      process.ProcessInstanceFilter `json:"selection,omitempty"`
 	BatchSize      int32                         `json:"batchSize,omitempty"`
@@ -71,6 +72,7 @@ type DeletionResult struct {
 	Errors    []string               `json:"errors,omitempty"`
 	Submitted bool                   `json:"submitted,omitempty"`
 	Confirmed bool                   `json:"confirmed,omitempty"`
+	NoWait    bool                   `json:"noWait,omitempty"`
 }
 
 type OrphanPurgeReport struct {
@@ -90,6 +92,7 @@ type OrphanPurgeReport struct {
 	DeleteRequested  bool                          `json:"deleteRequested,omitempty"`
 	AutoConfirm      bool                          `json:"autoConfirm,omitempty"`
 	Automation       bool                          `json:"automation,omitempty"`
+	NoWait           bool                          `json:"noWait,omitempty"`
 	Errors           []string                      `json:"errors,omitempty"`
 	Outcome          OrphanPurgeOutcome            `json:"outcome,omitempty"`
 }

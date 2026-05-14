@@ -31,7 +31,7 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 		if result.SubmittedTimeoutMS != nil {
 			parts = append(parts, fmt.Sprintf("timeout=%dms submitted", *result.SubmittedTimeoutMS))
 		}
-		renderOutputLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, "; "))
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, "; "))
 	case "submitted":
 		parts := []string{"submitted"}
 		if result.SubmittedRetries != nil {
@@ -40,13 +40,13 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 		if result.SubmittedTimeoutMS != nil {
 			parts = append(parts, fmt.Sprintf("timeout=%dms", *result.SubmittedTimeoutMS))
 		}
-		renderOutputLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
 	case "confirmation_failed":
-		renderOutputLine(cmd, "updated job %s: confirmation failed: %s", result.Key, result.Error)
+		renderHumanLine(cmd, "updated job %s: confirmation failed: %s", result.Key, result.Error)
 	case "mutation_failed":
-		renderOutputLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
+		renderHumanLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
 	default:
-		renderOutputLine(cmd, "updated job %s: %s", result.Key, result.Status)
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, result.Status)
 	}
 	return nil
 }
@@ -57,14 +57,14 @@ func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) er
 	}
 	status := jobUpdatePlanHumanStatus(plan, label)
 	if !plan.HasMaterialChange() {
-		renderOutputLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)
+		renderHumanLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)
 		return nil
 	}
 	if status != "" {
-		renderOutputLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
+		renderHumanLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
 		return nil
 	}
-	renderOutputLine(cmd, "%s: update job %s: %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items))
+	renderHumanLine(cmd, "%s: update job %s: %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items))
 	return nil
 }
 

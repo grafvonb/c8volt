@@ -16,6 +16,7 @@ func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
 		Automation:   x.Automation,
+		NoWait:       x.NoWait,
 		OutputMode:   x.OutputMode,
 		Selection:    toDomainProcessInstanceFilter(x.Selection),
 		BatchSize:    x.BatchSize,
@@ -50,6 +51,7 @@ func fromDomainOrphanPurgeRequest(x d.OrphanPurgeRequest) OrphanPurgeRequest {
 		DryRun:       x.DryRun,
 		AutoConfirm:  x.AutoConfirm,
 		Automation:   x.Automation,
+		NoWait:       x.NoWait,
 		OutputMode:   x.OutputMode,
 		Selection:    fromDomainProcessInstanceFilter(x.Selection),
 		BatchSize:    x.BatchSize,
@@ -94,6 +96,7 @@ func fromDomainDeletionResult(x d.DeletionResult) DeletionResult {
 		Errors:    append([]string(nil), x.Errors...),
 		Submitted: x.Submitted,
 		Confirmed: x.Confirmed,
+		NoWait:    x.NoWait,
 	}
 }
 
@@ -115,6 +118,7 @@ func fromDomainOrphanPurgeReport(x d.OrphanPurgeReport) OrphanPurgeReport {
 		DeleteRequested:  x.DeleteRequested,
 		AutoConfirm:      x.AutoConfirm,
 		Automation:       x.Automation,
+		NoWait:           x.NoWait,
 		Errors:           append([]string(nil), x.Errors...),
 		Outcome:          OrphanPurgeOutcome(x.Outcome),
 	}

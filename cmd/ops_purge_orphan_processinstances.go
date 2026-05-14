@@ -29,8 +29,8 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 		"The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
+  ./c8volt ops purge orphan-process-instances --automation --json --dry-run
   ./c8volt ops purge orphan-process-instances --auto-confirm
-  ./c8volt ops purge orphan-process-instances --automation --json
   ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
   ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json`,
 	Aliases: []string{"orphan-pi", "opi"},
@@ -58,6 +58,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			DryRun:       flagDryRun,
 			AutoConfirm:  flagCmdAutoConfirm,
 			Automation:   automationModeEnabled(cmd),
+			NoWait:       flagNoWait,
 			OutputMode:   pickMode().String(),
 			Selection:    populatePISearchFilterOpts(),
 			BatchSize:    resolvePISearchSize(cmd, cfg),
@@ -79,9 +80,9 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 				return
 			}
 			if planned.Discovery.Count > 0 {
-				prompt := fmt.Sprintf("You are about to delete %d orphan process instance(s). Do you want to proceed?", len(planned.DeletionPlan.AffectedKeys))
+				prompt := fmt.Sprintf("You are about to delete %d affected process instance(s) from %d candidate orphan process instance(s). Do you want to proceed?", len(planned.DeletionPlan.AffectedKeys), planned.Discovery.Count)
 				if len(planned.DeletionPlan.AffectedKeys) > planned.Discovery.Count {
-					prompt = fmt.Sprintf("You have requested to delete %d orphan process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletionPlan.AffectedKeys), len(planned.DeletionPlan.RootKeys))
+					prompt = fmt.Sprintf("You have requested to delete %d candidate orphan process instance(s), but due to dependencies, a total of %d affected process instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletionPlan.AffectedKeys), len(planned.DeletionPlan.RootKeys))
 				}
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
 					abortOpsPurgeOrphanProcessInstancesAfterReport(cmd, log, cfg, markOpsPurgeOrphanProcessInstancesLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)

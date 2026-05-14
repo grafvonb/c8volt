@@ -19,73 +19,15 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 	if commandUsesSharedEnvelope(cmd, pickMode()) {
 		return renderSucceededResult(cmd, result)
 	}
-	cmd.Printf("retention policy: %s\n", result.Outcome)
-	cmd.Printf("retention days: %d\n", result.Request.RetentionDays)
-	if result.Request.DerivedEndDateBoundary != "" {
-		cmd.Printf("retention boundary: endDate <= %s\n", result.Request.DerivedEndDateBoundary)
+	if result.Request.DryRun {
+		renderHumanLine(cmd, "dry run: execute retention policy")
+	} else {
+		renderHumanLine(cmd, "execute retention policy")
 	}
-	if filters := result.Discovery.Filters.String(); filters != "" {
-		cmd.Printf("selection filters: %s\n", filters)
-	}
-	if result.Discovery.Status != "" {
-		cmd.Printf("retention discovery: %s\n", result.Discovery.Status)
-		cmd.Printf("retention seeds: %d\n", result.Discovery.Count)
-		if result.Discovery.Count == 0 {
-			cmd.Printf("no retention cleanup targets found\n")
-		}
-	}
-	if result.DeletePlan.Status != "" {
-		cmd.Printf("delete plan: %s (seeds: %d, roots: %d, affected: %d)\n",
-			result.DeletePlan.Status,
-			len(result.DeletePlan.SeedKeys),
-			len(result.DeletePlan.ResolvedRootKeys),
-			len(result.DeletePlan.AffectedKeys),
-		)
-		if len(result.DeletePlan.DuplicateKeys) > 0 {
-			cmd.Printf("duplicate roots: %d\n", len(result.DeletePlan.DuplicateKeys))
-		}
-		if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
-			cmd.Printf("non-final descendants in final-root scope: %d (use --force to cancel before delete)\n", len(result.DeletePlan.NonFinalAffectedItems))
-		}
-		if len(result.DeletePlan.SkippedSeedKeys) > 0 {
-			cmd.Printf("skipped retention seeds with non-final roots: %d\n", len(result.DeletePlan.SkippedSeedKeys))
-		}
-		if len(result.DeletePlan.MissingAncestors) > 0 {
-			cmd.Printf("missing ancestors: %d\n", len(result.DeletePlan.MissingAncestors))
-		}
-		for _, warning := range result.DeletePlan.TraversalWarnings {
-			if warning != "" {
-				cmd.Printf("traversal warning: %s\n", warning)
-			}
-		}
-		cmd.Printf("confirmation required: %t\n", result.DeletePlan.RequiresConfirmation)
-		if flagVerbose {
-			printOpsExecuteRetentionPolicyKeys(cmd, "retention seed keys", result.DeletePlan.SeedKeys)
-			printOpsExecuteRetentionPolicyKeys(cmd, "skipped retention seed keys", result.DeletePlan.SkippedSeedKeys)
-			printOpsExecuteRetentionPolicyItems(cmd, "skipped non-final roots", result.DeletePlan.SkippedNonFinalRoots)
-			printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
-			printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
-		}
-	}
-	if result.Deletion.Status != "" {
-		if !result.Deletion.Submitted {
-			cmd.Printf("deletion: %s; no deletion request submitted\n", result.Deletion.Status)
-		} else {
-			cmd.Printf("deletion: %s (requests: %d)\n", result.Deletion.Status, len(result.Deletion.Items))
-			if result.Deletion.NoWait {
-				cmd.Printf("deletion confirmation: skipped (--no-wait)\n")
-			} else {
-				cmd.Printf("deletion confirmation: %t\n", result.Deletion.Confirmed)
-			}
-		}
-	}
-	if result.Outcome != "" {
-		if !result.Deletion.Submitted && result.Outcome == ops.RetentionPolicyOutcomePlanned {
-			cmd.Printf("outcome: %s; no changes applied\n", result.Outcome)
-		} else {
-			cmd.Printf("outcome: %s\n", result.Outcome)
-		}
-	}
+	renderOpsExecuteRetentionPolicyDiscovery(cmd, result)
+	renderOpsExecuteRetentionPolicyDeletePlan(cmd, result)
+	renderOpsExecuteRetentionPolicyDeletion(cmd, result)
+	renderOpsExecuteRetentionPolicyOutcome(cmd, result)
 	renderOpsExecuteRetentionPolicyReportFile(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
@@ -93,20 +35,116 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 	return nil
 }
 
+func renderOpsExecuteRetentionPolicyDiscovery(cmd *cobra.Command, result ops.RetentionPolicyResult) {
+	if filters := result.Discovery.Filters.String(); filters != "" {
+		renderHumanLine(cmd, "selection filters: %s", filters)
+	}
+	if result.Discovery.Status != "" {
+		renderHumanLine(cmd, "candidate retention process instances: %d", result.Discovery.Count)
+		if result.Discovery.Count == 0 {
+			renderHumanLine(cmd, "no retention cleanup targets found")
+		}
+	}
+	if flagVerbose {
+		renderHumanLine(cmd, "retention days: %d", result.Request.RetentionDays)
+		if result.Request.DerivedEndDateBoundary != "" {
+			renderHumanLine(cmd, "retention boundary: endDate <= %s", result.Request.DerivedEndDateBoundary)
+		}
+		if result.Discovery.Status != "" {
+			renderHumanLine(cmd, "retention discovery: %s", result.Discovery.Status)
+		}
+	}
+}
+
+func renderOpsExecuteRetentionPolicyDeletePlan(cmd *cobra.Command, result ops.RetentionPolicyResult) {
+	if result.DeletePlan.Status != "" {
+		renderHumanLine(cmd, "delete plan: %s (candidate retention process instances: %d, roots: %d, affected process instances: %d)",
+			result.DeletePlan.Status,
+			len(result.DeletePlan.SeedKeys),
+			len(result.DeletePlan.ResolvedRootKeys),
+			len(result.DeletePlan.AffectedKeys),
+		)
+		if flagVerbose && len(result.DeletePlan.DuplicateKeys) > 0 {
+			renderHumanLine(cmd, "duplicate roots: %d", len(result.DeletePlan.DuplicateKeys))
+		}
+		if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
+			renderHumanLine(cmd, "non-final descendants in final-root scope: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
+		}
+		if len(result.DeletePlan.SkippedSeedKeys) > 0 {
+			renderHumanLine(cmd, "skipped candidate retention process instances with non-final roots: %d", len(result.DeletePlan.SkippedSeedKeys))
+		}
+		if flagVerbose && len(result.DeletePlan.MissingAncestors) > 0 {
+			renderHumanLine(cmd, "missing ancestors: %d", len(result.DeletePlan.MissingAncestors))
+		}
+		if flagVerbose {
+			for _, warning := range result.DeletePlan.TraversalWarnings {
+				if warning != "" {
+					renderHumanLine(cmd, "traversal warning: %s", warning)
+				}
+			}
+			renderHumanLine(cmd, "confirmation required: %t", result.DeletePlan.RequiresConfirmation)
+			printOpsExecuteRetentionPolicyKeys(cmd, "candidate keys", result.DeletePlan.SeedKeys)
+			printOpsExecuteRetentionPolicyKeys(cmd, "skipped candidate keys", result.DeletePlan.SkippedSeedKeys)
+			printOpsExecuteRetentionPolicyItems(cmd, "skipped non-final roots", result.DeletePlan.SkippedNonFinalRoots)
+			printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
+			printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
+		}
+	}
+}
+
+func renderOpsExecuteRetentionPolicyDeletion(cmd *cobra.Command, result ops.RetentionPolicyResult) {
+	if result.Deletion.Status != "" {
+		if !result.Deletion.Submitted && !flagVerbose {
+			return
+		}
+		if !result.Deletion.Submitted {
+			renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
+			return
+		}
+		renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
+		if result.Deletion.NoWait {
+			renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
+		} else {
+			renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
+		}
+	}
+}
+
+func renderOpsExecuteRetentionPolicyOutcome(cmd *cobra.Command, result ops.RetentionPolicyResult) {
+	if result.Outcome != "" {
+		if !result.Deletion.Submitted && result.Outcome == ops.RetentionPolicyOutcomePlanned {
+			line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
+			if !flagVerbose && retentionPolicyHasHiddenKeys(result) {
+				line += "; use --verbose to list process-instance keys"
+			}
+			renderHumanLine(cmd, "%s", line)
+		} else {
+			renderHumanLine(cmd, "outcome: %s", result.Outcome)
+		}
+	}
+}
+
+func retentionPolicyHasHiddenKeys(result ops.RetentionPolicyResult) bool {
+	return len(result.DeletePlan.SeedKeys) > 0 ||
+		len(result.DeletePlan.SkippedSeedKeys) > 0 ||
+		len(result.DeletePlan.ResolvedRootKeys) > 0 ||
+		len(result.DeletePlan.AffectedKeys) > 0
+}
+
 func printOpsExecuteRetentionPolicyKeys(cmd *cobra.Command, label string, keys []string) {
 	if len(keys) == 0 {
-		cmd.Printf("%s: none\n", label)
+		renderHumanLine(cmd, "%s: none", label)
 		return
 	}
-	cmd.Printf("%s: %s\n", label, strings.Join(keys, ", "))
+	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
 }
 
 func printOpsExecuteRetentionPolicyItems(cmd *cobra.Command, label string, items []process.ProcessInstance) {
 	if len(items) == 0 {
-		cmd.Printf("%s: none\n", label)
+		renderHumanLine(cmd, "%s: none", label)
 		return
 	}
-	cmd.Printf("%s: %s\n", label, strings.Join(retentionProcessInstanceItems(items), ", "))
+	renderHumanLine(cmd, "%s: %s", label, strings.Join(retentionProcessInstanceItems(items), ", "))
 }
 
 func renderOpsExecuteRetentionPolicyReportFile(cmd *cobra.Command, result ops.RetentionPolicyResult) {
@@ -156,19 +194,19 @@ func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditRepo
 	writeMarkdownReportField(&out, "Retention Days", fmt.Sprintf("%d", report.Discovery.RetentionDays))
 	writeMarkdownReportField(&out, "Derived End Date Boundary", report.Discovery.DerivedEndDateBoundary)
 	writeMarkdownReportField(&out, "Count", fmt.Sprintf("%d", report.Discovery.Count))
-	writeMarkdownReportList(&out, "Seed Keys", report.Discovery.SeedKeys)
+	writeMarkdownReportList(&out, "Candidate Keys", report.Discovery.SeedKeys)
 	writeMarkdownReportList(&out, "Errors", report.Discovery.Errors)
 
 	out.WriteString("\n## Delete Plan\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.DeletePlan.Status))
 	writeMarkdownReportField(&out, "Requires Confirmation", fmt.Sprintf("%t", report.DeletePlan.RequiresConfirmation))
-	writeMarkdownReportList(&out, "Seed Keys", report.DeletePlan.SeedKeys)
+	writeMarkdownReportList(&out, "Candidate Keys", report.DeletePlan.SeedKeys)
 	writeMarkdownReportList(&out, "Resolved Root Keys", report.DeletePlan.ResolvedRootKeys)
 	writeMarkdownReportList(&out, "Affected Keys", report.DeletePlan.AffectedKeys)
 	writeMarkdownReportList(&out, "Duplicate Keys", report.DeletePlan.DuplicateKeys)
 	writeMarkdownReportList(&out, "Final State Items", retentionProcessInstanceItems(report.DeletePlan.FinalStateItems))
 	writeMarkdownReportList(&out, "Non-Final Affected Items", retentionProcessInstanceItems(report.DeletePlan.NonFinalAffectedItems))
-	writeMarkdownReportList(&out, "Skipped Seed Keys", report.DeletePlan.SkippedSeedKeys)
+	writeMarkdownReportList(&out, "Skipped Candidate Keys", report.DeletePlan.SkippedSeedKeys)
 	writeMarkdownReportList(&out, "Skipped Non-Final Roots", retentionProcessInstanceItems(report.DeletePlan.SkippedNonFinalRoots))
 	writeMarkdownReportList(&out, "Missing Ancestors", retentionMissingAncestorItems(report.DeletePlan.MissingAncestors))
 	writeMarkdownReportList(&out, "Traversal Warnings", report.DeletePlan.TraversalWarnings)

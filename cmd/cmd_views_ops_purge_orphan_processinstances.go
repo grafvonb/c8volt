@@ -36,7 +36,7 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		renderHumanLine(cmd, "purge orphan process-instances")
 	}
 	if result.Discovery.Count == 0 {
-		renderHumanLine(cmd, "discovered orphan process instances: 0")
+		renderHumanLine(cmd, "candidate orphan process instances: 0")
 		renderHumanLine(cmd, "delete plan: skipped")
 		if result.Request.DryRun {
 			renderHumanLine(cmd, "outcome: planned; no changes applied")
@@ -47,11 +47,11 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		return nil
 	}
 	renderHumanLine(cmd, "selection filters: %s", result.Discovery.Filters.String())
-	renderHumanLine(cmd, "discovered orphan process instances: %d", result.Discovery.Count)
+	renderHumanLine(cmd, "candidate orphan process instances: %d", result.Discovery.Count)
 	if flagVerbose {
-		renderHumanLine(cmd, "discovered keys: %s", strings.Join(result.Discovery.Keys, ", "))
+		renderHumanLine(cmd, "candidate keys: %s", strings.Join(result.Discovery.Keys, ", "))
 	}
-	renderHumanLine(cmd, "delete plan: %s (requested: %d, roots: %d, affected: %d)",
+	renderHumanLine(cmd, "delete plan: %s (candidate orphan process instances: %d, roots: %d, affected process instances: %d)",
 		result.DeletionPlan.Status,
 		len(result.DeletionPlan.RequestedKeys),
 		len(result.DeletionPlan.RootKeys),
@@ -60,12 +60,23 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))
 	if result.DeleteRequested {
 		renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
+		if result.Deletion.NoWait {
+			renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
+		} else {
+			renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
+		}
 		renderHumanLine(cmd, "outcome: %s", result.Outcome)
 		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 		return nil
 	}
-	renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
-	renderHumanLine(cmd, "outcome: %s; no changes applied", result.Outcome)
+	if flagVerbose {
+		renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
+	}
+	line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
+	if !flagVerbose && len(result.DeletionPlan.AffectedKeys) > 0 {
+		line += "; use --verbose to list process-instance keys"
+	}
+	renderHumanLine(cmd, "%s", line)
 	renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 	return nil
 }
@@ -118,6 +129,7 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
 	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
 	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))
 	writeMarkdownReportField(&out, "Delete Requested", fmt.Sprintf("%t", report.DeleteRequested))
 	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
 
@@ -127,13 +139,13 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	out.WriteString("\n## Discovery\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
 	writeMarkdownReportField(&out, "Count", fmt.Sprintf("%d", report.Discovery.Count))
-	writeMarkdownReportList(&out, "Keys", report.Discovery.Keys)
+	writeMarkdownReportList(&out, "Candidate Keys", report.Discovery.Keys)
 	writeMarkdownReportList(&out, "Errors", report.Discovery.Errors)
 
 	out.WriteString("\n## Deletion Plan\n\n")
 	writeMarkdownReportField(&out, "Status", string(report.DeletionPlan.Status))
 	writeMarkdownReportField(&out, "Requires Confirmation", fmt.Sprintf("%t", report.DeletionPlan.RequiresConfirmation))
-	writeMarkdownReportList(&out, "Requested Keys", report.DeletionPlan.RequestedKeys)
+	writeMarkdownReportList(&out, "Candidate Keys", report.DeletionPlan.RequestedKeys)
 	writeMarkdownReportList(&out, "Root Keys", report.DeletionPlan.RootKeys)
 	writeMarkdownReportList(&out, "Affected Keys", report.DeletionPlan.AffectedKeys)
 	writeMarkdownReportList(&out, "Errors", report.DeletionPlan.Errors)
@@ -142,6 +154,7 @@ func renderOpsPurgeOrphanProcessInstancesMarkdownReport(report ops.OrphanPurgeRe
 	writeMarkdownReportField(&out, "Status", string(report.Deletion.Status))
 	writeMarkdownReportField(&out, "Submitted", fmt.Sprintf("%t", report.Deletion.Submitted))
 	writeMarkdownReportField(&out, "Confirmed", fmt.Sprintf("%t", report.Deletion.Confirmed))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.Deletion.NoWait))
 	if len(report.Deletion.Items) > 0 {
 		out.WriteString("- Items:\n")
 		for _, item := range report.Deletion.Items {

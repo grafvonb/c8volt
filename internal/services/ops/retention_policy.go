@@ -361,7 +361,7 @@ func formatRetentionBlockedScope(plan d.RetentionDeletePlan) string {
 		}
 		pairs = append(pairs, fmt.Sprintf("%s=%s", item.Key, item.State))
 	}
-	return fmt.Sprintf("retention matched %d ended seed(s); delete planning expanded to %d affected process instance(s) across %d root(s); %d non-final descendant process instance(s) in otherwise final-root retention scope; states: %s; %s", len(plan.SeedKeys), len(plan.AffectedKeys), len(plan.ResolvedRootKeys), len(items), strings.Join(states, ", "), strings.Join(pairs, ", "))
+	return fmt.Sprintf("retention matched %d candidate process instance(s); delete planning expanded to %d affected process instance(s) across %d root(s); %d non-final descendant process instance(s) in otherwise final-root retention scope; states: %s; %s", len(plan.SeedKeys), len(plan.AffectedKeys), len(plan.ResolvedRootKeys), len(items), strings.Join(states, ", "), strings.Join(pairs, ", "))
 }
 
 func withRetentionPolicyOptionControls(request d.RetentionPolicyRequest, opts ...services.CallOption) d.RetentionPolicyRequest {

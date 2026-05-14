@@ -23,8 +23,8 @@ c8volt ops purge orphan-process-instances [flags]
 ```
   ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
+  ./c8volt ops purge orphan-process-instances --automation --json --dry-run
   ./c8volt ops purge orphan-process-instances --auto-confirm
-  ./c8volt ops purge orphan-process-instances --automation --json
   ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
   ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json
 ```

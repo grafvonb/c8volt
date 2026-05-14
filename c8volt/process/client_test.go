@@ -1484,7 +1484,7 @@ func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	started, stopped, msgs := sink.Snapshot()
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
-	assert.Equal(t, []string{"cancelling 4 pi via 1 root"}, msgs)
+	assert.Equal(t, []string{"cancelling 4 pi via 1 root(s)"}, msgs)
 }
 
 // TestClient_DeleteProcessInstances_LogsExpandedAffectedScope verifies delete
@@ -1509,6 +1509,29 @@ func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	assert.Contains(t, logBuf.String(), "deleting pi: affected 4, roots 1")
 	assert.Contains(t, logBuf.String(), "deleting pi done; affected 4, roots 1, ok 1, failed 0")
 	assert.NotContains(t, logBuf.String(), "deleting pi done; requested 1")
+}
+
+// TestClient_DeleteProcessInstances_UsesActivityIndicator verifies bulk delete emits activity lifecycle messages.
+func TestClient_DeleteProcessInstances_UsesActivityIndicator(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	ctx := logging.ToActivityContext(context.Background(), sink)
+	piAPI := stubProcessInstanceAPI{
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			assert.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+
+	_, err := cli.DeleteProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
+
+	require.NoError(t, err)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"deleting 4 pi via 1 root(s)"}, msgs)
 }
 
 // TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScope

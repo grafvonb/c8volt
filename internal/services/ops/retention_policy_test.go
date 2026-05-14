@@ -465,7 +465,7 @@ func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *te
 
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
-	require.Contains(t, err.Error(), "retention matched 1 ended seed(s)")
+	require.Contains(t, err.Error(), "retention matched 1 candidate process instance(s)")
 	require.Contains(t, err.Error(), "delete planning expanded to 3 affected process instance(s) across 1 root(s)")
 	require.Contains(t, err.Error(), "non-final descendant process instance(s) in otherwise final-root retention scope")
 	require.Contains(t, err.Error(), "states: ACTIVE")
