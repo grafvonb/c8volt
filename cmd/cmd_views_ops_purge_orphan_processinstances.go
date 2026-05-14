@@ -43,28 +43,57 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		} else {
 			renderHumanLine(cmd, "outcome: planned; no targets deleted")
 		}
+		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 		return nil
 	}
 	renderHumanLine(cmd, "selection filters: %s", result.Discovery.Filters.String())
 	renderHumanLine(cmd, "discovered orphan process instances: %d", result.Discovery.Count)
-	renderHumanLine(cmd, "discovered keys: %s", strings.Join(result.Discovery.Keys, ", "))
+	if flagVerbose {
+		renderHumanLine(cmd, "discovered keys: %s", strings.Join(result.Discovery.Keys, ", "))
+	}
 	renderHumanLine(cmd, "delete plan: %s (requested: %d, roots: %d, affected: %d)",
 		result.DeletionPlan.Status,
 		len(result.DeletionPlan.RequestedKeys),
 		len(result.DeletionPlan.RootKeys),
 		len(result.DeletionPlan.AffectedKeys),
 	)
-	if result.DeletionPlan.DryRunPreview.Warning != "" {
-		renderHumanWarningLine(cmd, "%s", result.DeletionPlan.DryRunPreview.Warning)
-	}
+	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))
 	if result.DeleteRequested {
 		renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
 		renderHumanLine(cmd, "outcome: %s", result.Outcome)
+		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 		return nil
 	}
 	renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 	renderHumanLine(cmd, "outcome: %s; no changes applied", result.Outcome)
+	renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 	return nil
+}
+
+func renderOpsPurgeOrphanProcessInstancesReportFile(cmd *cobra.Command, result ops.OrphanPurgeResult) {
+	if result.Request.ReportFile == "" {
+		return
+	}
+	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
+}
+
+func opsPurgeOrphanProcessInstancesHumanNotices(result ops.OrphanPurgeResult) []opsHumanNotice {
+	return []opsHumanNotice{
+		{
+			Level: opsHumanNoticeLevelWarning,
+			Code:  opsHumanNoticeOrphanParentMissing,
+			Text:  result.DeletionPlan.DryRunPreview.Warning,
+		},
+	}
+}
+
+func opsPurgeOrphanProcessInstancesNoticeFilter(_ ops.OrphanPurgeResult) opsHumanNoticeFilter {
+	return func(notice opsHumanNotice) bool {
+		if notice.Code == opsHumanNoticeOrphanParentMissing {
+			return false
+		}
+		return true
+	}
 }
 
 func renderOpsPurgeOrphanProcessInstancesJSONReport(report ops.OrphanPurgeReport) ([]byte, error) {

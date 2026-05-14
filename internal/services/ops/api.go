@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"log/slog"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -17,10 +18,15 @@ type API interface {
 
 type Service struct {
 	piAPI pisvc.API
+	log   *slog.Logger
 }
 
-func New(piAPI pisvc.API) API {
-	return &Service{piAPI: piAPI}
+func New(piAPI pisvc.API, loggers ...*slog.Logger) API {
+	log := slog.Default()
+	if len(loggers) > 0 && loggers[0] != nil {
+		log = loggers[0]
+	}
+	return &Service{piAPI: piAPI, log: log}
 }
 
 var _ API = (*Service)(nil)

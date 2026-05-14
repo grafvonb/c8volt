@@ -50,6 +50,12 @@ func TestNew_V89WiresSupportedRuntime(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, got.Items)
 
+	// Command code receives the top-level facade, so process capabilities must
+	// survive the c8volt.API embedding boundary.
+	gotOrphans, err := cli.DiscoverOrphanProcessInstances(context.Background(), process.OrphanDiscoveryRequest{})
+	require.Error(t, err)
+	require.Empty(t, gotOrphans.Items)
+
 	_, err = cli.GetResource(context.Background(), "resource-id-123")
 	require.Error(t, err)
 

@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -96,6 +98,54 @@ func TestOpsWorkflowReportFormatForPath(t *testing.T) {
 	}
 }
 
+func TestValidateOpsWorkflowReportFlags(t *testing.T) {
+	require.NoError(t, validateOpsWorkflowReportFlags("", ""))
+	require.NoError(t, validateOpsWorkflowReportFlags("run.md", ""))
+	require.NoError(t, validateOpsWorkflowReportFlags("run.md", OpsWorkflowReportFormatJSON))
+
+	require.EqualError(t,
+		validateOpsWorkflowReportFlags("", OpsWorkflowReportFormatJSON),
+		"invalid input: missing dependent flags: --report-format requires --report-file",
+	)
+	require.EqualError(t,
+		validateOpsWorkflowReportFlags("run.json", OpsWorkflowReportFormat("yaml")),
+		`invalid input: invalid flag value: unsupported ops workflow report format "yaml"`,
+	)
+}
+
+func TestWriteOpsWorkflowReportFilePreservesExistingUntilConfirmed(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "report.md")
+	require.NoError(t, writeOpsWorkflowReportFile(path, []byte("first"), OpsWorkflowReportPreserveExisting))
+	require.Equal(t, "first", readOpsContractTestFile(t, path))
+
+	err := writeOpsWorkflowReportFile(path, []byte("second"), OpsWorkflowReportPreserveExisting)
+	require.EqualError(t, err, "report file already exists: "+path)
+	require.Equal(t, "first", readOpsContractTestFile(t, path))
+
+	require.NoError(t, writeOpsWorkflowReportFile(path, []byte("second"), OpsWorkflowReportOverwriteExisting))
+	require.Equal(t, "second", readOpsContractTestFile(t, path))
+}
+
+func TestOpsWorkflowReportWriteModeForConfirmedMutation(t *testing.T) {
+	require.Equal(t, OpsWorkflowReportPreserveExisting, opsWorkflowReportWriteModeForConfirmedMutation(false))
+	require.Equal(t, OpsWorkflowReportOverwriteExisting, opsWorkflowReportWriteModeForConfirmedMutation(true))
+}
+
+func TestValidateOpsWorkflowReportPathForPlanning(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "report.md")
+	missing := filepath.Join(dir, "new-report.md")
+	require.NoError(t, os.WriteFile(existing, []byte("existing"), 0o600))
+
+	require.NoError(t, validateOpsWorkflowReportPathForPlanning("", OpsWorkflowReportPreserveExisting))
+	require.NoError(t, validateOpsWorkflowReportPathForPlanning(missing, OpsWorkflowReportPreserveExisting))
+	require.NoError(t, validateOpsWorkflowReportPathForPlanning(existing, OpsWorkflowReportOverwriteExisting))
+
+	err := validateOpsWorkflowReportPathForPlanning(existing, OpsWorkflowReportPreserveExisting)
+	require.EqualError(t, err, "local precondition failed: report file already exists: "+existing)
+	require.Equal(t, "existing", readOpsContractTestFile(t, existing))
+}
+
 // opsWorkflowStatusStrings keeps test assertions focused on the stable serialized tokens.
 func opsWorkflowStatusStrings(statuses []OpsWorkflowStepStatus) []string {
 	out := make([]string, 0, len(statuses))
@@ -103,4 +153,12 @@ func opsWorkflowStatusStrings(statuses []OpsWorkflowStepStatus) []string {
 		out = append(out, status.String())
 	}
 	return out
+}
+
+func readOpsContractTestFile(t *testing.T, path string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return string(data)
 }

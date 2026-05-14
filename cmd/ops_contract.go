@@ -4,7 +4,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -89,6 +91,16 @@ func (f OpsWorkflowReportFormat) IsValid() bool {
 	}
 }
 
+// OpsWorkflowReportWriteMode controls whether an ops report may replace an existing file.
+type OpsWorkflowReportWriteMode int
+
+const (
+	// OpsWorkflowReportPreserveExisting creates a report only when the path is unused.
+	OpsWorkflowReportPreserveExisting OpsWorkflowReportWriteMode = iota
+	// OpsWorkflowReportOverwriteExisting allows a confirmed operation to replace a previous report.
+	OpsWorkflowReportOverwriteExisting
+)
+
 // OpsWorkflowReport is the workflow-neutral report shape ops commands can render or encode.
 type OpsWorkflowReport struct {
 	SchemaVersion   string                  `json:"schemaVersion,omitempty"`
@@ -131,4 +143,60 @@ func opsWorkflowReportFormatForPath(reportPath string, requested OpsWorkflowRepo
 	default:
 		return OpsWorkflowReportFormatMarkdown, nil
 	}
+}
+
+func validateOpsWorkflowReportFlags(reportPath string, requested OpsWorkflowReportFormat) error {
+	if requested != "" && reportPath == "" {
+		return missingDependentFlagsf("--report-format requires --report-file")
+	}
+	if reportPath == "" {
+		return nil
+	}
+	_, err := opsWorkflowReportFormatForPath(reportPath, requested)
+	if err != nil {
+		return invalidFlagValuef("%v", err)
+	}
+	return nil
+}
+
+func opsWorkflowReportWriteModeForConfirmedMutation(confirmed bool) OpsWorkflowReportWriteMode {
+	if confirmed {
+		return OpsWorkflowReportOverwriteExisting
+	}
+	return OpsWorkflowReportPreserveExisting
+}
+
+func validateOpsWorkflowReportPathForPlanning(path string, mode OpsWorkflowReportWriteMode) error {
+	if path == "" || mode == OpsWorkflowReportOverwriteExisting {
+		return nil
+	}
+	_, err := os.Stat(path)
+	if err == nil {
+		return localPreconditionError(fmt.Errorf("report file already exists: %s", path))
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return localPreconditionError(err)
+}
+
+func writeOpsWorkflowReportFile(path string, data []byte, mode OpsWorkflowReportWriteMode) error {
+	flags := os.O_WRONLY | os.O_CREATE
+	if mode == OpsWorkflowReportOverwriteExisting {
+		flags |= os.O_TRUNC
+	} else {
+		flags |= os.O_EXCL
+	}
+	file, err := os.OpenFile(path, flags, 0o600)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("report file already exists: %s", path)
+		}
+		return err
+	}
+	defer file.Close()
+	if _, err := file.Write(data); err != nil {
+		return err
+	}
+	return nil
 }

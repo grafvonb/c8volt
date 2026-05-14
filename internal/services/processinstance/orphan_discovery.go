@@ -37,26 +37,26 @@ func DiscoverOrphanProcessInstances(ctx context.Context, api OrphanDiscoveryAPI,
 	pageReq := d.ProcessInstancePageRequest{Size: normalizeOrphanDiscoveryBatchSize(request.BatchSize)}
 	var out OrphanDiscovery
 	out.Filter = filter
-	cumulative := 0
+	cumulativeOrphans := 0
 
 	for {
 		page, err := api.SearchForProcessInstancesPage(ctx, filter, pageReq, opts...)
 		if err != nil {
 			return OrphanDiscovery{}, err
 		}
-		items := limitOrphanDiscoveryItems(page.Items, request.Limit, cumulative)
-		if len(items) > 0 {
-			orphans, err := api.FilterProcessInstanceWithOrphanParent(ctx, items, opts...)
+		if len(page.Items) > 0 {
+			orphans, err := api.FilterProcessInstanceWithOrphanParent(ctx, page.Items, opts...)
 			if err != nil {
 				return OrphanDiscovery{}, err
 			}
-			out.Items = append(out.Items, orphans...)
-			for _, item := range orphans {
+			limitedOrphans := limitOrphanDiscoveryItems(orphans, request.Limit, cumulativeOrphans)
+			out.Items = append(out.Items, limitedOrphans...)
+			for _, item := range limitedOrphans {
 				out.Keys = append(out.Keys, item.Key)
 			}
-			cumulative += len(items)
+			cumulativeOrphans += len(limitedOrphans)
 		}
-		if shouldStopOrphanDiscovery(page, request.Limit, cumulative) {
+		if shouldStopOrphanDiscovery(page, request.Limit, cumulativeOrphans) {
 			out.Keys = out.Keys.Unique()
 			return out, nil
 		}

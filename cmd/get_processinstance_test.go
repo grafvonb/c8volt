@@ -1242,6 +1242,48 @@ func TestApplyPISearchResultFilters_OrphanChildrenUseCommandActivity(t *testing.
 	require.Equal(t, []string{"checking orphan parents for 2 process instance(s)"}, msgs)
 }
 
+func TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery(t *testing.T) {
+	var searchRequests []string
+	var getPaths []string
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			searchRequests = append(searchRequests, string(body))
+			_, _ = w.Write([]byte(`{"items":[{"hasIncident":false,"processDefinitionId":"demo","processDefinitionKey":"9001","processDefinitionName":"demo","processDefinitionVersion":3,"processInstanceKey":"123","parentProcessInstanceKey":"456","startDate":"2026-03-23T18:00:00Z","state":"ACTIVE","tenantId":"tenant"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/456":
+			getPaths = append(getPaths, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"not found"}`))
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", cfgPath,
+		"--tenant", "tenant",
+		"get", "pi",
+		"--orphan-children-only",
+	)
+
+	require.NotContains(t, stderr, "process client does not support shared orphan discovery")
+	require.NotContains(t, stderr, "internal error")
+	require.Contains(t, stdout, "123")
+	require.Equal(t, []string{"/v2/process-instances/456"}, getPaths)
+	filters := decodeCapturedPISearchRequests(t, searchRequests)
+	require.Len(t, filters, 1)
+	topLevelFilter, ok := filters[0]["filter"].(map[string]any)
+	require.True(t, ok)
+	require.NotContains(t, topLevelFilter, "processInstanceKey")
+	require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
+}
+
 func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testing.T) {
 	sink := &activitysink.Sink{}
 	cmd := &cobra.Command{}

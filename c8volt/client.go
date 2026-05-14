@@ -99,7 +99,7 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
-	opsAPI := opsvc.New(piAPI)
+	opsAPI := opsvc.New(piAPI, c.log)
 	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
 		return nil, err

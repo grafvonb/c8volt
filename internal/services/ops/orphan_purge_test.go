@@ -4,7 +4,9 @@
 package ops
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -202,6 +204,55 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 	require.True(t, got.DeleteRequested)
 	require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Deletion.Status)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
+}
+
+func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testing.T) {
+	t.Parallel()
+
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuf, nil))
+	request := d.OrphanPurgeRequest{
+		CommandName: "ops purge orphan-process-instances",
+		AutoConfirm: true,
+		DiscoveredKeys: typex.Keys{
+			"child-1",
+		},
+		StartedAt: time.Date(2026, 5, 11, 12, 0, 0, 0, time.UTC),
+	}
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				StartKey: key,
+				RootKey:  key,
+				Keys:     []string{key},
+				Chain: map[string]d.ProcessInstance{
+					key: {Key: key, State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey},
+				Chain: map[string]d.ProcessInstance{
+					rootKey: {Key: rootKey, State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "child-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := New(piAPI, logger).PurgeOrphanProcessInstances(context.Background(), request)
+
+	require.NoError(t, err)
+	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
+	require.Contains(t, logBuf.String(), "deleting pi done; requested 1, ok 1, failed 0")
 }
 
 type stubProcessInstanceAPI struct {

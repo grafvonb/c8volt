@@ -839,6 +839,10 @@ func (stubProcessAPI) FilterProcessInstanceWithOrphanParent(context.Context, []p
 	panic("unexpected call")
 }
 
+func (stubProcessAPI) DiscoverOrphanProcessInstances(context.Context, process.OrphanDiscoveryRequest, ...options.FacadeOption) (process.OrphanDiscovery, error) {
+	panic("unexpected call")
+}
+
 func (stubProcessAPI) WaitForProcessInstanceState(context.Context, string, process.States, ...options.FacadeOption) (process.StateReport, process.ProcessInstance, error) {
 	panic("unexpected call")
 }

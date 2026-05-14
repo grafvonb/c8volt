@@ -225,6 +225,16 @@ var getProcessInstanceCmd = &cobra.Command{
 			filter := populatePISearchFilterOpts()
 			log.Debug(fmt.Sprintf("searching pi; filter %s", filter.String()))
 			if flagGetPITotal {
+				if flagGetPIOrphanChildrenOnly {
+					pis, _, err := searchOrphanProcessInstancesWithSharedDiscovery(cmd, cli, cfg, filter)
+					if err != nil {
+						fail(fmt.Errorf("get process instances total: %w", err))
+					}
+					if err := processInstanceTotalView(cmd, int64(len(pis.Items))); err != nil {
+						fail(fmt.Errorf("render process instance total: %w", err))
+					}
+					return
+				}
 				total, err := searchProcessInstancesTotal(cmd, log, cli, cfg, filter)
 				if err != nil {
 					fail(fmt.Errorf("get process instances total: %w", err))
@@ -235,7 +245,11 @@ var getProcessInstanceCmd = &cobra.Command{
 				return
 			}
 			var renderedIncrementally bool
-			pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
+			if flagGetPIOrphanChildrenOnly {
+				pis, renderedIncrementally, err = searchOrphanProcessInstancesWithSharedDiscovery(cmd, cli, cfg, filter)
+			} else {
+				pis, renderedIncrementally, err = searchProcessInstancesWithPaging(cmd, cli, cfg, filter)
+			}
 			if err != nil {
 				fail(fmt.Errorf("get process instances: %w", err))
 			}

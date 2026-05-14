@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -34,7 +33,7 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
   ./c8volt ops purge orphan-process-instances --automation --auto-confirm --json
   ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
   ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json`,
-	Aliases: []string{"orphan-pi", "orphan-pis"},
+	Aliases: []string{"orphan-pi", "opi"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)
@@ -48,6 +47,9 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if err := validateOpsPurgeOrphanProcessInstancesReportFlags(); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateOpsWorkflowReportPathForPlanning(flagOpsPurgeOrphanReportFile, opsWorkflowReportWriteModeForConfirmedMutation(flagCmdAutoConfirm)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		request := ops.OrphanPurgeRequest{
@@ -93,12 +95,12 @@ var opsPurgeOrphanProcessInstancesCmd = &cobra.Command{
 		}
 		result, err := cli.PurgeOrphanProcessInstances(cmd.Context(), request, collectOptions()...)
 		if err != nil {
-			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg); reportErr != nil {
+			if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); reportErr != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w; write audit report: %v", err, reportErr))
 			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge orphan process instances: %w", err))
 		}
-		if err := writeOpsPurgeOrphanProcessInstancesReport(result, cfg); err != nil {
+		if err := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, opsPurgeOrphanProcessInstancesReportWriteMode(result)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge orphan process instances audit report: %w", err))
 		}
 		if err := renderOpsPurgeOrphanProcessInstancesResult(cmd, result); err != nil {
@@ -143,21 +145,11 @@ func validateOpsPurgeAutomationConfirmation(request ops.OrphanPurgeRequest, disc
 }
 
 func validateOpsPurgeOrphanProcessInstancesReportFlags() error {
-	if flagOpsPurgeOrphanReportFormat != "" && flagOpsPurgeOrphanReportFile == "" {
-		return missingDependentFlagsf("--report-format requires --report-file")
-	}
-	if flagOpsPurgeOrphanReportFile == "" {
-		return nil
-	}
-	_, err := opsWorkflowReportFormatForPath(flagOpsPurgeOrphanReportFile, OpsWorkflowReportFormat(flagOpsPurgeOrphanReportFormat))
-	if err != nil {
-		return invalidFlagValuef("%v", err)
-	}
-	return nil
+	return validateOpsWorkflowReportFlags(flagOpsPurgeOrphanReportFile, OpsWorkflowReportFormat(flagOpsPurgeOrphanReportFormat))
 }
 
 func abortOpsPurgeOrphanProcessInstancesAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.OrphanPurgeResult, err error) {
-	if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg); reportErr != nil {
+	if reportErr := writeOpsPurgeOrphanProcessInstancesReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
 		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w; write audit report: %v", err, reportErr))
 	}
 	handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
@@ -191,7 +183,11 @@ func appendOpsPurgeOrphanProcessInstancesError(items []string, value string) []s
 	return append(items, value)
 }
 
-func writeOpsPurgeOrphanProcessInstancesReport(result ops.OrphanPurgeResult, cfg *config.Config) error {
+func opsPurgeOrphanProcessInstancesReportWriteMode(result ops.OrphanPurgeResult) OpsWorkflowReportWriteMode {
+	return opsWorkflowReportWriteModeForConfirmedMutation(result.DeleteRequested)
+}
+
+func writeOpsPurgeOrphanProcessInstancesReport(result ops.OrphanPurgeResult, cfg *config.Config, mode OpsWorkflowReportWriteMode) error {
 	if result.Request.ReportFile == "" {
 		return nil
 	}
@@ -212,7 +208,7 @@ func writeOpsPurgeOrphanProcessInstancesReport(result ops.OrphanPurgeResult, cfg
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(result.Request.ReportFile, data, 0o600)
+	return writeOpsWorkflowReportFile(result.Request.ReportFile, data, mode)
 }
 
 func enrichOpsPurgeOrphanProcessInstancesReport(report ops.OrphanPurgeReport, cfg *config.Config) ops.OrphanPurgeReport {

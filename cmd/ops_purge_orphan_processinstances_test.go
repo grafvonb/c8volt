@@ -26,7 +26,7 @@ const (
 	opsOrphanProcessKey = "2251799813685248"
 )
 
-func TestOpsPurgeOrphanProcessInstancesDryRunReportsDiscoveredKeysWithoutDelete(t *testing.T) {
+func TestOpsPurgeOrphanProcessInstancesDryRunHidesDiscoveredKeysWithoutDelete(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsOrphanPurgeServer(t, &requests, true)
 	t.Cleanup(srv.Close)
@@ -40,9 +40,29 @@ func TestOpsPurgeOrphanProcessInstancesDryRunReportsDiscoveredKeysWithoutDelete(
 
 	require.Contains(t, output, "dry run: purge orphan process-instances")
 	require.Contains(t, output, "discovered orphan process instances: 1")
-	require.Contains(t, output, "discovered keys: "+opsOrphanChildKey)
+	require.NotContains(t, output, "discovered keys:")
 	require.Contains(t, output, "delete plan: planned")
+	require.NotContains(t, output, "one or more parent process instances were not found")
 	require.Contains(t, output, "no deletion request submitted")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
+}
+
+func TestOpsPurgeOrphanProcessInstancesDryRunVerboseReportsDiscoveredKeys(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServer(t, &requests, true)
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--verbose",
+		"ops", "purge", "orphan-process-instances",
+		"--dry-run",
+		"--state", "active",
+	)
+
+	require.Contains(t, output, "discovered orphan process instances: 1")
+	require.Contains(t, output, "discovered keys: "+opsOrphanChildKey)
+	require.NotContains(t, output, "one or more parent process instances were not found")
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/deletion")
 }
 
@@ -106,6 +126,7 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesDiscoveredKeys(t *testi
 	require.Contains(t, output, "purge orphan process-instances")
 	require.Contains(t, output, "discovered orphan process instances: 1")
 	require.Contains(t, output, "delete plan: planned")
+	require.NotContains(t, output, "one or more parent process instances were not found")
 	require.Contains(t, output, "deletion: submitted (requests: 1)")
 	require.Contains(t, output, "outcome: deleted")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
@@ -190,6 +211,7 @@ func TestOpsPurgeOrphanProcessInstancesWritesMarkdownReport(t *testing.T) {
 	)
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
+	require.Contains(t, output, "report: written "+reportPath)
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# Orphan Process Instance Purge Audit Report")
 	require.Contains(t, report, "- Command: ops purge orphan-process-instances")
@@ -206,6 +228,7 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "orphan-purge.json")
+	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
 
 	output := executeRootForProcessInstanceTest(t,
 		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
@@ -217,6 +240,8 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	)
 
 	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "report: written "+reportPath)
+	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
 	require.Equal(t, "ops.orphan-process-instances.v1", report["schemaVersion"])
@@ -231,6 +256,32 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	require.Equal(t, opsOrphanChildKey, keys[0])
 	deletion := requireJSONObject(t, report["deletion"])
 	require.Equal(t, "submitted", deletion["status"])
+}
+
+func TestOpsPurgeOrphanProcessInstancesExistingReportFailsBeforePreflight(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "orphan-purge.md")
+	const existingReport = "existing report"
+	require.NoError(t, os.WriteFile(reportPath, []byte(existingReport), 0o600))
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeOrphanProcessInstancesAbortPreservesExistingReportHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_REPORT": reportPath,
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "report file already exists: "+reportPath)
+	require.NotContains(t, string(output), "aborted by user")
+	require.NotContains(t, string(output), "write audit report")
+	require.Equal(t, existingReport, readReportFile(t, reportPath))
+	require.Empty(t, requests.Snapshot())
+	require.Empty(t, deleted.Snapshot())
 }
 
 func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure(t *testing.T) {
@@ -319,6 +370,26 @@ func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailureHelp
 		"--auto-confirm",
 		"--report-file", os.Getenv("C8VOLT_TEST_REPORT"),
 		"--report-format", "json",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestOpsPurgeOrphanProcessInstancesAbortPreservesExistingReportHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	confirmCmdOrAbortFn = func(bool, string) error {
+		return localPreconditionError(ErrCmdAborted)
+	}
+	root := Root()
+	resetCommandTreeFlags(root)
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"ops", "purge", "orphan-process-instances",
+		"--report-file", os.Getenv("C8VOLT_TEST_REPORT"),
 	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)

@@ -6,7 +6,6 @@ package ops
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -84,7 +83,7 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 	}
 
 	result.DeleteRequested = true
-	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, slog.Default(), plan.Roots, request.Workers, len(plan.Collected), opts...)
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.Roots, request.Workers, len(plan.Collected), opts...)
 	result.Deletion = d.DeletionResult{
 		Status:    deletionStatusForReports(reports, cfg.NoWait, err),
 		Items:     reports,
