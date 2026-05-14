@@ -12,7 +12,7 @@
 - Retention policy foundation now mirrors #186 boundaries: domain models in `internal/domain/ops_retention_policy.go`, public models/API/conversions in `c8volt/ops`, and a validation-only service seam in `internal/services/ops/retention_policy.go`.
 - Foundational retention service validation rejects negative retention days and explicit process-instance key selection with `domain.ErrValidation`; the public ops facade maps those through `ferrors.FromDomain` to invalid-input behavior.
 - Mandatory Ralph implementation context is `specs/ralph-implementation-rules.md`; commit subjects for this feature must use Conventional Commits and end with `#187`.
-- `ops execute` is currently a grouping command in `cmd/ops_execute.go`; it is state-changing metadata only, renders help from `RunE`, and currently has no child workflow commands.
+- `ops execute` remains a grouping command in `cmd/ops_execute.go`; `retention-policy` is registered from `cmd/ops_execute_retention_policy.go`, owns local `--retention-days` validation before facade calls, and changes the execute group contract from unsupported to limited through its child.
 - Existing #186 ops purge command wiring lives in `cmd/ops_purge_orphan_processinstances.go`: command files own Cobra flags, validation, `NewCli`, automation support checks, report-path planning validation, confirmation, facade calls, report writing, and final rendering.
 - Ops workflow command metadata uses `setCommandMutation`, `setContractSupport`, `setAutomationSupport`, and `setFlagContractRequired` from `cmd/command_contract.go`; capability regression tests live in `cmd/command_contract_test.go` and `cmd/capabilities_test.go`.
 - Shared ops report helpers in `cmd/ops_contract.go` own report format inference, validation, overwrite mode, and secure file writes; workflow-specific Markdown and JSON rendering currently lives beside the workflow view in `cmd/cmd_views_ops_purge_orphan_processinstances.go`.
@@ -84,4 +84,34 @@
 - Retention foundation is intentionally validation-only; discovery and mutation remain unimplemented for later user-story work units.
 - Targeted validation passed: `go test ./c8volt/ops -count=1`, `go test ./internal/services/ops -count=1`, `go test ./c8volt -count=1`, and `go test ./cmd -run 'TestCommandCapability|TestOpsPurge|TestRoot|TestNewCli' -count=1`.
 - The next iteration can begin US1 command registration now that the retention model, facade, and service seam exist.
+---
+---
+## Iteration 3 - 2026-05-14 12:41:53 CEST
+**User Story**: User Story 1 - Register Retention Policy Command
+**Tasks Completed**:
+- [x] T011: Add command registration and help tests for `ops execute retention-policy` in `cmd/ops_execute_retention_policy_test.go`
+- [x] T012: Add invalid missing/negative/non-integer `--retention-days` subprocess tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T013: Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T014: Add `ops execute retention-policy` Cobra command, summary, examples, and required retention flag in `cmd/ops_execute_retention_policy.go`
+- [x] T015: Wire retention-policy command into the existing execute group in `cmd/ops_execute.go`
+- [x] T016: Implement local retention flag validation and invalid-input error mapping in `cmd/ops_execute_retention_policy.go`
+- [x] T017: Set mutation, output-mode, required-flag, and automation metadata in `cmd/ops_execute_retention_policy.go`
+- [x] T018: Mark US1 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/capabilities_test.go
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/command_contract_test.go
+- cmd/get_processinstance_test.go
+- cmd/ops_execute.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- cmd/ops_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- `ops execute` capability discovery now becomes limited because it has a full-contract child command, while the grouping command itself still does not claim automation support.
+- `--retention-days` uses command-owned validation plus `setFlagContractRequired`; Cobra parse errors are mapped with `useInvalidInputFlagErrors` and semantic errors go through `failBeforeCli`.
+- Targeted validation passed with sandbox-local Go cache: `go test ./cmd -count=1` and `go test ./c8volt/ops ./internal/services/ops -count=1`.
 ---

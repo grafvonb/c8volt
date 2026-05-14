@@ -23,7 +23,6 @@ func TestOpsHelpDocumentsGroupingCommand(t *testing.T) {
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"orphan-cleanup",
-		"retention-policy",
 		"smoke-test",
 		"repair incident",
 		"repair process-instance",
@@ -65,14 +64,14 @@ func TestOpsExecuteHelpDocumentsGroupingCommand(t *testing.T) {
 
 	assertHelpOutputContainsAll(t, output,
 		"Discover predefined operational playbooks",
-		"reserved for future playbooks that discover",
-		"target sets and execute existing c8volt resource actions",
+		"lists playbooks that discover target sets and execute",
+		"existing c8volt resource actions",
 		"./c8volt ops execute --help",
+		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
 		"./c8volt capabilities --json",
 	)
 	assertHelpOutputOmitsAll(t, output,
 		"orphan-cleanup",
-		"retention-policy",
 		"smoke-test",
 	)
 }

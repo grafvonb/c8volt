@@ -166,10 +166,14 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	execute, ok := findCommandCapability(ops.Children, "ops execute")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, execute.Mutation)
-	require.Equal(t, ContractSupportUnsupported, execute.ContractSupport)
+	require.Equal(t, ContractSupportLimited, execute.ContractSupport)
 	require.Equal(t, AutomationSupportUnsupported, execute.AutomationSupport)
 	require.Contains(t, execute.Summary, "Discover predefined operational playbooks")
-	require.Empty(t, execute.Children)
+	retentionPolicy, ok := findCommandCapability(execute.Children, "ops execute retention-policy")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, retentionPolicy.Mutation)
+	require.Equal(t, ContractSupportFull, retentionPolicy.ContractSupport)
+	require.Equal(t, AutomationSupportFull, retentionPolicy.AutomationSupport)
 	repair, ok := findCommandCapability(ops.Children, "ops repair")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, repair.Mutation)
@@ -203,14 +207,14 @@ func TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation(t *test
 	var doc CapabilityDocument
 	require.NoError(t, json.Unmarshal([]byte(output), &doc))
 
-	for _, path := range []string{"ops execute", "ops repair"} {
+	for _, path := range []string{"ops repair"} {
 		capability, ok := findCommandCapability(doc.Commands, path)
 		require.True(t, ok, "expected %q to appear in capability discovery", path)
 		require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
 		require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
 		require.Empty(t, capability.AutomationNotes)
 	}
-	for _, path := range []string{"ops", "ops purge"} {
+	for _, path := range []string{"ops", "ops execute", "ops purge"} {
 		capability, ok := findCommandCapability(doc.Commands, path)
 		require.True(t, ok, "expected %q to appear in capability discovery", path)
 		require.Equal(t, ContractSupportLimited, capability.ContractSupport)

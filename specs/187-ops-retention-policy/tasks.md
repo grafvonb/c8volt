@@ -45,17 +45,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Add command registration and help tests for `ops execute retention-policy` in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T012 [P] [US1] Add invalid missing/negative/non-integer `--retention-days` subprocess tests in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T013 [P] [US1] Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T011 [P] [US1] Add command registration and help tests for `ops execute retention-policy` in `cmd/ops_execute_retention_policy_test.go`
+- [x] T012 [P] [US1] Add invalid missing/negative/non-integer `--retention-days` subprocess tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T013 [P] [US1] Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Add `ops execute retention-policy` Cobra command, summary, examples, and required retention flag in `cmd/ops_execute_retention_policy.go`
-- [ ] T015 [US1] Wire retention-policy command into the existing execute group in `cmd/ops_execute.go`
-- [ ] T016 [US1] Implement local retention flag validation and invalid-input error mapping in `cmd/ops_execute_retention_policy.go`
-- [ ] T017 [US1] Set mutation, output-mode, required-flag, and automation metadata in `cmd/ops_execute_retention_policy.go`
-- [ ] T018 [US1] Mark US1 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T014 [US1] Add `ops execute retention-policy` Cobra command, summary, examples, and required retention flag in `cmd/ops_execute_retention_policy.go`
+- [x] T015 [US1] Wire retention-policy command into the existing execute group in `cmd/ops_execute.go`
+- [x] T016 [US1] Implement local retention flag validation and invalid-input error mapping in `cmd/ops_execute_retention_policy.go`
+- [x] T017 [US1] Set mutation, output-mode, required-flag, and automation metadata in `cmd/ops_execute_retention_policy.go`
+- [x] T018 [US1] Mark US1 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 
