@@ -462,10 +462,10 @@ func TestGetProcessInstanceTotalOutput(t *testing.T) {
 		)
 
 		require.Equal(t, "3\n", stdout)
-		require.Contains(t, stderr, `DEBUG process-instance total page: mode=offset, from=0, after="", limit=2, items=2, total before=0, total after=2`)
-		require.Contains(t, stderr, `reported total=10000, reported kind=lower_bound, end cursor="cursor-1"`)
-		require.Contains(t, stderr, `DEBUG process-instance total page: mode=cursor, from=0, after="cursor-1", limit=2, items=1, total before=2, total after=3`)
-		require.Contains(t, stderr, `DEBUG process-instance total page: mode=cursor, from=0, after="cursor-2", limit=2, items=0, total before=3, total after=3`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode offset, from 0, after "", limit 2, items 2, total before 0, total after 2`)
+		require.Contains(t, stderr, `reported total 10000, reported kind lower_bound, end cursor "cursor-1"`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 0, after "cursor-1", limit 2, items 1, total before 2, total after 3`)
+		require.Contains(t, stderr, `DEBUG pi total page; mode cursor, from 0, after "cursor-2", limit 2, items 0, total before 3, total after 3`)
 		require.NotContains(t, stderr, "INFO page size:")
 	})
 
@@ -1281,7 +1281,7 @@ func TestGetProcessInstanceOrphanChildrenOnly_UsesRealFacadeDiscovery(t *testing
 	topLevelFilter, ok := filters[0]["filter"].(map[string]any)
 	require.True(t, ok)
 	require.NotContains(t, topLevelFilter, "processInstanceKey")
-	require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
+	require.Contains(t, topLevelFilter, "parentProcessInstanceKey")
 }
 
 func TestEnrichProcessInstancesWithIncidentActivity_UsesCommandActivity(t *testing.T) {
@@ -3871,7 +3871,7 @@ func TestGetProcessInstancePagingFlow(t *testing.T) {
 
 				topLevelFilter, ok := filters[0]["filter"].(map[string]any)
 				require.True(t, ok)
-				require.NotContains(t, topLevelFilter, "parentProcessInstanceKey")
+				require.Contains(t, topLevelFilter, "parentProcessInstanceKey")
 				require.NotContains(t, topLevelFilter, "processInstanceKey")
 				require.Equal(t, []string{"/v2/process-instances/456"}, getPaths)
 

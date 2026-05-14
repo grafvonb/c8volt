@@ -363,7 +363,7 @@ func TestResolveIncidentCommand_RetryExhaustionReportsConfirmationFailure(t *tes
 	require.Error(t, err)
 	require.Equal(t, 2, getCount)
 	require.Contains(t, string(output), "confirmation failed")
-	require.Contains(t, string(output), "exceeded max_retries (1)")
+	require.Contains(t, string(output), "wait exceeded retries; max 1")
 }
 
 func TestResolveIncidentCommand_InvalidFlagKeyHelper(t *testing.T) {

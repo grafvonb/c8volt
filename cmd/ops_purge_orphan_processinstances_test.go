@@ -14,7 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -152,25 +151,25 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmNoTargetsSkipsDelete(t *testin
 	require.Empty(t, deleted.Snapshot())
 }
 
-func TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMutation(t *testing.T) {
+func TestOpsPurgeOrphanProcessInstancesAutomationDeletesWithoutAutoConfirm(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
 	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
 	t.Cleanup(srv.Close)
 
-	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMutationHelper", map[string]string{
-		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
-	})
-	require.Error(t, err)
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--automation",
+		"ops", "purge", "orphan-process-instances",
+		"--no-wait",
+	)
 
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	require.Equal(t, exitcode.Error, exitErr.ExitCode())
-	require.Contains(t, string(output), "requires --auto-confirm")
-	require.Empty(t, deleted.Snapshot())
+	require.Contains(t, output, "deletion: submitted (requests: 1)")
+	require.Contains(t, output, "outcome: deleted")
+	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 }
 
-func TestOpsPurgeOrphanProcessInstancesAutomationJSONAutoConfirmUsesEnvelope(t *testing.T) {
+func TestOpsPurgeOrphanProcessInstancesAutomationJSONUsesEnvelope(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	var deleted testx.SafeSlice[string]
 	srv := newOpsOrphanPurgeServerWithState(t, &requests, &deleted, true, "TERMINATED")
@@ -181,11 +180,11 @@ func TestOpsPurgeOrphanProcessInstancesAutomationJSONAutoConfirmUsesEnvelope(t *
 		"--automation",
 		"--json",
 		"ops", "purge", "orphan-process-instances",
-		"--auto-confirm",
 		"--no-wait",
 	)
 
-	require.Empty(t, stderr)
+	require.NotContains(t, stderr, "purge orphan process-instances\n")
+	require.NotContains(t, stderr, "report: written")
 	var envelope map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
@@ -248,7 +247,7 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 	require.Equal(t, "ops purge orphan-process-instances", report["commandName"])
 	require.Equal(t, "deleted", report["outcome"])
 	require.Equal(t, true, report["deleteRequested"])
-	require.Equal(t, false, report["dryRun"])
+	require.NotContains(t, report, "dryRun")
 	require.Equal(t, "8.9", report["camundaVersion"])
 	discovery := requireJSONObject(t, report["discovery"])
 	require.Equal(t, float64(1), discovery["count"])
@@ -310,51 +309,6 @@ func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailure(t *
 	deletion := requireJSONObject(t, report["deletion"])
 	require.Equal(t, "blocked", deletion["status"])
 	require.NotEmpty(t, report["errors"])
-}
-
-func TestOpsPurgeOrphanProcessInstancesAutomationGuardRequiresAutoConfirmForTargets(t *testing.T) {
-	err := validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
-		CommandName: opsPurgeOrphanProcessInstancesCommandName,
-		Automation:  true,
-	}, 1)
-
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "requires --auto-confirm")
-}
-
-func TestOpsPurgeOrphanProcessInstancesAutomationGuardAllowsDryRunAndNoTargets(t *testing.T) {
-	require.NoError(t, validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
-		CommandName: opsPurgeOrphanProcessInstancesCommandName,
-		Automation:  true,
-		DryRun:      true,
-	}, 1))
-	require.NoError(t, validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
-		CommandName: opsPurgeOrphanProcessInstancesCommandName,
-		Automation:  true,
-	}, 0))
-	require.NoError(t, validateOpsPurgeAutomationConfirmation(ops.OrphanPurgeRequest{
-		CommandName: opsPurgeOrphanProcessInstancesCommandName,
-		Automation:  true,
-		AutoConfirm: true,
-	}, 1))
-}
-
-func TestOpsPurgeOrphanProcessInstancesAutomationWithoutAutoConfirmFailsBeforeMutationHelper(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
-		return
-	}
-
-	root := Root()
-	resetCommandTreeFlags(root)
-	root.SetArgs([]string{
-		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
-		"--automation",
-		"ops", "purge", "orphan-process-instances",
-		"--no-wait",
-	})
-	root.SetOut(os.Stdout)
-	root.SetErr(os.Stderr)
-	_ = root.Execute()
 }
 
 func TestOpsPurgeOrphanProcessInstancesWritesReportAfterPostDiscoveryFailureHelper(t *testing.T) {

@@ -468,7 +468,7 @@ func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *t
 	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
 	require.Equal(t, ContractSupportFull, capability.ContractSupport)
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
-	require.Contains(t, capability.AutomationNotes, "auto-confirmed purges")
+	require.Contains(t, capability.AutomationNotes, "implicitly confirmed purges")
 	require.Contains(t, capability.Aliases, "orphan-pi")
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:             "json",
