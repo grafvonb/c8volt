@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -306,7 +307,180 @@ func TestOpsExecuteRetentionPolicyAutomationJSONExecutesWithoutAutoConfirm(t *te
 	require.Equal(t, "submitted", deletion["status"])
 	require.Equal(t, true, deletion["submitted"])
 	require.Equal(t, true, deletion["noWait"])
+	require.Equal(t, []string{"/v2/process-instances/" + opsRetentionPolicySeedKey + "/deletion"}, deleted.Snapshot())
+}
+
+func TestOpsExecuteRetentionPolicyWritesMarkdownReport(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsRetentionPolicyServerWithSeed(t, &requests, nil)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "retention-report.md")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--dry-run",
+		"--report-file", reportPath,
+	)
+
+	require.Contains(t, output, "outcome: planned; no changes applied")
+	require.Contains(t, output, "report: written "+reportPath)
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# Retention Policy Audit Report")
+	require.Contains(t, report, "- Command: ops execute retention-policy")
+	require.Contains(t, report, "- Dry Run: true")
+	require.Contains(t, report, "- Retention Days: 90")
+	require.Contains(t, report, "- Outcome: planned")
+	require.Contains(t, report, "- Camunda Version: 8.8")
+	require.Contains(t, report, "- Profile: default")
+	require.Contains(t, report, "- Tenant: <default>")
+	require.Contains(t, report, "  - "+opsRetentionPolicySeedKey)
+}
+
+func TestOpsExecuteRetentionPolicyWritesJSONReport(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsRetentionPolicyServerWithSeed(t, &requests, &deleted)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "retention-report.json")
+	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "execute", "retention-policy",
+		"--retention-days", "90",
+		"--auto-confirm",
+		"--no-wait",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "report: written "+reportPath)
+	require.NotContains(t, readReportFile(t, reportPath), "old report")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "ops.retention-policy.v1", report["schemaVersion"])
+	require.Equal(t, "ops execute retention-policy", report["commandName"])
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, float64(90), report["retentionDays"])
+	require.Equal(t, "8.9", report["camundaVersion"])
+	require.Equal(t, "<default>", report["tenantId"])
+	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, float64(1), discovery["count"])
+	keys := discovery["seedKeys"].([]any)
+	require.Equal(t, opsRetentionPolicySeedKey, keys[0])
+	deletion := requireJSONObject(t, report["deletion"])
+	require.Equal(t, "submitted", deletion["status"])
+	require.Equal(t, true, deletion["noWait"])
 	require.Equal(t, []string{"/v1/process-instances/" + opsRetentionPolicySeedKey}, deleted.Snapshot())
+}
+
+func TestOpsExecuteRetentionPolicyExistingReportFailsBeforePreflight(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+		args  []string
+	}{
+		{
+			name:  "dry-run",
+			state: "COMPLETED",
+			args:  []string{"ops", "execute", "retention-policy", "--retention-days", "90", "--dry-run"},
+		},
+		{
+			name:  "unconfirmed",
+			state: "COMPLETED",
+			args:  []string{"ops", "execute", "retention-policy", "--retention-days", "90"},
+		},
+		{
+			name:  "locally blocked",
+			state: "ACTIVE",
+			args:  []string{"ops", "execute", "retention-policy", "--retention-days", "90"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsRetentionPolicyServerWithSeedState(t, &requests, &deleted, tt.state)
+			t.Cleanup(srv.Close)
+			reportPath := filepath.Join(t.TempDir(), "retention-report.md")
+			const existingReport = "existing report"
+			require.NoError(t, os.WriteFile(reportPath, []byte(existingReport), 0o600))
+
+			args := append([]string{}, tt.args...)
+			args = append(args, "--report-file", reportPath)
+			output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteRetentionPolicyReportHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":         writeTestConfigForVersion(t, srv.URL, "8.8"),
+				"C8VOLT_TEST_RETENTION_ARGS": marshalRetentionArgsForEnv(t, args),
+			})
+			require.Error(t, err)
+
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), "report file already exists: "+reportPath)
+			require.NotContains(t, string(output), "write audit report")
+			require.Equal(t, existingReport, readReportFile(t, reportPath))
+			require.Empty(t, requests.Snapshot())
+			require.Empty(t, deleted.Snapshot())
+		})
+	}
+}
+
+func TestOpsExecuteRetentionPolicyWritesReportAfterPostDiscoveryFailure(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsRetentionPolicyServerWithSeedState(t, &requests, &deleted, "ACTIVE")
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "retention-failed.json")
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteRetentionPolicyReportHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_RETENTION_ARGS": marshalRetentionArgsForEnv(t, []string{
+			"ops", "execute", "retention-policy",
+			"--retention-days", "90",
+			"--auto-confirm",
+			"--report-file", reportPath,
+			"--report-format", "json",
+		}),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "refusing to delete retention process-instance scope")
+	require.Empty(t, deleted.Snapshot())
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "failed", report["outcome"])
+	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, float64(1), discovery["count"])
+	deletion := requireJSONObject(t, report["deletion"])
+	require.Equal(t, "blocked", deletion["status"])
+	require.NotEmpty(t, report["errors"])
+}
+
+func TestOpsExecuteRetentionPolicyReportHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_RETENTION_ARGS")), &args); err != nil {
+		t.Fatalf("invalid helper args: %v", err)
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
 }
 
 func TestOpsExecuteRetentionPolicyBlocksNonFinalScopeBeforeMutation(t *testing.T) {

@@ -191,19 +191,19 @@
 
 ### Tests for User Story 7
 
-- [ ] T061 [P] [US7] Add report format inference and validation tests for retention in `cmd/ops_contract_test.go`
-- [ ] T062 [P] [US7] Add Markdown retention report rendering test in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T063 [P] [US7] Add JSON retention report rendering test in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T064 [P] [US7] Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T065 [P] [US7] Add post-discovery failure report-write test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T061 [P] [US7] Add report format inference and validation tests for retention in `cmd/ops_contract_test.go`
+- [x] T062 [P] [US7] Add Markdown retention report rendering test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T063 [P] [US7] Add JSON retention report rendering test in `cmd/ops_execute_retention_policy_test.go`
+- [x] T064 [P] [US7] Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_execute_retention_policy_test.go`
+- [x] T065 [P] [US7] Add post-discovery failure report-write test in `cmd/ops_execute_retention_policy_test.go`
 
 ### Implementation for User Story 7
 
-- [ ] T066 [US7] Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_execute_retention_policy.go`
-- [ ] T067 [US7] Extend report model/rendering for retention-specific discovery, plan, deletion, and outcome fields in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T068 [US7] Ensure reports render from the stable structured retention model in `internal/domain/ops_retention_policy.go`
-- [ ] T069 [US7] Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T070 [US7] Mark US7 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T066 [US7] Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_execute_retention_policy.go`
+- [x] T067 [US7] Extend report model/rendering for retention-specific discovery, plan, deletion, and outcome fields in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T068 [US7] Ensure reports render from the stable structured retention model in `internal/domain/ops_retention_policy.go`
+- [x] T069 [US7] Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T070 [US7] Mark US7 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Audit reports are independently functional for dry-run, success, and failure paths.
 

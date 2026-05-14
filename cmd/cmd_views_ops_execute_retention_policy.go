@@ -4,10 +4,14 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -77,6 +81,7 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 			cmd.Printf("outcome: %s\n", result.Outcome)
 		}
 	}
+	renderOpsExecuteRetentionPolicyReportFile(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}
@@ -89,4 +94,101 @@ func printOpsExecuteRetentionPolicyKeys(cmd *cobra.Command, label string, keys [
 		return
 	}
 	cmd.Printf("%s: %s\n", label, strings.Join(keys, ", "))
+}
+
+func renderOpsExecuteRetentionPolicyReportFile(cmd *cobra.Command, result ops.RetentionPolicyResult) {
+	if result.Request.ReportFile == "" {
+		return
+	}
+	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
+}
+
+func renderOpsExecuteRetentionPolicyJSONReport(report ops.RetentionAuditReport) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := toolx.JSON(&buf, report); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func renderOpsExecuteRetentionPolicyMarkdownReport(report ops.RetentionAuditReport, cfg *config.Config) ([]byte, error) {
+	var out strings.Builder
+	out.WriteString("# Retention Policy Audit Report\n\n")
+	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
+	writeMarkdownReportField(&out, "Command", report.CommandName)
+	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))
+	writeMarkdownReportField(&out, "Finished", formatOpsPurgeReportTime(report.FinishedAt, cfg))
+	writeMarkdownReportField(&out, "Duration", report.Duration)
+	writeMarkdownReportField(&out, "Dry Run", fmt.Sprintf("%t", report.DryRun))
+	writeMarkdownReportField(&out, "C8volt Version", report.C8voltVersion)
+	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
+	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
+	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownReportField(&out, "Retention Days", fmt.Sprintf("%d", report.RetentionDays))
+	writeMarkdownReportField(&out, "Derived End Date Boundary", report.DerivedEndDateBoundary)
+	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
+	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))
+	writeMarkdownReportField(&out, "No State Check", fmt.Sprintf("%t", report.NoStateCheck))
+	writeMarkdownReportField(&out, "Force", fmt.Sprintf("%t", report.Force))
+	writeMarkdownReportField(&out, "Fail Fast", fmt.Sprintf("%t", report.FailFast))
+	writeMarkdownReportField(&out, "No Worker Limit", fmt.Sprintf("%t", report.NoWorkerLimit))
+	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
+
+	out.WriteString("\n## Selection\n\n")
+	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+
+	out.WriteString("\n## Discovery\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
+	writeMarkdownReportField(&out, "Retention Days", fmt.Sprintf("%d", report.Discovery.RetentionDays))
+	writeMarkdownReportField(&out, "Derived End Date Boundary", report.Discovery.DerivedEndDateBoundary)
+	writeMarkdownReportField(&out, "Count", fmt.Sprintf("%d", report.Discovery.Count))
+	writeMarkdownReportList(&out, "Seed Keys", report.Discovery.SeedKeys)
+	writeMarkdownReportList(&out, "Errors", report.Discovery.Errors)
+
+	out.WriteString("\n## Delete Plan\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.DeletePlan.Status))
+	writeMarkdownReportField(&out, "Requires Confirmation", fmt.Sprintf("%t", report.DeletePlan.RequiresConfirmation))
+	writeMarkdownReportList(&out, "Seed Keys", report.DeletePlan.SeedKeys)
+	writeMarkdownReportList(&out, "Resolved Root Keys", report.DeletePlan.ResolvedRootKeys)
+	writeMarkdownReportList(&out, "Affected Keys", report.DeletePlan.AffectedKeys)
+	writeMarkdownReportList(&out, "Duplicate Keys", report.DeletePlan.DuplicateKeys)
+	writeMarkdownReportList(&out, "Final State Items", retentionProcessInstanceItems(report.DeletePlan.FinalStateItems))
+	writeMarkdownReportList(&out, "Non-Final Affected Items", retentionProcessInstanceItems(report.DeletePlan.NonFinalAffectedItems))
+	writeMarkdownReportList(&out, "Missing Ancestors", retentionMissingAncestorItems(report.DeletePlan.MissingAncestors))
+	writeMarkdownReportList(&out, "Traversal Warnings", report.DeletePlan.TraversalWarnings)
+	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)
+
+	out.WriteString("\n## Deletion\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.Deletion.Status))
+	writeMarkdownReportField(&out, "Submitted", fmt.Sprintf("%t", report.Deletion.Submitted))
+	writeMarkdownReportField(&out, "Confirmed", fmt.Sprintf("%t", report.Deletion.Confirmed))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.Deletion.NoWait))
+	writeMarkdownReportList(&out, "Submitted Root Keys", report.Deletion.SubmittedRootKeys)
+	if len(report.Deletion.Items) > 0 {
+		out.WriteString("- Items:\n")
+		for _, item := range report.Deletion.Items {
+			out.WriteString(fmt.Sprintf("  - key=%s ok=%t status=%s statusCode=%d\n", item.Key, item.Ok, item.Status, item.StatusCode))
+		}
+	}
+	writeMarkdownReportList(&out, "Errors", report.Deletion.Errors)
+	writeMarkdownReportList(&out, "Run Errors", report.Errors)
+
+	return []byte(out.String()), nil
+}
+
+func retentionProcessInstanceItems(items []process.ProcessInstance) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, fmt.Sprintf("key=%s state=%s", item.Key, item.State))
+	}
+	return out
+}
+
+func retentionMissingAncestorItems(items []process.MissingAncestor) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, fmt.Sprintf("key=%s startKey=%s", item.Key, item.StartKey))
+	}
+	return out
 }

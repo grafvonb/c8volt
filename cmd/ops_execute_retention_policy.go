@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
@@ -15,16 +17,22 @@ import (
 
 const opsExecuteRetentionPolicyCommandName = "ops execute retention-policy"
 
-var flagOpsExecuteRetentionPolicyRetentionDays int
+var (
+	flagOpsExecuteRetentionPolicyRetentionDays int
+	flagOpsExecuteRetentionPolicyReportFile    string
+	flagOpsExecuteRetentionPolicyReportFormat  string
+)
 
 var opsExecuteRetentionPolicyCmd = &cobra.Command{
 	Use:   "retention-policy",
 	Short: "Execute process-instance retention cleanup",
 	Long: "Execute process-instance retention cleanup.\n\n" +
-		"The workflow discovers process instances older than the required retention age, freezes that seed set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Use --auto-confirm or --automation for unattended deletion.",
+		"The workflow discovers process instances older than the required retention age, freezes that seed set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion after confirmation. Use --auto-confirm or --automation for unattended deletion, and use --report-file to write an audit report.",
 	Example: `  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --no-wait
-  ./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait`,
+  ./c8volt ops execute retention-policy --retention-days 90 --automation --json --no-wait
+  ./c8volt ops execute retention-policy --retention-days 90 --dry-run --report-file retention-report.md
+  ./c8volt ops execute retention-policy --retention-days 90 --auto-confirm --report-file retention-report.json --report-format json`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := validateOpsExecuteRetentionPolicyFlags(cmd); err != nil {
@@ -38,6 +46,9 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
 		}
 		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		if err := validateOpsExecuteRetentionPolicyReportFlags(); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if cmd.Flags().Changed("workers") && flagWorkers < 1 {
@@ -64,7 +75,12 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 			Force:                  flagForce,
 			FailFast:               flagFailFast,
 			NoWorkerLimit:          flagNoWorkerLimit,
+			ReportFile:             flagOpsExecuteRetentionPolicyReportFile,
+			ReportFormat:           flagOpsExecuteRetentionPolicyReportFormat,
 			StartedAt:              time.Now().UTC(),
+		}
+		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteRetentionPolicyReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		if !flagDryRun && !effectiveAutoConfirm {
 			planRequest := request
@@ -74,7 +90,8 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops execute retention-policy: %w", err))
 			}
 			if err := rejectOpsExecuteRetentionPolicyPlanRequiringForce(planned.DeletePlan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
+				return
 			}
 			if planned.Discovery.Count > 0 {
 				prompt := fmt.Sprintf("You are about to delete %d retention process instance(s). Do you want to proceed?", len(planned.DeletePlan.AffectedKeys))
@@ -82,14 +99,21 @@ var opsExecuteRetentionPolicyCmd = &cobra.Command{
 					prompt = fmt.Sprintf("You have requested to delete %d retention process instance(s), but due to dependencies, a total of %d instance(s) with %d root instance(s) will be deleted. Do you want to proceed?", planned.Discovery.Count, len(planned.DeletePlan.AffectedKeys), len(planned.DeletePlan.ResolvedRootKeys))
 				}
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					abortOpsExecuteRetentionPolicyAfterReport(cmd, log, cfg, markOpsExecuteRetentionPolicyLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
+					return
 				}
 			}
 			request.DiscoveredKeys = append(typex.Keys{}, planned.Discovery.SeedKeys...)
 		}
 		result, err := cli.ExecuteRetentionPolicy(cmd.Context(), request, collectOptions()...)
 		if err != nil {
+			if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); reportErr != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w; write audit report: %v", err, reportErr))
+			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops execute retention-policy: %w", err))
+		}
+		if err := writeOpsExecuteRetentionPolicyReport(result, cfg, opsExecuteRetentionPolicyReportWriteMode(result)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops execute retention-policy audit report: %w", err))
 		}
 		if err := renderOpsExecuteRetentionPolicyResult(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops execute retention-policy: %w", err))
@@ -121,6 +145,8 @@ func init() {
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after deletion requests are accepted without deletion confirmation")
 	fs.BoolVar(&flagNoStateCheck, "no-state-check", false, "skip checking process-instance state before deleting")
 	fs.BoolVar(&flagForce, "force", false, "force cancellation of the process instance(s), prior to deletion")
+	fs.StringVar(&flagOpsExecuteRetentionPolicyReportFile, "report-file", "", "write an audit report to the given path")
+	fs.StringVar(&flagOpsExecuteRetentionPolicyReportFormat, "report-format", "", "audit report format: markdown, json (default inferred from report-file extension)")
 
 	setCommandMutation(opsExecuteRetentionPolicyCmd, CommandMutationStateChanging)
 	setContractSupport(opsExecuteRetentionPolicyCmd, ContractSupportFull)
@@ -141,9 +167,90 @@ func validateOpsExecuteRetentionPolicyFlags(cmd *cobra.Command) error {
 	return nil
 }
 
+func validateOpsExecuteRetentionPolicyReportFlags() error {
+	return validateOpsWorkflowReportFlags(flagOpsExecuteRetentionPolicyReportFile, OpsWorkflowReportFormat(flagOpsExecuteRetentionPolicyReportFormat))
+}
+
 func rejectOpsExecuteRetentionPolicyPlanRequiringForce(plan ops.RetentionDeletePlan) error {
 	if flagForce || len(plan.NonFinalAffectedItems) == 0 {
 		return nil
 	}
 	return localPreconditionError(fmt.Errorf("refusing to delete retention process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", len(plan.NonFinalAffectedItems)))
+}
+
+func abortOpsExecuteRetentionPolicyAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.RetentionPolicyResult, err error) {
+	if reportErr := writeOpsExecuteRetentionPolicyReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w; write audit report: %v", err, reportErr))
+	}
+	handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+}
+
+func markOpsExecuteRetentionPolicyLocalFailure(result ops.RetentionPolicyResult, status ops.WorkflowStepStatus, err error) ops.RetentionPolicyResult {
+	finished := time.Now().UTC()
+	msg := err.Error()
+	result.Outcome = ops.RetentionPolicyOutcomeFailed
+	result.Errors = appendOpsExecuteRetentionPolicyError(result.Errors, msg)
+	result.Deletion.Status = status
+	result.Deletion.Errors = appendOpsExecuteRetentionPolicyError(result.Deletion.Errors, msg)
+	result.Report.Outcome = ops.RetentionPolicyOutcomeFailed
+	result.Report.FinishedAt = finished
+	if !result.Request.StartedAt.IsZero() {
+		result.Report.Duration = finished.Sub(result.Request.StartedAt).String()
+	}
+	result.Report.Discovery = result.Discovery
+	result.Report.DeletePlan = result.DeletePlan
+	result.Report.Deletion = result.Deletion
+	result.Report.Errors = appendOpsExecuteRetentionPolicyError(result.Report.Errors, msg)
+	return result
+}
+
+func appendOpsExecuteRetentionPolicyError(items []string, value string) []string {
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+func opsExecuteRetentionPolicyReportWriteMode(result ops.RetentionPolicyResult) OpsWorkflowReportWriteMode {
+	return opsWorkflowReportWriteModeForConfirmedMutation(result.Deletion.Submitted)
+}
+
+func writeOpsExecuteRetentionPolicyReport(result ops.RetentionPolicyResult, cfg *config.Config, mode OpsWorkflowReportWriteMode) error {
+	if result.Request.ReportFile == "" {
+		return nil
+	}
+	report := enrichOpsExecuteRetentionPolicyReport(result.Report, cfg)
+	format, err := opsWorkflowReportFormatForPath(result.Request.ReportFile, OpsWorkflowReportFormat(result.Request.ReportFormat))
+	if err != nil {
+		return err
+	}
+	var data []byte
+	switch format {
+	case OpsWorkflowReportFormatJSON:
+		data, err = renderOpsExecuteRetentionPolicyJSONReport(report)
+	case OpsWorkflowReportFormatMarkdown:
+		data, err = renderOpsExecuteRetentionPolicyMarkdownReport(report, cfg)
+	default:
+		err = fmt.Errorf("unsupported ops workflow report format %q", format)
+	}
+	if err != nil {
+		return err
+	}
+	return writeOpsWorkflowReportFile(result.Request.ReportFile, data, mode)
+}
+
+func enrichOpsExecuteRetentionPolicyReport(report ops.RetentionAuditReport, cfg *config.Config) ops.RetentionAuditReport {
+	report.C8voltVersion = CurrentBuildInfo().Version
+	if cfg != nil {
+		report.CamundaVersion = cfg.App.CamundaVersion.String()
+		report.TenantID = cfg.App.ViewTenant()
+		if cfg.ActiveProfile != "" {
+			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
+		} else {
+			report.ProfileIdentity = "default"
+		}
+	}
+	return report
 }

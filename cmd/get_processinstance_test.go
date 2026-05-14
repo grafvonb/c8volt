@@ -4144,6 +4144,8 @@ func resetProcessInstanceCommandGlobals() {
 	flagOpsPurgeOrphanReportFile = ""
 	flagOpsPurgeOrphanReportFormat = ""
 	flagOpsExecuteRetentionPolicyRetentionDays = 0
+	flagOpsExecuteRetentionPolicyReportFile = ""
+	flagOpsExecuteRetentionPolicyReportFormat = ""
 	flagExpectPIKeys = nil
 	flagExpectPIStates = nil
 	flagExpectPIIncident = ""

@@ -9,6 +9,7 @@
 
 ## Codebase Patterns
 
+- Retention audit reporting now mirrors the #186 orphan purge report lifecycle: command flags reuse shared ops report format/path/write helpers, existing report files are rejected before preflight unless confirmation already permits overwrite, post-discovery failures write the structured report when possible, and human output prints `report: written <path>` only after a successful report write.
 - Retention confirmed deletion now follows the #186 ops purge confirmation shape: manual runs first execute a dry-run planning call, reject non-final blockers locally before mutation, prompt through `shouldImplicitlyConfirm(cmd)`, then pass frozen `DiscoveredKeys` into the execution call so a second discovery cannot change the submitted root set.
 - Retention execution controls are command flags mapped through existing facade options (`--workers`, `--fail-fast`, `--no-worker-limit`, `--no-wait`, `--no-state-check`, `--force`); the internal ops service delegates deletion to `processinstance.DeleteProcessInstances` and records submitted roots, reports, no-wait, confirmation, and final retention outcome.
 - Retention dry-run/no-target command output now explicitly reports skipped deletion and `outcome: planned; no changes applied`; detailed retention seed/root/affected key lists remain gated behind `--verbose`, while JSON output keeps the complete structured model through the shared result envelope.
@@ -264,4 +265,33 @@
 - Manual confirmed retention deletion must freeze discovered seeds from the planning call into `DiscoveredKeys`; otherwise a second discovery during execution could submit a different root set than the operator reviewed.
 - The service can reuse the orphan purge deletion status helpers for step status, but retention needs its own outcome mapping because the outcome enum is retention-specific.
 - Targeted validation passed with sandbox-local Go cache: `go test ./internal/services/ops -run 'TestExecuteRetentionPolicy' -count=1`, `go test ./c8volt/ops -run 'TestClientExecuteRetentionPolicy' -count=1`, `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1`, and `go test ./cmd -run 'TestOpsExecuteRetentionPolicy|TestCommandContract|TestCommandCapability|TestRoot|TestNewCli' -count=1`. Local-listener command integration cases were skipped by the sandbox network policy during command test runs.
+---
+---
+## Iteration 9 - 2026-05-14 13:28:48 CEST
+**User Story**: User Story 7 - Write Audit Reports
+**Tasks Completed**:
+- [x] T061: Add report format inference and validation tests for retention
+- [x] T062: Add Markdown retention report rendering test
+- [x] T063: Add JSON retention report rendering test
+- [x] T064: Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs
+- [x] T065: Add post-discovery failure report-write test
+- [x] T066: Reuse shared ops report-file validation, format inference, overwrite safety, and file writing
+- [x] T067: Extend report model/rendering for retention-specific discovery, plan, deletion, and outcome fields
+- [x] T068: Ensure reports render from the stable structured retention model
+- [x] T069: Print compact `report: written <path>` human output after report writes
+- [x] T070: Mark US7 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/get_processinstance_test.go
+- cmd/ops_contract_test.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention reports should stay command-owned for file validation/write orchestration while rendering from the `RetentionAuditReport` already populated by the ops service.
+- Existing report files are protected before discovery for dry-run, unconfirmed, and locally blocked flows; post-discovery failures with a new report path write failure status, discovery counts, deletion status, and errors.
+- Targeted validation passed with sandbox-local Go cache: `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestOpsWorkflowReport|TestValidateOpsWorkflowReport|TestWriteOpsWorkflowReport|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1` and `go test ./cmd -count=1`.
 ---
