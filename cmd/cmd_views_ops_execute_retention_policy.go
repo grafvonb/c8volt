@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
@@ -27,7 +28,32 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		cmd.Printf("retention seeds: %d\n", result.Discovery.Count)
 	}
 	if result.DeletePlan.Status != "" {
-		cmd.Printf("delete plan: %s\n", result.DeletePlan.Status)
+		cmd.Printf("delete plan: %s (seeds: %d, roots: %d, affected: %d)\n",
+			result.DeletePlan.Status,
+			len(result.DeletePlan.SeedKeys),
+			len(result.DeletePlan.ResolvedRootKeys),
+			len(result.DeletePlan.AffectedKeys),
+		)
+		if len(result.DeletePlan.DuplicateKeys) > 0 {
+			cmd.Printf("duplicate roots: %d\n", len(result.DeletePlan.DuplicateKeys))
+		}
+		if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
+			cmd.Printf("process instances not in final state: %d (use --force to cancel before delete)\n", len(result.DeletePlan.NonFinalAffectedItems))
+		}
+		if len(result.DeletePlan.MissingAncestors) > 0 {
+			cmd.Printf("missing ancestors: %d\n", len(result.DeletePlan.MissingAncestors))
+		}
+		for _, warning := range result.DeletePlan.TraversalWarnings {
+			if warning != "" {
+				cmd.Printf("traversal warning: %s\n", warning)
+			}
+		}
+		cmd.Printf("confirmation required: %t\n", result.DeletePlan.RequiresConfirmation)
+		if flagVerbose {
+			printOpsExecuteRetentionPolicyKeys(cmd, "retention seed keys", result.DeletePlan.SeedKeys)
+			printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
+			printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
+		}
 	}
 	if result.Deletion.Status != "" {
 		cmd.Printf("deletion: %s\n", result.Deletion.Status)
@@ -36,4 +62,12 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		return fmt.Errorf("%s", result.Errors[0])
 	}
 	return nil
+}
+
+func printOpsExecuteRetentionPolicyKeys(cmd *cobra.Command, label string, keys []string) {
+	if len(keys) == 0 {
+		cmd.Printf("%s: none\n", label)
+		return
+	}
+	cmd.Printf("%s: %s\n", label, strings.Join(keys, ", "))
 }

@@ -118,17 +118,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T036 [P] [US4] Add ops service delete-plan tests for child seeds, resolved roots, affected keys, and duplicates in `internal/services/ops/retention_policy_test.go`
-- [ ] T037 [P] [US4] Add non-final affected instance blocking test in `internal/services/ops/retention_policy_test.go`
-- [ ] T038 [P] [US4] Add command dry-run plan rendering tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T036 [P] [US4] Add ops service delete-plan tests for child seeds, resolved roots, affected keys, and duplicates in `internal/services/ops/retention_policy_test.go`
+- [x] T037 [P] [US4] Add non-final affected instance blocking test in `internal/services/ops/retention_policy_test.go`
+- [x] T038 [P] [US4] Add command dry-run plan rendering tests in `cmd/ops_execute_retention_policy_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Reuse existing process-instance delete planning from retention seeds in `internal/services/ops/retention_policy.go`
-- [ ] T040 [US4] Preserve missing ancestor, traversal warning, duplicate, final-state, and non-final details in the retention result model in `internal/domain/ops_retention_policy.go`
-- [ ] T041 [US4] Map delete-plan details through `c8volt/ops/convert.go`
-- [ ] T042 [US4] Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T043 [US4] Mark US4 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T039 [US4] Reuse existing process-instance delete planning from retention seeds in `internal/services/ops/retention_policy.go`
+- [x] T040 [US4] Preserve missing ancestor, traversal warning, duplicate, final-state, and non-final details in the retention result model in `internal/domain/ops_retention_policy.go`
+- [x] T041 [US4] Map delete-plan details through `c8volt/ops/convert.go`
+- [x] T042 [US4] Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T043 [US4] Mark US4 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Retention dry-run includes the validated delete plan and safety blockers.
 

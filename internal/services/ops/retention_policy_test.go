@@ -12,6 +12,7 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,6 +83,12 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 				},
 			}, nil
 		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyAncestryResult(key), nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyDescendantsResult(rootKey), nil
+		},
 	}
 	request := d.RetentionPolicyRequest{
 		CommandName:            "ops execute retention-policy",
@@ -117,7 +124,7 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Report.Outcome)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, []string{"2251799813685249"}, []string(got.Discovery.SeedKeys))
 	require.Equal(t, 1, got.Discovery.Count)
@@ -153,6 +160,12 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 				},
 			}, nil
 		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyAncestryResult(key), nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyDescendantsResult(rootKey), nil
+		},
 	}
 	request := d.RetentionPolicyRequest{
 		CommandName:            "ops execute retention-policy",
@@ -176,7 +189,7 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 		SeedKeys: []string{"seed-1", "seed-2"},
 		Count:    2,
 	}, got.Discovery)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, got.Discovery, got.Report.Discovery)
 	require.Empty(t, got.Errors)
@@ -208,6 +221,12 @@ func TestExecuteRetentionPolicyCombinesSelectionFiltersWithRetentionBoundary(t *
 					{Key: "seed-1", EndDate: "2026-02-12"},
 				},
 			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyAncestryResult(key), nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return retentionPolicySingleKeyDescendantsResult(rootKey), nil
 		},
 	}
 	request := d.RetentionPolicyRequest{
@@ -247,4 +266,175 @@ func TestExecuteRetentionPolicyCombinesSelectionFiltersWithRetentionBoundary(t *
 		EndDateBefore:        "2026-02-13",
 	}, got.Discovery.Filters)
 	require.Equal(t, []string{"seed-1"}, []string(got.Discovery.SeedKeys))
+}
+
+func retentionPolicySingleKeyAncestryResult(key string) pitraversal.Result {
+	return pitraversal.Result{
+		Mode:     pitraversal.ModeAncestry,
+		StartKey: key,
+		RootKey:  key,
+		Keys:     []string{key},
+		Chain: map[string]d.ProcessInstance{
+			key: {Key: key, State: d.StateCompleted},
+		},
+		Outcome: pitraversal.OutcomeComplete,
+	}
+}
+
+func retentionPolicySingleKeyDescendantsResult(rootKey string) pitraversal.Result {
+	return pitraversal.Result{
+		Mode:     pitraversal.ModeDescendants,
+		StartKey: rootKey,
+		RootKey:  rootKey,
+		Keys:     []string{rootKey},
+		Chain: map[string]d.ProcessInstance{
+			rootKey: {Key: rootKey, State: d.StateCompleted},
+		},
+		Outcome: pitraversal.OutcomeComplete,
+	}
+}
+
+func TestExecuteRetentionPolicyBuildsDeletePlanFromRetentionSeeds(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			require.Equal(t, "2026-02-13", filter.EndDateBefore)
+			require.EqualValues(t, 1000, page.Size)
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", EndDate: "2026-02-12"},
+					{Key: "child-2", EndDate: "2026-02-11"},
+				},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			chain := map[string]d.ProcessInstance{
+				"root-1": {Key: "root-1", State: d.StateCompleted},
+				key:      {Key: key, State: d.StateCompleted},
+			}
+			result := pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain:    chain,
+				Outcome:  pitraversal.OutcomeComplete,
+			}
+			if key == "child-2" {
+				result.MissingAncestors = []pitraversal.MissingAncestor{{Key: "missing-parent", StartKey: key}}
+				result.Warning = "one or more parent process instances were not found"
+				result.Outcome = pitraversal.OutcomePartial
+			}
+			return result, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1", "child-2"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateCompleted},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+					"child-2": {Key: "child-2", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 true,
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"child-1", "child-2"}, []string(got.DeletePlan.SeedKeys))
+	require.Equal(t, []string{"root-1"}, []string(got.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-1", "child-1", "child-2"}, []string(got.DeletePlan.AffectedKeys))
+	require.Equal(t, []string{"root-1"}, []string(got.DeletePlan.DuplicateKeys))
+	require.Len(t, got.DeletePlan.FinalStateItems, 2)
+	require.Empty(t, got.DeletePlan.NonFinalAffectedItems)
+	require.Equal(t, []d.MissingAncestor{{Key: "missing-parent", StartKey: "child-2"}}, got.DeletePlan.MissingAncestors)
+	require.Equal(t, []string{"one or more parent process instances were not found"}, got.DeletePlan.TraversalWarnings)
+	require.False(t, got.DeletePlan.RequiresConfirmation)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+}
+
+func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1": {Key: "root-1", State: d.StateCompleted},
+					key:      {Key: key, State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateCompleted},
+					"child-1": {Key: "child-1", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 false,
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+
+	require.Error(t, err)
+	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
+	require.Contains(t, err.Error(), "affected process instance(s) are not in a final state")
+	require.Equal(t, d.RetentionPolicyOutcomeFailed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"child-1"}, []string(got.DeletePlan.SeedKeys))
+	require.Equal(t, []string{"root-1"}, []string(got.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-1", "child-1"}, []string(got.DeletePlan.AffectedKeys))
+	require.Len(t, got.DeletePlan.NonFinalAffectedItems, 1)
+	require.Equal(t, "child-1", got.DeletePlan.NonFinalAffectedItems[0].Key)
+	require.True(t, got.DeletePlan.RequiresConfirmation)
+	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
+	require.Len(t, got.Deletion.Errors, 1)
+	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+	require.Equal(t, got.Deletion, got.Report.Deletion)
 }

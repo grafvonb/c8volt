@@ -9,6 +9,7 @@
 
 ## Codebase Patterns
 
+- Retention delete planning now calls the existing `processinstance.DryRunCancelOrDeletePlan` from the ops service after discovery, maps the frozen seeds into `RetentionDeletePlan`, preserves duplicate resolved roots via `DryRunPIKeyExpansion.DuplicateRoots`, and blocks non-dry-run mutation with `domain.ErrPrecondition` when non-final affected instances exist without force.
 - Retention selection filters now reuse shared process-instance search flags and validation from `cmd/get_processinstance_*`: command code registers only compatible filters, rejects explicit `--key` before client construction, maps flags through `populatePISearchFilterOpts`, and then overwrites `EndDateBefore` with the required retention boundary.
 - Human retention output prints `result.Discovery.Filters.String()` when filters are available; JSON and report-ready output already carry filters through the structured retention discovery/report model.
 - Retention policy foundation now mirrors #186 boundaries: domain models in `internal/domain/ops_retention_policy.go`, public models/API/conversions in `c8volt/ops`, and a validation-only service seam in `internal/services/ops/retention_policy.go`.
@@ -176,4 +177,32 @@
 - Retention policy selection filters should stay on the existing process-instance search path: shared command validation owns state, batch-size, limit, process-definition selector, roots/children, and incident selector checks.
 - The retention service deliberately overwrites any request `Selection.EndDateBefore` with the derived retention boundary, so compatible filters narrow discovery without replacing the required age threshold.
 - Targeted validation passed with sandbox-local Go cache: `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1` and `go test ./cmd -run 'TestOpsExecuteRetentionPolicy|TestCommandContract|TestCommandCapability|TestRoot|TestNewCli' -count=1`.
+---
+---
+## Iteration 6 - 2026-05-14 13:06:42 CEST
+**User Story**: User Story 4 - Build And Validate Delete Plan
+**Tasks Completed**:
+- [x] T036: Add ops service delete-plan tests for child seeds, resolved roots, affected keys, and duplicates in `internal/services/ops/retention_policy_test.go`
+- [x] T037: Add non-final affected instance blocking test in `internal/services/ops/retention_policy_test.go`
+- [x] T038: Add command dry-run plan rendering tests in `cmd/ops_execute_retention_policy_test.go`
+- [x] T039: Reuse existing process-instance delete planning from retention seeds in `internal/services/ops/retention_policy.go`
+- [x] T040: Preserve missing ancestor, traversal warning, duplicate, final-state, and non-final details in the retention result model in `internal/domain/ops_retention_policy.go`
+- [x] T041: Map delete-plan details through `c8volt/ops/convert.go`
+- [x] T042: Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T043: Mark US4 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- internal/domain/processinstance_traversal.go
+- internal/services/ops/retention_policy.go
+- internal/services/ops/retention_policy_test.go
+- internal/services/processinstance/dryrun.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention planning should stay on the existing process-instance delete planning path; the only shared primitive extension needed for US4 was exposing duplicate resolved roots from the existing ancestry results.
+- Non-final affected instances are preserved in the retention delete plan and block non-dry-run mutation with `domain.ErrPrecondition` until a later execution story wires the force/delete controls.
+- Targeted validation passed with sandbox-local Go cache: `go test ./internal/services/ops -run 'TestExecuteRetentionPolicy' -count=1`, `go test ./internal/services/processinstance -run 'Test.*DryRun|TestDiscoverRetentionProcessInstances' -count=1`, `go test ./cmd -run 'TestOpsExecuteRetentionPolicy' -count=1`, and `go test ./c8volt/ops -run 'TestClientExecuteRetentionPolicy' -count=1`.
 ---

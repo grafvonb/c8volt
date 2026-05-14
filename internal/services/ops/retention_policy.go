@@ -11,6 +11,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 const retentionPolicyReportSchemaVersion = "ops.retention-policy.v1"
@@ -61,9 +62,48 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		SeedKeys:               discovery.Keys,
 		Count:                  len(discovery.Keys),
 	}
-	result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+	if len(discovery.Keys) == 0 {
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
+	}
+
+	plan, err := pisvc.DryRunCancelOrDeletePlan(ctx, s.piAPI, discovery.Keys, request.Workers, opts...)
+	result.DeletePlan = retentionDeletePlanFromExpansion(discovery.Keys, plan, !request.DryRun)
+	if err != nil {
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusFailed
+		result.DeletePlan.Errors = []string{err.Error()}
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, fmt.Errorf("retention policy delete-plan validation: %w", err))
+	}
+
+	if !request.DryRun && !request.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
+		err = fmt.Errorf("%w: refusing to delete retention process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", d.ErrPrecondition, len(plan.RequiresCancelBeforeDelete))
+		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
+		result.Deletion.Errors = []string{err.Error()}
+		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
+	}
+
 	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 	return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
+}
+
+func retentionDeletePlanFromExpansion(seedKeys typex.Keys, plan d.DryRunPIKeyExpansion, requiresConfirmation bool) d.RetentionDeletePlan {
+	out := d.RetentionDeletePlan{
+		Status:                d.OpsWorkflowStepStatusPlanned,
+		SeedKeys:              seedKeys,
+		ResolvedRootKeys:      plan.Roots,
+		AffectedKeys:          plan.Collected,
+		DuplicateKeys:         plan.DuplicateRoots,
+		FinalStateItems:       plan.SelectedFinalState,
+		NonFinalAffectedItems: plan.RequiresCancelBeforeDelete,
+		MissingAncestors:      plan.MissingAncestors,
+		RequiresConfirmation:  requiresConfirmation,
+	}
+	if plan.Warning != "" {
+		out.TraversalWarnings = []string{plan.Warning}
+	}
+	return out
 }
 
 func deriveRetentionEndDateBoundary(now time.Time, retentionDays int) string {

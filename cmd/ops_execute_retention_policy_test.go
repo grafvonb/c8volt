@@ -191,6 +191,56 @@ func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, out.String(), "deletion: skipped")
 }
 
+func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
+	prevVerbose := flagVerbose
+	flagVerbose = true
+	t.Cleanup(func() { flagVerbose = prevVerbose })
+
+	var out bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&out)
+
+	err := renderOpsExecuteRetentionPolicyResult(cmd, ops.RetentionPolicyResult{
+		Request: ops.RetentionPolicyRequest{
+			RetentionDays:          90,
+			DerivedEndDateBoundary: "2026-02-13",
+		},
+		Discovery: ops.RetentionDiscoveryResult{
+			Status:  ops.WorkflowStepStatusPlanned,
+			Count:   2,
+			Filters: process.ProcessInstanceFilter{EndDateBefore: "2026-02-13"},
+		},
+		DeletePlan: ops.RetentionDeletePlan{
+			Status:                ops.WorkflowStepStatusPlanned,
+			SeedKeys:              []string{"child-1", "child-2"},
+			ResolvedRootKeys:      []string{"root-1"},
+			AffectedKeys:          []string{"root-1", "child-1", "child-2"},
+			DuplicateKeys:         []string{"root-1"},
+			NonFinalAffectedItems: []process.ProcessInstance{{Key: "child-2", State: process.StateActive}},
+			MissingAncestors:      []process.MissingAncestor{{Key: "missing-parent", StartKey: "child-2"}},
+			TraversalWarnings:     []string{"one or more parent process instances were not found"},
+			RequiresConfirmation:  true,
+		},
+		Deletion: ops.RetentionDeletionResult{
+			Status: ops.WorkflowStepStatusBlocked,
+		},
+		Outcome: ops.RetentionPolicyOutcomeFailed,
+	})
+
+	require.NoError(t, err)
+	got := out.String()
+	require.Contains(t, got, "delete plan: planned (seeds: 2, roots: 1, affected: 3)")
+	require.Contains(t, got, "duplicate roots: 1")
+	require.Contains(t, got, "process instances not in final state: 1 (use --force to cancel before delete)")
+	require.Contains(t, got, "missing ancestors: 1")
+	require.Contains(t, got, "traversal warning: one or more parent process instances were not found")
+	require.Contains(t, got, "confirmation required: true")
+	require.Contains(t, got, "retention seed keys: child-1, child-2")
+	require.Contains(t, got, "resolved root keys: root-1")
+	require.Contains(t, got, "affected process-instance keys: root-1, child-1, child-2")
+	require.Contains(t, got, "deletion: blocked")
+}
+
 func marshalRetentionArgsForEnv(t *testing.T, args []string) string {
 	t.Helper()
 

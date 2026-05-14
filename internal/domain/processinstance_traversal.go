@@ -21,6 +21,7 @@ type MissingAncestor struct {
 type DryRunPIKeyExpansion struct {
 	Roots                      typex.Keys
 	Collected                  typex.Keys
+	DuplicateRoots             typex.Keys
 	SelectedFinalState         []ProcessInstance
 	RequiresCancelBeforeDelete []ProcessInstance
 	MissingAncestors           []MissingAncestor
