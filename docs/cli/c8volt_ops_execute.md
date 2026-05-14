@@ -12,9 +12,9 @@ Discover predefined operational playbooks
 
 Discover predefined operational playbooks.
 
-The execute command group is reserved for future playbooks that discover
-target sets and execute existing c8volt resource actions. This grouping command
-does not register or run concrete operational workflows by itself.
+The execute command group lists playbooks that discover target sets and execute
+existing c8volt resource actions. This grouping command does not run concrete
+operational workflows by itself.
 
 ```
 c8volt ops execute [flags]
@@ -24,6 +24,7 @@ c8volt ops execute [flags]
 
 ```
   ./c8volt ops execute --help
+  ./c8volt ops execute retention-policy --retention-days 90 --dry-run
   ./c8volt capabilities --json
 ```
 
@@ -54,4 +55,5 @@ c8volt ops execute [flags]
 ### SEE ALSO
 
 * [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
+* [c8volt ops execute retention-policy](c8volt_ops_execute_retention-policy)	 - Execute process-instance retention cleanup
 

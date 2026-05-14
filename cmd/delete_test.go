@@ -1129,6 +1129,57 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
 }
 
+// TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarchy
+// protects direct-key delete planning from regressing to deleting selected child
+// keys directly.
+func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarchy(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	var prompt string
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a", "child-b"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a", "child-b"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-a"}, keys)
+			require.Zero(t, wantedWorkers)
+			require.Equal(t, 3, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a", "child-b"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 2, Affected: 3, Roots: 1}, got.Impact)
+	require.Len(t, got.Reports, 1)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
+	require.Equal(t, typex.Keys{"root-a", "child-a", "child-b"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
+	require.Contains(t, prompt, "requested to delete 2 process instance(s)")
+	require.Contains(t, prompt, "a total of 3 instance(s) with 1 root instance(s) will be deleted")
+}
+
 // TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation verifies
 // delete is all-or-nothing when the expanded scope includes non-final instances.
 func TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation(t *testing.T) {

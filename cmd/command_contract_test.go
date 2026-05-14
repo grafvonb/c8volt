@@ -530,6 +530,50 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 		Description: "discover and validate retention cleanup without submitting deletion requests",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an audit report to the given path",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "audit report format: markdown, json (default inferred from report-file extension)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to filter process instances",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after deletion requests are accepted without deletion confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "auto-confirm",
 		Shorthand:   "y",
 		Type:        "bool",

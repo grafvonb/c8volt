@@ -3211,6 +3211,32 @@ func TestGetProcessInstanceRelativeDayFilterScaffold(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(output), &got))
 		require.NotContains(t, got, "error")
 	})
+
+	t.Run("end-date older-days keeps existing upper bound semantics", func(t *testing.T) {
+		var requests []string
+		srv := newProcessInstanceSearchCaptureServer(t, &requests)
+		t.Cleanup(srv.Close)
+
+		cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+
+		output := executeRootForProcessInstanceTest(t,
+			"--config", cfgPath,
+			"--json",
+			"get", "process-instance",
+			"--state", "completed",
+			"--end-date-older-days", "45",
+		)
+
+		filter := decodeCapturedPISearchFilter(t, requests)
+
+		require.Equal(t, "COMPLETED", filter["state"])
+		requireCapturedPISearchDateBound(t, filter, "endDate", "$lte", "2026-02-24T23:59:59.999999999Z")
+		requireCapturedPISearchDateExists(t, filter, "endDate")
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output), &got))
+		require.NotContains(t, got, "error")
+	})
 }
 
 // TestGetProcessInstanceRelativeDayValidation verifies invalid relative-day ranges and combinations are rejected.

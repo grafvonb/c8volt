@@ -217,18 +217,18 @@
 
 ### Tests for User Story 8
 
-- [ ] T071 [P] [US8] Add regression tests for unchanged `get pi --end-date-older-days` behavior in `cmd/get_processinstance_test.go`
-- [ ] T072 [P] [US8] Add regression tests for unchanged `delete pi --keys` hierarchy planning behavior in `cmd/delete_processinstance_test.go`
-- [ ] T073 [P] [US8] Add docs/contract assertions for retention command metadata in `cmd/command_contract_test.go`
+- [x] T071 [P] [US8] Add regression tests for unchanged `get pi --end-date-older-days` behavior in `cmd/get_processinstance_test.go`
+- [x] T072 [P] [US8] Add regression tests for unchanged `delete pi --keys` hierarchy planning behavior in `cmd/delete_processinstance_test.go`
+- [x] T073 [P] [US8] Add docs/contract assertions for retention command metadata in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 8
 
-- [ ] T074 [US8] Update user-facing help examples for retention policy in `cmd/ops_execute_retention_policy.go`
-- [ ] T075 [US8] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
-- [ ] T076 [US8] Run targeted command tests with `go test ./cmd -run 'TestOps|TestCommandContract|TestDeleteProcessInstance|TestGetProcessInstance' -count=1`
-- [ ] T077 [US8] Run facade and service tests with `go test ./c8volt/ops ./c8volt/process ./internal/services/ops ./internal/services/processinstance -count=1`
-- [ ] T078 [US8] Run repository validation with `make test`
-- [ ] T079 [US8] Mark US8 tasks complete and record final validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T074 [US8] Update user-facing help examples for retention policy in `cmd/ops_execute_retention_policy.go`
+- [x] T075 [US8] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T076 [US8] Run targeted command tests with `go test ./cmd -run 'TestOps|TestCommandContract|TestDeleteProcessInstance|TestGetProcessInstance' -count=1`
+- [x] T077 [US8] Run facade and service tests with `go test ./c8volt/ops ./c8volt/process ./internal/services/ops ./internal/services/processinstance -count=1`
+- [x] T078 [US8] Run repository validation with `make test`
+- [x] T079 [US8] Mark US8 tasks complete and record final validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Feature is documented, regression-protected, and ready for review.
 

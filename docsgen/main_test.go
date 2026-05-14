@@ -287,11 +287,27 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 	executeDoc := readGeneratedDocForTest(t, out, "c8volt_ops_execute.md")
 	for _, want := range []string{
 		"Discover predefined operational playbooks",
-		"target sets and execute existing c8volt resource actions",
+		"lists playbooks that discover target sets",
+		"existing c8volt resource actions",
 		"./c8volt ops execute --help",
+		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
+		"[c8volt ops execute retention-policy](c8volt_ops_execute_retention-policy)",
 	} {
 		if !strings.Contains(executeDoc, want) {
 			t.Fatalf("expected generated ops execute docs to contain %q, got %q", want, executeDoc)
+		}
+	}
+
+	retentionDoc := readGeneratedDocForTest(t, out, "c8volt_ops_execute_retention-policy.md")
+	for _, want := range []string{
+		"Execute process-instance retention cleanup",
+		"--retention-days int",
+		"--report-file string",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run",
+		"[c8volt ops execute](c8volt_ops_execute)",
+	} {
+		if !strings.Contains(retentionDoc, want) {
+			t.Fatalf("expected generated ops execute retention-policy docs to contain %q, got %q", want, retentionDoc)
 		}
 	}
 
@@ -308,14 +324,13 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 
 	for _, unwanted := range []string{
 		"orphan-cleanup",
-		"retention-policy",
 		"smoke-test",
 		"--key string",
 		"--key strings",
 		"repair incident",
 		"repair process-instance",
 	} {
-		if strings.Contains(opsDoc, unwanted) || strings.Contains(executeDoc, unwanted) || strings.Contains(repairDoc, unwanted) {
+		if strings.Contains(opsDoc, unwanted) || strings.Contains(repairDoc, unwanted) {
 			t.Fatalf("expected generated ops docs to omit %q", unwanted)
 		}
 	}

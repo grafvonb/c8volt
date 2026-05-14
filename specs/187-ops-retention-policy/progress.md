@@ -9,6 +9,7 @@
 
 ## Codebase Patterns
 
+- Generated CLI docs for concrete ops subcommands require matching `docsgen/main_test.go` assertions; when `make docs-content` exposes new nested command docs, update the generator tests to cover the child page and parent SEE ALSO links instead of treating the child as unwanted grouping output.
 - Retention audit reporting now mirrors the #186 orphan purge report lifecycle: command flags reuse shared ops report format/path/write helpers, existing report files are rejected before preflight unless confirmation already permits overwrite, post-discovery failures write the structured report when possible, and human output prints `report: written <path>` only after a successful report write.
 - Retention confirmed deletion now follows the #186 ops purge confirmation shape: manual runs first execute a dry-run planning call, reject non-final blockers locally before mutation, prompt through `shouldImplicitlyConfirm(cmd)`, then pass frozen `DiscoveredKeys` into the execution call so a second discovery cannot change the submitted root set.
 - Retention execution controls are command flags mapped through existing facade options (`--workers`, `--fail-fast`, `--no-worker-limit`, `--no-wait`, `--no-state-check`, `--force`); the internal ops service delegates deletion to `processinstance.DeleteProcessInstances` and records submitted roots, reports, no-wait, confirmation, and final retention outcome.
@@ -294,4 +295,36 @@
 - Retention reports should stay command-owned for file validation/write orchestration while rendering from the `RetentionAuditReport` already populated by the ops service.
 - Existing report files are protected before discovery for dry-run, unconfirmed, and locally blocked flows; post-discovery failures with a new report path write failure status, discovery counts, deletion status, and errors.
 - Targeted validation passed with sandbox-local Go cache: `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestOpsWorkflowReport|TestValidateOpsWorkflowReport|TestWriteOpsWorkflowReport|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1` and `go test ./cmd -count=1`.
+---
+---
+## Iteration 10 - 2026-05-14 13:36:08 CEST
+**User Story**: User Story 8 - Preserve Existing Contracts
+**Tasks Completed**:
+- [x] T071: Add regression tests for unchanged `get pi --end-date-older-days` behavior
+- [x] T072: Add regression tests for unchanged `delete pi --keys` hierarchy planning behavior
+- [x] T073: Add docs/contract assertions for retention command metadata
+- [x] T074: Update user-facing help examples for retention policy
+- [x] T075: Run `make docs-content` and review generated files
+- [x] T076: Run targeted command tests
+- [x] T077: Run facade and service tests
+- [x] T078: Run repository validation
+- [x] T079: Mark US8 tasks complete and record final validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/delete_test.go
+- cmd/get_processinstance_test.go
+- cmd/ops_execute_retention_policy.go
+- docs/cli/c8volt_ops_execute.md
+- docs/cli/c8volt_ops_execute_retention-policy.md
+- docs/cli/c8volt_ops_purge_orphan-process-instances.md
+- docs/index.md
+- docsgen/main_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Retention command docs generation creates a dedicated nested `ops execute retention-policy` page and adds the child command to the execute parent SEE ALSO section.
+- The existing `delete pi` hierarchy regression belongs in `cmd/delete_test.go`; there is no separate `cmd/delete_processinstance_test.go` file in this repository.
+- Validation passed with sandbox-local Go cache: `go test ./cmd -run 'TestOps|TestCommandContract|TestDeleteProcessInstance|TestGetProcessInstance' -count=1`, `go test ./c8volt/ops ./c8volt/process ./internal/services/ops ./internal/services/processinstance -count=1`, and `make test`.
 ---
