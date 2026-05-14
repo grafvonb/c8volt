@@ -121,7 +121,7 @@ func fromDomainOrphanPurgeReport(x d.OrphanPurgeReport) OrphanPurgeReport {
 }
 
 func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyRequest {
-	return d.RetentionPolicyRequest{
+	out := d.RetentionPolicyRequest{
 		CommandName:            x.CommandName,
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -142,6 +142,10 @@ func toDomainRetentionPolicyRequest(x RetentionPolicyRequest) d.RetentionPolicyR
 		ReportFormat:           x.ReportFormat,
 		StartedAt:              x.StartedAt,
 	}
+	if x.DiscoveredKeys != nil {
+		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
+	}
+	return out
 }
 
 func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyResult {
@@ -157,7 +161,7 @@ func fromDomainRetentionPolicyResult(x d.RetentionPolicyResult) RetentionPolicyR
 }
 
 func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolicyRequest {
-	return RetentionPolicyRequest{
+	out := RetentionPolicyRequest{
 		CommandName:            x.CommandName,
 		RetentionDays:          x.RetentionDays,
 		DerivedEndDateBoundary: x.DerivedEndDateBoundary,
@@ -178,6 +182,10 @@ func fromDomainRetentionPolicyRequest(x d.RetentionPolicyRequest) RetentionPolic
 		ReportFormat:           x.ReportFormat,
 		StartedAt:              x.StartedAt,
 	}
+	if x.DiscoveredKeys != nil {
+		out.DiscoveredKeys = append(typex.Keys{}, x.DiscoveredKeys...)
+	}
+	return out
 }
 
 func fromDomainRetentionDiscoveryResult(x d.RetentionDiscoveryResult) RetentionDiscoveryResult {

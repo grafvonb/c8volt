@@ -478,3 +478,80 @@ func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *te
 	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
 	require.Equal(t, got.Deletion, got.Report.Deletion)
 }
+
+func TestExecuteRetentionPolicyDeletesResolvedRootsWithNoWait(t *testing.T) {
+	t.Parallel()
+
+	piAPI := stubProcessInstanceAPI{
+		searchPage: func(_ context.Context, _ d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+			return d.ProcessInstancePage{
+				Request:       page,
+				OverflowState: d.ProcessInstanceOverflowStateNoMore,
+				Items: []d.ProcessInstance{
+					{Key: "child-1", EndDate: "2026-02-12"},
+				},
+			}, nil
+		},
+		ancestryResult: func(_ context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: key,
+				RootKey:  "root-1",
+				Keys:     []string{key, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1": {Key: "root-1", State: d.StateCompleted},
+					key:      {Key: key, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateCompleted},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.NoWait)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return d.DeleteResponse{Ok: true, StatusCode: 202, Status: "accepted"}, nil
+		},
+	}
+	request := d.RetentionPolicyRequest{
+		CommandName:            "ops execute retention-policy",
+		RetentionDays:          90,
+		DerivedEndDateBoundary: "2026-02-13",
+		DryRun:                 false,
+		Workers:                2,
+		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(piAPI).ExecuteRetentionPolicy(
+		context.Background(),
+		request,
+		services.WithNoWait(),
+		services.WithFailFast(),
+		services.WithNoWorkerLimit(),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, d.RetentionPolicyOutcomeDeleted, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Deletion.Status)
+	require.Equal(t, []string{"root-1"}, []string(got.Deletion.SubmittedRootKeys))
+	require.Len(t, got.Deletion.Items, 1)
+	require.Equal(t, "root-1", got.Deletion.Items[0].Key)
+	require.True(t, got.Deletion.Submitted)
+	require.False(t, got.Deletion.Confirmed)
+	require.True(t, got.Deletion.NoWait)
+	require.Equal(t, got.Deletion, got.Report.Deletion)
+}

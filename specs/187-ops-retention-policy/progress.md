@@ -9,6 +9,8 @@
 
 ## Codebase Patterns
 
+- Retention confirmed deletion now follows the #186 ops purge confirmation shape: manual runs first execute a dry-run planning call, reject non-final blockers locally before mutation, prompt through `shouldImplicitlyConfirm(cmd)`, then pass frozen `DiscoveredKeys` into the execution call so a second discovery cannot change the submitted root set.
+- Retention execution controls are command flags mapped through existing facade options (`--workers`, `--fail-fast`, `--no-worker-limit`, `--no-wait`, `--no-state-check`, `--force`); the internal ops service delegates deletion to `processinstance.DeleteProcessInstances` and records submitted roots, reports, no-wait, confirmation, and final retention outcome.
 - Retention dry-run/no-target command output now explicitly reports skipped deletion and `outcome: planned; no changes applied`; detailed retention seed/root/affected key lists remain gated behind `--verbose`, while JSON output keeps the complete structured model through the shared result envelope.
 - Retention delete planning now calls the existing `processinstance.DryRunCancelOrDeletePlan` from the ops service after discovery, maps the frozen seeds into `RetentionDeletePlan`, preserves duplicate resolved roots via `DryRunPIKeyExpansion.DuplicateRoots`, and blocks non-dry-run mutation with `domain.ErrPrecondition` when non-final affected instances exist without force.
 - Retention selection filters now reuse shared process-instance search flags and validation from `cmd/get_processinstance_*`: command code registers only compatible filters, rejects explicit `--key` before client construction, maps flags through `populatePISearchFilterOpts`, and then overwrites `EndDateBefore` with the required retention boundary.
@@ -230,4 +232,36 @@
 - Retention dry-run command coverage now exercises no-target success, JSON envelope structure, and matching-seed no-mutation behavior through HTTP fakes.
 - Dry-run human output now has an explicit no-target line plus skipped deletion/final outcome wording, while existing verbose-only key-list behavior remains intact.
 - Targeted validation passed with sandbox-local Go cache: `go test ./cmd ./internal/services/ops -run 'TestOpsExecuteRetentionPolicy|TestExecuteRetentionPolicy' -count=1`, `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1`, and `go test ./cmd -count=1`.
+---
+---
+## Iteration 8 - 2026-05-14 13:20:51 CEST
+**User Story**: User Story 6 - Execute Confirmed Deletion
+**Tasks Completed**:
+- [x] T051: Add confirmed deletion command test for exact frozen-plan root submission
+- [x] T052: Add execution-control mapping tests for workers, fail-fast, no-wait, no-state-check, and force
+- [x] T053: Add `--automation --json` without `--auto-confirm` success test
+- [x] T054: Add local-precondition failure subprocess tests for post-planning blockers and exit code
+- [x] T055: Add compatible delete execution control flags and facade option mapping
+- [x] T056: Execute deletion through existing process-instance deletion service
+- [x] T057: Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions
+- [x] T058: Preserve no-wait, confirmation, per-key status, and final outcome
+- [x] T059: Render deletion execution and final outcome
+- [x] T060: Mark US6 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy.go
+- cmd/ops_execute_retention_policy_test.go
+- internal/domain/ops_retention_policy.go
+- internal/services/ops/retention_policy.go
+- internal/services/ops/retention_policy_test.go
+- specs/187-ops-retention-policy/progress.md
+- specs/187-ops-retention-policy/tasks.md
+**Learnings**:
+- Manual confirmed retention deletion must freeze discovered seeds from the planning call into `DiscoveredKeys`; otherwise a second discovery during execution could submit a different root set than the operator reviewed.
+- The service can reuse the orphan purge deletion status helpers for step status, but retention needs its own outcome mapping because the outcome enum is retention-specific.
+- Targeted validation passed with sandbox-local Go cache: `go test ./internal/services/ops -run 'TestExecuteRetentionPolicy' -count=1`, `go test ./c8volt/ops -run 'TestClientExecuteRetentionPolicy' -count=1`, `go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -run 'TestOpsExecuteRetentionPolicy|TestClientExecuteRetentionPolicy|TestExecuteRetentionPolicy|TestDiscoverRetentionProcessInstances' -count=1`, and `go test ./cmd -run 'TestOpsExecuteRetentionPolicy|TestCommandContract|TestCommandCapability|TestRoot|TestNewCli' -count=1`. Local-listener command integration cases were skipped by the sandbox network policy during command test runs.
 ---

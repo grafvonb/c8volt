@@ -62,7 +62,12 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 		if !result.Deletion.Submitted {
 			cmd.Printf("deletion: %s; no deletion request submitted\n", result.Deletion.Status)
 		} else {
-			cmd.Printf("deletion: %s\n", result.Deletion.Status)
+			cmd.Printf("deletion: %s (requests: %d)\n", result.Deletion.Status, len(result.Deletion.Items))
+			if result.Deletion.NoWait {
+				cmd.Printf("deletion confirmation: skipped (--no-wait)\n")
+			} else {
+				cmd.Printf("deletion confirmation: %t\n", result.Deletion.Confirmed)
+			}
 		}
 	}
 	if result.Outcome != "" {

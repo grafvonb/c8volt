@@ -165,19 +165,19 @@
 
 ### Tests for User Story 6
 
-- [ ] T051 [P] [US6] Add confirmed deletion command test for exact frozen-plan root submission in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T052 [P] [US6] Add execution-control mapping tests for workers, fail-fast, no-wait, no-state-check, and force in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T053 [P] [US6] Add `--automation --json` without `--auto-confirm` success test for supported state-changing retention command in `cmd/ops_execute_retention_policy_test.go`
-- [ ] T054 [P] [US6] Add local-precondition failure subprocess tests for post-planning blockers and exit code in `cmd/ops_execute_retention_policy_test.go`
+- [x] T051 [P] [US6] Add confirmed deletion command test for exact frozen-plan root submission in `cmd/ops_execute_retention_policy_test.go`
+- [x] T052 [P] [US6] Add execution-control mapping tests for workers, fail-fast, no-wait, no-state-check, and force in `cmd/ops_execute_retention_policy_test.go`
+- [x] T053 [P] [US6] Add `--automation --json` without `--auto-confirm` success test for supported state-changing retention command in `cmd/ops_execute_retention_policy_test.go`
+- [x] T054 [P] [US6] Add local-precondition failure subprocess tests for post-planning blockers and exit code in `cmd/ops_execute_retention_policy_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T055 [US6] Add compatible delete execution control flags and facade option mapping in `cmd/ops_execute_retention_policy.go`
-- [ ] T056 [US6] Execute deletion through existing process-instance deletion service from `internal/services/ops/retention_policy.go`
-- [ ] T057 [US6] Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_execute_retention_policy.go`
-- [ ] T058 [US6] Preserve no-wait, confirmation, per-key or per-batch status, and final outcome in `internal/domain/ops_retention_policy.go`
-- [ ] T059 [US6] Render deletion execution and final outcome in `cmd/cmd_views_ops_execute_retention_policy.go`
-- [ ] T060 [US6] Mark US6 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
+- [x] T055 [US6] Add compatible delete execution control flags and facade option mapping in `cmd/ops_execute_retention_policy.go`
+- [x] T056 [US6] Execute deletion through existing process-instance deletion service from `internal/services/ops/retention_policy.go`
+- [x] T057 [US6] Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_execute_retention_policy.go`
+- [x] T058 [US6] Preserve no-wait, confirmation, per-key or per-batch status, and final outcome in `internal/domain/ops_retention_policy.go`
+- [x] T059 [US6] Render deletion execution and final outcome in `cmd/cmd_views_ops_execute_retention_policy.go`
+- [x] T060 [US6] Mark US6 tasks complete and record validation notes in `specs/187-ops-retention-policy/progress.md`
 
 **Checkpoint**: Confirmed retention deletion is independently functional and automation-compatible.
 

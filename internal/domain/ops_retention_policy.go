@@ -37,6 +37,7 @@ type RetentionPolicyRequest struct {
 	NoWorkerLimit          bool
 	ReportFile             string
 	ReportFormat           string
+	DiscoveredKeys         typex.Keys
 	StartedAt              time.Time
 }
 

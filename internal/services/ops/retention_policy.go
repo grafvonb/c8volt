@@ -38,20 +38,27 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 
 	filter := request.Selection
 	filter.EndDateBefore = request.DerivedEndDateBoundary
-	discovery, err := pisvc.DiscoverRetentionProcessInstances(ctx, s.piAPI, pisvc.RetentionDiscoveryRequest{
-		Filter:    filter,
-		BatchSize: request.BatchSize,
-		Limit:     request.Limit,
-	}, opts...)
-	if err != nil {
-		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
-		result.Discovery.RetentionDays = request.RetentionDays
-		result.Discovery.DerivedEndDateBoundary = request.DerivedEndDateBoundary
-		result.Discovery.Filters = filter
-		result.Discovery.Errors = []string{err.Error()}
-		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
-		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
+	discovery := pisvc.RetentionDiscovery{
+		Filter: filter,
+		Keys:   request.DiscoveredKeys.Unique(),
+	}
+	if request.DiscoveredKeys == nil {
+		var err error
+		discovery, err = pisvc.DiscoverRetentionProcessInstances(ctx, s.piAPI, pisvc.RetentionDiscoveryRequest{
+			Filter:    filter,
+			BatchSize: request.BatchSize,
+			Limit:     request.Limit,
+		}, opts...)
+		if err != nil {
+			result.Discovery.Status = d.OpsWorkflowStepStatusFailed
+			result.Discovery.RetentionDays = request.RetentionDays
+			result.Discovery.DerivedEndDateBoundary = request.DerivedEndDateBoundary
+			result.Discovery.Filters = filter
+			result.Discovery.Errors = []string{err.Error()}
+			result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+			result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+			return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
+		}
 	}
 
 	result.Discovery = d.RetentionDiscoveryResult{
@@ -77,15 +84,32 @@ func (s *Service) ExecuteRetentionPolicy(ctx context.Context, request d.Retentio
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, fmt.Errorf("retention policy delete-plan validation: %w", err))
 	}
 
-	if !request.DryRun && !request.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
+	if request.DryRun {
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
+	}
+
+	if !request.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
 		err = fmt.Errorf("%w: refusing to delete retention process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", d.ErrPrecondition, len(plan.RequiresCancelBeforeDelete))
 		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
 		result.Deletion.Errors = []string{err.Error()}
 		return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomeFailed, err)
 	}
 
-	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-	return finishRetentionPolicyResult(result, d.RetentionPolicyOutcomePlanned, nil)
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.Roots, request.Workers, len(plan.Collected), opts...)
+	result.Deletion = d.RetentionDeletionResult{
+		Status:            deletionStatusForReports(reports, request.NoWait, err),
+		SubmittedRootKeys: plan.Roots,
+		Items:             reports,
+		Submitted:         len(reports) > 0,
+		Confirmed:         err == nil && !request.NoWait && allReportsOK(reports),
+		NoWait:            request.NoWait,
+		Errors:            deletionErrors(err),
+	}
+	if err != nil {
+		return finishRetentionPolicyResult(result, retentionDeletionOutcomeForReports(reports), fmt.Errorf("delete retention process instances: %w", err))
+	}
+	return finishRetentionPolicyResult(result, retentionDeletionOutcomeForReports(reports), nil)
 }
 
 func retentionDeletePlanFromExpansion(seedKeys typex.Keys, plan d.DryRunPIKeyExpansion, requiresConfirmation bool) d.RetentionDeletePlan {
@@ -128,6 +152,26 @@ func withRetentionPolicyOptionControls(request d.RetentionPolicyRequest, opts ..
 	request.FailFast = request.FailFast || cfg.FailFast
 	request.NoWorkerLimit = request.NoWorkerLimit || cfg.NoWorkerLimit
 	return request
+}
+
+func retentionDeletionOutcomeForReports(reports []d.Reporter) d.RetentionPolicyOutcome {
+	if len(reports) == 0 {
+		return d.RetentionPolicyOutcomeFailed
+	}
+	ok := 0
+	for _, report := range reports {
+		if report.Ok {
+			ok++
+		}
+	}
+	switch ok {
+	case len(reports):
+		return d.RetentionPolicyOutcomeDeleted
+	case 0:
+		return d.RetentionPolicyOutcomeFailed
+	default:
+		return d.RetentionPolicyOutcomePartiallyFailed
+	}
 }
 
 func newRetentionPolicyResult(request d.RetentionPolicyRequest) d.RetentionPolicyResult {

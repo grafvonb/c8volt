@@ -133,6 +133,7 @@ type RetentionPolicyRequest struct {
 	NoWorkerLimit          bool                          `json:"noWorkerLimit,omitempty"`
 	ReportFile             string                        `json:"reportFile,omitempty"`
 	ReportFormat           string                        `json:"reportFormat,omitempty"`
+	DiscoveredKeys         typex.Keys                    `json:"discoveredKeys,omitempty"`
 	StartedAt              time.Time                     `json:"startedAt,omitempty"`
 }
 
