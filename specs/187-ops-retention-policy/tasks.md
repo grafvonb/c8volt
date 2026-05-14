@@ -13,8 +13,8 @@
 
 **Purpose**: Capture required implementation context and current #186 ops patterns before code changes.
 
-- [ ] T001 Record mandatory Ralph context and issue traceability in `specs/187-ops-retention-policy/progress.md`
-- [ ] T002 Inspect existing #186 ops purge implementation, `ops execute` command group, process-instance search, process-instance delete planning, command contract metadata, and docs generation patterns; record reusable discoveries in `specs/187-ops-retention-policy/progress.md`
+- [x] T001 Record mandatory Ralph context and issue traceability in `specs/187-ops-retention-policy/progress.md`
+- [x] T002 Inspect existing #186 ops purge implementation, `ops execute` command group, process-instance search, process-instance delete planning, command contract metadata, and docs generation patterns; record reusable discoveries in `specs/187-ops-retention-policy/progress.md`
 
 ---
 
