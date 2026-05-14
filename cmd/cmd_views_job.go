@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -97,7 +98,7 @@ func flatRowJob(item job.Job) flatRow {
 	}
 	parts = append(parts, "r:"+strconv.FormatInt(int64(item.Retries), 10))
 	if item.Deadline != nil {
-		parts = append(parts, "d:"+item.Deadline.Format(humanTimestampMillisLayout))
+		parts = append(parts, "d:"+toolx.FormatNumericZoneTime(*item.Deadline))
 	}
 	if item.ErrorCode != "" {
 		parts = append(parts, "ec:"+item.ErrorCode)

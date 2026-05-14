@@ -222,15 +222,9 @@ func TestOneLinePI_RendersStartAndEndDateWithOffsetSeconds(t *testing.T) {
 		EndDate:        "2026-04-13T18:03:24Z",
 	})
 
-	require.Contains(t, line, "s:2026-04-13T18:03:24+00:00")
+	require.Contains(t, line, "s:2026-04-13T18:03:24.36+00:00")
 	require.Contains(t, line, "e:2026-04-13T18:03:24+00:00")
-	require.NotContains(t, line, ".360")
 	require.NotContains(t, line, "Z")
-}
-
-func TestHumanTimestamp_LeavesInvalidValuesUnchanged(t *testing.T) {
-	require.Equal(t, "not-a-date", humanTimestamp("not-a-date"))
-	require.Equal(t, "", humanTimestamp(""))
 }
 
 func TestProcessInstancesWithAgeMeta(t *testing.T) {
@@ -723,7 +717,7 @@ func TestIncidentHumanLine_RendersDetailsForIncidentGroup(t *testing.T) {
 		JobKey:              "job-123",
 	})
 
-	require.Equal(t, "incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42+00:00 (4 days ago) fn:task-a fni:element-123 m:No retries left", got)
+	require.Equal(t, "incident-123 JOB_NO_RETRIES ACTIVE j:job-123 2026-05-06T09:29:42.711+00:00 (4 days ago) fn:task-a fni:element-123 m:No retries left", got)
 	require.NotContains(t, got, "incident incident-123:")
 }
 
@@ -916,7 +910,7 @@ func TestListIncidentsView_HumanJSONAndKeysOnly(t *testing.T) {
 		output := cmd.OutOrStdout().(*bytes.Buffer).String()
 
 		require.Contains(t, output, "incident-123")
-		require.Contains(t, output, "2026-05-06T09:29:42+00:00")
+		require.Contains(t, output, "2026-05-06T09:29:42.711+00:00")
 		require.Contains(t, output, "fn:task-a")
 		require.Contains(t, output, "JOB_NO_RETRIES")
 		require.Contains(t, output, "j:job-123")

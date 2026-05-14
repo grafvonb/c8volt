@@ -146,5 +146,5 @@ func formatOpsPurgeReportTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.UTC().Format(time.RFC3339)
+	return toolx.FormatNumericZoneTime(t.UTC())
 }

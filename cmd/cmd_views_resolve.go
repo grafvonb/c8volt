@@ -5,9 +5,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +52,7 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results incident.Resolu
 func incidentResolutionSkippedLine(item incident.ResolutionResult) string {
 	if strings.EqualFold(item.IncidentState, "RESOLVED") {
 		if item.Incident != nil && item.Incident.CreationTime != "" {
-			return fmt.Sprintf("incident %s already resolved (created %s): skipped", item.IncidentKey, item.Incident.CreationTime)
+			return fmt.Sprintf("incident %s already resolved (created %s): skipped", item.IncidentKey, toolx.FormatNumericZoneTimestamp(item.Incident.CreationTime))
 		}
 		return fmt.Sprintf("incident %s already resolved: skipped", item.IncidentKey)
 	}

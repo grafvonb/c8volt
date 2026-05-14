@@ -28,7 +28,7 @@ func TestOneLineJob_RendersCompactRowWithFullErrorMessageByDefault(t *testing.T)
 		TenantId:           "tenant-a",
 	})
 
-	require.Equal(t, "2251799814014237 tenant-a FAILED pi:2251799814014230 ei:2251799814014236 r:0 d:2026-04-23T01:07:49.000+00:00 err:"+message, line)
+	require.Equal(t, "2251799814014237 tenant-a FAILED pi:2251799814014230 ei:2251799814014236 r:0 d:2026-04-23T01:07:49+00:00 err:"+message, line)
 }
 
 func TestOneLineJob_TruncatesErrorMessageOnlyWhenLimitIsSet(t *testing.T) {

@@ -5,19 +5,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/c8volt/tenant"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
-)
-
-const (
-	humanTimestampLayout       = "2006-01-02T15:04:05-07:00"
-	humanTimestampMillisLayout = "2006-01-02T15:04:05.000-07:00"
 )
 
 //nolint:unused
@@ -100,7 +96,7 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 	}
 	eTag := ""
 	if it.EndDate != "" {
-		eTag = " e:" + humanTimestamp(it.EndDate)
+		eTag = " e:" + toolx.FormatNumericZoneTimestamp(it.EndDate)
 	}
 	vTag := ""
 	if it.ProcessVersionTag != "" {
@@ -124,23 +120,12 @@ func flatRowPI(it process.ProcessInstance) flatRow {
 		it.BpmnProcessId,
 		fmt.Sprintf("v%d%s", it.ProcessVersion, vTag),
 		string(it.State),
-		"s:" + humanTimestamp(it.StartDate),
+		"s:" + toolx.FormatNumericZoneTimestamp(it.StartDate),
 		strings.TrimSpace(eTag),
 		strings.TrimSpace(pTag),
 		strings.TrimSpace(incidentTag),
 		strings.TrimSpace(ageTag),
 	}
-}
-
-func humanTimestamp(value string) string {
-	if value == "" {
-		return ""
-	}
-	t, err := time.Parse(time.RFC3339Nano, value)
-	if err != nil {
-		return value
-	}
-	return t.Format(humanTimestampLayout)
 }
 
 type processInstanceAgeMeta struct {

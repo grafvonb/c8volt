@@ -5,10 +5,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/grafvonb/c8volt/c8volt/incident"
 	"strings"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -99,7 +100,7 @@ func flatRowProcessInstanceIncident(incident incident.ProcessInstanceIncidentDet
 		incident.ErrorType,
 		incident.State,
 		"j:" + jobKey,
-		humanTimestamp(incident.CreationTime),
+		toolx.FormatNumericZoneTimestamp(incident.CreationTime),
 		incidentAgeTag(incident.CreationTime),
 		prefixedIncidentField("root", incident.RootProcessInstanceKey),
 		prefixedIncidentField("fn", incident.FlowNodeId),
@@ -155,7 +156,7 @@ func flatRowIncident(incident incident.ProcessInstanceIncidentDetail) flatRow {
 		incident.ErrorType,
 		incident.State,
 		"j:" + jobKey,
-		humanTimestamp(incident.CreationTime),
+		toolx.FormatNumericZoneTimestamp(incident.CreationTime),
 		incidentAgeTag(incident.CreationTime),
 		incident.ProcessDefinitionId,
 		prefixedIncidentField("pi", incident.ProcessInstanceKey),
