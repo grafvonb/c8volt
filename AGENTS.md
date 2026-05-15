@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/186-ops-orphan-cleanup/plan.md`
+- Active implementation plan: `specs/187-ops-retention-policy/plan.md`
 <!-- SPECKIT END -->

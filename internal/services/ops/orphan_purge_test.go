@@ -203,6 +203,9 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 	require.Equal(t, typexKeys("child-1"), deleted)
 	require.True(t, got.DeleteRequested)
 	require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Deletion.Status)
+	require.True(t, got.Request.NoWait)
+	require.True(t, got.Deletion.NoWait)
+	require.True(t, got.Report.NoWait)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
 }
 

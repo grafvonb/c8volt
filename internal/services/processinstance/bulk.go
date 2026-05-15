@@ -117,13 +117,6 @@ func GetProcessInstances(ctx context.Context, api API, keys typex.Keys, wantedWo
 	return api.GetProcessInstances(ctx, ukeys, wantedWorkers, opts...)
 }
 
-func processInstanceBulkActivity(verb string, rootCount int, affectedCount int) string {
-	if affectedCount > rootCount {
-		return fmt.Sprintf("%s %d pi via %d root", verb, affectedCount, rootCount)
-	}
-	return fmt.Sprintf("%s %d pi", verb, rootCount)
-}
-
 func reporterTotals(items []d.Reporter) (total, oks, noks int) {
 	for _, item := range items {
 		if item.Ok {

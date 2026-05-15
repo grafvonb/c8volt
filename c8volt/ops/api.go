@@ -11,6 +11,7 @@ import (
 
 type API interface {
 	PurgeOrphanProcessInstances(ctx context.Context, request OrphanPurgeRequest, opts ...options.FacadeOption) (OrphanPurgeResult, error)
+	ExecuteRetentionPolicy(ctx context.Context, request RetentionPolicyRequest, opts ...options.FacadeOption) (RetentionPolicyResult, error)
 }
 
 var _ API = (*client)(nil)

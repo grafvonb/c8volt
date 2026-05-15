@@ -12,7 +12,7 @@ Purge orphan child process instances
 
 Purge orphan child process instances.
 
-The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm for unattended deletion, --automation with --json for deterministic machine output, and --report-file to write an audit report.
+The workflow discovers child process instances with missing parents, freezes the discovered key set, validates the delete plan, and then either reports the plan with --dry-run or submits deletion only after confirmation. Use --auto-confirm or --automation for unattended deletion, combine --automation with --json for deterministic machine output, and use --report-file to write an audit report.
 
 ```
 c8volt ops purge orphan-process-instances [flags]
@@ -23,8 +23,8 @@ c8volt ops purge orphan-process-instances [flags]
 ```
   ./c8volt ops purge orphan-process-instances --dry-run
   ./c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
+  ./c8volt ops purge orphan-process-instances --automation --json --dry-run
   ./c8volt ops purge orphan-process-instances --auto-confirm
-  ./c8volt ops purge orphan-process-instances --automation --auto-confirm --json
   ./c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
   ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json
 ```

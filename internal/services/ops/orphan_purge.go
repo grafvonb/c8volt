@@ -21,6 +21,8 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		started = time.Now().UTC()
 		request.StartedAt = started
 	}
+	cfg := services.ApplyCallOptions(opts)
+	request.NoWait = request.NoWait || cfg.NoWait
 	result := newOrphanPurgeResult(request)
 
 	discovery := pisvc.OrphanDiscovery{
@@ -74,7 +76,6 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		return finishOrphanPurgeResult(result, d.OrphanPurgeOutcomePlanned, nil)
 	}
 
-	cfg := services.ApplyCallOptions(opts)
 	if !cfg.Force && len(plan.RequiresCancelBeforeDelete) > 0 {
 		err = fmt.Errorf("refusing to delete orphan process-instance scope: %d affected process instance(s) are not in a final state; no delete request was submitted; use --force to cancel the entire affected scope before delete", len(plan.RequiresCancelBeforeDelete))
 		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
@@ -90,6 +91,7 @@ func (s *Service) PurgeOrphanProcessInstances(ctx context.Context, request d.Orp
 		Errors:    deletionErrors(err),
 		Submitted: len(reports) > 0,
 		Confirmed: err == nil && !cfg.NoWait && allReportsOK(reports),
+		NoWait:    cfg.NoWait,
 	}
 	if err != nil {
 		return finishOrphanPurgeResult(result, deletionOutcomeForReports(reports), fmt.Errorf("delete orphan process instances: %w", err))
@@ -107,6 +109,7 @@ func newOrphanPurgeResult(request d.OrphanPurgeRequest) d.OrphanPurgeResult {
 			DryRun:           request.DryRun,
 			AutoConfirm:      request.AutoConfirm,
 			Automation:       request.Automation,
+			NoWait:           request.NoWait,
 			SelectionFilters: request.Selection,
 			Outcome:          d.OrphanPurgeOutcomeFailed,
 		},

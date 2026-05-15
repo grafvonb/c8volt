@@ -35,6 +35,7 @@ type OrphanPurgeRequest struct {
 	DryRun         bool
 	AutoConfirm    bool
 	Automation     bool
+	NoWait         bool
 	OutputMode     string
 	Selection      ProcessInstanceFilter
 	BatchSize      int32
@@ -70,6 +71,7 @@ type DeletionResult struct {
 	Errors    []string
 	Submitted bool
 	Confirmed bool
+	NoWait    bool
 }
 
 type OrphanPurgeReport struct {
@@ -89,6 +91,7 @@ type OrphanPurgeReport struct {
 	DeleteRequested  bool
 	AutoConfirm      bool
 	Automation       bool
+	NoWait           bool
 	Errors           []string
 	Outcome          OrphanPurgeOutcome
 }

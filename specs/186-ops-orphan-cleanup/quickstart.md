@@ -26,10 +26,10 @@ Run confirmed cleanup:
 /tmp/c8volt-ops-cleanup ops purge orphan-process-instances --auto-confirm
 ```
 
-Run in automation with JSON:
+Preview in automation with JSON:
 
 ```bash
-/tmp/c8volt-ops-cleanup ops purge orphan-process-instances --automation --auto-confirm --json
+/tmp/c8volt-ops-cleanup ops purge orphan-process-instances --automation --json --dry-run
 ```
 
 Write a Markdown report:

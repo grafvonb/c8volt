@@ -499,6 +499,97 @@ func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *t
 	})
 }
 
+func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsExecuteRetentionPolicyCmd)
+
+	require.Equal(t, "ops execute retention-policy", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "implicitly confirmed retention cleanup")
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "retention-days",
+		Type:        "int",
+		Required:    true,
+		Repeated:    false,
+		Description: "required non-negative age in days for process-instance retention eligibility",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "discover and validate retention cleanup without submitting deletion requests",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an audit report to the given path",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "audit report format: markdown, json (default inferred from report-file extension)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to filter process instances",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after deletion requests are accepted without deletion confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "automation",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "enable non-interactive mode for commands that explicitly support it",
+	})
+}
+
 func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

@@ -113,6 +113,33 @@ func TestValidateOpsWorkflowReportFlags(t *testing.T) {
 	)
 }
 
+func TestOpsExecuteRetentionPolicyReportFlagsReuseSharedContract(t *testing.T) {
+	prevFile := flagOpsExecuteRetentionPolicyReportFile
+	prevFormat := flagOpsExecuteRetentionPolicyReportFormat
+	t.Cleanup(func() {
+		flagOpsExecuteRetentionPolicyReportFile = prevFile
+		flagOpsExecuteRetentionPolicyReportFormat = prevFormat
+	})
+
+	flagOpsExecuteRetentionPolicyReportFile = "retention-report.json"
+	flagOpsExecuteRetentionPolicyReportFormat = "json"
+	require.NoError(t, validateOpsExecuteRetentionPolicyReportFlags())
+
+	flagOpsExecuteRetentionPolicyReportFile = ""
+	flagOpsExecuteRetentionPolicyReportFormat = "json"
+	require.EqualError(t,
+		validateOpsExecuteRetentionPolicyReportFlags(),
+		"invalid input: missing dependent flags: --report-format requires --report-file",
+	)
+
+	flagOpsExecuteRetentionPolicyReportFile = "retention-report.yaml"
+	flagOpsExecuteRetentionPolicyReportFormat = "yaml"
+	require.EqualError(t,
+		validateOpsExecuteRetentionPolicyReportFlags(),
+		`invalid input: invalid flag value: unsupported ops workflow report format "yaml"`,
+	)
+}
+
 func TestWriteOpsWorkflowReportFilePreservesExistingUntilConfirmed(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "report.md")
 	require.NoError(t, writeOpsWorkflowReportFile(path, []byte("first"), OpsWorkflowReportPreserveExisting))
