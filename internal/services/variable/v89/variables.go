@@ -79,8 +79,15 @@ func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string
 	if _, err := newProcessInstanceKeyEqFilterPtr(key); err != nil {
 		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
 	}
-	resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav89.ElementInstanceKey(key), camundav89.CreateElementInstanceVariablesJSONRequestBody{
+	body := camundav89.CreateElementInstanceVariablesJSONRequestBody{
 		Variables: variables,
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "update pi variables", func(ctx context.Context) (*camundav89.CreateElementInstanceVariablesResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav89.ElementInstanceKey(key), body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
 	})
 	if err != nil {
 		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err

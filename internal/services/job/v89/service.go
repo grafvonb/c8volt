@@ -103,11 +103,18 @@ func (s *Service) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opt
 		ConfirmationStatus:   "not_applicable",
 		UnsupportedOperation: false,
 	}
-	resp, err := s.c.UpdateJobWithResponse(ctx, camundav89.JobKey(request.Key), camundav89.UpdateJobJSONRequestBody{
+	body := camundav89.UpdateJobJSONRequestBody{
 		Changeset: camundav89.JobChangeset{
 			Retries: request.Retries,
 			Timeout: request.TimeoutMillis,
 		},
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "update job", func(ctx context.Context) (*camundav89.UpdateJobResponse, *http.Response, []byte, error) {
+		resp, err := s.c.UpdateJobWithResponse(ctx, camundav89.JobKey(request.Key), body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
 	})
 	if err != nil {
 		result.MutationError = err.Error()

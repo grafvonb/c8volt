@@ -6,6 +6,7 @@ package v89
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -38,7 +39,13 @@ func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.
 func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	_ = services.ApplyCallOptions(opts)
 	s.log.Debug(fmt.Sprintf("resolving incident %s", key))
-	resp, err := s.cc.ResolveIncidentWithResponse(ctx, key, camundav89.ResolveIncidentJSONRequestBody{})
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "resolve incident", func(ctx context.Context) (*camundav89.ResolveIncidentResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.ResolveIncidentWithResponse(ctx, key, camundav89.ResolveIncidentJSONRequestBody{})
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.IncidentResolutionResponse{Key: key}, err
 	}

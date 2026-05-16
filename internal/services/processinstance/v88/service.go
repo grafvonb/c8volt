@@ -130,7 +130,13 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	if err != nil {
 		return d.ProcessInstanceCreation{}, fmt.Errorf("building process instance creation instruction: %w", err)
 	}
-	resp, err := s.cc.CreateProcessInstanceWithResponse(ctx, body)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "create pi", func(ctx context.Context) (*camundav88.CreateProcessInstanceResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CreateProcessInstanceWithResponse(ctx, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.ProcessInstanceCreation{}, err
 	}
@@ -483,7 +489,13 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		s.log.Debug(fmt.Sprintf("pi %s cancel precheck skipped", key))
 	}
 	s.log.Debug(fmt.Sprintf("cancelling pi %s", key))
-	resp, err := s.cc.CancelProcessInstanceWithResponse(ctx, key, camundav88.CancelProcessInstanceJSONRequestBody{})
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "cancel pi", func(ctx context.Context) (*camundav88.CancelProcessInstanceResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CancelProcessInstanceWithResponse(ctx, key, camundav88.CancelProcessInstanceJSONRequestBody{})
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.CancelResponse{}, nil, err
 	}
@@ -559,7 +571,13 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		*/
 	}
 
-	resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, *http.Response, []byte, error) {
+		resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if isDeleteWrongStateResponse(resp) {
 		if cCfg.Force {
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
@@ -573,7 +591,13 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
 			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %d delete", oldKey))
-			resp, err = s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
+			resp, err = services.RetryCamundaMutation(ctx, s.log, "delete pi", func(ctx context.Context) (*operatev88.DeleteProcessInstanceAndAllDependantDataByKeyResponse, *http.Response, []byte, error) {
+				resp, err := s.co.DeleteProcessInstanceAndAllDependantDataByKeyWithResponse(ctx, oldKey)
+				if resp == nil {
+					return resp, nil, nil, err
+				}
+				return resp, resp.HTTPResponse, resp.Body, err
+			})
 		} else {
 			logging.InfoIfVerbose(fmt.Sprintf("pi %s delete blocked; state not terminal, use --force", key), s.log, cCfg.Verbose)
 			return d.DeleteResponse{StatusCode: http.StatusConflict}, nil

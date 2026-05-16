@@ -69,7 +69,13 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	cCfg := services.ApplyCallOptions(opts)
 
 	body := camundav89.DeleteResourceOpJSONRequestBody{DeleteHistory: boolPtr(true)}
-	resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, body)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete pd", func(ctx context.Context) (*camundav89.DeleteResourceOpResponse, *http.Response, []byte, error) {
+		resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
@@ -161,7 +167,14 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 		return d.Deployment{}, err
 	}
 
-	resp, err := s.c.CreateDeploymentWithBodyWithResponse(ctx, contentType, body)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "deploy pd", func(ctx context.Context) (*camundav89.CreateDeploymentResponse, *http.Response, []byte, error) {
+		_, _ = body.Seek(0, 0)
+		resp, err := s.c.CreateDeploymentWithBodyWithResponse(ctx, contentType, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.Deployment{}, err
 	}
