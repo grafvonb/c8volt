@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/187-ops-retention-policy/plan.md`
+- Active implementation plan: `specs/199-ops-incident-purge/plan.md`
 <!-- SPECKIT END -->
