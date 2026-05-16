@@ -53,7 +53,7 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 	}
 
-	plan, err := buildAllProcessDefinitionsPurgeDeletePlan(ctx, s.pdAPI, s.piAPI, s.log, discovery, !request.DryRun, request.Force, opts...)
+	plan, err := buildAllProcessDefinitionsPurgeDeletePlan(ctx, s.pdAPI, s.piAPI, s.log, discovery, request.Workers, !request.DryRun, request.Force, opts...)
 	result.DeletePlan = plan
 	if err != nil {
 		result.DeletePlan.Status = d.OpsWorkflowStepStatusFailed
@@ -105,13 +105,13 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 }
 
 // buildAllProcessDefinitionsPurgeDeletePlan adapts frozen process-definition candidates into the shared delete-pd preflight.
-func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.API, piAPI pisvc.API, log *slog.Logger, discovery d.ProcessDefinitionDiscoveryResult, requiresConfirmation bool, force bool, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeDeletePlan, error) {
+func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.API, piAPI pisvc.API, log *slog.Logger, discovery d.ProcessDefinitionDiscoveryResult, wantedWorkers int, requiresConfirmation bool, force bool, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeDeletePlan, error) {
 	candidates := discovery.CandidateProcessDefinitionKeys.Unique()
 	planOpts := append([]services.CallOption{}, opts...)
 	if force {
 		planOpts = append(planOpts, services.WithForce())
 	}
-	preview, err := pdsvc.PreviewDeleteProcessDefinitions(ctx, pdAPI, piAPI, log, candidates, planOpts...)
+	preview, err := pdsvc.PreviewDeleteProcessDefinitionsWithWorkers(ctx, pdAPI, piAPI, log, candidates, wantedWorkers, planOpts...)
 	plan := d.AllProcessDefinitionsPurgeDeletePlan{
 		Status:                                  d.OpsWorkflowStepStatusPlanned,
 		CandidateProcessDefinitionKeys:          candidates,

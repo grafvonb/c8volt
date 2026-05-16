@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
+	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -16,6 +18,8 @@ import (
 	"github.com/grafvonb/c8volt/toolx/pool"
 	"github.com/grafvonb/c8volt/typex"
 )
+
+var processInstanceBulkProgressInterval = 30 * time.Second
 
 type processInstanceCreator interface {
 	CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error)
@@ -61,7 +65,11 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	}
 	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("cancelling", lk, affectedCount))
 	defer stopActivity()
+	var completed atomic.Int64
+	stopProgress := startProcessInstanceBulkProgress(ctx, log, "cancel", lk, affectedCount, &completed)
+	defer stopProgress()
 	rs, err := pool.ExecuteSlice[string, d.Reporter](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.Reporter, error) {
+		defer completed.Add(1)
 		resp, _, err := api.CancelProcessInstance(ctx, key, opts...)
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
 	})
@@ -88,7 +96,11 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	}
 	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("deleting", lk, affectedCount))
 	defer stopActivity()
+	var completed atomic.Int64
+	stopProgress := startProcessInstanceBulkProgress(ctx, log, "delete", lk, affectedCount, &completed)
+	defer stopProgress()
 	rs, err := pool.ExecuteSlice[string, d.Reporter](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.Reporter, error) {
+		defer completed.Add(1)
 		resp, err := api.DeleteProcessInstance(ctx, key, opts...)
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
 	})
@@ -115,6 +127,41 @@ func GetProcessInstances(ctx context.Context, api API, keys typex.Keys, wantedWo
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("getting %d pi", len(ukeys)))
 	defer stopActivity()
 	return api.GetProcessInstances(ctx, ukeys, wantedWorkers, opts...)
+}
+
+// startProcessInstanceBulkProgress emits durable progress while long-running
+// root-tree operations are still in flight.
+func startProcessInstanceBulkProgress(ctx context.Context, log *slog.Logger, action string, roots int, affectedCount int, completed *atomic.Int64) func() {
+	if log == nil || roots <= 0 || completed == nil || processInstanceBulkProgressInterval <= 0 {
+		return func() {}
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(processInstanceBulkProgressInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				doneRoots := int(completed.Load())
+				if doneRoots >= roots {
+					continue
+				}
+				if affectedCount > roots {
+					log.Info(fmt.Sprintf("pi %s progress; roots %d/%d done, affected %d", action, doneRoots, roots, affectedCount))
+					continue
+				}
+				log.Info(fmt.Sprintf("pi %s progress; requested %d/%d done", action, doneRoots, roots))
+			}
+		}
+	}()
+	return func() {
+		cancel()
+		<-done
+	}
 }
 
 func reporterTotals(items []d.Reporter) (total, oks, noks int) {

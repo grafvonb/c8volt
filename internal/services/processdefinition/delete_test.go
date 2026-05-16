@@ -5,11 +5,21 @@ package processdefinition
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"log/slog"
+	"strconv"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
+	"github.com/grafvonb/c8volt/internal/services"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose verifies quiet warnings hide key detail.
@@ -107,4 +117,206 @@ func TestLogProcessDefinitionDeleteResultUsesSequentialLifecycleTerms(t *testing
 			assert.Contains(t, buf.String(), tt.want)
 		})
 	}
+}
+
+type cleanupProcessInstanceAPI struct {
+	pisvc.API
+	cancel func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
+	delete func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
+}
+
+// CancelProcessInstance delegates cancellation to the configured test callback.
+func (s cleanupProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+	return s.cancel(ctx, key, opts...)
+}
+
+// DeleteProcessInstance delegates deletion to the configured test callback.
+func (s cleanupProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+	return s.delete(ctx, key, opts...)
+}
+
+type cleanupProcessDefinitionAPI struct {
+	API
+}
+
+// GetProcessDefinition returns inactive statistics so force cleanup can proceed after cancellation.
+func (cleanupProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+}
+
+// TestCleanupProcessDefinitionDeletePlanForceScopeUsesRequestedWorkers verifies APD worker settings reach nested PI cleanup.
+func TestCleanupProcessDefinitionDeletePlanForceScopeUsesRequestedWorkers(t *testing.T) {
+	const roots = 40
+
+	var plans []d.DeleteProcessDefinitionPlanItem
+	for i := range roots {
+		key := "root-" + strconv.Itoa(i)
+		plans = append(plans, d.DeleteProcessDefinitionPlanItem{
+			Key: key,
+			CancellationPlan: d.DryRunPIKeyExpansion{
+				Roots:     []string{key},
+				Collected: []string{key},
+			},
+		})
+	}
+
+	var cancelStarted atomic.Int64
+	var deleteStarted atomic.Int64
+	cancelRelease := make(chan struct{})
+	deleteRelease := make(chan struct{})
+	var cancelReleaseOnce sync.Once
+	var deleteReleaseOnce sync.Once
+	t.Cleanup(func() {
+		cancelReleaseOnce.Do(func() { close(cancelRelease) })
+		deleteReleaseOnce.Do(func() { close(deleteRelease) })
+	})
+
+	piAPI := cleanupProcessInstanceAPI{
+		cancel: func(ctx context.Context, _ string, _ ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+			cancelStarted.Add(1)
+			select {
+			case <-ctx.Done():
+				return d.CancelResponse{}, nil, ctx.Err()
+			case <-cancelRelease:
+				return d.CancelResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil, nil
+			}
+		},
+		delete: func(ctx context.Context, _ string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			deleteStarted.Add(1)
+			select {
+			case <-ctx.Done():
+				return d.DeleteResponse{}, ctx.Err()
+			case <-deleteRelease:
+				return d.DeleteResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil
+			}
+		},
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- cleanupProcessDefinitionDeletePlanForceScope(
+			context.Background(),
+			cleanupProcessDefinitionAPI{},
+			piAPI,
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			plans,
+			roots,
+			services.WithSuppressProcessInstanceDetailLogs(),
+		)
+	}()
+
+	require.Eventually(t, func() bool {
+		return cancelStarted.Load() == roots
+	}, time.Second, 10*time.Millisecond)
+	cancelReleaseOnce.Do(func() { close(cancelRelease) })
+	require.Eventually(t, func() bool {
+		return deleteStarted.Load() == roots
+	}, time.Second, 10*time.Millisecond)
+	deleteReleaseOnce.Do(func() { close(deleteRelease) })
+	require.NoError(t, <-errCh)
+}
+
+type workerPreviewProcessDefinitionAPI struct {
+	API
+	active int64
+}
+
+// GetProcessDefinition returns active statistics for worker propagation preview tests.
+func (s workerPreviewProcessDefinitionAPI) GetProcessDefinition(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+	return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: s.active}}, nil
+}
+
+type workerPreviewProcessInstanceAPI struct {
+	pisvc.API
+	roots       int
+	ancestry    func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	descendants func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+}
+
+// SearchForProcessInstancesPage returns one active process instance for each configured root.
+func (s workerPreviewProcessInstanceAPI) SearchForProcessInstancesPage(_ context.Context, _ d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+	items := make([]d.ProcessInstance, 0, s.roots)
+	for i := range s.roots {
+		key := "root-" + strconv.Itoa(i)
+		items = append(items, d.ProcessInstance{Key: key, RootProcessInstanceKey: key, State: d.StateActive})
+	}
+	return d.ProcessInstancePage{Items: items}, nil
+}
+
+// AncestryResult delegates ancestry expansion to the configured test callback.
+func (s workerPreviewProcessInstanceAPI) AncestryResult(ctx context.Context, key string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return s.ancestry(ctx, key, opts...)
+}
+
+// DescendantsResult delegates descendant expansion to the configured test callback.
+func (s workerPreviewProcessInstanceAPI) DescendantsResult(ctx context.Context, key string, opts ...services.CallOption) (pitraversal.Result, error) {
+	return s.descendants(ctx, key, opts...)
+}
+
+// TestPreviewDeleteProcessDefinitionImpactUsesRequestedWorkers verifies delete-plan PI traversal honors APD worker settings.
+func TestPreviewDeleteProcessDefinitionImpactUsesRequestedWorkers(t *testing.T) {
+	const roots = 40
+
+	var ancestryStarted atomic.Int64
+	var descendantsStarted atomic.Int64
+	ancestryRelease := make(chan struct{})
+	descendantsRelease := make(chan struct{})
+	var ancestryReleaseOnce sync.Once
+	var descendantsReleaseOnce sync.Once
+	t.Cleanup(func() {
+		ancestryReleaseOnce.Do(func() { close(ancestryRelease) })
+		descendantsReleaseOnce.Do(func() { close(descendantsRelease) })
+	})
+
+	piAPI := workerPreviewProcessInstanceAPI{
+		roots: roots,
+		ancestry: func(ctx context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			ancestryStarted.Add(1)
+			select {
+			case <-ctx.Done():
+				return pitraversal.Result{}, ctx.Err()
+			case <-ancestryRelease:
+				return pitraversal.Result{StartKey: key, RootKey: key, Keys: []string{key}, Outcome: pitraversal.OutcomeComplete}, nil
+			}
+		},
+		descendants: func(ctx context.Context, key string, _ ...services.CallOption) (pitraversal.Result, error) {
+			descendantsStarted.Add(1)
+			select {
+			case <-ctx.Done():
+				return pitraversal.Result{}, ctx.Err()
+			case <-descendantsRelease:
+				return pitraversal.Result{StartKey: key, RootKey: key, Keys: []string{key}, Outcome: pitraversal.OutcomeComplete}, nil
+			}
+		},
+	}
+
+	type previewResult struct {
+		item d.DeleteProcessDefinitionPlanItem
+		err  error
+	}
+	resultCh := make(chan previewResult, 1)
+	go func() {
+		item, err := previewDeleteProcessDefinitionImpact(
+			context.Background(),
+			workerPreviewProcessDefinitionAPI{active: roots},
+			piAPI,
+			"pd-1",
+			true,
+			false,
+			roots,
+		)
+		resultCh <- previewResult{item: item, err: err}
+	}()
+
+	require.Eventually(t, func() bool {
+		return ancestryStarted.Load() == roots
+	}, time.Second, 10*time.Millisecond)
+	ancestryReleaseOnce.Do(func() { close(ancestryRelease) })
+	require.Eventually(t, func() bool {
+		return descendantsStarted.Load() == roots
+	}, time.Second, 10*time.Millisecond)
+	descendantsReleaseOnce.Do(func() { close(descendantsRelease) })
+	result := <-resultCh
+	require.NoError(t, result.err)
+	require.Len(t, result.item.CancellationPlan.Roots, roots)
 }
