@@ -1,5 +1,4 @@
 Output docs/assets/screencasts/fast-start.gif
-Output docs/assets/screencasts/fast-start.mp4
 
 Require zsh
 

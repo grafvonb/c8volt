@@ -60,4 +60,3 @@ binary into `/tmp/c8volt-vhs/bin/c8volt`, writes the recording-only
 Generated media is written to:
 
 - `docs/assets/screencasts/fast-start.gif`
-- `docs/assets/screencasts/fast-start.mp4`
