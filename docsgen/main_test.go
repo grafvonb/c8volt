@@ -61,6 +61,8 @@ func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 func TestRewriteDocsIndexLinks(t *testing.T) {
 	body := strings.Join([]string{
 		`<img src="./docs/logo/c8volt.png" />`,
+		`Screencast: ![demo](docs/assets/screencasts/fast-start.gif)`,
+		`Asset: <img src="./docs/assets/example.png" />`,
 		`CLI: [reference](./docs/cli/index.md)`,
 		`Docs: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), [NOTICE.md](./NOTICE.md)`,
 		`Project: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), [TRADEMARKS.md](TRADEMARKS.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)`,
@@ -71,6 +73,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 
 	for _, want := range []string{
 		`<img src="./logo/c8volt.png" />`,
+		`Screencast: ![demo](./assets/screencasts/fast-start.gif)`,
+		`Asset: <img src="./assets/example.png" />`,
 		`CLI: [reference](./cli/)`,
 		`[LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE)`,
 		`[COPYRIGHT](https://github.com/grafvonb/c8volt/blob/main/COPYRIGHT)`,
