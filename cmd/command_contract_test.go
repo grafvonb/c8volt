@@ -499,6 +499,110 @@ func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *t
 	})
 }
 
+// TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract verifies discovery metadata for the all-process-definitions purge command.
+func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	capability := commandCapabilityForCommand(opsPurgeAllProcessDefinitionsCmd)
+
+	require.Equal(t, "ops purge all-process-definitions", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "implicitly confirmed all-process-definitions purges")
+	require.Contains(t, capability.Aliases, "all-pds")
+	require.NotContains(t, capability.Aliases, "purge-definitions")
+	require.NotContains(t, capability.Aliases, "delete-all")
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "one-line",
+		Supported: true,
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process definition key to select for candidate discovery",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID to filter candidate process definitions",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "latest",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "only include the latest matching process-definition version(s)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "discover and validate process-definition cleanup without submitting deletion requests",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "audit report format: markdown, json (default inferred from report-file extension)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "automation",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "enable non-interactive mode for commands that explicitly support it",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of affected active process instances before deleting process definitions",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after deletion requests are accepted without deletion confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when validating the delete plan and deleting process definitions (default: min(targets, 2*GOMAXPROCS, 32))",
+	})
+	require.NotContains(t, capability.Flags, FlagContract{Name: "xml"})
+	require.NotContains(t, capability.Flags, FlagContract{Name: "stat"})
+}
+
 // TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract verifies discovery metadata for the incident purge command.
 func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract(t *testing.T) {
 	root := Root()

@@ -27,6 +27,7 @@
 - Internal ops service construction can remain backward-compatible through the existing `New(piAPI, incAPI, ...)` constructor while feature-specific service dependencies are introduced through a focused constructor that wires only the additional services needed by the new workflow.
 - Command contract metadata should mirror existing state-changing ops commands: set mutation to state-changing, contract support to full, automation support to full with concrete notes, and output modes for JSON/machine support where the command renders shared envelopes.
 - Generated CLI docs are refreshed via `make docs-content`; do not hand-edit `docs/cli/*` or `docs/index.md` when command metadata/help changes.
+- Early command-registration iterations can keep the target command non-mutating by using Cobra `Args` for local validation and a help-only `RunE`; later discovery/execution stories should replace the run path with facade orchestration while preserving the validated flag surface and metadata.
 
 ## Validation Log
 
@@ -82,4 +83,29 @@
 - The public process package is the repository's facade home for process-definition filter/result types, so the ops model uses a local selection struct to add `LatestOnly` without leaking internal domain fields.
 - The Phase 2 service implementation intentionally supports the frozen-candidate shape and dependency validation only; remote discovery, delete planning, execution, and command wiring remain scoped to later work units.
 - Validation passed: `go test ./c8volt/ops -run 'TestClientPurgeAllProcessDefinitionsMapsServiceBoundary|TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary' -count=1`; `go test ./internal/services/ops -run 'TestPurgeAllProcessDefinitions' -count=1`; `go test ./c8volt ./c8volt/ops ./internal/services/ops -count=1`; `go test ./... -count=1`.
+---
+---
+## Iteration 3 - 2026-05-16 18:42:13 CEST
+**User Story**: User Story 1 - Register All Process Definitions Purge Command
+**Tasks Completed**:
+- [x] T012: Add command registration, help, and alias tests for all-process-definitions purge in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T013: Add unsupported display-only process-definition flag tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T014: Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T015: Add `ops purge all-process-definitions` Cobra command, alias, summary, and safe examples in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T016: Register supported process-definition selection flags and delete workflow flags in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T017: Map static flag validation failures through existing invalid-input helpers in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T018: Set mutation, output-mode, required flag, and automation metadata in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T019: Mark US1 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- cmd/command_contract_test.go
+- specs/208-purge-process-definitions/tasks.md
+- specs/208-purge-process-definitions/progress.md
+**Learnings**:
+- The all-process-definitions command now exposes only the supported process-definition selection flags (`--key`, `--bpmn-process-id`, `--pd-version`, `--pd-version-tag`, `--latest`) plus shared delete workflow flags; display-only `get pd` flags remain unknown on the purge surface.
+- Static validation is currently local and remote-free through Cobra argument validation, which protects invalid keys, non-positive explicit `--pd-version`, non-positive explicit `--workers`, and report-format/report-file combinations before later stories add discovery.
+- Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestCommandCapabilityForCommand_OpsPurge(AllProcessDefinitions|ProcessInstancesWithIncidents|OrphanProcessInstances)Contract|TestCapabilitiesCommand_Ops' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -count=1`.
 ---
