@@ -10,7 +10,7 @@
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
-![c8volt fast start screencast](docs/assets/screencasts/fast-start.gif)
+<img src="./docs/assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 
 ## Release 3.7.x
 

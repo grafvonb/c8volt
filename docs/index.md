@@ -5,7 +5,7 @@ nav_order: 1
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-99-g4902d3b-dirty`, commit `4902d3b`, built `2026-05-16T14:37:50Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-100-g86a9b30-dirty`, commit `86a9b30`, built `2026-05-16T15:22:44Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -19,7 +19,7 @@ has_toc: true
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
-![c8volt fast start screencast](./assets/screencasts/fast-start.gif)
+<img src="./assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 
 ## Release 3.7.x
 
