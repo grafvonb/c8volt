@@ -86,6 +86,7 @@ func syncDocsIndexFromReadme(src, dst string) error {
 title: "c8volt"
 permalink: /
 nav_order: 1
+nav_exclude: true
 has_toc: true
 ---
 

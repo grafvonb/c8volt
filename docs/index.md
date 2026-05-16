@@ -2,10 +2,11 @@
 title: "c8volt"
 permalink: /
 nav_order: 1
+nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-100-g86a9b30-dirty`, commit `86a9b30`, built `2026-05-16T15:22:44Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-101-gd0be45f-dirty`, commit `d0be45f`, built `2026-05-16T15:36:59Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
