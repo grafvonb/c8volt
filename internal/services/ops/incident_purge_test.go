@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -346,6 +347,134 @@ func TestPurgeProcessInstancesWithIncidentsBlocksNonFinalDestructivePlan(t *test
 	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
 	require.Len(t, got.Deletion.Errors, 1)
 	require.Len(t, got.Errors, 1)
+}
+
+// TestPurgeProcessInstancesWithIncidentsExecutesFrozenPlanRoots verifies destructive execution submits only resolved plan roots.
+func TestPurgeProcessInstancesWithIncidentsExecutesFrozenPlanRoots(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-1", ProcessInstanceKey: "child-1", State: "ACTIVE"}}, nil
+		},
+	}
+	var deleted []string
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", startKey)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  "root-1",
+				Keys:     []string{startKey, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+					"root-1": {Key: "root-1", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			require.True(t, services.ApplyCallOptions(opts).NoWait)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateTerminated},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.NoWait)
+			require.True(t, cfg.Force)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			deleted = append(deleted, key)
+			return d.DeleteResponse{Ok: true, StatusCode: http.StatusAccepted, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(
+		context.Background(),
+		d.IncidentPurgeRequest{Workers: 2},
+		services.WithNoWait(),
+		services.WithForce(),
+		services.WithFailFast(),
+		services.WithNoWorkerLimit(),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []string{"root-1"}, deleted)
+	require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Deletion.Status)
+	require.Equal(t, []string{"root-1"}, []string(got.Deletion.SubmittedRootKeys))
+	require.True(t, got.Deletion.Submitted)
+	require.False(t, got.Deletion.Confirmed)
+	require.True(t, got.Deletion.NoWait)
+	require.Equal(t, got.Deletion, got.Report.Deletion)
+}
+
+// TestPurgeProcessInstancesWithIncidentsUsesFrozenCandidatesWithoutRediscovery protects confirmed command execution from scope drift.
+func TestPurgeProcessInstancesWithIncidentsUsesFrozenCandidatesWithoutRediscovery(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			t.Fatal("incident discovery should not run when frozen candidate keys are supplied")
+			return nil, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "child-1", startKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  "root-1",
+				Keys:     []string{startKey, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+					"root-1": {Key: "root-1", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1": {Key: "root-1", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: http.StatusAccepted, Status: "accepted"}, nil
+		},
+	}
+
+	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		DiscoveredCandidateProcessInstanceKeys: typexKeys("child-1"),
+	}, services.WithNoWait())
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, []string{"child-1"}, []string(got.Discovery.CandidateProcessInstanceKeys))
+	require.Equal(t, 1, got.Discovery.CandidateProcessInstanceCount)
+	require.Zero(t, got.Discovery.IncidentCount)
+	require.Equal(t, []string{"root-1"}, []string(got.Deletion.SubmittedRootKeys))
 }
 
 type stubIncidentAPI struct {

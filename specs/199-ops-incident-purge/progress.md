@@ -27,6 +27,8 @@
 - `c8volt/incident.Filter.String()` now provides compact selection filter rendering for incident-based ops output.
 - Incident purge delete planning now reuses `internal/services/processinstance.DryRunCancelOrDeletePlan` from frozen candidate process-instance keys; dry-run renders the plan, while destructive runs without `--force` block on non-final affected instances before mutation.
 - Incident purge plan output preserves candidate duplicates separately from duplicate resolved roots through `DuplicateCandidateProcessInstanceKeys` and `DuplicateResolvedRootKeys`.
+- Confirmed incident purge execution now delegates to `internal/services/processinstance.DeleteProcessInstances`, preserving submitted root keys, no-wait status, delete reports, confirmation state, and deleted/partial/failed outcomes.
+- Unconfirmed destructive incident purge runs first execute a dry-run preplan, use `shouldImplicitlyConfirm(cmd)` for the prompt decision, and pass `DiscoveredCandidateProcessInstanceKeys` into the confirmed service call so incident discovery is not rerun after confirmation.
 
 ## Status
 
@@ -186,4 +188,33 @@
 - `DryRunCancelOrDeletePlan` is the right US3 reuse point because it already preserves root dedupe, affected scope expansion, selected final-state items, non-final affected items, missing ancestors, and traversal warnings.
 - Existing US2 command discovery tests needed plan-aware expected output because dry-run now includes a planned delete-plan step whenever candidates are found.
 - Validation run: `go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `go test ./c8volt/ops -run 'TestClientPurgeProcessInstancesWithIncidents' -count=1`; `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering|TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput|TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData' -count=1`; `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`; `go test ./internal/services/ops -count=1`; `go test ./c8volt/ops -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`.
+---
+
+---
+## Iteration 6 - 2026-05-16 11:20:03 CEST
+**User Story**: User Story 4 - Execute Confirmed Purge Through Delete Plan
+**Tasks Completed**:
+- [x] T037: Add confirmed deletion command test for exact frozen-plan root submission in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T038: Add execution-control mapping tests for workers, fail-fast, no-worker-limit, no-wait, and force in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T039: Add `--automation --json` without `--auto-confirm` success test for supported state-changing incident purge in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T040: Add local-precondition failure subprocess tests for post-planning blockers and exit code in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T041: Execute deletion through existing process-instance deletion service from `internal/services/ops/incident_purge.go`
+- [x] T042: Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T043: Preserve no-wait, confirmation, per-key or per-batch status, and final outcome in `internal/domain/ops_incident_purge.go`
+- [x] T044: Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T045: Mark US4 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- internal/services/ops/incident_purge.go
+- internal/services/ops/incident_purge_test.go
+- specs/199-ops-incident-purge/progress.md
+- specs/199-ops-incident-purge/tasks.md
+**Learnings**:
+- `internal/services/processinstance.DeleteProcessInstances` is the correct execution reuse point because it already owns root dedupe, worker selection, fail-fast scheduling, no-wait behavior, force/cancel-before-delete semantics, deterministic report order, and activity/log output.
+- For unconfirmed destructive runs, the command must dry-run plan first, block local non-final affected scope before prompting, then execute with frozen candidate process-instance keys to avoid a second incident search expanding the confirmed scope.
+- Validation run: `GOCACHE=/private/tmp/codex-go-build go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents(ConfirmedDeletionUsesFrozenPlanRoots|AutomationJSONExecutesWithoutAutoConfirm|BlocksNonFinalScopeBeforeMutation|DryRun|Invalid|Help)' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./c8volt/ops -run 'TestClientPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./... -count=1`.
 ---

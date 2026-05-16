@@ -6,8 +6,12 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
@@ -243,8 +247,131 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering(t *testing.T) 
 	require.Contains(t, verbose.String(), "duplicate resolved root keys: root-1")
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoots verifies the prompt path executes the confirmed frozen candidate set.
+func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoots(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(srv.Close)
+	var prompt string
+	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
+		require.False(t, autoConfirm)
+		prompt = got
+		return nil
+	}
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "process-instances-with-incidents",
+		"--no-wait",
+	)
+
+	require.Contains(t, prompt, "Incident purge matched 1 candidate incident(s)")
+	require.Contains(t, output, "deletion: submitted (requests: 1)")
+	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "outcome: deleted")
+	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+	require.Equal(t, 1, countOpsIncidentPurgeRequests(requests.Snapshot(), "POST /v2/incidents/search "))
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoConfirm verifies automation mode confirms the supported purge path.
+func TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoConfirm(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--automation",
+		"--json",
+		"ops", "purge", "process-instances-with-incidents",
+		"--workers", "2",
+		"--fail-fast",
+		"--no-worker-limit",
+		"--no-wait",
+		"--force",
+	)
+
+	require.NotContains(t, stderr, "purge process-instances with incidents")
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "ops purge process-instances-with-incidents", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "deleted", payload["outcome"])
+	request := requireJSONObject(t, payload["request"])
+	require.Equal(t, true, request["automation"])
+	require.NotContains(t, request, "autoConfirm")
+	require.Equal(t, float64(2), request["workers"])
+	require.Equal(t, true, request["failFast"])
+	require.Equal(t, true, request["noWorkerLimit"])
+	require.Equal(t, true, request["noWait"])
+	require.Equal(t, true, request["force"])
+	deletion := requireJSONObject(t, payload["deletion"])
+	require.Equal(t, "submitted", deletion["status"])
+	require.Equal(t, true, deletion["submitted"])
+	require.Equal(t, true, deletion["noWait"])
+	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsBlocksNonFinalScopeBeforeMutation verifies post-planning blockers keep local-precondition exit behavior.
+func TestOpsPurgeProcessInstancesWithIncidentsBlocksNonFinalScopeBeforeMutation(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, true)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"ops", "purge", "process-instances-with-incidents",
+		}),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "local precondition failed")
+	require.Contains(t, string(output), "refusing to delete incident purge process-instance scope")
+	require.Contains(t, string(output), "affected process instance(s) are not in a final state")
+	require.Empty(t, deleted.Snapshot())
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper runs command validation in a subprocess for exit-code assertions.
 func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_ARGS")), &args); err != nil {
+		t.Fatalf("invalid helper args: %v", err)
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	if err := root.Execute(); err != nil {
+		handleBootstrapError(root, err)
+	}
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsCommandHelper runs incident purge command subprocess cases.
+func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
@@ -362,4 +489,73 @@ func sampleIncidentPurgeDryRunPlanResult() ops.IncidentPurgeResult {
 
 func incidentPurgeActiveFilter() incident.Filter {
 	return incident.Filter{State: "active"}
+}
+
+const (
+	opsIncidentPurgeRootKey  = "2251799813685301"
+	opsIncidentPurgeChildKey = "2251799813685302"
+)
+
+func newOpsIncidentPurgeServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], withActiveChild bool) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/incidents/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"items":[` + opsIncidentPurgeIncidentJSON("2251799813685299", opsIncidentPurgeRootKey) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeRootKey:
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(opsIncidentPurgeProcessInstanceJSON(opsIncidentPurgeRootKey, "", "COMPLETED")))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeChildKey:
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(opsIncidentPurgeProcessInstanceJSON(opsIncidentPurgeChildKey, opsIncidentPurgeRootKey, "ACTIVE")))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			payload := string(body)
+			requests.Append(r.Method + " " + r.URL.Path + " " + payload)
+			w.Header().Set("Content-Type", "application/json")
+			if withActiveChild && strings.Contains(payload, opsIncidentPurgeRootKey) && strings.Contains(payload, "parentProcessInstanceKey") {
+				_, _ = w.Write([]byte(`{"items":[` + opsIncidentPurgeProcessInstanceJSON(opsIncidentPurgeChildKey, opsIncidentPurgeRootKey, "ACTIVE") + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/"+opsIncidentPurgeRootKey+"/deletion":
+			if deleted != nil {
+				deleted.Append(r.URL.Path)
+			}
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+func opsIncidentPurgeIncidentJSON(key string, piKey string) string {
+	return `{"incidentKey":"` + key + `","processInstanceKey":"` + piKey + `","tenantId":"tenant","state":"ACTIVE","errorType":"JOB_NO_RETRIES","errorMessage":"no retries left"}`
+}
+
+func opsIncidentPurgeProcessInstanceJSON(key string, parentKey string, state string) string {
+	parent := ""
+	if parentKey != "" {
+		parent = `,"parentProcessInstanceKey":"` + parentKey + `","rootProcessInstanceKey":"` + parentKey + `"`
+	}
+	return `{"processInstanceKey":"` + key + `","processDefinitionId":"order-process","processDefinitionKey":"9001","processDefinitionName":"order-process","processDefinitionVersion":3,"startDate":"2026-05-16T12:00:00Z","state":"` + state + `","tenantId":"tenant"` + parent + `}`
+}
+
+func countOpsIncidentPurgeRequests(items []string, prefix string) int {
+	count := 0
+	for _, item := range items {
+		if strings.HasPrefix(item, prefix) {
+			count++
+		}
+	}
+	return count
 }

@@ -90,6 +90,11 @@ func renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd *cobra.Command, res
 		return
 	}
 	renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
+	if result.Deletion.NoWait {
+		renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
+	} else {
+		renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
+	}
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsOutcome prints the final workflow outcome with hidden-key guidance.

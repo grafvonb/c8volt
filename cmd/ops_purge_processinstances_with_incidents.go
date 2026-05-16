@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
@@ -12,6 +13,7 @@ import (
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/services/incidentfilter"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -84,6 +86,29 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			ReportFile:    flagOpsPurgeIncidentReportFile,
 			ReportFormat:  flagOpsPurgeIncidentReportFormat,
 			StartedAt:     time.Now().UTC(),
+		}
+		if !flagDryRun && !effectiveAutoConfirm {
+			planRequest := request
+			planRequest.DryRun = true
+			planned, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), planRequest, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge process-instances with incidents: %w", err))
+			}
+			if err := rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce(planned.DeletePlan); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
+				prompt := fmt.Sprintf("Incident purge matched %d candidate incident(s) and %d candidate process instance(s); delete planning will delete %d affected process instance(s) across %d root(s). Do you want to proceed?",
+					planned.Discovery.IncidentCount,
+					len(planned.DeletePlan.CandidateProcessInstanceKeys),
+					len(planned.DeletePlan.AffectedKeys),
+					len(planned.DeletePlan.ResolvedRootKeys),
+				)
+				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+			}
+			request.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessInstanceKeys...)
 		}
 		result, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
 		if err != nil {
@@ -172,6 +197,34 @@ func validateOpsPurgeProcessInstancesWithIncidentsFlags(cmd *cobra.Command) erro
 		return invalidFlagValuef("incident key %q is not a valid key", firstBadKey)
 	}
 	return validateOpsWorkflowReportFlags(flagOpsPurgeIncidentReportFile, OpsWorkflowReportFormat(flagOpsPurgeIncidentReportFormat))
+}
+
+// rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce blocks mutation before prompting when the plan has non-final affected instances.
+func rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce(plan ops.IncidentPurgeDeletePlan) error {
+	if flagForce || len(plan.NonFinalAffectedItems) == 0 {
+		return nil
+	}
+	return localPreconditionError(fmt.Errorf(
+		"refusing to delete incident purge process-instance scope: %s; no delete request was submitted; use --force to cancel the non-final affected scope before delete",
+		formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope(plan),
+	))
+}
+
+// formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope summarizes the post-planning blocker without listing keys by default.
+func formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope(plan ops.IncidentPurgeDeletePlan) string {
+	items := newProcessInstanceDryRunRequiresCancelBeforeDelete(plan.NonFinalAffectedItems)
+	details := []string{
+		fmt.Sprintf("incident purge matched %d candidate process instance(s)", len(plan.CandidateProcessInstanceKeys)),
+		fmt.Sprintf("delete planning expanded to %d affected process instance(s) across %d root(s)", len(plan.AffectedKeys), len(plan.ResolvedRootKeys)),
+		fmt.Sprintf("%d affected process instance(s) are not in a final state", len(plan.NonFinalAffectedItems)),
+		fmt.Sprintf("states: %s", formatProcessInstanceDryRunRequiresCancelBeforeDeleteStates(items)),
+	}
+	if flagVerbose {
+		details = append(details, formatProcessInstanceDryRunRequiresCancelBeforeDelete(items))
+	} else {
+		details = append(details, "use --verbose to list keys")
+	}
+	return strings.Join(details, "; ")
 }
 
 // populateOpsPurgeIncidentSelection converts command flags into the public incident filter model.

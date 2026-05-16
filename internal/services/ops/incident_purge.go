@@ -34,7 +34,7 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, err)
 	}
 
-	discovery, err := discoverIncidentPurgeCandidates(ctx, s.incAPI, request, opts...)
+	discovery, err := incidentPurgeDiscovery(ctx, s.incAPI, request, opts...)
 	if err != nil {
 		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
 		result.Discovery.Filters = request.Selection
@@ -69,8 +69,25 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, err)
 	}
 
-	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-	return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
+	if request.DryRun || len(plan.ResolvedRootKeys) == 0 {
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
+	}
+
+	reports, err := pisvc.DeleteProcessInstances(ctx, s.piAPI, s.log, plan.ResolvedRootKeys, request.Workers, len(plan.AffectedKeys), opts...)
+	result.Deletion = d.IncidentPurgeDeletionResult{
+		Status:            deletionStatusForReports(reports, request.NoWait, err),
+		SubmittedRootKeys: plan.ResolvedRootKeys,
+		Items:             reports,
+		Submitted:         len(reports) > 0,
+		Confirmed:         err == nil && !request.NoWait && allReportsOK(reports),
+		NoWait:            request.NoWait,
+		Errors:            deletionErrors(err),
+	}
+	if err != nil {
+		return finishIncidentPurgeResult(result, incidentPurgeDeletionOutcomeForReports(reports), fmt.Errorf("delete incident purge process instances: %w", err))
+	}
+	return finishIncidentPurgeResult(result, incidentPurgeDeletionOutcomeForReports(reports), nil)
 }
 
 // buildIncidentPurgeDeletePlan adapts frozen incident candidates into the shared process-instance delete plan.
@@ -100,6 +117,46 @@ func formatIncidentPurgeBlockedScope(plan d.IncidentPurgeDeletePlan) string {
 		return "no non-final affected process instances"
 	}
 	return fmt.Sprintf("%d affected process instance(s) are not in a final state", len(plan.NonFinalAffectedItems))
+}
+
+// incidentPurgeDeletionOutcomeForReports classifies delete reports into the incident-purge outcome vocabulary.
+func incidentPurgeDeletionOutcomeForReports(reports []d.Reporter) d.IncidentPurgeOutcome {
+	if len(reports) == 0 {
+		return d.IncidentPurgeOutcomeFailed
+	}
+	ok := 0
+	for _, report := range reports {
+		if report.Ok {
+			ok++
+		}
+	}
+	switch ok {
+	case len(reports):
+		return d.IncidentPurgeOutcomeDeleted
+	case 0:
+		return d.IncidentPurgeOutcomeFailed
+	default:
+		return d.IncidentPurgeOutcomePartiallyFailed
+	}
+}
+
+// incidentPurgeDiscovery either reuses a frozen candidate set or performs a single incident search.
+func incidentPurgeDiscovery(ctx context.Context, api incsvc.API, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentDiscoveryResult, error) {
+	if request.DiscoveredCandidateProcessInstanceKeys != nil {
+		return frozenIncidentPurgeDiscovery(request), nil
+	}
+	return discoverIncidentPurgeCandidates(ctx, api, request, opts...)
+}
+
+// frozenIncidentPurgeDiscovery reconstructs enough discovery state to execute a previously confirmed plan without expanding scope.
+func frozenIncidentPurgeDiscovery(request d.IncidentPurgeRequest) d.IncidentDiscoveryResult {
+	candidates := request.DiscoveredCandidateProcessInstanceKeys.Unique()
+	return d.IncidentDiscoveryResult{
+		Status:                        d.OpsWorkflowStepStatusPlanned,
+		Filters:                       request.Selection,
+		CandidateProcessInstanceKeys:  candidates,
+		CandidateProcessInstanceCount: len(candidates),
+	}
 }
 
 // discoverIncidentPurgeCandidates runs incident search once and freezes the process-instance candidate set.
