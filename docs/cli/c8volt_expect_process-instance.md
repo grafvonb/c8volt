@@ -36,9 +36,9 @@ c8volt expect process-instance [flags]
   -h, --help              help for process-instance
       --incident string   incident expectation; valid values are: [true, false]
   -k, --key strings       process instance key(s) to watch
-      --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit   use all queued jobs as workers when --workers is unset
   -s, --state strings     state expectation; valid values are: [active, completed, canceled, terminated, absent]
-  -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -w, --workers int       maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

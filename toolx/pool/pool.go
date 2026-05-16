@@ -8,6 +8,12 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"time"
+)
+
+const (
+	workerStartStaggerThreshold = 4
+	workerStartStaggerMax       = 50 * time.Millisecond
 )
 
 // ExecuteNTimes runs fn for indices [0,n) with at most wantedWorkers concurrent goroutines,
@@ -40,8 +46,11 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 	var sawErr atomic.Bool
 
 	// Worker consumes indices, short-circuits on ctx errors, and records results.
-	worker := func() {
+	worker := func(workerID int) {
 		defer wg.Done()
+		if err := staggerWorkerStart(ctx, workerID, wantedWorkers); err != nil {
+			return
+		}
 		for i := range jobs {
 			if err := ctx.Err(); err != nil {
 				if failFast && errs[i] == nil {
@@ -63,7 +72,7 @@ func ExecuteNTimes[T any](ctx context.Context, n int, wantedWorkers int, failFas
 	}
 
 	for w := 0; w < wantedWorkers; w++ {
-		go worker()
+		go worker(w)
 	}
 
 produce:
@@ -96,4 +105,22 @@ func ExecuteSlice[In any, Out any](ctx context.Context, in []In, wantedWorkers i
 	return ExecuteNTimes[Out](ctx, len(in), wantedWorkers, failFast, func(ctx context.Context, i int) (Out, error) {
 		return fn(ctx, in[i], i)
 	})
+}
+
+func staggerWorkerStart(ctx context.Context, workerID, totalWorkers int) error {
+	if workerID <= 0 || totalWorkers <= workerStartStaggerThreshold {
+		return nil
+	}
+	delay := workerStartStaggerMax * time.Duration(workerID) / time.Duration(totalWorkers)
+	if delay <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

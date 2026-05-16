@@ -204,8 +204,8 @@ func init() {
 	fs.StringSliceVarP(&flagCancelPIKeys, "key", "k", nil, "process instance key(s) to cancel")
 	fs.BoolVar(&flagForce, "force", false, "cancel the root instance when a selected instance is a child")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))")
-	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	// flags from get process instance for filtering

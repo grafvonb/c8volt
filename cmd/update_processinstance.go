@@ -106,8 +106,8 @@ func init() {
 	fs.StringVar(&flagUpdatePIVarsFile, "vars-file", "", "path to JSON object file with variables to set on each process instance")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview variable updates without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after the update request is accepted without variable confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple process instances (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when updating multiple process instances (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new updates after the first error")
 
 	useInvalidInputFlagErrors(updateProcessInstanceCmd)

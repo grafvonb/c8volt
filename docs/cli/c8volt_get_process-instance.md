@@ -79,7 +79,7 @@ c8volt get process-instance [flags]
   -k, --key strings                     process instance key(s) to fetch
   -l, --limit int32                     maximum number of matching process instances to return or process across all pages
       --no-incidents-only               show only process instances that have no incidents
-      --no-worker-limit                 disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit                 use all queued jobs as workers when --workers is unset
       --orphan-children-only            show only child instances with missing parents
       --parent-key string               parent process instance key to filter process instances
       --pd-key string                   process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)
@@ -95,7 +95,7 @@ c8volt get process-instance [flags]
       --var-value-limit int             maximum characters to show for variable values when --with-vars is set; 0 disables truncation
       --with-incidents                  include direct incident keys, states, and messages for keyed or list/search process-instance output
       --with-vars                       include process-instance-scope variables for keyed or list/search process-instance output
-  -w, --workers int                     maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
+  -w, --workers int                     maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

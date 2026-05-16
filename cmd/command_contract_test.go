@@ -582,7 +582,7 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))",
+		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "fail-fast",
@@ -596,7 +596,7 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
-		Description: "disable limiting the number of workers to GOMAXPROCS when --workers > 1",
+		Description: "use all queued jobs as workers when --workers is unset",
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "pi-keys-only"})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "total"})
@@ -660,7 +660,7 @@ func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testin
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))",
+		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "no-wait",
@@ -743,7 +743,7 @@ func TestCommandCapabilityForCommand_ResolveIncidentContract(t *testing.T) {
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum concurrent workers when resolving multiple incidents (default: min(count, GOMAXPROCS))",
+		Description: "maximum concurrent workers when resolving multiple incidents (default: min(count, 2*GOMAXPROCS, 32))",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dry-run",
@@ -793,7 +793,7 @@ func TestCommandCapabilityForCommand_ResolveProcessInstanceContract(t *testing.T
 		Type:        "int",
 		Required:    false,
 		Repeated:    false,
-		Description: "maximum concurrent workers when resolving multiple process instances (default: min(count, GOMAXPROCS))",
+		Description: "maximum concurrent workers when resolving multiple process instances (default: min(count, 2*GOMAXPROCS, 32))",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dry-run",

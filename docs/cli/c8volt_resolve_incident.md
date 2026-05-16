@@ -37,8 +37,8 @@ c8volt resolve incident [flags]
   -h, --help              help for incident
   -k, --key strings       incident key(s) to resolve; repeat or combine with stdin '-'
       --no-wait           return after the resolution request is accepted without incident confirmation
-      --no-worker-limit   disable limiting the number of workers to GOMAXPROCS when --workers > 1
-  -w, --workers int       maximum concurrent workers when resolving multiple incidents (default: min(count, GOMAXPROCS))
+      --no-worker-limit   use all queued jobs as workers when --workers is unset
+  -w, --workers int       maximum concurrent workers when resolving multiple incidents (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

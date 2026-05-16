@@ -49,14 +49,14 @@ c8volt ops purge process-instances-with-incidents [flags]
   -k, --key strings                   incident key(s) to select for candidate discovery
   -l, --limit int32                   maximum number of matching incidents to inspect before candidate process-instance dedupe
       --no-wait                       return after deletion requests are accepted without deletion confirmation
-      --no-worker-limit               disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit               use all queued jobs as workers when --workers is unset
       --pd-key string                 process definition key to filter incidents
       --pi-key string                 process instance key to filter incidents
       --report-file string            write an audit report to the given path
       --report-format string          audit report format: markdown, json (default inferred from report-file extension)
       --root-key string               root process instance key to filter incidents
   -s, --state string                  incident state scope for discovery: active, pending, resolved, migrated, unknown, all (default "active")
-  -w, --workers int                   maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))
+  -w, --workers int                   maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

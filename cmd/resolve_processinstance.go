@@ -127,8 +127,8 @@ func init() {
 	fs.StringSliceVarP(&flagResolvePIKeys, "key", "k", nil, "process instance key(s) to resolve; repeat or combine with stdin '-'")
 	fs.BoolVar(&flagDryRun, "dry-run", false, "preview process-instance incident resolutions without submitting mutation")
 	fs.BoolVar(&flagNoWait, "no-wait", false, "return after resolution requests are accepted without incident confirmation")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when resolving multiple process instances (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when resolving multiple process instances (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new process-instance resolutions after the first error")
 
 	useInvalidInputFlagErrors(resolveProcessInstanceCmd)

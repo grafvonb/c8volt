@@ -46,7 +46,7 @@ c8volt ops purge orphan-process-instances [flags]
   -l, --limit int32                 maximum number of matching child process instances to inspect across all pages
       --no-incidents-only           show only process instances that have no incidents
       --no-wait                     return after deletion requests are accepted without deletion confirmation
-      --no-worker-limit             disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit             use all queued jobs as workers when --workers is unset
       --parent-key string           parent process instance key to narrow orphan-child discovery
       --pd-key string               process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)
       --pd-version int32            process definition version
@@ -58,7 +58,7 @@ c8volt ops purge orphan-process-instances [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when validating the delete plan (default: min(targets, GOMAXPROCS))
+  -w, --workers int                 maximum concurrent workers when validating the delete plan (default: min(targets, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

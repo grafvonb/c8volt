@@ -46,7 +46,7 @@ c8volt ops execute retention-policy [flags]
       --no-incidents-only        discover only process instances that have no incidents
       --no-state-check           skip checking process-instance state before deleting
       --no-wait                  return after deletion requests are accepted without deletion confirmation
-      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit          use all queued jobs as workers when --workers is unset
       --parent-key string        parent process instance key to narrow retention discovery
       --pd-key string            process definition key (mutually exclusive with bpmn-process-id, pd-version, and pd-version-tag)
       --pd-version int32         process definition version
@@ -56,7 +56,7 @@ c8volt ops execute retention-policy [flags]
       --retention-days int       required non-negative age in days for process-instance retention eligibility
       --roots-only               discover only root process instances
   -s, --state string             state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int              maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))
+  -w, --workers int              maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands
