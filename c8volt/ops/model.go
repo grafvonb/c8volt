@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -347,6 +348,128 @@ type IncidentPurgeResult struct {
 
 // IncidentPurgeWorkflowNotice represents semantic workflow context for compact and structured output.
 type IncidentPurgeWorkflowNotice struct {
+	Code     string            `json:"code,omitempty"`
+	Severity string            `json:"severity,omitempty"`
+	Message  string            `json:"message,omitempty"`
+	Details  map[string]string `json:"details,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeOutcome is the final state of the all-process-definitions purge workflow.
+type AllProcessDefinitionsPurgeOutcome string
+
+const (
+	AllProcessDefinitionsPurgeOutcomePlanned         AllProcessDefinitionsPurgeOutcome = "planned"
+	AllProcessDefinitionsPurgeOutcomeDeleted         AllProcessDefinitionsPurgeOutcome = "deleted"
+	AllProcessDefinitionsPurgeOutcomePartiallyFailed AllProcessDefinitionsPurgeOutcome = "partially_failed"
+	AllProcessDefinitionsPurgeOutcomeFailed          AllProcessDefinitionsPurgeOutcome = "failed"
+)
+
+// ProcessDefinitionSelection captures supported process-definition filters for ops purge workflows.
+type ProcessDefinitionSelection struct {
+	Key               string `json:"key,omitempty"`
+	BpmnProcessId     string `json:"bpmnProcessId,omitempty"`
+	ProcessVersion    int32  `json:"processVersion,omitempty"`
+	ProcessVersionTag string `json:"processVersionTag,omitempty"`
+	LatestOnly        bool   `json:"latestOnly,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeRequest captures one requested all-process-definitions purge run.
+type AllProcessDefinitionsPurgeRequest struct {
+	CommandName                              string                     `json:"commandName,omitempty"`
+	DryRun                                   bool                       `json:"dryRun,omitempty"`
+	AutoConfirm                              bool                       `json:"autoConfirm,omitempty"`
+	Automation                               bool                       `json:"automation,omitempty"`
+	OutputMode                               string                     `json:"outputMode,omitempty"`
+	Selection                                ProcessDefinitionSelection `json:"selection,omitempty"`
+	Workers                                  int                        `json:"workers,omitempty"`
+	FailFast                                 bool                       `json:"failFast,omitempty"`
+	NoWorkerLimit                            bool                       `json:"noWorkerLimit,omitempty"`
+	NoWait                                   bool                       `json:"noWait,omitempty"`
+	Force                                    bool                       `json:"force,omitempty"`
+	ReportFile                               string                     `json:"reportFile,omitempty"`
+	ReportFormat                             string                     `json:"reportFormat,omitempty"`
+	DiscoveredCandidateProcessDefinitionKeys typex.Keys                 `json:"discoveredCandidateProcessDefinitionKeys,omitempty"`
+	StartedAt                                time.Time                  `json:"startedAt,omitempty"`
+}
+
+// ProcessDefinitionDiscoveryResult captures immutable process-definition discovery output.
+type ProcessDefinitionDiscoveryResult struct {
+	Status                                  WorkflowStepStatus                 `json:"status,omitempty"`
+	Filters                                 ProcessDefinitionSelection         `json:"filters,omitempty"`
+	CandidateProcessDefinitionKeys          typex.Keys                         `json:"candidateProcessDefinitionKeys,omitempty"`
+	CandidateProcessDefinitions             []process.ProcessDefinition        `json:"candidateProcessDefinitions,omitempty"`
+	DuplicateCandidateProcessDefinitionKeys typex.Keys                         `json:"duplicateCandidateProcessDefinitionKeys,omitempty"`
+	CandidateProcessDefinitionCount         int                                `json:"candidateProcessDefinitionCount"`
+	LatestOnly                              bool                               `json:"latestOnly,omitempty"`
+	Notices                                 []AllProcessDefinitionsPurgeNotice `json:"notices,omitempty"`
+	Errors                                  []string                           `json:"errors,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeDeletePlan captures the validated delete plan for frozen candidates.
+type AllProcessDefinitionsPurgeDeletePlan struct {
+	Status                                  WorkflowStepStatus                         `json:"status,omitempty"`
+	CandidateProcessDefinitionKeys          typex.Keys                                 `json:"candidateProcessDefinitionKeys,omitempty"`
+	Items                                   []resource.DeleteProcessDefinitionPlanItem `json:"items,omitempty"`
+	DuplicateCandidateProcessDefinitionKeys typex.Keys                                 `json:"duplicateCandidateProcessDefinitionKeys,omitempty"`
+	AffectedProcessInstanceCount            int64                                      `json:"affectedProcessInstanceCount,omitempty"`
+	ActiveProcessInstanceCount              int64                                      `json:"activeProcessInstanceCount,omitempty"`
+	RequiresConfirmation                    bool                                       `json:"requiresConfirmation,omitempty"`
+	RequiresForce                           bool                                       `json:"requiresForce,omitempty"`
+	Errors                                  []string                                   `json:"errors,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeDeletionResult captures mutation submission and confirmation output.
+type AllProcessDefinitionsPurgeDeletionResult struct {
+	Status                         WorkflowStepStatus      `json:"status,omitempty"`
+	SubmittedProcessDefinitionKeys typex.Keys              `json:"submittedProcessDefinitionKeys,omitempty"`
+	Items                          []resource.DeleteReport `json:"items,omitempty"`
+	Submitted                      bool                    `json:"submitted,omitempty"`
+	Confirmed                      bool                    `json:"confirmed,omitempty"`
+	NoWait                         bool                    `json:"noWait,omitempty"`
+	Errors                         []string                `json:"errors,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeReport is the stable audit model for output and report files.
+type AllProcessDefinitionsPurgeReport struct {
+	SchemaVersion    string                                   `json:"schemaVersion,omitempty"`
+	CommandName      string                                   `json:"commandName,omitempty"`
+	StartedAt        time.Time                                `json:"startedAt,omitempty"`
+	FinishedAt       time.Time                                `json:"finishedAt,omitempty"`
+	Duration         string                                   `json:"duration,omitempty"`
+	DryRun           bool                                     `json:"dryRun,omitempty"`
+	C8voltVersion    string                                   `json:"c8voltVersion,omitempty"`
+	CamundaVersion   string                                   `json:"camundaVersion,omitempty"`
+	ProfileIdentity  string                                   `json:"profileIdentity,omitempty"`
+	TenantID         string                                   `json:"tenantId,omitempty"`
+	SelectionFilters ProcessDefinitionSelection               `json:"selectionFilters,omitempty"`
+	Discovery        ProcessDefinitionDiscoveryResult         `json:"discovery,omitempty"`
+	DeletePlan       AllProcessDefinitionsPurgeDeletePlan     `json:"deletePlan,omitempty"`
+	Deletion         AllProcessDefinitionsPurgeDeletionResult `json:"deletion,omitempty"`
+	AutoConfirm      bool                                     `json:"autoConfirm,omitempty"`
+	Automation       bool                                     `json:"automation,omitempty"`
+	NoWait           bool                                     `json:"noWait,omitempty"`
+	Force            bool                                     `json:"force,omitempty"`
+	FailFast         bool                                     `json:"failFast,omitempty"`
+	NoWorkerLimit    bool                                     `json:"noWorkerLimit,omitempty"`
+	Errors           []string                                 `json:"errors,omitempty"`
+	Notices          []AllProcessDefinitionsPurgeNotice       `json:"notices,omitempty"`
+	Outcome          AllProcessDefinitionsPurgeOutcome        `json:"outcome,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeResult carries the full workflow result across the service and facade boundary.
+type AllProcessDefinitionsPurgeResult struct {
+	Request    AllProcessDefinitionsPurgeRequest        `json:"request,omitempty"`
+	Discovery  ProcessDefinitionDiscoveryResult         `json:"discovery,omitempty"`
+	DeletePlan AllProcessDefinitionsPurgeDeletePlan     `json:"deletePlan,omitempty"`
+	Deletion   AllProcessDefinitionsPurgeDeletionResult `json:"deletion,omitempty"`
+	Report     AllProcessDefinitionsPurgeReport         `json:"report,omitempty"`
+	Outcome    AllProcessDefinitionsPurgeOutcome        `json:"outcome,omitempty"`
+	Errors     []string                                 `json:"errors,omitempty"`
+	Notices    []AllProcessDefinitionsPurgeNotice       `json:"notices,omitempty"`
+}
+
+// AllProcessDefinitionsPurgeNotice represents semantic workflow context for compact and structured output.
+type AllProcessDefinitionsPurgeNotice struct {
 	Code     string            `json:"code,omitempty"`
 	Severity string            `json:"severity,omitempty"`
 	Message  string            `json:"message,omitempty"`

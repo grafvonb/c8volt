@@ -13,6 +13,7 @@ type API interface {
 	PurgeOrphanProcessInstances(ctx context.Context, request OrphanPurgeRequest, opts ...options.FacadeOption) (OrphanPurgeResult, error)
 	ExecuteRetentionPolicy(ctx context.Context, request RetentionPolicyRequest, opts ...options.FacadeOption) (RetentionPolicyResult, error)
 	PurgeProcessInstancesWithIncidents(ctx context.Context, request IncidentPurgeRequest, opts ...options.FacadeOption) (IncidentPurgeResult, error)
+	PurgeAllProcessDefinitions(ctx context.Context, request AllProcessDefinitionsPurgeRequest, opts ...options.FacadeOption) (AllProcessDefinitionsPurgeResult, error)
 }
 
 var _ API = (*client)(nil)

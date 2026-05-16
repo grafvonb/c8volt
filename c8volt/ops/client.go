@@ -47,3 +47,12 @@ func (c *client) PurgeProcessInstancesWithIncidents(ctx context.Context, request
 	}
 	return out, nil
 }
+
+func (c *client) PurgeAllProcessDefinitions(ctx context.Context, request AllProcessDefinitionsPurgeRequest, opts ...options.FacadeOption) (AllProcessDefinitionsPurgeResult, error) {
+	result, err := c.api.PurgeAllProcessDefinitions(ctx, toDomainAllProcessDefinitionsPurgeRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainAllProcessDefinitionsPurgeResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}

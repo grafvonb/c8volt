@@ -6,6 +6,7 @@ package ops
 import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
@@ -436,6 +437,150 @@ func fromDomainIncidentPurgeWorkflowNotice(x d.IncidentPurgeWorkflowNotice) Inci
 	}
 }
 
+// toDomainAllProcessDefinitionsPurgeRequest maps the public purge request to the service contract.
+func toDomainAllProcessDefinitionsPurgeRequest(x AllProcessDefinitionsPurgeRequest) d.AllProcessDefinitionsPurgeRequest {
+	out := d.AllProcessDefinitionsPurgeRequest{
+		CommandName:   x.CommandName,
+		DryRun:        x.DryRun,
+		AutoConfirm:   x.AutoConfirm,
+		Automation:    x.Automation,
+		OutputMode:    x.OutputMode,
+		Selection:     toDomainProcessDefinitionSelection(x.Selection),
+		Workers:       x.Workers,
+		FailFast:      x.FailFast,
+		NoWorkerLimit: x.NoWorkerLimit,
+		NoWait:        x.NoWait,
+		Force:         x.Force,
+		ReportFile:    x.ReportFile,
+		ReportFormat:  x.ReportFormat,
+		StartedAt:     x.StartedAt,
+	}
+	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
+		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
+	}
+	return out
+}
+
+// fromDomainAllProcessDefinitionsPurgeResult maps the service result to the public facade model.
+func fromDomainAllProcessDefinitionsPurgeResult(x d.AllProcessDefinitionsPurgeResult) AllProcessDefinitionsPurgeResult {
+	return AllProcessDefinitionsPurgeResult{
+		Request:    fromDomainAllProcessDefinitionsPurgeRequest(x.Request),
+		Discovery:  fromDomainProcessDefinitionDiscoveryResult(x.Discovery),
+		DeletePlan: fromDomainAllProcessDefinitionsPurgeDeletePlan(x.DeletePlan),
+		Deletion:   fromDomainAllProcessDefinitionsPurgeDeletionResult(x.Deletion),
+		Report:     fromDomainAllProcessDefinitionsPurgeReport(x.Report),
+		Outcome:    AllProcessDefinitionsPurgeOutcome(x.Outcome),
+		Errors:     append([]string(nil), x.Errors...),
+		Notices:    toolx.MapSlice(x.Notices, fromDomainAllProcessDefinitionsPurgeNotice),
+	}
+}
+
+// fromDomainAllProcessDefinitionsPurgeRequest maps a service request back to public output.
+func fromDomainAllProcessDefinitionsPurgeRequest(x d.AllProcessDefinitionsPurgeRequest) AllProcessDefinitionsPurgeRequest {
+	out := AllProcessDefinitionsPurgeRequest{
+		CommandName:   x.CommandName,
+		DryRun:        x.DryRun,
+		AutoConfirm:   x.AutoConfirm,
+		Automation:    x.Automation,
+		OutputMode:    x.OutputMode,
+		Selection:     fromDomainProcessDefinitionSelection(x.Selection),
+		Workers:       x.Workers,
+		FailFast:      x.FailFast,
+		NoWorkerLimit: x.NoWorkerLimit,
+		NoWait:        x.NoWait,
+		Force:         x.Force,
+		ReportFile:    x.ReportFile,
+		ReportFormat:  x.ReportFormat,
+		StartedAt:     x.StartedAt,
+	}
+	if x.DiscoveredCandidateProcessDefinitionKeys != nil {
+		out.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, x.DiscoveredCandidateProcessDefinitionKeys...)
+	}
+	return out
+}
+
+// fromDomainProcessDefinitionDiscoveryResult maps discovery details to the public model.
+func fromDomainProcessDefinitionDiscoveryResult(x d.ProcessDefinitionDiscoveryResult) ProcessDefinitionDiscoveryResult {
+	return ProcessDefinitionDiscoveryResult{
+		Status:                                  WorkflowStepStatus(x.Status),
+		Filters:                                 fromDomainProcessDefinitionSelection(x.Filters),
+		CandidateProcessDefinitionKeys:          append(typex.Keys{}, x.CandidateProcessDefinitionKeys...),
+		CandidateProcessDefinitions:             toolx.MapSlice(x.CandidateProcessDefinitions, fromDomainProcessDefinition),
+		DuplicateCandidateProcessDefinitionKeys: append(typex.Keys{}, x.DuplicateCandidateProcessDefinitionKeys...),
+		CandidateProcessDefinitionCount:         x.CandidateProcessDefinitionCount,
+		LatestOnly:                              x.LatestOnly,
+		Notices:                                 toolx.MapSlice(x.Notices, fromDomainAllProcessDefinitionsPurgeNotice),
+		Errors:                                  append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainAllProcessDefinitionsPurgeDeletePlan maps the service delete plan to the public model.
+func fromDomainAllProcessDefinitionsPurgeDeletePlan(x d.AllProcessDefinitionsPurgeDeletePlan) AllProcessDefinitionsPurgeDeletePlan {
+	return AllProcessDefinitionsPurgeDeletePlan{
+		Status:                                  WorkflowStepStatus(x.Status),
+		CandidateProcessDefinitionKeys:          append(typex.Keys{}, x.CandidateProcessDefinitionKeys...),
+		Items:                                   toolx.MapSlice(x.Items, fromDomainDeleteProcessDefinitionPlanItem),
+		DuplicateCandidateProcessDefinitionKeys: append(typex.Keys{}, x.DuplicateCandidateProcessDefinitionKeys...),
+		AffectedProcessInstanceCount:            x.AffectedProcessInstanceCount,
+		ActiveProcessInstanceCount:              x.ActiveProcessInstanceCount,
+		RequiresConfirmation:                    x.RequiresConfirmation,
+		RequiresForce:                           x.RequiresForce,
+		Errors:                                  append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainAllProcessDefinitionsPurgeDeletionResult maps deletion submission results to the public model.
+func fromDomainAllProcessDefinitionsPurgeDeletionResult(x d.AllProcessDefinitionsPurgeDeletionResult) AllProcessDefinitionsPurgeDeletionResult {
+	return AllProcessDefinitionsPurgeDeletionResult{
+		Status:                         WorkflowStepStatus(x.Status),
+		SubmittedProcessDefinitionKeys: append(typex.Keys{}, x.SubmittedProcessDefinitionKeys...),
+		Items:                          toolx.MapSlice(x.Items, fromDomainResourceDeleteReport),
+		Submitted:                      x.Submitted,
+		Confirmed:                      x.Confirmed,
+		NoWait:                         x.NoWait,
+		Errors:                         append([]string(nil), x.Errors...),
+	}
+}
+
+// fromDomainAllProcessDefinitionsPurgeReport maps the service audit model to public output.
+func fromDomainAllProcessDefinitionsPurgeReport(x d.AllProcessDefinitionsPurgeReport) AllProcessDefinitionsPurgeReport {
+	return AllProcessDefinitionsPurgeReport{
+		SchemaVersion:    x.SchemaVersion,
+		CommandName:      x.CommandName,
+		StartedAt:        x.StartedAt,
+		FinishedAt:       x.FinishedAt,
+		Duration:         x.Duration,
+		DryRun:           x.DryRun,
+		C8voltVersion:    x.C8voltVersion,
+		CamundaVersion:   x.CamundaVersion,
+		ProfileIdentity:  x.ProfileIdentity,
+		TenantID:         x.TenantID,
+		SelectionFilters: fromDomainProcessDefinitionSelection(x.SelectionFilters),
+		Discovery:        fromDomainProcessDefinitionDiscoveryResult(x.Discovery),
+		DeletePlan:       fromDomainAllProcessDefinitionsPurgeDeletePlan(x.DeletePlan),
+		Deletion:         fromDomainAllProcessDefinitionsPurgeDeletionResult(x.Deletion),
+		AutoConfirm:      x.AutoConfirm,
+		Automation:       x.Automation,
+		NoWait:           x.NoWait,
+		Force:            x.Force,
+		FailFast:         x.FailFast,
+		NoWorkerLimit:    x.NoWorkerLimit,
+		Errors:           append([]string(nil), x.Errors...),
+		Notices:          toolx.MapSlice(x.Notices, fromDomainAllProcessDefinitionsPurgeNotice),
+		Outcome:          AllProcessDefinitionsPurgeOutcome(x.Outcome),
+	}
+}
+
+// fromDomainAllProcessDefinitionsPurgeNotice maps structured workflow notices to public output.
+func fromDomainAllProcessDefinitionsPurgeNotice(x d.AllProcessDefinitionsPurgeWorkflowNotice) AllProcessDefinitionsPurgeNotice {
+	return AllProcessDefinitionsPurgeNotice{
+		Code:     x.Code,
+		Severity: x.Severity,
+		Message:  x.Message,
+		Details:  toolx.CopyMap(x.Details),
+	}
+}
+
 // toDomainIncidentFilter maps public incident selection flags to the service filter.
 func toDomainIncidentFilter(x incident.Filter) d.IncidentFilter {
 	return d.IncidentFilter{
@@ -560,6 +705,72 @@ func fromDomainProcessInstance(x d.ProcessInstance) process.ProcessInstance {
 
 func fromDomainMissingAncestor(x d.MissingAncestor) process.MissingAncestor {
 	return process.MissingAncestor{Key: x.Key, StartKey: x.StartKey}
+}
+
+func toDomainProcessDefinitionSelection(x ProcessDefinitionSelection) d.ProcessDefinitionFilter {
+	return d.ProcessDefinitionFilter{
+		Key:               x.Key,
+		BpmnProcessId:     x.BpmnProcessId,
+		ProcessVersion:    x.ProcessVersion,
+		ProcessVersionTag: x.ProcessVersionTag,
+		IsLatestVersion:   x.LatestOnly,
+	}
+}
+
+func fromDomainProcessDefinitionSelection(x d.ProcessDefinitionFilter) ProcessDefinitionSelection {
+	return ProcessDefinitionSelection{
+		Key:               x.Key,
+		BpmnProcessId:     x.BpmnProcessId,
+		ProcessVersion:    x.ProcessVersion,
+		ProcessVersionTag: x.ProcessVersionTag,
+		LatestOnly:        x.IsLatestVersion,
+	}
+}
+
+func fromDomainProcessDefinition(x d.ProcessDefinition) process.ProcessDefinition {
+	return process.ProcessDefinition{
+		BpmnProcessId:     x.BpmnProcessId,
+		Key:               x.Key,
+		Name:              x.Name,
+		TenantId:          x.TenantId,
+		ProcessVersion:    x.ProcessVersion,
+		ProcessVersionTag: x.ProcessVersionTag,
+		Statistics:        fromDomainProcessDefinitionStatistics(x.Statistics),
+	}
+}
+
+func fromDomainProcessDefinitionStatistics(x *d.ProcessDefinitionStatistics) *process.ProcessDefinitionStatistics {
+	if x == nil {
+		return nil
+	}
+	return &process.ProcessDefinitionStatistics{
+		Active:                 x.Active,
+		Canceled:               x.Canceled,
+		Completed:              x.Completed,
+		Incidents:              x.Incidents,
+		IncidentCountSupported: x.IncidentCountSupported,
+	}
+}
+
+func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanItem) resource.DeleteProcessDefinitionPlanItem {
+	return resource.DeleteProcessDefinitionPlanItem{
+		Key:                        x.Key,
+		ActiveProcessInstanceCount: x.ActiveProcessInstanceCount,
+		ActiveProcessInstanceKeys:  append([]string(nil), x.ActiveProcessInstanceKeys...),
+		CancellationPlan:           fromDomainDryRunPIKeyExpansion(x.CancellationPlan),
+		Warnings:                   append([]string(nil), x.Warnings...),
+	}
+}
+
+func fromDomainResourceDeleteReport(x d.ResourceDeleteResponse) resource.DeleteReport {
+	return resource.DeleteReport{
+		Ok:                x.Ok,
+		StatusCode:        x.StatusCode,
+		Status:            x.Status,
+		BatchOperationKey: x.BatchOperationKey,
+		BatchState:        x.BatchState,
+		DeleteHistory:     x.DeleteHistory,
+	}
 }
 
 func fromDomainDeleteReport(x d.Reporter) process.DeleteReport {
