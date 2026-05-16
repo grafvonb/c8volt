@@ -4,6 +4,9 @@
 package cmd
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/spf13/cobra"
 )
@@ -33,8 +36,37 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
   ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --workers 4 --report-file process-definition-purge.json --report-format json`,
 	Aliases: []string{"all-pds"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmd.Help()
+	Run: func(cmd *cobra.Command, args []string) {
+		cli, log, cfg, err := NewCli(cmd)
+		if err != nil {
+			handleNewCliError(cmd, log, cfg, fmt.Errorf("initializing client: %w", err))
+		}
+		if err := requireAutomationSupport(cmd); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
+		request := ops.AllProcessDefinitionsPurgeRequest{
+			CommandName:   opsPurgeAllProcessDefinitionsCommandName,
+			DryRun:        flagDryRun,
+			AutoConfirm:   flagCmdAutoConfirm,
+			Automation:    automationModeEnabled(cmd),
+			OutputMode:    pickMode().String(),
+			Selection:     populateOpsPurgeAllProcessDefinitionsSelection(),
+			Workers:       flagWorkers,
+			FailFast:      flagFailFast,
+			NoWorkerLimit: flagNoWorkerLimit,
+			NoWait:        flagNoWait,
+			Force:         flagForce,
+			ReportFile:    flagOpsPurgeAllPDReportFile,
+			ReportFormat:  flagOpsPurgeAllPDReportFormat,
+			StartedAt:     time.Now().UTC(),
+		}
+		result, err := cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
+		if err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w", err))
+		}
+		if err := renderOpsPurgeAllProcessDefinitionsResult(cmd, result); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops purge all process definitions: %w", err))
+		}
 	},
 }
 

@@ -482,6 +482,52 @@ func TestClientPurgeAllProcessDefinitionsMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, "candidate_duplicates", got.Notices[0].Code)
 }
 
+// TestClientPurgeAllProcessDefinitionsMapsDiscoveryFields protects public discovery output conversion.
+func TestClientPurgeAllProcessDefinitionsMapsDiscoveryFields(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		allProcessDefinitionsPurge: func(_ context.Context, request d.AllProcessDefinitionsPurgeRequest, _ ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
+			discovery := d.ProcessDefinitionDiscoveryResult{
+				Status:                         d.OpsWorkflowStepStatusPlanned,
+				Filters:                        request.Selection,
+				CandidateProcessDefinitionKeys: typex.Keys{"pd-a", "pd-b"},
+				CandidateProcessDefinitions: []d.ProcessDefinition{
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-b", BpmnProcessId: "payment", ProcessVersion: 1, ProcessVersionTag: "stable"},
+				},
+				DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+				CandidateProcessDefinitionCount:         2,
+				LatestOnly:                              true,
+				Notices:                                 []d.AllProcessDefinitionsPurgeWorkflowNotice{{Code: "latest_only_scope", Severity: "info", Message: "latest scope", Details: map[string]string{"scope": "latest"}}},
+			}
+			return d.AllProcessDefinitionsPurgeResult{
+				Request:   request,
+				Discovery: discovery,
+				Report:    d.AllProcessDefinitionsPurgeReport{Discovery: discovery},
+				Outcome:   d.AllProcessDefinitionsPurgeOutcomePlanned,
+				Notices:   discovery.Notices,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).PurgeAllProcessDefinitions(context.Background(), AllProcessDefinitionsPurgeRequest{
+		Selection: ProcessDefinitionSelection{BpmnProcessId: "invoice", LatestOnly: true},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"pd-a", "pd-b"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
+	require.Equal(t, []string{"pd-a"}, []string(got.Discovery.DuplicateCandidateProcessDefinitionKeys))
+	require.Len(t, got.Discovery.CandidateProcessDefinitions, 2)
+	require.Equal(t, "payment", got.Discovery.CandidateProcessDefinitions[1].BpmnProcessId)
+	require.Equal(t, "stable", got.Discovery.CandidateProcessDefinitions[1].ProcessVersionTag)
+	require.True(t, got.Discovery.LatestOnly)
+	require.Equal(t, "latest_only_scope", got.Discovery.Notices[0].Code)
+	require.Equal(t, "latest", got.Discovery.Notices[0].Details["scope"])
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+	require.Equal(t, "latest_only_scope", got.Notices[0].Code)
+}
+
 type stubOpsService struct {
 	purge                      func(context.Context, d.OrphanPurgeRequest, ...services.CallOption) (d.OrphanPurgeResult, error)
 	retention                  func(context.Context, d.RetentionPolicyRequest, ...services.CallOption) (d.RetentionPolicyResult, error)

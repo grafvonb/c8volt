@@ -28,11 +28,43 @@
 - Command contract metadata should mirror existing state-changing ops commands: set mutation to state-changing, contract support to full, automation support to full with concrete notes, and output modes for JSON/machine support where the command renders shared envelopes.
 - Generated CLI docs are refreshed via `make docs-content`; do not hand-edit `docs/cli/*` or `docs/index.md` when command metadata/help changes.
 - Early command-registration iterations can keep the target command non-mutating by using Cobra `Args` for local validation and a help-only `RunE`; later discovery/execution stories should replace the run path with facade orchestration while preserving the validated flag surface and metadata.
+- All-process-definitions discovery should mirror `get pd` branching: `--key` performs a single `GetProcessDefinition` lookup, `--latest` calls `SearchProcessDefinitionsLatest`, and default/filter discovery calls `SearchProcessDefinitions` with `processdefinition.MaxResultSize`.
 
 ## Validation Log
 
 - Pending: Ralph implementation iterations will record targeted validation and final `make test` results here as work units complete.
 
+---
+---
+## Iteration 4 - 2026-05-16 18:52:11 CEST
+**User Story**: User Story 2 - Discover And Freeze Candidate Process Definitions
+**Tasks Completed**:
+- [x] T020: Add process-definition discovery service tests for default all-version discovery, BPMN process ID filtering, version filtering, version-tag filtering, latest-only narrowing, duplicate detection, and no-target behavior in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T021: Add command dry-run discovery output tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T022: Add facade conversion tests for process-definition discovery result fields in `c8volt/ops/client_test.go`
+- [x] T023: Reuse existing process-definition search semantics to discover candidate process definitions in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T024: Extract, deduplicate, and freeze candidate process-definition keys in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T025: Preserve candidate process-definition metadata, duplicate candidate keys, latest-only scope, notices, and errors in `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T026: Map discovery request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T027: Render compact discovery output and complete JSON discovery data in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T028: Mark US2 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/208-purge-process-definitions/tasks.md
+- specs/208-purge-process-definitions/progress.md
+**Learnings**:
+- Discovery-only execution now performs exactly one process-definition lookup pass and freezes unique candidate keys before later delete-plan stories can consume them.
+- Duplicate process-definition keys are recorded as semantic info notices and excluded from the frozen delete target list.
+- Latest-only discovery is preserved as both structured discovery data and compact human output so narrowed scope is visible without verbose key lists.
+- Validation passed: `GOCACHE=/private/tmp/c8volt-go-build go test ./internal/services/ops -run 'TestPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./c8volt/ops -run 'TestClientPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./... -count=1`.
 ---
 ## Iteration 1 - 2026-05-16 18:26:19 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)

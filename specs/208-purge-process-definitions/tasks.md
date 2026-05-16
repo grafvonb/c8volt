@@ -70,18 +70,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add process-definition discovery service tests for default all-version discovery, BPMN process ID filtering, version filtering, version-tag filtering, latest-only narrowing, duplicate detection, and no-target behavior in `internal/services/ops/all_process_definitions_purge_test.go`
-- [ ] T021 [P] [US2] Add command dry-run discovery output tests in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T022 [P] [US2] Add facade conversion tests for process-definition discovery result fields in `c8volt/ops/client_test.go`
+- [x] T020 [P] [US2] Add process-definition discovery service tests for default all-version discovery, BPMN process ID filtering, version filtering, version-tag filtering, latest-only narrowing, duplicate detection, and no-target behavior in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T021 [P] [US2] Add command dry-run discovery output tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T022 [P] [US2] Add facade conversion tests for process-definition discovery result fields in `c8volt/ops/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Reuse existing process-definition search semantics to discover candidate process definitions in `internal/services/ops/all_process_definitions_purge.go`
-- [ ] T024 [US2] Extract, deduplicate, and freeze candidate process-definition keys in `internal/services/ops/all_process_definitions_purge.go`
-- [ ] T025 [US2] Preserve candidate process-definition metadata, duplicate candidate keys, latest-only scope, notices, and errors in `internal/domain/ops_all_process_definitions_purge.go`
-- [ ] T026 [US2] Map discovery request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
-- [ ] T027 [US2] Render compact discovery output and complete JSON discovery data in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T028 [US2] Mark US2 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+- [x] T023 [US2] Reuse existing process-definition search semantics to discover candidate process definitions in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T024 [US2] Extract, deduplicate, and freeze candidate process-definition keys in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T025 [US2] Preserve candidate process-definition metadata, duplicate candidate keys, latest-only scope, notices, and errors in `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T026 [US2] Map discovery request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T027 [US2] Render compact discovery output and complete JSON discovery data in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T028 [US2] Mark US2 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
 
 **Checkpoint**: Process-definition discovery works independently with dry-run and mutates nothing.
 

@@ -10,13 +10,14 @@ import (
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 const allProcessDefinitionsPurgeReportSchemaVersion = "ops.all-process-definitions.v1"
 
 // PurgeAllProcessDefinitions prepares the all-process-definitions purge workflow result shape.
 func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error) {
-	_ = ctx
 	request = withAllProcessDefinitionsPurgeOptionControls(request, opts...)
 	if request.StartedAt.IsZero() {
 		request.StartedAt = time.Now().UTC()
@@ -31,27 +32,119 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
 	}
 
-	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
-		result.Discovery = frozenAllProcessDefinitionsPurgeDiscovery(request)
-	} else {
-		result.Discovery.Status = d.OpsWorkflowStepStatusSkipped
+	discovery, err := allProcessDefinitionsPurgeDiscovery(ctx, s.pdAPI, request, opts...)
+	if err != nil {
+		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
 		result.Discovery.Filters = request.Selection
 		result.Discovery.LatestOnly = request.Selection.IsLatestVersion
+		result.Discovery.Errors = []string{err.Error()}
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
 	}
+	result.Discovery = discovery
+	result.Notices = append(result.Notices, discovery.Notices...)
 	result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 	return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 }
 
+// allProcessDefinitionsPurgeDiscovery either reuses a frozen candidate set or performs one process-definition lookup.
+func allProcessDefinitionsPurgeDiscovery(ctx context.Context, api pdsvc.API, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.ProcessDefinitionDiscoveryResult, error) {
+	if request.DiscoveredCandidateProcessDefinitionKeys != nil {
+		return frozenAllProcessDefinitionsPurgeDiscovery(request), nil
+	}
+	return discoverAllProcessDefinitionsPurgeCandidates(ctx, api, request, opts...)
+}
+
+// discoverAllProcessDefinitionsPurgeCandidates reuses get-pd search behavior and freezes unique process-definition keys.
+func discoverAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.API, request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) (d.ProcessDefinitionDiscoveryResult, error) {
+	definitions, err := searchAllProcessDefinitionsPurgeCandidates(ctx, api, request.Selection, opts...)
+	if err != nil {
+		return d.ProcessDefinitionDiscoveryResult{}, err
+	}
+	discovery := d.ProcessDefinitionDiscoveryResult{
+		Status:     d.OpsWorkflowStepStatusPlanned,
+		Filters:    request.Selection,
+		LatestOnly: request.Selection.IsLatestVersion,
+	}
+	seenDefinitions := make(map[string]int, len(definitions))
+	var duplicateCandidates typex.Keys
+	for _, definition := range definitions {
+		if definition.Key == "" {
+			continue
+		}
+		seenDefinitions[definition.Key]++
+		if seenDefinitions[definition.Key] == 1 {
+			discovery.CandidateProcessDefinitionKeys = append(discovery.CandidateProcessDefinitionKeys, definition.Key)
+			discovery.CandidateProcessDefinitions = append(discovery.CandidateProcessDefinitions, definition)
+			continue
+		}
+		duplicateCandidates = append(duplicateCandidates, definition.Key)
+	}
+	discovery.CandidateProcessDefinitionKeys = discovery.CandidateProcessDefinitionKeys.Unique()
+	discovery.DuplicateCandidateProcessDefinitionKeys = duplicateCandidates.Unique()
+	discovery.CandidateProcessDefinitionCount = len(discovery.CandidateProcessDefinitionKeys)
+	discovery.Notices = allProcessDefinitionsPurgeDiscoveryNotices(discovery)
+	return discovery, nil
+}
+
+// searchAllProcessDefinitionsPurgeCandidates mirrors get-pd key/latest/all-version branching.
+func searchAllProcessDefinitionsPurgeCandidates(ctx context.Context, api pdsvc.API, selection d.ProcessDefinitionFilter, opts ...services.CallOption) ([]d.ProcessDefinition, error) {
+	if selection.Key != "" {
+		definition, err := api.GetProcessDefinition(ctx, selection.Key, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return []d.ProcessDefinition{definition}, nil
+	}
+	if selection.IsLatestVersion {
+		return api.SearchProcessDefinitionsLatest(ctx, selection, opts...)
+	}
+	return api.SearchProcessDefinitions(ctx, selection, pdsvc.MaxResultSize, opts...)
+}
+
 func frozenAllProcessDefinitionsPurgeDiscovery(request d.AllProcessDefinitionsPurgeRequest) d.ProcessDefinitionDiscoveryResult {
 	candidates := request.DiscoveredCandidateProcessDefinitionKeys.Unique()
-	return d.ProcessDefinitionDiscoveryResult{
+	discovery := d.ProcessDefinitionDiscoveryResult{
 		Status:                          d.OpsWorkflowStepStatusPlanned,
 		Filters:                         request.Selection,
 		CandidateProcessDefinitionKeys:  candidates,
 		CandidateProcessDefinitionCount: len(candidates),
 		LatestOnly:                      request.Selection.IsLatestVersion,
 	}
+	discovery.Notices = allProcessDefinitionsPurgeDiscoveryNotices(discovery)
+	return discovery
+}
+
+// allProcessDefinitionsPurgeDiscoveryNotices records semantic discovery facts for reports and machine output.
+func allProcessDefinitionsPurgeDiscoveryNotices(discovery d.ProcessDefinitionDiscoveryResult) []d.AllProcessDefinitionsPurgeWorkflowNotice {
+	var notices []d.AllProcessDefinitionsPurgeWorkflowNotice
+	if discovery.CandidateProcessDefinitionCount == 0 {
+		notices = append(notices, d.AllProcessDefinitionsPurgeWorkflowNotice{
+			Code:     "no_candidate_process_definitions",
+			Severity: "info",
+			Message:  "no matching candidate process definitions found",
+		})
+	}
+	if discovery.LatestOnly {
+		notices = append(notices, d.AllProcessDefinitionsPurgeWorkflowNotice{
+			Code:     "latest_only_scope",
+			Severity: "info",
+			Message:  "candidate discovery was narrowed to latest matching process definitions",
+		})
+	}
+	if len(discovery.DuplicateCandidateProcessDefinitionKeys) > 0 {
+		notices = append(notices, d.AllProcessDefinitionsPurgeWorkflowNotice{
+			Code:     "duplicate_candidate_process_definitions",
+			Severity: "info",
+			Message:  "duplicate candidate process-definition keys detected",
+			Details: map[string]string{
+				"count": fmt.Sprintf("%d", len(discovery.DuplicateCandidateProcessDefinitionKeys)),
+			},
+		})
+	}
+	return notices
 }
 
 func withAllProcessDefinitionsPurgeOptionControls(request d.AllProcessDefinitionsPurgeRequest, opts ...services.CallOption) d.AllProcessDefinitionsPurgeRequest {

@@ -5,8 +5,13 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/typex"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -118,6 +123,63 @@ func TestOpsPurgeAllProcessDefinitionsInvalidFlagsUseInvalidInput(t *testing.T) 
 	}
 }
 
+// TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput verifies compact discovery output for dry-run previews.
+func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var buf bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()))
+	output := buf.String()
+
+	require.Contains(t, output, "dry run: purge all process definitions")
+	require.Contains(t, output, `selection filters: {bpmnProcessId="invoice", processVersion=3, processVersionTag="stable", latestOnly=true}`)
+	require.Contains(t, output, "candidate process definitions: 1")
+	require.Contains(t, output, "candidate scope: latest matching process definitions")
+	require.Contains(t, output, "duplicate candidate process definitions: 1")
+	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-definition keys")
+	require.NotContains(t, output, "candidate process-definition keys:")
+
+	flagVerbose = true
+	var verbose bytes.Buffer
+	cmd = &cobra.Command{}
+	cmd.SetOut(&verbose)
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()))
+	require.Contains(t, verbose.String(), "candidate process-definition keys: 2251799813685255")
+	require.Contains(t, verbose.String(), "duplicate candidate process-definition keys: 2251799813685255")
+}
+
+// TestOpsPurgeAllProcessDefinitionsDryRunJSONDiscoveryData verifies machine output carries complete discovery fields.
+func TestOpsPurgeAllProcessDefinitionsDryRunJSONDiscoveryData(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var buf bytes.Buffer
+	cmd := &cobra.Command{Use: "all-process-definitions"}
+	cmd.SetOut(&buf)
+	setContractSupport(cmd, ContractSupportFull)
+	flagViewAsJson = true
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope), buf.String())
+	require.Equal(t, "succeeded", envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	discovery := requireJSONObject(t, payload["discovery"])
+	require.Equal(t, "planned", discovery["status"])
+	require.Equal(t, float64(1), discovery["candidateProcessDefinitionCount"])
+	require.Equal(t, true, discovery["latestOnly"])
+	require.Len(t, discovery["candidateProcessDefinitionKeys"], 1)
+	require.Len(t, discovery["candidateProcessDefinitions"], 1)
+	require.Len(t, discovery["duplicateCandidateProcessDefinitionKeys"], 1)
+	require.Len(t, discovery["notices"], 2)
+	require.Equal(t, "skipped", requireJSONObject(t, payload["deletePlan"])["status"])
+	require.Equal(t, "skipped", requireJSONObject(t, payload["deletion"])["status"])
+}
+
 // executeOpsPurgeAllProcessDefinitionsExpectError runs all-process-definitions purge and returns Cobra parse/validation errors.
 func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...string) (string, error) {
 	t.Helper()
@@ -140,6 +202,43 @@ func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...strin
 	return buf.String(), nil
 }
 
+// sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult returns a discovery-only purge result for command rendering tests.
+func sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult() ops.AllProcessDefinitionsPurgeResult {
+	return ops.AllProcessDefinitionsPurgeResult{
+		Request: ops.AllProcessDefinitionsPurgeRequest{
+			CommandName: "ops purge all-process-definitions",
+			DryRun:      true,
+			Selection: ops.ProcessDefinitionSelection{
+				BpmnProcessId:     "invoice",
+				ProcessVersion:    3,
+				ProcessVersionTag: "stable",
+				LatestOnly:        true,
+			},
+		},
+		Discovery: ops.ProcessDefinitionDiscoveryResult{
+			Status:                         ops.WorkflowStepStatusPlanned,
+			Filters:                        ops.ProcessDefinitionSelection{BpmnProcessId: "invoice", ProcessVersion: 3, ProcessVersionTag: "stable", LatestOnly: true},
+			CandidateProcessDefinitionKeys: typex.Keys{"2251799813685255"},
+			CandidateProcessDefinitions: []process.ProcessDefinition{{
+				Key:               "2251799813685255",
+				BpmnProcessId:     "invoice",
+				ProcessVersion:    3,
+				ProcessVersionTag: "stable",
+			}},
+			DuplicateCandidateProcessDefinitionKeys: typex.Keys{"2251799813685255"},
+			CandidateProcessDefinitionCount:         1,
+			LatestOnly:                              true,
+			Notices: []ops.AllProcessDefinitionsPurgeNotice{
+				{Code: "latest_only_scope", Severity: "info", Message: "candidate discovery was narrowed to latest matching process definitions"},
+				{Code: "duplicate_candidate_process_definitions", Severity: "info", Message: "duplicate candidate process-definition keys detected"},
+			},
+		},
+		DeletePlan: ops.AllProcessDefinitionsPurgeDeletePlan{Status: ops.WorkflowStepStatusSkipped},
+		Deletion:   ops.AllProcessDefinitionsPurgeDeletionResult{Status: ops.WorkflowStepStatusSkipped},
+		Outcome:    ops.AllProcessDefinitionsPurgeOutcomePlanned,
+	}
+}
+
 // resetOpsPurgeAllProcessDefinitionsFlagState restores all-process-definitions purge globals between command tests.
 func resetOpsPurgeAllProcessDefinitionsFlagState() {
 	flagOpsPurgeAllPDKey = ""
@@ -157,4 +256,5 @@ func resetOpsPurgeAllProcessDefinitionsFlagState() {
 	flagForce = false
 	flagCmdAutoConfirm = false
 	flagViewAsJson = false
+	flagVerbose = false
 }

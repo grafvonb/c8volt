@@ -9,6 +9,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -371,6 +372,17 @@ type ProcessDefinitionSelection struct {
 	ProcessVersion    int32  `json:"processVersion,omitempty"`
 	ProcessVersionTag string `json:"processVersionTag,omitempty"`
 	LatestOnly        bool   `json:"latestOnly,omitempty"`
+}
+
+// String returns the active process-definition selection fields in stable CLI order.
+func (s ProcessDefinitionSelection) String() string {
+	parts := make([]string, 0, 5)
+	parts = toolx.AppendQuotedField(parts, "key", s.Key)
+	parts = toolx.AppendQuotedField(parts, "bpmnProcessId", s.BpmnProcessId)
+	parts = toolx.AppendInt32Field(parts, "processVersion", s.ProcessVersion)
+	parts = toolx.AppendQuotedField(parts, "processVersionTag", s.ProcessVersionTag)
+	parts = toolx.AppendTrueBoolField(parts, "latestOnly", s.LatestOnly)
+	return toolx.FormatActiveFields(parts)
 }
 
 // AllProcessDefinitionsPurgeRequest captures one requested all-process-definitions purge run.
