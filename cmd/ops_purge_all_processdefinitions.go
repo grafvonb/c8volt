@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
@@ -46,6 +48,9 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		effectiveAutoConfirm := shouldImplicitlyConfirm(cmd)
+		if err := validateOpsWorkflowReportPathForPlanning(flagOpsPurgeAllPDReportFile, opsPurgeAllProcessDefinitionsPlanningReportWriteMode(effectiveAutoConfirm)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+		}
 		request := ops.AllProcessDefinitionsPurgeRequest{
 			CommandName:   opsPurgeAllProcessDefinitionsCommandName,
 			DryRun:        flagDryRun,
@@ -70,7 +75,8 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge all process definitions: %w", err))
 			}
 			if err := rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce(planned.DeletePlan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
+				return
 			}
 			if len(planned.DeletePlan.CandidateProcessDefinitionKeys) > 0 {
 				prompt := fmt.Sprintf("All process-definitions purge matched %d candidate process definition(s); delete planning will affect %d process instance(s) across %d unique process definition(s). Do you want to proceed?",
@@ -79,14 +85,21 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 					len(planned.DeletePlan.CandidateProcessDefinitionKeys),
 				)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					abortOpsPurgeAllProcessDefinitionsAfterReport(cmd, log, cfg, markOpsPurgeAllProcessDefinitionsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
+					return
 				}
 			}
 			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 		}
 		result, err := cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		if err != nil {
+			if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); reportErr != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w; write audit report: %v", err, reportErr))
+			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge all process definitions: %w", err))
+		}
+		if err := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, opsPurgeAllProcessDefinitionsReportWriteMode(result)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge all process definitions audit report: %w", err))
 		}
 		if err := renderOpsPurgeAllProcessDefinitionsResult(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops purge all process definitions: %w", err))
@@ -154,6 +167,97 @@ func rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce(plan ops.AllProcessDe
 		"refusing to delete all-process-definitions purge scope: %d active process instance(s) are affected; no delete request was submitted; use --force to cancel active process instances before delete",
 		plan.ActiveProcessInstanceCount,
 	))
+}
+
+// abortOpsPurgeAllProcessDefinitionsAfterReport writes available audit data before surfacing local aborts.
+func abortOpsPurgeAllProcessDefinitionsAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.AllProcessDefinitionsPurgeResult, err error) {
+	if reportErr := writeOpsPurgeAllProcessDefinitionsReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w; write audit report: %v", err, reportErr))
+	}
+	handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+}
+
+// markOpsPurgeAllProcessDefinitionsLocalFailure records local blockers in the audit report shape.
+func markOpsPurgeAllProcessDefinitionsLocalFailure(result ops.AllProcessDefinitionsPurgeResult, status ops.WorkflowStepStatus, err error) ops.AllProcessDefinitionsPurgeResult {
+	finished := time.Now().UTC()
+	msg := err.Error()
+	result.Outcome = ops.AllProcessDefinitionsPurgeOutcomeFailed
+	result.Errors = appendOpsPurgeAllProcessDefinitionsError(result.Errors, msg)
+	result.Deletion.Status = status
+	result.Deletion.Errors = appendOpsPurgeAllProcessDefinitionsError(result.Deletion.Errors, msg)
+	result.Report.Outcome = ops.AllProcessDefinitionsPurgeOutcomeFailed
+	result.Report.FinishedAt = finished
+	if !result.Request.StartedAt.IsZero() {
+		result.Report.Duration = finished.Sub(result.Request.StartedAt).String()
+	}
+	result.Report.Discovery = result.Discovery
+	result.Report.DeletePlan = result.DeletePlan
+	result.Report.Deletion = result.Deletion
+	result.Report.Errors = appendOpsPurgeAllProcessDefinitionsError(result.Report.Errors, msg)
+	return result
+}
+
+// appendOpsPurgeAllProcessDefinitionsError preserves stable error order while avoiding duplicates.
+func appendOpsPurgeAllProcessDefinitionsError(items []string, value string) []string {
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+// opsPurgeAllProcessDefinitionsPlanningReportWriteMode preserves reports unless this run is already confirmed for mutation.
+func opsPurgeAllProcessDefinitionsPlanningReportWriteMode(effectiveAutoConfirm bool) OpsWorkflowReportWriteMode {
+	if flagDryRun {
+		return OpsWorkflowReportPreserveExisting
+	}
+	return opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)
+}
+
+// opsPurgeAllProcessDefinitionsReportWriteMode overwrites only after deletion was actually submitted.
+func opsPurgeAllProcessDefinitionsReportWriteMode(result ops.AllProcessDefinitionsPurgeResult) OpsWorkflowReportWriteMode {
+	return opsWorkflowReportWriteModeForConfirmedMutation(result.Deletion.Submitted)
+}
+
+// writeOpsPurgeAllProcessDefinitionsReport renders and writes the requested audit report.
+func writeOpsPurgeAllProcessDefinitionsReport(result ops.AllProcessDefinitionsPurgeResult, cfg *config.Config, mode OpsWorkflowReportWriteMode) error {
+	if result.Request.ReportFile == "" {
+		return nil
+	}
+	report := enrichOpsPurgeAllProcessDefinitionsReport(result.Report, cfg)
+	format, err := opsWorkflowReportFormatForPath(result.Request.ReportFile, OpsWorkflowReportFormat(result.Request.ReportFormat))
+	if err != nil {
+		return err
+	}
+	var data []byte
+	switch format {
+	case OpsWorkflowReportFormatJSON:
+		data, err = renderOpsPurgeAllProcessDefinitionsJSONReport(report)
+	case OpsWorkflowReportFormatMarkdown:
+		data, err = renderOpsPurgeAllProcessDefinitionsMarkdownReport(report, cfg)
+	default:
+		err = fmt.Errorf("unsupported ops workflow report format %q", format)
+	}
+	if err != nil {
+		return err
+	}
+	return writeOpsWorkflowReportFile(result.Request.ReportFile, data, mode)
+}
+
+// enrichOpsPurgeAllProcessDefinitionsReport adds runtime config metadata that is not owned by services.
+func enrichOpsPurgeAllProcessDefinitionsReport(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) ops.AllProcessDefinitionsPurgeReport {
+	report.C8voltVersion = CurrentBuildInfo().Version
+	if cfg != nil {
+		report.CamundaVersion = cfg.App.CamundaVersion.String()
+		report.TenantID = cfg.App.ViewTenant()
+		if cfg.ActiveProfile != "" {
+			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
+		} else {
+			report.ProfileIdentity = "default"
+		}
+	}
+	return report
 }
 
 func populateOpsPurgeAllProcessDefinitionsSelection() ops.ProcessDefinitionSelection {

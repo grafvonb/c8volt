@@ -32,11 +32,42 @@
 - All-process-definitions delete planning should call `internal/services/resource.PreviewDeleteProcessDefinitions` with the frozen unique candidate keys. Zero-candidate discovery keeps delete planning skipped, while non-empty dry-runs build the plan and expose active-instance `RequiresForce` blockers without mutating.
 - Confirmed all-process-definitions mutation should call `internal/services/resource.DeleteProcessDefinitions` with the frozen delete-plan keys and preserve its no-wait, worker, fail-fast, no-worker-limit, force, history cleanup, wait, and per-key response behavior instead of adding an ops-specific delete path.
 - Interactive all-process-definitions runs should perform a dry-run planning pass, reject active-instance blockers locally before prompting, freeze `planned.Discovery.CandidateProcessDefinitionKeys`, and execute the final request with that frozen scope so no second discovery can expand deletion.
+- All-process-definitions report handling should mirror incident purge: validate report-file overwrite safety before remote planning for dry-run/unconfirmed paths, allow overwrite only for already confirmed/submitted mutations, write failure reports when audit data exists, and print `report: written <path>` only after a successful write.
+- All-process-definitions compact human output should suppress detailed key lists by default; verbose output is the place for candidate metadata, duplicate candidate keys, affected process-instance keys, and active blocked keys.
 
 ## Validation Log
 
 - Pending: Ralph implementation iterations will record targeted validation and final `make test` results here as work units complete.
 
+---
+
+---
+## Iteration 7 - 2026-05-16 19:16:19 CEST
+**User Story**: User Story 5 - Produce Compact Output, Complete Reports, And Automation-Safe JSON
+**Tasks Completed**:
+- [x] T046: Add verbose key-list output tests for candidate, duplicate, affected, and blocked keys in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T047: Add deterministic `--dry-run --json` and `--automation --json` output tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T048: Add Markdown all-process-definitions purge report rendering test in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T049: Add JSON all-process-definitions purge report rendering test in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T050: Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T051: Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T052: Extend report model/rendering for process-definition discovery, candidate set, plan, deletion, notices, errors, and outcome fields in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T053: Keep normal human output compact and gate detailed key lists behind verbose output in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T054: Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T055: Mark US5 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- specs/208-purge-process-definitions/tasks.md
+- specs/208-purge-process-definitions/progress.md
+**Learnings**:
+- Report-file overwrite behavior now follows the shared ops workflow contract: dry-run and unconfirmed runs fail before discovery when a report already exists, while submitted destructive runs may overwrite and blocked destructive runs preserve existing reports.
+- Markdown and JSON reports now include discovery filters and candidate metadata, duplicate candidates, delete-plan impact, blocked/affected process-instance keys, deletion results, notices, errors, runtime config metadata, and final outcome.
+- Compact human output remains count-oriented, while verbose output exposes candidate process-definition details, candidate and duplicate keys, affected process-instance keys, and blocked process-instance keys.
+- Validation passed: `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/resource ./c8volt/resource -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./... -count=1`.
 ---
 ## Iteration 6 - 2026-05-16 19:08:26 CEST
 **User Story**: User Story 4 - Execute Confirmed Purge Through Delete PD

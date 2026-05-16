@@ -144,19 +144,19 @@
 
 ### Tests for User Story 5
 
-- [ ] T046 [P] [US5] Add verbose key-list output tests for candidate, duplicate, affected, and blocked keys in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T047 [P] [US5] Add deterministic `--dry-run --json` and `--automation --json` output tests in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T048 [P] [US5] Add Markdown all-process-definitions purge report rendering test in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T049 [P] [US5] Add JSON all-process-definitions purge report rendering test in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T050 [P] [US5] Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T046 [P] [US5] Add verbose key-list output tests for candidate, duplicate, affected, and blocked keys in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T047 [P] [US5] Add deterministic `--dry-run --json` and `--automation --json` output tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T048 [P] [US5] Add Markdown all-process-definitions purge report rendering test in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T049 [P] [US5] Add JSON all-process-definitions purge report rendering test in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T050 [P] [US5] Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_purge_all_processdefinitions_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T051 [US5] Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_purge_all_processdefinitions.go`
-- [ ] T052 [US5] Extend report model/rendering for process-definition discovery, candidate set, plan, deletion, notices, errors, and outcome fields in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T053 [US5] Keep normal human output compact and gate detailed key lists behind verbose output in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T054 [US5] Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T055 [US5] Mark US5 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+- [x] T051 [US5] Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T052 [US5] Extend report model/rendering for process-definition discovery, candidate set, plan, deletion, notices, errors, and outcome fields in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T053 [US5] Keep normal human output compact and gate detailed key lists behind verbose output in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T054 [US5] Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T055 [US5] Mark US5 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
 
 **Checkpoint**: Output and reports are independently functional for dry-run, success, and failure paths.
 

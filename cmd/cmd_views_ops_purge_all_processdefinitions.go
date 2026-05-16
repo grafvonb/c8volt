@@ -4,10 +4,14 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +29,7 @@ func renderOpsPurgeAllProcessDefinitionsResult(cmd *cobra.Command, result ops.Al
 	renderOpsPurgeAllProcessDefinitionsPlan(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsDeletion(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsOutcome(cmd, result)
+	renderOpsPurgeAllProcessDefinitionsReportFile(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}
@@ -47,6 +52,7 @@ func renderOpsPurgeAllProcessDefinitionsDiscovery(cmd *cobra.Command, result ops
 		renderHumanLine(cmd, "duplicate candidate process definitions: %d", len(result.Discovery.DuplicateCandidateProcessDefinitionKeys))
 	}
 	if flagVerbose {
+		renderOpsPurgeAllProcessDefinitionsDefinitions(cmd, result.Discovery.CandidateProcessDefinitions)
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "candidate process-definition keys", result.Discovery.CandidateProcessDefinitionKeys)
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "duplicate candidate process-definition keys", result.Discovery.DuplicateCandidateProcessDefinitionKeys)
 	}
@@ -71,6 +77,8 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 	}
 	if flagVerbose {
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
+		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "affected process-instance keys", allProcessDefinitionsPurgeAffectedProcessInstanceKeys(result.DeletePlan))
+		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "blocked process-instance keys", allProcessDefinitionsPurgeBlockedProcessInstanceKeys(result.DeletePlan))
 	}
 }
 
@@ -107,6 +115,14 @@ func renderOpsPurgeAllProcessDefinitionsOutcome(cmd *cobra.Command, result ops.A
 	renderHumanLine(cmd, "outcome: %s", result.Outcome)
 }
 
+// renderOpsPurgeAllProcessDefinitionsReportFile prints the compact audit report location.
+func renderOpsPurgeAllProcessDefinitionsReportFile(cmd *cobra.Command, result ops.AllProcessDefinitionsPurgeResult) {
+	if result.Request.ReportFile == "" {
+		return
+	}
+	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
+}
+
 // allProcessDefinitionsPurgeHasHiddenKeys reports whether compact output suppressed verbose key details.
 func allProcessDefinitionsPurgeHasHiddenKeys(result ops.AllProcessDefinitionsPurgeResult) bool {
 	return len(result.Discovery.CandidateProcessDefinitionKeys) > 0 ||
@@ -122,4 +138,180 @@ func renderOpsPurgeAllProcessDefinitionsKeys(cmd *cobra.Command, label string, k
 		return
 	}
 	renderHumanLine(cmd, "%s: %s", label, strings.Join(keys, ", "))
+}
+
+// renderOpsPurgeAllProcessDefinitionsDefinitions prints verbose candidate metadata when discovery has it.
+func renderOpsPurgeAllProcessDefinitionsDefinitions(cmd *cobra.Command, definitions []process.ProcessDefinition) {
+	if len(definitions) == 0 {
+		renderHumanLine(cmd, "candidate process-definition details: none")
+		return
+	}
+	items := make([]string, 0, len(definitions))
+	for _, definition := range definitions {
+		item := definition.Key
+		if item == "" {
+			item = "<unknown>"
+		}
+		parts := make([]string, 0, 3)
+		if definition.BpmnProcessId != "" {
+			parts = append(parts, "bpmnProcessId="+definition.BpmnProcessId)
+		}
+		if definition.ProcessVersion > 0 {
+			parts = append(parts, fmt.Sprintf("version=%d", definition.ProcessVersion))
+		}
+		if definition.ProcessVersionTag != "" {
+			parts = append(parts, "versionTag="+definition.ProcessVersionTag)
+		}
+		if len(parts) > 0 {
+			item += " (" + strings.Join(parts, ", ") + ")"
+		}
+		items = append(items, item)
+	}
+	renderHumanLine(cmd, "candidate process-definition details: %s", strings.Join(items, ", "))
+}
+
+// allProcessDefinitionsPurgeAffectedProcessInstanceKeys extracts the affected process-instance key set from delete-plan items.
+func allProcessDefinitionsPurgeAffectedProcessInstanceKeys(plan ops.AllProcessDefinitionsPurgeDeletePlan) []string {
+	var keys []string
+	for _, item := range plan.Items {
+		keys = append(keys, item.ActiveProcessInstanceKeys...)
+		keys = append(keys, item.CancellationPlan.Collected...)
+	}
+	return toolx.UniqueSlice(keys)
+}
+
+// allProcessDefinitionsPurgeBlockedProcessInstanceKeys extracts active keys that require force before deletion.
+func allProcessDefinitionsPurgeBlockedProcessInstanceKeys(plan ops.AllProcessDefinitionsPurgeDeletePlan) []string {
+	if !plan.RequiresForce {
+		return nil
+	}
+	var keys []string
+	for _, item := range plan.Items {
+		keys = append(keys, item.ActiveProcessInstanceKeys...)
+		for _, instance := range item.CancellationPlan.RequiresCancelBeforeDelete {
+			if instance.Key != "" {
+				keys = append(keys, instance.Key)
+			}
+		}
+	}
+	return toolx.UniqueSlice(keys)
+}
+
+// renderOpsPurgeAllProcessDefinitionsJSONReport encodes the complete audit report deterministically.
+func renderOpsPurgeAllProcessDefinitionsJSONReport(report ops.AllProcessDefinitionsPurgeReport) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := toolx.JSON(&buf, report); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// renderOpsPurgeAllProcessDefinitionsMarkdownReport renders a readable all-process-definitions purge audit report.
+func renderOpsPurgeAllProcessDefinitionsMarkdownReport(report ops.AllProcessDefinitionsPurgeReport, cfg *config.Config) ([]byte, error) {
+	var out strings.Builder
+	out.WriteString("# All Process Definitions Purge Audit Report\n\n")
+	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
+	writeMarkdownReportField(&out, "Command", report.CommandName)
+	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))
+	writeMarkdownReportField(&out, "Finished", formatOpsPurgeReportTime(report.FinishedAt, cfg))
+	writeMarkdownReportField(&out, "Duration", report.Duration)
+	writeMarkdownReportField(&out, "Dry Run", fmt.Sprintf("%t", report.DryRun))
+	writeMarkdownReportField(&out, "C8volt Version", report.C8voltVersion)
+	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
+	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
+	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
+	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))
+	writeMarkdownReportField(&out, "Force", fmt.Sprintf("%t", report.Force))
+	writeMarkdownReportField(&out, "Fail Fast", fmt.Sprintf("%t", report.FailFast))
+	writeMarkdownReportField(&out, "No Worker Limit", fmt.Sprintf("%t", report.NoWorkerLimit))
+	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
+
+	out.WriteString("\n## Selection\n\n")
+	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+
+	out.WriteString("\n## Discovery\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
+	writeMarkdownReportField(&out, "Candidate Process Definitions", fmt.Sprintf("%d", report.Discovery.CandidateProcessDefinitionCount))
+	writeMarkdownReportField(&out, "Latest Only", fmt.Sprintf("%t", report.Discovery.LatestOnly))
+	writeMarkdownReportList(&out, "Candidate Process-Definition Keys", report.Discovery.CandidateProcessDefinitionKeys)
+	writeMarkdownReportList(&out, "Candidate Process Definitions", allProcessDefinitionsPurgeDefinitionItems(report.Discovery.CandidateProcessDefinitions))
+	writeMarkdownReportList(&out, "Duplicate Candidate Process-Definition Keys", report.Discovery.DuplicateCandidateProcessDefinitionKeys)
+	writeMarkdownReportList(&out, "Notices", allProcessDefinitionsPurgeNoticeItems(report.Discovery.Notices))
+	writeMarkdownReportList(&out, "Errors", report.Discovery.Errors)
+
+	out.WriteString("\n## Delete Plan\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.DeletePlan.Status))
+	writeMarkdownReportField(&out, "Requires Confirmation", fmt.Sprintf("%t", report.DeletePlan.RequiresConfirmation))
+	writeMarkdownReportField(&out, "Requires Force", fmt.Sprintf("%t", report.DeletePlan.RequiresForce))
+	writeMarkdownReportField(&out, "Affected Process Instances", fmt.Sprintf("%d", report.DeletePlan.AffectedProcessInstanceCount))
+	writeMarkdownReportField(&out, "Active Process Instances", fmt.Sprintf("%d", report.DeletePlan.ActiveProcessInstanceCount))
+	writeMarkdownReportList(&out, "Candidate Process-Definition Keys", report.DeletePlan.CandidateProcessDefinitionKeys)
+	writeMarkdownReportList(&out, "Duplicate Candidate Process-Definition Keys", report.DeletePlan.DuplicateCandidateProcessDefinitionKeys)
+	writeMarkdownReportList(&out, "Affected Process-Instance Keys", allProcessDefinitionsPurgeAffectedProcessInstanceKeys(report.DeletePlan))
+	writeMarkdownReportList(&out, "Blocked Process-Instance Keys", allProcessDefinitionsPurgeBlockedProcessInstanceKeys(report.DeletePlan))
+	if len(report.DeletePlan.Items) > 0 {
+		out.WriteString("- Items:\n")
+		for _, item := range report.DeletePlan.Items {
+			out.WriteString(fmt.Sprintf("  - key=%s activeProcessInstances=%d affectedProcessInstances=%d\n", item.Key, item.ActiveProcessInstances(), len(item.CancellationPlan.Collected)))
+		}
+	}
+	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)
+
+	out.WriteString("\n## Deletion\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.Deletion.Status))
+	writeMarkdownReportField(&out, "Submitted", fmt.Sprintf("%t", report.Deletion.Submitted))
+	writeMarkdownReportField(&out, "Confirmed", fmt.Sprintf("%t", report.Deletion.Confirmed))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.Deletion.NoWait))
+	writeMarkdownReportList(&out, "Submitted Process-Definition Keys", report.Deletion.SubmittedProcessDefinitionKeys)
+	if len(report.Deletion.Items) > 0 {
+		out.WriteString("- Items:\n")
+		for _, item := range report.Deletion.Items {
+			out.WriteString(fmt.Sprintf("  - key=%s ok=%t status=%s statusCode=%d\n", item.Key, item.Ok, item.Status, item.StatusCode))
+		}
+	}
+	writeMarkdownReportList(&out, "Errors", report.Deletion.Errors)
+	writeMarkdownReportList(&out, "Run Notices", allProcessDefinitionsPurgeNoticeItems(report.Notices))
+	writeMarkdownReportList(&out, "Run Errors", report.Errors)
+
+	return []byte(out.String()), nil
+}
+
+// allProcessDefinitionsPurgeDefinitionItems formats candidate metadata for Markdown reports.
+func allProcessDefinitionsPurgeDefinitionItems(definitions []process.ProcessDefinition) []string {
+	out := make([]string, 0, len(definitions))
+	for _, definition := range definitions {
+		item := definition.Key
+		if item == "" {
+			item = "<unknown>"
+		}
+		if definition.BpmnProcessId != "" {
+			item += " bpmnProcessId=" + definition.BpmnProcessId
+		}
+		if definition.ProcessVersion > 0 {
+			item += fmt.Sprintf(" version=%d", definition.ProcessVersion)
+		}
+		if definition.ProcessVersionTag != "" {
+			item += " versionTag=" + definition.ProcessVersionTag
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+// allProcessDefinitionsPurgeNoticeItems formats structured notices without dropping report-only details.
+func allProcessDefinitionsPurgeNoticeItems(items []ops.AllProcessDefinitionsPurgeNotice) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		text := item.Code
+		if item.Severity != "" {
+			text += " severity=" + item.Severity
+		}
+		if item.Message != "" {
+			text += " message=" + item.Message
+		}
+		out = append(out, text)
+	}
+	return out
 }

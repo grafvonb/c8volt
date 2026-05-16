@@ -160,6 +160,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	cmd.SetOut(&verbose)
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()))
 	require.Contains(t, verbose.String(), "candidate process-definition keys: 2251799813685255")
+	require.Contains(t, verbose.String(), "candidate process-definition details: 2251799813685255 (bpmnProcessId=invoice, version=3, versionTag=stable)")
 	require.Contains(t, verbose.String(), "duplicate candidate process-definition keys: 2251799813685255")
 }
 
@@ -213,6 +214,8 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	cmd.SetOut(&verbose)
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
 	require.Contains(t, verbose.String(), "candidate process-definition keys: pd-a, pd-b")
+	require.Contains(t, verbose.String(), "affected process-instance keys: pi-a, pi-b, pi-c")
+	require.Contains(t, verbose.String(), "blocked process-instance keys: pi-a, pi-b, pi-c")
 }
 
 // TestOpsPurgeAllProcessDefinitionsDryRunJSONPlanData verifies machine output carries complete delete-plan fields.
@@ -239,6 +242,35 @@ func TestOpsPurgeAllProcessDefinitionsDryRunJSONPlanData(t *testing.T) {
 	require.Equal(t, float64(3), plan["activeProcessInstanceCount"])
 	require.Equal(t, true, plan["requiresForce"])
 	require.Equal(t, true, plan["requiresConfirmation"])
+}
+
+// TestOpsPurgeAllProcessDefinitionsJSONOutputIsDeterministic verifies dry-run machine output is stable and complete.
+func TestOpsPurgeAllProcessDefinitionsJSONOutputIsDeterministic(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	render := func() string {
+		var buf bytes.Buffer
+		cmd := &cobra.Command{Use: "all-process-definitions"}
+		cmd.SetOut(&buf)
+		setContractSupport(cmd, ContractSupportFull)
+		flagViewAsJson = true
+		require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
+		return buf.String()
+	}
+
+	first := render()
+	second := render()
+	require.Equal(t, first, second)
+	require.NotContains(t, first, "dry run: purge all process definitions")
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(first), &envelope), first)
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "planned", payload["outcome"])
+	require.Equal(t, "planned", requireJSONObject(t, payload["discovery"])["status"])
+	require.Equal(t, "planned", requireJSONObject(t, payload["deletePlan"])["status"])
+	require.Equal(t, "skipped", requireJSONObject(t, payload["deletion"])["status"])
 }
 
 // TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates verifies prompted deletion submits only the planned scope.
@@ -367,6 +399,153 @@ func TestOpsPurgeAllProcessDefinitionsDeletionOutput(t *testing.T) {
 	require.Contains(t, output, "outcome: deleted")
 }
 
+// TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport verifies the dry-run report includes complete audit sections.
+func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "all-pd-purge.md")
+
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"ops", "purge", "all-process-definitions",
+			"--dry-run",
+			"--report-file", reportPath,
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+	output := string(outputBytes)
+
+	require.Contains(t, output, "outcome: planned; no changes applied")
+	require.Contains(t, output, "report: written "+reportPath)
+	require.Empty(t, deleted.Snapshot())
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# All Process Definitions Purge Audit Report")
+	require.Contains(t, report, "- Command: ops purge all-process-definitions")
+	require.Contains(t, report, "- Dry Run: true")
+	require.Contains(t, report, "- Camunda Version: 8.9")
+	require.Contains(t, report, "- Profile: default")
+	require.Contains(t, report, "- Outcome: planned")
+	require.Contains(t, report, "## Discovery")
+	require.Contains(t, report, "- Candidate Process-Definition Keys:")
+	require.Contains(t, report, "  - "+opsAllProcessDefinitionsPurgePDKeyA)
+	require.Contains(t, report, "## Delete Plan")
+	require.Contains(t, report, "- Affected Process Instances: 0")
+}
+
+// TestOpsPurgeAllProcessDefinitionsWritesJSONReport verifies confirmed runs overwrite only after deletion submission.
+func TestOpsPurgeAllProcessDefinitionsWritesJSONReport(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "all-pd-purge.json")
+	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
+
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"ops", "purge", "all-process-definitions",
+			"--auto-confirm",
+			"--no-wait",
+			"--report-file", reportPath,
+			"--report-format", "json",
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+	output := string(outputBytes)
+
+	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "report: written "+reportPath)
+	require.NotContains(t, readReportFile(t, reportPath), "old report")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "ops.all-process-definitions.v1", report["schemaVersion"])
+	require.Equal(t, "ops purge all-process-definitions", report["commandName"])
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, true, report["noWait"])
+	require.Equal(t, "8.9", report["camundaVersion"])
+	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, float64(2), discovery["candidateProcessDefinitionCount"])
+	require.Len(t, discovery["candidateProcessDefinitionKeys"], 2)
+	deletePlan := requireJSONObject(t, report["deletePlan"])
+	require.Len(t, deletePlan["candidateProcessDefinitionKeys"], 2)
+	deletion := requireJSONObject(t, report["deletion"])
+	require.Equal(t, "submitted", deletion["status"])
+	require.Equal(t, true, deletion["submitted"])
+	require.Equal(t, []string{
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+	}, deleted.Snapshot())
+}
+
+// TestOpsPurgeAllProcessDefinitionsExistingReportPreservation verifies non-submitted paths never clobber reports.
+func TestOpsPurgeAllProcessDefinitionsExistingReportPreservation(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []string
+		activeCount  int64
+		want         string
+		wantRequests bool
+	}{
+		{
+			name: "dry run",
+			args: []string{"ops", "purge", "all-process-definitions", "--dry-run"},
+			want: "report file already exists:",
+		},
+		{
+			name: "unconfirmed",
+			args: []string{"ops", "purge", "all-process-definitions"},
+			want: "report file already exists:",
+		},
+		{
+			name:         "locally blocked",
+			args:         []string{"ops", "purge", "all-process-definitions", "--auto-confirm"},
+			activeCount:  3,
+			want:         "write audit report: report file already exists:",
+			wantRequests: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, tt.activeCount)
+			t.Cleanup(srv.Close)
+			reportPath := filepath.Join(t.TempDir(), "all-pd-purge.md")
+			const existingReport = "existing report"
+			require.NoError(t, os.WriteFile(reportPath, []byte(existingReport), 0o600))
+			args := append([]string{}, tt.args...)
+			args = append(args, "--report-file", reportPath)
+
+			output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":            writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, args),
+			})
+			require.Error(t, err)
+
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), tt.want)
+			require.Equal(t, existingReport, readReportFile(t, reportPath))
+			require.Empty(t, deleted.Snapshot())
+			if tt.wantRequests {
+				require.NotEmpty(t, requests.Snapshot())
+			} else {
+				require.Empty(t, requests.Snapshot())
+			}
+		})
+	}
+}
+
 // TestOpsPurgeAllProcessDefinitionsCommandHelper runs all-process-definitions purge command subprocess cases.
 func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
@@ -450,7 +629,19 @@ func sampleAllProcessDefinitionsPurgeDryRunPlanResult() ops.AllProcessDefinition
 		Status:                         ops.WorkflowStepStatusPlanned,
 		CandidateProcessDefinitionKeys: typex.Keys{"pd-a", "pd-b"},
 		Items: []resource.DeleteProcessDefinitionPlanItem{
-			{Key: "pd-a", ActiveProcessInstanceCount: 3, ActiveProcessInstanceKeys: []string{"pi-a", "pi-b", "pi-c"}},
+			{
+				Key:                        "pd-a",
+				ActiveProcessInstanceCount: 3,
+				ActiveProcessInstanceKeys:  []string{"pi-a", "pi-b", "pi-c"},
+				CancellationPlan: process.DryRunPIKeyExpansion{
+					Collected: typex.Keys{"pi-a", "pi-b", "pi-c"},
+					RequiresCancelBeforeDelete: []process.ProcessInstance{
+						{Key: "pi-a"},
+						{Key: "pi-b"},
+						{Key: "pi-c"},
+					},
+				},
+			},
 			{Key: "pd-b"},
 		},
 		DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
