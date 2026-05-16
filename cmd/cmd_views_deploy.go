@@ -18,30 +18,104 @@ func processDefinitionDeploymentView(cmd *cobra.Command, item resource.ProcessDe
 
 func listProcessDefinitionDeploymentsView(cmd *cobra.Command, resp []resource.ProcessDefinitionDeployment) error {
 	mode := pickMode()
-	items := resp
-	if mode == RenderModeOneLine {
-		items = append([]resource.ProcessDefinitionDeployment(nil), resp...)
-		slices.SortFunc(items, compareProcessDefinitionDeployments)
+	switch mode {
+	case RenderModeJSON:
+		return renderJSONPayload(cmd, mode, resp)
+	case RenderModeKeysOnly:
+		for _, it := range resp {
+			renderOutputLine(cmd, "%s", it.DefinitionKey)
+		}
+	default:
+		return renderProcessDefinitionDeploymentLogs(cmd, resp)
 	}
-	return listOrJSONFlat(cmd, resp, items, mode, flatRowPDDeploy, func(it resource.ProcessDefinitionDeployment) string { return it.DefinitionKey })
+	return nil
 }
 
 func oneLinePDDeploy(it resource.ProcessDefinitionDeployment) string {
 	return compactFlatRow(flatRowPDDeploy(it))
 }
 
-// flatRowPDDeploy mirrors get pd rows for deployment summaries.
+// flatRowPDDeploy keeps deployment progress on the same pd-first grammar as other mutation logs.
 func flatRowPDDeploy(it resource.ProcessDefinitionDeployment) flatRow {
-	vTag := ""
-	if it.VersionTag != "" {
-		vTag = "/" + it.VersionTag
+	state := "deployed"
+	if flagNoWait {
+		state = "submitted"
 	}
 	return flatRow{
+		"pd",
 		it.DefinitionKey,
-		it.TenantId,
 		it.DefinitionId,
-		fmt.Sprintf("v%d%s", it.DefinitionVersion, vTag),
+		fmt.Sprintf("v%d", it.DefinitionVersion),
+		fmt.Sprintf("%s;", it.TenantId),
+		state,
 	}
+}
+
+func renderProcessDefinitionDeploymentLogs(cmd *cobra.Command, resp []resource.ProcessDefinitionDeployment) error {
+	items := append([]resource.ProcessDefinitionDeployment(nil), resp...)
+	slices.SortFunc(items, compareProcessDefinitionDeployments)
+
+	lines := formatFlatRows(mapProcessDefinitionDeploymentRows(items))
+	for i, line := range lines {
+		renderHumanLine(cmd, "%s", line)
+		if flagVerbose && items[i].ResourceName != "" {
+			renderHumanLine(cmd, "  resource: %s", items[i].ResourceName)
+		}
+	}
+
+	state := "deployed"
+	if flagNoWait {
+		state = "submitted"
+	}
+	renderHumanLine(cmd, "pd deploy done; %s %d%s", state, len(items), processDefinitionDeploymentSummarySuffix(items))
+	return nil
+}
+
+func mapProcessDefinitionDeploymentRows(items []resource.ProcessDefinitionDeployment) []flatRow {
+	rows := make([]flatRow, 0, len(items))
+	for _, it := range items {
+		rows = append(rows, flatRowPDDeploy(it))
+	}
+	return rows
+}
+
+func processDefinitionDeploymentSummarySuffix(items []resource.ProcessDefinitionDeployment) string {
+	tenant, tenantOK := commonDeploymentTenant(items)
+	deployment, deploymentOK := commonDeploymentKey(items)
+	var suffix string
+	if tenantOK && tenant != "" {
+		suffix += fmt.Sprintf(", tenant %s", tenant)
+	}
+	if deploymentOK && deployment != "" && deployment != "<unknown>" {
+		suffix += fmt.Sprintf(", deployment %s", deployment)
+	}
+	return suffix
+}
+
+func commonDeploymentTenant(items []resource.ProcessDefinitionDeployment) (string, bool) {
+	if len(items) == 0 {
+		return "", false
+	}
+	tenant := items[0].TenantId
+	for _, it := range items[1:] {
+		if it.TenantId != tenant {
+			return "", false
+		}
+	}
+	return tenant, true
+}
+
+func commonDeploymentKey(items []resource.ProcessDefinitionDeployment) (string, bool) {
+	if len(items) == 0 {
+		return "", false
+	}
+	key := items[0].Key
+	for _, it := range items[1:] {
+		if it.Key != key {
+			return "", false
+		}
+	}
+	return key, true
 }
 
 func compareProcessDefinitionDeployments(a, b resource.ProcessDefinitionDeployment) int {

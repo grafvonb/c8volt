@@ -12,8 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Verifies deployed process definitions render like get pd rows and align the scannable columns.
-func TestListProcessDefinitionDeploymentsView_AlignsLikeProcessDefinitions(t *testing.T) {
+// Verifies deployed process definitions render as compact operation logs instead of search result rows.
+func TestListProcessDefinitionDeploymentsView_RendersDeploymentLogs(t *testing.T) {
+	prevNoWait := flagNoWait
+	prevVerbose := flagVerbose
+	flagNoWait = false
+	flagVerbose = false
+	t.Cleanup(func() {
+		flagNoWait = prevNoWait
+		flagVerbose = prevVerbose
+	})
+
 	cmd := &cobra.Command{Use: "deploy"}
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
@@ -24,16 +33,14 @@ func TestListProcessDefinitionDeploymentsView_AlignsLikeProcessDefinitions(t *te
 			DefinitionKey:     "22",
 			DefinitionId:      "MuchLongerProcess",
 			DefinitionVersion: 12,
-			VersionTag:        "v1.0.0",
 			ResourceName:      "processdefinitions/MuchLongerProcess.bpmn",
-			TenantId:          "tenant",
+			TenantId:          "<default>",
 		},
 		{
 			Key:               "deployment-b",
 			DefinitionKey:     "1",
 			DefinitionId:      "Short",
 			DefinitionVersion: 1,
-			VersionTag:        "v1.1.0",
 			ResourceName:      "processdefinitions/Short.bpmn",
 			TenantId:          "<default>",
 		},
@@ -49,22 +56,57 @@ func TestListProcessDefinitionDeploymentsView_AlignsLikeProcessDefinitions(t *te
 
 	require.NoError(t, err)
 	require.Equal(t, ""+
-		"333 <default> AnotherProcess    v2\n"+
-		"22  tenant    MuchLongerProcess v12/v1.0.0\n"+
-		"1   <default> Short             v1/v1.1.0\n"+
-		"found: 3\n", buf.String())
+		"pd 333 AnotherProcess    v2  <default>; deployed\n"+
+		"pd 22  MuchLongerProcess v12 <default>; deployed\n"+
+		"pd 1   Short             v1  <default>; deployed\n"+
+		"pd deploy done; deployed 3, tenant <default>\n", buf.String())
 }
 
-func TestOneLinePDDeploy_UsesProcessDefinitionGrammarWithoutPadding(t *testing.T) {
+func TestListProcessDefinitionDeploymentsView_RendersVerboseResourceLines(t *testing.T) {
+	prevNoWait := flagNoWait
+	prevVerbose := flagVerbose
+	flagNoWait = true
+	flagVerbose = true
+	t.Cleanup(func() {
+		flagNoWait = prevNoWait
+		flagVerbose = prevVerbose
+	})
+
+	cmd := &cobra.Command{Use: "deploy"}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	err := listProcessDefinitionDeploymentsView(cmd, []resource.ProcessDefinitionDeployment{{
+		Key:               "deployment-a",
+		DefinitionKey:     "1",
+		DefinitionId:      "Short",
+		DefinitionVersion: 1,
+		ResourceName:      "processdefinitions/Short.bpmn",
+		TenantId:          "<default>",
+	}})
+
+	require.NoError(t, err)
+	require.Equal(t, ""+
+		"pd 1 Short v1 <default>; submitted\n"+
+		"  resource: processdefinitions/Short.bpmn\n"+
+		"pd deploy done; submitted 1, tenant <default>, deployment deployment-a\n", buf.String())
+}
+
+func TestOneLinePDDeploy_UsesMutationLogGrammarWithoutPadding(t *testing.T) {
+	prevNoWait := flagNoWait
+	flagNoWait = false
+	t.Cleanup(func() {
+		flagNoWait = prevNoWait
+	})
+
 	line := oneLinePDDeploy(resource.ProcessDefinitionDeployment{
 		Key:               "deployment-a",
 		DefinitionKey:     "1",
 		DefinitionId:      "Short",
 		DefinitionVersion: 1,
-		VersionTag:        "v1.1.0",
 		ResourceName:      "processdefinitions/Short.bpmn",
 		TenantId:          "<default>",
 	})
 
-	require.Equal(t, "1 <default> Short v1/v1.1.0", line)
+	require.Equal(t, "pd 1 Short v1 <default>; deployed", line)
 }

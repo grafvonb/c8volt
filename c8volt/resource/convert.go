@@ -4,17 +4,12 @@
 package resource
 
 import (
-	"bytes"
-	"encoding/xml"
-	"io"
-
 	"github.com/grafvonb/c8volt/c8volt/process"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/toolx"
 )
 
-func fromProcessDefinitionDeployment(dep d.Deployment, units []DeploymentUnitData) []ProcessDefinitionDeployment {
-	unitTags := deploymentUnitVersionTags(units)
+func fromProcessDefinitionDeployment(dep d.Deployment) []ProcessDefinitionDeployment {
 	if len(dep.Units) == 0 {
 		return []ProcessDefinitionDeployment{{
 			Key:      dep.Key,
@@ -29,96 +24,11 @@ func fromProcessDefinitionDeployment(dep d.Deployment, units []DeploymentUnitDat
 			DefinitionId:      pd.ProcessDefinitionId,
 			DefinitionVersion: pd.ProcessDefinitionVersion,
 			DefinitionKey:     pd.ProcessDefinitionKey,
-			VersionTag:        unitTags.versionTag(pd.ResourceName, pd.ProcessDefinitionId),
 			ResourceName:      pd.ResourceName,
 			TenantId:          dep.TenantId,
 		})
 	}
 	return out
-}
-
-type deploymentUnitVersionTagIndex struct {
-	byResourceAndProcess map[string]string
-	byProcess            map[string]string
-}
-
-func deploymentUnitVersionTags(units []DeploymentUnitData) deploymentUnitVersionTagIndex {
-	index := deploymentUnitVersionTagIndex{
-		byResourceAndProcess: map[string]string{},
-		byProcess:            map[string]string{},
-	}
-	for _, unit := range units {
-		tags, err := extractDeploymentUnitProcessVersionTags(unit.Data)
-		if err != nil {
-			continue
-		}
-		for processID, versionTag := range tags {
-			if processID == "" || versionTag == "" {
-				continue
-			}
-			index.byProcess[processID] = versionTag
-			index.byResourceAndProcess[unit.Name+"\x00"+processID] = versionTag
-		}
-	}
-	return index
-}
-
-func (i deploymentUnitVersionTagIndex) versionTag(resourceName, processID string) string {
-	if tag := i.byResourceAndProcess[resourceName+"\x00"+processID]; tag != "" {
-		return tag
-	}
-	return i.byProcess[processID]
-}
-
-func extractDeploymentUnitProcessVersionTags(data []byte) (map[string]string, error) {
-	dec := xml.NewDecoder(bytes.NewReader(data))
-	tags := map[string]string{}
-	var processID string
-	var processDepth int
-
-	for {
-		tok, err := dec.Token()
-		if err != nil {
-			if err == io.EOF {
-				return tags, nil
-			}
-			return nil, err
-		}
-
-		switch t := tok.(type) {
-		case xml.StartElement:
-			if processDepth > 0 {
-				processDepth++
-				if processID != "" && t.Name.Local == "versionTag" {
-					for _, attr := range t.Attr {
-						if attr.Name.Local == "value" {
-							tags[processID] = attr.Value
-							break
-						}
-					}
-				}
-				continue
-			}
-			if t.Name.Local != "process" {
-				continue
-			}
-			for _, attr := range t.Attr {
-				if attr.Name.Local == "id" {
-					processID = attr.Value
-					processDepth = 1
-					break
-				}
-			}
-		case xml.EndElement:
-			if processDepth == 0 {
-				continue
-			}
-			processDepth--
-			if processDepth == 0 {
-				processID = ""
-			}
-		}
-	}
 }
 
 func fromResource(resource d.Resource) Resource {

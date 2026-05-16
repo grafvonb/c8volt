@@ -10,7 +10,6 @@ type ProcessDefinitionDeployment struct {
 	DefinitionId      string `json:"processDefinitionId,omitempty"`
 	DefinitionKey     string `json:"processDefinitionKey,omitempty"`
 	DefinitionVersion int32  `json:"processDefinitionVersion,omitempty"`
-	VersionTag        string `json:"versionTag,omitempty"`
 	ResourceName      string `json:"resourceName,omitempty"`
 	TenantId          string `json:"tenantId,omitempty"`
 }
