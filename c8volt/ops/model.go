@@ -286,6 +286,7 @@ type IncidentPurgeDeletePlan struct {
 	ResolvedRootKeys                      typex.Keys                `json:"resolvedRootKeys,omitempty"`
 	AffectedKeys                          typex.Keys                `json:"affectedKeys,omitempty"`
 	DuplicateCandidateProcessInstanceKeys typex.Keys                `json:"duplicateCandidateProcessInstanceKeys,omitempty"`
+	DuplicateResolvedRootKeys             typex.Keys                `json:"duplicateResolvedRootKeys,omitempty"`
 	FinalStateItems                       []process.ProcessInstance `json:"finalStateItems,omitempty"`
 	NonFinalAffectedItems                 []process.ProcessInstance `json:"nonFinalAffectedItems,omitempty"`
 	MissingAncestors                      []process.MissingAncestor `json:"missingAncestors,omitempty"`

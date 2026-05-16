@@ -70,6 +70,14 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 		len(result.DeletePlan.ResolvedRootKeys),
 		len(result.DeletePlan.AffectedKeys),
 	)
+	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
+		renderHumanLine(cmd, "non-final affected process instances: %d", len(result.DeletePlan.NonFinalAffectedItems))
+	}
+	if flagVerbose {
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate resolved root keys", result.DeletePlan.DuplicateResolvedRootKeys)
+	}
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsDeletion prints deletion status when the workflow reaches mutation.

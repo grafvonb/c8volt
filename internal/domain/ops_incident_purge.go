@@ -72,6 +72,7 @@ type IncidentPurgeDeletePlan struct {
 	ResolvedRootKeys                      typex.Keys
 	AffectedKeys                          typex.Keys
 	DuplicateCandidateProcessInstanceKeys typex.Keys
+	DuplicateResolvedRootKeys             typex.Keys
 	FinalStateItems                       []ProcessInstance
 	NonFinalAffectedItems                 []ProcessInstance
 	MissingAncestors                      []MissingAncestor

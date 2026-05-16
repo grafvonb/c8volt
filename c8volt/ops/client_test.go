@@ -298,6 +298,7 @@ func TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary(t *testing.
 					CandidateProcessInstanceKeys: typex.Keys{"pi-a"},
 					ResolvedRootKeys:             typex.Keys{"root-a"},
 					AffectedKeys:                 typex.Keys{"root-a", "pi-a"},
+					DuplicateResolvedRootKeys:    typex.Keys{"root-a"},
 					RequiresConfirmation:         true,
 				},
 				Deletion: d.IncidentPurgeDeletionResult{
@@ -347,6 +348,7 @@ func TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary(t *testing.
 	require.Equal(t, "candidate_duplicates", got.Discovery.Notices[0].Code)
 	require.Equal(t, "pi-a", got.Discovery.Notices[0].Details["processInstanceKey"])
 	require.Equal(t, []string{"root-a"}, []string(got.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-a"}, []string(got.DeletePlan.DuplicateResolvedRootKeys))
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
 	require.True(t, got.Deletion.NoWait)
 	require.Equal(t, []process.DeleteReport{{Key: "root-a", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Deletion.Items)

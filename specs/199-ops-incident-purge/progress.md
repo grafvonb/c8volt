@@ -23,8 +23,10 @@
 - Generated CLI docs are protected by `docsgen/main_test.go` and produced via `make docs-content`; generated files under `docs/cli/` and `docs/index.md` should not be hand-edited after command metadata changes.
 - Incident purge uses dedicated command flag globals in `cmd/ops_purge_processinstances_with_incidents.go`; `--key` is carried as `incident.Filter.Keys`/`domain.IncidentFilter.Keys` so US2 can distinguish incident-key discovery from process-instance-key filters.
 - Incident purge discovery now runs through `internal/services/incident.SearchIncidents`, with `--limit` used as the candidate incident cap before process-instance dedupe and `--batch-size` used as the default search size when no limit is set.
-- US2 intentionally leaves delete planning and deletion skipped after discovery; `cmd/cmd_views_ops_purge_processinstances_with_incidents.go` owns compact human discovery output while `--json` uses the shared command envelope with the complete `ops.IncidentPurgeResult`.
+- `cmd/cmd_views_ops_purge_processinstances_with_incidents.go` owns compact human discovery and plan output while `--json` uses the shared command envelope with the complete `ops.IncidentPurgeResult`.
 - `c8volt/incident.Filter.String()` now provides compact selection filter rendering for incident-based ops output.
+- Incident purge delete planning now reuses `internal/services/processinstance.DryRunCancelOrDeletePlan` from frozen candidate process-instance keys; dry-run renders the plan, while destructive runs without `--force` block on non-final affected instances before mutation.
+- Incident purge plan output preserves candidate duplicates separately from duplicate resolved roots through `DuplicateCandidateProcessInstanceKeys` and `DuplicateResolvedRootKeys`.
 
 ## Status
 
@@ -153,4 +155,35 @@
 - `internal/services/incident.SearchIncidents` is the correct reuse point for US2 because it preserves the existing version-specific incident search and local filtering behavior.
 - Candidate extraction keeps all candidate incidents for JSON/report data, freezes unique process-instance keys for later planning, records duplicate process-instance keys once, and skips incidents missing process-instance keys with a structured reason.
 - Validation run: `go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `go test ./c8volt/ops -run 'TestClientPurgeProcessInstancesWithIncidents' -count=1`; `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidentsDryRun|TestOpsPurgeProcessInstancesWithIncidentsInvalid|TestOpsPurgeProcessInstancesWithIncidentsHelp' -count=1`; `go test ./cmd ./c8volt/ops ./c8volt/incident ./internal/services/ops ./internal/services/incident -count=1`; `go test ./... -count=1` with `GOCACHE=/private/tmp/codex-go-build`.
+---
+
+---
+## Iteration 5 - 2026-05-16 11:09:26 CEST
+**User Story**: User Story 3 - Build Incident Purge Delete Plan
+**Tasks Completed**:
+- [x] T029: Add ops service delete-plan tests for candidate keys, resolved roots, affected keys, and duplicate handling in `internal/services/ops/incident_purge_test.go`
+- [x] T030: Add non-final affected instance blocking test in `internal/services/ops/incident_purge_test.go`
+- [x] T031: Add command dry-run plan rendering tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T032: Reuse existing process-instance delete planning from frozen candidate keys in `internal/services/ops/incident_purge.go`
+- [x] T033: Preserve missing ancestor, traversal warning, duplicate, final-state, non-final, and semantic notice details in `internal/domain/ops_incident_purge.go`
+- [x] T034: Map delete-plan details through `c8volt/ops/convert.go`
+- [x] T035: Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T036: Mark US3 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/client_test.go
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- internal/domain/ops_incident_purge.go
+- internal/services/ops/incident_purge.go
+- internal/services/ops/incident_purge_test.go
+- specs/199-ops-incident-purge/progress.md
+- specs/199-ops-incident-purge/tasks.md
+**Learnings**:
+- `DryRunCancelOrDeletePlan` is the right US3 reuse point because it already preserves root dedupe, affected scope expansion, selected final-state items, non-final affected items, missing ancestors, and traversal warnings.
+- Existing US2 command discovery tests needed plan-aware expected output because dry-run now includes a planned delete-plan step whenever candidates are found.
+- Validation run: `go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `go test ./c8volt/ops -run 'TestClientPurgeProcessInstancesWithIncidents' -count=1`; `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering|TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput|TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData' -count=1`; `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`; `go test ./internal/services/ops -count=1`; `go test ./c8volt/ops -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`.
 ---

@@ -374,6 +374,7 @@ func fromDomainIncidentPurgeDeletePlan(x d.IncidentPurgeDeletePlan) IncidentPurg
 		ResolvedRootKeys:                      append(typex.Keys{}, x.ResolvedRootKeys...),
 		AffectedKeys:                          append(typex.Keys{}, x.AffectedKeys...),
 		DuplicateCandidateProcessInstanceKeys: append(typex.Keys{}, x.DuplicateCandidateProcessInstanceKeys...),
+		DuplicateResolvedRootKeys:             append(typex.Keys{}, x.DuplicateResolvedRootKeys...),
 		FinalStateItems:                       toolx.MapSlice(x.FinalStateItems, fromDomainProcessInstance),
 		NonFinalAffectedItems:                 toolx.MapSlice(x.NonFinalAffectedItems, fromDomainProcessInstance),
 		MissingAncestors:                      toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),

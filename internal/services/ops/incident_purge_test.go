@@ -12,6 +12,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -143,7 +144,36 @@ func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *te
 		StartedAt: time.Date(2026, 5, 16, 11, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(stubProcessInstanceAPI{}, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), request, services.WithVerbose())
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "1001", startKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  startKey,
+				Keys:     []string{startKey},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "1001", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{rootKey},
+				Chain: map[string]d.ProcessInstance{
+					rootKey: {Key: rootKey, State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), request, services.WithVerbose())
 
 	require.NoError(t, err)
 	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
@@ -159,7 +189,9 @@ func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *te
 	require.Equal(t, 1, got.Discovery.CandidateProcessInstanceCount)
 	require.Equal(t, []string{"duplicate_candidate_process_instances", "skipped_incidents"}, []string{got.Discovery.Notices[0].Code, got.Discovery.Notices[1].Code})
 	require.Len(t, got.Notices, 2)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"1001"}, []string(got.DeletePlan.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"1001"}, []string(got.DeletePlan.ResolvedRootKeys))
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, got.Discovery, got.Report.Discovery)
 	require.Empty(t, got.Errors)
@@ -191,6 +223,129 @@ func TestPurgeProcessInstancesWithIncidentsDryRunNoTargetsSkipsPlanning(t *testi
 	require.Equal(t, "no_candidate_incidents", got.Discovery.Notices[0].Code)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+}
+
+// TestPurgeProcessInstancesWithIncidentsDryRunBuildsDeletePlan verifies frozen incident candidates are expanded by the existing delete-plan path.
+func TestPurgeProcessInstancesWithIncidentsDryRunBuildsDeletePlan(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "inc-1", ProcessInstanceKey: "child-1", State: "ACTIVE"},
+				{IncidentKey: "inc-2", ProcessInstanceKey: "child-2", State: "ACTIVE"},
+			}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			result := pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  "root-1",
+				Keys:     []string{startKey, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateCompleted},
+					"root-1": {Key: "root-1", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}
+			if startKey == "child-2" {
+				result.MissingAncestors = []pitraversal.MissingAncestor{{Key: "missing-parent", StartKey: startKey}}
+				result.Warning = "one or more parent process instances were not found"
+				result.Outcome = pitraversal.OutcomePartial
+			}
+			return result, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			require.Equal(t, "root-1", rootKey)
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1", "child-2"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateTerminated},
+					"child-1": {Key: "child-1", State: d.StateCompleted},
+					"child-2": {Key: "child-2", State: d.StateCompleted},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		DryRun:  true,
+		Workers: 2,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"child-1", "child-2"}, []string(got.DeletePlan.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"root-1"}, []string(got.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-1", "child-1", "child-2"}, []string(got.DeletePlan.AffectedKeys))
+	require.Equal(t, []string{"root-1"}, []string(got.DeletePlan.DuplicateResolvedRootKeys))
+	require.Len(t, got.DeletePlan.FinalStateItems, 2)
+	require.Empty(t, got.DeletePlan.NonFinalAffectedItems)
+	require.Equal(t, []d.MissingAncestor{{Key: "missing-parent", StartKey: "child-2"}}, got.DeletePlan.MissingAncestors)
+	require.Equal(t, []string{"one or more parent process instances were not found"}, got.DeletePlan.TraversalWarnings)
+	require.False(t, got.DeletePlan.RequiresConfirmation)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+}
+
+// TestPurgeProcessInstancesWithIncidentsBlocksNonFinalDestructivePlan verifies planning stops destructive runs before mutation when --force is absent.
+func TestPurgeProcessInstancesWithIncidentsBlocksNonFinalDestructivePlan(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-1", ProcessInstanceKey: "child-1", State: "ACTIVE"}}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeAncestry,
+				StartKey: startKey,
+				RootKey:  "root-1",
+				Keys:     []string{startKey, "root-1"},
+				Chain: map[string]d.ProcessInstance{
+					startKey: {Key: startKey, State: d.StateActive},
+					"root-1": {Key: "root-1", State: d.StateTerminated},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{
+				Mode:     pitraversal.ModeDescendants,
+				StartKey: rootKey,
+				RootKey:  rootKey,
+				Keys:     []string{"root-1", "child-1"},
+				Chain: map[string]d.ProcessInstance{
+					"root-1":  {Key: "root-1", State: d.StateTerminated},
+					"child-1": {Key: "child-1", State: d.StateActive},
+				},
+				Outcome: pitraversal.OutcomeComplete,
+			}, nil
+		},
+	}
+
+	got, err := New(piAPI, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{})
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, d.ErrPrecondition)
+	require.Contains(t, err.Error(), "no delete request was submitted")
+	require.Equal(t, d.IncidentPurgeOutcomeFailed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.True(t, got.DeletePlan.RequiresConfirmation)
+	require.Len(t, got.DeletePlan.NonFinalAffectedItems, 1)
+	require.Equal(t, "child-1", got.DeletePlan.NonFinalAffectedItems[0].Key)
+	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
+	require.Len(t, got.Deletion.Errors, 1)
+	require.Len(t, got.Errors, 1)
 }
 
 type stubIncidentAPI struct {

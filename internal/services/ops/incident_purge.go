@@ -12,6 +12,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -19,7 +20,6 @@ const incidentPurgeReportSchemaVersion = "ops.process-instances-with-incidents.v
 
 // PurgeProcessInstancesWithIncidents prepares the incident-purge workflow result shape.
 func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentPurgeResult, error) {
-	_ = ctx
 	request = withIncidentPurgeOptionControls(request, opts...)
 	if request.StartedAt.IsZero() {
 		request.StartedAt = time.Now().UTC()
@@ -46,9 +46,60 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 
 	result.Discovery = discovery
 	result.Notices = append(result.Notices, discovery.Notices...)
-	result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+
+	if len(discovery.CandidateProcessInstanceKeys) == 0 {
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
+	}
+
+	plan, err := buildIncidentPurgeDeletePlan(ctx, s.piAPI, discovery, request.Workers, !request.DryRun, opts...)
+	result.DeletePlan = plan
+	if err != nil {
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusFailed
+		result.DeletePlan.Errors = []string{err.Error()}
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, fmt.Errorf("incident purge delete-plan validation: %w", err))
+	}
+
+	if !request.DryRun && !request.Force && len(plan.NonFinalAffectedItems) > 0 {
+		err = fmt.Errorf("%w: refusing to delete incident purge process-instance scope: %s; no delete request was submitted; use --force to cancel the non-final affected scope before delete", d.ErrPrecondition, formatIncidentPurgeBlockedScope(plan))
+		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
+		result.Deletion.Errors = []string{err.Error()}
+		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, err)
+	}
+
 	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 	return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
+}
+
+// buildIncidentPurgeDeletePlan adapts frozen incident candidates into the shared process-instance delete plan.
+func buildIncidentPurgeDeletePlan(ctx context.Context, api pisvc.API, discovery d.IncidentDiscoveryResult, wantedWorkers int, requiresConfirmation bool, opts ...services.CallOption) (d.IncidentPurgeDeletePlan, error) {
+	candidates := discovery.CandidateProcessInstanceKeys.Unique()
+	preview, err := pisvc.DryRunCancelOrDeletePlan(ctx, api, candidates, wantedWorkers, opts...)
+	plan := d.IncidentPurgeDeletePlan{
+		Status:                                d.OpsWorkflowStepStatusPlanned,
+		CandidateProcessInstanceKeys:          candidates,
+		ResolvedRootKeys:                      preview.Roots,
+		AffectedKeys:                          preview.Collected,
+		DuplicateCandidateProcessInstanceKeys: discovery.DuplicateCandidateProcessInstanceKeys.Unique(),
+		DuplicateResolvedRootKeys:             preview.DuplicateRoots,
+		FinalStateItems:                       preview.SelectedFinalState,
+		NonFinalAffectedItems:                 preview.RequiresCancelBeforeDelete,
+		MissingAncestors:                      preview.MissingAncestors,
+		RequiresConfirmation:                  requiresConfirmation && len(preview.Roots) > 0,
+	}
+	if preview.Warning != "" {
+		plan.TraversalWarnings = []string{preview.Warning}
+	}
+	return plan, err
+}
+
+func formatIncidentPurgeBlockedScope(plan d.IncidentPurgeDeletePlan) string {
+	if len(plan.NonFinalAffectedItems) == 0 {
+		return "no non-final affected process instances"
+	}
+	return fmt.Sprintf("%d affected process instance(s) are not in a final state", len(plan.NonFinalAffectedItems))
 }
 
 // discoverIncidentPurgeCandidates runs incident search once and freezes the process-instance candidate set.

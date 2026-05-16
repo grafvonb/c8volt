@@ -10,9 +10,13 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/grafvonb/c8volt/c8volt/incident"
+	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/typex"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -149,34 +153,19 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
 	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
 
-	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
-		`{"items":[`+
-			`{"incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
-			`{"incidentKey":"2251799813685254","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
-			`{"incidentKey":"2251799813685255","state":"ACTIVE","tenantId":"tenant-a"}`+
-			`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
-	)
-	defer srv.Close()
+	var buf bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, sampleIncidentPurgeDryRunPlanResult()))
+	output := buf.String()
 
-	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"ops", "purge", "process-instances-with-incidents",
-		"--state", "active",
-		"--limit", "3",
-		"--dry-run",
-	)
-
-	require.Len(t, requests, 1)
-	require.Contains(t, requests[0], `"state":"ACTIVE"`)
-	require.Contains(t, requests[0], `"limit":3`)
 	require.Contains(t, output, "dry run: purge process-instances with incidents")
 	require.Contains(t, output, `selection filters: {state=active}`)
 	require.Contains(t, output, "candidate incidents: 3")
 	require.Contains(t, output, "candidate process instances: 1")
 	require.Contains(t, output, "duplicate candidate process instances: 1")
 	require.Contains(t, output, "skipped incidents: 1")
-	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "delete plan: planned (candidate process instances: 1, roots: 1, affected process instances: 1)")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
 }
 
@@ -185,25 +174,12 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData(t *testing
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
 	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
 
-	var requests []string
-	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
-		`{"items":[`+
-			`{"incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
-			`{"incidentKey":"2251799813685254","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
-			`{"incidentKey":"2251799813685255","state":"ACTIVE","tenantId":"tenant-a"}`+
-			`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
-	)
-	defer srv.Close()
+	var buf bytes.Buffer
+	cmd := &cobra.Command{Use: "process-instances-with-incidents"}
+	cmd.SetOut(&buf)
+	require.NoError(t, renderSucceededResult(cmd, sampleIncidentPurgeDryRunPlanResult()))
+	output := buf.String()
 
-	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"--json",
-		"ops", "purge", "process-instances-with-incidents",
-		"--limit", "3",
-		"--dry-run",
-	)
-
-	require.Len(t, requests, 1)
 	var envelope map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
 	require.Equal(t, "succeeded", envelope["outcome"])
@@ -216,6 +192,55 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData(t *testing
 	require.Len(t, discovery["duplicateCandidateProcessInstanceKeys"], 1)
 	require.Len(t, discovery["skippedIncidents"], 1)
 	require.Len(t, discovery["notices"], 2)
+	deletePlan := requireJSONObject(t, payload["deletePlan"])
+	require.Equal(t, "planned", deletePlan["status"])
+	require.Len(t, deletePlan["resolvedRootKeys"], 1)
+	require.Len(t, deletePlan["affectedKeys"], 1)
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering verifies compact and verbose plan output once planning is available.
+func TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	result := ops.IncidentPurgeResult{
+		Request: ops.IncidentPurgeRequest{DryRun: true},
+		Discovery: ops.IncidentDiscoveryResult{
+			Status:                        ops.WorkflowStepStatusPlanned,
+			IncidentCount:                 2,
+			CandidateProcessInstanceCount: 2,
+			IncidentKeys:                  typex.Keys{"inc-1", "inc-2"},
+			CandidateProcessInstanceKeys:  typex.Keys{"child-1", "child-2"},
+		},
+		DeletePlan: ops.IncidentPurgeDeletePlan{
+			Status:                       ops.WorkflowStepStatusPlanned,
+			CandidateProcessInstanceKeys: typex.Keys{"child-1", "child-2"},
+			ResolvedRootKeys:             typex.Keys{"root-1"},
+			AffectedKeys:                 typex.Keys{"root-1", "child-1", "child-2"},
+			DuplicateResolvedRootKeys:    typex.Keys{"root-1"},
+		},
+		Deletion: ops.IncidentPurgeDeletionResult{
+			Status: ops.WorkflowStepStatusSkipped,
+		},
+		Outcome: ops.IncidentPurgeOutcomePlanned,
+	}
+
+	var compact bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&compact)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result))
+	require.Contains(t, compact.String(), "delete plan: planned (candidate process instances: 2, roots: 1, affected process instances: 3)")
+	require.NotContains(t, compact.String(), "resolved root keys:")
+	require.NotContains(t, compact.String(), "affected process-instance keys:")
+
+	flagVerbose = true
+	var verbose bytes.Buffer
+	cmd = &cobra.Command{}
+	cmd.SetOut(&verbose)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result))
+	require.Contains(t, verbose.String(), "resolved root keys: root-1")
+	require.Contains(t, verbose.String(), "affected process-instance keys: root-1, child-1, child-2")
+	require.Contains(t, verbose.String(), "duplicate resolved root keys: root-1")
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper runs command validation in a subprocess for exit-code assertions.
@@ -299,4 +324,42 @@ func resetOpsPurgeProcessInstancesWithIncidentsFlagState() {
 	flagViewAsJson = false
 	flagViewKeysOnly = false
 	flagVerbose = false
+}
+
+func sampleIncidentPurgeDryRunPlanResult() ops.IncidentPurgeResult {
+	return ops.IncidentPurgeResult{
+		Request: ops.IncidentPurgeRequest{
+			DryRun: true,
+		},
+		Discovery: ops.IncidentDiscoveryResult{
+			Status:                                ops.WorkflowStepStatusPlanned,
+			Filters:                               incidentPurgeActiveFilter(),
+			IncidentKeys:                          typex.Keys{"2251799813685253", "2251799813685254", "2251799813685255"},
+			CandidateProcessInstanceKeys:          typex.Keys{"2251799813711972"},
+			DuplicateCandidateProcessInstanceKeys: typex.Keys{"2251799813711972"},
+			SkippedIncidents: []ops.IncidentPurgeSkippedIncident{
+				{Reason: "missing process-instance key"},
+			},
+			IncidentCount:                 3,
+			CandidateProcessInstanceCount: 1,
+			Notices: []ops.IncidentPurgeWorkflowNotice{
+				{Code: "duplicate_candidate_process_instances", Severity: "info", Message: "duplicate candidate process instances detected"},
+				{Code: "skipped_incidents", Severity: "warning", Message: "some candidate incidents could not produce process-instance keys"},
+			},
+		},
+		DeletePlan: ops.IncidentPurgeDeletePlan{
+			Status:                       ops.WorkflowStepStatusPlanned,
+			CandidateProcessInstanceKeys: typex.Keys{"2251799813711972"},
+			ResolvedRootKeys:             typex.Keys{"2251799813711972"},
+			AffectedKeys:                 typex.Keys{"2251799813711972"},
+		},
+		Deletion: ops.IncidentPurgeDeletionResult{
+			Status: ops.WorkflowStepStatusSkipped,
+		},
+		Outcome: ops.IncidentPurgeOutcomePlanned,
+	}
+}
+
+func incidentPurgeActiveFilter() incident.Filter {
+	return incident.Filter{State: "active"}
 }

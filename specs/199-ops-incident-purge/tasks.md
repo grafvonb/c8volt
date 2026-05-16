@@ -95,17 +95,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Add ops service delete-plan tests for candidate keys, resolved roots, affected keys, and duplicate handling in `internal/services/ops/incident_purge_test.go`
-- [ ] T030 [P] [US3] Add non-final affected instance blocking test in `internal/services/ops/incident_purge_test.go`
-- [ ] T031 [P] [US3] Add command dry-run plan rendering tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T029 [P] [US3] Add ops service delete-plan tests for candidate keys, resolved roots, affected keys, and duplicate handling in `internal/services/ops/incident_purge_test.go`
+- [x] T030 [P] [US3] Add non-final affected instance blocking test in `internal/services/ops/incident_purge_test.go`
+- [x] T031 [P] [US3] Add command dry-run plan rendering tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Reuse existing process-instance delete planning from frozen candidate keys in `internal/services/ops/incident_purge.go`
-- [ ] T033 [US3] Preserve missing ancestor, traversal warning, duplicate, final-state, non-final, and semantic notice details in `internal/domain/ops_incident_purge.go`
-- [ ] T034 [US3] Map delete-plan details through `c8volt/ops/convert.go`
-- [ ] T035 [US3] Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
-- [ ] T036 [US3] Mark US3 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+- [x] T032 [US3] Reuse existing process-instance delete planning from frozen candidate keys in `internal/services/ops/incident_purge.go`
+- [x] T033 [US3] Preserve missing ancestor, traversal warning, duplicate, final-state, non-final, and semantic notice details in `internal/domain/ops_incident_purge.go`
+- [x] T034 [US3] Map delete-plan details through `c8volt/ops/convert.go`
+- [x] T035 [US3] Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T036 [US3] Mark US3 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
 
 **Checkpoint**: Incident purge dry-run includes the validated delete plan and safety blockers.
 
