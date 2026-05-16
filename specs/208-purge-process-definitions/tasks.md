@@ -95,17 +95,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Add ops service delete-plan tests for candidate keys, affected process-instance counts, active-instance blockers, and duplicate handling in `internal/services/ops/all_process_definitions_purge_test.go`
-- [ ] T030 [P] [US3] Add unsafe active-instance blocking test without `--force` in `internal/services/ops/all_process_definitions_purge_test.go`
-- [ ] T031 [P] [US3] Add command dry-run plan rendering tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T029 [P] [US3] Add ops service delete-plan tests for candidate keys, affected process-instance counts, active-instance blockers, and duplicate handling in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T030 [P] [US3] Add unsafe active-instance blocking test without `--force` in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T031 [P] [US3] Add command dry-run plan rendering tests in `cmd/ops_purge_all_processdefinitions_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Reuse existing process-definition delete preflight from frozen candidate keys in `internal/services/ops/all_process_definitions_purge.go`
-- [ ] T033 [US3] Preserve process-definition delete-plan items, active impact, duplicate candidates, force readiness, and semantic notice details in `internal/domain/ops_all_process_definitions_purge.go`
-- [ ] T034 [US3] Map delete-plan details through `c8volt/ops/convert.go`
-- [ ] T035 [US3] Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T036 [US3] Mark US3 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+- [x] T032 [US3] Reuse existing process-definition delete preflight from frozen candidate keys in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T033 [US3] Preserve process-definition delete-plan items, active impact, duplicate candidates, force readiness, and semantic notice details in `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T034 [US3] Map delete-plan details through `c8volt/ops/convert.go`
+- [x] T035 [US3] Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T036 [US3] Mark US3 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
 
 **Checkpoint**: All-process-definitions purge dry-run includes validated delete preflight and safety blockers.
 

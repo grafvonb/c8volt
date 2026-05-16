@@ -66,7 +66,9 @@ func TestPurgeAllProcessDefinitionsRecordsControls(t *testing.T) {
 	require.Equal(t, []string{"pd-a", "pd-b"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
 	require.Equal(t, 2, got.Discovery.CandidateProcessDefinitionCount)
 	require.True(t, got.Discovery.LatestOnly)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"pd-a", "pd-b"}, []string(got.DeletePlan.CandidateProcessDefinitionKeys))
+	require.False(t, got.DeletePlan.RequiresForce)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Report.Outcome)
 	require.True(t, got.Report.NoWait)
@@ -251,9 +253,14 @@ func TestPurgeAllProcessDefinitionsDiscoversCandidates(t *testing.T) {
 			require.Equal(t, len(tt.wantKeys), got.Discovery.CandidateProcessDefinitionCount)
 			require.Equal(t, emptyStringSliceIfNil(tt.wantDuplicates), emptyStringSliceIfNil([]string(got.Discovery.DuplicateCandidateProcessDefinitionKeys)))
 			require.Len(t, got.Discovery.CandidateProcessDefinitions, tt.wantDefinitions)
-			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+			if len(tt.wantKeys) == 0 {
+				require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+			} else {
+				require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+			}
 			require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
 			require.Equal(t, got.Discovery, got.Report.Discovery)
+			require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
 			requireNoticeCodes(t, got.Discovery.Notices, tt.wantNotices)
 		})
 	}
@@ -267,8 +274,11 @@ func TestPurgeAllProcessDefinitionsDiscoversSingleKey(t *testing.T) {
 		stubProcessInstanceAPI{},
 		nil,
 		stubProcessDefinitionAPI{
-			getProcessDefinition: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessDefinition, error) {
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
 				require.Equal(t, "2251799813685255", key)
+				if services.ApplyCallOptions(opts).WithStat {
+					return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+				}
 				return d.ProcessDefinition{Key: key, BpmnProcessId: "invoice", ProcessVersion: 1}, nil
 			},
 		},
@@ -281,7 +291,81 @@ func TestPurgeAllProcessDefinitionsDiscoversSingleKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"2251799813685255"}, []string(got.Discovery.CandidateProcessDefinitionKeys))
 	require.Equal(t, "invoice", got.Discovery.CandidateProcessDefinitions[0].BpmnProcessId)
-	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"2251799813685255"}, []string(got.DeletePlan.CandidateProcessDefinitionKeys))
+}
+
+// TestPurgeAllProcessDefinitionsBuildsDeletePlan verifies frozen candidates flow through the delete-pd preflight.
+func TestPurgeAllProcessDefinitionsBuildsDeletePlan(t *testing.T) {
+	t.Parallel()
+
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-b", BpmnProcessId: "payment", ProcessVersion: 1},
+				}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				stats := map[string]int64{"pd-a": 2, "pd-b": 0}
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: stats[key]}}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{DryRun: true})
+
+	require.NoError(t, err)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.Equal(t, []string{"pd-a", "pd-b"}, []string(got.DeletePlan.CandidateProcessDefinitionKeys))
+	require.Equal(t, []string{"pd-a"}, []string(got.DeletePlan.DuplicateCandidateProcessDefinitionKeys))
+	require.Len(t, got.DeletePlan.Items, 2)
+	require.Equal(t, "pd-a", got.DeletePlan.Items[0].Key)
+	require.EqualValues(t, 2, got.DeletePlan.Items[0].ActiveProcessInstanceCount)
+	require.EqualValues(t, 2, got.DeletePlan.AffectedProcessInstanceCount)
+	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
+	require.False(t, got.DeletePlan.RequiresConfirmation)
+	require.True(t, got.DeletePlan.RequiresForce)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Equal(t, got.DeletePlan, got.Report.DeletePlan)
+}
+
+// TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce verifies destructive planning stops before mutation.
+func TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce(t *testing.T) {
+	t.Parallel()
+
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{{Key: "pd-active", BpmnProcessId: "invoice", ProcessVersion: 1}}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.Equal(t, "pd-active", key)
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{Active: 3}}, nil
+			},
+		},
+		stubResourceAPI{},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{})
+
+	require.Error(t, err)
+	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
+	require.Contains(t, err.Error(), "active process instance")
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeFailed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.DeletePlan.Status)
+	require.EqualValues(t, 3, got.DeletePlan.ActiveProcessInstanceCount)
+	require.True(t, got.DeletePlan.RequiresConfirmation)
+	require.True(t, got.DeletePlan.RequiresForce)
+	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Deletion.Status)
+	require.Len(t, got.Deletion.Errors, 1)
+	require.Len(t, got.Report.Errors, 1)
 }
 
 // emptyStringSliceIfNil lets tests compare logical empty collections independent of nil slice representation.
@@ -332,8 +416,11 @@ func (s stubProcessDefinitionAPI) SearchProcessDefinitionsLatest(ctx context.Con
 
 // GetProcessDefinition delegates to the per-test single process-definition lookup callback.
 func (s stubProcessDefinitionAPI) GetProcessDefinition(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
-	if s.getProcessDefinition == nil {
-		panic("unexpected GetProcessDefinition call")
+	if s.getProcessDefinition != nil {
+		return s.getProcessDefinition(ctx, key, opts...)
 	}
-	return s.getProcessDefinition(ctx, key, opts...)
+	if services.ApplyCallOptions(opts).WithStat {
+		return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+	}
+	panic("unexpected GetProcessDefinition call")
 }

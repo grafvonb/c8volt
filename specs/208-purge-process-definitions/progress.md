@@ -29,11 +29,39 @@
 - Generated CLI docs are refreshed via `make docs-content`; do not hand-edit `docs/cli/*` or `docs/index.md` when command metadata/help changes.
 - Early command-registration iterations can keep the target command non-mutating by using Cobra `Args` for local validation and a help-only `RunE`; later discovery/execution stories should replace the run path with facade orchestration while preserving the validated flag surface and metadata.
 - All-process-definitions discovery should mirror `get pd` branching: `--key` performs a single `GetProcessDefinition` lookup, `--latest` calls `SearchProcessDefinitionsLatest`, and default/filter discovery calls `SearchProcessDefinitions` with `processdefinition.MaxResultSize`.
+- All-process-definitions delete planning should call `internal/services/resource.PreviewDeleteProcessDefinitions` with the frozen unique candidate keys. Zero-candidate discovery keeps delete planning skipped, while non-empty dry-runs build the plan and expose active-instance `RequiresForce` blockers without mutating.
 
 ## Validation Log
 
 - Pending: Ralph implementation iterations will record targeted validation and final `make test` results here as work units complete.
 
+---
+---
+## Iteration 5 - 2026-05-16 18:58:15 CEST
+**User Story**: User Story 3 - Build Delete Plan From Frozen Candidates
+**Tasks Completed**:
+- [x] T029: Add ops service delete-plan tests for candidate keys, affected process-instance counts, active-instance blockers, and duplicate handling in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T030: Add unsafe active-instance blocking test without `--force` in `internal/services/ops/all_process_definitions_purge_test.go`
+- [x] T031: Add command dry-run plan rendering tests in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T032: Reuse existing process-definition delete preflight from frozen candidate keys in `internal/services/ops/all_process_definitions_purge.go`
+- [x] T033: Preserve process-definition delete-plan items, active impact, duplicate candidates, force readiness, and semantic notice details in `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T034: Map delete-plan details through `c8volt/ops/convert.go`
+- [x] T035: Render compact delete-plan human output and complete JSON output in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T036: Mark US3 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- specs/208-purge-process-definitions/tasks.md
+- specs/208-purge-process-definitions/progress.md
+**Learnings**:
+- Delete planning now reuses the existing process-definition delete preflight with the frozen candidate key set, preserving active-instance impact checks and duplicate candidate reporting before any mutation story starts.
+- No-target discovery remains a successful planned no-op with the delete plan skipped, avoiding unnecessary preflight calls when there are no candidate keys.
+- Unsafe destructive runs without `--force` now fail as a local precondition with deletion status `blocked`, while dry-run still reports the same active-instance blocker as plan data.
+- Validation passed: `GOCACHE=/private/tmp/c8volt-go-build go test ./internal/services/ops -run 'TestPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./c8volt/ops -run 'TestClientPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./... -count=1`.
 ---
 ---
 ## Iteration 4 - 2026-05-16 18:52:11 CEST

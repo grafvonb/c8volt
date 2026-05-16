@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -180,6 +181,56 @@ func TestOpsPurgeAllProcessDefinitionsDryRunJSONDiscoveryData(t *testing.T) {
 	require.Equal(t, "skipped", requireJSONObject(t, payload["deletion"])["status"])
 }
 
+// TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput verifies compact delete-plan rendering after discovery.
+func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var buf bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
+	output := buf.String()
+
+	require.Contains(t, output, "delete plan: planned (candidate process definitions: 2, affected process instances: 3)")
+	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")
+	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-definition keys")
+	require.NotContains(t, output, "candidate process-definition keys:")
+
+	flagVerbose = true
+	var verbose bytes.Buffer
+	cmd = &cobra.Command{}
+	cmd.SetOut(&verbose)
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
+	require.Contains(t, verbose.String(), "candidate process-definition keys: pd-a, pd-b")
+}
+
+// TestOpsPurgeAllProcessDefinitionsDryRunJSONPlanData verifies machine output carries complete delete-plan fields.
+func TestOpsPurgeAllProcessDefinitionsDryRunJSONPlanData(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var buf bytes.Buffer
+	cmd := &cobra.Command{Use: "all-process-definitions"}
+	cmd.SetOut(&buf)
+	setContractSupport(cmd, ContractSupportFull)
+	flagViewAsJson = true
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
+
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope), buf.String())
+	payload := requireJSONObject(t, envelope["payload"])
+	plan := requireJSONObject(t, payload["deletePlan"])
+	require.Equal(t, "planned", plan["status"])
+	require.Len(t, plan["candidateProcessDefinitionKeys"], 2)
+	require.Len(t, plan["duplicateCandidateProcessDefinitionKeys"], 1)
+	require.Len(t, plan["items"], 2)
+	require.Equal(t, float64(3), plan["affectedProcessInstanceCount"])
+	require.Equal(t, float64(3), plan["activeProcessInstanceCount"])
+	require.Equal(t, true, plan["requiresForce"])
+	require.Equal(t, true, plan["requiresConfirmation"])
+}
+
 // executeOpsPurgeAllProcessDefinitionsExpectError runs all-process-definitions purge and returns Cobra parse/validation errors.
 func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...string) (string, error) {
 	t.Helper()
@@ -200,6 +251,27 @@ func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...strin
 		return buf.String() + err.Error(), err
 	}
 	return buf.String(), nil
+}
+
+// sampleAllProcessDefinitionsPurgeDryRunPlanResult returns a planned purge result for command rendering tests.
+func sampleAllProcessDefinitionsPurgeDryRunPlanResult() ops.AllProcessDefinitionsPurgeResult {
+	result := sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()
+	result.Discovery.CandidateProcessDefinitionKeys = typex.Keys{"pd-a", "pd-b"}
+	result.Discovery.CandidateProcessDefinitionCount = 2
+	result.DeletePlan = ops.AllProcessDefinitionsPurgeDeletePlan{
+		Status:                         ops.WorkflowStepStatusPlanned,
+		CandidateProcessDefinitionKeys: typex.Keys{"pd-a", "pd-b"},
+		Items: []resource.DeleteProcessDefinitionPlanItem{
+			{Key: "pd-a", ActiveProcessInstanceCount: 3, ActiveProcessInstanceKeys: []string{"pi-a", "pi-b", "pi-c"}},
+			{Key: "pd-b"},
+		},
+		DuplicateCandidateProcessDefinitionKeys: typex.Keys{"pd-a"},
+		AffectedProcessInstanceCount:            3,
+		ActiveProcessInstanceCount:              3,
+		RequiresConfirmation:                    true,
+		RequiresForce:                           true,
+	}
+	return result
 }
 
 // sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult returns a discovery-only purge result for command rendering tests.

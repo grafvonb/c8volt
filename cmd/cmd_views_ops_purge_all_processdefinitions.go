@@ -66,6 +66,12 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)
+	if result.DeletePlan.RequiresForce {
+		renderHumanLine(cmd, "active-instance blocker: %d active process instances require --force before deletion", result.DeletePlan.ActiveProcessInstanceCount)
+	}
+	if flagVerbose {
+		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
+	}
 }
 
 // renderOpsPurgeAllProcessDefinitionsDeletion prints deletion status when the workflow reaches mutation.

@@ -6,11 +6,14 @@ package ops
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
+	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -44,9 +47,68 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 	}
 	result.Discovery = discovery
 	result.Notices = append(result.Notices, discovery.Notices...)
-	result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+
+	if len(discovery.CandidateProcessDefinitionKeys) == 0 {
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
+	}
+
+	plan, err := buildAllProcessDefinitionsPurgeDeletePlan(ctx, s.pdAPI, s.piAPI, s.log, discovery, !request.DryRun, request.Force, opts...)
+	result.DeletePlan = plan
+	if err != nil {
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusFailed
+		result.DeletePlan.Errors = []string{err.Error()}
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, fmt.Errorf("all-process-definitions purge delete-plan validation: %w", err))
+	}
+
+	if !request.DryRun && plan.RequiresForce {
+		err = fmt.Errorf("%w: refusing to delete all-process-definitions purge scope: %d active process instance(s) are affected; no delete request was submitted; use --force to cancel active process instances before delete", d.ErrPrecondition, plan.ActiveProcessInstanceCount)
+		result.Deletion.Status = d.OpsWorkflowStepStatusBlocked
+		result.Deletion.Errors = []string{err.Error()}
+		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
+	}
+
 	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 	return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
+}
+
+// buildAllProcessDefinitionsPurgeDeletePlan adapts frozen process-definition candidates into the shared delete-pd preflight.
+func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.API, piAPI pisvc.API, log *slog.Logger, discovery d.ProcessDefinitionDiscoveryResult, requiresConfirmation bool, force bool, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeDeletePlan, error) {
+	candidates := discovery.CandidateProcessDefinitionKeys.Unique()
+	preview, err := rsvc.PreviewDeleteProcessDefinitions(ctx, pdAPI, piAPI, log, candidates, opts...)
+	plan := d.AllProcessDefinitionsPurgeDeletePlan{
+		Status:                                  d.OpsWorkflowStepStatusPlanned,
+		CandidateProcessDefinitionKeys:          candidates,
+		Items:                                   append([]d.DeleteProcessDefinitionPlanItem(nil), preview.Items...),
+		DuplicateCandidateProcessDefinitionKeys: discovery.DuplicateCandidateProcessDefinitionKeys.Unique(),
+		RequiresConfirmation:                    requiresConfirmation && len(candidates) > 0,
+	}
+	plan.ActiveProcessInstanceCount = activeProcessInstanceCountForProcessDefinitionPlan(preview.Items)
+	plan.AffectedProcessInstanceCount = affectedProcessInstanceCountForProcessDefinitionPlan(preview.Items)
+	plan.RequiresForce = !force && plan.ActiveProcessInstanceCount > 0
+	return plan, err
+}
+
+func activeProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessDefinitionPlanItem) int64 {
+	var total int64
+	for _, item := range items {
+		total += item.ActiveProcessInstances()
+	}
+	return total
+}
+
+func affectedProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessDefinitionPlanItem) int64 {
+	var total int64
+	for _, item := range items {
+		affected := int64(len(item.CancellationPlan.Collected.Unique()))
+		if affected < item.ActiveProcessInstances() {
+			affected = item.ActiveProcessInstances()
+		}
+		total += affected
+	}
+	return total
 }
 
 // allProcessDefinitionsPurgeDiscovery either reuses a frozen candidate set or performs one process-definition lookup.
