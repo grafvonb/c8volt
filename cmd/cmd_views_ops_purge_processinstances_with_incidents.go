@@ -4,10 +4,13 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/config"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +28,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsResult(cmd *cobra.Command, resul
 	renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd, result)
+	renderOpsPurgeProcessInstancesWithIncidentsReportFile(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}
@@ -149,4 +153,122 @@ func renderOpsPurgeProcessInstancesWithIncidentsSkipped(cmd *cobra.Command, skip
 		items = append(items, key)
 	}
 	renderHumanLine(cmd, "skipped incident keys: %s", strings.Join(items, ", "))
+}
+
+// renderOpsPurgeProcessInstancesWithIncidentsReportFile prints the compact audit report location.
+func renderOpsPurgeProcessInstancesWithIncidentsReportFile(cmd *cobra.Command, result ops.IncidentPurgeResult) {
+	if result.Request.ReportFile == "" {
+		return
+	}
+	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
+}
+
+// renderOpsPurgeProcessInstancesWithIncidentsJSONReport encodes the complete audit report deterministically.
+func renderOpsPurgeProcessInstancesWithIncidentsJSONReport(report ops.IncidentPurgeReport) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := toolx.JSON(&buf, report); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport renders a readable incident-purge audit report.
+func renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport(report ops.IncidentPurgeReport, cfg *config.Config) ([]byte, error) {
+	var out strings.Builder
+	out.WriteString("# Incident Process Instance Purge Audit Report\n\n")
+	writeMarkdownReportField(&out, "Schema Version", report.SchemaVersion)
+	writeMarkdownReportField(&out, "Command", report.CommandName)
+	writeMarkdownReportField(&out, "Started", formatOpsPurgeReportTime(report.StartedAt, cfg))
+	writeMarkdownReportField(&out, "Finished", formatOpsPurgeReportTime(report.FinishedAt, cfg))
+	writeMarkdownReportField(&out, "Duration", report.Duration)
+	writeMarkdownReportField(&out, "Dry Run", fmt.Sprintf("%t", report.DryRun))
+	writeMarkdownReportField(&out, "C8volt Version", report.C8voltVersion)
+	writeMarkdownReportField(&out, "Camunda Version", report.CamundaVersion)
+	writeMarkdownReportField(&out, "Profile", report.ProfileIdentity)
+	writeMarkdownReportField(&out, "Tenant", report.TenantID)
+	writeMarkdownReportField(&out, "Auto Confirm", fmt.Sprintf("%t", report.AutoConfirm))
+	writeMarkdownReportField(&out, "Automation", fmt.Sprintf("%t", report.Automation))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.NoWait))
+	writeMarkdownReportField(&out, "Force", fmt.Sprintf("%t", report.Force))
+	writeMarkdownReportField(&out, "Fail Fast", fmt.Sprintf("%t", report.FailFast))
+	writeMarkdownReportField(&out, "No Worker Limit", fmt.Sprintf("%t", report.NoWorkerLimit))
+	writeMarkdownReportField(&out, "Outcome", string(report.Outcome))
+
+	out.WriteString("\n## Selection\n\n")
+	writeMarkdownReportField(&out, "Filters", report.SelectionFilters.String())
+
+	out.WriteString("\n## Discovery\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.Discovery.Status))
+	writeMarkdownReportField(&out, "Candidate Incidents", fmt.Sprintf("%d", report.Discovery.IncidentCount))
+	writeMarkdownReportField(&out, "Candidate Process Instances", fmt.Sprintf("%d", report.Discovery.CandidateProcessInstanceCount))
+	writeMarkdownReportList(&out, "Incident Keys", report.Discovery.IncidentKeys)
+	writeMarkdownReportList(&out, "Candidate Process-Instance Keys", report.Discovery.CandidateProcessInstanceKeys)
+	writeMarkdownReportList(&out, "Duplicate Candidate Process-Instance Keys", report.Discovery.DuplicateCandidateProcessInstanceKeys)
+	writeMarkdownReportList(&out, "Skipped Incidents", incidentPurgeSkippedIncidentItems(report.Discovery.SkippedIncidents))
+	writeMarkdownReportList(&out, "Notices", incidentPurgeNoticeItems(report.Discovery.Notices))
+	writeMarkdownReportList(&out, "Errors", report.Discovery.Errors)
+
+	out.WriteString("\n## Delete Plan\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.DeletePlan.Status))
+	writeMarkdownReportField(&out, "Requires Confirmation", fmt.Sprintf("%t", report.DeletePlan.RequiresConfirmation))
+	writeMarkdownReportList(&out, "Candidate Process-Instance Keys", report.DeletePlan.CandidateProcessInstanceKeys)
+	writeMarkdownReportList(&out, "Resolved Root Keys", report.DeletePlan.ResolvedRootKeys)
+	writeMarkdownReportList(&out, "Affected Process-Instance Keys", report.DeletePlan.AffectedKeys)
+	writeMarkdownReportList(&out, "Duplicate Candidate Process-Instance Keys", report.DeletePlan.DuplicateCandidateProcessInstanceKeys)
+	writeMarkdownReportList(&out, "Duplicate Resolved Root Keys", report.DeletePlan.DuplicateResolvedRootKeys)
+	writeMarkdownReportList(&out, "Final State Items", retentionProcessInstanceItems(report.DeletePlan.FinalStateItems))
+	writeMarkdownReportList(&out, "Non-Final Affected Items", retentionProcessInstanceItems(report.DeletePlan.NonFinalAffectedItems))
+	writeMarkdownReportList(&out, "Missing Ancestors", retentionMissingAncestorItems(report.DeletePlan.MissingAncestors))
+	writeMarkdownReportList(&out, "Traversal Warnings", report.DeletePlan.TraversalWarnings)
+	writeMarkdownReportList(&out, "Errors", report.DeletePlan.Errors)
+
+	out.WriteString("\n## Deletion\n\n")
+	writeMarkdownReportField(&out, "Status", string(report.Deletion.Status))
+	writeMarkdownReportField(&out, "Submitted", fmt.Sprintf("%t", report.Deletion.Submitted))
+	writeMarkdownReportField(&out, "Confirmed", fmt.Sprintf("%t", report.Deletion.Confirmed))
+	writeMarkdownReportField(&out, "No Wait", fmt.Sprintf("%t", report.Deletion.NoWait))
+	writeMarkdownReportList(&out, "Submitted Root Keys", report.Deletion.SubmittedRootKeys)
+	if len(report.Deletion.Items) > 0 {
+		out.WriteString("- Items:\n")
+		for _, item := range report.Deletion.Items {
+			out.WriteString(fmt.Sprintf("  - key=%s ok=%t status=%s statusCode=%d\n", item.Key, item.Ok, item.Status, item.StatusCode))
+		}
+	}
+	writeMarkdownReportList(&out, "Errors", report.Deletion.Errors)
+	writeMarkdownReportList(&out, "Run Notices", incidentPurgeNoticeItems(report.Notices))
+	writeMarkdownReportList(&out, "Run Errors", report.Errors)
+
+	return []byte(out.String()), nil
+}
+
+// incidentPurgeSkippedIncidentItems formats skipped incidents for Markdown reports.
+func incidentPurgeSkippedIncidentItems(items []ops.IncidentPurgeSkippedIncident) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		key := item.Incident.IncidentKey
+		if key == "" {
+			key = "<unknown>"
+		}
+		if item.Reason != "" {
+			key += " reason=" + item.Reason
+		}
+		out = append(out, key)
+	}
+	return out
+}
+
+// incidentPurgeNoticeItems formats structured notices without dropping report-only details.
+func incidentPurgeNoticeItems(items []ops.IncidentPurgeWorkflowNotice) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		text := item.Code
+		if item.Severity != "" {
+			text += " severity=" + item.Severity
+		}
+		if item.Message != "" {
+			text += " message=" + item.Message
+		}
+		out = append(out, text)
+	}
+	return out
 }

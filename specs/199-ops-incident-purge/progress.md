@@ -29,6 +29,8 @@
 - Incident purge plan output preserves candidate duplicates separately from duplicate resolved roots through `DuplicateCandidateProcessInstanceKeys` and `DuplicateResolvedRootKeys`.
 - Confirmed incident purge execution now delegates to `internal/services/processinstance.DeleteProcessInstances`, preserving submitted root keys, no-wait status, delete reports, confirmation state, and deleted/partial/failed outcomes.
 - Unconfirmed destructive incident purge runs first execute a dry-run preplan, use `shouldImplicitlyConfirm(cmd)` for the prompt decision, and pass `DiscoveredCandidateProcessInstanceKeys` into the confirmed service call so incident discovery is not rerun after confirmation.
+- Incident purge report handling now mirrors the orphan/retention ops workflow lifecycle: validate report paths before remote work, write reports before human rendering, preserve existing files until deletion is submitted, and record local aborts in the report shape when possible.
+- Incident purge Markdown and JSON reports are rendered from `ops.IncidentPurgeReport` in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`; compact human output stays count-oriented while verbose mode owns full key lists.
 
 ## Status
 
@@ -217,4 +219,32 @@
 - `internal/services/processinstance.DeleteProcessInstances` is the correct execution reuse point because it already owns root dedupe, worker selection, fail-fast scheduling, no-wait behavior, force/cancel-before-delete semantics, deterministic report order, and activity/log output.
 - For unconfirmed destructive runs, the command must dry-run plan first, block local non-final affected scope before prompting, then execute with frozen candidate process-instance keys to avoid a second incident search expanding the confirmed scope.
 - Validation run: `GOCACHE=/private/tmp/codex-go-build go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents(ConfirmedDeletionUsesFrozenPlanRoots|AutomationJSONExecutesWithoutAutoConfirm|BlocksNonFinalScopeBeforeMutation|DryRun|Invalid|Help)' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./c8volt/ops -run 'TestClientPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./... -count=1`.
+---
+
+---
+## Iteration 7 - 2026-05-16 11:27:38 CEST
+**User Story**: User Story 5 - Produce Compact Output, Complete Reports, And Automation-Safe JSON
+**Tasks Completed**:
+- [x] T046: Add verbose key-list output tests for incident, candidate, root, affected, and skipped keys in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T047: Add deterministic `--dry-run --json` and `--automation --json` output tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T048: Add Markdown incident purge report rendering test in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T049: Add JSON incident purge report rendering test in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T050: Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T051: Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T052: Extend report model/rendering for incident discovery, candidate set, plan, deletion, notices, errors, and outcome fields in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T053: Keep normal human output compact and gate detailed key lists behind verbose output in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T054: Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T055: Mark US5 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- specs/199-ops-incident-purge/progress.md
+- specs/199-ops-incident-purge/tasks.md
+**Learnings**:
+- Incident purge can reuse the existing shared report helpers directly while using command-specific rendering for the complete incident discovery, delete-plan, deletion, notice, and error report fields.
+- Existing report-file preservation depends on write mode as well as preflight validation: dry-run and unconfirmed runs fail before remote work when a report exists, while a locally blocked auto-confirmed run still preserves the file because no deletion was submitted.
+- Validation run: `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents(Verbose|JSONOutputs|WritesMarkdownReport|WritesJSONReport|ExistingReportPreservation)' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./... -count=1`.
 ---

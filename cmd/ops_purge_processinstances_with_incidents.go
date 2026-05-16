@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -66,7 +67,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		effectiveAutoConfirm := shouldImplicitlyConfirm(cmd)
-		if err := validateOpsWorkflowReportPathForPlanning(flagOpsPurgeIncidentReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)); err != nil {
+		if err := validateOpsWorkflowReportPathForPlanning(flagOpsPurgeIncidentReportFile, opsPurgeProcessInstancesWithIncidentsPlanningReportWriteMode(effectiveAutoConfirm)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
 		request := ops.IncidentPurgeRequest{
@@ -95,7 +96,8 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge process-instances with incidents: %w", err))
 			}
 			if err := rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce(planned.DeletePlan); err != nil {
-				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusBlocked, err), err)
+				return
 			}
 			if len(planned.DeletePlan.ResolvedRootKeys) > 0 {
 				prompt := fmt.Sprintf("Incident purge matched %d candidate incident(s) and %d candidate process instance(s); delete planning will delete %d affected process instance(s) across %d root(s). Do you want to proceed?",
@@ -105,14 +107,21 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 					len(planned.DeletePlan.ResolvedRootKeys),
 				)
 				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
-					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+					abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd, log, cfg, markOpsPurgeProcessInstancesWithIncidentsLocalFailure(planned, ops.WorkflowStepStatusConfirmationFailed, err), err)
+					return
 				}
 			}
 			request.DiscoveredCandidateProcessInstanceKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessInstanceKeys...)
 		}
 		result, err := cli.PurgeProcessInstancesWithIncidents(cmd.Context(), request, collectOptions()...)
 		if err != nil {
+			if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); reportErr != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w; write audit report: %v", err, reportErr))
+			}
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w", err))
+		}
+		if err := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, opsPurgeProcessInstancesWithIncidentsReportWriteMode(result)); err != nil {
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops purge process-instances with incidents audit report: %w", err))
 		}
 		if err := renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops purge process-instances with incidents: %w", err))
@@ -208,6 +217,97 @@ func rejectOpsPurgeProcessInstancesWithIncidentsPlanRequiringForce(plan ops.Inci
 		"refusing to delete incident purge process-instance scope: %s; no delete request was submitted; use --force to cancel the non-final affected scope before delete",
 		formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope(plan),
 	))
+}
+
+// abortOpsPurgeProcessInstancesWithIncidentsAfterReport writes any available audit data before surfacing local aborts.
+func abortOpsPurgeProcessInstancesWithIncidentsAfterReport(cmd *cobra.Command, log *slog.Logger, cfg *config.Config, result ops.IncidentPurgeResult, err error) {
+	if reportErr := writeOpsPurgeProcessInstancesWithIncidentsReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
+		handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("%w; write audit report: %v", err, reportErr))
+	}
+	handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+}
+
+// markOpsPurgeProcessInstancesWithIncidentsLocalFailure records local blockers in the same report shape as service failures.
+func markOpsPurgeProcessInstancesWithIncidentsLocalFailure(result ops.IncidentPurgeResult, status ops.WorkflowStepStatus, err error) ops.IncidentPurgeResult {
+	finished := time.Now().UTC()
+	msg := err.Error()
+	result.Outcome = ops.IncidentPurgeOutcomeFailed
+	result.Errors = appendOpsPurgeProcessInstancesWithIncidentsError(result.Errors, msg)
+	result.Deletion.Status = status
+	result.Deletion.Errors = appendOpsPurgeProcessInstancesWithIncidentsError(result.Deletion.Errors, msg)
+	result.Report.Outcome = ops.IncidentPurgeOutcomeFailed
+	result.Report.FinishedAt = finished
+	if !result.Request.StartedAt.IsZero() {
+		result.Report.Duration = finished.Sub(result.Request.StartedAt).String()
+	}
+	result.Report.Discovery = result.Discovery
+	result.Report.DeletePlan = result.DeletePlan
+	result.Report.Deletion = result.Deletion
+	result.Report.Errors = appendOpsPurgeProcessInstancesWithIncidentsError(result.Report.Errors, msg)
+	return result
+}
+
+// appendOpsPurgeProcessInstancesWithIncidentsError preserves stable error order while avoiding duplicates.
+func appendOpsPurgeProcessInstancesWithIncidentsError(items []string, value string) []string {
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+// opsPurgeProcessInstancesWithIncidentsPlanningReportWriteMode preserves reports unless this run is already confirmed for mutation.
+func opsPurgeProcessInstancesWithIncidentsPlanningReportWriteMode(effectiveAutoConfirm bool) OpsWorkflowReportWriteMode {
+	if flagDryRun {
+		return OpsWorkflowReportPreserveExisting
+	}
+	return opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm)
+}
+
+// opsPurgeProcessInstancesWithIncidentsReportWriteMode overwrites only after deletion was actually submitted.
+func opsPurgeProcessInstancesWithIncidentsReportWriteMode(result ops.IncidentPurgeResult) OpsWorkflowReportWriteMode {
+	return opsWorkflowReportWriteModeForConfirmedMutation(result.Deletion.Submitted)
+}
+
+// writeOpsPurgeProcessInstancesWithIncidentsReport renders and writes the requested incident-purge audit report.
+func writeOpsPurgeProcessInstancesWithIncidentsReport(result ops.IncidentPurgeResult, cfg *config.Config, mode OpsWorkflowReportWriteMode) error {
+	if result.Request.ReportFile == "" {
+		return nil
+	}
+	report := enrichOpsPurgeProcessInstancesWithIncidentsReport(result.Report, cfg)
+	format, err := opsWorkflowReportFormatForPath(result.Request.ReportFile, OpsWorkflowReportFormat(result.Request.ReportFormat))
+	if err != nil {
+		return err
+	}
+	var data []byte
+	switch format {
+	case OpsWorkflowReportFormatJSON:
+		data, err = renderOpsPurgeProcessInstancesWithIncidentsJSONReport(report)
+	case OpsWorkflowReportFormatMarkdown:
+		data, err = renderOpsPurgeProcessInstancesWithIncidentsMarkdownReport(report, cfg)
+	default:
+		err = fmt.Errorf("unsupported ops workflow report format %q", format)
+	}
+	if err != nil {
+		return err
+	}
+	return writeOpsWorkflowReportFile(result.Request.ReportFile, data, mode)
+}
+
+// enrichOpsPurgeProcessInstancesWithIncidentsReport adds runtime config metadata that is not owned by services.
+func enrichOpsPurgeProcessInstancesWithIncidentsReport(report ops.IncidentPurgeReport, cfg *config.Config) ops.IncidentPurgeReport {
+	report.C8voltVersion = CurrentBuildInfo().Version
+	if cfg != nil {
+		report.CamundaVersion = cfg.App.CamundaVersion.String()
+		report.TenantID = cfg.App.ViewTenant()
+		if cfg.ActiveProfile != "" {
+			report.ProfileIdentity = "profile:" + cfg.ActiveProfile
+		} else {
+			report.ProfileIdentity = "default"
+		}
+	}
+	return report
 }
 
 // formatOpsPurgeProcessInstancesWithIncidentsNonFinalScope summarizes the post-planning blocker without listing keys by default.

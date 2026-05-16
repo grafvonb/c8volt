@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -247,6 +248,222 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering(t *testing.T) 
 	require.Contains(t, verbose.String(), "duplicate resolved root keys: root-1")
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsVerboseListsAllKeyGroups verifies compact output hides keys unless verbose is enabled.
+func TestOpsPurgeProcessInstancesWithIncidentsVerboseListsAllKeyGroups(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	result := sampleIncidentPurgeDryRunPlanResult()
+	result.DeletePlan.ResolvedRootKeys = typex.Keys{"2251799813711972"}
+	result.DeletePlan.AffectedKeys = typex.Keys{"2251799813711972", "2251799813711973"}
+
+	var compact bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&compact)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result))
+	require.NotContains(t, compact.String(), "incident keys:")
+	require.NotContains(t, compact.String(), "candidate process-instance keys:")
+	require.NotContains(t, compact.String(), "resolved root keys:")
+	require.NotContains(t, compact.String(), "affected process-instance keys:")
+	require.NotContains(t, compact.String(), "skipped incident keys:")
+
+	flagVerbose = true
+	var verbose bytes.Buffer
+	cmd = &cobra.Command{}
+	cmd.SetOut(&verbose)
+	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result))
+	require.Contains(t, verbose.String(), "incident keys: 2251799813685253, 2251799813685254, 2251799813685255")
+	require.Contains(t, verbose.String(), "candidate process-instance keys: 2251799813711972")
+	require.Contains(t, verbose.String(), "duplicate candidate process-instance keys: 2251799813711972")
+	require.Contains(t, verbose.String(), "resolved root keys: 2251799813711972")
+	require.Contains(t, verbose.String(), "affected process-instance keys: 2251799813711972, 2251799813711973")
+	require.Contains(t, verbose.String(), "skipped incident keys: 2251799813685255 (missing process-instance key)")
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable verifies dry-run and automation JSON emit only envelopes.
+func TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(srv.Close)
+
+	dryRunStdout, dryRunStderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--json",
+		"ops", "purge", "process-instances-with-incidents",
+		"--dry-run",
+	)
+	require.Empty(t, dryRunStderr)
+	require.NotContains(t, dryRunStdout, "dry run: purge process-instances with incidents")
+	var dryRunEnvelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(dryRunStdout), &dryRunEnvelope))
+	require.Equal(t, string(OutcomeSucceeded), dryRunEnvelope["outcome"])
+	require.Equal(t, "ops purge process-instances-with-incidents", dryRunEnvelope["command"])
+	dryRunPayload := requireJSONObject(t, dryRunEnvelope["payload"])
+	require.Equal(t, "planned", dryRunPayload["outcome"])
+	require.Equal(t, true, requireJSONObject(t, dryRunPayload["request"])["dryRun"])
+	require.Equal(t, "planned", requireJSONObject(t, dryRunPayload["deletePlan"])["status"])
+	require.Equal(t, "skipped", requireJSONObject(t, dryRunPayload["deletion"])["status"])
+	require.Empty(t, deleted.Snapshot())
+
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	autoStdout, autoStderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--automation",
+		"--json",
+		"ops", "purge", "process-instances-with-incidents",
+		"--no-wait",
+	)
+	require.Empty(t, autoStderr)
+	require.NotContains(t, autoStdout, "purge process-instances with incidents")
+	var autoEnvelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(autoStdout), &autoEnvelope))
+	require.Equal(t, string(OutcomeSucceeded), autoEnvelope["outcome"])
+	autoPayload := requireJSONObject(t, autoEnvelope["payload"])
+	require.Equal(t, "deleted", autoPayload["outcome"])
+	require.Equal(t, "submitted", requireJSONObject(t, autoPayload["deletion"])["status"])
+	require.Equal(t, true, requireJSONObject(t, autoPayload["request"])["automation"])
+	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsWritesMarkdownReport verifies the dry-run report includes complete audit sections.
+func TestOpsPurgeProcessInstancesWithIncidentsWritesMarkdownReport(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "incident-purge.md")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "process-instances-with-incidents",
+		"--dry-run",
+		"--report-file", reportPath,
+	)
+
+	require.Contains(t, output, "outcome: planned; no changes applied")
+	require.Contains(t, output, "report: written "+reportPath)
+	require.Empty(t, deleted.Snapshot())
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# Incident Process Instance Purge Audit Report")
+	require.Contains(t, report, "- Command: ops purge process-instances-with-incidents")
+	require.Contains(t, report, "- Dry Run: true")
+	require.Contains(t, report, "- Camunda Version: 8.9")
+	require.Contains(t, report, "- Profile: default")
+	require.Contains(t, report, "- Outcome: planned")
+	require.Contains(t, report, "## Discovery")
+	require.Contains(t, report, "- Incident Keys:")
+	require.Contains(t, report, "  - 2251799813685299")
+	require.Contains(t, report, "## Delete Plan")
+	require.Contains(t, report, "  - "+opsIncidentPurgeRootKey)
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport verifies confirmed runs overwrite only after deletion submission.
+func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "incident-purge.json")
+	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "process-instances-with-incidents",
+		"--auto-confirm",
+		"--no-wait",
+		"--report-file", reportPath,
+		"--report-format", "json",
+	)
+
+	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "report: written "+reportPath)
+	require.NotContains(t, readReportFile(t, reportPath), "old report")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "ops.process-instances-with-incidents.v1", report["schemaVersion"])
+	require.Equal(t, "ops purge process-instances-with-incidents", report["commandName"])
+	require.Equal(t, "deleted", report["outcome"])
+	require.Equal(t, true, report["noWait"])
+	require.Equal(t, "8.9", report["camundaVersion"])
+	discovery := requireJSONObject(t, report["discovery"])
+	require.Equal(t, float64(1), discovery["incidentCount"])
+	require.Equal(t, float64(1), discovery["candidateProcessInstanceCount"])
+	deletePlan := requireJSONObject(t, report["deletePlan"])
+	require.Len(t, deletePlan["resolvedRootKeys"], 1)
+	deletion := requireJSONObject(t, report["deletion"])
+	require.Equal(t, "submitted", deletion["status"])
+	require.Equal(t, true, deletion["submitted"])
+	require.Equal(t, []string{"/v2/process-instances/" + opsIncidentPurgeRootKey + "/deletion"}, deleted.Snapshot())
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation verifies non-submitted paths never clobber reports.
+func TestOpsPurgeProcessInstancesWithIncidentsExistingReportPreservation(t *testing.T) {
+	tests := []struct {
+		name            string
+		args            []string
+		withActiveChild bool
+		want            string
+		wantRequests    bool
+	}{
+		{
+			name: "dry run",
+			args: []string{"ops", "purge", "process-instances-with-incidents", "--dry-run"},
+			want: "report file already exists:",
+		},
+		{
+			name: "unconfirmed",
+			args: []string{"ops", "purge", "process-instances-with-incidents"},
+			want: "report file already exists:",
+		},
+		{
+			name:            "locally blocked",
+			args:            []string{"ops", "purge", "process-instances-with-incidents", "--auto-confirm"},
+			withActiveChild: true,
+			want:            "write audit report: report file already exists:",
+			wantRequests:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			var deleted testx.SafeSlice[string]
+			srv := newOpsIncidentPurgeServer(t, &requests, &deleted, tt.withActiveChild)
+			t.Cleanup(srv.Close)
+			reportPath := filepath.Join(t.TempDir(), "incident-purge.md")
+			const existingReport = "existing report"
+			require.NoError(t, os.WriteFile(reportPath, []byte(existingReport), 0o600))
+			args := append([]string{}, tt.args...)
+			args = append(args, "--report-file", reportPath)
+
+			output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+				"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, args),
+			})
+			require.Error(t, err)
+
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), tt.want)
+			require.Equal(t, existingReport, readReportFile(t, reportPath))
+			require.Empty(t, deleted.Snapshot())
+			if tt.wantRequests {
+				require.NotEmpty(t, requests.Snapshot())
+			} else {
+				require.Empty(t, requests.Snapshot())
+			}
+		})
+	}
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoots verifies the prompt path executes the confirmed frozen candidate set.
 func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoots(t *testing.T) {
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
@@ -465,7 +682,7 @@ func sampleIncidentPurgeDryRunPlanResult() ops.IncidentPurgeResult {
 			CandidateProcessInstanceKeys:          typex.Keys{"2251799813711972"},
 			DuplicateCandidateProcessInstanceKeys: typex.Keys{"2251799813711972"},
 			SkippedIncidents: []ops.IncidentPurgeSkippedIncident{
-				{Reason: "missing process-instance key"},
+				{Incident: incident.ProcessInstanceIncidentDetail{IncidentKey: "2251799813685255"}, Reason: "missing process-instance key"},
 			},
 			IncidentCount:                 3,
 			CandidateProcessInstanceCount: 1,
