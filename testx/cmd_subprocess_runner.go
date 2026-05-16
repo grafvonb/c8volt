@@ -4,6 +4,7 @@
 package testx
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"regexp"
@@ -22,6 +23,11 @@ func RunCmdSubprocess(t *testing.T, scopeTestName string, env map[string]string)
 func RunCmdSubprocessWithStdin(t *testing.T, scopeTestName string, env map[string]string, stdin string) ([]byte, error) {
 	t.Helper()
 	return RunCmdSubprocessInDirWithStdin(t, scopeTestName, "", env, stdin)
+}
+
+func RunCmdSubprocessSeparate(t *testing.T, scopeTestName string, env map[string]string) (string, string, error) {
+	t.Helper()
+	return RunCmdSubprocessInDirWithSeparateOutputs(t, scopeTestName, "", env, "")
 }
 
 func RunCmdSubprocessInDir(t *testing.T, scopeTestName string, dir string, env map[string]string) ([]byte, error) {
@@ -49,4 +55,31 @@ func RunCmdSubprocessInDirWithStdin(t *testing.T, scopeTestName string, dir stri
 	cmd.Env = mergedEnv
 
 	return cmd.CombinedOutput()
+}
+
+func RunCmdSubprocessInDirWithSeparateOutputs(t *testing.T, scopeTestName string, dir string, env map[string]string, stdin string) (string, string, error) {
+	t.Helper()
+
+	cmd := exec.Command(os.Args[0], "-test.run=^"+regexp.QuoteMeta(scopeTestName)+"$")
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	mergedEnv := append(os.Environ(),
+		"GO_WANT_HELPER_PROCESS=1",
+		CmdSubprocessNameEnv+"="+scopeTestName,
+	)
+	for k, v := range env {
+		mergedEnv = append(mergedEnv, k+"="+v)
+	}
+	cmd.Env = mergedEnv
+
+	err := cmd.Run()
+	return stdout.String(), stderr.String(), err
 }

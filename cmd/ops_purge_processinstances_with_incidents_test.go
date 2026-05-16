@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -289,16 +290,21 @@ func TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable(t *
 	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 
-	dryRunStdout, dryRunStderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"--json",
-		"ops", "purge", "process-instances-with-incidents",
-		"--dry-run",
-	)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	dryRunStdout, dryRunStderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"--json",
+			"ops", "purge", "process-instances-with-incidents",
+			"--dry-run",
+		}),
+	})
+	require.NoError(t, err, dryRunStderr)
 	require.Empty(t, dryRunStderr)
 	require.NotContains(t, dryRunStdout, "dry run: purge process-instances with incidents")
 	var dryRunEnvelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(dryRunStdout), &dryRunEnvelope))
+	require.NoError(t, json.Unmarshal([]byte(dryRunStdout), &dryRunEnvelope), dryRunStdout)
 	require.Equal(t, string(OutcomeSucceeded), dryRunEnvelope["outcome"])
 	require.Equal(t, "ops purge process-instances-with-incidents", dryRunEnvelope["command"])
 	dryRunPayload := requireJSONObject(t, dryRunEnvelope["payload"])
@@ -309,17 +315,21 @@ func TestOpsPurgeProcessInstancesWithIncidentsJSONOutputsStayMachineReadable(t *
 	require.Empty(t, deleted.Snapshot())
 
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
-	autoStdout, autoStderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"--automation",
-		"--json",
-		"ops", "purge", "process-instances-with-incidents",
-		"--no-wait",
-	)
-	require.Empty(t, autoStderr)
+	autoStdout, autoStderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"--automation",
+			"--json",
+			"ops", "purge", "process-instances-with-incidents",
+			"--no-wait",
+			"--force",
+		}),
+	})
+	require.NoError(t, err, autoStderr)
+	require.NotContains(t, autoStderr, "purge process-instances with incidents")
 	require.NotContains(t, autoStdout, "purge process-instances with incidents")
 	var autoEnvelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(autoStdout), &autoEnvelope))
+	require.NoError(t, json.Unmarshal([]byte(autoStdout), &autoEnvelope), autoStdout)
 	require.Equal(t, string(OutcomeSucceeded), autoEnvelope["outcome"])
 	autoPayload := requireJSONObject(t, autoEnvelope["payload"])
 	require.Equal(t, "deleted", autoPayload["outcome"])
@@ -338,12 +348,16 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesMarkdownReport(t *testing.T)
 	t.Cleanup(srv.Close)
 	reportPath := filepath.Join(t.TempDir(), "incident-purge.md")
 
-	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"ops", "purge", "process-instances-with-incidents",
-		"--dry-run",
-		"--report-file", reportPath,
-	)
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"ops", "purge", "process-instances-with-incidents",
+			"--dry-run",
+			"--report-file", reportPath,
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+	output := string(outputBytes)
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
@@ -373,14 +387,18 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	reportPath := filepath.Join(t.TempDir(), "incident-purge.json")
 	require.NoError(t, os.WriteFile(reportPath, []byte("old report"), 0o600))
 
-	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"ops", "purge", "process-instances-with-incidents",
-		"--auto-confirm",
-		"--no-wait",
-		"--report-file", reportPath,
-		"--report-format", "json",
-	)
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"ops", "purge", "process-instances-with-incidents",
+			"--auto-confirm",
+			"--no-wait",
+			"--report-file", reportPath,
+			"--report-format", "json",
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+	output := string(outputBytes)
 
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "report: written "+reportPath)
@@ -476,17 +494,18 @@ func TestOpsPurgeProcessInstancesWithIncidentsConfirmedDeletionUsesFrozenPlanRoo
 	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 	var prompt string
-	confirmCmdOrAbortFn = func(autoConfirm bool, got string) error {
-		require.False(t, autoConfirm)
-		prompt = got
-		return nil
-	}
-
-	output := executeRootForProcessInstanceTest(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"ops", "purge", "process-instances-with-incidents",
-		"--no-wait",
-	)
+	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":                     writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE": promptPath,
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"ops", "purge", "process-instances-with-incidents",
+			"--no-wait",
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+	prompt = readReportFile(t, promptPath)
+	output := string(outputBytes)
 
 	require.Contains(t, prompt, "Incident purge matched 1 candidate incident(s)")
 	require.Contains(t, output, "deletion: submitted (requests: 1)")
@@ -506,21 +525,24 @@ func TestOpsPurgeProcessInstancesWithIncidentsAutomationJSONExecutesWithoutAutoC
 	srv := newOpsIncidentPurgeServer(t, &requests, &deleted, false)
 	t.Cleanup(srv.Close)
 
-	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
-		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
-		"--automation",
-		"--json",
-		"ops", "purge", "process-instances-with-incidents",
-		"--workers", "2",
-		"--fail-fast",
-		"--no-worker-limit",
-		"--no-wait",
-		"--force",
-	)
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeProcessInstancesWithIncidentsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_INCIDENT_PURGE_ARGS": marshalOpsPurgeProcessInstancesWithIncidentsArgsForEnv(t, []string{
+			"--automation",
+			"--json",
+			"ops", "purge", "process-instances-with-incidents",
+			"--workers", "2",
+			"--fail-fast",
+			"--no-worker-limit",
+			"--no-wait",
+			"--force",
+		}),
+	})
+	require.NoError(t, err, stderr)
 
 	require.NotContains(t, stderr, "purge process-instances with incidents")
 	var envelope map[string]any
-	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
 	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
 	require.Equal(t, "ops purge process-instances-with-incidents", envelope["command"])
 	payload := requireJSONObject(t, envelope["payload"])
@@ -579,12 +601,23 @@ func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper(t *testing.T) {
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	if promptPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE"); promptPath != "" {
+		prevConfirm := confirmCmdOrAbortFn
+		defer func() { confirmCmdOrAbortFn = prevConfirm }()
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			if autoConfirm {
+				return fmt.Errorf("unexpected auto-confirm prompt")
+			}
+			return os.WriteFile(promptPath, []byte(prompt), 0o600)
+		}
+	}
 	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
+	os.Exit(0)
 }
 
 // TestOpsPurgeProcessInstancesWithIncidentsCommandHelper runs incident purge command subprocess cases.
@@ -602,12 +635,23 @@ func TestOpsPurgeProcessInstancesWithIncidentsCommandHelper(t *testing.T) {
 	resetCommandTreeFlags(root)
 	resetProcessInstanceCommandGlobals()
 	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	if promptPath := os.Getenv("C8VOLT_TEST_INCIDENT_PURGE_PROMPT_FILE"); promptPath != "" {
+		prevConfirm := confirmCmdOrAbortFn
+		defer func() { confirmCmdOrAbortFn = prevConfirm }()
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			if autoConfirm {
+				return fmt.Errorf("unexpected auto-confirm prompt")
+			}
+			return os.WriteFile(promptPath, []byte(prompt), 0o600)
+		}
+	}
 	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	if err := root.Execute(); err != nil {
 		handleBootstrapError(root, err)
 	}
+	os.Exit(0)
 }
 
 // executeOpsPurgeProcessInstancesWithIncidentsExpectError runs the command without exiting on Cobra parse errors.
