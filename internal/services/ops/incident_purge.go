@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
+	"github.com/grafvonb/c8volt/typex"
 )
 
 const incidentPurgeReportSchemaVersion = "ops.process-instances-with-incidents.v1"
@@ -31,13 +34,114 @@ func (s *Service) PurgeProcessInstancesWithIncidents(ctx context.Context, reques
 		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, err)
 	}
 
-	result.Discovery = d.IncidentDiscoveryResult{
-		Status:  d.OpsWorkflowStepStatusPlanned,
-		Filters: request.Selection,
+	discovery, err := discoverIncidentPurgeCandidates(ctx, s.incAPI, request, opts...)
+	if err != nil {
+		result.Discovery.Status = d.OpsWorkflowStepStatusFailed
+		result.Discovery.Filters = request.Selection
+		result.Discovery.Errors = []string{err.Error()}
+		result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomeFailed, err)
 	}
+
+	result.Discovery = discovery
+	result.Notices = append(result.Notices, discovery.Notices...)
 	result.DeletePlan.Status = d.OpsWorkflowStepStatusSkipped
 	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
 	return finishIncidentPurgeResult(result, d.IncidentPurgeOutcomePlanned, nil)
+}
+
+// discoverIncidentPurgeCandidates runs incident search once and freezes the process-instance candidate set.
+func discoverIncidentPurgeCandidates(ctx context.Context, api incsvc.API, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentDiscoveryResult, error) {
+	incidents, err := incsvc.SearchIncidents(ctx, api, request.Selection, incidentPurgeDiscoverySize(request), opts...)
+	if err != nil {
+		return d.IncidentDiscoveryResult{}, err
+	}
+	incidents = limitIncidentPurgeCandidateIncidents(incidents, request.Limit)
+
+	discovery := d.IncidentDiscoveryResult{
+		Status:             d.OpsWorkflowStepStatusPlanned,
+		Filters:            request.Selection,
+		CandidateIncidents: append([]d.ProcessInstanceIncidentDetail(nil), incidents...),
+		IncidentCount:      len(incidents),
+	}
+	seenProcessInstances := make(map[string]int, len(incidents))
+	var duplicateCandidates typex.Keys
+	for _, incident := range incidents {
+		if incident.IncidentKey != "" {
+			discovery.IncidentKeys = append(discovery.IncidentKeys, incident.IncidentKey)
+		}
+		if incident.ProcessInstanceKey == "" {
+			discovery.SkippedIncidents = append(discovery.SkippedIncidents, d.IncidentPurgeSkippedIncident{
+				Incident: incident,
+				Reason:   "missing process-instance key",
+			})
+			continue
+		}
+		seenProcessInstances[incident.ProcessInstanceKey]++
+		if seenProcessInstances[incident.ProcessInstanceKey] == 1 {
+			discovery.CandidateProcessInstanceKeys = append(discovery.CandidateProcessInstanceKeys, incident.ProcessInstanceKey)
+			continue
+		}
+		duplicateCandidates = append(duplicateCandidates, incident.ProcessInstanceKey)
+	}
+	discovery.CandidateProcessInstanceKeys = discovery.CandidateProcessInstanceKeys.Unique()
+	discovery.DuplicateCandidateProcessInstanceKeys = duplicateCandidates.Unique()
+	discovery.CandidateProcessInstanceCount = len(discovery.CandidateProcessInstanceKeys)
+	discovery.Notices = incidentPurgeDiscoveryNotices(discovery)
+	return discovery, nil
+}
+
+// incidentPurgeDiscoveryNotices records semantic discovery facts for reports without inflating compact output.
+func incidentPurgeDiscoveryNotices(discovery d.IncidentDiscoveryResult) []d.IncidentPurgeWorkflowNotice {
+	var notices []d.IncidentPurgeWorkflowNotice
+	if discovery.IncidentCount == 0 {
+		notices = append(notices, d.IncidentPurgeWorkflowNotice{
+			Code:     "no_candidate_incidents",
+			Severity: "info",
+			Message:  "no matching candidate incidents found",
+		})
+	}
+	if len(discovery.DuplicateCandidateProcessInstanceKeys) > 0 {
+		notices = append(notices, d.IncidentPurgeWorkflowNotice{
+			Code:     "duplicate_candidate_process_instances",
+			Severity: "info",
+			Message:  "duplicate candidate process instances detected",
+			Details: map[string]string{
+				"count": fmt.Sprintf("%d", len(discovery.DuplicateCandidateProcessInstanceKeys)),
+			},
+		})
+	}
+	if len(discovery.SkippedIncidents) > 0 {
+		notices = append(notices, d.IncidentPurgeWorkflowNotice{
+			Code:     "skipped_incidents",
+			Severity: "warning",
+			Message:  "some candidate incidents could not produce process-instance keys",
+			Details: map[string]string{
+				"count": fmt.Sprintf("%d", len(discovery.SkippedIncidents)),
+			},
+		})
+	}
+	return notices
+}
+
+// incidentPurgeDiscoverySize normalizes the search size while allowing --limit to cap candidate incidents first.
+func incidentPurgeDiscoverySize(request d.IncidentPurgeRequest) int32 {
+	if request.Limit > 0 {
+		return request.Limit
+	}
+	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
+		return request.BatchSize
+	}
+	return consts.MaxPISearchSize
+}
+
+// limitIncidentPurgeCandidateIncidents protects candidate extraction even when a stub or backend over-returns.
+func limitIncidentPurgeCandidateIncidents(items []d.ProcessInstanceIncidentDetail, limit int32) []d.ProcessInstanceIncidentDetail {
+	if limit <= 0 || len(items) <= int(limit) {
+		return items
+	}
+	return items[:limit]
 }
 
 // withIncidentPurgeOptionControls records call-option controls in the durable request model.

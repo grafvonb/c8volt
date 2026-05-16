@@ -282,13 +282,16 @@ func TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary(t *testing.
 			return d.IncidentPurgeResult{
 				Request: request,
 				Discovery: d.IncidentDiscoveryResult{
-					Status:                        d.OpsWorkflowStepStatusPlanned,
-					Filters:                       request.Selection,
-					CandidateIncidents:            []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-a", ProcessInstanceKey: "pi-a"}},
-					IncidentKeys:                  typex.Keys{"inc-a"},
-					CandidateProcessInstanceKeys:  typex.Keys{"pi-a"},
-					IncidentCount:                 1,
-					CandidateProcessInstanceCount: 1,
+					Status:                                d.OpsWorkflowStepStatusPlanned,
+					Filters:                               request.Selection,
+					CandidateIncidents:                    []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-a", ProcessInstanceKey: "pi-a"}, {IncidentKey: "inc-b", ProcessInstanceKey: "pi-a"}, {IncidentKey: "inc-c"}},
+					IncidentKeys:                          typex.Keys{"inc-a", "inc-b", "inc-c"},
+					CandidateProcessInstanceKeys:          typex.Keys{"pi-a"},
+					DuplicateCandidateProcessInstanceKeys: typex.Keys{"pi-a"},
+					SkippedIncidents:                      []d.IncidentPurgeSkippedIncident{{Incident: d.ProcessInstanceIncidentDetail{IncidentKey: "inc-c"}, Reason: "missing process-instance key"}},
+					IncidentCount:                         3,
+					CandidateProcessInstanceCount:         1,
+					Notices:                               []d.IncidentPurgeWorkflowNotice{{Code: "candidate_duplicates", Severity: "info", Message: "duplicates found", Details: map[string]string{"processInstanceKey": "pi-a"}}},
 				},
 				DeletePlan: d.IncidentPurgeDeletePlan{
 					Status:                       d.OpsWorkflowStepStatusPlanned,
@@ -335,8 +338,14 @@ func TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary(t *testing.
 
 	require.NoError(t, err)
 	require.Equal(t, IncidentPurgeOutcomePlanned, got.Outcome)
-	require.Equal(t, []string{"inc-a"}, []string(got.Discovery.IncidentKeys))
+	require.Equal(t, []string{"inc-a", "inc-b", "inc-c"}, []string(got.Discovery.IncidentKeys))
 	require.Equal(t, []string{"pi-a"}, []string(got.Discovery.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"pi-a"}, []string(got.Discovery.DuplicateCandidateProcessInstanceKeys))
+	require.Len(t, got.Discovery.SkippedIncidents, 1)
+	require.Equal(t, "inc-c", got.Discovery.SkippedIncidents[0].Incident.IncidentKey)
+	require.Equal(t, "missing process-instance key", got.Discovery.SkippedIncidents[0].Reason)
+	require.Equal(t, "candidate_duplicates", got.Discovery.Notices[0].Code)
+	require.Equal(t, "pi-a", got.Discovery.Notices[0].Details["processInstanceKey"])
 	require.Equal(t, []string{"root-a"}, []string(got.DeletePlan.ResolvedRootKeys))
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
 	require.True(t, got.Deletion.NoWait)

@@ -89,7 +89,7 @@ var opsPurgeProcessInstancesWithIncidentsCmd = &cobra.Command{
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops purge process-instances with incidents: %w", err))
 		}
-		if err := renderCommandResult(cmd, result); err != nil {
+		if err := renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("render ops purge process-instances with incidents: %w", err))
 		}
 	},

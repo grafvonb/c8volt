@@ -70,18 +70,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Add incident discovery service or ops service tests for candidate extraction, duplicate detection, skipped incidents, and limit handling in `internal/services/ops/incident_purge_test.go`
-- [ ] T021 [P] [US2] Add command dry-run discovery output tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
-- [ ] T022 [P] [US2] Add facade conversion tests for incident discovery result fields in `c8volt/ops/client_test.go`
+- [x] T020 [P] [US2] Add incident discovery service or ops service tests for candidate extraction, duplicate detection, skipped incidents, and limit handling in `internal/services/ops/incident_purge_test.go`
+- [x] T021 [P] [US2] Add command dry-run discovery output tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T022 [P] [US2] Add facade conversion tests for incident discovery result fields in `c8volt/ops/client_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Reuse existing incident search semantics to discover candidate incidents in `internal/services/ops/incident_purge.go`
-- [ ] T024 [US2] Extract, deduplicate, and freeze candidate process-instance keys in `internal/services/ops/incident_purge.go`
-- [ ] T025 [US2] Preserve candidate incidents, duplicate candidate process instances, skipped incidents, notices, and errors in `internal/domain/ops_incident_purge.go`
-- [ ] T026 [US2] Map discovery request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
-- [ ] T027 [US2] Render compact discovery output and complete JSON discovery data in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
-- [ ] T028 [US2] Mark US2 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+- [x] T023 [US2] Reuse existing incident search semantics to discover candidate incidents in `internal/services/ops/incident_purge.go`
+- [x] T024 [US2] Extract, deduplicate, and freeze candidate process-instance keys in `internal/services/ops/incident_purge.go`
+- [x] T025 [US2] Preserve candidate incidents, duplicate candidate process instances, skipped incidents, notices, and errors in `internal/domain/ops_incident_purge.go`
+- [x] T026 [US2] Map discovery request/result through `c8volt/ops/client.go` and `c8volt/ops/convert.go`
+- [x] T027 [US2] Render compact discovery output and complete JSON discovery data in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`
+- [x] T028 [US2] Mark US2 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
 
 **Checkpoint**: Incident discovery works independently with dry-run and mutates nothing.
 

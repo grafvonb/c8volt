@@ -35,7 +35,15 @@ func TestPurgeProcessInstancesWithIncidentsRecordsControls(t *testing.T) {
 		StartedAt:    started,
 	}
 
-	got, err := New(stubProcessInstanceAPI{}, stubIncidentAPI{}).PurgeProcessInstancesWithIncidents(
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, request.Selection, filter)
+			require.EqualValues(t, 5, size)
+			return nil, nil
+		},
+	}
+
+	got, err := New(stubProcessInstanceAPI{}, incAPI).PurgeProcessInstancesWithIncidents(
 		context.Background(),
 		request,
 		services.WithNoWait(),
@@ -105,6 +113,94 @@ func TestPurgeProcessInstancesWithIncidentsValidatesServiceDependencies(t *testi
 	}
 }
 
+// TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates verifies incident discovery, dedupe, skips, and limit capping before delete planning exists.
+func TestPurgeProcessInstancesWithIncidentsDryRunDiscoversFrozenCandidates(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, d.IncidentFilter{State: "ACTIVE", ErrorType: "JOB_NO_RETRIES", Keys: []string{"9001"}}, filter)
+			require.EqualValues(t, 3, size)
+			require.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "9001", ProcessInstanceKey: "1001", State: "ACTIVE"},
+				{IncidentKey: "9002", ProcessInstanceKey: "1001", State: "ACTIVE"},
+				{IncidentKey: "9003", State: "ACTIVE"},
+				{IncidentKey: "9004", ProcessInstanceKey: "1002", State: "ACTIVE"},
+			}, nil
+		},
+	}
+	request := d.IncidentPurgeRequest{
+		CommandName: "ops purge process-instances-with-incidents",
+		DryRun:      true,
+		Selection: d.IncidentFilter{
+			Keys:      []string{"9001"},
+			State:     "ACTIVE",
+			ErrorType: "JOB_NO_RETRIES",
+		},
+		BatchSize: 100,
+		Limit:     3,
+		StartedAt: time.Date(2026, 5, 16, 11, 0, 0, 0, time.UTC),
+	}
+
+	got, err := New(stubProcessInstanceAPI{}, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), request, services.WithVerbose())
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
+	require.Equal(t, []string{"9001", "9002", "9003"}, []string(got.Discovery.IncidentKeys))
+	require.Len(t, got.Discovery.CandidateIncidents, 3)
+	require.Equal(t, []string{"1001"}, []string(got.Discovery.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"1001"}, []string(got.Discovery.DuplicateCandidateProcessInstanceKeys))
+	require.Len(t, got.Discovery.SkippedIncidents, 1)
+	require.Equal(t, "9003", got.Discovery.SkippedIncidents[0].Incident.IncidentKey)
+	require.Equal(t, "missing process-instance key", got.Discovery.SkippedIncidents[0].Reason)
+	require.Equal(t, 3, got.Discovery.IncidentCount)
+	require.Equal(t, 1, got.Discovery.CandidateProcessInstanceCount)
+	require.Equal(t, []string{"duplicate_candidate_process_instances", "skipped_incidents"}, []string{got.Discovery.Notices[0].Code, got.Discovery.Notices[1].Code})
+	require.Len(t, got.Notices, 2)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+	require.Equal(t, got.Discovery, got.Report.Discovery)
+	require.Empty(t, got.Errors)
+}
+
+// TestPurgeProcessInstancesWithIncidentsDryRunNoTargetsSkipsPlanning records the no-target discovery result without mutation.
+func TestPurgeProcessInstancesWithIncidentsDryRunNoTargetsSkipsPlanning(t *testing.T) {
+	t.Parallel()
+
+	incAPI := stubIncidentAPI{
+		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			require.Equal(t, d.IncidentFilter{State: "ACTIVE"}, filter)
+			require.EqualValues(t, 1000, size)
+			return nil, nil
+		},
+	}
+
+	got, err := New(stubProcessInstanceAPI{}, incAPI).PurgeProcessInstancesWithIncidents(context.Background(), d.IncidentPurgeRequest{
+		DryRun:    true,
+		Selection: d.IncidentFilter{State: "ACTIVE"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
+	require.Zero(t, got.Discovery.IncidentCount)
+	require.Zero(t, got.Discovery.CandidateProcessInstanceCount)
+	require.Empty(t, got.Discovery.CandidateProcessInstanceKeys)
+	require.Equal(t, "no_candidate_incidents", got.Discovery.Notices[0].Code)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.DeletePlan.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Deletion.Status)
+}
+
 type stubIncidentAPI struct {
 	incsvc.API
+	searchIncidents func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+}
+
+func (s stubIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchIncidents == nil {
+		panic("unexpected incident search")
+	}
+	return s.searchIncidents(ctx, filter, size, opts...)
 }

@@ -3,6 +3,12 @@
 
 package incident
 
+import (
+	"strings"
+
+	"github.com/grafvonb/c8volt/toolx"
+)
+
 type ProcessInstanceIncidentDetail struct {
 	IncidentKey            string `json:"incidentKey,omitempty"`
 	CreationTime           string `json:"creationTime,omitempty"`
@@ -32,6 +38,26 @@ type Filter struct {
 	FlowNodeInstanceKey    string   `json:"flowNodeInstanceKey,omitempty"`
 	CreationTimeAfter      string   `json:"creationTimeAfter,omitempty"`
 	CreationTimeBefore     string   `json:"creationTimeBefore,omitempty"`
+}
+
+// String renders the active incident filters in the same compact style as other CLI filters.
+func (f Filter) String() string {
+	parts := make([]string, 0, 12)
+	if len(f.Keys) > 0 {
+		parts = append(parts, "keys="+strings.Join(f.Keys, ","))
+	}
+	parts = toolx.AppendRawField(parts, "state", f.State)
+	parts = toolx.AppendQuotedField(parts, "errorType", f.ErrorType)
+	parts = toolx.AppendQuotedField(parts, "errorMessage", f.ErrorMessage)
+	parts = toolx.AppendQuotedField(parts, "processInstanceKey", f.ProcessInstanceKey)
+	parts = toolx.AppendQuotedField(parts, "rootProcessInstanceKey", f.RootProcessInstanceKey)
+	parts = toolx.AppendQuotedField(parts, "processDefinitionKey", f.ProcessDefinitionKey)
+	parts = toolx.AppendQuotedField(parts, "processDefinitionId", f.ProcessDefinitionId)
+	parts = toolx.AppendQuotedField(parts, "flowNodeId", f.FlowNodeId)
+	parts = toolx.AppendQuotedField(parts, "flowNodeInstanceKey", f.FlowNodeInstanceKey)
+	parts = toolx.AppendQuotedField(parts, "creationTimeAfter", f.CreationTimeAfter)
+	parts = toolx.AppendQuotedField(parts, "creationTimeBefore", f.CreationTimeBefore)
+	return toolx.FormatActiveFields(parts)
 }
 
 type Incidents struct {

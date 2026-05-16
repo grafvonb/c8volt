@@ -144,6 +144,80 @@ func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsUseInvalidInput(t *tes
 	}
 }
 
+// TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput verifies dry-run discovery freezes incident candidates without delete requests.
+func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[`+
+			`{"incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
+			`{"incidentKey":"2251799813685254","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
+			`{"incidentKey":"2251799813685255","state":"ACTIVE","tenantId":"tenant-a"}`+
+			`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	defer srv.Close()
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"ops", "purge", "process-instances-with-incidents",
+		"--state", "active",
+		"--limit", "3",
+		"--dry-run",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"state":"ACTIVE"`)
+	require.Contains(t, requests[0], `"limit":3`)
+	require.Contains(t, output, "dry run: purge process-instances with incidents")
+	require.Contains(t, output, `selection filters: {state=active}`)
+	require.Contains(t, output, "candidate incidents: 3")
+	require.Contains(t, output, "candidate process instances: 1")
+	require.Contains(t, output, "duplicate candidate process instances: 1")
+	require.Contains(t, output, "skipped incidents: 1")
+	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
+}
+
+// TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData verifies machine output carries complete discovery fields.
+func TestOpsPurgeProcessInstancesWithIncidentsDryRunJSONDiscoveryData(t *testing.T) {
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[`+
+			`{"incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
+			`{"incidentKey":"2251799813685254","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"},`+
+			`{"incidentKey":"2251799813685255","state":"ACTIVE","tenantId":"tenant-a"}`+
+			`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`,
+	)
+	defer srv.Close()
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"--json",
+		"ops", "purge", "process-instances-with-incidents",
+		"--limit", "3",
+		"--dry-run",
+	)
+
+	require.Len(t, requests, 1)
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &envelope))
+	require.Equal(t, "succeeded", envelope["outcome"])
+	payload := requireJSONObject(t, envelope["payload"])
+	discovery := requireJSONObject(t, payload["discovery"])
+	require.Equal(t, float64(3), discovery["incidentCount"])
+	require.Equal(t, float64(1), discovery["candidateProcessInstanceCount"])
+	require.Len(t, discovery["incidentKeys"], 3)
+	require.Len(t, discovery["candidateProcessInstanceKeys"], 1)
+	require.Len(t, discovery["duplicateCandidateProcessInstanceKeys"], 1)
+	require.Len(t, discovery["skippedIncidents"], 1)
+	require.Len(t, discovery["notices"], 2)
+}
+
 // TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper runs command validation in a subprocess for exit-code assertions.
 func TestOpsPurgeProcessInstancesWithIncidentsInvalidFlagsHelper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
