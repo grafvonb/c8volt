@@ -299,7 +299,7 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
 	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
 	require.Contains(t, output, "outcome: deleted")
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
 	}, deleted.Snapshot())
@@ -351,7 +351,7 @@ func TestOpsPurgeAllProcessDefinitionsAutomationJSONExecutesWithoutAutoConfirm(t
 	require.Equal(t, true, deletion["submitted"])
 	require.Equal(t, true, deletion["noWait"])
 	require.Len(t, deletion["submittedProcessDefinitionKeys"], 2)
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
 	}, deleted.Snapshot())
@@ -479,7 +479,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesJSONReport(t *testing.T) {
 	deletion := requireJSONObject(t, report["deletion"])
 	require.Equal(t, "submitted", deletion["status"])
 	require.Equal(t, true, deletion["submitted"])
-	require.Equal(t, []string{
+	require.ElementsMatch(t, []string{
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
 	}, deleted.Snapshot())

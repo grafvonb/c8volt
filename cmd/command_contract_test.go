@@ -549,11 +549,32 @@ func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *te
 		Description: "only include the latest matching process-definition version(s)",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pd-version",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "process definition version to filter candidate discovery",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pd-version-tag",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "process definition version tag to filter candidate discovery",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "dry-run",
 		Type:        "bool",
 		Required:    false,
 		Repeated:    false,
 		Description: "discover and validate process-definition cleanup without submitting deletion requests",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an audit report to the given path",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "report-format",
@@ -592,6 +613,20 @@ func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *te
 		Description: "return after deletion requests are accepted without deletion confirmation",
 	})
 	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling validation or deletion work after the first error",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-worker-limit",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "use all queued jobs as workers when --workers is unset",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
 		Name:        "workers",
 		Shorthand:   "w",
 		Type:        "int",
@@ -601,6 +636,12 @@ func TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract(t *te
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "xml"})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "stat"})
+
+	doc := capabilityDocumentForRoot(root)
+	paths := commandCapabilityPaths(doc.Commands)
+	require.Contains(t, paths, "ops purge all-process-definitions")
+	require.NotContains(t, paths, "ops purge purge-definitions")
+	require.NotContains(t, paths, "ops purge delete-all")
 }
 
 // TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract verifies discovery metadata for the incident purge command.

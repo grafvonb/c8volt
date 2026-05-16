@@ -34,11 +34,46 @@
 - Interactive all-process-definitions runs should perform a dry-run planning pass, reject active-instance blockers locally before prompting, freeze `planned.Discovery.CandidateProcessDefinitionKeys`, and execute the final request with that frozen scope so no second discovery can expand deletion.
 - All-process-definitions report handling should mirror incident purge: validate report-file overwrite safety before remote planning for dry-run/unconfirmed paths, allow overwrite only for already confirmed/submitted mutations, write failure reports when audit data exists, and print `report: written <path>` only after a successful write.
 - All-process-definitions compact human output should suppress detailed key lists by default; verbose output is the place for candidate metadata, duplicate candidate keys, affected process-instance keys, and active blocked keys.
+- Generated CLI docs may create new per-command Markdown files and update `docs/index.md` build metadata; refresh them with `make docs-content` after help/example changes and do not hand-edit generated output.
+- Tests observing process-definition delete submissions from worker-based paths should not assume request order when multiple workers can submit deletes concurrently; assert the submitted set instead.
 
 ## Validation Log
 
-- Pending: Ralph implementation iterations will record targeted validation and final `make test` results here as work units complete.
+- Final validation passed in Iteration 8 with targeted command/facade/service tests and repository-wide `make test`.
 
+---
+
+---
+## Iteration 8 - 2026-05-16 19:28:22 CEST
+**User Story**: User Story 6 - Preserve Documentation And Regression Contracts
+**Tasks Completed**:
+- [x] T056: Add regression tests for unchanged `get pd` selection and display-only behavior in `cmd/get_processdefinition_test.go`
+- [x] T057: Add regression tests for unchanged `delete pd` preflight, force, no-wait, and selector behavior in `cmd/delete_test.go`
+- [x] T058: Add docs/contract assertions for all-process-definitions purge command metadata in `cmd/command_contract_test.go`
+- [x] T059: Update user-facing help examples for all-process-definitions purge in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T060: Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T061: Run targeted command tests with `go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessDefinition|TestGetProcessDefinition' -count=1`
+- [x] T062: Run facade and service tests with `go test ./c8volt/ops ./c8volt/processdefinition ./c8volt/resource ./internal/services/ops ./internal/services/processdefinition ./internal/services/resource -count=1`
+- [x] T063: Run repository validation with `make test`
+- [x] T064: Mark US6 tasks complete and record final validation notes in `specs/208-purge-process-definitions/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/get_processdefinition_test.go
+- cmd/delete_test.go
+- cmd/command_contract_test.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- docs/cli/c8volt_ops_purge.md
+- docs/cli/c8volt_ops_purge_all-process-definitions.md
+- docs/index.md
+- specs/208-purge-process-definitions/tasks.md
+- specs/208-purge-process-definitions/progress.md
+**Learnings**:
+- `get pd` keeps selection filters in `ProcessDefinitionFilter`, while XML remains a key-only display mode incompatible with search modifiers, `--stat`, JSON, and keys-only output.
+- `delete pd --no-wait` skips batch-operation read/poll checks and returns after the resource delete request is accepted, so tests should assert accepted submission rather than final done logs.
+- The task-listed facade path `./c8volt/processdefinition` does not exist in this repository; the actual public process facade package is `./c8volt/process`, and the corrected package set passed.
+- Validation passed: `make docs-content`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessDefinition|TestGetProcessDefinition' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./c8volt/ops ./c8volt/process ./c8volt/resource ./internal/services/ops ./internal/services/processdefinition ./internal/services/resource -count=1`; `make test`.
 ---
 
 ---

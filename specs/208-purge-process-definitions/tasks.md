@@ -170,18 +170,18 @@
 
 ### Tests for User Story 6
 
-- [ ] T056 [P] [US6] Add regression tests for unchanged `get pd` selection and display-only behavior in `cmd/get_processdefinition_test.go`
-- [ ] T057 [P] [US6] Add regression tests for unchanged `delete pd` preflight, force, no-wait, and selector behavior in `cmd/delete_test.go`
-- [ ] T058 [P] [US6] Add docs/contract assertions for all-process-definitions purge command metadata in `cmd/command_contract_test.go`
+- [x] T056 [P] [US6] Add regression tests for unchanged `get pd` selection and display-only behavior in `cmd/get_processdefinition_test.go`
+- [x] T057 [P] [US6] Add regression tests for unchanged `delete pd` preflight, force, no-wait, and selector behavior in `cmd/delete_test.go`
+- [x] T058 [P] [US6] Add docs/contract assertions for all-process-definitions purge command metadata in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T059 [US6] Update user-facing help examples for all-process-definitions purge in `cmd/ops_purge_all_processdefinitions.go`
-- [ ] T060 [US6] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
-- [ ] T061 [US6] Run targeted command tests with `go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessDefinition|TestGetProcessDefinition' -count=1`
-- [ ] T062 [US6] Run facade and service tests with `go test ./c8volt/ops ./c8volt/processdefinition ./c8volt/resource ./internal/services/ops ./internal/services/processdefinition ./internal/services/resource -count=1`
-- [ ] T063 [US6] Run repository validation with `make test`
-- [ ] T064 [US6] Mark US6 tasks complete and record final validation notes in `specs/208-purge-process-definitions/progress.md`
+- [x] T059 [US6] Update user-facing help examples for all-process-definitions purge in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T060 [US6] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T061 [US6] Run targeted command tests with `go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessDefinition|TestGetProcessDefinition' -count=1`
+- [x] T062 [US6] Run facade and service tests with `go test ./c8volt/ops ./c8volt/processdefinition ./c8volt/resource ./internal/services/ops ./internal/services/processdefinition ./internal/services/resource -count=1`
+- [x] T063 [US6] Run repository validation with `make test`
+- [x] T064 [US6] Mark US6 tasks complete and record final validation notes in `specs/208-purge-process-definitions/progress.md`
 
 **Checkpoint**: Feature is documented, regression-protected, and ready for review.
 

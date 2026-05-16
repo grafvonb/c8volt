@@ -2290,6 +2290,85 @@ apis:
 	require.Equal(t, true, filter["isLatestVersion"])
 }
 
+func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"items":[` + opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 3) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/"+opsAllProcessDefinitionsPurgePDKeyA:
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 3)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/"+opsAllProcessDefinitionsPurgePDKeyA+"/deletion":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"resourceKey":"` + opsAllProcessDefinitionsPurgePDKeyA + `","batchOperation":{"batchOperationKey":"batch-` + opsAllProcessDefinitionsPurgePDKeyA + `","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no active process instances found; no changes made yet")
+	require.Contains(t, string(output), "pd 2251799813685255 delete accepted; batch batch-2251799813685255")
+	require.NotContains(t, string(output), "deleting pd done; requested")
+
+	got := requests.Snapshot()
+	require.Equal(t, 1, countRequestPrefixes(got, "POST /v2/process-definitions/search "))
+	require.Equal(t, 0, countRequestPrefixes(got, "POST /v2/batch-operations/search "))
+	require.Equal(t, 0, countRequestPrefixes(got, "GET /v2/batch-operations/"))
+	require.Equal(t, 1, countRequestPrefixes(got, "POST /v2/resources/"+opsAllProcessDefinitionsPurgePDKeyA+"/deletion "))
+
+	searchBody := decodeSingleRequestJSON(t, requestBodyForPrefix(t, got, "POST /v2/process-definitions/search "))
+	filter, ok := searchBody["filter"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "invoice", filter["processDefinitionId"])
+	require.Equal(t, float64(3), filter["version"])
+	require.Equal(t, "stable", filter["versionTag"])
+	require.Equal(t, true, filter["isLatestVersion"])
+
+	deleteBody := decodeSingleRequestJSON(t, requestBodyForPrefix(t, got, "POST /v2/resources/"+opsAllProcessDefinitionsPurgePDKeyA+"/deletion "))
+	require.Equal(t, true, deleteBody["deleteHistory"])
+}
+
+func countRequestPrefixes(requests []string, prefix string) int {
+	count := 0
+	for _, request := range requests {
+		if strings.HasPrefix(request, prefix) {
+			count++
+		}
+	}
+	return count
+}
+
+func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []string {
+	t.Helper()
+
+	var matches []string
+	for _, request := range requests {
+		if strings.HasPrefix(request, prefix) {
+			matches = append(matches, strings.TrimPrefix(request, prefix))
+		}
+	}
+	return matches
+}
+
 // Runs a delete helper subprocess expected to fail and returns combined output with the exit code.
 func executeDeleteProcessInstanceFailureHelper(t *testing.T, helperName string, cfgPath string) (string, int) {
 	t.Helper()
@@ -2579,6 +2658,30 @@ func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t 
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "delete", "process-definition", "--bpmn-process-id", "order-process", "--latest", "--auto-confirm", "--no-wait"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"delete", "process-definition",
+		"--bpmn-process-id", "invoice",
+		"--pd-version", "3",
+		"--pd-version-tag", "stable",
+		"--latest",
+		"--force",
+		"--no-wait",
+		"--auto-confirm",
+	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()
