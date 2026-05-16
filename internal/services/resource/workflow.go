@@ -201,6 +201,7 @@ func getProcessDefinitionDeletePlanBase(ctx context.Context, pdApi pdsvc.API, ke
 	item.BpmnProcessId = pd.BpmnProcessId
 	item.ProcessVersion = pd.ProcessVersion
 	item.ProcessVersionTag = pd.ProcessVersionTag
+	item.TenantId = pd.TenantId
 	if pd.Statistics == nil {
 		return item, fmt.Errorf("active process-instance impact check for process definition %s did not return statistics", key)
 	}
@@ -282,11 +283,14 @@ func processDefinitionDeleteLogSubject(plan d.DeleteProcessDefinitionPlanItem) s
 	if plan.BpmnProcessId == "" {
 		return fmt.Sprintf("pd %s", plan.Key)
 	}
-	version := processDefinitionDeleteVersionText(plan)
-	if version != "" {
-		return fmt.Sprintf("%s %s (%s)", plan.BpmnProcessId, version, plan.Key)
+	parts := []string{"pd", plan.Key, plan.BpmnProcessId}
+	if version := processDefinitionDeleteVersionText(plan); version != "" {
+		parts = append(parts, version)
 	}
-	return fmt.Sprintf("%s (%s)", plan.BpmnProcessId, plan.Key)
+	if plan.TenantId != "" {
+		parts = append(parts, plan.TenantId)
+	}
+	return strings.Join(parts, " ")
 }
 
 func processDefinitionDeleteVersionText(plan d.DeleteProcessDefinitionPlanItem) string {

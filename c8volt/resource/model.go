@@ -63,6 +63,7 @@ type DeleteProcessDefinitionPlanItem struct {
 	BpmnProcessId              string                       `json:"bpmnProcessId,omitempty"`
 	ProcessVersion             int32                        `json:"processVersion,omitempty"`
 	ProcessVersionTag          string                       `json:"versionTag,omitempty"`
+	TenantId                   string                       `json:"tenantId,omitempty"`
 	ActiveProcessInstanceCount int64                        `json:"activeProcessInstanceCount,omitempty"`
 	ActiveProcessInstanceKeys  []string                     `json:"activeProcessInstanceKeys,omitempty"`
 	CancellationPlan           process.DryRunPIKeyExpansion `json:"cancellationPlan,omitempty"`

@@ -15,6 +15,7 @@ type DeleteProcessDefinitionPlanItem struct {
 	BpmnProcessId              string
 	ProcessVersion             int32
 	ProcessVersionTag          string
+	TenantId                   string
 	ActiveProcessInstanceCount int64
 	ActiveProcessInstanceKeys  []string
 	CancellationPlan           DryRunPIKeyExpansion

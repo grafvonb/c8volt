@@ -758,6 +758,7 @@ func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanIt
 		BpmnProcessId:              x.BpmnProcessId,
 		ProcessVersion:             x.ProcessVersion,
 		ProcessVersionTag:          x.ProcessVersionTag,
+		TenantId:                   x.TenantId,
 		ActiveProcessInstanceCount: x.ActiveProcessInstanceCount,
 		ActiveProcessInstanceKeys:  append([]string(nil), x.ActiveProcessInstanceKeys...),
 		CancellationPlan:           fromDomainDryRunPIKeyExpansion(x.CancellationPlan),

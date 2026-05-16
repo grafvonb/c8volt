@@ -39,9 +39,10 @@ func TestProcessDefinitionDeleteLogSubjectUsesBPMNProcessIDVersionAndKey(t *test
 		BpmnProcessId:     "invoice",
 		ProcessVersion:    5,
 		ProcessVersionTag: "v1.0.0",
+		TenantId:          "<default>",
 	})
 
-	assert.Equal(t, "invoice v5/v1.0.0 (2251799813685255)", got)
+	assert.Equal(t, "pd 2251799813685255 invoice v5/v1.0.0 <default>", got)
 }
 
 func TestProcessDefinitionDeleteLogSubjectOmitsMissingVersion(t *testing.T) {
@@ -50,9 +51,10 @@ func TestProcessDefinitionDeleteLogSubjectOmitsMissingVersion(t *testing.T) {
 	got := processDefinitionDeleteLogSubject(d.DeleteProcessDefinitionPlanItem{
 		Key:           "2251799813685255",
 		BpmnProcessId: "invoice",
+		TenantId:      "tenant-a",
 	})
 
-	assert.Equal(t, "invoice (2251799813685255)", got)
+	assert.Equal(t, "pd 2251799813685255 invoice tenant-a", got)
 }
 
 func TestProcessDefinitionDeleteLogSubjectFallsBackToKeyOnly(t *testing.T) {
