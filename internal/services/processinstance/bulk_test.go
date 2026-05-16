@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -79,6 +80,7 @@ func TestCreateProcessInstancesStopsOnFirstError(t *testing.T) {
 
 type stubBulkProcessInstanceAPI struct {
 	API
+	create func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
 	cancel func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
 	delete func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
 }
@@ -102,6 +104,14 @@ func (b *lockedLogBuffer) String() string {
 	return b.buf.String()
 }
 
+// CreateProcessInstance delegates creation to the configured test callback.
+func (s stubBulkProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	if s.create == nil {
+		return d.ProcessInstanceCreation{}, errors.New("unexpected process-instance creation")
+	}
+	return s.create(ctx, data, opts...)
+}
+
 // CancelProcessInstance delegates cancellation to the configured test callback.
 func (s stubBulkProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
 	if s.cancel == nil {
@@ -116,6 +126,31 @@ func (s stubBulkProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, k
 		return d.DeleteResponse{}, errors.New("unexpected process-instance deletion")
 	}
 	return s.delete(ctx, key, opts...)
+}
+
+// TestCreateNProcessInstancesLogsActualSuccessAndFailureCounts verifies partial create failures do not log the requested count as fully created.
+func TestCreateNProcessInstancesLogsActualSuccessAndFailureCounts(t *testing.T) {
+	var logBuf lockedLogBuffer
+	log := slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo))
+	wantErr := errors.New("create failed")
+	attempt := 0
+	api := stubBulkProcessInstanceAPI{
+		create: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			attempt++
+			require.Equal(t, "demo", data.BpmnProcessId)
+			if attempt == 2 {
+				return d.ProcessInstanceCreation{}, wantErr
+			}
+			return d.ProcessInstanceCreation{Key: fmt.Sprintf("pi-%d", attempt), BpmnProcessId: data.BpmnProcessId}, nil
+		},
+	}
+
+	got, err := CreateNProcessInstances(context.Background(), api, log, d.ProcessInstanceData{BpmnProcessId: "demo"}, 3, 1)
+
+	require.ErrorIs(t, err, wantErr)
+	require.Len(t, got, 3)
+	require.Contains(t, logBuf.String(), "creating pi done; requested 3, created 2, failed 1")
+	require.NotContains(t, logBuf.String(), "creating pi done; created 3")
 }
 
 // TestDeleteProcessInstancesLogsProgressWhileRootDeleteRuns verifies long root-tree deletes produce durable progress lines before the final summary.

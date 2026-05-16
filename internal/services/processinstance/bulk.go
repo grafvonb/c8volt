@@ -31,11 +31,21 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 	logging.InfoIfVerbose(fmt.Sprintf("creating pi: requested %d, workers %d", n, nw), log, cfg.Verbose)
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("creating %d pi", n))
 	defer stopActivity()
+	var completed atomic.Int64
+	var created atomic.Int64
+	stopProgress := startProcessInstanceBulkProgress(ctx, log, "create", n, 0, &completed)
+	defer stopProgress()
 	pics, err := pool.ExecuteNTimes[d.ProcessInstanceCreation](ctx, n, nw, cfg.FailFast, func(ctx context.Context, _ int) (d.ProcessInstanceCreation, error) {
-		return api.CreateProcessInstance(ctx, data, opts...)
+		defer completed.Add(1)
+		pi, err := api.CreateProcessInstance(ctx, data, opts...)
+		if err == nil {
+			created.Add(1)
+		}
+		return pi, err
 	})
 	if !cfg.NoWait {
-		log.Info(fmt.Sprintf("creating pi done; created %d", n))
+		ok := int(created.Load())
+		log.Info(fmt.Sprintf("creating pi done; requested %d, created %d, failed %d", n, ok, n-ok))
 	}
 	return pics, err
 }
