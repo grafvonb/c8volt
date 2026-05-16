@@ -31,6 +31,8 @@
 - Unconfirmed destructive incident purge runs first execute a dry-run preplan, use `shouldImplicitlyConfirm(cmd)` for the prompt decision, and pass `DiscoveredCandidateProcessInstanceKeys` into the confirmed service call so incident discovery is not rerun after confirmation.
 - Incident purge report handling now mirrors the orphan/retention ops workflow lifecycle: validate report paths before remote work, write reports before human rendering, preserve existing files until deletion is submitted, and record local aborts in the report shape when possible.
 - Incident purge Markdown and JSON reports are rendered from `ops.IncidentPurgeReport` in `cmd/cmd_views_ops_purge_processinstances_with_incidents.go`; compact human output stays count-oriented while verbose mode owns full key lists.
+- US6 delete-pi regression coverage belongs in existing `cmd/delete_test.go`; this repository does not currently have a separate `cmd/delete_processinstance_test.go` despite the task label.
+- `make docs-content` generates the incident-purge command page at `docs/cli/c8volt_ops_purge_process-instances-with-incidents.md` and refreshes the purge index and docs build metadata from Cobra command source.
 
 ## Status
 
@@ -247,4 +249,35 @@
 - Incident purge can reuse the existing shared report helpers directly while using command-specific rendering for the complete incident discovery, delete-plan, deletion, notice, and error report fields.
 - Existing report-file preservation depends on write mode as well as preflight validation: dry-run and unconfirmed runs fail before remote work when a report exists, while a locally blocked auto-confirmed run still preserves the file because no deletion was submitted.
 - Validation run: `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents(Verbose|JSONOutputs|WritesMarkdownReport|WritesJSONReport|ExistingReportPreservation)' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processinstance -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./... -count=1`.
+---
+
+---
+## Iteration 8 - 2026-05-16 11:34:54 CEST
+**User Story**: User Story 6 - Preserve Documentation And Regression Contracts
+**Tasks Completed**:
+- [x] T056: Add regression tests for unchanged `get incident` selection and display-only behavior in `cmd/get_incident_test.go`
+- [x] T057: Add regression tests for unchanged `delete pi` hierarchy planning and force/no-wait behavior in `cmd/delete_test.go`
+- [x] T058: Add docs/contract assertions for incident purge command metadata in `cmd/command_contract_test.go`
+- [x] T059: Update user-facing help examples for incident purge in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T060: Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T061: Run targeted command tests with `go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessInstance|TestGetIncident' -count=1`
+- [x] T062: Run facade and service tests with `go test ./c8volt/ops ./c8volt/incident ./c8volt/process ./internal/services/ops ./internal/services/incident ./internal/services/processinstance -count=1`
+- [x] T063: Run repository validation with `make test`
+- [x] T064: Mark US6 tasks complete and record final validation notes in `specs/199-ops-incident-purge/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/command_contract_test.go
+- cmd/delete_test.go
+- cmd/get_incident_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- docs/cli/c8volt_ops_purge.md
+- docs/cli/c8volt_ops_purge_process-instances-with-incidents.md
+- docs/index.md
+- specs/199-ops-incident-purge/progress.md
+- specs/199-ops-incident-purge/tasks.md
+**Learnings**:
+- `get incident` retains display-only behavior through its own command surface; incident purge only reuses the selection subset and keeps display-only flags unknown there.
+- `delete pi` regression coverage should stay in `cmd/delete_test.go`, where hierarchy planning, resolved root submission, force, no-wait, worker, fail-fast, and no-worker-limit behavior already live.
+- Validation run: `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract' -count=1`; `make docs-content`; `GOCACHE=/private/tmp/codex-go-build go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessInstance|TestGetIncident' -count=1`; `GOCACHE=/private/tmp/codex-go-build go test ./c8volt/ops ./c8volt/incident ./c8volt/process ./internal/services/ops ./internal/services/incident ./internal/services/processinstance -count=1`; `GOCACHE=/private/tmp/codex-go-build make test`.
 ---

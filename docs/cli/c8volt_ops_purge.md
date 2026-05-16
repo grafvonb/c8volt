@@ -56,4 +56,5 @@ c8volt ops purge [flags]
 
 * [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
 * [c8volt ops purge orphan-process-instances](c8volt_ops_purge_orphan-process-instances)	 - Purge orphan child process instances
+* [c8volt ops purge process-instances-with-incidents](c8volt_ops_purge_process-instances-with-incidents)	 - Purge process instances selected by incidents
 

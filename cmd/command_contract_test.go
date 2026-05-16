@@ -514,6 +514,7 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
 	require.Contains(t, capability.AutomationNotes, "implicitly confirmed incident-based purges")
 	require.Contains(t, capability.Aliases, "pi-with-incidents")
+	require.NotContains(t, capability.Aliases, "piwi")
 	require.NotContains(t, capability.Aliases, "incident-pis")
 	require.Contains(t, capability.OutputModes, OutputModeContract{
 		Name:      "one-line",
@@ -545,6 +546,57 @@ func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContra
 		Required:    false,
 		Repeated:    false,
 		Description: "audit report format: markdown, json (default inferred from report-file extension)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "automation",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "enable non-interactive mode for commands that explicitly support it",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "auto-confirm",
+		Shorthand:   "y",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "auto-confirm prompts for non-interactive use",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after deletion requests are accepted without deletion confirmation",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "workers",
+		Shorthand:   "w",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "maximum concurrent workers when validating the delete plan and deleting roots (default: min(targets, GOMAXPROCS))",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "fail-fast",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "stop scheduling validation or deletion work after the first error",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-worker-limit",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "disable limiting the number of workers to GOMAXPROCS when --workers > 1",
 	})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "pi-keys-only"})
 	require.NotContains(t, capability.Flags, FlagContract{Name: "total"})

@@ -170,18 +170,18 @@
 
 ### Tests for User Story 6
 
-- [ ] T056 [P] [US6] Add regression tests for unchanged `get incident` selection and display-only behavior in `cmd/get_incident_test.go`
-- [ ] T057 [P] [US6] Add regression tests for unchanged `delete pi` hierarchy planning and force/no-wait behavior in `cmd/delete_processinstance_test.go`
-- [ ] T058 [P] [US6] Add docs/contract assertions for incident purge command metadata in `cmd/command_contract_test.go`
+- [x] T056 [P] [US6] Add regression tests for unchanged `get incident` selection and display-only behavior in `cmd/get_incident_test.go`
+- [x] T057 [P] [US6] Add regression tests for unchanged `delete pi` hierarchy planning and force/no-wait behavior in `cmd/delete_test.go`
+- [x] T058 [P] [US6] Add docs/contract assertions for incident purge command metadata in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T059 [US6] Update user-facing help examples for incident purge in `cmd/ops_purge_processinstances_with_incidents.go`
-- [ ] T060 [US6] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
-- [ ] T061 [US6] Run targeted command tests with `go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessInstance|TestGetIncident' -count=1`
-- [ ] T062 [US6] Run facade and service tests with `go test ./c8volt/ops ./c8volt/incident ./c8volt/process ./internal/services/ops ./internal/services/incident ./internal/services/processinstance -count=1`
-- [ ] T063 [US6] Run repository validation with `make test`
-- [ ] T064 [US6] Mark US6 tasks complete and record final validation notes in `specs/199-ops-incident-purge/progress.md`
+- [x] T059 [US6] Update user-facing help examples for incident purge in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T060 [US6] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T061 [US6] Run targeted command tests with `go test ./cmd -run 'TestOpsPurge|TestCommandContract|TestDeleteProcessInstance|TestGetIncident' -count=1`
+- [x] T062 [US6] Run facade and service tests with `go test ./c8volt/ops ./c8volt/incident ./c8volt/process ./internal/services/ops ./internal/services/incident ./internal/services/processinstance -count=1`
+- [x] T063 [US6] Run repository validation with `make test`
+- [x] T064 [US6] Mark US6 tasks complete and record final validation notes in `specs/199-ops-incident-purge/progress.md`
 
 **Checkpoint**: Feature is documented, regression-protected, and ready for review.
 
