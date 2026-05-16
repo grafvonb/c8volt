@@ -4,6 +4,7 @@
 package v89
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -18,6 +19,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	"github.com/grafvonb/c8volt/testx"
+	"github.com/grafvonb/c8volt/toolx/logging"
 	"github.com/grafvonb/c8volt/toolx/poller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,7 +93,8 @@ func TestService_Deploy(t *testing.T) {
 	resourceData := []byte("<xml>demo</xml>")
 
 	t.Run("SuccessWithConfirmation", func(t *testing.T) {
-		svc := newTestService(t, tenantID, &mockResourceClient{
+		var logBuf bytes.Buffer
+		resourceClient := &mockResourceClient{
 			createDeploymentWithBodyWithResponse: func(ctx context.Context, contentType string, body io.Reader, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateDeploymentResponse, error) {
 				assertMultipartDeploymentRequest(t, contentType, body, tenantID, resourceName, resourceData)
 				return &camundav89.CreateDeploymentResponse{
@@ -121,7 +124,8 @@ func TestService_Deploy(t *testing.T) {
 				t.Fatalf("unexpected get call")
 				return nil, nil
 			},
-		}, &mockProcessDefinitionClient{
+		}
+		processClient := &mockProcessDefinitionClient{
 			getProcessDefinitionWithResponse: func(ctx context.Context, key string, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessDefinitionResponse, error) {
 				assert.Equal(t, "proc-1", key)
 				return &camundav89.GetProcessDefinitionResponse{
@@ -132,7 +136,14 @@ func TestService_Deploy(t *testing.T) {
 					},
 				}, nil
 			},
-		})
+		}
+		svc, err := New(
+			testConfigWithTenant(t, tenantID),
+			&http.Client{},
+			slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo)),
+			WithClient(resourceClient, processClient),
+		)
+		require.NoError(t, err)
 
 		deployment, err := svc.Deploy(ctx, []d.DeploymentUnitData{{Name: resourceName, Data: resourceData}})
 
@@ -141,6 +152,10 @@ func TestService_Deploy(t *testing.T) {
 		assert.Equal(t, tenantID, deployment.TenantId)
 		require.Len(t, deployment.Units, 1)
 		assert.Equal(t, "proc-1", deployment.Units[0].ProcessDefinition.ProcessDefinitionKey)
+		assert.Contains(t, logBuf.String(), "INFO pd deploy wait; count 1")
+		assert.Contains(t, logBuf.String(), "INFO pd deploy confirmed; count 1, tenant tenant")
+		assert.NotContains(t, logBuf.String(), "waiting for deployments")
+		assert.NotContains(t, logBuf.String(), "deployments confirmed")
 	})
 
 	t.Run("MalformedSuccessPayload", func(t *testing.T) {

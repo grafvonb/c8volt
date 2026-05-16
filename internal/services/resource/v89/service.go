@@ -174,20 +174,20 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 			return d.Deployment{}, err
 		}
 	} else {
-		s.log.Info(fmt.Sprintf("deployments finished; count %d, tenant %s, no-wait", len(units), vtenantID))
+		s.log.Info(fmt.Sprintf("pd deploy submitted; count %d, tenant %s, no-wait", len(units), vtenantID))
 	}
 	return fromDeploymentResult(*payload), nil
 }
 
 func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav89.DeploymentResult, vtenantID string) error {
-	s.log.Info(fmt.Sprintf("waiting for deployments; count %d", len(dr.Deployments)))
+	s.log.Info(fmt.Sprintf("pd deploy wait; count %d", len(dr.Deployments)))
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d deployments", len(dr.Deployments)))
 	defer stopActivity()
 	poll := s.processDefinitionDeployPoller(dr)
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)
 	}
-	s.log.Info(fmt.Sprintf("deployments confirmed; count %d, tenant %s", len(dr.Deployments), vtenantID))
+	s.log.Info(fmt.Sprintf("pd deploy confirmed; count %d, tenant %s", len(dr.Deployments), vtenantID))
 	return nil
 }
 
