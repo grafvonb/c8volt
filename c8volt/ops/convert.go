@@ -755,6 +755,9 @@ func fromDomainProcessDefinitionStatistics(x *d.ProcessDefinitionStatistics) *pr
 func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanItem) resource.DeleteProcessDefinitionPlanItem {
 	return resource.DeleteProcessDefinitionPlanItem{
 		Key:                        x.Key,
+		BpmnProcessId:              x.BpmnProcessId,
+		ProcessVersion:             x.ProcessVersion,
+		ProcessVersionTag:          x.ProcessVersionTag,
 		ActiveProcessInstanceCount: x.ActiveProcessInstanceCount,
 		ActiveProcessInstanceKeys:  append([]string(nil), x.ActiveProcessInstanceKeys...),
 		CancellationPlan:           fromDomainDryRunPIKeyExpansion(x.CancellationPlan),

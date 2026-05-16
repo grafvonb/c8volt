@@ -22,37 +22,54 @@ import (
 
 func DeleteProcessDefinition(ctx context.Context, api API, pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 	cfg := services.ApplyCallOptions(opts)
-	log.Info(fmt.Sprintf("checking pd %s delete impact", key))
-	previewPlan, err := PreviewDeleteProcessDefinitions(ctx, pdApi, piApi, log, types.Keys{key}, opts...)
-	if err != nil {
-		return d.ResourceDeleteResponse{}, err
+	plan := d.DeleteProcessDefinitionPlanItem{Key: key}
+	if cfg.NoStateCheck {
+		previewPlan, err := PreviewDeleteProcessDefinitions(ctx, pdApi, piApi, log, types.Keys{key}, opts...)
+		if err != nil {
+			return d.ResourceDeleteResponse{}, err
+		}
+		if len(previewPlan.Items) == 0 {
+			return d.ResourceDeleteResponse{}, fmt.Errorf("process definition %s was not included in delete impact check", key)
+		}
+		plan = previewPlan.Items[0]
+	} else {
+		var err error
+		plan, err = getProcessDefinitionDeletePlanBase(ctx, pdApi, key, opts...)
+		if err != nil {
+			return d.ResourceDeleteResponse{}, err
+		}
 	}
-	if len(previewPlan.Items) == 0 {
-		return d.ResourceDeleteResponse{}, fmt.Errorf("process definition %s was not included in delete impact check", key)
+	pdLabel := processDefinitionDeleteLogSubject(plan)
+	log.Info(fmt.Sprintf("checking %s delete impact", pdLabel))
+	if !cfg.NoStateCheck {
+		var err error
+		plan, err = completeProcessDefinitionDeleteImpact(ctx, piApi, plan, cfg.Force, cfg.Verbose, opts...)
+		if err != nil {
+			return d.ResourceDeleteResponse{}, err
+		}
 	}
-	plan := previewPlan.Items[0]
-	log.Info(fmt.Sprintf("pd %s delete impact; active pi %d", key, plan.ActiveProcessInstances()))
+	log.Info(fmt.Sprintf("%s delete impact; active pi %d", pdLabel, plan.ActiveProcessInstances()))
 	if !cfg.NoStateCheck && plan.ActiveProcessInstances() > 0 {
 		if !cfg.Force {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("cannot delete process definition %s with %d active process instance(s); use --force to cancel them automatically", key, plan.ActiveProcessInstances())
 		}
-		log.Info(fmt.Sprintf("pd %s delete force; cancelling active pi first", key))
-		if err := cancelProcessDefinitionActiveInstances(ctx, piApi, log, key, plan, opts...); err != nil {
+		log.Info(fmt.Sprintf("%s delete force; cancelling active pi first", pdLabel))
+		if err := cancelProcessDefinitionActiveInstances(ctx, piApi, log, plan, opts...); err != nil {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition cancel active instances: %w", err)
 		}
-		if err := waitForActiveProcessDefinitionInstancesDrained(ctx, pdApi, log, key, opts...); err != nil {
+		if err := waitForActiveProcessDefinitionInstancesDrained(ctx, pdApi, log, plan, opts...); err != nil {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition wait for active instances to drain: %w", err)
 		}
-		if err := deleteProcessDefinitionProcessInstances(ctx, piApi, log, key, plan, opts...); err != nil {
+		if err := deleteProcessDefinitionProcessInstances(ctx, piApi, log, plan, opts...); err != nil {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition process-instance history: %w", err)
 		}
 	}
-	log.Info(fmt.Sprintf("pd %s delete submitted; history included", key))
+	log.Info(fmt.Sprintf("%s delete submitted; history included", pdLabel))
 	resp, err := api.Delete(ctx, key, opts...)
 	if resp.BatchOperationKey != "" {
-		log.Info(fmt.Sprintf("pd %s delete accepted; batch %s, state %s", key, resp.BatchOperationKey, resp.BatchState))
+		log.Info(fmt.Sprintf("%s delete accepted; batch %s, state %s", pdLabel, resp.BatchOperationKey, resp.BatchState))
 	} else if resp.Status != "" {
-		log.Info(fmt.Sprintf("pd %s delete done; status %s", key, resp.Status))
+		log.Info(fmt.Sprintf("%s delete done; status %s", pdLabel, resp.Status))
 	}
 	resp.Key = key
 	return resp, err
@@ -110,16 +127,18 @@ func DeleteProcessDefinitions(ctx context.Context, api API, pdApi pdsvc.API, piA
 }
 
 func previewDeleteProcessDefinitionImpact(ctx context.Context, pdApi pdsvc.API, piApi pisvc.API, key string, force bool, verbose bool, opts ...services.CallOption) (d.DeleteProcessDefinitionPlanItem, error) {
-	item := d.DeleteProcessDefinitionPlanItem{Key: key}
-	active, err := countActiveProcessInstancesForDefinition(ctx, pdApi, key, opts...)
+	item, err := getProcessDefinitionDeletePlanBase(ctx, pdApi, key, opts...)
 	if err != nil {
 		return item, err
 	}
-	item.ActiveProcessInstanceCount = active
-	if !force || active == 0 {
+	return completeProcessDefinitionDeleteImpact(ctx, piApi, item, force, verbose, opts...)
+}
+
+func completeProcessDefinitionDeleteImpact(ctx context.Context, piApi pisvc.API, item d.DeleteProcessDefinitionPlanItem, force bool, verbose bool, opts ...services.CallOption) (d.DeleteProcessDefinitionPlanItem, error) {
+	if !force || item.ActiveProcessInstances() == 0 {
 		return item, nil
 	}
-	activeInstances, err := listActiveProcessInstancesForDefinition(ctx, piApi, key, opts...)
+	activeInstances, err := listActiveProcessInstancesForDefinition(ctx, piApi, item.Key, opts...)
 	if err != nil {
 		return item, err
 	}
@@ -135,7 +154,7 @@ func previewDeleteProcessDefinitionImpact(ctx context.Context, pdApi pdsvc.API, 
 	}
 	item.CancellationPlan = cancellationPlan
 	if cancellationPlan.Warning != "" {
-		item.Warnings = append(item.Warnings, formatPartialCancellationImpactWarning(key, cancellationPlan, verbose))
+		item.Warnings = append(item.Warnings, formatPartialCancellationImpactWarning(item.Key, cancellationPlan, verbose))
 	}
 	return item, nil
 }
@@ -167,19 +186,30 @@ func listActiveProcessInstancesForDefinition(ctx context.Context, piApi pisvc.AP
 }
 
 func countActiveProcessInstancesForDefinition(ctx context.Context, pdApi pdsvc.API, key string, opts ...services.CallOption) (int64, error) {
+	item, err := getProcessDefinitionDeletePlanBase(ctx, pdApi, key, opts...)
+	return item.ActiveProcessInstanceCount, err
+}
+
+func getProcessDefinitionDeletePlanBase(ctx context.Context, pdApi pdsvc.API, key string, opts ...services.CallOption) (d.DeleteProcessDefinitionPlanItem, error) {
+	item := d.DeleteProcessDefinitionPlanItem{Key: key}
 	statOpts := append([]services.CallOption{}, opts...)
 	statOpts = append(statOpts, services.WithStat())
 	pd, err := pdApi.GetProcessDefinition(ctx, key, statOpts...)
 	if err != nil {
-		return 0, err
+		return item, err
 	}
+	item.BpmnProcessId = pd.BpmnProcessId
+	item.ProcessVersion = pd.ProcessVersion
+	item.ProcessVersionTag = pd.ProcessVersionTag
 	if pd.Statistics == nil {
-		return 0, fmt.Errorf("active process-instance impact check for process definition %s did not return statistics", key)
+		return item, fmt.Errorf("active process-instance impact check for process definition %s did not return statistics", key)
 	}
-	return pd.Statistics.Active, nil
+	item.ActiveProcessInstanceCount = pd.Statistics.Active
+	return item, nil
 }
 
-func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API, log *slog.Logger, key string, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+	key := plan.Key
 	roots := plan.CancellationPlan.Roots.Unique()
 	if len(roots) == 0 {
 		return fmt.Errorf("no root process instances found to cancel for process definition %s", key)
@@ -188,7 +218,7 @@ func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API
 	if affected == 0 {
 		affected = len(plan.ActiveProcessInstanceKeys)
 	}
-	log.Info(fmt.Sprintf("pd %s delete prep; cancelling pi roots %d, affected %d", key, len(roots), affected))
+	log.Info(fmt.Sprintf("%s delete prep; cancelling pi roots %d, affected %d", processDefinitionDeleteLogSubject(plan), len(roots), affected))
 	cancelOpts := append([]services.CallOption{}, opts...)
 	cancelOpts = append(cancelOpts, services.WithAffectedProcessInstanceCount(affected))
 	reports, err := pisvc.CancelProcessInstances(ctx, piApi, log, roots, 0, affected, cancelOpts...)
@@ -202,7 +232,8 @@ func cancelProcessDefinitionActiveInstances(ctx context.Context, piApi pisvc.API
 	return nil
 }
 
-func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.API, log *slog.Logger, key string, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+	key := plan.Key
 	roots := plan.CancellationPlan.Roots.Unique()
 	if len(roots) == 0 {
 		return fmt.Errorf("no root process instances found to delete for process definition %s", key)
@@ -211,7 +242,7 @@ func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.AP
 	if affected == 0 {
 		affected = len(plan.ActiveProcessInstanceKeys)
 	}
-	log.Info(fmt.Sprintf("pd %s delete prep; deleting pi history affected %d, roots %d", key, affected, len(roots)))
+	log.Info(fmt.Sprintf("%s delete prep; deleting pi history affected %d, roots %d", processDefinitionDeleteLogSubject(plan), affected, len(roots)))
 	deleteOpts := append([]services.CallOption{}, opts...)
 	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
 	reports, err := pisvc.DeleteProcessInstances(ctx, piApi, log, roots, 0, affected, deleteOpts...)
@@ -225,8 +256,10 @@ func deleteProcessDefinitionProcessInstances(ctx context.Context, piApi pisvc.AP
 	return nil
 }
 
-func waitForActiveProcessDefinitionInstancesDrained(ctx context.Context, pdApi pdsvc.API, log *slog.Logger, key string, opts ...services.CallOption) error {
-	log.Info(fmt.Sprintf("waiting for pd %s active pi to drain", key))
+func waitForActiveProcessDefinitionInstancesDrained(ctx context.Context, pdApi pdsvc.API, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) error {
+	key := plan.Key
+	pdLabel := processDefinitionDeleteLogSubject(plan)
+	log.Info(fmt.Sprintf("waiting for %s active pi to drain", pdLabel))
 	poll := func(ctx context.Context) (poller.JobPollStatus, error) {
 		active, err := countActiveProcessInstancesForDefinition(ctx, pdApi, key, opts...)
 		if err != nil {
@@ -235,14 +268,22 @@ func waitForActiveProcessDefinitionInstancesDrained(ctx context.Context, pdApi p
 		if active == 0 {
 			return poller.JobPollStatus{Success: true, Message: fmt.Sprintf("process definition %s has no active process instances", key)}, nil
 		}
-		log.Info(fmt.Sprintf("pd %s active pi %d; waiting", key, active))
-		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("pd %s active pi %d", key, active)}, nil
+		log.Info(fmt.Sprintf("%s active pi %d; waiting", pdLabel, active))
+		return poller.JobPollStatus{Success: false, Message: fmt.Sprintf("%s active pi %d", pdLabel, active)}, nil
 	}
 	if err := poller.WaitForCompletion(ctx, log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return err
 	}
-	log.Info(fmt.Sprintf("pd %s active pi drained; deleting", key))
+	log.Info(fmt.Sprintf("%s active pi drained; deleting", pdLabel))
 	return nil
+}
+
+func processDefinitionDeleteLogSubject(plan d.DeleteProcessDefinitionPlanItem) string {
+	subject := fmt.Sprintf("pd %s", plan.Key)
+	if plan.BpmnProcessId != "" {
+		subject += fmt.Sprintf(" (bpmn-process-id %s)", plan.BpmnProcessId)
+	}
+	return subject
 }
 
 func processInstanceKeys(items []d.ProcessInstance) types.Keys {

@@ -30,3 +30,22 @@ func TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVer
 	assert.NotContains(t, quiet, "missing-2")
 	assert.Contains(t, verbose, "missing ancestor keys: missing-1, missing-2")
 }
+
+func TestProcessDefinitionDeleteLogSubjectIncludesBPMNProcessID(t *testing.T) {
+	t.Parallel()
+
+	got := processDefinitionDeleteLogSubject(d.DeleteProcessDefinitionPlanItem{
+		Key:           "2251799813685255",
+		BpmnProcessId: "invoice",
+	})
+
+	assert.Equal(t, "pd 2251799813685255 (bpmn-process-id invoice)", got)
+}
+
+func TestProcessDefinitionDeleteLogSubjectFallsBackToKeyOnly(t *testing.T) {
+	t.Parallel()
+
+	got := processDefinitionDeleteLogSubject(d.DeleteProcessDefinitionPlanItem{Key: "2251799813685255"})
+
+	assert.Equal(t, "pd 2251799813685255", got)
+}
