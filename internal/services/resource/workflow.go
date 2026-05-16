@@ -47,7 +47,7 @@ func DeleteProcessDefinition(ctx context.Context, api API, pdApi pdsvc.API, piAp
 			return d.ResourceDeleteResponse{}, err
 		}
 	}
-	log.Info(fmt.Sprintf("%s; delete impact; active pi %d", pdLabel, plan.ActiveProcessInstances()))
+	log.Info(fmt.Sprintf("%s; delete impact checked; active pi %d", pdLabel, plan.ActiveProcessInstances()))
 	if !cfg.NoStateCheck && plan.ActiveProcessInstances() > 0 {
 		if !cfg.Force {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("cannot delete process definition %s with %d active process instance(s); use --force to cancel them automatically", key, plan.ActiveProcessInstances())
@@ -62,15 +62,23 @@ func DeleteProcessDefinition(ctx context.Context, api API, pdApi pdsvc.API, piAp
 			return d.ResourceDeleteResponse{}, fmt.Errorf("delete process definition process-instance history: %w", err)
 		}
 	}
-	log.Info(fmt.Sprintf("%s; delete submitted; history included", pdLabel))
+	log.Info(fmt.Sprintf("%s; delete request sent; history included", pdLabel))
 	resp, err := api.Delete(ctx, key, opts...)
+	logProcessDefinitionDeleteResult(log, pdLabel, resp)
+	resp.Key = key
+	return resp, err
+}
+
+func logProcessDefinitionDeleteResult(log *slog.Logger, pdLabel string, resp d.ResourceDeleteResponse) {
 	if resp.BatchOperationKey != "" {
-		log.Info(fmt.Sprintf("%s; delete accepted; batch %s, state %s", pdLabel, resp.BatchOperationKey, resp.BatchState))
+		if resp.BatchState != "" {
+			log.Info(fmt.Sprintf("%s; delete confirmed; batch %s, state %s", pdLabel, resp.BatchOperationKey, resp.BatchState))
+		} else {
+			log.Info(fmt.Sprintf("%s; delete accepted; batch %s", pdLabel, resp.BatchOperationKey))
+		}
 	} else if resp.Status != "" {
 		log.Info(fmt.Sprintf("%s; delete done; status %s", pdLabel, resp.Status))
 	}
-	resp.Key = key
-	return resp, err
 }
 
 func PreviewDeleteProcessDefinitions(ctx context.Context, pdApi pdsvc.API, piApi pisvc.API, log *slog.Logger, keys types.Keys, opts ...services.CallOption) (d.DeleteProcessDefinitionPlan, error) {

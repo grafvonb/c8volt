@@ -4,6 +4,8 @@
 package resource
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
@@ -63,4 +65,41 @@ func TestProcessDefinitionDeleteLogSubjectFallsBackToKeyOnly(t *testing.T) {
 	got := processDefinitionDeleteLogSubject(d.DeleteProcessDefinitionPlanItem{Key: "2251799813685255"})
 
 	assert.Equal(t, "pd 2251799813685255", got)
+}
+
+func TestLogProcessDefinitionDeleteResultUsesSequentialLifecycleTerms(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		resp d.ResourceDeleteResponse
+		want string
+	}{
+		{
+			name: "confirmed batch after wait",
+			resp: d.ResourceDeleteResponse{BatchOperationKey: "batch-1", BatchState: "COMPLETED"},
+			want: "pd 1 invoice v3 tenant; delete confirmed; batch batch-1, state COMPLETED",
+		},
+		{
+			name: "accepted batch without confirmation",
+			resp: d.ResourceDeleteResponse{BatchOperationKey: "batch-1"},
+			want: "pd 1 invoice v3 tenant; delete accepted; batch batch-1",
+		},
+		{
+			name: "direct status without batch",
+			resp: d.ResourceDeleteResponse{Status: "204 No Content"},
+			want: "pd 1 invoice v3 tenant; delete done; status 204 No Content",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log := slog.New(slog.NewTextHandler(&buf, nil))
+
+			logProcessDefinitionDeleteResult(log, "pd 1 invoice v3 tenant", tt.resp)
+
+			assert.Contains(t, buf.String(), tt.want)
+		})
+	}
 }
