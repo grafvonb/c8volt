@@ -2,10 +2,11 @@
 title: "c8volt"
 permalink: /
 nav_order: 1
+nav_exclude: true
 has_toc: true
 ---
 
-> Generated from build `c8volt v3.7.0-alpha1-81-g349cf86-dirty`, commit `349cf86`, built `2026-05-14T11:33:39Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
+> Generated from build `c8volt v3.7.0-alpha1-101-gd0be45f-dirty`, commit `d0be45f`, built `2026-05-16T15:36:59Z` | Supported Camunda 8 versions: 8.7, 8.8, 8.9
 
 <img src="./logo/c8volt_logo_transparent_w_shadow_400x244.png" alt="c8volt logo" />
 
@@ -18,6 +19,8 @@ has_toc: true
 > If an action needs retries, waiting, tree traversal, state checks, cleanup, or deterministic machine output before it is truly finished, `c8volt` should do that work for you.
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
+
+<img src="./assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 
 ## Release 3.7.x
 

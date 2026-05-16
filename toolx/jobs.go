@@ -5,13 +5,25 @@ package toolx
 
 import "runtime"
 
+const (
+	defaultWorkerGOMAXPROCSMultiplier = 2
+	defaultWorkerHardLimit            = 32
+)
+
 func DetermineNoOfWorkers(jobsCount, wantedWorkers int, noWorkerLimit bool) int {
 	workers := wantedWorkers
 	if workers <= 0 {
 		workers = jobsCount
 		if !noWorkerLimit {
-			if gp := runtime.GOMAXPROCS(0); gp < workers {
-				workers = gp
+			limit := runtime.GOMAXPROCS(0) * defaultWorkerGOMAXPROCSMultiplier
+			if limit > defaultWorkerHardLimit {
+				limit = defaultWorkerHardLimit
+			}
+			if limit < 1 {
+				limit = 1
+			}
+			if limit < workers {
+				workers = limit
 			}
 		}
 	}

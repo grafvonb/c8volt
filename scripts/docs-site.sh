@@ -119,8 +119,12 @@ do_serve() {
   check_bundler
   configure_bundler_env
   bundle_install_if_needed
+  local livereload_args=(--livereload)
+  if [[ -n "${C8VOLT_DOCS_LIVERELOAD_PORT:-}" ]]; then
+    livereload_args+=(--livereload-port "${C8VOLT_DOCS_LIVERELOAD_PORT}")
+  fi
   cd "${DOCS_DIR}"
-  run_bundle exec jekyll serve --livereload --host 127.0.0.1 --baseurl /c8volt
+  run_bundle exec jekyll serve "${livereload_args[@]}" --host 127.0.0.1 --baseurl /c8volt
 }
 
 do_check() {
@@ -139,6 +143,9 @@ Commands:
   build    run jekyll build in docs/
   build-root run jekyll build in docs/ with baseurl forced to /
   serve    run jekyll serve in docs/
+
+Environment:
+  C8VOLT_DOCS_LIVERELOAD_PORT  override the default LiveReload port
 EOF
 }
 
@@ -165,7 +172,4 @@ case "${cmd}" in
     exit 1
     ;;
 esac
-
-
-
 

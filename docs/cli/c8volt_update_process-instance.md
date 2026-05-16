@@ -44,10 +44,10 @@ c8volt update process-instance [flags]
   -h, --help               help for process-instance
       --key strings        process instance key(s) to update; repeat or combine with stdin '-'
       --no-wait            return after the update request is accepted without variable confirmation
-      --no-worker-limit    disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit    use all queued jobs as workers when --workers is unset
       --vars string        JSON object with variables to set on each process instance
       --vars-file string   path to JSON object file with variables to set on each process instance
-  -w, --workers int        maximum concurrent workers when updating multiple process instances (default: min(count, GOMAXPROCS))
+  -w, --workers int        maximum concurrent workers when updating multiple process instances (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

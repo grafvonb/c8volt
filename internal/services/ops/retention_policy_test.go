@@ -45,7 +45,7 @@ func TestExecuteRetentionPolicyValidatesRequestShape(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := New(stubProcessInstanceAPI{}).ExecuteRetentionPolicy(context.Background(), tt.request)
+			got, err := New(stubProcessInstanceAPI{}, nil).ExecuteRetentionPolicy(context.Background(), tt.request)
 
 			require.Error(t, err)
 			require.True(t, errors.Is(err, d.ErrValidation), "got %v", err)
@@ -110,7 +110,7 @@ func TestExecuteRetentionPolicyAcceptsZeroRetentionDaysAndRecordsControls(t *tes
 		StartedAt:    started,
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(
 		context.Background(),
 		request,
 		services.WithNoWait(),
@@ -175,7 +175,7 @@ func TestExecuteRetentionPolicyDryRunDiscoversFrozenSeedSetAndSkipsDeleteWork(t 
 		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
@@ -217,7 +217,7 @@ func TestExecuteRetentionPolicyDryRunNoTargetsSkipsPlanAndDeletion(t *testing.T)
 		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
@@ -290,7 +290,7 @@ func TestExecuteRetentionPolicyCombinesSelectionFiltersWithRetentionBoundary(t *
 		StartedAt: time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
@@ -394,7 +394,7 @@ func TestExecuteRetentionPolicyBuildsDeletePlanFromRetentionSeeds(t *testing.T) 
 		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, d.RetentionPolicyOutcomePlanned, got.Outcome)
@@ -461,7 +461,7 @@ func TestExecuteRetentionPolicyBlocksNonFinalAffectedInstancesWithoutForce(t *te
 		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), request)
 
 	require.Error(t, err)
 	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
@@ -529,7 +529,7 @@ func TestExecuteRetentionPolicySkipsSeedWhenRootIsNonFinal(t *testing.T) {
 		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(context.Background(), request)
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(context.Background(), request)
 
 	require.NoError(t, err)
 	require.False(t, descendantsCalled)
@@ -605,7 +605,7 @@ func TestExecuteRetentionPolicyDeletesResolvedRootsWithNoWait(t *testing.T) {
 		StartedAt:              time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC),
 	}
 
-	got, err := New(piAPI).ExecuteRetentionPolicy(
+	got, err := New(piAPI, nil).ExecuteRetentionPolicy(
 		context.Background(),
 		request,
 		services.WithNoWait(),

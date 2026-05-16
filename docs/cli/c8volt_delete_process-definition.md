@@ -41,10 +41,10 @@ c8volt delete process-definition [flags]
       --latest                   fetch the latest version(s) of the given BPMN process(s)
       --no-state-check           skip checking process-instance state before deleting
       --no-wait                  return after deletion work is accepted
-      --no-worker-limit          disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit          use all queued jobs as workers when --workers is unset
       --pd-version int32         process definition version
       --pd-version-tag string    process definition version tag
-  -w, --workers int              maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -w, --workers int              maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

@@ -12,6 +12,7 @@ import (
 
 	ferr "github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/foptions"
+	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
@@ -246,9 +247,117 @@ func TestClientExecuteRetentionPolicyNormalizesValidationErrors(t *testing.T) {
 	require.ErrorIs(t, err, ferr.ErrInvalidInput)
 }
 
+func TestClientPurgeProcessInstancesWithIncidentsMapsServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	started := time.Date(2026, 5, 16, 8, 45, 0, 0, time.UTC)
+	api := stubOpsService{
+		incidentPurge: func(_ context.Context, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentPurgeResult, error) {
+			require.Equal(t, d.IncidentPurgeRequest{
+				CommandName:   "ops purge process-instances-with-incidents",
+				DryRun:        true,
+				AutoConfirm:   true,
+				Automation:    true,
+				OutputMode:    "json",
+				Selection:     d.IncidentFilter{State: "ACTIVE", ErrorType: "JOB_NO_RETRIES", ProcessInstanceKey: "pi-a"},
+				BatchSize:     50,
+				Limit:         5,
+				Workers:       3,
+				FailFast:      true,
+				NoWorkerLimit: true,
+				NoWait:        true,
+				Force:         true,
+				ReportFile:    "incident-purge.json",
+				ReportFormat:  "json",
+				DiscoveredCandidateProcessInstanceKeys: typex.Keys{
+					"pi-a",
+				},
+				StartedAt: started,
+			}, request)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.Verbose)
+			require.True(t, cfg.NoWait)
+			require.True(t, cfg.Force)
+			require.True(t, cfg.FailFast)
+			return d.IncidentPurgeResult{
+				Request: request,
+				Discovery: d.IncidentDiscoveryResult{
+					Status:                                d.OpsWorkflowStepStatusPlanned,
+					Filters:                               request.Selection,
+					CandidateIncidents:                    []d.ProcessInstanceIncidentDetail{{IncidentKey: "inc-a", ProcessInstanceKey: "pi-a"}, {IncidentKey: "inc-b", ProcessInstanceKey: "pi-a"}, {IncidentKey: "inc-c"}},
+					IncidentKeys:                          typex.Keys{"inc-a", "inc-b", "inc-c"},
+					CandidateProcessInstanceKeys:          typex.Keys{"pi-a"},
+					DuplicateCandidateProcessInstanceKeys: typex.Keys{"pi-a"},
+					SkippedIncidents:                      []d.IncidentPurgeSkippedIncident{{Incident: d.ProcessInstanceIncidentDetail{IncidentKey: "inc-c"}, Reason: "missing process-instance key"}},
+					IncidentCount:                         3,
+					CandidateProcessInstanceCount:         1,
+					Notices:                               []d.IncidentPurgeWorkflowNotice{{Code: "candidate_duplicates", Severity: "info", Message: "duplicates found", Details: map[string]string{"processInstanceKey": "pi-a"}}},
+				},
+				DeletePlan: d.IncidentPurgeDeletePlan{
+					Status:                       d.OpsWorkflowStepStatusPlanned,
+					CandidateProcessInstanceKeys: typex.Keys{"pi-a"},
+					ResolvedRootKeys:             typex.Keys{"root-a"},
+					AffectedKeys:                 typex.Keys{"root-a", "pi-a"},
+					DuplicateResolvedRootKeys:    typex.Keys{"root-a"},
+					RequiresConfirmation:         true,
+				},
+				Deletion: d.IncidentPurgeDeletionResult{
+					Status:            d.OpsWorkflowStepStatusSubmitted,
+					SubmittedRootKeys: typex.Keys{"root-a"},
+					Submitted:         true,
+					NoWait:            true,
+					Items: []d.Reporter{
+						{Key: "root-a", Ok: true, StatusCode: 202, Status: "accepted"},
+					},
+				},
+				Outcome: d.IncidentPurgeOutcomePlanned,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).PurgeProcessInstancesWithIncidents(context.Background(), IncidentPurgeRequest{
+		CommandName:   "ops purge process-instances-with-incidents",
+		DryRun:        true,
+		AutoConfirm:   true,
+		Automation:    true,
+		OutputMode:    "json",
+		Selection:     incident.Filter{State: "ACTIVE", ErrorType: "JOB_NO_RETRIES", ProcessInstanceKey: "pi-a"},
+		BatchSize:     50,
+		Limit:         5,
+		Workers:       3,
+		FailFast:      true,
+		NoWorkerLimit: true,
+		NoWait:        true,
+		Force:         true,
+		ReportFile:    "incident-purge.json",
+		ReportFormat:  "json",
+		DiscoveredCandidateProcessInstanceKeys: typex.Keys{
+			"pi-a",
+		},
+		StartedAt: started,
+	}, foptions.WithVerbose(), foptions.WithNoWait(), foptions.WithForce(), foptions.WithFailFast())
+
+	require.NoError(t, err)
+	require.Equal(t, IncidentPurgeOutcomePlanned, got.Outcome)
+	require.Equal(t, []string{"inc-a", "inc-b", "inc-c"}, []string(got.Discovery.IncidentKeys))
+	require.Equal(t, []string{"pi-a"}, []string(got.Discovery.CandidateProcessInstanceKeys))
+	require.Equal(t, []string{"pi-a"}, []string(got.Discovery.DuplicateCandidateProcessInstanceKeys))
+	require.Len(t, got.Discovery.SkippedIncidents, 1)
+	require.Equal(t, "inc-c", got.Discovery.SkippedIncidents[0].Incident.IncidentKey)
+	require.Equal(t, "missing process-instance key", got.Discovery.SkippedIncidents[0].Reason)
+	require.Equal(t, "candidate_duplicates", got.Discovery.Notices[0].Code)
+	require.Equal(t, "pi-a", got.Discovery.Notices[0].Details["processInstanceKey"])
+	require.Equal(t, []string{"root-a"}, []string(got.DeletePlan.ResolvedRootKeys))
+	require.Equal(t, []string{"root-a"}, []string(got.DeletePlan.DuplicateResolvedRootKeys))
+	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
+	require.True(t, got.Deletion.NoWait)
+	require.Equal(t, []process.DeleteReport{{Key: "root-a", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Deletion.Items)
+}
+
 type stubOpsService struct {
-	purge     func(context.Context, d.OrphanPurgeRequest, ...services.CallOption) (d.OrphanPurgeResult, error)
-	retention func(context.Context, d.RetentionPolicyRequest, ...services.CallOption) (d.RetentionPolicyResult, error)
+	purge         func(context.Context, d.OrphanPurgeRequest, ...services.CallOption) (d.OrphanPurgeResult, error)
+	retention     func(context.Context, d.RetentionPolicyRequest, ...services.CallOption) (d.RetentionPolicyResult, error)
+	incidentPurge func(context.Context, d.IncidentPurgeRequest, ...services.CallOption) (d.IncidentPurgeResult, error)
 }
 
 func (s stubOpsService) PurgeOrphanProcessInstances(ctx context.Context, request d.OrphanPurgeRequest, opts ...services.CallOption) (d.OrphanPurgeResult, error) {
@@ -263,6 +372,13 @@ func (s stubOpsService) ExecuteRetentionPolicy(ctx context.Context, request d.Re
 		panic("unexpected call")
 	}
 	return s.retention(ctx, request, opts...)
+}
+
+func (s stubOpsService) PurgeProcessInstancesWithIncidents(ctx context.Context, request d.IncidentPurgeRequest, opts ...services.CallOption) (d.IncidentPurgeResult, error) {
+	if s.incidentPurge == nil {
+		panic("unexpected call")
+	}
+	return s.incidentPurge(ctx, request, opts...)
 }
 
 var _ opsvc.API = stubOpsService{}

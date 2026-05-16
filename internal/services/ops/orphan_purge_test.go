@@ -21,7 +21,7 @@ import (
 func TestNewCreatesOrphanPurgeServiceBoundary(t *testing.T) {
 	t.Parallel()
 
-	api := New(nil)
+	api := New(nil, nil)
 
 	require.NotNil(t, api)
 	require.Implements(t, (*API)(nil), api)
@@ -89,7 +89,7 @@ func TestPurgeOrphanProcessInstancesDryRunDiscoversOrphansAndPlansDeletion(t *te
 		},
 	}
 
-	got, err := New(piAPI).PurgeOrphanProcessInstances(context.Background(), request)
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, request, got.Request)
@@ -129,7 +129,7 @@ func TestPurgeOrphanProcessInstancesDryRunNoTargetsSkipsPlan(t *testing.T) {
 		},
 	}
 
-	got, err := New(piAPI).PurgeOrphanProcessInstances(context.Background(), request)
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Discovery.Status)
@@ -194,7 +194,7 @@ func TestPurgeOrphanProcessInstancesConfirmedDeletesImmutableDiscoveredSet(t *te
 		},
 	}
 
-	got, err := New(piAPI).PurgeOrphanProcessInstances(context.Background(), request, services.WithNoWait())
+	got, err := New(piAPI, nil).PurgeOrphanProcessInstances(context.Background(), request, services.WithNoWait())
 
 	require.NoError(t, err)
 	require.Equal(t, 1, searches)
@@ -251,7 +251,7 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 		},
 	}
 
-	got, err := New(piAPI, logger).PurgeOrphanProcessInstances(context.Background(), request)
+	got, err := New(piAPI, nil, logger).PurgeOrphanProcessInstances(context.Background(), request)
 
 	require.NoError(t, err)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)

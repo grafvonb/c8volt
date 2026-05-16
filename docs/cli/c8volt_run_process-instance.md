@@ -40,11 +40,11 @@ c8volt run process-instance [flags]
       --fail-fast                 stop scheduling new instances after the first error
   -h, --help                      help for process-instance
       --no-wait                   return after creation is accepted
-      --no-worker-limit           disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit           use all queued jobs as workers when --workers is unset
       --pd-key strings            specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)
       --pd-version int32          specific version of the process definition to use when running by BPMN process ID (supported only with --bpmn-process-id)
       --vars string               JSON-encoded variables to pass to the started process instance(s)
-  -w, --workers int               maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))
+  -w, --workers int               maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands

@@ -52,7 +52,7 @@ c8volt delete process-instance [flags]
   -l, --limit int32                 maximum number of matching process instances to process across all pages
       --no-state-check              skip checking the current state of the process instance before deleting it
       --no-wait                     return after deletion is accepted
-      --no-worker-limit             disable limiting the number of workers to GOMAXPROCS when --workers > 1
+      --no-worker-limit             use all queued jobs as workers when --workers is unset
       --pd-version int32            process definition version
       --pd-version-tag string       process definition version tag
       --start-date-after string     only include process instances with start date >= YYYY-MM-DD
@@ -60,7 +60,7 @@ c8volt delete process-instance [flags]
       --start-date-newer-days int   only include process instances N days old or newer (0 means today) (default -1)
       --start-date-older-days int   only include process instances N days old or older (default -1)
   -s, --state string                state to filter process instances: all, active, completed, canceled, terminated (default "all")
-  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, GOMAXPROCS))
+  -w, --workers int                 maximum concurrent workers when --batch-size > 1 (default: min(batch-size, 2*GOMAXPROCS, 32))
 ```
 
 ### Options inherited from parent commands
