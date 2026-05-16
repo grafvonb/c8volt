@@ -288,5 +288,5 @@
 **User Feedback**: Destructive `ops purge apd --force` progress logs list raw process-definition keys but should also show the BPMN process ID so operators can correlate each deletion with the compact dry-run summary.
 **Implementation Direction**:
 - Add BPMN process ID metadata to process-definition delete impact plan items when the impact lookup already fetches the definition.
-- Format process-definition delete progress subjects as `pd <key> (bpmn-process-id <id>)` whenever the BPMN ID is available.
+- Format process-definition delete progress subjects as `<bpmn-process-id> v<version>/<tag> (<key>)` whenever the BPMN ID is available.
 - Preserve key-only output as a fallback when the metadata is not available, such as no-state-check paths.

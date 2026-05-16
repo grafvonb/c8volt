@@ -2326,7 +2326,7 @@ func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForc
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no active process instances found; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255 (bpmn-process-id invoice) delete accepted; batch batch-2251799813685255")
+	require.Contains(t, string(output), "invoice v3/stable (2251799813685255) delete accepted; batch batch-2251799813685255")
 	require.NotContains(t, string(output), "deleting pd done; requested")
 
 	got := requests.Snapshot()

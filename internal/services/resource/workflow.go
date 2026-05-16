@@ -279,11 +279,28 @@ func waitForActiveProcessDefinitionInstancesDrained(ctx context.Context, pdApi p
 }
 
 func processDefinitionDeleteLogSubject(plan d.DeleteProcessDefinitionPlanItem) string {
-	subject := fmt.Sprintf("pd %s", plan.Key)
-	if plan.BpmnProcessId != "" {
-		subject += fmt.Sprintf(" (bpmn-process-id %s)", plan.BpmnProcessId)
+	if plan.BpmnProcessId == "" {
+		return fmt.Sprintf("pd %s", plan.Key)
 	}
-	return subject
+	version := processDefinitionDeleteVersionText(plan)
+	if version != "" {
+		return fmt.Sprintf("%s %s (%s)", plan.BpmnProcessId, version, plan.Key)
+	}
+	return fmt.Sprintf("%s (%s)", plan.BpmnProcessId, plan.Key)
+}
+
+func processDefinitionDeleteVersionText(plan d.DeleteProcessDefinitionPlanItem) string {
+	if plan.ProcessVersion <= 0 && plan.ProcessVersionTag == "" {
+		return ""
+	}
+	version := "v?"
+	if plan.ProcessVersion > 0 {
+		version = fmt.Sprintf("v%d", plan.ProcessVersion)
+	}
+	if plan.ProcessVersionTag != "" {
+		version += "/" + plan.ProcessVersionTag
+	}
+	return version
 }
 
 func processInstanceKeys(items []d.ProcessInstance) types.Keys {
