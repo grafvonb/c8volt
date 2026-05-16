@@ -177,6 +177,47 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		assert.NotEmpty(t, creation.StartConfirmedAt)
 		assert.Equal(t, 1, getCalls)
 	})
+
+	t.Run("CreateLogOmitsStartAndConfirmedTimestamps", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		svc, err := v89.New(
+			waitTestConfig(),
+			&http.Client{},
+			slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo)),
+			v89.WithClientCamunda(&mockCamundaClient{
+				createProcessInstanceWithResponse: func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
+					return &camundav89.CreateProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+						JSON200: &camundav89.CreateProcessInstanceResult{
+							ProcessDefinitionId:      "demo",
+							ProcessDefinitionKey:     "proc-key",
+							ProcessDefinitionVersion: 7,
+							ProcessInstanceKey:       "123",
+							TenantId:                 "tenant-a",
+						},
+					}, nil
+				},
+				searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+				cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+				deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+				getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+					return &camundav89.GetProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+						JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+					}, nil
+				},
+			}),
+		)
+		require.NoError(t, err)
+
+		_, err = svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
+
+		require.NoError(t, err)
+		output := logBuf.String()
+		assert.Contains(t, output, "INFO pi 123 created; pd proc-key demo v7 tenant-a")
+		assert.NotContains(t, output, "start ")
+		assert.NotContains(t, output, "confirmed")
+	})
 }
 
 func TestService_SearchAndLookup(t *testing.T) {
