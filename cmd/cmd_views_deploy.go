@@ -23,14 +23,17 @@ func oneLinePDDeploy(it resource.ProcessDefinitionDeployment) string {
 	return compactFlatRow(flatRowPDDeploy(it))
 }
 
-// flatRowPDDeploy aligns deployment summaries without moving the deployed BPMN definition away from the front.
+// flatRowPDDeploy keeps deployment summaries on the same pd-first grammar as other process-definition output.
 func flatRowPDDeploy(it resource.ProcessDefinitionDeployment) flatRow {
 	return flatRow{
+		"pd",
 		it.DefinitionKey,
-		it.TenantId,
 		it.DefinitionId,
 		fmt.Sprintf("v%d", it.DefinitionVersion),
+		fmt.Sprintf("%s;", it.TenantId),
+		"deploy",
+		fmt.Sprintf("%s;", it.Key),
+		"resource",
 		it.ResourceName,
-		fmt.Sprintf("(deployId: %s)", it.Key),
 	}
 }
