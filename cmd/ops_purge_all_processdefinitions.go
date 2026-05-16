@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
+	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +45,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 		if err := requireAutomationSupport(cmd); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		effectiveAutoConfirm := shouldImplicitlyConfirm(cmd)
 		request := ops.AllProcessDefinitionsPurgeRequest{
 			CommandName:   opsPurgeAllProcessDefinitionsCommandName,
 			DryRun:        flagDryRun,
@@ -59,6 +61,28 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
 			ReportFile:    flagOpsPurgeAllPDReportFile,
 			ReportFormat:  flagOpsPurgeAllPDReportFormat,
 			StartedAt:     time.Now().UTC(),
+		}
+		if !flagDryRun && !effectiveAutoConfirm {
+			planRequest := request
+			planRequest.DryRun = true
+			planned, err := cli.PurgeAllProcessDefinitions(cmd.Context(), planRequest, collectOptions()...)
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("plan ops purge all process definitions: %w", err))
+			}
+			if err := rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce(planned.DeletePlan); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+			if len(planned.DeletePlan.CandidateProcessDefinitionKeys) > 0 {
+				prompt := fmt.Sprintf("All process-definitions purge matched %d candidate process definition(s); delete planning will affect %d process instance(s) across %d unique process definition(s). Do you want to proceed?",
+					planned.Discovery.CandidateProcessDefinitionCount,
+					planned.DeletePlan.AffectedProcessInstanceCount,
+					len(planned.DeletePlan.CandidateProcessDefinitionKeys),
+				)
+				if err := confirmCmdOrAbortFn(shouldImplicitlyConfirm(cmd), prompt); err != nil {
+					handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+				}
+			}
+			request.DiscoveredCandidateProcessDefinitionKeys = append(typex.Keys{}, planned.Discovery.CandidateProcessDefinitionKeys...)
 		}
 		result, err := cli.PurgeAllProcessDefinitions(cmd.Context(), request, collectOptions()...)
 		if err != nil {
@@ -119,6 +143,17 @@ func validateOpsPurgeAllProcessDefinitionsFlags(cmd *cobra.Command) error {
 		return invalidFlagValuef("--workers must be positive integer")
 	}
 	return validateOpsWorkflowReportFlags(flagOpsPurgeAllPDReportFile, OpsWorkflowReportFormat(flagOpsPurgeAllPDReportFormat))
+}
+
+// rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce blocks mutation before prompting when active process instances are affected.
+func rejectOpsPurgeAllProcessDefinitionsPlanRequiringForce(plan ops.AllProcessDefinitionsPurgeDeletePlan) error {
+	if flagForce || !plan.RequiresForce {
+		return nil
+	}
+	return localPreconditionError(fmt.Errorf(
+		"refusing to delete all-process-definitions purge scope: %d active process instance(s) are affected; no delete request was submitted; use --force to cancel active process instances before delete",
+		plan.ActiveProcessInstanceCount,
+	))
 }
 
 func populateOpsPurgeAllProcessDefinitionsSelection() ops.ProcessDefinitionSelection {

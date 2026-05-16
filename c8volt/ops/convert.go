@@ -764,6 +764,7 @@ func fromDomainDeleteProcessDefinitionPlanItem(x d.DeleteProcessDefinitionPlanIt
 
 func fromDomainResourceDeleteReport(x d.ResourceDeleteResponse) resource.DeleteReport {
 	return resource.DeleteReport{
+		Key:               x.Key,
 		Ok:                x.Ok,
 		StatusCode:        x.StatusCode,
 		Status:            x.Status,

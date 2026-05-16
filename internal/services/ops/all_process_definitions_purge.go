@@ -70,8 +70,25 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomeFailed, err)
 	}
 
-	result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
-	return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
+	if request.DryRun || len(plan.CandidateProcessDefinitionKeys) == 0 {
+		result.Deletion.Status = d.OpsWorkflowStepStatusSkipped
+		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
+	}
+
+	reports, err := rsvc.DeleteProcessDefinitions(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, plan.CandidateProcessDefinitionKeys, request.Workers, opts...)
+	result.Deletion = d.AllProcessDefinitionsPurgeDeletionResult{
+		Status:                         deletionStatusForResourceDeleteResponses(reports, request.NoWait, err),
+		SubmittedProcessDefinitionKeys: append(typex.Keys{}, plan.CandidateProcessDefinitionKeys...),
+		Items:                          reports,
+		Submitted:                      len(reports) > 0,
+		Confirmed:                      err == nil && !request.NoWait && allResourceDeleteResponsesOK(reports),
+		NoWait:                         request.NoWait,
+		Errors:                         deletionErrors(err),
+	}
+	if err != nil {
+		return finishAllProcessDefinitionsPurgeResult(result, allProcessDefinitionsPurgeDeletionOutcomeForResponses(reports), fmt.Errorf("delete all-process-definitions purge process definitions: %w", err))
+	}
+	return finishAllProcessDefinitionsPurgeResult(result, allProcessDefinitionsPurgeDeletionOutcomeForResponses(reports), nil)
 }
 
 // buildAllProcessDefinitionsPurgeDeletePlan adapts frozen process-definition candidates into the shared delete-pd preflight.
@@ -109,6 +126,51 @@ func affectedProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProces
 		total += affected
 	}
 	return total
+}
+
+// deletionStatusForResourceDeleteResponses maps resource delete reports into workflow step status.
+func deletionStatusForResourceDeleteResponses(reports []d.ResourceDeleteResponse, noWait bool, err error) d.OpsWorkflowStepStatus {
+	if err != nil || !allResourceDeleteResponsesOK(reports) {
+		return d.OpsWorkflowStepStatusFailed
+	}
+	if noWait {
+		return d.OpsWorkflowStepStatusSubmitted
+	}
+	return d.OpsWorkflowStepStatusConfirmed
+}
+
+// allProcessDefinitionsPurgeDeletionOutcomeForResponses classifies process-definition delete responses.
+func allProcessDefinitionsPurgeDeletionOutcomeForResponses(reports []d.ResourceDeleteResponse) d.AllProcessDefinitionsPurgeOutcome {
+	if len(reports) == 0 {
+		return d.AllProcessDefinitionsPurgeOutcomeFailed
+	}
+	ok := 0
+	for _, report := range reports {
+		if report.Ok {
+			ok++
+		}
+	}
+	switch ok {
+	case len(reports):
+		return d.AllProcessDefinitionsPurgeOutcomeDeleted
+	case 0:
+		return d.AllProcessDefinitionsPurgeOutcomeFailed
+	default:
+		return d.AllProcessDefinitionsPurgeOutcomePartiallyFailed
+	}
+}
+
+// allResourceDeleteResponsesOK reports whether every process-definition delete completed successfully.
+func allResourceDeleteResponsesOK(reports []d.ResourceDeleteResponse) bool {
+	if len(reports) == 0 {
+		return false
+	}
+	for _, report := range reports {
+		if !report.Ok {
+			return false
+		}
+	}
+	return true
 }
 
 // allProcessDefinitionsPurgeDiscovery either reuses a frozen candidate set or performs one process-definition lookup.

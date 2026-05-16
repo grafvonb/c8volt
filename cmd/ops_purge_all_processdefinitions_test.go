@@ -6,11 +6,21 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
 	"github.com/grafvonb/c8volt/c8volt/process"
 	"github.com/grafvonb/c8volt/c8volt/resource"
+	"github.com/grafvonb/c8volt/internal/exitcode"
+	"github.com/grafvonb/c8volt/testx"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -231,6 +241,165 @@ func TestOpsPurgeAllProcessDefinitionsDryRunJSONPlanData(t *testing.T) {
 	require.Equal(t, true, plan["requiresConfirmation"])
 }
 
+// TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates verifies prompted deletion submits only the planned scope.
+func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+	promptPath := filepath.Join(t.TempDir(), "prompt.txt")
+
+	outputBytes, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_PROMPT": promptPath,
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"ops", "purge", "all-process-definitions",
+			"--no-wait",
+		}),
+	})
+	require.NoError(t, err, string(outputBytes))
+	output := string(outputBytes)
+
+	require.Contains(t, readReportFile(t, promptPath), "All process-definitions purge matched 2 candidate process definition(s)")
+	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
+	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "outcome: deleted")
+	require.Equal(t, []string{
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+	}, deleted.Snapshot())
+	require.Equal(t, 1, countOpsPurgeAllProcessDefinitionsRequests(requests.Snapshot(), "POST /v2/process-definitions/search "))
+}
+
+// TestOpsPurgeAllProcessDefinitionsAutomationJSONExecutesWithoutAutoConfirm verifies automation confirms the supported destructive path.
+func TestOpsPurgeAllProcessDefinitionsAutomationJSONExecutesWithoutAutoConfirm(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 0)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr, err := testx.RunCmdSubprocessSeparate(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"--automation",
+			"--json",
+			"ops", "purge", "all-process-definitions",
+			"--workers", "2",
+			"--fail-fast",
+			"--no-worker-limit",
+			"--no-wait",
+			"--force",
+		}),
+	})
+	require.NoError(t, err, stderr)
+
+	require.NotContains(t, stderr, "purge all process definitions")
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope), stdout)
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "ops purge all-process-definitions", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "deleted", payload["outcome"])
+	request := requireJSONObject(t, payload["request"])
+	require.Equal(t, true, request["automation"])
+	require.NotContains(t, request, "autoConfirm")
+	require.Equal(t, float64(2), request["workers"])
+	require.Equal(t, true, request["failFast"])
+	require.Equal(t, true, request["noWorkerLimit"])
+	require.Equal(t, true, request["noWait"])
+	require.Equal(t, true, request["force"])
+	deletion := requireJSONObject(t, payload["deletion"])
+	require.Equal(t, "submitted", deletion["status"])
+	require.Equal(t, true, deletion["submitted"])
+	require.Equal(t, true, deletion["noWait"])
+	require.Len(t, deletion["submittedProcessDefinitionKeys"], 2)
+	require.Equal(t, []string{
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
+		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
+	}, deleted.Snapshot())
+}
+
+// TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation verifies post-planning blockers keep local-precondition exit behavior.
+func TestOpsPurgeAllProcessDefinitionsBlocksActiveInstancesBeforeMutation(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	var deleted testx.SafeSlice[string]
+	srv := newOpsPurgeAllProcessDefinitionsServer(t, &requests, &deleted, 3)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsPurgeAllProcessDefinitionsCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_ALL_PD_PURGE_ARGS": marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t, []string{
+			"ops", "purge", "all-process-definitions",
+		}),
+	})
+	require.Error(t, err)
+
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "local precondition failed")
+	require.Contains(t, string(output), "refusing to delete all-process-definitions purge scope")
+	require.Contains(t, string(output), "active process instance")
+	require.Empty(t, deleted.Snapshot())
+}
+
+// TestOpsPurgeAllProcessDefinitionsDeletionOutput verifies compact execution rendering.
+func TestOpsPurgeAllProcessDefinitionsDeletionOutput(t *testing.T) {
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	t.Cleanup(resetOpsPurgeAllProcessDefinitionsFlagState)
+
+	result := sampleAllProcessDefinitionsPurgeDeletedResult()
+	var buf bytes.Buffer
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, result))
+	output := buf.String()
+
+	require.Contains(t, output, "purge all process definitions")
+	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
+	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "outcome: deleted")
+}
+
+// TestOpsPurgeAllProcessDefinitionsCommandHelper runs all-process-definitions purge command subprocess cases.
+func TestOpsPurgeAllProcessDefinitionsCommandHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	var args []string
+	if err := json.Unmarshal([]byte(os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_ARGS")), &args); err != nil {
+		t.Fatalf("invalid helper args: %v", err)
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetOpsPurgeAllProcessDefinitionsFlagState()
+	if promptPath := os.Getenv("C8VOLT_TEST_ALL_PD_PURGE_PROMPT"); promptPath != "" {
+		prevConfirm := confirmCmdOrAbortFn
+		defer func() { confirmCmdOrAbortFn = prevConfirm }()
+		confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+			if autoConfirm {
+				return fmt.Errorf("unexpected auto-confirm prompt")
+			}
+			return os.WriteFile(promptPath, []byte(prompt), 0o600)
+		}
+	}
+	root.SetArgs(append([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG")}, args...))
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	if err := root.Execute(); err != nil {
+		handleBootstrapError(root, err)
+	}
+	os.Exit(0)
+}
+
 // executeOpsPurgeAllProcessDefinitionsExpectError runs all-process-definitions purge and returns Cobra parse/validation errors.
 func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...string) (string, error) {
 	t.Helper()
@@ -251,6 +420,25 @@ func executeOpsPurgeAllProcessDefinitionsExpectError(t *testing.T, args ...strin
 		return buf.String() + err.Error(), err
 	}
 	return buf.String(), nil
+}
+
+// sampleAllProcessDefinitionsPurgeDeletedResult returns a successful no-wait deletion result for command rendering tests.
+func sampleAllProcessDefinitionsPurgeDeletedResult() ops.AllProcessDefinitionsPurgeResult {
+	result := sampleAllProcessDefinitionsPurgeDryRunPlanResult()
+	result.Request.DryRun = false
+	result.Outcome = ops.AllProcessDefinitionsPurgeOutcomeDeleted
+	result.DeletePlan.RequiresForce = false
+	result.Deletion = ops.AllProcessDefinitionsPurgeDeletionResult{
+		Status:                         ops.WorkflowStepStatusSubmitted,
+		SubmittedProcessDefinitionKeys: typex.Keys{"pd-a", "pd-b"},
+		Items: []resource.DeleteReport{
+			{Key: "pd-a", Ok: true, StatusCode: http.StatusOK, Status: "200 OK"},
+			{Key: "pd-b", Ok: true, StatusCode: http.StatusOK, Status: "200 OK"},
+		},
+		Submitted: true,
+		NoWait:    true,
+	}
+	return result
 }
 
 // sampleAllProcessDefinitionsPurgeDryRunPlanResult returns a planned purge result for command rendering tests.
@@ -311,6 +499,15 @@ func sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult() ops.AllProcessDefin
 	}
 }
 
+// marshalOpsPurgeAllProcessDefinitionsArgsForEnv preserves argument boundaries for subprocess helpers.
+func marshalOpsPurgeAllProcessDefinitionsArgsForEnv(t *testing.T, args []string) string {
+	t.Helper()
+
+	data, err := json.Marshal(args)
+	require.NoError(t, err)
+	return string(data)
+}
+
 // resetOpsPurgeAllProcessDefinitionsFlagState restores all-process-definitions purge globals between command tests.
 func resetOpsPurgeAllProcessDefinitionsFlagState() {
 	flagOpsPurgeAllPDKey = ""
@@ -328,5 +525,69 @@ func resetOpsPurgeAllProcessDefinitionsFlagState() {
 	flagForce = false
 	flagCmdAutoConfirm = false
 	flagViewAsJson = false
+	flagViewKeysOnly = false
 	flagVerbose = false
+}
+
+const (
+	opsAllProcessDefinitionsPurgePDKeyA = "2251799813685255"
+	opsAllProcessDefinitionsPurgePDKeyB = "2251799813685256"
+)
+
+func newOpsPurgeAllProcessDefinitionsServer(t *testing.T, requests *testx.SafeSlice[string], deleted *testx.SafeSlice[string], activeCount int64) *httptest.Server {
+	t.Helper()
+
+	return newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"items":[` +
+				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
+				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 2) + `,` +
+				opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyB, "payment", 1) +
+				`],"page":{"totalItems":3,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-definitions/"):
+			key := strings.TrimPrefix(r.URL.Path, "/v2/process-definitions/")
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeDefinitionJSON(key, "invoice", 1)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			payload := string(body)
+			requests.Append(r.Method + " " + r.URL.Path + " " + payload)
+			total := int64(0)
+			if strings.Contains(payload, "ACTIVE") {
+				total = activeCount
+			}
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[],"page":{"totalItems":%d,"hasMoreTotalItems":false}}`, total)))
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion"):
+			if deleted != nil {
+				deleted.Append(r.URL.Path)
+			}
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			key := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/resources/"), "/deletion")
+			_, _ = w.Write([]byte(`{"resourceKey":"` + key + `","batchOperation":{"batchOperationKey":"batch-` + key + `","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+func opsAllProcessDefinitionsPurgeDefinitionJSON(key string, id string, version int32) string {
+	return fmt.Sprintf(`{"processDefinitionKey":"%s","processDefinitionId":"%s","name":"%s","version":%d,"tenantId":"tenant","versionTag":"stable"}`, key, id, id, version)
+}
+
+func countOpsPurgeAllProcessDefinitionsRequests(items []string, prefix string) int {
+	count := 0
+	for _, item := range items {
+		if strings.HasPrefix(item, prefix) {
+			count++
+		}
+	}
+	return count
 }

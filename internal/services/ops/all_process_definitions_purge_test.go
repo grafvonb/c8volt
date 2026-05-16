@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -368,6 +369,101 @@ func TestPurgeAllProcessDefinitionsBlocksUnsafeActiveInstancesWithoutForce(t *te
 	require.Len(t, got.Report.Errors, 1)
 }
 
+// TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete verifies destructive runs reuse the delete-pd path.
+func TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete(t *testing.T) {
+	t.Parallel()
+
+	var deleted []string
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 2},
+					{Key: "pd-b", BpmnProcessId: "payment", ProcessVersion: 1},
+				}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				cfg := services.ApplyCallOptions(opts)
+				require.False(t, cfg.NoWait)
+				deleted = append(deleted, resourceKey)
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Workers: 1})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"pd-a", "pd-b"}, deleted)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Deletion.Status)
+	require.Equal(t, []string{"pd-a", "pd-b"}, []string(got.Deletion.SubmittedProcessDefinitionKeys))
+	require.True(t, got.Deletion.Submitted)
+	require.True(t, got.Deletion.Confirmed)
+	require.False(t, got.Deletion.NoWait)
+	require.Len(t, got.Deletion.Items, 2)
+	require.Equal(t, "pd-a", got.Deletion.Items[0].Key)
+	require.Equal(t, "pd-b", got.Deletion.Items[1].Key)
+	require.Equal(t, got.Deletion, got.Report.Deletion)
+}
+
+// TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath verifies delete controls reach the reused delete-pd workflow.
+func TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath(t *testing.T) {
+	t.Parallel()
+
+	var deleted []string
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 1}}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				cfg := services.ApplyCallOptions(opts)
+				require.True(t, cfg.NoWait)
+				require.True(t, cfg.Force)
+				require.True(t, cfg.FailFast)
+				require.True(t, cfg.NoWorkerLimit)
+				deleted = append(deleted, resourceKey)
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(
+		context.Background(),
+		d.AllProcessDefinitionsPurgeRequest{NoWait: true, Force: true, FailFast: true, NoWorkerLimit: true, Workers: 4},
+		services.WithNoWait(),
+		services.WithForce(),
+		services.WithFailFast(),
+		services.WithNoWorkerLimit(),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"pd-a"}, deleted)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Deletion.Status)
+	require.True(t, got.Deletion.Submitted)
+	require.False(t, got.Deletion.Confirmed)
+	require.True(t, got.Deletion.NoWait)
+	require.True(t, got.Report.NoWait)
+	require.True(t, got.Report.Force)
+	require.True(t, got.Report.FailFast)
+	require.True(t, got.Report.NoWorkerLimit)
+}
+
 // emptyStringSliceIfNil lets tests compare logical empty collections independent of nil slice representation.
 func emptyStringSliceIfNil(items []string) []string {
 	if items == nil {
@@ -396,6 +492,7 @@ type stubProcessDefinitionAPI struct {
 
 type stubResourceAPI struct {
 	rsvc.API
+	delete func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error)
 }
 
 // SearchProcessDefinitions delegates to the per-test process-definition search callback.
@@ -423,4 +520,12 @@ func (s stubProcessDefinitionAPI) GetProcessDefinition(ctx context.Context, key 
 		return d.ProcessDefinition{Key: key, Statistics: &d.ProcessDefinitionStatistics{}}, nil
 	}
 	panic("unexpected GetProcessDefinition call")
+}
+
+// Delete delegates to the per-test resource deletion callback.
+func (s stubResourceAPI) Delete(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	if s.delete == nil {
+		panic("unexpected Delete call")
+	}
+	return s.delete(ctx, resourceKey, opts...)
 }

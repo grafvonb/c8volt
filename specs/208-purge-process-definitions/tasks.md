@@ -119,18 +119,18 @@
 
 ### Tests for User Story 4
 
-- [ ] T037 [P] [US4] Add confirmed deletion command test for exact frozen candidate submission in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T038 [P] [US4] Add execution-control mapping tests for workers, fail-fast, no-worker-limit, no-wait, and force in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T039 [P] [US4] Add `--automation --json` without `--auto-confirm` success test for supported state-changing all-process-definitions purge in `cmd/ops_purge_all_processdefinitions_test.go`
-- [ ] T040 [P] [US4] Add local-precondition failure subprocess tests for post-planning blockers and exit code in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T037 [P] [US4] Add confirmed deletion command test for exact frozen candidate submission in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T038 [P] [US4] Add execution-control mapping tests for workers, fail-fast, no-worker-limit, no-wait, and force in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T039 [P] [US4] Add `--automation --json` without `--auto-confirm` success test for supported state-changing all-process-definitions purge in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T040 [P] [US4] Add local-precondition failure subprocess tests for post-planning blockers and exit code in `cmd/ops_purge_all_processdefinitions_test.go`
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Execute deletion through existing process-definition resource delete service from `internal/services/ops/all_process_definitions_purge.go`
-- [ ] T042 [US4] Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_purge_all_processdefinitions.go`
-- [ ] T043 [US4] Preserve no-wait, confirmation, per-key status, and final outcome in `internal/domain/ops_all_process_definitions_purge.go`
-- [ ] T044 [US4] Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
-- [ ] T045 [US4] Mark US4 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+- [x] T041 [US4] Execute deletion through existing process-definition resource delete service from `internal/services/ops/all_process_definitions_purge.go`
+- [x] T042 [US4] Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T043 [US4] Preserve no-wait, confirmation, per-key status, and final outcome in `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T044 [US4] Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T045 [US4] Mark US4 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
 
 **Checkpoint**: Confirmed all-process-definitions purge deletion is independently functional and automation-compatible.
 

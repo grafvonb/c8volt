@@ -30,10 +30,44 @@
 - Early command-registration iterations can keep the target command non-mutating by using Cobra `Args` for local validation and a help-only `RunE`; later discovery/execution stories should replace the run path with facade orchestration while preserving the validated flag surface and metadata.
 - All-process-definitions discovery should mirror `get pd` branching: `--key` performs a single `GetProcessDefinition` lookup, `--latest` calls `SearchProcessDefinitionsLatest`, and default/filter discovery calls `SearchProcessDefinitions` with `processdefinition.MaxResultSize`.
 - All-process-definitions delete planning should call `internal/services/resource.PreviewDeleteProcessDefinitions` with the frozen unique candidate keys. Zero-candidate discovery keeps delete planning skipped, while non-empty dry-runs build the plan and expose active-instance `RequiresForce` blockers without mutating.
+- Confirmed all-process-definitions mutation should call `internal/services/resource.DeleteProcessDefinitions` with the frozen delete-plan keys and preserve its no-wait, worker, fail-fast, no-worker-limit, force, history cleanup, wait, and per-key response behavior instead of adding an ops-specific delete path.
+- Interactive all-process-definitions runs should perform a dry-run planning pass, reject active-instance blockers locally before prompting, freeze `planned.Discovery.CandidateProcessDefinitionKeys`, and execute the final request with that frozen scope so no second discovery can expand deletion.
 
 ## Validation Log
 
 - Pending: Ralph implementation iterations will record targeted validation and final `make test` results here as work units complete.
+
+---
+## Iteration 6 - 2026-05-16 19:08:26 CEST
+**User Story**: User Story 4 - Execute Confirmed Purge Through Delete PD
+**Tasks Completed**:
+- [x] T037: Add confirmed deletion command test for exact frozen candidate submission in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T038: Add execution-control mapping tests for workers, fail-fast, no-worker-limit, no-wait, and force in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T039: Add `--automation --json` without `--auto-confirm` success test for supported state-changing all-process-definitions purge in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T040: Add local-precondition failure subprocess tests for post-planning blockers and exit code in `cmd/ops_purge_all_processdefinitions_test.go`
+- [x] T041: Execute deletion through existing process-definition resource delete service from `internal/services/ops/all_process_definitions_purge.go`
+- [x] T042: Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_purge_all_processdefinitions.go`
+- [x] T043: Preserve no-wait, confirmation, per-key status, and final outcome in `internal/domain/ops_all_process_definitions_purge.go`
+- [x] T044: Render deletion execution and final outcome in `cmd/cmd_views_ops_purge_all_processdefinitions.go`
+- [x] T045: Mark US4 tasks complete and record validation notes in `specs/208-purge-process-definitions/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/convert.go
+- cmd/ops_purge_all_processdefinitions.go
+- cmd/ops_purge_all_processdefinitions_test.go
+- internal/domain/resource.go
+- internal/services/ops/all_process_definitions_purge.go
+- internal/services/ops/all_process_definitions_purge_test.go
+- internal/services/resource/workflow.go
+- specs/208-purge-process-definitions/tasks.md
+- specs/208-purge-process-definitions/progress.md
+**Learnings**:
+- Confirmed all-process-definitions purge now submits exactly the frozen delete-plan candidate keys through the existing resource delete workflow, preserving `delete pd` behavior for force/no-wait/workers/fail-fast/no-worker-limit.
+- Interactive destructive runs now plan once for confirmation, reject active-instance blockers as a local precondition before prompting, and execute using the frozen candidate key set rather than re-running discovery.
+- Per-key deletion status is carried through the resource delete response so ops JSON/report models can expose submitted process-definition delete results.
+- Validation passed: `GOCACHE=/private/tmp/c8volt-go-build go test ./internal/services/ops -run 'TestPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./c8volt/ops -run 'TestClientPurgeAllProcessDefinitions' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/resource ./c8volt/resource -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./... -count=1`.
+---
 
 ---
 ---

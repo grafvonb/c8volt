@@ -54,6 +54,7 @@ func DeleteProcessDefinition(ctx context.Context, api API, pdApi pdsvc.API, piAp
 	} else if resp.Status != "" {
 		log.Info(fmt.Sprintf("pd %s delete done; status %s", key, resp.Status))
 	}
+	resp.Key = key
 	return resp, err
 }
 
