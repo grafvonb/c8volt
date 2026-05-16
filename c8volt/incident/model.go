@@ -20,17 +20,18 @@ type ProcessInstanceIncidentDetail struct {
 }
 
 type Filter struct {
-	State                  string `json:"state,omitempty"`
-	ErrorType              string `json:"errorType,omitempty"`
-	ErrorMessage           string `json:"errorMessage,omitempty"`
-	ProcessInstanceKey     string `json:"processInstanceKey,omitempty"`
-	RootProcessInstanceKey string `json:"rootProcessInstanceKey,omitempty"`
-	ProcessDefinitionKey   string `json:"processDefinitionKey,omitempty"`
-	ProcessDefinitionId    string `json:"processDefinitionId,omitempty"`
-	FlowNodeId             string `json:"flowNodeId,omitempty"`
-	FlowNodeInstanceKey    string `json:"flowNodeInstanceKey,omitempty"`
-	CreationTimeAfter      string `json:"creationTimeAfter,omitempty"`
-	CreationTimeBefore     string `json:"creationTimeBefore,omitempty"`
+	Keys                   []string `json:"keys,omitempty"`
+	State                  string   `json:"state,omitempty"`
+	ErrorType              string   `json:"errorType,omitempty"`
+	ErrorMessage           string   `json:"errorMessage,omitempty"`
+	ProcessInstanceKey     string   `json:"processInstanceKey,omitempty"`
+	RootProcessInstanceKey string   `json:"rootProcessInstanceKey,omitempty"`
+	ProcessDefinitionKey   string   `json:"processDefinitionKey,omitempty"`
+	ProcessDefinitionId    string   `json:"processDefinitionId,omitempty"`
+	FlowNodeId             string   `json:"flowNodeId,omitempty"`
+	FlowNodeInstanceKey    string   `json:"flowNodeInstanceKey,omitempty"`
+	CreationTimeAfter      string   `json:"creationTimeAfter,omitempty"`
+	CreationTimeBefore     string   `json:"creationTimeBefore,omitempty"`
 }
 
 type Incidents struct {

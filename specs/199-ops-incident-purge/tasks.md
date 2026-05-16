@@ -46,17 +46,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Add command registration, help, and alias tests for incident purge in `cmd/ops_purge_processinstances_with_incidents_test.go`
-- [ ] T013 [P] [US1] Add unsupported display-only incident flag tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
-- [ ] T014 [P] [US1] Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T012 [P] [US1] Add command registration, help, and alias tests for incident purge in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T013 [P] [US1] Add unsupported display-only incident flag tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T014 [P] [US1] Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Add `ops purge process-instances-with-incidents` Cobra command, alias, summary, and safe examples in `cmd/ops_purge_processinstances_with_incidents.go`
-- [ ] T016 [US1] Register supported incident selection flags and delete workflow flags in `cmd/ops_purge_processinstances_with_incidents.go`
-- [ ] T017 [US1] Map static flag validation failures through existing invalid-input helpers in `cmd/ops_purge_processinstances_with_incidents.go`
-- [ ] T018 [US1] Set mutation, output-mode, required flag, and automation metadata in `cmd/ops_purge_processinstances_with_incidents.go`
-- [ ] T019 [US1] Mark US1 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+- [x] T015 [US1] Add `ops purge process-instances-with-incidents` Cobra command, alias, summary, and safe examples in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T016 [US1] Register supported incident selection flags and delete workflow flags in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T017 [US1] Map static flag validation failures through existing invalid-input helpers in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T018 [US1] Set mutation, output-mode, required flag, and automation metadata in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T019 [US1] Mark US1 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 

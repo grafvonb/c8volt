@@ -438,6 +438,7 @@ func fromDomainIncidentPurgeWorkflowNotice(x d.IncidentPurgeWorkflowNotice) Inci
 // toDomainIncidentFilter maps public incident selection flags to the service filter.
 func toDomainIncidentFilter(x incident.Filter) d.IncidentFilter {
 	return d.IncidentFilter{
+		Keys:                   append([]string(nil), x.Keys...),
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,
@@ -455,6 +456,7 @@ func toDomainIncidentFilter(x incident.Filter) d.IncidentFilter {
 // fromDomainIncidentFilter maps service incident filters to the public model.
 func fromDomainIncidentFilter(x d.IncidentFilter) incident.Filter {
 	return incident.Filter{
+		Keys:                   append([]string(nil), x.Keys...),
 		State:                  x.State,
 		ErrorType:              x.ErrorType,
 		ErrorMessage:           x.ErrorMessage,

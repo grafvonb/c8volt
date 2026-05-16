@@ -21,6 +21,7 @@
 - `internal/services/ops.New` now explicitly accepts process-instance and incident service dependencies; `c8volt/client.go` wires the existing incident service into ops so future discovery can stay behind the ops service boundary.
 - Human ops output follows a compact sequence of workflow status lines; detailed key lists are gated by verbose output while JSON and reports keep complete structured data.
 - Generated CLI docs are protected by `docsgen/main_test.go` and produced via `make docs-content`; generated files under `docs/cli/` and `docs/index.md` should not be hand-edited after command metadata changes.
+- Incident purge uses dedicated command flag globals in `cmd/ops_purge_processinstances_with_incidents.go`; `--key` is carried as `incident.Filter.Keys`/`domain.IncidentFilter.Keys` so US2 can distinguish incident-key discovery from process-instance-key filters.
 
 ## Status
 
@@ -34,6 +35,35 @@
 - Each iteration should complete only the first incomplete work unit and update this file with validation results.
 - Existing #186/#187 ops purge/report/delete-plan code is expected to be the closest implementation pattern.
 
+---
+
+---
+## Iteration 3 - 2026-05-16 10:48:41 CEST
+**User Story**: User Story 1 - Register Incident Purge Command
+**Tasks Completed**:
+- [x] T012: Add command registration, help, and alias tests for incident purge in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T013: Add unsupported display-only incident flag tests in `cmd/ops_purge_processinstances_with_incidents_test.go`
+- [x] T014: Add command contract metadata tests for state-changing and automation support in `cmd/command_contract_test.go`
+- [x] T015: Add `ops purge process-instances-with-incidents` Cobra command, alias, summary, and safe examples in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T016: Register supported incident selection flags and delete workflow flags in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T017: Map static flag validation failures through existing invalid-input helpers in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T018: Set mutation, output-mode, required flag, and automation metadata in `cmd/ops_purge_processinstances_with_incidents.go`
+- [x] T019: Mark US1 tasks complete and record validation notes in `specs/199-ops-incident-purge/progress.md`
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/incident/model.go
+- c8volt/ops/convert.go
+- cmd/command_contract_test.go
+- cmd/ops_purge_processinstances_with_incidents.go
+- cmd/ops_purge_processinstances_with_incidents_test.go
+- internal/domain/incident.go
+- specs/199-ops-incident-purge/progress.md
+- specs/199-ops-incident-purge/tasks.md
+**Learnings**:
+- `ops purge process-instances-with-incidents` can reuse the existing ops command contract helpers directly, with explicit one-line and JSON output metadata while full human rendering remains scheduled for later stories.
+- The incident purge command must not register display-only `get incident` flags; unsupported flag tests assert `--pi-keys-only`, `--total`, `--error-message-limit`, and `--with-no-error-message` stay outside the command surface.
+- Validation run: `go test ./cmd -run 'TestOpsPurgeProcessInstancesWithIncidents|TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract' -count=1`; `go test ./c8volt/ops -run 'TestClientPurgeProcessInstancesWithIncidents' -count=1`; `go test ./internal/services/ops -run 'TestPurgeProcessInstancesWithIncidents' -count=1`; `go test ./c8volt/incident -count=1`; `go test ./cmd -run 'TestOpsPurge|TestCommandContract' -count=1`; `go test ./cmd ./c8volt/ops ./c8volt/incident ./internal/services/ops -count=1`; `go test ./... -count=1`.
 ---
 ## Iteration 1 - 2026-05-16 10:30:28 CEST
 **User Story**: Phase 1: Setup (Shared Infrastructure)

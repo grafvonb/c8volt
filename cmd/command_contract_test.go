@@ -499,6 +499,57 @@ func TestCommandCapabilityForCommand_OpsPurgeOrphanProcessInstancesContract(t *t
 	})
 }
 
+// TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract verifies discovery metadata for the incident purge command.
+func TestCommandCapabilityForCommand_OpsPurgeProcessInstancesWithIncidentsContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetOpsPurgeProcessInstancesWithIncidentsFlagState()
+	t.Cleanup(resetOpsPurgeProcessInstancesWithIncidentsFlagState)
+
+	capability := commandCapabilityForCommand(opsPurgeProcessInstancesWithIncidentsCmd)
+
+	require.Equal(t, "ops purge process-instances-with-incidents", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.AutomationNotes, "implicitly confirmed incident-based purges")
+	require.Contains(t, capability.Aliases, "pi-with-incidents")
+	require.NotContains(t, capability.Aliases, "incident-pis")
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:      "one-line",
+		Supported: true,
+	})
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to select for candidate discovery",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "discover and validate incident-based process-instance cleanup without submitting deletion requests",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "report-format",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "audit report format: markdown, json (default inferred from report-file extension)",
+	})
+	require.NotContains(t, capability.Flags, FlagContract{Name: "pi-keys-only"})
+	require.NotContains(t, capability.Flags, FlagContract{Name: "total"})
+}
+
 func TestCommandCapabilityForCommand_OpsExecuteRetentionPolicyContract(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)
