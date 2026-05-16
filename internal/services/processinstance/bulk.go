@@ -68,9 +68,9 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	if !cfg.NoWait {
 		t, oks, noks := reporterTotals(rs)
 		if affectedCount > t {
-			log.Info(fmt.Sprintf("cancelling pi done; affected %d, roots %d, ok %d (cancelled/terminal), failed %d", affectedCount, t, oks, noks))
+			log.Info(fmt.Sprintf("pi cancel done; roots %d, affected %d, ok %d (cancelled/terminal), failed %d", t, affectedCount, oks, noks))
 		} else {
-			log.Info(fmt.Sprintf("cancelling pi done; requested %d, ok %d (cancelled/terminal), failed %d", t, oks, noks))
+			log.Info(fmt.Sprintf("pi cancel done; requested %d, ok %d (cancelled/terminal), failed %d", t, oks, noks))
 		}
 	}
 	return rs, err
@@ -102,9 +102,9 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 			log.Info(fmt.Sprintf("cannot delete pi scope; affected %d, non-terminal present, use --force", affected))
 		}
 		if affectedCount > t {
-			log.Info(fmt.Sprintf("deleting pi done; affected %d, roots %d, ok %d, failed %d", affectedCount, t, oks, noks))
+			log.Info(fmt.Sprintf("pi delete done; roots %d, affected %d, ok %d, failed %d", t, affectedCount, oks, noks))
 		} else {
-			log.Info(fmt.Sprintf("deleting pi done; requested %d, ok %d, failed %d", t, oks, noks))
+			log.Info(fmt.Sprintf("pi delete done; requested %d, ok %d, failed %d", t, oks, noks))
 		}
 	}
 	return rs, err

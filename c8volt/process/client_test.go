@@ -1460,8 +1460,8 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 1)
 	assert.Contains(t, logBuf.String(), "cancelling pi: affected 4, roots 1")
-	assert.Contains(t, logBuf.String(), "cancelling pi done; affected 4, roots 1, ok 1 (cancelled/terminal), failed 0")
-	assert.NotContains(t, logBuf.String(), "cancelling pi done; requested 1")
+	assert.Contains(t, logBuf.String(), "pi cancel done; roots 1, affected 4, ok 1 (cancelled/terminal), failed 0")
+	assert.NotContains(t, logBuf.String(), "pi cancel done; requested 1")
 }
 
 // TestClient_CancelProcessInstances_UsesActivityIndicator verifies bulk cancel emits activity lifecycle messages.
@@ -1507,8 +1507,8 @@ func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 1)
 	assert.Contains(t, logBuf.String(), "deleting pi: affected 4, roots 1")
-	assert.Contains(t, logBuf.String(), "deleting pi done; affected 4, roots 1, ok 1, failed 0")
-	assert.NotContains(t, logBuf.String(), "deleting pi done; requested 1")
+	assert.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 1, failed 0")
+	assert.NotContains(t, logBuf.String(), "pi delete done; requested 1")
 }
 
 // TestClient_DeleteProcessInstances_UsesActivityIndicator verifies bulk delete emits activity lifecycle messages.
@@ -1554,7 +1554,7 @@ func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScop
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 1)
 	assert.Contains(t, logBuf.String(), "cannot delete pi scope; affected 4, non-terminal present, use --force")
-	assert.Contains(t, logBuf.String(), "deleting pi done; affected 4, roots 1, ok 0, failed 1")
+	assert.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 0, failed 1")
 }
 
 type stubProcessDefinitionAPI struct {

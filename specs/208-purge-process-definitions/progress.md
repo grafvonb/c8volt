@@ -290,3 +290,4 @@
 - Add BPMN process ID metadata to process-definition delete impact plan items when the impact lookup already fetches the definition.
 - Format process-definition delete progress subjects as `pd <key> <bpmn-process-id> v<version>/<tag> <tenant-id>` whenever the BPMN ID is available.
 - Preserve key-only output as a fallback when the metadata is not available, such as no-state-check paths.
+- Use semicolon-separated progress phases after the object identity, drop redundant `checking ... delete impact` lines, and align aggregate summaries to `pi cancel done`, `pi delete done`, and `pd delete done`.

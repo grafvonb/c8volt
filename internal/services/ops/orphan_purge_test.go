@@ -255,7 +255,7 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 
 	require.NoError(t, err)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
-	require.Contains(t, logBuf.String(), "deleting pi done; requested 1, ok 1, failed 0")
+	require.Contains(t, logBuf.String(), "pi delete done; requested 1, ok 1, failed 0")
 }
 
 type stubProcessInstanceAPI struct {

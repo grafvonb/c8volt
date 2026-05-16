@@ -2208,7 +2208,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.NotContains(t, string(output), "either --key")
 	require.NotContains(t, string(output), "WARN WARNING")
 	require.NotContains(t, string(output), "WARNING:")
-	require.Contains(t, string(output), "deleting pd done; requested 1, ok 1, failed 0")
+	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
 }
@@ -2326,8 +2326,8 @@ func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForc
 
 	require.NoError(t, err, string(output))
 	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no active process instances found; no changes made yet")
-	require.Contains(t, string(output), "pd 2251799813685255 invoice v3/stable tenant delete accepted; batch batch-2251799813685255")
-	require.NotContains(t, string(output), "deleting pd done; requested")
+	require.Contains(t, string(output), "pd 2251799813685255 invoice v3/stable tenant; delete accepted; batch batch-2251799813685255")
+	require.NotContains(t, string(output), "pd delete done; requested")
 
 	got := requests.Snapshot()
 	require.Equal(t, 1, countRequestPrefixes(got, "POST /v2/process-definitions/search "))
