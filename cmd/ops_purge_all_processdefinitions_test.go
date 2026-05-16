@@ -151,7 +151,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, output, "candidate scope: latest matching process definitions")
 	require.Contains(t, output, "duplicate candidate process definitions: 1")
 	require.Contains(t, output, "delete plan: skipped")
-	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-definition keys")
+	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "candidate process-definition keys:")
 
 	flagVerbose = true
@@ -204,9 +204,12 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	output := buf.String()
 
 	require.Contains(t, output, "delete plan: planned (candidate process definitions: 2, affected process instances: 3)")
+	require.NotContains(t, output, "\nprocess definitions:\n")
+	require.Contains(t, output, "invoice [v1: 3, v2/stable: 0]")
 	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")
-	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-definition keys")
+	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "candidate process-definition keys:")
+	require.NotContains(t, output, "affected process-instance keys:")
 
 	flagVerbose = true
 	var verbose bytes.Buffer
@@ -214,8 +217,8 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	cmd.SetOut(&verbose)
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
 	require.Contains(t, verbose.String(), "candidate process-definition keys: pd-a, pd-b")
-	require.Contains(t, verbose.String(), "affected process-instance keys: pi-a, pi-b, pi-c")
-	require.Contains(t, verbose.String(), "blocked process-instance keys: pi-a, pi-b, pi-c")
+	require.NotContains(t, verbose.String(), "affected process-instance keys:")
+	require.NotContains(t, verbose.String(), "blocked process-instance keys:")
 }
 
 // TestOpsPurgeAllProcessDefinitionsDryRunJSONPlanData verifies machine output carries complete delete-plan fields.
@@ -624,6 +627,10 @@ func sampleAllProcessDefinitionsPurgeDeletedResult() ops.AllProcessDefinitionsPu
 func sampleAllProcessDefinitionsPurgeDryRunPlanResult() ops.AllProcessDefinitionsPurgeResult {
 	result := sampleAllProcessDefinitionsPurgeDryRunDiscoveryResult()
 	result.Discovery.CandidateProcessDefinitionKeys = typex.Keys{"pd-a", "pd-b"}
+	result.Discovery.CandidateProcessDefinitions = []process.ProcessDefinition{
+		{Key: "pd-a", BpmnProcessId: "invoice", ProcessVersion: 1},
+		{Key: "pd-b", BpmnProcessId: "invoice", ProcessVersion: 2, ProcessVersionTag: "stable"},
+	}
 	result.Discovery.CandidateProcessDefinitionCount = 2
 	result.DeletePlan = ops.AllProcessDefinitionsPurgeDeletePlan{
 		Status:                         ops.WorkflowStepStatusPlanned,

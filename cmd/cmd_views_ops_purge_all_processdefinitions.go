@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ops"
@@ -45,6 +46,7 @@ func renderOpsPurgeAllProcessDefinitionsDiscovery(cmd *cobra.Command, result ops
 		return
 	}
 	renderHumanLine(cmd, "candidate process definitions: %d", result.Discovery.CandidateProcessDefinitionCount)
+	renderOpsPurgeAllProcessDefinitionsImpactSummary(cmd, result)
 	if result.Discovery.LatestOnly {
 		renderHumanLine(cmd, "candidate scope: latest matching process definitions")
 	}
@@ -77,8 +79,6 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 	}
 	if flagVerbose {
 		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
-		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "affected process-instance keys", allProcessDefinitionsPurgeAffectedProcessInstanceKeys(result.DeletePlan))
-		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "blocked process-instance keys", allProcessDefinitionsPurgeBlockedProcessInstanceKeys(result.DeletePlan))
 	}
 }
 
@@ -99,17 +99,13 @@ func renderOpsPurgeAllProcessDefinitionsDeletion(cmd *cobra.Command, result ops.
 	}
 }
 
-// renderOpsPurgeAllProcessDefinitionsOutcome prints the final workflow outcome with hidden-key guidance.
+// renderOpsPurgeAllProcessDefinitionsOutcome prints the final workflow outcome.
 func renderOpsPurgeAllProcessDefinitionsOutcome(cmd *cobra.Command, result ops.AllProcessDefinitionsPurgeResult) {
 	if result.Outcome == "" {
 		return
 	}
 	if !result.Deletion.Submitted && result.Outcome == ops.AllProcessDefinitionsPurgeOutcomePlanned {
-		line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
-		if !flagVerbose && allProcessDefinitionsPurgeHasHiddenKeys(result) {
-			line += "; use --verbose to list process-definition keys"
-		}
-		renderHumanLine(cmd, "%s", line)
+		renderHumanLine(cmd, "outcome: %s; no changes applied", result.Outcome)
 		return
 	}
 	renderHumanLine(cmd, "outcome: %s", result.Outcome)
@@ -121,14 +117,6 @@ func renderOpsPurgeAllProcessDefinitionsReportFile(cmd *cobra.Command, result op
 		return
 	}
 	renderHumanLine(cmd, "report: written %s", result.Request.ReportFile)
-}
-
-// allProcessDefinitionsPurgeHasHiddenKeys reports whether compact output suppressed verbose key details.
-func allProcessDefinitionsPurgeHasHiddenKeys(result ops.AllProcessDefinitionsPurgeResult) bool {
-	return len(result.Discovery.CandidateProcessDefinitionKeys) > 0 ||
-		len(result.Discovery.DuplicateCandidateProcessDefinitionKeys) > 0 ||
-		len(result.DeletePlan.CandidateProcessDefinitionKeys) > 0 ||
-		len(result.Deletion.SubmittedProcessDefinitionKeys) > 0
 }
 
 // renderOpsPurgeAllProcessDefinitionsKeys prints a comma-separated key list for verbose output.
@@ -168,6 +156,88 @@ func renderOpsPurgeAllProcessDefinitionsDefinitions(cmd *cobra.Command, definiti
 		items = append(items, item)
 	}
 	renderHumanLine(cmd, "candidate process-definition details: %s", strings.Join(items, ", "))
+}
+
+type allProcessDefinitionsPurgeImpactEntry struct {
+	version     int32
+	versionText string
+	affectedPIs int64
+}
+
+// renderOpsPurgeAllProcessDefinitionsImpactSummary prints the operator-facing process-definition/version impact.
+func renderOpsPurgeAllProcessDefinitionsImpactSummary(cmd *cobra.Command, result ops.AllProcessDefinitionsPurgeResult) {
+	if len(result.Discovery.CandidateProcessDefinitions) == 0 || len(result.DeletePlan.Items) == 0 {
+		return
+	}
+
+	impactByKey := allProcessDefinitionsPurgeAffectedCountByProcessDefinitionKey(result.DeletePlan)
+	grouped := make(map[string]map[string]allProcessDefinitionsPurgeImpactEntry)
+	for _, definition := range result.Discovery.CandidateProcessDefinitions {
+		bpmnProcessID := definition.BpmnProcessId
+		if bpmnProcessID == "" {
+			bpmnProcessID = "<unknown>"
+		}
+		versionText := allProcessDefinitionsPurgeVersionText(definition)
+		if grouped[bpmnProcessID] == nil {
+			grouped[bpmnProcessID] = make(map[string]allProcessDefinitionsPurgeImpactEntry)
+		}
+		entry := grouped[bpmnProcessID][versionText]
+		entry.version = definition.ProcessVersion
+		entry.versionText = versionText
+		entry.affectedPIs += impactByKey[definition.Key]
+		grouped[bpmnProcessID][versionText] = entry
+	}
+
+	if len(grouped) == 0 {
+		return
+	}
+
+	names := make([]string, 0, len(grouped))
+	for name := range grouped {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		entries := make([]allProcessDefinitionsPurgeImpactEntry, 0, len(grouped[name]))
+		for _, entry := range grouped[name] {
+			entries = append(entries, entry)
+		}
+		sort.SliceStable(entries, func(i, j int) bool {
+			if entries[i].version != entries[j].version {
+				return entries[i].version < entries[j].version
+			}
+			return entries[i].versionText < entries[j].versionText
+		})
+		parts := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			parts = append(parts, fmt.Sprintf("%s: %d", entry.versionText, entry.affectedPIs))
+		}
+		renderHumanLine(cmd, "%s [%s]", name, strings.Join(parts, ", "))
+	}
+}
+
+func allProcessDefinitionsPurgeVersionText(definition process.ProcessDefinition) string {
+	version := "v?"
+	if definition.ProcessVersion > 0 {
+		version = fmt.Sprintf("v%d", definition.ProcessVersion)
+	}
+	if definition.ProcessVersionTag != "" {
+		version += "/" + definition.ProcessVersionTag
+	}
+	return version
+}
+
+func allProcessDefinitionsPurgeAffectedCountByProcessDefinitionKey(plan ops.AllProcessDefinitionsPurgeDeletePlan) map[string]int64 {
+	impact := make(map[string]int64, len(plan.Items))
+	for _, item := range plan.Items {
+		affected := int64(len(item.CancellationPlan.Collected.Unique()))
+		if active := item.ActiveProcessInstances(); active > affected {
+			affected = active
+		}
+		impact[item.Key] = affected
+	}
+	return impact
 }
 
 // allProcessDefinitionsPurgeAffectedProcessInstanceKeys extracts the affected process-instance key set from delete-plan items.

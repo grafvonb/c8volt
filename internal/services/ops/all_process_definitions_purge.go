@@ -75,7 +75,9 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 		return finishAllProcessDefinitionsPurgeResult(result, d.AllProcessDefinitionsPurgeOutcomePlanned, nil)
 	}
 
-	reports, err := rsvc.DeleteProcessDefinitions(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, plan.CandidateProcessDefinitionKeys, request.Workers, opts...)
+	deleteOpts := append([]services.CallOption{}, opts...)
+	deleteOpts = append(deleteOpts, services.WithSuppressProcessInstanceDetailLogs())
+	reports, err := rsvc.DeleteProcessDefinitions(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, plan.CandidateProcessDefinitionKeys, request.Workers, deleteOpts...)
 	result.Deletion = d.AllProcessDefinitionsPurgeDeletionResult{
 		Status:                         deletionStatusForResourceDeleteResponses(reports, request.NoWait, err),
 		SubmittedProcessDefinitionKeys: append(typex.Keys{}, plan.CandidateProcessDefinitionKeys...),

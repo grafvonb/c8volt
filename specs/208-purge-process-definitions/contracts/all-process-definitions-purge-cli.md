@@ -74,8 +74,10 @@ Normal dry-run output should be shaped like:
 dry run: purge all process definitions
 selection filters: {...}
 candidate process definitions: N
+invoice-process [v1: 240, v2: 180, v3: 0]
+shipment-process [v1: 42, v2: 11]
 delete plan: planned (candidate process definitions: N, affected process instances: A)
-outcome: planned; no changes applied; use --verbose to list process-definition keys
+outcome: planned; no changes applied
 ```
 
 Normal destructive output should be shaped like:
@@ -84,6 +86,7 @@ Normal destructive output should be shaped like:
 purge all process definitions
 selection filters: {...}
 candidate process definitions: N
+invoice-process [v1: 240, v2: 180, v3: 0]
 delete plan: planned (candidate process definitions: N, affected process instances: A)
 deletion: submitted (requests: N)
 deletion confirmation: true
@@ -97,7 +100,7 @@ Human output MUST use candidate terminology:
 - `affected process instances`
 - `submitted process-definition deletes`
 
-Detailed key lists SHOULD be shown only in verbose output unless the selected output mode makes keys the primary output.
+Normal human output SHOULD show BPMN process IDs with bracketed version-level affected process-instance counts. Full process-definition keys and affected process-instance keys belong in JSON/report output unless the selected output mode makes keys the primary output.
 
 Human output MUST print `report: written <path>` after a report file is successfully written.
 

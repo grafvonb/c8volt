@@ -13,6 +13,9 @@ func WithDryRun() CallOption        { return func(c *CallCfg) { c.DryRun = true 
 func WithVerbose() CallOption       { return func(c *CallCfg) { c.Verbose = true } }
 func WithNoWorkerLimit() CallOption { return func(c *CallCfg) { c.NoWorkerLimit = true } }
 func WithIgnoreTenant() CallOption  { return func(c *CallCfg) { c.IgnoreTenant = true } }
+func WithSuppressProcessInstanceDetailLogs() CallOption {
+	return func(c *CallCfg) { c.SuppressProcessInstanceDetailLogs = true }
+}
 func WithIncidentState(state string) CallOption {
 	return func(c *CallCfg) { c.IncidentState = state }
 }
@@ -29,20 +32,21 @@ func WithAffectedProcessInstanceCount(count int) CallOption {
 type CallOption func(*CallCfg)
 
 type CallCfg struct {
-	NoStateCheck                 bool
-	Force                        bool
-	NoWait                       bool
-	Run                          bool
-	FailFast                     bool
-	WithStat                     bool
-	DryRun                       bool
-	Verbose                      bool
-	NoWorkerLimit                bool
-	IgnoreTenant                 bool
-	IncidentState                string
-	IncidentErrorType            string
-	IncidentErrorMessage         string
-	AffectedProcessInstanceCount int
+	NoStateCheck                      bool
+	Force                             bool
+	NoWait                            bool
+	Run                               bool
+	FailFast                          bool
+	WithStat                          bool
+	DryRun                            bool
+	Verbose                           bool
+	NoWorkerLimit                     bool
+	IgnoreTenant                      bool
+	SuppressProcessInstanceDetailLogs bool
+	IncidentState                     string
+	IncidentErrorType                 string
+	IncidentErrorMessage              string
+	AffectedProcessInstanceCount      int
 }
 
 func ApplyCallOptions(opts []CallOption) *CallCfg {

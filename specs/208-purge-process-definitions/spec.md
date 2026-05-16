@@ -96,10 +96,11 @@ As an operator or automation author, I want compact human output, complete machi
 
 **Acceptance Scenarios**:
 
-1. **Given** normal human output, **When** the command previews or executes a purge, **Then** output follows discovery, delete plan, deletion, outcome, and report rhythm without printing full key lists unless `--verbose` is supplied.
-2. **Given** `--verbose`, **When** the command reports results, **Then** it includes candidate process-definition keys, BPMN process IDs and versions where available, duplicate candidate keys, affected process-instance keys, and blocked keys where applicable.
-3. **Given** `--automation --json`, **When** the command runs in a supported non-interactive path, **Then** stdout remains deterministic machine-readable JSON and supported prompts are implicitly accepted through `shouldImplicitlyConfirm(cmd)` without requiring `--auto-confirm`.
-4. **Given** a report file request, **When** overwrite is not already allowed, **Then** overwrite safety is checked before discovery, preflight, or planning and existing files are preserved for dry-run, aborted, unconfirmed, or locally blocked runs.
+1. **Given** normal human output, **When** the command previews or executes a purge, **Then** output follows discovery, delete plan, deletion, outcome, and report rhythm without printing full key lists.
+2. **Given** normal human output, **When** the command reports planned process-definition impact, **Then** it groups candidate process definitions by BPMN process ID and lists version-level affected process-instance counts in brackets.
+3. **Given** JSON or report output, **When** the command reports results, **Then** complete process-definition keys, affected process-instance keys, blocked keys, notices, and errors remain available for audit and automation.
+4. **Given** `--automation --json`, **When** the command runs in a supported non-interactive path, **Then** stdout remains deterministic machine-readable JSON and supported prompts are implicitly accepted through `shouldImplicitlyConfirm(cmd)` without requiring `--auto-confirm`.
+5. **Given** a report file request, **When** overwrite is not already allowed, **Then** overwrite safety is checked before discovery, preflight, or planning and existing files are preserved for dry-run, aborted, unconfirmed, or locally blocked runs.
 
 ---
 
@@ -150,7 +151,7 @@ As a c8volt user, I want help text, generated docs, safe examples, and regressio
 - **FR-015**: The command MUST NOT add an extra overwrite confirmation prompt.
 - **FR-016**: The command MUST preserve existing report files for dry-run, aborted, unconfirmed, or locally blocked runs.
 - **FR-017**: Human output MUST use candidate terminology, including `candidate process definitions`, `duplicate candidate process definitions`, `affected process instances`, and `submitted process-definition deletes`.
-- **FR-018**: Normal human output MUST remain compact and suppress full key lists unless `--verbose` is supplied.
+- **FR-018**: Normal human output MUST remain compact while listing candidate BPMN process IDs with bracketed version-level affected process-instance counts.
 - **FR-019**: JSON output and report output MUST retain complete command metadata, flags, process-definition filters, discovery results, candidate set, delete preflight, deletion result, errors, notices, and final outcome.
 - **FR-020**: Help examples MUST teach safe preview-first workflows and MUST NOT use a bare destructive automation example such as `c8volt ops purge all-process-definitions --automation --json`.
 - **FR-021**: Existing `get pd` and `delete pd` behavior MUST remain unchanged.

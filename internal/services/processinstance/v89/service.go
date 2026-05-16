@@ -427,7 +427,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		}
 		s.log.Debug(fmt.Sprintf("pi %s cancel precheck; state %s", key, st))
 		if st.IsTerminal() {
-			s.log.Info(fmt.Sprintf("pi %s already %s; cancel skipped", key, st))
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s already %s; cancel skipped", key, st))
 			return d.CancelResponse{
 				StatusCode: http.StatusOK,
 				Status:     fmt.Sprintf("process instance with key %s is already in state %s, no need to cancel", key, st),
@@ -463,7 +463,7 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 				)
 				return s.CancelProcessInstance(ctx, rootPIKey, opts...)
 			}
-			s.log.Info(fmt.Sprintf("pi %s is child of root %s; use --force to cancel tree", key, rootPIKey))
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s is child of root %s; use --force to cancel tree", key, rootPIKey))
 			return d.CancelResponse{StatusCode: http.StatusConflict}, pis, nil
 		}
 		pis = append(pis, pi)
@@ -484,14 +484,14 @@ func (s *Service) CancelProcessInstance(ctx context.Context, key string, opts ..
 		if err != nil {
 			return d.CancelResponse{}, nil, fmt.Errorf("cancel family: %w", err)
 		}
-		s.log.Info(fmt.Sprintf("waiting for pi %s cancel", key))
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 		states := []d.State{d.StateCanceled, d.StateTerminated}
 		if _, err = waiter.WaitForProcessInstancesState(ctx, s, s.cfg, s.log, keys, states, len(keys), opts...); err != nil {
 			return d.CancelResponse{}, nil, fmt.Errorf("cancel wait: %w", err)
 		}
-		s.log.Info(fmt.Sprintf("pi %s canceled", key))
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s canceled", key))
 	} else {
-		s.log.Info(fmt.Sprintf("pi %s cancel requested; no-wait", key))
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s cancel requested; no-wait", key))
 	}
 	return d.CancelResponse{
 		Ok:         true,
@@ -541,16 +541,16 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 	}
 	if resp.StatusCode() == http.StatusConflict {
 		if cCfg.Force {
-			s.log.Info(fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s not terminal; cancelling before delete", key))
 			if _, _, err = s.CancelProcessInstance(ctx, key, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete cancel: %w", err)
 			}
-			s.log.Info(fmt.Sprintf("waiting for pi %s cancel", key))
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s cancel", key))
 			states := []d.State{d.StateCanceled, d.StateTerminated}
 			if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 				return d.DeleteResponse{}, fmt.Errorf("delete wait canceled: %w", err)
 			}
-			s.log.Info(fmt.Sprintf("retrying pi %s delete", key))
+			s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("retrying pi %s delete", key))
 			resp, err = s.cc.DeleteProcessInstanceWithResponse(ctx, key, camundav89.DeleteProcessInstanceJSONRequestBody{})
 			if err != nil {
 				return d.DeleteResponse{}, err
@@ -564,17 +564,24 @@ func (s *Service) DeleteProcessInstance(ctx context.Context, key string, opts ..
 		return d.DeleteResponse{}, err
 	}
 	if !cCfg.NoWait {
-		s.log.Info(fmt.Sprintf("waiting for pi %s delete", key))
+		s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("waiting for pi %s delete", key))
 		states := []d.State{d.StateAbsent}
 		if _, _, err = waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, key, states, opts...); err != nil {
 			return d.DeleteResponse{}, fmt.Errorf("delete wait absent: %w", err)
 		}
 	}
-	s.log.Info(fmt.Sprintf("pi %s deleted", key))
+	s.infoProcessInstanceDetail(cCfg, fmt.Sprintf("pi %s deleted", key))
 	return d.DeleteResponse{
 		Ok:         true,
 		StatusCode: resp.StatusCode(),
 	}, nil
+}
+
+func (s *Service) infoProcessInstanceDetail(cCfg *services.CallCfg, msg string) {
+	if cCfg != nil && cCfg.SuppressProcessInstanceDetailLogs {
+		return
+	}
+	s.log.Info(msg)
 }
 
 func (s *Service) WaitForProcessInstanceState(ctx context.Context, key string, desired d.States, opts ...services.CallOption) (d.StateResponse, d.ProcessInstance, error) {

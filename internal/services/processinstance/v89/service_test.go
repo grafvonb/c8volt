@@ -444,6 +444,46 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.Empty(t, items)
 	})
 
+	t.Run("CancelNoWaitSuppressesProcessInstanceDetailLogs", func(t *testing.T) {
+		runCancelNoWaitLogTest := func(t *testing.T, suppress bool) string {
+			t.Helper()
+			var logBuf bytes.Buffer
+			svc, err := v89.New(
+				testConfig(),
+				&http.Client{},
+				slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo)),
+				v89.WithClientCamunda(&mockCamundaClient{
+					createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+					searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+					cancelProcessInstanceWithResponse: func(ctx context.Context, key string, body camundav89.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CancelProcessInstanceResponse, error) {
+						assert.Equal(t, "123", key)
+						return &camundav89.CancelProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
+						}, nil
+					},
+					deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+					getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+				}),
+			)
+			require.NoError(t, err)
+
+			opts := []services.CallOption{services.WithNoStateCheck(), services.WithNoWait()}
+			if suppress {
+				opts = append(opts, services.WithSuppressProcessInstanceDetailLogs())
+			}
+			_, _, err = svc.CancelProcessInstance(context.Background(), "123", opts...)
+
+			require.NoError(t, err)
+			return logBuf.String()
+		}
+
+		normalLog := runCancelNoWaitLogTest(t, false)
+		suppressedLog := runCancelNoWaitLogTest(t, true)
+
+		assert.Contains(t, normalLog, "INFO pi 123 cancel requested; no-wait")
+		assert.NotContains(t, suppressedLog, "pi 123 cancel requested; no-wait")
+	})
+
 	t.Run("ForceCancelLogsKeyListOnlyWhenVerbose", func(t *testing.T) {
 		runForceCancelLogTest := func(t *testing.T, verbose bool) string {
 			t.Helper()

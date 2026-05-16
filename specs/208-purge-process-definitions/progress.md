@@ -269,3 +269,17 @@
 - Static validation is currently local and remote-free through Cobra argument validation, which protects invalid keys, non-positive explicit `--pd-version`, non-positive explicit `--workers`, and report-format/report-file combinations before later stories add discovery.
 - Validation passed with `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestCommandCapabilityForCommand_OpsPurgeAllProcessDefinitionsContract' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -run 'TestOpsPurgeAllProcessDefinitions|TestCommandCapabilityForCommand_OpsPurge(AllProcessDefinitions|ProcessInstancesWithIncidents|OrphanProcessInstances)Contract|TestCapabilitiesCommand_Ops' -count=1`; `GOCACHE=/private/tmp/c8volt-go-build go test ./cmd -count=1`.
 ---
+---
+## Correction - 2026-05-16 19:36 CEST
+**User Feedback**: All-process-definitions purge human output should list candidate BPMN process IDs with bracketed version-level affected process-instance counts, similar in density to `get pd --stat`. Verbose affected process-instance key lists are too noisy for this workflow.
+**Implementation Direction**:
+- Normal human output should include compact grouped lines such as `invoice [v1: 240, v2: 180, v3: 0]` after the candidate count when delete-plan impact is available.
+- Full process-definition keys and affected process-instance keys should remain available in JSON/report output for audit and automation.
+- Terminal output should no longer suggest `--verbose` for process-instance key lists on this command.
+---
+## Correction - 2026-05-16 20:05 CEST
+**User Feedback**: Confirmed `ops purge apd --force` should not print per-process-instance wait/cancel/delete lines while deleting process definitions. Output should stay focused on selected process definitions and aggregate progress.
+**Implementation Direction**:
+- Preserve process-definition-level progress from the reused `delete pd` path.
+- Suppress nested process-instance detail logs only for the all-process-definitions purge delegation into process-instance cancel/delete internals.
+- Leave direct `delete pd`, `cancel pi`, and `delete pi` logging behavior unchanged unless they explicitly opt into the suppression option.

@@ -38,7 +38,7 @@ var opsPurgeAllProcessDefinitionsCmd = &cobra.Command{
   ./c8volt ops purge all-process-definitions --automation --json --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force
   ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --workers 4 --no-wait --report-file process-definition-purge.json --report-format json`,
-	Aliases: []string{"all-pds"},
+	Aliases: []string{"all-pds", "apd"},
 	Args:    validateOpsPurgeAllProcessDefinitionsArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli, log, cfg, err := NewCli(cmd)

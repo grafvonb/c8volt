@@ -394,6 +394,7 @@ func TestPurgeAllProcessDefinitionsExecutesDeletionThroughResourceDelete(t *test
 			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
 				cfg := services.ApplyCallOptions(opts)
 				require.False(t, cfg.NoWait)
+				require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 				deleted = append(deleted, resourceKey)
 				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 			},
@@ -438,6 +439,7 @@ func TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath(t *testing.
 				require.True(t, cfg.Force)
 				require.True(t, cfg.FailFast)
 				require.True(t, cfg.NoWorkerLimit)
+				require.True(t, cfg.SuppressProcessInstanceDetailLogs)
 				deleted = append(deleted, resourceKey)
 				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
 			},
