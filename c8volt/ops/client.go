@@ -38,3 +38,12 @@ func (c *client) ExecuteRetentionPolicy(ctx context.Context, request RetentionPo
 	}
 	return out, nil
 }
+
+func (c *client) PurgeProcessInstancesWithIncidents(ctx context.Context, request IncidentPurgeRequest, opts ...options.FacadeOption) (IncidentPurgeResult, error) {
+	result, err := c.api.PurgeProcessInstancesWithIncidents(ctx, toDomainIncidentPurgeRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainIncidentPurgeResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
