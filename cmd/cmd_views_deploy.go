@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/grafvonb/c8volt/c8volt/resource"
 	"github.com/spf13/cobra"
@@ -16,24 +17,56 @@ func processDefinitionDeploymentView(cmd *cobra.Command, item resource.ProcessDe
 }
 
 func listProcessDefinitionDeploymentsView(cmd *cobra.Command, resp []resource.ProcessDefinitionDeployment) error {
-	return listOrJSONFlat(cmd, resp, resp, pickMode(), flatRowPDDeploy, func(it resource.ProcessDefinitionDeployment) string { return it.DefinitionKey })
+	mode := pickMode()
+	items := resp
+	if mode == RenderModeOneLine {
+		items = append([]resource.ProcessDefinitionDeployment(nil), resp...)
+		slices.SortFunc(items, compareProcessDefinitionDeployments)
+	}
+	return listOrJSONFlat(cmd, resp, items, mode, flatRowPDDeploy, func(it resource.ProcessDefinitionDeployment) string { return it.DefinitionKey })
 }
 
 func oneLinePDDeploy(it resource.ProcessDefinitionDeployment) string {
 	return compactFlatRow(flatRowPDDeploy(it))
 }
 
-// flatRowPDDeploy keeps deployment summaries on the same pd-first grammar as other process-definition output.
+// flatRowPDDeploy mirrors get pd rows for deployment summaries.
 func flatRowPDDeploy(it resource.ProcessDefinitionDeployment) flatRow {
+	vTag := ""
+	if it.VersionTag != "" {
+		vTag = "/" + it.VersionTag
+	}
 	return flatRow{
-		"pd",
 		it.DefinitionKey,
+		it.TenantId,
 		it.DefinitionId,
-		fmt.Sprintf("v%d", it.DefinitionVersion),
-		fmt.Sprintf("%s;", it.TenantId),
-		"deploy",
-		fmt.Sprintf("%s;", it.Key),
-		"resource",
-		it.ResourceName,
+		fmt.Sprintf("v%d%s", it.DefinitionVersion, vTag),
+	}
+}
+
+func compareProcessDefinitionDeployments(a, b resource.ProcessDefinitionDeployment) int {
+	if a.DefinitionId != b.DefinitionId {
+		return cmpString(a.DefinitionId, b.DefinitionId)
+	}
+	if a.DefinitionVersion != b.DefinitionVersion {
+		if a.DefinitionVersion < b.DefinitionVersion {
+			return -1
+		}
+		return 1
+	}
+	if a.TenantId != b.TenantId {
+		return cmpString(a.TenantId, b.TenantId)
+	}
+	return cmpString(a.DefinitionKey, b.DefinitionKey)
+}
+
+func cmpString(a, b string) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
 	}
 }

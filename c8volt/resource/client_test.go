@@ -83,6 +83,48 @@ func TestClient_GetResource_MapsDomainErrors(t *testing.T) {
 	assert.ErrorIs(t, err, ferr.ErrNotFound)
 }
 
+func TestClient_DeployProcessDefinition_IncludesVersionTagFromBPMNResource(t *testing.T) {
+	t.Parallel()
+
+	api := &stubResourceAPI{
+		deploy: func(_ context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
+			cfg := services.ApplyCallOptions(opts)
+			assert.True(t, cfg.NoWait)
+			require.Len(t, units, 1)
+			assert.Equal(t, "processdefinitions/order.bpmn", units[0].Name)
+			return d.Deployment{
+				Key:      "deployment-1",
+				TenantId: "<default>",
+				Units: []d.DeploymentUnit{{
+					ProcessDefinition: d.ProcessDefinitionDeployment{
+						ProcessDefinitionKey:     "2251799813685255",
+						ProcessDefinitionId:      "order-process",
+						ProcessDefinitionVersion: 3,
+						ResourceName:             "processdefinitions/order.bpmn",
+					},
+				}},
+			}, nil
+		},
+	}
+	cli := New(api, nil, nil, slog.Default())
+
+	got, err := cli.DeployProcessDefinition(context.Background(), []DeploymentUnitData{{
+		Name: "processdefinitions/order.bpmn",
+		Data: []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0">
+  <bpmn:process id="order-process" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="v1.0.0" />
+    </bpmn:extensionElements>
+  </bpmn:process>
+</bpmn:definitions>`),
+	}}, options.WithNoWait())
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "v1.0.0", got[0].VersionTag)
+}
+
 // TestClient_DeleteProcessDefinition_UsesRootCancellationPlan covers the safety
 // impact check before deleting a process definition resource. Active instances
 // may be child/called instances, so c8volt expands them to root instances before
@@ -384,12 +426,16 @@ func newResourceTestClient(api rsvc.API, p stubProcessAPI) API {
 }
 
 type stubResourceAPI struct {
+	deploy func(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error)
 	get    func(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.Resource, error)
 	delete func(ctx context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error)
 }
 
-func (s *stubResourceAPI) Deploy(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error) {
-	panic("unexpected call")
+func (s *stubResourceAPI) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
+	if s.deploy == nil {
+		panic("unexpected call")
+	}
+	return s.deploy(ctx, units, opts...)
 }
 
 // Delete delegates to the per-test callback and panics if a test did not expect

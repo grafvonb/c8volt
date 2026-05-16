@@ -39,7 +39,7 @@ func (c *client) DeployProcessDefinition(ctx context.Context, units []Deployment
 	if err != nil {
 		return nil, ferr.FromDomain(err)
 	}
-	return fromProcessDefinitionDeployment(pdd), nil
+	return fromProcessDefinitionDeployment(pdd, units), nil
 }
 
 func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (DeleteReport, error) {
