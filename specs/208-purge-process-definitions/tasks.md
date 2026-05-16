@@ -13,8 +13,8 @@
 
 **Purpose**: Capture required implementation context and current ops/process-definition patterns before code changes.
 
-- [ ] T001 Record mandatory Ralph context and issue traceability in `specs/208-purge-process-definitions/progress.md`
-- [ ] T002 Inspect existing #186/#187/#199 ops purge/report flows, `get pd` selection, `delete pd` preflight/deletion, command contract metadata, and docs generation patterns; record reusable discoveries in `specs/208-purge-process-definitions/progress.md`
+- [x] T001 Record mandatory Ralph context and issue traceability in `specs/208-purge-process-definitions/progress.md`
+- [x] T002 Inspect existing #186/#187/#199 ops purge/report flows, `get pd` selection, `delete pd` preflight/deletion, command contract metadata, and docs generation patterns; record reusable discoveries in `specs/208-purge-process-definitions/progress.md`
 
 ---
 
