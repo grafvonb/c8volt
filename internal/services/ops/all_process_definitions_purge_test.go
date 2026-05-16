@@ -13,6 +13,7 @@ import (
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
+	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -464,6 +465,92 @@ func TestPurgeAllProcessDefinitionsMapsExecutionControlsToDeletePath(t *testing.
 	require.True(t, got.Report.Force)
 	require.True(t, got.Report.FailFast)
 	require.True(t, got.Report.NoWorkerLimit)
+}
+
+// TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots verifies APD force cleanup cancels overlapping PI trees once.
+func TestPurgeAllProcessDefinitionsForceCleanupDeduplicatesProcessInstanceRoots(t *testing.T) {
+	var cancelled []string
+	var deletedPI []string
+	var deletedPD []string
+	getCalls := map[string]int{}
+
+	got, err := NewWithProcessDefinitionPurge(
+		stubProcessInstanceAPI{
+			searchPage: func(_ context.Context, filter d.ProcessInstanceFilter, _ d.ProcessInstancePageRequest, _ ...services.CallOption) (d.ProcessInstancePage, error) {
+				items := map[string][]d.ProcessInstance{
+					"pd-a": {{Key: "pi-a", RootProcessInstanceKey: "pi-root", State: d.StateActive}},
+					"pd-b": {{Key: "pi-b", RootProcessInstanceKey: "pi-root", State: d.StateActive}},
+				}
+				return d.ProcessInstancePage{Items: items[filter.ProcessDefinitionKey]}, nil
+			},
+			ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+				require.Equal(t, "pi-root", startKey)
+				return pitraversal.Result{
+					RootKey: "pi-root",
+					Keys:    []string{"pi-root"},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			},
+			descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+				require.Equal(t, "pi-root", rootKey)
+				return pitraversal.Result{
+					RootKey: rootKey,
+					Keys:    []string{"pi-root", "pi-a", "pi-b"},
+					Outcome: pitraversal.OutcomeComplete,
+				}, nil
+			},
+			cancelProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+				cancelled = append(cancelled, key)
+				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+				return d.CancelResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil, nil
+			},
+			deleteProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+				deletedPI = append(deletedPI, key)
+				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+				return d.DeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+			},
+		},
+		nil,
+		stubProcessDefinitionAPI{
+			searchProcessDefinitions: func(_ context.Context, _ d.ProcessDefinitionFilter, _ int32, _ ...services.CallOption) ([]d.ProcessDefinition, error) {
+				return []d.ProcessDefinition{
+					{Key: "pd-a", BpmnProcessId: "parent", ProcessVersion: 1},
+					{Key: "pd-b", BpmnProcessId: "child", ProcessVersion: 1},
+				}, nil
+			},
+			getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+				require.True(t, services.ApplyCallOptions(opts).WithStat)
+				getCalls[key]++
+				active := int64(1)
+				if getCalls[key] > 2 {
+					active = 0
+				}
+				return d.ProcessDefinition{
+					Key:               key,
+					BpmnProcessId:     key,
+					ProcessVersion:    1,
+					ProcessVersionTag: "v1.0.0",
+					TenantId:          "<default>",
+					Statistics:        &d.ProcessDefinitionStatistics{Active: active},
+				}, nil
+			},
+		},
+		stubResourceAPI{
+			delete: func(_ context.Context, resourceKey string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+				deletedPD = append(deletedPD, resourceKey)
+				require.True(t, services.ApplyCallOptions(opts).SuppressProcessInstanceDetailLogs)
+				return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+			},
+		},
+	).PurgeAllProcessDefinitions(context.Background(), d.AllProcessDefinitionsPurgeRequest{Force: true, Workers: 1})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"pi-root"}, cancelled)
+	require.Equal(t, []string{"pi-root"}, deletedPI)
+	require.Equal(t, []string{"pd-a", "pd-b"}, deletedPD)
+	require.EqualValues(t, 2, got.DeletePlan.ActiveProcessInstanceCount)
+	require.EqualValues(t, 3, got.DeletePlan.AffectedProcessInstanceCount)
+	require.Equal(t, d.AllProcessDefinitionsPurgeOutcomeDeleted, got.Outcome)
 }
 
 // emptyStringSliceIfNil lets tests compare logical empty collections independent of nil slice representation.

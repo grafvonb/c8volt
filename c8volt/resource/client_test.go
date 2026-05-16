@@ -379,6 +379,81 @@ func TestClient_DeleteProcessDefinitions_UsesActivityIndicator(t *testing.T) {
 	}, msgs)
 }
 
+// TestClient_DeleteProcessDefinitions_ForceCleanupDeduplicatesRoots verifies bulk
+// process-definition deletion cancels overlapping process-instance trees once.
+func TestClient_DeleteProcessDefinitions_ForceCleanupDeduplicatesRoots(t *testing.T) {
+	ctx := context.Background()
+	var canceledRoots typex.Keys
+	var deletedRoots typex.Keys
+	var deletedPD typex.Keys
+	var affectedCancelCount int
+	var affectedDeleteCount int
+	pdStatsCalls := map[string]int{}
+	api := &stubResourceAPI{
+		delete: func(_ context.Context, resourceKey string, _ ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			deletedPD = append(deletedPD, resourceKey)
+			return d.ResourceDeleteResponse{Ok: true, StatusCode: http.StatusOK, Status: "200 OK"}, nil
+		},
+	}
+	papi := stubProcessAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...options.FacadeOption) (process.ProcessDefinition, error) {
+			assert.True(t, options.ApplyFacadeOptions(opts).Stat)
+			pdStatsCalls[key]++
+			active := int64(1)
+			if pdStatsCalls[key] > 1 {
+				active = 0
+			}
+			return process.ProcessDefinition{
+				Key:               key,
+				BpmnProcessId:     key,
+				ProcessVersion:    1,
+				ProcessVersionTag: "v1.0.0",
+				TenantId:          "<default>",
+				Statistics:        &process.ProcessDefinitionStatistics{Active: active},
+			}, nil
+		},
+		searchProcessInstancesPage: func(_ context.Context, filter process.ProcessInstanceFilter, _ process.ProcessInstancePageRequest, _ ...options.FacadeOption) (process.ProcessInstancePage, error) {
+			items := map[string][]process.ProcessInstance{
+				"pd-a": {{Key: "pi-a", RootProcessInstanceKey: "root-1", State: process.StateActive}},
+				"pd-b": {{Key: "pi-b", RootProcessInstanceKey: "root-1", State: process.StateActive}},
+			}
+			return process.ProcessInstancePage{
+				OverflowState: process.ProcessInstanceOverflowStateNoMore,
+				Items:         items[filter.ProcessDefinitionKey],
+			}, nil
+		},
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			assert.Equal(t, typex.Keys{"root-1"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-1"},
+				Collected: typex.Keys{"root-1", "pi-a", "pi-b"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		cancelProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.CancelReports, error) {
+			canceledRoots = append(canceledRoots, keys...)
+			affectedCancelCount = options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount
+			return process.CancelReports{Items: []process.CancelReport{{Key: "root-1", Ok: true}}}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, _ int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			deletedRoots = append(deletedRoots, keys...)
+			affectedDeleteCount = options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-1", Ok: true}}}, nil
+		},
+	}
+
+	cli := newResourceTestClient(api, papi)
+	reports, err := cli.DeleteProcessDefinitions(ctx, typex.Keys{"pd-a", "pd-b"}, 1, options.WithForce())
+
+	require.NoError(t, err)
+	require.Len(t, reports.Items, 2)
+	assert.Equal(t, typex.Keys{"root-1"}, canceledRoots)
+	assert.Equal(t, typex.Keys{"root-1"}, deletedRoots)
+	assert.Equal(t, 3, affectedCancelCount)
+	assert.Equal(t, 3, affectedDeleteCount)
+	assert.Equal(t, typex.Keys{"pd-a", "pd-b"}, deletedPD)
+}
+
 func newResourceTestClient(api rsvc.API, p stubProcessAPI) API {
 	return New(api, stubProcessDefinitionService{source: p}, stubProcessInstanceService{source: p}, slog.Default())
 }

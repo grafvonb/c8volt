@@ -13,7 +13,6 @@ import (
 	"github.com/grafvonb/c8volt/internal/services"
 	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
-	rsvc "github.com/grafvonb/c8volt/internal/services/resource"
 	"github.com/grafvonb/c8volt/typex"
 )
 
@@ -77,7 +76,19 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 
 	deleteOpts := append([]services.CallOption{}, opts...)
 	deleteOpts = append(deleteOpts, services.WithSuppressProcessInstanceDetailLogs())
-	reports, err := rsvc.DeleteProcessDefinitions(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, plan.CandidateProcessDefinitionKeys, request.Workers, deleteOpts...)
+	if request.Force {
+		deleteOpts = append(deleteOpts, services.WithForce())
+	}
+	if request.NoWait {
+		deleteOpts = append(deleteOpts, services.WithNoWait())
+	}
+	if request.FailFast {
+		deleteOpts = append(deleteOpts, services.WithFailFast())
+	}
+	if request.NoWorkerLimit {
+		deleteOpts = append(deleteOpts, services.WithNoWorkerLimit())
+	}
+	reports, err := pdsvc.DeleteProcessDefinitions(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, plan.CandidateProcessDefinitionKeys, request.Workers, deleteOpts...)
 	result.Deletion = d.AllProcessDefinitionsPurgeDeletionResult{
 		Status:                         deletionStatusForResourceDeleteResponses(reports, request.NoWait, err),
 		SubmittedProcessDefinitionKeys: append(typex.Keys{}, plan.CandidateProcessDefinitionKeys...),
@@ -96,7 +107,11 @@ func (s *Service) PurgeAllProcessDefinitions(ctx context.Context, request d.AllP
 // buildAllProcessDefinitionsPurgeDeletePlan adapts frozen process-definition candidates into the shared delete-pd preflight.
 func buildAllProcessDefinitionsPurgeDeletePlan(ctx context.Context, pdAPI pdsvc.API, piAPI pisvc.API, log *slog.Logger, discovery d.ProcessDefinitionDiscoveryResult, requiresConfirmation bool, force bool, opts ...services.CallOption) (d.AllProcessDefinitionsPurgeDeletePlan, error) {
 	candidates := discovery.CandidateProcessDefinitionKeys.Unique()
-	preview, err := rsvc.PreviewDeleteProcessDefinitions(ctx, pdAPI, piAPI, log, candidates, opts...)
+	planOpts := append([]services.CallOption{}, opts...)
+	if force {
+		planOpts = append(planOpts, services.WithForce())
+	}
+	preview, err := pdsvc.PreviewDeleteProcessDefinitions(ctx, pdAPI, piAPI, log, candidates, planOpts...)
 	plan := d.AllProcessDefinitionsPurgeDeletePlan{
 		Status:                                  d.OpsWorkflowStepStatusPlanned,
 		CandidateProcessDefinitionKeys:          candidates,
@@ -119,13 +134,19 @@ func activeProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessD
 }
 
 func affectedProcessInstanceCountForProcessDefinitionPlan(items []d.DeleteProcessDefinitionPlanItem) int64 {
-	var total int64
+	var fallback int64
+	var affectedKeys typex.Keys
 	for _, item := range items {
-		affected := int64(len(item.CancellationPlan.Collected.Unique()))
-		if affected < item.ActiveProcessInstances() {
-			affected = item.ActiveProcessInstances()
+		collected := item.CancellationPlan.Collected.Unique()
+		if len(collected) == 0 {
+			fallback += item.ActiveProcessInstances()
+			continue
 		}
-		total += affected
+		affectedKeys = append(affectedKeys, collected...)
+	}
+	total := int64(len(affectedKeys.Unique())) + fallback
+	if active := activeProcessInstanceCountForProcessDefinitionPlan(items); total < active {
+		total = active
 	}
 	return total
 }

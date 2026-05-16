@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Adam Bogdan Boczek
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package resource
+package processdefinition
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose verifies quiet warnings hide key detail.
 func TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVerbose(t *testing.T) {
 	t.Parallel()
 
@@ -33,6 +34,7 @@ func TestFormatPartialCancellationImpactWarning_HidesMissingAncestorKeysUntilVer
 	assert.Contains(t, verbose, "missing ancestor keys: missing-1, missing-2")
 }
 
+// TestProcessDefinitionDeleteLogSubjectUsesBPMNProcessIDVersionAndKey verifies full process-definition labels.
 func TestProcessDefinitionDeleteLogSubjectUsesBPMNProcessIDVersionAndKey(t *testing.T) {
 	t.Parallel()
 
@@ -47,6 +49,7 @@ func TestProcessDefinitionDeleteLogSubjectUsesBPMNProcessIDVersionAndKey(t *test
 	assert.Equal(t, "pd 2251799813685255 invoice v5/v1.0.0 <default>", got)
 }
 
+// TestProcessDefinitionDeleteLogSubjectOmitsMissingVersion verifies labels stay compact without version metadata.
 func TestProcessDefinitionDeleteLogSubjectOmitsMissingVersion(t *testing.T) {
 	t.Parallel()
 
@@ -59,6 +62,7 @@ func TestProcessDefinitionDeleteLogSubjectOmitsMissingVersion(t *testing.T) {
 	assert.Equal(t, "pd 2251799813685255 invoice tenant-a", got)
 }
 
+// TestProcessDefinitionDeleteLogSubjectFallsBackToKeyOnly verifies key-only labels when BPMN metadata is absent.
 func TestProcessDefinitionDeleteLogSubjectFallsBackToKeyOnly(t *testing.T) {
 	t.Parallel()
 
@@ -67,6 +71,7 @@ func TestProcessDefinitionDeleteLogSubjectFallsBackToKeyOnly(t *testing.T) {
 	assert.Equal(t, "pd 2251799813685255", got)
 }
 
+// TestLogProcessDefinitionDeleteResultUsesSequentialLifecycleTerms verifies accepted and confirmed delete wording.
 func TestLogProcessDefinitionDeleteResultUsesSequentialLifecycleTerms(t *testing.T) {
 	t.Parallel()
 
