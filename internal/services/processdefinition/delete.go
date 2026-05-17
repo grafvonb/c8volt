@@ -179,6 +179,37 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	return rs, err
 }
 
+// FindUnrelatedProcessInstancesForDefinition returns process instances matching
+// a process definition that are not part of the caller-owned cleanup scope.
+func FindUnrelatedProcessInstancesForDefinition(ctx context.Context, piApi pisvc.API, processDefinitionKey string, bpmnProcessID string, allowedKeys types.Keys, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	filter := d.ProcessInstanceFilter{ProcessDefinitionKey: strings.TrimSpace(processDefinitionKey)}
+	if filter.ProcessDefinitionKey == "" {
+		filter.BpmnProcessId = strings.TrimSpace(bpmnProcessID)
+	}
+	if filter.ProcessDefinitionKey == "" && filter.BpmnProcessId == "" {
+		return nil, fmt.Errorf("%w: process-definition cleanup eligibility requires process-definition key or BPMN process ID", d.ErrValidation)
+	}
+	items, err := piApi.SearchForProcessInstances(ctx, filter, MaxResultSize, opts...)
+	if err != nil {
+		return nil, err
+	}
+	allowed := make(map[string]struct{}, len(allowedKeys))
+	for _, key := range allowedKeys.Unique() {
+		allowed[key] = struct{}{}
+	}
+	unrelated := make([]d.ProcessInstance, 0, len(items))
+	for _, item := range items {
+		if item.Key == "" {
+			continue
+		}
+		if _, ok := allowed[item.Key]; ok {
+			continue
+		}
+		unrelated = append(unrelated, item)
+	}
+	return unrelated, nil
+}
+
 // previewDeleteProcessDefinitionImpact loads metadata and completes active-instance impact expansion for one process definition.
 func previewDeleteProcessDefinitionImpact(ctx context.Context, pdApi API, piApi pisvc.API, key string, force bool, verbose bool, wantedWorkers int, opts ...services.CallOption) (d.DeleteProcessDefinitionPlanItem, error) {
 	item, err := getProcessDefinitionDeletePlanBase(ctx, pdApi, key, opts...)

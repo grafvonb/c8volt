@@ -278,6 +278,7 @@ func TestExecuteSmokeTestDeploysSelectedFixtureThroughResourceAPI(t *testing.T) 
 	got, err := NewWithWorkflowDependencies(cluster, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
+		NoCleanup:   true,
 	})
 
 	require.NoError(t, err)
@@ -344,7 +345,7 @@ func TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey(t 
 
 	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(
 		context.Background(),
-		d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2, Workers: 1, FailFast: true, NoWorkerLimit: true},
+		d.SmokeTestRequest{CommandName: "ops execute smoke-test", Count: 2, Workers: 1, FailFast: true, NoWorkerLimit: true, NoCleanup: true},
 		services.WithFailFast(),
 		services.WithNoWorkerLimit(),
 	)
@@ -388,6 +389,7 @@ func TestExecuteSmokeTestFallsBackToBPMNProcessIDWhenDeploymentKeyMissing(t *tes
 	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
+		NoCleanup:   true,
 	})
 
 	require.NoError(t, err)
@@ -423,6 +425,7 @@ func TestExecuteSmokeTestTraversalSummariesCapturePartialFamilyWalks(t *testing.
 	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
 		CommandName: "ops execute smoke-test",
 		Count:       1,
+		NoCleanup:   true,
 	})
 
 	require.NoError(t, err)
@@ -434,6 +437,136 @@ func TestExecuteSmokeTestTraversalSummariesCapturePartialFamilyWalks(t *testing.
 	require.Equal(t, typexKeys("root", "child"), summary.FamilyKeys)
 	require.Equal(t, []d.MissingAncestor{{Key: "missing-parent", StartKey: "child"}}, summary.MissingAncestors)
 	require.Equal(t, d.TraversalOutcomePartial, summary.Outcome)
+}
+
+func TestExecuteSmokeTestCleansUpCreatedResources(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionKey: "pd-88",
+			}}}}, nil
+		},
+		delete: func(_ context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			require.Equal(t, "pd-88", key)
+			require.False(t, services.ApplyCallOptions(opts).NoWait)
+			return d.ResourceDeleteResponse{Key: key, Ok: true, StatusCode: 200, Status: "200 OK", DeleteHistory: true, BatchOperationKey: "batch-1", BatchState: "COMPLETED"}, nil
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "pi-1", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeAncestry, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Chain: map[string]d.ProcessInstance{
+				startKey: {Key: startKey, State: d.StateActive, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeDescendants, StartKey: rootKey, RootKey: rootKey, Keys: []string{rootKey}, Chain: map[string]d.ProcessInstance{
+				rootKey: {Key: rootKey, State: d.StateActive, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "pi-1", key)
+			require.True(t, services.ApplyCallOptions(opts).Force)
+			return d.DeleteResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, "pd-88", filter.ProcessDefinitionKey)
+			require.Equal(t, int32(1000), size)
+			return nil, nil
+		},
+	}
+	pdAPI := stubProcessDefinitionAPI{
+		getProcessDefinition: func(_ context.Context, key string, opts ...services.CallOption) (d.ProcessDefinition, error) {
+			require.Equal(t, "pd-88", key)
+			require.True(t, services.ApplyCallOptions(opts).WithStat)
+			return d.ProcessDefinition{Key: key, BpmnProcessId: "C88_MultipleSubProcessesParentProcess", Statistics: &d.ProcessDefinitionStatistics{}}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, pdAPI, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.SmokeTestOutcomePassed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Cleanup.ProcessInstanceCleanup.Status)
+	require.Equal(t, typexKeys("pi-1"), got.Cleanup.ProcessInstanceCleanup.SubmittedKeys)
+	require.True(t, got.Cleanup.ProcessInstanceCleanup.Submitted)
+	require.True(t, got.Cleanup.ProcessInstanceCleanup.Confirmed)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Cleanup.ProcessDefinitionEligibility.Status)
+	require.True(t, got.Cleanup.ProcessDefinitionEligibility.Eligible)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Cleanup.ProcessDefinitionCleanup.Status)
+	require.Equal(t, "pd-88", got.Cleanup.ProcessDefinitionCleanup.SubmittedProcessDefinitionKey)
+	require.True(t, got.Cleanup.ProcessDefinitionCleanup.Submitted)
+	require.True(t, got.Cleanup.ProcessDefinitionCleanup.Confirmed)
+	require.Equal(t, 1, resource.deleteCalls)
+	require.Equal(t, got.Cleanup, got.Report.Cleanup)
+}
+
+func TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionKey: "pd-88",
+			}}}}, nil
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{}, errors.New("unexpected process-definition delete")
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "pi-1", ProcessDefinitionKey: data.ProcessDefinitionSpecificId}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		ancestryResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeAncestry, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Chain: map[string]d.ProcessInstance{
+				startKey: {Key: startKey, State: d.StateCompleted, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		descendantsResult: func(_ context.Context, rootKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeDescendants, StartKey: rootKey, RootKey: rootKey, Keys: []string{rootKey}, Chain: map[string]d.ProcessInstance{
+				rootKey: {Key: rootKey, State: d.StateCompleted, ProcessDefinitionKey: "pd-88"},
+			}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			require.Equal(t, "pi-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 200, Status: "200 OK"}, nil
+		},
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, "pd-88", filter.ProcessDefinitionKey)
+			return []d.ProcessInstance{{Key: "unrelated-1", ProcessDefinitionKey: "pd-88"}}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, stubProcessDefinitionAPI{}, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.Error(t, err)
+	require.True(t, errors.Is(err, d.ErrPrecondition), "got %v", err)
+	require.Contains(t, err.Error(), "process-definition cleanup blocked")
+	require.Equal(t, d.SmokeTestOutcomePartiallyFailed, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Cleanup.ProcessInstanceCleanup.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusBlocked, got.Cleanup.ProcessDefinitionEligibility.Status)
+	require.Equal(t, []string{"unrelated-1"}, got.Cleanup.ProcessDefinitionEligibility.Blockers)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionCleanup.Status)
+	require.Zero(t, resource.deleteCalls)
 }
 
 func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing.T) {
@@ -480,7 +613,9 @@ func (*stubSmokeTestClusterAPI) GetClusterLicense(context.Context, ...services.C
 
 type stubSmokeTestResourceAPI struct {
 	deploy      func(context.Context, []d.DeploymentUnitData, ...services.CallOption) (d.Deployment, error)
+	delete      func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error)
 	deployCalls int
+	deleteCalls int
 }
 
 func (s *stubSmokeTestResourceAPI) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts ...services.CallOption) (d.Deployment, error) {
@@ -491,8 +626,12 @@ func (s *stubSmokeTestResourceAPI) Deploy(ctx context.Context, units []d.Deploym
 	return s.deploy(ctx, units, opts...)
 }
 
-func (*stubSmokeTestResourceAPI) Delete(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
-	return d.ResourceDeleteResponse{}, errors.New("unexpected delete call")
+func (s *stubSmokeTestResourceAPI) Delete(ctx context.Context, key string, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	s.deleteCalls++
+	if s.delete == nil {
+		return d.ResourceDeleteResponse{}, errors.New("unexpected delete call")
+	}
+	return s.delete(ctx, key, opts...)
 }
 
 func (*stubSmokeTestResourceAPI) Get(context.Context, string, ...services.CallOption) (d.Resource, error) {

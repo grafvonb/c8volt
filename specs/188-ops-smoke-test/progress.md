@@ -8,6 +8,9 @@
 
 ## Codebase Patterns
 
+- Default smoke-test cleanup should plan created process-instance scope with `processinstance.DryRunCancelOrDeletePlan`, delete planned roots through `processinstance.DeleteProcessInstances`, and use forced lower-level PI deletion only for the workflow-owned created scope.
+- Process-definition cleanup safety should live with the process-definition/process-instance service boundary; `processdefinition.FindUnrelatedProcessInstancesForDefinition` checks for blockers before `processdefinition.DeleteProcessDefinitions` submits resource deletion.
+- `ops execute smoke-test` should call `shouldImplicitlyConfirm(cmd)` before the destructive default cleanup path; `--automation` and `--auto-confirm` both satisfy that confirmation contract.
 - Production Go source files cannot use filenames ending in `_test.go`; smoke-test implementation files should use non-test suffixes such as `_model.go` or `_service.go` so normal package builds include them.
 - `cmd/ops_execute.go` owns the `ops execute` grouping command and should remain a grouping command.
 - Existing concrete ops commands use `cmd/ops_execute_retention_policy.go`, `cmd/ops_purge_processinstances_with_incidents.go`, and `cmd/ops_purge_all_processdefinitions.go` as command/report/confirmation patterns.
@@ -184,4 +187,36 @@
 - Existing process-instance creation already supports exact deployed-definition execution through `ProcessInstanceData.ProcessDefinitionSpecificId`; no new lower-level API was needed.
 - Smoke-test proof options intentionally retain fail-fast, no-worker-limit, and verbose controls while excluding no-wait before run/walk so traversal has confirmed instances to inspect.
 - Validation run: `GOCACHE=/private/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run 'TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops -run 'TestClientExecuteSmokeTest|TestExecuteSmokeTest|TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test -race ./internal/services/ops ./cmd -run 'TestExecuteSmokeTestStartsCreatedInstancesByDeployedProcessDefinitionKey|TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances' -count=1`.
+---
+---
+## Iteration 6 - 2026-05-17 09:02:14 CEST
+**User Story**: User Story 5 - Cleanup Created Resources Safely
+**Tasks Completed**:
+- [x] T048: Add process-instance cleanup tests proving existing delete planning/deletion is reused
+- [x] T049: Add process-definition cleanup eligibility tests for unrelated-instance blockers
+- [x] T050: Add command confirmation and no-wait cleanup tests
+- [x] T051: Add local-precondition failure subprocess tests for unsafe cleanup blockers and exit code
+- [x] T052: Reuse existing process-instance delete planning/deletion behavior for created keys
+- [x] T053: Add the owning process-definition cleanup eligibility primitive
+- [x] T054: Delete the deployed process definition only after eligibility confirms no unrelated instances
+- [x] T055: Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions
+- [x] T056: Preserve cleanup eligibility, cleanup statuses, no-wait, confirmation, blockers, errors, and outcome
+- [x] T057: Render cleanup submitted, confirmed, blocked, skipped, failed, and passed states
+- [x] T058: Mark US5 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- internal/services/processdefinition/delete.go
+- internal/services/ops/smoke_test_service.go
+- internal/services/ops/smoke_test_test.go
+- internal/services/ops/orphan_purge_test.go
+- cmd/ops_execute_smoke_test.go
+- cmd/cmd_views_ops_execute_smoke_test.go
+- cmd/ops_execute_smoke_test_test.go
+- specs/188-ops-smoke-test/tasks.md
+- specs/188-ops-smoke-test/progress.md
+**Learnings**:
+- Default cleanup now deletes the workflow-owned PI scope with the existing delete planner/deleter before checking process-definition cleanup safety.
+- Process-definition cleanup is skipped and reported as blocked when unrelated process instances remain for the deployed definition.
+- Validation run: `GOCACHE=/private/tmp/c8volt-gocache go test ./internal/services/ops -run 'TestExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd -run 'TestOpsExecuteSmokeTest' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./internal/services/processdefinition ./internal/services/ops ./cmd ./c8volt/ops -run 'TestExecuteSmokeTest|TestOpsExecuteSmokeTest|TestClientExecuteSmokeTest|TestPreviewDeleteProcessDefinitions|TestDeleteProcessDefinition' -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test ./cmd ./c8volt/ops ./internal/services/ops ./internal/services/processdefinition ./internal/services/processinstance ./internal/services/resource -count=1`; `GOCACHE=/private/tmp/c8volt-gocache go test -race ./internal/services/ops ./cmd -run 'TestExecuteSmokeTestCleansUpCreatedResources|TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances|TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput|TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError' -count=1`.
 ---

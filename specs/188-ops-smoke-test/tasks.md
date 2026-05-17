@@ -146,20 +146,20 @@
 
 ### Tests for User Story 5
 
-- [ ] T048 [P] [US5] Add process-instance cleanup tests proving existing delete planning/deletion is reused in `internal/services/ops/smoke_test_test.go`
-- [ ] T049 [P] [US5] Add process-definition cleanup eligibility tests for unrelated-instance blockers in `internal/services/ops/smoke_test_test.go`
-- [ ] T050 [P] [US5] Add command confirmation and no-wait cleanup tests in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T051 [P] [US5] Add local-precondition failure subprocess tests for unsafe cleanup blockers and exit code in `cmd/ops_execute_smoke_test_test.go`
+- [x] T048 [P] [US5] Add process-instance cleanup tests proving existing delete planning/deletion is reused in `internal/services/ops/smoke_test_test.go`
+- [x] T049 [P] [US5] Add process-definition cleanup eligibility tests for unrelated-instance blockers in `internal/services/ops/smoke_test_test.go`
+- [x] T050 [P] [US5] Add command confirmation and no-wait cleanup tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T051 [P] [US5] Add local-precondition failure subprocess tests for unsafe cleanup blockers and exit code in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 5
 
-- [ ] T052 [US5] Reuse existing process-instance delete planning/deletion behavior for created keys in `internal/services/ops/smoke_test.go`
-- [ ] T053 [US5] Add or reuse the owning process-definition cleanup eligibility primitive in `internal/services/processdefinition` or `internal/services/processinstance`
-- [ ] T054 [US5] Delete the deployed process definition only when cleanup eligibility confirms no unrelated instances in `internal/services/ops/smoke_test.go`
-- [ ] T055 [US5] Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_execute_smoke_test.go`
-- [ ] T056 [US5] Preserve cleanup eligibility, cleanup statuses, no-wait, confirmation, blockers, errors, and outcome in `internal/domain/ops_smoke_test.go`
-- [ ] T057 [US5] Render cleanup submitted, confirmed, blocked, skipped, failed, and passed states in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T058 [US5] Mark US5 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T052 [US5] Reuse existing process-instance delete planning/deletion behavior for created keys in `internal/services/ops/smoke_test.go`
+- [x] T053 [US5] Add or reuse the owning process-definition cleanup eligibility primitive in `internal/services/processdefinition` or `internal/services/processinstance`
+- [x] T054 [US5] Delete the deployed process definition only when cleanup eligibility confirms no unrelated instances in `internal/services/ops/smoke_test.go`
+- [x] T055 [US5] Use `shouldImplicitlyConfirm(cmd)` for destructive confirmation decisions in `cmd/ops_execute_smoke_test.go`
+- [x] T056 [US5] Preserve cleanup eligibility, cleanup statuses, no-wait, confirmation, blockers, errors, and outcome in `internal/domain/ops_smoke_test.go`
+- [x] T057 [US5] Render cleanup submitted, confirmed, blocked, skipped, failed, and passed states in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T058 [US5] Mark US5 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: Default cleanup is independently functional and safety-checked.
 

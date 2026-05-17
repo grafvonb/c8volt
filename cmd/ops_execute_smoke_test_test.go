@@ -240,6 +240,7 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	output := executeRootForProcessInstanceTest(t,
 		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
 		"ops", "execute", "smoke-test",
+		"--no-wait",
 	)
 
 	require.Contains(t, output, "execute smoke test")
@@ -251,19 +252,35 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	require.Contains(t, output, "tenant: <default>")
 	require.Contains(t, output, "run result: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
-	require.Contains(t, output, "created keys: pi-1")
+	require.Contains(t, output, "created keys: 101")
 	require.Contains(t, output, "walk result: confirmed")
-	require.Contains(t, output, "walk pi-1: confirmed, root pi-1, family 1")
-	require.Contains(t, output, "outcome: passed_cleanup_skipped")
+	require.Contains(t, output, "walk 101: confirmed, root 101, family 1")
+	require.Contains(t, output, "process-instance cleanup: submitted")
+	require.Contains(t, output, "cleanup roots: 101")
+	require.Contains(t, output, "process-definition cleanup eligibility: confirmed")
+	require.Contains(t, output, "process-definition cleanup: submitted")
+	require.Contains(t, output, "cleanup process definition: pd-88")
+	require.Contains(t, output, "outcome: passed")
 	require.Equal(t, []string{
 		"GET /v2/topology",
 		"POST /v2/deployments",
 		"GET /v2/process-definitions/pd-88",
 		"POST /v2/process-instances",
-		"GET /v2/process-instances/pi-1",
-		"GET /v2/process-instances/pi-1",
-		"GET /v2/process-instances/pi-1",
+		"GET /v2/process-instances/101",
+		"GET /v2/process-instances/101",
+		"GET /v2/process-instances/101",
 		"POST /v2/process-instances/search",
+		"GET /v2/process-instances/101",
+		"GET /v2/process-instances/101",
+		"POST /v2/process-instances/search",
+		"DELETE /process-instances/101",
+		"POST /v2/process-instances/search",
+		"GET /v2/process-definitions/pd-88",
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/search",
+		"POST /v2/process-instances/search",
+		"POST /v2/resources/pd-88/deletion",
 	}, requests.Snapshot())
 }
 
@@ -293,15 +310,16 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 				"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
 				"ops", "execute", "smoke-test",
 				"--workers", "1",
+				"--no-cleanup",
 			}, tt.args...)
 			output := executeRootForProcessInstanceTest(t, args...)
 
 			require.Contains(t, output, "run: confirmed - start 2 process instance(s)")
 			require.Contains(t, output, "created process instances: 2/2")
-			require.Contains(t, output, "created keys: pi-1, pi-2")
+			require.Contains(t, output, "created keys: 101, 102")
 			require.Contains(t, output, "walk result: confirmed")
-			require.Contains(t, output, "walk pi-1: confirmed, root pi-1, family 1")
-			require.Contains(t, output, "walk pi-2: confirmed, root pi-2, family 1")
+			require.Contains(t, output, "walk 101: confirmed, root 101, family 1")
+			require.Contains(t, output, "walk 102: confirmed, root 102, family 1")
 			require.Len(t, createBodies.Snapshot(), 2)
 			for _, body := range createBodies.Snapshot() {
 				require.Contains(t, body, `"processDefinitionKey":"pd-88"`)
@@ -341,6 +359,52 @@ func TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest(t *testing.T) {
 	require.Equal(t, float64(4), run["requestedCount"])
 }
 
+func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+	var prompts []string
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.False(t, autoConfirm)
+		prompts = append(prompts, prompt)
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "smoke-test",
+		"--no-wait",
+	)
+
+	require.Contains(t, output, "process-instance cleanup: submitted")
+	require.Len(t, prompts, 1)
+	require.Contains(t, prompts[0], "clean up the created instances and eligible process definition")
+}
+
+func TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, &requests, nil, "999")
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteSmokeTestInvalidLocalFlagsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"C8VOLT_TEST_SMOKE_ARGS": marshalSmokeTestArgsForEnv(t, []string{
+			"ops", "execute", "smoke-test",
+			"--auto-confirm",
+			"--no-wait",
+		}),
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "process-definition cleanup blocked")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
+}
+
 func newOpsExecuteSmokeTestDryRunServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
 	t.Helper()
 
@@ -361,6 +425,10 @@ func newOpsExecuteSmokeTestDeploymentServer(t *testing.T, requests *testx.SafeSl
 }
 
 func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string]) *httptest.Server {
+	return newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t, requests, createBodies, "")
+}
+
+func newOpsExecuteSmokeTestRunWalkServerWithCleanupBlocker(t *testing.T, requests *testx.SafeSlice[string], createBodies *testx.SafeSlice[string], cleanupBlocker string) *httptest.Server {
 	t.Helper()
 
 	var created int
@@ -404,7 +472,7 @@ func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice
 				createBodies.Append(string(body))
 			}
 			created++
-			key := fmt.Sprintf("pi-%d", created)
+			key := fmt.Sprintf("%d", 100+created)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(processInstanceCreationJSON(key)))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v2/process-instances/"):
@@ -414,8 +482,22 @@ func newOpsExecuteSmokeTestRunWalkServer(t *testing.T, requests *testx.SafeSlice
 			_, _ = w.Write([]byte(processInstanceJSON(key)))
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
 			requests.Append(r.Method + " " + r.URL.Path)
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
 			w.Header().Set("Content-Type", "application/json")
+			if cleanupBlocker != "" && strings.Contains(string(body), "processDefinitionKey") && !strings.Contains(string(body), `"state"`) {
+				_, _ = w.Write([]byte(fmt.Sprintf(`{"items":[%s],"page":{"totalItems":1,"hasMoreTotalItems":false}}`, processInstanceJSON(cleanupBlocker))))
+				return
+			}
 			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/process-instances/"):
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"status":"deleted"}`))
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v2/resources/") && strings.HasSuffix(r.URL.Path, "/deletion"):
+			requests.Append(r.Method + " " + r.URL.Path)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"batchOperation":{"batchOperationKey":"batch-1"}}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}

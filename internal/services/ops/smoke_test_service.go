@@ -15,6 +15,7 @@ import (
 	"github.com/grafvonb/c8volt/embedded"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	pdsvc "github.com/grafvonb/c8volt/internal/services/processdefinition"
 	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
@@ -179,11 +180,16 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("walk smoke-test process-instance families: %w", err))
 	}
 
-	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, d.OpsWorkflowStepStatusSkipped)
-	result.Cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
-	result.Cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
-	result.Cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
-	return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
+	cleanupOpts := smokeTestCleanupOptions(opts...)
+	result.Cleanup, err = s.cleanupSmokeTestResources(ctx, result, cleanupOpts...)
+	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, smokeTestCleanupStepStatus(result.Cleanup))
+	if err != nil {
+		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
+	}
+	if result.Request.NoCleanup {
+		return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
+	}
+	return finishSmokeTestResult(result, d.SmokeTestOutcomePassed, nil)
 }
 
 func smokeTestCreateProcessInstances(ctx context.Context, api pisvc.API, log *slog.Logger, request d.SmokeTestRequest, deployment d.SmokeTestDeploymentResult, opts ...services.CallOption) (d.SmokeTestRunResult, error) {
@@ -289,6 +295,176 @@ func smokeTestProofOptions(opts ...services.CallOption) []services.CallOption {
 		out = append(out, services.WithVerbose())
 	}
 	return out
+}
+
+func smokeTestCleanupOptions(opts ...services.CallOption) []services.CallOption {
+	cfg := services.ApplyCallOptions(opts)
+	out := make([]services.CallOption, 0, 6)
+	if cfg.FailFast {
+		out = append(out, services.WithFailFast())
+	}
+	if cfg.NoWorkerLimit {
+		out = append(out, services.WithNoWorkerLimit())
+	}
+	if cfg.Verbose {
+		out = append(out, services.WithVerbose())
+	}
+	if cfg.NoWait {
+		out = append(out, services.WithNoWait())
+	}
+	return append(out, services.WithForce(), services.WithSuppressProcessInstanceDetailLogs())
+}
+
+func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestCleanupResult, error) {
+	cleanup := d.SmokeTestCleanupResult{NoCleanup: result.Request.NoCleanup}
+	if result.Request.NoCleanup {
+		cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		return cleanup, nil
+	}
+	piCleanup, cleanupScope, err := smokeTestCleanupProcessInstances(ctx, s.piAPI, s.log, result.Run.ProcessInstanceKeys, result.Request.Workers, opts...)
+	cleanup.ProcessInstanceCleanup = piCleanup
+	if err != nil {
+		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.Errors = []string{err.Error()}
+		return cleanup, fmt.Errorf("cleanup smoke-test process instances: %w", err)
+	}
+	if result.Deployment.ProcessDefinitionKey != "" && (s.pdAPI == nil || s.resourceAPI == nil) {
+		err := fmt.Errorf("%w: smoke-test process-definition cleanup requires process-definition and resource services", d.ErrValidation)
+		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusFailed
+		cleanup.ProcessDefinitionEligibility.Errors = []string{err.Error()}
+		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.Errors = []string{err.Error()}
+		return cleanup, err
+	}
+
+	eligibility, err := smokeTestProcessDefinitionCleanupEligibility(ctx, s.piAPI, result.Deployment, cleanupScope, opts...)
+	cleanup.ProcessDefinitionEligibility = eligibility
+	if err != nil {
+		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.Errors = []string{err.Error()}
+		return cleanup, err
+	}
+	pdCleanup, err := smokeTestCleanupProcessDefinition(ctx, s.resourceAPI, s.pdAPI, s.piAPI, s.log, result.Deployment.ProcessDefinitionKey, result.Request.Workers, opts...)
+	cleanup.ProcessDefinitionCleanup = pdCleanup
+	if err != nil {
+		cleanup.Errors = []string{err.Error()}
+		return cleanup, fmt.Errorf("cleanup smoke-test process definition: %w", err)
+	}
+	return cleanup, nil
+}
+
+func smokeTestCleanupProcessInstances(ctx context.Context, api pisvc.API, log *slog.Logger, keys typex.Keys, wantedWorkers int, opts ...services.CallOption) (d.SmokeTestProcessInstanceCleanupResult, typex.Keys, error) {
+	out := d.SmokeTestProcessInstanceCleanupResult{Status: d.OpsWorkflowStepStatusSkipped, NoWait: services.ApplyCallOptions(opts).NoWait}
+	if len(keys) == 0 {
+		return out, nil, nil
+	}
+	plan, err := pisvc.DryRunCancelOrDeletePlan(ctx, api, keys, wantedWorkers, opts...)
+	if err != nil {
+		out.Status = d.OpsWorkflowStepStatusFailed
+		out.Errors = []string{err.Error()}
+		return out, nil, err
+	}
+	roots := plan.Roots.Unique()
+	affected := len(plan.Collected.Unique())
+	if affected == 0 {
+		affected = len(roots)
+	}
+	deleteOpts := append([]services.CallOption{}, opts...)
+	deleteOpts = append(deleteOpts, services.WithAffectedProcessInstanceCount(affected))
+	reports, err := pisvc.DeleteProcessInstances(ctx, api, log, roots, wantedWorkers, affected, deleteOpts...)
+	out.Submitted = len(reports) > 0
+	out.SubmittedKeys = append(typex.Keys(nil), roots...)
+	out.Items = append([]d.Reporter(nil), reports...)
+	out.Status = deletionStatusForReports(reports, out.NoWait, err)
+	out.Confirmed = out.Status == d.OpsWorkflowStepStatusConfirmed
+	if err != nil {
+		out.Errors = []string{err.Error()}
+		return out, plan.Collected.Unique(), err
+	}
+	return out, plan.Collected.Unique(), nil
+}
+
+func smokeTestProcessDefinitionCleanupEligibility(ctx context.Context, api pisvc.API, deployment d.SmokeTestDeploymentResult, ownedKeys typex.Keys, opts ...services.CallOption) (d.SmokeTestCleanupEligibility, error) {
+	out := d.SmokeTestCleanupEligibility{Status: d.OpsWorkflowStepStatusSkipped}
+	if deployment.ProcessDefinitionKey == "" {
+		return out, nil
+	}
+	unrelated, err := pdsvc.FindUnrelatedProcessInstancesForDefinition(ctx, api, deployment.ProcessDefinitionKey, deployment.BpmnProcessID, ownedKeys, opts...)
+	if err != nil {
+		out.Status = d.OpsWorkflowStepStatusFailed
+		out.Errors = []string{err.Error()}
+		return out, err
+	}
+	if len(unrelated) > 0 {
+		out.Status = d.OpsWorkflowStepStatusBlocked
+		out.Blockers = smokeTestCleanupBlockers(unrelated)
+		err := fmt.Errorf("%w: process-definition cleanup blocked by unrelated process instance(s): %s", d.ErrPrecondition, strings.Join(out.Blockers, ", "))
+		out.Errors = []string{err.Error()}
+		return out, err
+	}
+	out.Status = d.OpsWorkflowStepStatusConfirmed
+	out.Eligible = true
+	return out, nil
+}
+
+func smokeTestCleanupBlockers(items []d.ProcessInstance) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.Key != "" {
+			out = append(out, item.Key)
+		}
+	}
+	return out
+}
+
+func smokeTestCleanupProcessDefinition(ctx context.Context, resourceAPI pdsvc.ResourceDeleteAPI, pdAPI pdsvc.API, piAPI pisvc.API, log *slog.Logger, key string, wantedWorkers int, opts ...services.CallOption) (d.SmokeTestProcessDefinitionCleanupResult, error) {
+	out := d.SmokeTestProcessDefinitionCleanupResult{Status: d.OpsWorkflowStepStatusSkipped, NoWait: services.ApplyCallOptions(opts).NoWait}
+	if key == "" {
+		return out, nil
+	}
+	responses, err := pdsvc.DeleteProcessDefinitions(ctx, resourceAPI, pdAPI, piAPI, log, typex.Keys{key}, wantedWorkers, opts...)
+	out.Submitted = len(responses) > 0
+	out.SubmittedProcessDefinitionKey = key
+	out.Items = append([]d.ResourceDeleteResponse(nil), responses...)
+	out.Status = smokeTestProcessDefinitionCleanupStatus(responses, out.NoWait, err)
+	out.Confirmed = out.Status == d.OpsWorkflowStepStatusConfirmed
+	if err != nil {
+		out.Errors = []string{err.Error()}
+		return out, err
+	}
+	return out, nil
+}
+
+func smokeTestProcessDefinitionCleanupStatus(items []d.ResourceDeleteResponse, noWait bool, err error) d.OpsWorkflowStepStatus {
+	if err != nil || !allResourceDeleteResponsesOK(items) {
+		return d.OpsWorkflowStepStatusFailed
+	}
+	if noWait {
+		return d.OpsWorkflowStepStatusSubmitted
+	}
+	return d.OpsWorkflowStepStatusConfirmed
+}
+
+func smokeTestCleanupStepStatus(cleanup d.SmokeTestCleanupResult) d.OpsWorkflowStepStatus {
+	for _, status := range []d.OpsWorkflowStepStatus{
+		cleanup.ProcessInstanceCleanup.Status,
+		cleanup.ProcessDefinitionEligibility.Status,
+		cleanup.ProcessDefinitionCleanup.Status,
+	} {
+		if status == d.OpsWorkflowStepStatusFailed || status == d.OpsWorkflowStepStatusBlocked {
+			return status
+		}
+	}
+	if cleanup.NoCleanup {
+		return d.OpsWorkflowStepStatusSkipped
+	}
+	if cleanup.ProcessInstanceCleanup.Status == d.OpsWorkflowStepStatusSubmitted || cleanup.ProcessDefinitionCleanup.Status == d.OpsWorkflowStepStatusSubmitted {
+		return d.OpsWorkflowStepStatusSubmitted
+	}
+	return d.OpsWorkflowStepStatusConfirmed
 }
 
 func (s *Service) executeSmokeTestDryRun(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestResult, error) {

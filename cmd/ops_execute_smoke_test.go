@@ -65,6 +65,12 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
 		if err := validateOpsWorkflowReportPathForPlanning(flagOpsExecuteSmokeTestReportFile, opsWorkflowReportWriteModeForConfirmedMutation(effectiveAutoConfirm && !flagDryRun)); err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
 		}
+		if !flagDryRun && !flagOpsExecuteSmokeTestNoCleanup {
+			prompt := fmt.Sprintf("Smoke test will deploy a fixture, start %d process instance(s), walk each family, then clean up the created instances and eligible process definition. Do you want to proceed?", flagOpsExecuteSmokeTestCount)
+			if err := confirmCmdOrAbortFn(effectiveAutoConfirm, prompt); err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, err)
+			}
+		}
 		result, err := cli.ExecuteSmokeTest(cmd.Context(), request, collectOptions()...)
 		if err != nil {
 			if reportErr := writeOpsExecuteSmokeTestReport(result, cfg, opsExecuteSmokeTestReportWriteMode(result)); reportErr != nil {

@@ -261,6 +261,7 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 type stubProcessInstanceAPI struct {
 	pisvc.API
 	createProcessInstance func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
+	search                func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchPage            func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	filterOrphans         func(context.Context, []d.ProcessInstance, ...services.CallOption) ([]d.ProcessInstance, error)
 	ancestryResult        func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
@@ -275,6 +276,13 @@ func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data 
 		panic("unexpected create")
 	}
 	return s.createProcessInstance(ctx, data, opts...)
+}
+
+func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	if s.search == nil {
+		panic("unexpected search")
+	}
+	return s.search(ctx, filter, size, opts...)
 }
 
 func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {

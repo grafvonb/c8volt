@@ -27,6 +27,7 @@ func renderOpsExecuteSmokeTestResult(cmd *cobra.Command, result ops.SmokeTestRes
 	renderOpsExecuteSmokeTestDeployment(cmd, result)
 	renderOpsExecuteSmokeTestRun(cmd, result)
 	renderOpsExecuteSmokeTestWalk(cmd, result)
+	renderOpsExecuteSmokeTestCleanup(cmd, result)
 	renderOpsExecuteSmokeTestOutcome(cmd, result)
 	renderOpsExecuteSmokeTestReportFile(cmd, result)
 	if len(result.Errors) > 0 {
@@ -99,6 +100,32 @@ func renderOpsExecuteSmokeTestWalk(cmd *cobra.Command, result ops.SmokeTestResul
 			continue
 		}
 		renderHumanLine(cmd, "walk %s: %s, family %d", item.ProcessInstanceKey, item.Status, familyCount)
+	}
+}
+
+func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestResult) {
+	cleanup := result.Cleanup
+	if cleanup.NoCleanup {
+		renderHumanLine(cmd, "cleanup: skipped (--no-cleanup)")
+		return
+	}
+	if cleanup.ProcessInstanceCleanup.Status != "" && cleanup.ProcessInstanceCleanup.Status != ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "process-instance cleanup: %s", cleanup.ProcessInstanceCleanup.Status)
+		if len(cleanup.ProcessInstanceCleanup.SubmittedKeys) > 0 {
+			renderHumanLine(cmd, "cleanup roots: %s", strings.Join(cleanup.ProcessInstanceCleanup.SubmittedKeys, ", "))
+		}
+	}
+	if cleanup.ProcessDefinitionEligibility.Status != "" && cleanup.ProcessDefinitionEligibility.Status != ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "process-definition cleanup eligibility: %s", cleanup.ProcessDefinitionEligibility.Status)
+		if len(cleanup.ProcessDefinitionEligibility.Blockers) > 0 {
+			renderHumanLine(cmd, "process-definition cleanup blockers: %s", strings.Join(cleanup.ProcessDefinitionEligibility.Blockers, ", "))
+		}
+	}
+	if cleanup.ProcessDefinitionCleanup.Status != "" && cleanup.ProcessDefinitionCleanup.Status != ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "process-definition cleanup: %s", cleanup.ProcessDefinitionCleanup.Status)
+		if cleanup.ProcessDefinitionCleanup.SubmittedProcessDefinitionKey != "" {
+			renderHumanLine(cmd, "cleanup process definition: %s", cleanup.ProcessDefinitionCleanup.SubmittedProcessDefinitionKey)
+		}
 	}
 }
 
