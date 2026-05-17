@@ -171,7 +171,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunDiscoveryOutput(t *testing.T
 	require.Contains(t, output, "candidate process instances: 1")
 	require.Contains(t, output, "duplicate candidate process instances: 1")
 	require.Contains(t, output, "skipped incidents: 1")
-	require.Contains(t, output, "delete plan: planned (candidate process instances: 1, roots: 1, affected process instances: 1)")
+	require.Contains(t, output, "delete preview: 3 incident(s), 1 process-instance candidate(s), 1 process-instance tree(s), 1 process instance(s) would be deleted")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
 }
 
@@ -235,7 +235,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsDryRunPlanRendering(t *testing.T) 
 	cmd := &cobra.Command{}
 	cmd.SetOut(&compact)
 	require.NoError(t, renderOpsPurgeProcessInstancesWithIncidentsResult(cmd, result))
-	require.Contains(t, compact.String(), "delete plan: planned (candidate process instances: 2, roots: 1, affected process instances: 3)")
+	require.Contains(t, compact.String(), "delete preview: 2 incident(s), 2 process-instance candidate(s), 1 process-instance tree(s), 3 process instance(s) would be deleted")
 	require.NotContains(t, compact.String(), "resolved root keys:")
 	require.NotContains(t, compact.String(), "affected process-instance keys:")
 

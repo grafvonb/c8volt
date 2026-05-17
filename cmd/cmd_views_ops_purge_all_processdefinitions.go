@@ -65,12 +65,33 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 	if result.DeletePlan.Status == "" {
 		return
 	}
+	if result.Request.DryRun {
+		renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd, result)
+		return
+	}
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
 	}
 	renderHumanLine(cmd, "delete plan: %s (candidate process definitions: %d, affected process instances: %d)",
 		result.DeletePlan.Status,
+		len(result.DeletePlan.CandidateProcessDefinitionKeys),
+		result.DeletePlan.AffectedProcessInstanceCount,
+	)
+	if result.DeletePlan.RequiresForce {
+		renderHumanLine(cmd, "active-instance blocker: %d active process instances require --force before deletion", result.DeletePlan.ActiveProcessInstanceCount)
+	}
+	if flagVerbose {
+		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
+	}
+}
+
+func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, result ops.AllProcessDefinitionsPurgeResult) {
+	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "delete preview: skipped (no matching process definitions)")
+		return
+	}
+	renderHumanLine(cmd, "delete preview: %d process definition(s) would be deleted; %d process instance(s) affected",
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)

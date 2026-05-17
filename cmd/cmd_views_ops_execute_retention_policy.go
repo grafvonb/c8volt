@@ -58,6 +58,10 @@ func renderOpsExecuteRetentionPolicyDiscovery(cmd *cobra.Command, result ops.Ret
 
 func renderOpsExecuteRetentionPolicyDeletePlan(cmd *cobra.Command, result ops.RetentionPolicyResult) {
 	if result.DeletePlan.Status != "" {
+		if result.Request.DryRun {
+			renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd, result)
+			return
+		}
 		renderHumanLine(cmd, "delete plan: %s (candidate retention process instances: %d, roots: %d, affected process instances: %d)",
 			result.DeletePlan.Status,
 			len(result.DeletePlan.SeedKeys),
@@ -89,6 +93,43 @@ func renderOpsExecuteRetentionPolicyDeletePlan(cmd *cobra.Command, result ops.Re
 			printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
 			printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 		}
+	}
+}
+
+func renderOpsExecuteRetentionPolicyDryRunDeletePreview(cmd *cobra.Command, result ops.RetentionPolicyResult) {
+	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "delete preview: skipped (no retention cleanup targets)")
+		return
+	}
+	renderHumanLine(cmd, "delete preview: %d retention candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+		len(result.DeletePlan.SeedKeys),
+		len(result.DeletePlan.ResolvedRootKeys),
+		len(result.DeletePlan.AffectedKeys),
+	)
+	if flagVerbose && len(result.DeletePlan.DuplicateKeys) > 0 {
+		renderHumanLine(cmd, "duplicate process-instance trees: %d", len(result.DeletePlan.DuplicateKeys))
+	}
+	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
+		renderHumanLine(cmd, "non-final process instances in scope: %d (use --force to cancel before delete)", len(result.DeletePlan.NonFinalAffectedItems))
+	}
+	if len(result.DeletePlan.SkippedSeedKeys) > 0 {
+		renderHumanLine(cmd, "skipped retention candidates with non-final roots: %d", len(result.DeletePlan.SkippedSeedKeys))
+	}
+	if flagVerbose && len(result.DeletePlan.MissingAncestors) > 0 {
+		renderHumanLine(cmd, "missing ancestors: %d", len(result.DeletePlan.MissingAncestors))
+	}
+	if flagVerbose {
+		for _, warning := range result.DeletePlan.TraversalWarnings {
+			if warning != "" {
+				renderHumanLine(cmd, "traversal warning: %s", warning)
+			}
+		}
+		renderHumanLine(cmd, "confirmation required: %t", result.DeletePlan.RequiresConfirmation)
+		printOpsExecuteRetentionPolicyKeys(cmd, "candidate keys", result.DeletePlan.SeedKeys)
+		printOpsExecuteRetentionPolicyKeys(cmd, "skipped candidate keys", result.DeletePlan.SkippedSeedKeys)
+		printOpsExecuteRetentionPolicyItems(cmd, "skipped non-final roots", result.DeletePlan.SkippedNonFinalRoots)
+		printOpsExecuteRetentionPolicyKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
+		printOpsExecuteRetentionPolicyKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
 	}
 }
 

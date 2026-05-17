@@ -106,7 +106,7 @@ func TestRenderIncidentResolutionResults_DryRunHumanOutputIsCompact(t *testing.T
 
 	output := buf.String()
 	require.Contains(t, output, "dry run: incident 2251799813685249 would be resolved")
-	require.Contains(t, output, "dry run: resolve incidents: 1 target(s), 1 planned/skipped, 0 failed; no changes applied")
+	require.Contains(t, output, "dry run: resolve incidents: 1 target(s) checked, 1 ready or already skipped, 0 failed; no changes applied")
 	require.NotContains(t, output, "resolved:")
 }
 
@@ -261,7 +261,7 @@ func TestRenderProcessInstanceResolutionResults_DryRunHumanOutputIsCompact(t *te
 
 	output := buf.String()
 	require.Contains(t, output, "dry run: process-instance 2251799813685250 would resolve 2 incident(s)")
-	require.Contains(t, output, "dry run: resolve process-instances: 1 target(s), 1 planned/skipped, 0 failed; no changes applied")
+	require.Contains(t, output, "dry run: resolve process-instances: 1 target(s) checked, 1 ready or already skipped, 0 failed; no changes applied")
 }
 
 func TestRenderProcessInstanceResolutionResults_JSONDryRunPayloadIgnoresVerbose(t *testing.T) {

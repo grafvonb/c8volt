@@ -40,12 +40,9 @@ func renderOpsExecuteSmokeTestPlan(cmd *cobra.Command, result ops.SmokeTestResul
 	if result.Plan.Fixture.File != "" {
 		renderHumanLine(cmd, "fixture: %s", result.Plan.Fixture.File)
 	}
-	if result.Plan.Status != "" {
-		renderHumanLine(cmd, "execution plan: %s (process instances: %d, cleanup: %t)",
-			result.Plan.Status,
-			result.Request.Count,
-			result.Plan.CleanupRequested,
-		)
+	if result.Request.DryRun {
+		renderHumanLine(cmd, "workflow: %s", smokeTestDryRunWorkflow(result.Request.Count))
+		renderHumanLine(cmd, "cleanup: %s", smokeTestCleanupIntent(result.Plan.CleanupRequested))
 	}
 	if !flagVerbose {
 		return
@@ -122,6 +119,9 @@ func renderOpsExecuteSmokeTestWalk(cmd *cobra.Command, result ops.SmokeTestResul
 }
 
 func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestResult) {
+	if result.Request.DryRun {
+		return
+	}
 	cleanup := result.Cleanup
 	if cleanup.NoCleanup {
 		renderHumanLine(cmd, "cleanup: skipped (--no-cleanup)")
@@ -244,6 +244,20 @@ func smokeTestHasHiddenRetainedResources(result ops.SmokeTestResult) bool {
 	return len(result.Cleanup.RetainedProcessInstanceKeys) > 0 ||
 		result.Cleanup.RetainedProcessDefinitionKey != "" ||
 		result.Cleanup.RetainedBpmnProcessID != ""
+}
+
+func smokeTestCleanupIntent(cleanupRequested bool) string {
+	if cleanupRequested {
+		return "included (will remove created process instances and fixture process definition)"
+	}
+	return "skipped (--no-cleanup)"
+}
+
+func smokeTestDryRunWorkflow(count int) string {
+	if count == 1 {
+		return "would deploy the fixture, start 1 process instance, and walk its process-instance family"
+	}
+	return fmt.Sprintf("would deploy the fixture, start %d process instances, and walk their process-instance families", count)
 }
 
 func renderOpsExecuteSmokeTestReportFile(cmd *cobra.Command, result ops.SmokeTestResult) {

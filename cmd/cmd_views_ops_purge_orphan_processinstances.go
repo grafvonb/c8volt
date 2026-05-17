@@ -37,11 +37,12 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	}
 	if result.Discovery.Count == 0 {
 		renderHumanLine(cmd, "candidate orphan process instances: 0")
-		renderHumanLine(cmd, "delete plan: skipped")
 		elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 		if result.Request.DryRun {
+			renderHumanLine(cmd, "delete preview: skipped (no orphan process-instance targets)")
 			renderHumanLine(cmd, "outcome: planned; no changes applied%s", elapsed)
 		} else {
+			renderHumanLine(cmd, "delete plan: skipped")
 			renderHumanLine(cmd, "outcome: planned; no targets deleted%s", elapsed)
 		}
 		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
@@ -52,12 +53,20 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 	if flagVerbose {
 		renderHumanLine(cmd, "candidate keys: %s", strings.Join(result.Discovery.Keys, ", "))
 	}
-	renderHumanLine(cmd, "delete plan: %s (candidate orphan process instances: %d, roots: %d, affected process instances: %d)",
-		result.DeletionPlan.Status,
-		len(result.DeletionPlan.RequestedKeys),
-		len(result.DeletionPlan.RootKeys),
-		len(result.DeletionPlan.AffectedKeys),
-	)
+	if result.Request.DryRun {
+		renderHumanLine(cmd, "delete preview: %d orphan candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+			len(result.DeletionPlan.RequestedKeys),
+			len(result.DeletionPlan.RootKeys),
+			len(result.DeletionPlan.AffectedKeys),
+		)
+	} else {
+		renderHumanLine(cmd, "delete plan: %s (candidate orphan process instances: %d, roots: %d, affected process instances: %d)",
+			result.DeletionPlan.Status,
+			len(result.DeletionPlan.RequestedKeys),
+			len(result.DeletionPlan.RootKeys),
+			len(result.DeletionPlan.AffectedKeys),
+		)
+	}
 	renderOpsHumanNotices(cmd, opsPurgeOrphanProcessInstancesHumanNotices(result), opsPurgeOrphanProcessInstancesNoticeFilter(result))
 	if result.DeleteRequested {
 		renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))

@@ -136,10 +136,12 @@ func TestOpsExecuteSmokeTestDryRunHumanOutputPlansWithoutMutation(t *testing.T) 
 
 	require.Contains(t, output, "dry run: execute smoke test")
 	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
-	require.Contains(t, output, "execution plan: planned (process instances: 2, cleanup: false)")
+	require.Contains(t, output, "workflow: would deploy the fixture, start 2 process instances, and walk their process-instance families")
+	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 	require.NotContains(t, output, "connectivity: confirmed")
 	require.NotContains(t, output, "deployment: planned -")
 	require.NotContains(t, output, "run: planned -")
+	require.NotContains(t, output, "cleanup: planned")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Equal(t, []string{"GET /v2/topology"}, requests.Snapshot())
 }
@@ -397,7 +399,6 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 
 	require.Contains(t, output, "execute smoke test")
 	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
-	require.Contains(t, output, "execution plan: planned (process instances: 1, cleanup: true)")
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")

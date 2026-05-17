@@ -150,7 +150,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, output, "candidate process definitions: 1")
 	require.Contains(t, output, "candidate scope: latest matching process definitions")
 	require.Contains(t, output, "duplicate candidate process definitions: 1")
-	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "delete preview: skipped (no matching process definitions)")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "candidate process-definition keys:")
 
@@ -203,7 +203,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
 	output := buf.String()
 
-	require.Contains(t, output, "delete plan: planned (candidate process definitions: 2, affected process instances: 3)")
+	require.Contains(t, output, "delete preview: 2 process definition(s) would be deleted; 3 process instance(s) affected")
 	require.NotContains(t, output, "\nprocess definitions:\n")
 	require.Contains(t, output, "invoice [v1: 3, v2/stable: 0]")
 	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")

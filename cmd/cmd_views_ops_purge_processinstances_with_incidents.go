@@ -64,6 +64,10 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 	if result.DeletePlan.Status == "" {
 		return
 	}
+	if result.Request.DryRun {
+		renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd, result)
+		return
+	}
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
@@ -76,6 +80,27 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 	)
 	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
 		renderHumanLine(cmd, "non-final affected process instances: %d", len(result.DeletePlan.NonFinalAffectedItems))
+	}
+	if flagVerbose {
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate resolved root keys", result.DeletePlan.DuplicateResolvedRootKeys)
+	}
+}
+
+func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.Command, result ops.IncidentPurgeResult) {
+	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "delete preview: skipped (no incident process-instance targets)")
+		return
+	}
+	renderHumanLine(cmd, "delete preview: %d incident(s), %d process-instance candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+		result.Discovery.IncidentCount,
+		len(result.DeletePlan.CandidateProcessInstanceKeys),
+		len(result.DeletePlan.ResolvedRootKeys),
+		len(result.DeletePlan.AffectedKeys),
+	)
+	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
+		renderHumanLine(cmd, "non-final process instances in scope: %d", len(result.DeletePlan.NonFinalAffectedItems))
 	}
 	if flagVerbose {
 		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)

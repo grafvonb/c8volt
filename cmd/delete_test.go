@@ -124,7 +124,7 @@ func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *
 	require.Contains(t, output, "selected process instances: 1")
 	require.Contains(t, output, "process-instance trees to delete: 1")
 	require.Contains(t, output, "process instances in scope: 3")
-	require.Contains(t, output, "scope: complete")
+	require.Contains(t, output, "process-instance family scope: complete (all related process instances were found)")
 	require.NotContains(t, output, "selected process-instance keys")
 	require.NotContains(t, output, "root process-instance tree keys")
 	require.NotContains(t, output, "in-scope process-instance keys")
@@ -368,7 +368,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "process instances in scope: 3")
-	require.Contains(t, buf.String(), "scope: complete")
+	require.Contains(t, buf.String(), "process-instance family scope: complete (all related process instances were found)")
 	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
