@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"mime"
 	"net/http"
 	"os"
 	"os/exec"
@@ -97,10 +98,24 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *test
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
 			sawDeploy = true
-			require.NoError(t, r.ParseMultipartForm(1<<20))
-			require.Equal(t, "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn", r.MultipartForm.File["resources"][0].Filename)
+			reader, err := r.MultipartReader()
+			require.NoError(t, err)
+			for {
+				part, err := reader.NextPart()
+				require.NoError(t, err)
+				if part.FormName() != "resources" {
+					continue
+				}
+				_, params, err := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
+				require.NoError(t, err)
+				require.Equal(t, "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn", params["filename"])
+				break
+			}
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-188","tenantId":"<default>","deployments":[{"processDefinition":{"processDefinitionId":"C89_MultipleSubProcessesParentProcess","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn","tenantId":"<default>"}}]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/188001":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"processDefinitionId":"C89_MultipleSubProcessesParentProcess","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn","tenantId":"<default>"}`))
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
