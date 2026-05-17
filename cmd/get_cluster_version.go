@@ -51,7 +51,7 @@ func runGetClusterVersion(cmd *cobra.Command, args []string) {
 	if err != nil {
 		handleNewCliError(cmd, log, cfg, err)
 	}
-	log.Debug("fetching cluster topology for version")
+	log.Debug("getting cluster topology for version")
 	topology, err := cli.GetClusterTopology(cmd.Context())
 	if err != nil {
 		ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("get cluster version: %w", err))

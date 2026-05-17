@@ -13,10 +13,10 @@ import (
 
 func logConfigProfile(log interface{ Info(string, ...any) }, cfg *config.Config) {
 	if cfg != nil && cfg.ActiveProfile != "" {
-		log.Info("using configuration profile: " + cfg.ActiveProfile)
+		log.Info("config profile " + cfg.ActiveProfile)
 		return
 	}
-	log.Info("no active profile provided in configuration, using default settings")
+	log.Info("config profile default")
 }
 
 func camundaMajorMinorMismatchWarnings(configuredVersion string, gatewayVersion string) []string {

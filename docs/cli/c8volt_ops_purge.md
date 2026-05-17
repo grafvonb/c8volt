@@ -1,0 +1,60 @@
+---
+title: "c8volt ops purge"
+nav_exclude: true
+---
+
+## c8volt ops purge
+
+Discover destructive operational cleanup workflows
+
+### Synopsis
+
+Discover destructive operational cleanup workflows.
+
+The purge command group is reserved for workflows that remove operational
+targets through target-specific subcommands. This grouping command only shows
+available purge workflows and never performs cleanup by itself.
+
+```
+c8volt ops purge [flags]
+```
+
+### Examples
+
+```
+  ./c8volt ops purge --help
+  ./c8volt ops purge orphan-process-instances --dry-run
+  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.md
+```
+
+### Options
+
+```
+  -h, --help   help for purge
+```
+
+### Options inherited from parent commands
+
+```
+  -y, --auto-confirm       auto-confirm prompts for non-interactive use
+      --automation         enable non-interactive mode for commands that explicitly support it
+      --config string      path to config file
+      --debug              enable debug logging
+  -j, --json               output as JSON (where applicable)
+      --keys-only          output keys only (where applicable)
+      --log-level string   log level (debug, info, warn, error) (default "info")
+      --no-indicator       disable transient terminal activity indicators
+      --profile string     config active profile name to use (e.g. dev, prod)
+  -q, --quiet              suppress output except errors
+      --tenant string      tenant ID for tenant-aware command flows (overrides env, profile, and base config)
+      --timeout duration   HTTP request timeout (default 30s)
+  -v, --verbose            show additional output
+```
+
+### SEE ALSO
+
+* [c8volt ops](c8volt_ops)	 - Discover high-level operational workflows
+* [c8volt ops purge all-process-definitions](c8volt_ops_purge_all-process-definitions)	 - Purge all selected process definitions
+* [c8volt ops purge orphan-process-instances](c8volt_ops_purge_orphan-process-instances)	 - Purge orphan child process instances
+* [c8volt ops purge process-instances-with-incidents](c8volt_ops_purge_process-instances-with-incidents)	 - Purge process instances selected by incidents
+

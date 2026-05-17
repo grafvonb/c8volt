@@ -20,7 +20,7 @@ var getVariableCmd = &cobra.Command{
 			handleNewCliError(cmd, log, cfg, err)
 		}
 
-		log.Info("Not implemented yet: get variable by name from process instance")
+		log.Info("get variable by name not implemented")
 	},
 }
 

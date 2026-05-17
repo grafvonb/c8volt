@@ -61,6 +61,8 @@ func TestFormatDocsBuildInfoNonRelease(t *testing.T) {
 func TestRewriteDocsIndexLinks(t *testing.T) {
 	body := strings.Join([]string{
 		`<img src="./docs/logo/c8volt.png" />`,
+		`Screencast: ![demo](docs/assets/screencasts/fast-start.gif)`,
+		`Asset: <img src="./docs/assets/example.png" />`,
 		`CLI: [reference](./docs/cli/index.md)`,
 		`Docs: [LICENSE](./LICENSE), [COPYRIGHT](./COPYRIGHT), [NOTICE.md](./NOTICE.md)`,
 		`Project: [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), [TRADEMARKS.md](TRADEMARKS.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)`,
@@ -71,6 +73,8 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 
 	for _, want := range []string{
 		`<img src="./logo/c8volt.png" />`,
+		`Screencast: ![demo](./assets/screencasts/fast-start.gif)`,
+		`Asset: <img src="./assets/example.png" />`,
 		`CLI: [reference](./cli/)`,
 		`[LICENSE](https://github.com/grafvonb/c8volt/blob/main/LICENSE)`,
 		`[COPYRIGHT](https://github.com/grafvonb/c8volt/blob/main/COPYRIGHT)`,
@@ -83,6 +87,21 @@ func TestRewriteDocsIndexLinks(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected rewritten body to contain %q, got %q", want, got)
 		}
+	}
+}
+
+func TestCLIMarkdownPreludeOmitsOpsBreadcrumb(t *testing.T) {
+	opsPrelude := cliMarkdownPrelude("c8volt_ops_repair_incident")
+	if strings.Contains(opsPrelude, "CLI Reference") {
+		t.Fatalf("expected ops CLI page prelude to omit CLI reference breadcrumb, got %q", opsPrelude)
+	}
+	if !strings.Contains(opsPrelude, `title: "c8volt ops repair incident"`) {
+		t.Fatalf("expected ops CLI page prelude to preserve title, got %q", opsPrelude)
+	}
+
+	regularPrelude := cliMarkdownPrelude("c8volt_get_process-instance")
+	if !strings.Contains(regularPrelude, "CLI Reference") {
+		t.Fatalf("expected non-ops CLI page prelude to keep CLI reference breadcrumb, got %q", regularPrelude)
 	}
 }
 
@@ -252,6 +271,117 @@ func TestGeneratedResolveDocsDocumentResolveWorkflows(t *testing.T) {
 		if !strings.Contains(processInstanceDoc, want) {
 			t.Fatalf("expected generated resolve process-instance docs to contain %q, got %q", want, processInstanceDoc)
 		}
+	}
+}
+
+// TestGeneratedOpsDocsDocumentGroupingCommands protects generated docs for the ops command foundation.
+func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
+	out := t.TempDir()
+	root := cmd.Root()
+	root.DisableAutoGenTag = true
+
+	prep := func(filename string) string {
+		base := filepath.Base(filename)
+		name := strings.TrimSuffix(base, filepath.Ext(base))
+		title := strings.ReplaceAll(name, "_", " ")
+		return "---\ntitle: \"" + title + "\"\nnav_exclude: true\n---\n\n"
+	}
+	link := func(name string) string { return docsLinkName(name) }
+	if err := doc.GenMarkdownTreeCustom(root, out, prep, link); err != nil {
+		t.Fatalf("generate docs: %v", err)
+	}
+
+	opsDoc := readGeneratedDocForTest(t, out, "c8volt_ops.md")
+	for _, want := range []string{
+		"Discover high-level operational workflows",
+		"./c8volt ops --help",
+		"[c8volt ops execute](c8volt_ops_execute)",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(opsDoc, want) {
+			t.Fatalf("expected generated ops docs to contain %q, got %q", want, opsDoc)
+		}
+	}
+
+	executeDoc := readGeneratedDocForTest(t, out, "c8volt_ops_execute.md")
+	for _, want := range []string{
+		"Discover predefined operational playbooks",
+		"lists playbooks that discover target sets",
+		"existing c8volt resource actions",
+		"./c8volt ops execute --help",
+		"./c8volt ops execute retention-policy --retention-days 90 --dry-run",
+		"[c8volt ops execute retention-policy](c8volt_ops_execute_retention-policy)",
+	} {
+		if !strings.Contains(executeDoc, want) {
+			t.Fatalf("expected generated ops execute docs to contain %q, got %q", want, executeDoc)
+		}
+	}
+
+	retentionDoc := readGeneratedDocForTest(t, out, "c8volt_ops_execute_retention-policy.md")
+	for _, want := range []string{
+		"Execute process-instance retention cleanup",
+		"--retention-days int",
+		"--report-file string",
+		"./c8volt ops execute retention-policy --retention-days 90 --state completed --bpmn-process-id order-process --dry-run",
+		"[c8volt ops execute](c8volt_ops_execute)",
+	} {
+		if !strings.Contains(retentionDoc, want) {
+			t.Fatalf("expected generated ops execute retention-policy docs to contain %q, got %q", want, retentionDoc)
+		}
+	}
+
+	repairDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair.md")
+	for _, want := range []string{
+		"Discover repair and remediation workflows",
+		"lists target-specific remediation workflows",
+		"./c8volt ops repair --help",
+		"incident",
+		"process-instance",
+	} {
+		if !strings.Contains(repairDoc, want) {
+			t.Fatalf("expected generated ops repair docs to contain %q, got %q", want, repairDoc)
+		}
+	}
+	repairIncidentDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_incident.md")
+	for _, want := range []string{
+		"Repair incidents by key",
+		"--key strings",
+		"--retries int32",
+		"--job-timeout string",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(repairIncidentDoc, want) {
+			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
+		}
+	}
+	repairProcessInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_process-instance.md")
+	for _, want := range []string{
+		"Repair incidents selected by process instances",
+		"--key strings",
+		"--direct-incidents-only",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(repairProcessInstanceDoc, want) {
+			t.Fatalf("expected generated ops repair process-instance docs to contain %q, got %q", want, repairProcessInstanceDoc)
+		}
+	}
+	if strings.Contains(repairProcessInstanceDoc, "--incidents-only") {
+		t.Fatalf("expected generated ops repair process-instance docs not to contain --incidents-only, got %q", repairProcessInstanceDoc)
+	}
+
+	for _, unwanted := range []string{
+		"orphan-cleanup",
+		"smoke-test",
+		"--key string",
+		"--key strings",
+		"repair process-instance",
+	} {
+		if strings.Contains(opsDoc, unwanted) {
+			t.Fatalf("expected generated ops docs to omit %q", unwanted)
+		}
+	}
+	if strings.Contains(repairDoc, "--key strings") {
+		t.Fatalf("expected generated ops repair grouping docs to omit target flags")
 	}
 }
 

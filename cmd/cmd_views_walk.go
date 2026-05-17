@@ -45,7 +45,10 @@ func pathView(cmd *cobra.Command, path KeysPath, chain Chain, mode RenderMode, s
 	case RenderModeKeysOnly:
 		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string { return it.Key }), "\n"))
 	default: // RenderModeOneLine
-		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, oneLinePI), sep))
+		showTimezoneOffset := commandShowTimezoneOffset(cmd)
+		renderOutputLine(cmd, "%s", strings.Join(mapItems(items, func(it process.ProcessInstance) string {
+			return oneLinePIWithTimezone(it, showTimezoneOffset)
+		}), sep))
 	}
 	return nil
 }
@@ -110,7 +113,8 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 	if !ok {
 		return fmt.Errorf("root %s not found in chain", rootKey)
 	}
-	renderOutputLine(cmd, "%s", oneLinePI(rootPI))
+	showTimezoneOffset := commandShowTimezoneOffset(cmd)
+	renderOutputLine(cmd, "%s", oneLinePIWithTimezone(rootPI, showTimezoneOffset))
 	var walk func(parentKey, prefix string)
 	walk = func(parentKey, prefix string) {
 		children := edges[parentKey]
@@ -130,7 +134,7 @@ func renderFamilyTree(cmd *cobra.Command, rootKey string, edges map[string][]str
 			if childKey == markerKey {
 				marker = " (--key)"
 			}
-			renderOutputLine(cmd, "%s", prefix+branch+oneLinePI(pi)+marker)
+			renderOutputLine(cmd, "%s", prefix+branch+oneLinePIWithTimezone(pi, showTimezoneOffset)+marker)
 			walk(childKey, nextPrefix)
 		}
 	}

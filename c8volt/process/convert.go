@@ -5,6 +5,7 @@ package process
 
 import (
 	d "github.com/grafvonb/c8volt/internal/domain"
+	pisvc "github.com/grafvonb/c8volt/internal/services/processinstance"
 	pitraversal "github.com/grafvonb/c8volt/internal/services/processinstance/traversal"
 	"github.com/grafvonb/c8volt/toolx"
 )
@@ -262,6 +263,14 @@ func fromDomainProcessInstancePage(x d.ProcessInstancePage) ProcessInstancePage 
 	}
 }
 
+func fromDomainOrphanDiscovery(x pisvc.OrphanDiscovery) OrphanDiscovery {
+	return OrphanDiscovery{
+		Filter: fromDomainProcessInstanceFilter(x.Filter),
+		Items:  toolx.MapSlice(x.Items, fromDomainProcessInstance),
+		Keys:   append([]string(nil), x.Keys...),
+	}
+}
+
 func fromDomainProcessInstanceReportedTotal(x d.ProcessInstanceReportedTotal) ProcessInstanceReportedTotal {
 	return ProcessInstanceReportedTotal{
 		Count: x.Count,
@@ -405,6 +414,24 @@ func toDomainProcessInstanceFilter(x ProcessInstanceFilter) d.ProcessInstanceFil
 		EndDateAfter:         x.EndDateAfter,
 		EndDateBefore:        x.EndDateBefore,
 		State:                d.State(x.State),
+		ParentKey:            x.ParentKey,
+		HasParent:            x.HasParent,
+		HasIncident:          x.HasIncident,
+	}
+}
+
+func fromDomainProcessInstanceFilter(x d.ProcessInstanceFilter) ProcessInstanceFilter {
+	return ProcessInstanceFilter{
+		Key:                  x.Key,
+		BpmnProcessId:        x.BpmnProcessId,
+		ProcessVersion:       x.ProcessVersion,
+		ProcessVersionTag:    x.ProcessVersionTag,
+		ProcessDefinitionKey: x.ProcessDefinitionKey,
+		StartDateAfter:       x.StartDateAfter,
+		StartDateBefore:      x.StartDateBefore,
+		EndDateAfter:         x.EndDateAfter,
+		EndDateBefore:        x.EndDateBefore,
+		State:                State(x.State),
 		ParentKey:            x.ParentKey,
 		HasParent:            x.HasParent,
 		HasIncident:          x.HasIncident,

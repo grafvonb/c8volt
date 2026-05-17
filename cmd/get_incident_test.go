@@ -163,6 +163,44 @@ func TestGetIncidentCommand_SearchPIKeysOnlyOutputUsesProcessInstanceKeys(t *tes
 	require.Equal(t, "2251799813711972\n2251799813711972\n", output)
 }
 
+// TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct
+// protects the original incident command surface while incident purge reuses
+// only the selection subset.
+func TestGetIncidentCommand_RegressionSelectionAndDisplayFlagsRemainDistinct(t *testing.T) {
+	help := executeRootForIncidentTest(t, "get", "incident", "--help")
+	assertHelpOutputContainsAll(t, help,
+		"--key strings",
+		"--state string",
+		"--error-type string",
+		"--pi-key string",
+		"--pi-keys-only",
+		"--total",
+		"--error-message-limit int",
+		"--with-no-error-message",
+	)
+
+	var requests []string
+	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
+		`{"items":[{"errorMessage":"No retries left","errorType":"JOB_NO_RETRIES","incidentKey":"2251799813685253","processInstanceKey":"2251799813711972","state":"ACTIVE","tenantId":"tenant-a"}],"page":{"totalItems":1,"hasMoreTotalItems":false}}`,
+	)
+	t.Cleanup(srv.Close)
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output := executeRootForIncidentTest(t,
+		"--config", cfgPath,
+		"get", "incident",
+		"--state", "active",
+		"--error-type", "job_no_retries",
+		"--limit", "1",
+		"--pi-keys-only",
+	)
+
+	require.Len(t, requests, 1)
+	require.Contains(t, requests[0], `"state":"ACTIVE"`)
+	require.Contains(t, requests[0], `"errorType":"JOB_NO_RETRIES"`)
+	require.Equal(t, "2251799813711972\n", output)
+}
+
 func TestGetIncidentCommand_SearchPIKeysOnlyIncrementalPagesOmitFound(t *testing.T) {
 	var requests []string
 	srv := newIncidentSearchCaptureServerWithResponses(t, &requests,
@@ -616,7 +654,7 @@ func TestGetIncidentCommand_SearchCreationTimeWindow(t *testing.T) {
 	require.Contains(t, requests[0], `"$gte":"2026-05-09T09:00:00Z"`)
 	require.Contains(t, requests[0], `"$lte":"2026-05-09T11:00:00Z"`)
 	require.Contains(t, output, "2251799813685253")
-	require.Contains(t, output, "2026-05-09T10:15:00+00:00")
+	require.Contains(t, output, "2026-05-09T10:15:00.000")
 	require.Contains(t, output, "found: 1")
 }
 

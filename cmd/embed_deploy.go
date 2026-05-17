@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/fs"
 	"slices"
-	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/resource"
@@ -45,11 +44,7 @@ var embedDeployCmd = &cobra.Command{
 		var toDeploy []string
 		switch {
 		case flagEmbedDeployAll:
-			for _, d := range all {
-				if strings.Contains(d, cfg.App.CamundaVersion.FilePrefix()) {
-					toDeploy = append(toDeploy, d)
-				}
-			}
+			toDeploy = embeddedFilesForCamundaVersion(all, cfg.App.CamundaVersion)
 			if len(toDeploy) == 0 {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no deployable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
 			}
@@ -70,7 +65,7 @@ var embedDeployCmd = &cobra.Command{
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("read embedded %q: %w", f, err))
 			}
-			log.Debug(fmt.Sprintf("deploying embedded resource(s) %q to tenant %s", f, cfg.App.ViewTenant()))
+			log.Debug(fmt.Sprintf("deploying embedded resource %q; tenant %s", f, cfg.App.ViewTenant()))
 			units = append(units, resource.DeploymentUnitData{Name: f, Data: data})
 		}
 
@@ -84,10 +79,10 @@ var embedDeployCmd = &cobra.Command{
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, fmt.Errorf("rendering process definition deployment view: %w", err))
 		}
-		log.Debug(fmt.Sprintf("%d embedded resource(s) to tenant %q deployed successfully", len(pdds), cfg.App.ViewTenant()))
+		log.Debug(fmt.Sprintf("embedded resources deployed; count %d, tenant %s", len(pdds), cfg.App.ViewTenant()))
 
 		if flagEmbedDeployWithRun {
-			log.Debug(fmt.Sprintf("running process instance(s) for deployed process definition(s) to tenant %q", cfg.App.ViewTenant()))
+			log.Debug(fmt.Sprintf("running pi for deployed pd; tenant %s", cfg.App.ViewTenant()))
 			datas, err := buildRunProcessInstanceDatasFromDeployments(pdds, units, cfg.App.TargetTenant())
 			if err != nil {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)

@@ -24,6 +24,9 @@ var utilityCommandPaths = map[string]struct{}{
 	"config test-connection": {},
 	"config template":        {},
 	"config validate":        {},
+	"ops":                    {},
+	"ops execute":            {},
+	"ops repair":             {},
 }
 
 func isUtilityCommand(cmd *cobra.Command) bool {

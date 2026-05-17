@@ -222,12 +222,21 @@ func TestProcessDefinitionSelectorHumanDiagnostic_SingleMissingSelectorOffersLis
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
 	}
+	cli := stubProcessAPI{
+		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+			require.Equal(t, process.ProcessDefinitionFilter{}, filter)
+			return process.ProcessDefinitions{
+				Total: 1,
+				Items: []process.ProcessDefinition{{Key: "pd-visible", BpmnProcessId: "visible"}},
+			}, nil
+		},
+	}
 
 	result := processDefinitionSelectorValidationResult{
 		MissingBpmnProcessIDs: []string{"missing-process"},
 	}
 	err := processDefinitionSelectorValidationError(result)
-	recoveryErr := processDefinitionSelectorRecovery(cmd, stubProcessAPI{}, result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, cli, result)
 
 	require.Error(t, err)
 	require.NoError(t, recoveryErr)
@@ -251,12 +260,21 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 		prompt = got
 		return localPreconditionError(ErrCmdAborted)
 	}
+	cli := stubProcessAPI{
+		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+			require.Equal(t, process.ProcessDefinitionFilter{}, filter)
+			return process.ProcessDefinitions{
+				Total: 1,
+				Items: []process.ProcessDefinition{{Key: "pd-visible", BpmnProcessId: "visible"}},
+			}, nil
+		},
+	}
 
 	result := processDefinitionSelectorValidationResult{
 		MissingBpmnProcessIDs: []string{"missing-a", "missing-b"},
 	}
 	err := processDefinitionSelectorValidationError(result)
-	recoveryErr := processDefinitionSelectorRecovery(cmd, stubProcessAPI{}, result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, cli, result)
 
 	require.Error(t, err)
 	require.NoError(t, recoveryErr)
@@ -266,6 +284,37 @@ func TestProcessDefinitionSelectorHumanDiagnostic_MultipleMissingSelectorsOffers
 	require.Equal(t, "List visible process definitions?", prompt)
 	require.NotContains(t, prompt, "credentials may not have access")
 	require.NotContains(t, prompt, "\n\n")
+}
+
+// Empty recovery listings should not prompt users to list nothing.
+func TestProcessDefinitionSelectorValidationError_SkipsPromptWhenNoVisibleDefinitions(t *testing.T) {
+	resetProcessDefinitionSelectorPromptTestState(t)
+	processDefinitionSelectorInteractiveTerminalFn = func() bool { return true }
+
+	cmd, output := newProcessDefinitionSelectorValidationTestCommand()
+	confirmProcessDefinitionSelectorListVisibleFn = func(bool, string) error {
+		t.Fatal("unexpected process-definition selector listing prompt")
+		return nil
+	}
+	var searched bool
+	cli := stubProcessAPI{
+		searchProcessDefinitions: func(_ context.Context, filter process.ProcessDefinitionFilter, opts ...options.FacadeOption) (process.ProcessDefinitions, error) {
+			searched = true
+			require.Equal(t, process.ProcessDefinitionFilter{}, filter)
+			return process.ProcessDefinitions{}, nil
+		},
+	}
+
+	result := processDefinitionSelectorValidationResult{
+		MissingBpmnProcessIDs: []string{"missing-process"},
+	}
+	err := processDefinitionSelectorValidationError(result)
+	recoveryErr := processDefinitionSelectorRecovery(cmd, cli, result)
+
+	require.Error(t, err)
+	require.NoError(t, recoveryErr)
+	require.True(t, searched)
+	require.Empty(t, output.String())
 }
 
 // Machine output modes must fail without launching the recovery listing path.

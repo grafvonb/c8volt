@@ -71,7 +71,13 @@ func (s *Service) Delete(ctx context.Context, resourceKey string, opts ...servic
 	cCfg := services.ApplyCallOptions(opts)
 
 	body := camundav88.DeleteResourceOpJSONRequestBody{DeleteHistory: boolPtr(true)}
-	resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, body)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "delete pd", func(ctx context.Context) (*camundav88.DeleteResourceOpResponse, *http.Response, []byte, error) {
+		resp, err := s.c.DeleteResourceOpWithResponse(ctx, resourceKey, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.ResourceDeleteResponse{}, err
 	}
@@ -163,7 +169,14 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 		return d.Deployment{}, err
 	}
 
-	resp, err := s.c.CreateDeploymentWithBodyWithResponse(ctx, contentType, body)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "deploy pd", func(ctx context.Context) (*camundav88.CreateDeploymentResponse, *http.Response, []byte, error) {
+		_, _ = body.Seek(0, 0)
+		resp, err := s.c.CreateDeploymentWithBodyWithResponse(ctx, contentType, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.Deployment{}, err
 	}
@@ -172,24 +185,28 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 		return d.Deployment{}, err
 	}
 	if !cCfg.NoWait {
-		if err = s.waitForDeploymentConfirmation(ctx, *payload, vtenantId); err != nil {
+		if err = s.waitForDeploymentConfirmation(ctx, *payload, vtenantId, cCfg.SuppressWorkflowDetailLogs); err != nil {
 			return d.Deployment{}, err
 		}
-	} else {
-		s.log.Info(fmt.Sprintf("%d deployment(s) to tenant %q finished, not confirmed as --no-wait is set", len(units), vtenantId))
+	} else if !cCfg.SuppressWorkflowDetailLogs {
+		s.log.Info(fmt.Sprintf("pd deploy submitted; count %d, tenant %s, no-wait", len(units), vtenantId))
 	}
 	return fromDeploymentResult(*payload), nil
 }
 
-func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav88.DeploymentResult, vtenantId string) error {
-	s.log.Info(fmt.Sprintf("waiting for %d deployment(s) confirmation...", len(dr.Deployments)))
-	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d deployment(s) confirmation", len(dr.Deployments)))
+func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav88.DeploymentResult, vtenantId string, suppressDetailLogs bool) error {
+	if !suppressDetailLogs {
+		s.log.Info(fmt.Sprintf("pd deploy wait; count %d", len(dr.Deployments)))
+	}
+	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d deployments", len(dr.Deployments)))
 	defer stopActivity()
 	poll := s.processDefinitionDeployPoller(dr)
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)
 	}
-	s.log.Info(fmt.Sprintf("%d deployment(s) to tenant %q confirmed by successful poll", len(dr.Deployments), vtenantId))
+	if !suppressDetailLogs {
+		s.log.Info(fmt.Sprintf("pd deploy confirmed; count %d, tenant %s", len(dr.Deployments), vtenantId))
+	}
 	return nil
 }
 

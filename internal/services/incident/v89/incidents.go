@@ -6,6 +6,7 @@ package v89
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -22,7 +23,7 @@ import (
 // GetIncident loads a single incident by key for direct resolution planning and confirmation.
 func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("getting incident with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("getting incident %s", key))
 	resp, err := s.cc.GetIncidentWithResponse(ctx, key)
 	if err != nil {
 		return d.ProcessInstanceIncidentDetail{}, err
@@ -37,8 +38,14 @@ func (s *Service) GetIncident(ctx context.Context, key string, opts ...services.
 // ResolveIncident submits direct incident resolution without doing confirmation polling.
 func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("resolving incident with key %s using generated camunda client", key))
-	resp, err := s.cc.ResolveIncidentWithResponse(ctx, key, camundav89.ResolveIncidentJSONRequestBody{})
+	s.log.Debug(fmt.Sprintf("resolving incident %s", key))
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "resolve incident", func(ctx context.Context) (*camundav89.ResolveIncidentResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.ResolveIncidentWithResponse(ctx, key, camundav89.ResolveIncidentJSONRequestBody{})
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.IncidentResolutionResponse{Key: key}, err
 	}
@@ -58,7 +65,7 @@ func (s *Service) ResolveIncident(ctx context.Context, key string, opts ...servi
 // SearchProcessInstanceIncidents uses the scoped process-instance incident endpoint for active incident enrichment.
 func (s *Service) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
 	callCfg := services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching incidents for process instance with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("searching pi %s incidents", key))
 	tenantFilter, err := newStringEqFilterPtr(s.cfg.App.Tenant)
 	if err != nil {
 		return nil, fmt.Errorf("building tenant incident filter: %w", err)

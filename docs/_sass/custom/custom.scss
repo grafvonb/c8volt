@@ -1,21 +1,32 @@
 .site-logo {
-  background-image: url("/logo/c8volt_logo_transparent_w_shadow_400x244_dim.png");
+  background-image: url("../../logo/c8volt_logo_transparent_w_shadow_400x244_dim.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+  flex: 0 0 auto;
+  width: min(13rem, 100%);
+  height: 5.1rem;
+}
+
+.site-header {
+  min-height: 6rem;
+}
+
+.site-title {
+  justify-content: center;
+  padding: 0.45rem 0.8rem;
 }
 
 .main-content h1:first-of-type {
   margin-top: 0.25rem;
 }
 
-.site-title {
-  font-size: 1.15rem;
-  font-weight: 700;
+.main-content-wrap:has(#main-content h1[id^="c8volt-ops"]) > .breadcrumb-nav {
+  display: none;
 }
 
-.site-nav > .nav-list:first-child > .nav-list-item:first-child > .nav-list-link {
-  font-size: 1.35rem;
+.site-title {
+  font-size: 1.15rem;
   font-weight: 700;
 }
 
@@ -28,6 +39,11 @@
   .side-bar + .main {
     max-width: none;
     margin-left: 16.5rem;
+  }
+
+  .site-header {
+    height: 6rem;
+    max-height: 6rem;
   }
 
   .main-content-wrap {

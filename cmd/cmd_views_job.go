@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/job"
+	"github.com/grafvonb/c8volt/toolx"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +17,7 @@ func jobView(cmd *cobra.Command, item job.Job) error {
 	if pickMode() == RenderModeJSON {
 		return renderJSONPayload(cmd, RenderModeJSON, item)
 	}
-	renderOutputLine(cmd, "%s", oneLineJob(item))
+	renderOutputLine(cmd, "%s", oneLineJobWithTimezone(item, commandShowTimezoneOffset(cmd)))
 	return nil
 }
 
@@ -30,7 +31,7 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 		if result.SubmittedTimeoutMS != nil {
 			parts = append(parts, fmt.Sprintf("timeout=%dms submitted", *result.SubmittedTimeoutMS))
 		}
-		renderOutputLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, "; "))
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, "; "))
 	case "submitted":
 		parts := []string{"submitted"}
 		if result.SubmittedRetries != nil {
@@ -39,13 +40,13 @@ func jobUpdateResultView(cmd *cobra.Command, result job.UpdateResult) error {
 		if result.SubmittedTimeoutMS != nil {
 			parts = append(parts, fmt.Sprintf("timeout=%dms", *result.SubmittedTimeoutMS))
 		}
-		renderOutputLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, strings.Join(parts, " "))
 	case "confirmation_failed":
-		renderOutputLine(cmd, "updated job %s: confirmation failed: %s", result.Key, result.Error)
+		renderHumanLine(cmd, "updated job %s: confirmation failed: %s", result.Key, result.Error)
 	case "mutation_failed":
-		renderOutputLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
+		renderHumanLine(cmd, "updated job %s: mutation failed: %s", result.Key, result.Error)
 	default:
-		renderOutputLine(cmd, "updated job %s: %s", result.Key, result.Status)
+		renderHumanLine(cmd, "updated job %s: %s", result.Key, result.Status)
 	}
 	return nil
 }
@@ -56,14 +57,14 @@ func jobUpdatePlanView(cmd *cobra.Command, plan job.UpdatePlan, label string) er
 	}
 	status := jobUpdatePlanHumanStatus(plan, label)
 	if !plan.HasMaterialChange() {
-		renderOutputLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)
+		renderHumanLine(cmd, "%s: update job %s: nothing to update; %s", label, plan.Key, status)
 		return nil
 	}
 	if status != "" {
-		renderOutputLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
+		renderHumanLine(cmd, "%s: update job %s: %s; %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items), status)
 		return nil
 	}
-	renderOutputLine(cmd, "%s: update job %s: %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items))
+	renderHumanLine(cmd, "%s: update job %s: %s", label, plan.Key, formatJobUpdatePlanItems(plan.Items))
 	return nil
 }
 
@@ -78,10 +79,18 @@ func jobUpdatePlanHumanStatus(plan job.UpdatePlan, label string) string {
 }
 
 func oneLineJob(item job.Job) string {
-	return compactFlatRow(flatRowJob(item))
+	return oneLineJobWithTimezone(item, false)
+}
+
+func oneLineJobWithTimezone(item job.Job, showTimezoneOffset bool) string {
+	return compactFlatRow(flatRowJobWithTimezone(item, showTimezoneOffset))
 }
 
 func flatRowJob(item job.Job) flatRow {
+	return flatRowJobWithTimezone(item, false)
+}
+
+func flatRowJobWithTimezone(item job.Job, showTimezoneOffset bool) flatRow {
 	parts := flatRow{item.Key}
 	if item.TenantId != "" {
 		parts = append(parts, item.TenantId)
@@ -97,7 +106,7 @@ func flatRowJob(item job.Job) flatRow {
 	}
 	parts = append(parts, "r:"+strconv.FormatInt(int64(item.Retries), 10))
 	if item.Deadline != nil {
-		parts = append(parts, "d:"+item.Deadline.Format(humanTimestampMillisLayout))
+		parts = append(parts, "d:"+toolx.FormatTime(*item.Deadline, showTimezoneOffset))
 	}
 	if item.ErrorCode != "" {
 		parts = append(parts, "ec:"+item.ErrorCode)
@@ -123,7 +132,7 @@ func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {
 			}
 			parts = append(parts, fmt.Sprintf("retries: %s -> %s", item.Before, item.After))
 		case "timeout":
-			parts = append(parts, fmt.Sprintf("timeout: submit %s", item.After))
+			parts = append(parts, fmt.Sprintf("timeout: set to %s", item.After))
 		default:
 			parts = append(parts, fmt.Sprintf("%s: %s", item.Name, item.After))
 		}

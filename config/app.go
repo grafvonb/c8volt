@@ -15,6 +15,7 @@ type App struct {
 	CamundaVersion          toolx.CamundaVersion `mapstructure:"camunda_version" json:"camunda_version" yaml:"camunda_version"`
 	Tenant                  string               `mapstructure:"tenant" json:"tenant" yaml:"tenant"`
 	ProcessInstancePageSize int32                `mapstructure:"process_instance_page_size" json:"process_instance_page_size" yaml:"process_instance_page_size"`
+	ShowTimezoneOffset      bool                 `mapstructure:"show_timezone_offset" json:"show_timezone_offset" yaml:"show_timezone_offset"`
 	Backoff                 BackoffConfig        `mapstructure:"backoff" json:"backoff" yaml:"backoff"`
 	Automation              bool                 `mapstructure:"automation" json:"-" yaml:"-"`
 	NoErrCodes              bool                 `mapstructure:"no_err_codes" json:"-" yaml:"-"`

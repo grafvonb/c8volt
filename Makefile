@@ -12,7 +12,7 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo unknown)
 LDFLAGS ?= -X github.com/grafvonb/c8volt/cmd.version=$(VERSION) -X github.com/grafvonb/c8volt/cmd.commit=$(COMMIT) -X github.com/grafvonb/c8volt/cmd.date=$(DATE)
 
-.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve
+.PHONY: help all tidy generate generate-clients build test licenses lint fmt vet clean install run cover cover.html release docs docs-content docs-site-install docs-site-build docs-site-build-root docs-site-serve demo-vhs-check demo-vhs-fast-start
 
 help: ## Show all available Make targets with a short description.
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "%-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -44,6 +44,12 @@ docs-site-build-root: docs-content ## Build docs for hosts that serve the site f
 
 docs-site-serve: docs-content ## Serve the local Jekyll docs site with live reload after refreshing generated docs content.
 	./scripts/docs-site.sh serve
+
+demo-vhs-check: ## Verify local VHS recording prerequisites and required recording environment variables.
+	./demos/vhs/scripts/check-vhs.sh
+
+demo-vhs-fast-start: ## Render the live Camunda-backed Fast Start VHS screencast.
+	./demos/vhs/scripts/render.sh fast-start
 
 build: ## Compile the c8volt binary into the local bin directory.
 	mkdir -p $(BIN_DIR)

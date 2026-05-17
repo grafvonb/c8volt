@@ -22,7 +22,7 @@ import (
 // SearchProcessInstanceVariables returns untruncated process-scope variables for a v8.8 process instance.
 func (s *Service) SearchProcessInstanceVariables(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
 	_ = services.ApplyCallOptions(opts)
-	s.log.Debug(fmt.Sprintf("searching variables for process instance with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("searching pi %s variables", key))
 	processInstanceKeyFilter, err := common.NewProcessInstanceKeyEqFilterPtr(key)
 	if err != nil {
 		return nil, fmt.Errorf("building process-instance variable filter: %w", err)
@@ -79,8 +79,15 @@ func (s *Service) UpdateProcessInstanceVariables(ctx context.Context, key string
 	if _, err := common.NewProcessInstanceKeyEqFilterPtr(key); err != nil {
 		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err
 	}
-	resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav88.ElementInstanceKey(key), camundav88.CreateElementInstanceVariablesJSONRequestBody{
+	body := camundav88.CreateElementInstanceVariablesJSONRequestBody{
 		Variables: variables,
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "update pi variables", func(ctx context.Context) (*camundav88.CreateElementInstanceVariablesResponse, *http.Response, []byte, error) {
+		resp, err := s.cc.CreateElementInstanceVariablesWithResponse(ctx, camundav88.ElementInstanceKey(key), body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
 	})
 	if err != nil {
 		return d.ProcessInstanceVariableUpdateResponse{Key: key}, err

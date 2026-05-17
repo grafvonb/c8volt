@@ -204,6 +204,18 @@ func (c *client) FilterProcessInstanceWithOrphanParent(ctx context.Context, item
 	return toolx.MapSlice(out, fromDomainProcessInstance), nil
 }
 
+func (c *client) DiscoverOrphanProcessInstances(ctx context.Context, request OrphanDiscoveryRequest, opts ...options.FacadeOption) (OrphanDiscovery, error) {
+	out, err := pisvc.DiscoverOrphanProcessInstances(ctx, c.piApi, pisvc.OrphanDiscoveryRequest{
+		Filter:    toDomainProcessInstanceFilter(request.Filter),
+		BatchSize: request.BatchSize,
+		Limit:     request.Limit,
+	}, options.MapFacadeOptionsToCallOptions(opts)...)
+	if err != nil {
+		return OrphanDiscovery{}, ferr.FromDomain(err)
+	}
+	return fromDomainOrphanDiscovery(out), nil
+}
+
 func (c *client) WaitForProcessInstanceState(ctx context.Context, key string, desired States, opts ...options.FacadeOption) (StateReport, ProcessInstance, error) {
 	got, pi, err := c.piApi.WaitForProcessInstanceState(ctx, key, toolx.MapSlice(desired, func(s State) d.State { return d.State(s) }), options.MapFacadeOptionsToCallOptions(opts)...)
 	pgot, _ := ParseState(got.State.String())

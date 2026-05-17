@@ -48,8 +48,7 @@ func main() {
 			prep := func(filename string) string {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, filepath.Ext(base))
-				title := strings.ReplaceAll(name, "_", " ")
-				return fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n[CLI Reference]({{ \"/cli/\" | relative_url }})\n", title)
+				return cliMarkdownPrelude(name)
 			}
 			link := func(name string) string { return docsLinkName(name) }
 			if err := doc.GenMarkdownTreeCustom(root, *out, prep, link); err != nil {
@@ -73,6 +72,15 @@ func main() {
 	}
 }
 
+func cliMarkdownPrelude(name string) string {
+	title := strings.ReplaceAll(name, "_", " ")
+	prelude := fmt.Sprintf("---\ntitle: %q\nnav_exclude: true\n---\n\n", title)
+	if strings.HasPrefix(name, "c8volt_ops") {
+		return prelude
+	}
+	return prelude + "[CLI Reference]({{ \"/cli/\" | relative_url }})\n"
+}
+
 func syncDocsIndexFromReadme(src, dst string) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
@@ -86,6 +94,7 @@ func syncDocsIndexFromReadme(src, dst string) error {
 title: "c8volt"
 permalink: /
 nav_order: 1
+nav_exclude: true
 has_toc: true
 ---
 
@@ -102,6 +111,8 @@ has_toc: true
 // rewriteDocsIndexLinks converts README-relative links into links valid from the generated docs index.
 func rewriteDocsIndexLinks(body string) string {
 	body = strings.ReplaceAll(body, "./docs/logo/", "./logo/")
+	body = strings.ReplaceAll(body, "./docs/assets/", "./assets/")
+	body = strings.ReplaceAll(body, "](docs/assets/", "](./assets/")
 	body = strings.ReplaceAll(body, "](./docs/cli/index.md)", "](./cli/)")
 
 	body = rewriteGovernanceLinks(body)

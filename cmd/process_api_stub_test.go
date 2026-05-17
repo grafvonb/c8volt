@@ -21,6 +21,7 @@ type stubProcessAPI struct {
 	cancelProcessInstances           func(context.Context, types.Keys, int, ...options.FacadeOption) (process.CancelReports, error)
 	deleteProcessInstances           func(context.Context, types.Keys, int, ...options.FacadeOption) (process.DeleteReports, error)
 	filterOrphanParent               func(context.Context, []process.ProcessInstance, ...options.FacadeOption) ([]process.ProcessInstance, error)
+	discoverOrphans                  func(context.Context, process.OrphanDiscoveryRequest, ...options.FacadeOption) (process.OrphanDiscovery, error)
 	searchProcessDefinitions         func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessDefinitionsLatest   func(context.Context, process.ProcessDefinitionFilter, ...options.FacadeOption) (process.ProcessDefinitions, error)
 	searchProcessInstancesPage       func(context.Context, process.ProcessInstanceFilter, process.ProcessInstancePageRequest, ...options.FacadeOption) (process.ProcessInstancePage, error)
@@ -280,6 +281,47 @@ func (s stubProcessAPI) FilterProcessInstanceWithOrphanParent(ctx context.Contex
 		panic("unexpected call")
 	}
 	return s.filterOrphanParent(ctx, items, opts...)
+}
+
+func (s stubProcessAPI) DiscoverOrphanProcessInstances(ctx context.Context, request process.OrphanDiscoveryRequest, opts ...options.FacadeOption) (process.OrphanDiscovery, error) {
+	if s.discoverOrphans != nil {
+		return s.discoverOrphans(ctx, request, opts...)
+	}
+	filter := request.Filter
+	filter.HasParent = new(bool)
+	*filter.HasParent = true
+	pageReq := process.ProcessInstancePageRequest{Size: request.BatchSize}
+	var out process.OrphanDiscovery
+	out.Filter = filter
+	for {
+		page, err := s.SearchProcessInstancesPage(ctx, filter, pageReq, opts...)
+		if err != nil {
+			return process.OrphanDiscovery{}, err
+		}
+		orphans, err := s.FilterProcessInstanceWithOrphanParent(ctx, page.Items, opts...)
+		if err != nil {
+			return process.OrphanDiscovery{}, err
+		}
+		for _, orphan := range orphans {
+			if request.Limit > 0 && len(out.Items) >= int(request.Limit) {
+				break
+			}
+			out.Items = append(out.Items, orphan)
+			out.Keys = append(out.Keys, orphan.Key)
+		}
+		if request.Limit > 0 && len(out.Items) >= int(request.Limit) {
+			return out, nil
+		}
+		if len(page.Items) == 0 || page.OverflowState != process.ProcessInstanceOverflowStateHasMore {
+			return out, nil
+		}
+		if page.EndCursor != "" {
+			pageReq = process.ProcessInstancePageRequest{Size: request.BatchSize}
+			pageReq.After = page.EndCursor
+		} else {
+			pageReq.From += int32(len(page.Items))
+		}
+	}
 }
 
 func (stubProcessAPI) WaitForProcessInstanceState(context.Context, string, process.States, ...options.FacadeOption) (process.StateReport, process.ProcessInstance, error) {

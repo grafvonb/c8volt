@@ -14,6 +14,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafvonb/c8volt/config"
 	"github.com/grafvonb/c8volt/internal/clients/auth/oauth2"
@@ -36,8 +37,16 @@ type Service struct {
 	tokenURL *url.URL
 
 	mu    sync.Mutex
-	cache map[string]string
+	cache map[string]cachedToken
+	now   func() time.Time
 }
+
+type cachedToken struct {
+	value     string
+	expiresAt time.Time
+}
+
+const tokenExpirySkew = 30 * time.Second
 
 type Option func(*Service)
 
@@ -60,7 +69,7 @@ func New(cfg *config.Config, apiHTTP *http.Client, log *slog.Logger, opts ...Opt
 	if log == nil {
 		return nil, errors.New("logger must not be nil")
 	}
-	log.Debug("using 'oauth2' authenticator. OAuth2 Client Credentials flow will be used to obtain bearer tokens.")
+	log.Debug("auth oauth2 client-credentials")
 	if apiHTTP == nil {
 		apiHTTP = http.DefaultClient
 	}
@@ -88,7 +97,8 @@ func New(cfg *config.Config, apiHTTP *http.Client, log *slog.Logger, opts ...Opt
 		headerName: "Authorization",
 		prefix:     "Bearer ",
 		tokenURL:   tu,
-		cache:      make(map[string]string),
+		cache:      make(map[string]cachedToken),
+		now:        time.Now,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -133,7 +143,7 @@ func sameURL(a, b *url.URL) bool {
 
 func (s *Service) ClearCache() {
 	s.mu.Lock()
-	s.cache = make(map[string]string)
+	s.cache = make(map[string]cachedToken)
 	s.mu.Unlock()
 }
 
@@ -146,17 +156,17 @@ func (s *Service) RetrieveTokenForAPI(ctx context.Context, target string) (strin
 		return "", errors.New("oauth2 service is nil (not wired)")
 	}
 	targetLabel := tokenTargetLabel(target)
-	s.log.Debug(fmt.Sprintf("looking up bearer token in cache for target: %s", targetLabel))
+	s.log.Debug(fmt.Sprintf("auth token cache lookup; target %s", targetLabel))
 	s.mu.Lock()
-	if tok, ok := s.cache[target]; ok && tok != "" {
+	if tok, ok := s.cache[target]; ok && s.cachedTokenUsable(tok) {
 		s.mu.Unlock()
-		s.log.Debug(fmt.Sprintf("found bearer token in cache for target: %s", targetLabel))
-		return tok, nil
+		s.log.Debug(fmt.Sprintf("auth token cache hit; target %s", targetLabel))
+		return tok.value, nil
 	}
 	s.mu.Unlock()
 
 	scope := s.cfg.Auth.OAuth2.Scope(target)
-	s.log.Debug(fmt.Sprintf("fetching bearer token for target: %s", targetLabel))
+	s.log.Debug(fmt.Sprintf("auth token fetch; target %s", targetLabel))
 	tok, err := s.requestToken(ctx, s.cfg.Auth.OAuth2.ClientID, s.cfg.Auth.OAuth2.ClientSecret, scope)
 	if err != nil {
 		var t string
@@ -166,11 +176,21 @@ func (s *Service) RetrieveTokenForAPI(ctx context.Context, target string) (strin
 		return "", fmt.Errorf("retrieve token%s: %w", t, err)
 	}
 
-	s.log.Debug(fmt.Sprintf("putting bearer token in cache for target: %s", targetLabel))
+	s.log.Debug(fmt.Sprintf("auth token cache store; target %s", targetLabel))
 	s.mu.Lock()
 	s.cache[target] = tok
 	s.mu.Unlock()
-	return tok, nil
+	return tok.value, nil
+}
+
+func (s *Service) cachedTokenUsable(tok cachedToken) bool {
+	if strings.TrimSpace(tok.value) == "" {
+		return false
+	}
+	if tok.expiresAt.IsZero() {
+		return false
+	}
+	return s.now().Add(tokenExpirySkew).Before(tok.expiresAt)
 }
 
 func tokenTargetLabel(target string) string {
@@ -180,23 +200,27 @@ func tokenTargetLabel(target string) string {
 	return target
 }
 
-func (s *Service) requestToken(ctx context.Context, clientID, clientSecret, scope string) (string, error) {
+func (s *Service) requestToken(ctx context.Context, clientID, clientSecret, scope string) (cachedToken, error) {
 	body := formBody(clientID, clientSecret, scope)
 	resp, err := s.c.RequestTokenWithBodyWithResponse(ctx, formContentType, body) // uses plain tokenHTTP
 	if err != nil {
-		return "", err
+		return cachedToken{}, err
 	}
 	if resp == nil {
-		return "", errors.New("nil token response")
+		return cachedToken{}, errors.New("nil token response")
 	}
 	if err = httpc.HttpStatusErr(resp.HTTPResponse, resp.Body); err != nil {
-		return "", err
+		return cachedToken{}, err
 	}
 	if resp.JSON200 == nil {
-		return "", fmt.Errorf("%w: 200 OK but empty payload; body=%s",
+		return cachedToken{}, fmt.Errorf("%w: 200 OK but empty payload; body=%s",
 			d.ErrMalformedResponse, string(resp.Body))
 	}
-	return resp.JSON200.AccessToken, nil
+	tok := cachedToken{value: resp.JSON200.AccessToken}
+	if resp.JSON200.ExpiresIn > 0 {
+		tok.expiresAt = s.now().Add(time.Duration(resp.JSON200.ExpiresIn) * time.Second)
+	}
+	return tok, nil
 }
 
 func formBody(clientID, clientSecret, scope string) io.Reader {

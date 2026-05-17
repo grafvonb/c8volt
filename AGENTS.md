@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/198-pi-keys-only/plan.md`
+- Active implementation plan: `specs/183-ops-repair-workflows/plan.md`
 <!-- SPECKIT END -->

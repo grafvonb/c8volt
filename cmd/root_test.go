@@ -29,6 +29,8 @@ func TestRootHelp_PreservesHumanTaxonomyAndDiscoveryCommand(t *testing.T) {
 		"run",
 		"expect",
 		"walk",
+		"ops",
+		"Discover high-level operational workflows",
 		"deploy",
 		"delete",
 		"cancel",

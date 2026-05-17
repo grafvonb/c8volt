@@ -13,6 +13,7 @@ type Resource struct {
 }
 
 type ResourceDeleteResponse struct {
+	Key               string
 	Ok                bool
 	StatusCode        int
 	Status            string

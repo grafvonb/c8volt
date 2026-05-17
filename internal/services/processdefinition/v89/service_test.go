@@ -253,7 +253,7 @@ func TestService_SearchProcessDefinitionsWithStat_UsesActivityIndicator(t *testi
 	started, stopped, msgs := sink.Snapshot()
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
-	assert.Equal(t, []string{"retrieving process definition stats for proc (123)"}, msgs)
+	assert.Equal(t, []string{"getting pd stats proc (123)"}, msgs)
 	m.AssertExpectations(t)
 }
 

@@ -109,7 +109,14 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 		return d.Deployment{}, err
 	}
 
-	resp, err := s.c.PostDeploymentsWithBodyWithResponse(ctx, contentType, body)
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "deploy pd", func(ctx context.Context) (*camundav87.PostDeploymentsResponse, *http.Response, []byte, error) {
+		_, _ = body.Seek(0, 0)
+		resp, err := s.c.PostDeploymentsWithBodyWithResponse(ctx, contentType, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
+	})
 	if err != nil {
 		return d.Deployment{}, err
 	}
@@ -117,6 +124,6 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 	if err != nil {
 		return d.Deployment{}, err
 	}
-	s.log.Debug(fmt.Sprintf("deployment of %d resources to tenant %q successful (confirmed, as the api returned 200 OK and is strongly consistent and atomic)", len(units), vtenantId))
+	s.log.Debug(fmt.Sprintf("deployment confirmed; resources %d, tenant %s", len(units), vtenantId))
 	return fromDeploymentResult(*payload), nil
 }

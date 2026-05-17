@@ -107,7 +107,7 @@ func (s *Service) GetUserTask(ctx context.Context, key string, opts ...services.
 }
 
 func (s *Service) searchPrimaryUserTask(ctx context.Context, key string) (d.UserTask, error) {
-	s.log.Debug(fmt.Sprintf("searching user task with key %s using generated camunda client", key))
+	s.log.Debug(fmt.Sprintf("searching user task %s", key))
 	body, err := searchUserTaskRequest(common.EffectiveTenant(s.cfg), key)
 	if err != nil {
 		return d.UserTask{}, fmt.Errorf("build user task search request: %w", err)
@@ -135,7 +135,7 @@ func (s *Service) searchFallbackTask(ctx context.Context, key string) (d.UserTas
 	if s.ct == nil {
 		return d.UserTask{}, fmt.Errorf("get fallback task: %w", common.ErrNoClientConfigured)
 	}
-	s.log.Debug(fmt.Sprintf("getting user task with key %s using generated tasklist client fallback", key))
+	s.log.Debug(fmt.Sprintf("getting user task %s via tasklist fallback", key))
 	resp, err := s.ct.GetTaskByIdWithResponse(ctx, key)
 	if err != nil {
 		return d.UserTask{}, fmt.Errorf("get fallback task: %w", err)

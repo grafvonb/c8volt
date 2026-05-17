@@ -74,15 +74,15 @@ var expectProcessInstanceCmd = &cobra.Command{
 			if incidentSet {
 				expectationLabel := processInstanceExpectationLogLabel(len(states) > 0)
 				logging.InfoOrVerbose(
-					fmt.Sprintf("waiting for %d process instance(s) to satisfy %s", len(keys), expectationLabel),
-					fmt.Sprintf("waiting for %d process instance(s) [%s] to satisfy %s", len(keys), keys, expectationLabel),
+					fmt.Sprintf("waiting for %d pi; expectations %s", len(keys), expectationLabel),
+					fmt.Sprintf("waiting for %d pi [%s]; expectations %s", len(keys), keys, expectationLabel),
 					log,
 					flagVerbose,
 				)
 			} else {
 				logging.InfoOrVerbose(
-					fmt.Sprintf("waiting for %d process instance(s) to reach one of %d desired state(s)", len(keys), len(states)),
-					fmt.Sprintf("waiting for %d process instance(s) [%s] to reach one of the states [%s]", len(keys), keys, states),
+					fmt.Sprintf("waiting for %d pi; states %d", len(keys), len(states)),
+					fmt.Sprintf("waiting for %d pi [%s]; states [%s]", len(keys), keys, states),
 					log,
 					flagVerbose,
 				)
@@ -99,8 +99,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 			if !commandUsesSharedEnvelope(cmd, pickMode()) {
 				expectationLabel := processInstanceExpectationLogLabel(len(states) > 0)
 				logging.InfoOrVerbose(
-					fmt.Sprintf("%d process instance(s) satisfied %s", len(keys), expectationLabel),
-					fmt.Sprintf("%d process instance(s) [%s] satisfied %s", len(keys), keys, expectationLabel),
+					fmt.Sprintf("%d pi satisfied; expectations %s", len(keys), expectationLabel),
+					fmt.Sprintf("%d pi [%s] satisfied; expectations %s", len(keys), keys, expectationLabel),
 					log,
 					flagVerbose,
 				)
@@ -116,8 +116,8 @@ var expectProcessInstanceCmd = &cobra.Command{
 		}
 		if !commandUsesSharedEnvelope(cmd, pickMode()) {
 			logging.InfoOrVerbose(
-				fmt.Sprintf("%d process instance(s) reached desired state(s)", len(keys)),
-				fmt.Sprintf("%d process instance(s) [%s] reached desired state(s) [%s]", len(keys), keys, states),
+				fmt.Sprintf("%d pi reached states", len(keys)),
+				fmt.Sprintf("%d pi [%s] reached states [%s]", len(keys), keys, states),
 				log,
 				flagVerbose,
 			)
@@ -133,8 +133,8 @@ func init() {
 	fs.StringSliceVarP(&flagExpectPIStates, "state", "s", nil, "state expectation; valid values are: [active, completed, canceled, terminated, absent]")
 	fs.StringVar(&flagExpectPIIncident, "incident", "", "incident expectation; valid values are: [true, false]")
 
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when --count > 1 (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new instances after the first error")
 
 	setCommandMutation(expectProcessInstanceCmd, CommandMutationReadOnly)

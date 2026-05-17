@@ -440,6 +440,14 @@ func TestUpdateProcessInstanceVariablesMapsConfirmedServiceResponse(t *testing.T
 			assert.True(t, services.ApplyCallOptions(opts).Verbose)
 			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
 		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			require.Equal(t, "123", key)
+			assert.True(t, services.ApplyCallOptions(opts).Verbose)
+			return []d.ProcessInstanceVariable{
+				{Name: "foo", Value: `"bar"`, ProcessInstanceKey: key, ScopeKey: key},
+				{Name: "nested", Value: `{"count":2}`, ProcessInstanceKey: key, ScopeKey: key},
+			}, nil
+		},
 	}
 
 	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
@@ -573,6 +581,35 @@ func TestUpdateProcessInstanceVariablesNoWaitReportsMutationFailurePerKey(t *tes
 		Variables:          map[string]any{"foo": "bar"},
 	}, got.Items[0])
 	require.False(t, got.Items[0].OK())
+}
+
+// TestUpdateProcessInstanceVariablesConfirmationMismatchReportsFailure verifies requested values are confirmed after JSON normalization.
+func TestUpdateProcessInstanceVariablesConfirmationMismatchReportsFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	piAPI := stubProcessInstanceAPI{
+		updateProcessInstanceVariables: func(_ context.Context, key string, variables map[string]any, _ ...services.CallOption) (d.ProcessInstanceVariableUpdateResponse, error) {
+			require.Equal(t, "123", key)
+			require.Equal(t, map[string]any{"foo": "bar"}, variables)
+			return d.ProcessInstanceVariableUpdateResponse{Key: key, Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+		searchProcessInstanceVariables: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceVariable, error) {
+			return []d.ProcessInstanceVariable{{Name: "foo", Value: `"baz"`, ProcessInstanceKey: key, ScopeKey: key}}, nil
+		},
+	}
+
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+	got, err := cli.UpdateProcessInstanceVariables(ctx, ProcessInstanceVariableUpdateRequest{
+		Key:       "123",
+		Variables: map[string]any{"foo": "bar"},
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "confirmation mismatch")
+	require.Equal(t, ProcessInstanceVariableUpdateStatusConfirmationFailed, got.Status)
+	require.Equal(t, "failed", got.ConfirmationStatus)
+	require.False(t, got.OK())
 }
 
 func TestUpdateProcessInstanceVariablesConfirmationTimeoutReportsPerKeyFailure(t *testing.T) {
@@ -1459,9 +1496,9 @@ func TestClient_CancelProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 1)
-	assert.Contains(t, logBuf.String(), "cancelling process instances requested for 4 affected instance(s) across 1 root key(s)")
-	assert.Contains(t, logBuf.String(), "cancelling 4 process instance(s) completed via 1 root request(s): 1 root request(s) succeeded or already cancelled/terminated, 0 failed")
-	assert.NotContains(t, logBuf.String(), "cancelling 1 process instance(s) completed")
+	assert.Contains(t, logBuf.String(), "cancelling pi: affected 4, roots 1")
+	assert.Contains(t, logBuf.String(), "pi cancel done; roots 1, affected 4, ok 1 (cancelled/terminal), failed 0")
+	assert.NotContains(t, logBuf.String(), "pi cancel done; requested 1")
 }
 
 // TestClient_CancelProcessInstances_UsesActivityIndicator verifies bulk cancel emits activity lifecycle messages.
@@ -1484,7 +1521,7 @@ func TestClient_CancelProcessInstances_UsesActivityIndicator(t *testing.T) {
 	started, stopped, msgs := sink.Snapshot()
 	assert.Equal(t, 1, started)
 	assert.Equal(t, 1, stopped)
-	assert.Equal(t, []string{"cancelling 4 process instance(s) via 1 root request(s)"}, msgs)
+	assert.Equal(t, []string{"cancelling 4 pi via 1 root(s)"}, msgs)
 }
 
 // TestClient_DeleteProcessInstances_LogsExpandedAffectedScope verifies delete
@@ -1506,9 +1543,32 @@ func TestClient_DeleteProcessInstances_LogsExpandedAffectedScope(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 1)
-	assert.Contains(t, logBuf.String(), "deleting process instances requested for 4 affected instance(s) across 1 root key(s)")
-	assert.Contains(t, logBuf.String(), "deleting 4 process instance(s) completed via 1 root request(s): 1 root request(s) succeeded, 0 failed")
-	assert.NotContains(t, logBuf.String(), "deleting 1 process instances completed")
+	assert.Contains(t, logBuf.String(), "deleting pi: affected 4, roots 1")
+	assert.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 1, failed 0")
+	assert.NotContains(t, logBuf.String(), "pi delete done; requested 1")
+}
+
+// TestClient_DeleteProcessInstances_UsesActivityIndicator verifies bulk delete emits activity lifecycle messages.
+func TestClient_DeleteProcessInstances_UsesActivityIndicator(t *testing.T) {
+	t.Parallel()
+
+	sink := &activitysink.Sink{}
+	ctx := logging.ToActivityContext(context.Background(), sink)
+	piAPI := stubProcessInstanceAPI{
+		deleteProcessInstance: func(_ context.Context, key string, _ ...services.CallOption) (d.DeleteResponse, error) {
+			assert.Equal(t, "root-1", key)
+			return d.DeleteResponse{Ok: true, StatusCode: 204, Status: "204 No Content"}, nil
+		},
+	}
+	cli := New(&stubProcessDefinitionAPI{}, piAPI, stubIncidentAPI{}, slog.Default())
+
+	_, err := cli.DeleteProcessInstances(ctx, typex.Keys{"root-1"}, 0, options.WithAffectedProcessInstanceCount(4))
+
+	require.NoError(t, err)
+	started, stopped, msgs := sink.Snapshot()
+	assert.Equal(t, 1, started)
+	assert.Equal(t, 1, stopped)
+	assert.Equal(t, []string{"deleting 4 pi via 1 root(s)"}, msgs)
 }
 
 // TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScope
@@ -1530,8 +1590,8 @@ func TestClient_DeleteProcessInstances_LogsConsolidatedWrongStateForExpandedScop
 
 	require.NoError(t, err)
 	require.Len(t, reports.Items, 1)
-	assert.Contains(t, logBuf.String(), "cannot delete expanded process-instance scope of 4 process instance(s): one or more affected process instances are not in a terminated state; use --force flag to cancel and then delete them")
-	assert.Contains(t, logBuf.String(), "deleting 4 process instance(s) completed via 1 root request(s): 0 root request(s) succeeded, 1 failed")
+	assert.Contains(t, logBuf.String(), "cannot delete pi scope; affected 4, non-terminal present, use --force")
+	assert.Contains(t, logBuf.String(), "pi delete done; roots 1, affected 4, ok 0, failed 1")
 }
 
 type stubProcessDefinitionAPI struct {

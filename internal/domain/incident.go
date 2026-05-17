@@ -20,6 +20,7 @@ type ProcessInstanceIncidentDetail struct {
 }
 
 type IncidentFilter struct {
+	Keys                   []string
 	State                  string
 	ErrorType              string
 	ErrorMessage           string

@@ -175,21 +175,28 @@ func handleProcessDefinitionSelectorValidationError(cmd *cobra.Command, log *slo
 
 // processDefinitionSelectorRecovery reuses existing process-definition list rendering instead of introducing a second diagnostic format.
 func processDefinitionSelectorRecovery(cmd *cobra.Command, cli process.API, result processDefinitionSelectorValidationResult) error {
-	prompt := "List visible process definitions?"
 	if result.HasNearMatches() {
-		prompt = "List matching process definitions?"
-	}
-	if err := confirmProcessDefinitionSelectorListVisibleFn(false, prompt); err != nil {
-		return nil
-	}
-	if result.HasNearMatches() {
+		if err := confirmProcessDefinitionSelectorListVisibleFn(false, "List matching process definitions?"); err != nil {
+			return nil
+		}
 		if err := listNearMatchProcessDefinitionsForSelectorValidation(cmd, result); err != nil {
 			return localPreconditionError(fmt.Errorf("%s; list matching process definitions: %w", formatMissingProcessDefinitionSelectorsSummary(result), err))
 		}
 		return nil
 	}
-	if err := listVisibleProcessDefinitionsForSelectorValidation(cmd, cli); err != nil {
+
+	pds, err := visibleProcessDefinitionsForSelectorValidation(cmd, cli)
+	if err != nil {
 		return localPreconditionError(fmt.Errorf("%s; list visible process definitions: %w", formatMissingProcessDefinitionSelectorsSummary(result), err))
+	}
+	if !processDefinitionSelectorHasMatches(pds) {
+		return nil
+	}
+	if err := confirmProcessDefinitionSelectorListVisibleFn(false, "List visible process definitions?"); err != nil {
+		return nil
+	}
+	if err := listProcessDefinitionsView(cmd, pds); err != nil {
+		return localPreconditionError(fmt.Errorf("%s; list visible process definitions: render process definitions: %w", formatMissingProcessDefinitionSelectorsSummary(result), err))
 	}
 	return nil
 }
@@ -215,10 +222,18 @@ func processDefinitionSelectorInteractiveTerminal() bool {
 	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 }
 
-func listVisibleProcessDefinitionsForSelectorValidation(cmd *cobra.Command, cli process.API) error {
+func visibleProcessDefinitionsForSelectorValidation(cmd *cobra.Command, cli process.API) (process.ProcessDefinitions, error) {
 	pds, err := cli.SearchProcessDefinitions(cmd.Context(), process.ProcessDefinitionFilter{}, collectOptions()...)
 	if err != nil {
-		return fmt.Errorf("search process definitions: %w", err)
+		return process.ProcessDefinitions{}, fmt.Errorf("search process definitions: %w", err)
+	}
+	return pds, nil
+}
+
+func listVisibleProcessDefinitionsForSelectorValidation(cmd *cobra.Command, cli process.API) error {
+	pds, err := visibleProcessDefinitionsForSelectorValidation(cmd, cli)
+	if err != nil {
+		return err
 	}
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		return fmt.Errorf("render process definitions: %w", err)
@@ -316,7 +331,7 @@ func confirmCmdOrAbortDefaultYes(autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}
-	fmt.Printf("%s [Y/n]: ", prompt)
+	fmt.Print(formatConfirmationPrompt(prompt, "[Y/n]"))
 	in := bufio.NewScanner(os.Stdin)
 	if !in.Scan() {
 		return localPreconditionError(ErrCmdAborted)

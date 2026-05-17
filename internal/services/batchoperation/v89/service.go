@@ -77,8 +77,15 @@ func (s *Service) CancelProcessInstances(ctx context.Context, filter d.ProcessIn
 	if err != nil {
 		return d.BatchOperation{}, err
 	}
-	resp, err := s.c.CancelProcessInstancesBatchOperationWithResponse(ctx, camundav89.CancelProcessInstancesBatchOperationJSONRequestBody{
+	body := camundav89.CancelProcessInstancesBatchOperationJSONRequestBody{
 		Filter: bodyFilter,
+	}
+	resp, err := services.RetryCamundaMutation(ctx, s.log, "cancel pi batch", func(ctx context.Context) (*camundav89.CancelProcessInstancesBatchOperationResponse, *http.Response, []byte, error) {
+		resp, err := s.c.CancelProcessInstancesBatchOperationWithResponse(ctx, body)
+		if resp == nil {
+			return resp, nil, nil, err
+		}
+		return resp, resp.HTTPResponse, resp.Body, err
 	})
 	if err != nil {
 		return d.BatchOperation{}, err

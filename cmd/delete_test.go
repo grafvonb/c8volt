@@ -124,7 +124,7 @@ func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *
 	require.Contains(t, output, "selected process instances: 1")
 	require.Contains(t, output, "process-instance trees to delete: 1")
 	require.Contains(t, output, "process instances in scope: 3")
-	require.Contains(t, output, "scope: complete")
+	require.Contains(t, output, "process-instance family scope: complete (all related process instances were found)")
 	require.NotContains(t, output, "selected process-instance keys")
 	require.NotContains(t, output, "root process-instance tree keys")
 	require.NotContains(t, output, "in-scope process-instance keys")
@@ -141,6 +141,70 @@ func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *
 	require.Contains(t, output, "root process-instance tree keys: root-human")
 	require.Contains(t, output, "in-scope process-instance keys: root-human, child-human, sibling-human")
 	require.NotContains(t, output, "no mutation submitted")
+}
+
+func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	piCapability := commandCapabilityForCommand(deleteProcessInstanceCmd)
+	require.Equal(t, "delete process-instance", piCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, piCapability.Mutation)
+	require.Equal(t, ContractSupportFull, piCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, piCapability.AutomationSupport)
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to delete; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview delete scope without submitting deletion or cancel-before-delete requests",
+	})
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+
+	pdCapability := commandCapabilityForCommand(deleteProcessDefinitionCmd)
+	require.Equal(t, "delete process-definition", pdCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, pdCapability.Mutation)
+	require.Equal(t, ContractSupportFull, pdCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, pdCapability.AutomationSupport)
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process definition key(s) to delete",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID of the process definition (all versions) to delete",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
 }
 
 // TestDeleteProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
@@ -304,7 +368,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "process instances in scope: 3")
-	require.Contains(t, buf.String(), "scope: complete")
+	require.Contains(t, buf.String(), "process-instance family scope: complete (all related process instances were found)")
 	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }
@@ -1127,6 +1191,117 @@ func TestDeleteProcessInstancesWithPlan_PrintsOrphanWarningForKeyedImpactCheck(t
 	require.Contains(t, buf.String(), "one or more parent process instances were not found")
 	require.Contains(t, buf.String(), "missing ancestor keys: 1 (use --verbose to list keys)")
 	require.NotContains(t, buf.String(), "missing ancestor keys: 2251799813711999")
+}
+
+// TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarchy
+// protects direct-key delete planning from regressing to deleting selected child
+// keys directly.
+func TestDeleteProcessInstancesWithPlan_SubmitsResolvedRootsOnlyForKeyedHierarchy(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	var prompt string
+	confirmCmdOrAbortFn = func(_ bool, got string) error {
+		prompt = got
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a", "child-b"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a", "child-b"},
+				Outcome:   process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-a"}, keys)
+			require.Zero(t, wantedWorkers)
+			require.Equal(t, 3, options.ApplyFacadeOptions(opts).AffectedProcessInstanceCount)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a", "child-b"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 2, Affected: 3, Roots: 1}, got.Impact)
+	require.Len(t, got.Reports, 1)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
+	require.Equal(t, typex.Keys{"root-a", "child-a", "child-b"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
+	require.Contains(t, prompt, "requested to delete 2 process instance(s)")
+	require.Contains(t, prompt, "a total of 3 instance(s) with 1 root instance(s) will be deleted")
+}
+
+// TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls
+// protects delete pi hierarchy planning and execution controls while incident
+// purge delegates to this path.
+func TestDeleteProcessInstancesWithPlan_RegressionForceNoWaitAndWorkerControls(t *testing.T) {
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+	flagCmdAutoConfirm = true
+	flagForce = true
+	flagNoWait = true
+	flagFailFast = true
+	flagNoWorkerLimit = true
+	flagWorkers = 3
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+
+	prevConfirm := confirmCmdOrAbortFn
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+	confirmCmdOrAbortFn = func(autoConfirm bool, prompt string) error {
+		require.True(t, autoConfirm)
+		require.Contains(t, prompt, "requested to delete 2 process instance(s)")
+		return nil
+	}
+
+	cli := stubProcessAPI{
+		dryRunCancelOrDeletePlan: func(_ context.Context, keys typex.Keys, _ ...options.FacadeOption) (process.DryRunPIKeyExpansion, error) {
+			require.Equal(t, typex.Keys{"child-a", "child-b"}, keys)
+			return process.DryRunPIKeyExpansion{
+				Roots:     typex.Keys{"root-a"},
+				Collected: typex.Keys{"root-a", "child-a", "child-b"},
+				RequiresCancelBeforeDelete: []process.ProcessInstance{
+					{Key: "child-b", State: process.StateActive},
+				},
+				Outcome: process.TraversalOutcomeComplete,
+			}, nil
+		},
+		deleteProcessInstances: func(_ context.Context, keys typex.Keys, wantedWorkers int, opts ...options.FacadeOption) (process.DeleteReports, error) {
+			require.Equal(t, typex.Keys{"root-a"}, keys)
+			require.Equal(t, 3, wantedWorkers)
+			applied := options.ApplyFacadeOptions(opts)
+			require.True(t, applied.Force)
+			require.True(t, applied.NoWait)
+			require.True(t, applied.FailFast)
+			require.True(t, applied.NoWorkerLimit)
+			require.Equal(t, 3, applied.AffectedProcessInstanceCount)
+			return process.DeleteReports{Items: []process.DeleteReport{{Key: "root-a", Ok: true}}}, nil
+		},
+	}
+
+	got, err := deleteProcessInstancesWithPlan(cmd, cli, typex.Keys{"child-a", "child-b"}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, processInstancePageImpact{Requested: 2, Affected: 3, Roots: 1}, got.Impact)
+	require.Len(t, got.Reports, 1)
+	require.NotNil(t, got.DryRunPreview)
+	require.Equal(t, typex.Keys{"root-a"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 }
 
 // TestDeleteProcessInstancesWithPlan_RequiresForceBeforeAnyMutation verifies
@@ -2097,7 +2272,7 @@ func TestDeleteProcessDefinitionCommand_DashStdinSatisfiesTargetSelector(t *test
 	require.NotContains(t, string(output), "either --key")
 	require.NotContains(t, string(output), "WARN WARNING")
 	require.NotContains(t, string(output), "WARNING:")
-	require.Contains(t, string(output), "deleting 1 process definitions completed")
+	require.Contains(t, string(output), "pd delete done; requested 1, ok 1, failed 0")
 	body := decodeSingleRequestJSON(t, deleteBodies)
 	require.Equal(t, true, body["deleteHistory"])
 }
@@ -2177,6 +2352,85 @@ apis:
 	require.True(t, ok, "expected search request filter object")
 	require.Equal(t, "tenant-a", filter["tenantId"])
 	require.Equal(t, true, filter["isLatestVersion"])
+}
+
+func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWait(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-definitions/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"items":[` + opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 3) + `],"page":{"totalItems":1,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/process-definitions/"+opsAllProcessDefinitionsPurgePDKeyA:
+			requests.Append(r.Method + " " + r.URL.Path)
+			_, _ = w.Write([]byte(opsAllProcessDefinitionsPurgeDefinitionJSON(opsAllProcessDefinitionsPurgePDKeyA, "invoice", 3)))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/process-instances/search":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"items":[],"page":{"totalItems":0,"hasMoreTotalItems":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/resources/"+opsAllProcessDefinitionsPurgePDKeyA+"/deletion":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			requests.Append(r.Method + " " + r.URL.Path + " " + string(body))
+			_, _ = w.Write([]byte(`{"resourceKey":"` + opsAllProcessDefinitionsPurgePDKeyA + `","batchOperation":{"batchOperationKey":"batch-` + opsAllProcessDefinitionsPurgePDKeyA + `","batchOperationType":"DELETE_PROCESS_DEFINITION"}}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.8")
+	output, err := testx.RunCmdSubprocess(t, "TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "delete impact check: 1 process definition(s); no active process instances found; no changes made yet")
+	require.Contains(t, string(output), "pd 2251799813685255 invoice v3/stable tenant; delete accepted; batch batch-2251799813685255")
+	require.NotContains(t, string(output), "pd delete done; requested")
+
+	got := requests.Snapshot()
+	require.Equal(t, 1, countRequestPrefixes(got, "POST /v2/process-definitions/search "))
+	require.Equal(t, 0, countRequestPrefixes(got, "POST /v2/batch-operations/search "))
+	require.Equal(t, 0, countRequestPrefixes(got, "GET /v2/batch-operations/"))
+	require.Equal(t, 1, countRequestPrefixes(got, "POST /v2/resources/"+opsAllProcessDefinitionsPurgePDKeyA+"/deletion "))
+
+	searchBody := decodeSingleRequestJSON(t, requestBodyForPrefix(t, got, "POST /v2/process-definitions/search "))
+	filter, ok := searchBody["filter"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "invoice", filter["processDefinitionId"])
+	require.Equal(t, float64(3), filter["version"])
+	require.Equal(t, "stable", filter["versionTag"])
+	require.Equal(t, true, filter["isLatestVersion"])
+
+	deleteBody := decodeSingleRequestJSON(t, requestBodyForPrefix(t, got, "POST /v2/resources/"+opsAllProcessDefinitionsPurgePDKeyA+"/deletion "))
+	require.Equal(t, true, deleteBody["deleteHistory"])
+}
+
+func countRequestPrefixes(requests []string, prefix string) int {
+	count := 0
+	for _, request := range requests {
+		if strings.HasPrefix(request, prefix) {
+			count++
+		}
+	}
+	return count
+}
+
+func requestBodyForPrefix(t *testing.T, requests []string, prefix string) []string {
+	t.Helper()
+
+	var matches []string
+	for _, request := range requests {
+		if strings.HasPrefix(request, prefix) {
+			matches = append(matches, strings.TrimPrefix(request, prefix))
+		}
+	}
+	return matches
 }
 
 // Runs a delete helper subprocess expected to fail and returns combined output with the exit code.
@@ -2468,6 +2722,30 @@ func TestDeleteProcessDefinitionCommand_LatestSearchUsesEffectiveTenantHelper(t 
 
 	root := Root()
 	root.SetArgs([]string{"--config", os.Getenv("C8VOLT_TEST_CONFIG"), "--tenant", "tenant-a", "delete", "process-definition", "--bpmn-process-id", "order-process", "--latest", "--auto-confirm", "--no-wait"})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
+func TestDeleteProcessDefinitionCommand_RegressionPreservesSelectorPreflightForceAndNoWaitHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"delete", "process-definition",
+		"--bpmn-process-id", "invoice",
+		"--pd-version", "3",
+		"--pd-version-tag", "stable",
+		"--latest",
+		"--force",
+		"--no-wait",
+		"--auto-confirm",
+	})
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
 	_ = root.Execute()

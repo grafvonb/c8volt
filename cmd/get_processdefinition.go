@@ -49,7 +49,7 @@ func runGetProcessDefinition(cmd *cobra.Command, args []string) {
 		handleNewCliError(cmd, log, cfg, err)
 	}
 
-	log.Debug("fetching process definitions")
+	log.Debug("getting pd")
 	filter := populatePDSearchFilterOpts()
 	if flagGetPDAsXML {
 		runGetProcessDefinitionXML(cmd, cli, log, cfg.App.NoErrCodes, filter)
@@ -67,7 +67,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 		ferrors.HandleAndExit(log, noErrCodes, err)
 	}
 
-	log.Debug(fmt.Sprintf("fetching process definition xml by key: %s", filter.Key))
+	log.Debug(fmt.Sprintf("getting pd %s xml", filter.Key))
 	xml, err := cli.GetProcessDefinitionXML(cmd.Context(), filter.Key, collectOptions()...)
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition xml: %w", err))
@@ -78,7 +78,7 @@ func runGetProcessDefinitionXML(cmd *cobra.Command, cli c8volt.API, log *slog.Lo
 }
 
 func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, key string) {
-	log.Debug(fmt.Sprintf("searching by key: %s", key))
+	log.Debug(fmt.Sprintf("getting pd %s", key))
 	pd, err := cli.GetProcessDefinition(cmd.Context(), key, collectOptions()...)
 	if err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("get process definition: %w", err))
@@ -89,7 +89,7 @@ func runGetProcessDefinitionByKey(cmd *cobra.Command, cli c8volt.API, log *slog.
 }
 
 func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.Logger, noErrCodes bool, filter process.ProcessDefinitionFilter) {
-	log.Debug(fmt.Sprintf("searching process definitions for filter: %s", filter.String()))
+	log.Debug(fmt.Sprintf("searching pd; filter %s", filter.String()))
 
 	var (
 		pds process.ProcessDefinitions
@@ -106,7 +106,7 @@ func runSearchProcessDefinitions(cmd *cobra.Command, cli c8volt.API, log *slog.L
 	if err := listProcessDefinitionsView(cmd, pds); err != nil {
 		ferrors.HandleAndExit(log, noErrCodes, fmt.Errorf("error rendering items view: %w", err))
 	}
-	log.Debug(fmt.Sprintf("fetched process definitions by filter, found: %d items", pds.Total))
+	log.Debug(fmt.Sprintf("pd search done; found %d", pds.Total))
 }
 
 func init() {

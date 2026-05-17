@@ -89,7 +89,7 @@ var getIncidentCmd = &cobra.Command{
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, invalidFlagValuef("incident key %q is not a valid key", firstBadKey))
 			}
 
-			log.Debug(fmt.Sprintf("fetching incidents for key(s) [%s], render mode: %s", keys, pickMode()))
+			log.Debug(fmt.Sprintf("getting incidents; keys [%s], mode %s", keys, pickMode()))
 			incidents, err := cli.GetIncidents(cmd.Context(), keys, flagWorkers, collectOptions()...)
 			if err != nil {
 				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("get incidents: %w", err))
@@ -113,7 +113,7 @@ var getIncidentCmd = &cobra.Command{
 		}
 
 		filter := populateGetIncidentSearchFilter()
-		log.Debug(fmt.Sprintf("searching incidents, render mode: %s", pickMode()))
+		log.Debug(fmt.Sprintf("searching incidents; mode %s", pickMode()))
 		if flagGetIncidentTotal {
 			total, err := searchIncidentsTotal(cmd, cli, cfg, filter)
 			if err != nil {
@@ -159,8 +159,8 @@ func init() {
 	fs.BoolVar(&flagGetIncidentTotal, "total", false, "return only the exact numeric total of matching incidents")
 	fs.IntVar(&flagGetIncidentMessageLimit, "error-message-limit", 0, "maximum characters to show for incident messages; 0 keeps full messages")
 	fs.BoolVar(&flagGetIncidentNoErrorMessage, "with-no-error-message", false, "omit error messages from incident output")
-	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, GOMAXPROCS))")
-	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "disable limiting the number of workers to GOMAXPROCS when --workers > 1")
+	fs.IntVarP(&flagWorkers, "workers", "w", 0, "maximum concurrent workers when fetching multiple incidents (default: min(count, 2*GOMAXPROCS, 32))")
+	fs.BoolVar(&flagNoWorkerLimit, "no-worker-limit", false, "use all queued jobs as workers when --workers is unset")
 	fs.BoolVar(&flagFailFast, "fail-fast", false, "stop scheduling new incident lookups after the first error")
 
 	useInvalidInputFlagErrors(getIncidentCmd)

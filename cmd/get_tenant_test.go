@@ -216,9 +216,9 @@ func TestGetTenantListOutput_UnfilteredEmptyResultsWarnsAboutTenantAccess(t *tes
 
 	require.Equal(t, "found: 0\n", output)
 	require.Contains(t, logBuf.String(), "level=WARN")
-	require.Contains(t, logBuf.String(), "tenant search returned no tenants")
+	require.Contains(t, logBuf.String(), "tenant search empty")
 	require.Contains(t, logBuf.String(), "<default>")
-	require.Contains(t, logBuf.String(), "configured client may not have access to tenant resources")
+	require.Contains(t, logBuf.String(), "reserved or inaccessible")
 }
 
 // Verifies tenant filters are literal contains checks rather than regular expressions.

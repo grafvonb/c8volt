@@ -65,7 +65,7 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 	if autoConfirm || !term.IsTerminal(int(os.Stdin.Fd())) {
 		return nil
 	}
-	fmt.Printf("%s [y/N]: ", prompt)
+	fmt.Print(formatConfirmationPrompt(prompt, "[y/N]"))
 	in := bufio.NewScanner(os.Stdin)
 	if !in.Scan() {
 		return localPreconditionError(ErrCmdAborted)
@@ -79,6 +79,30 @@ func confirmCmdOrAbort(autoConfirm bool, prompt string) error {
 }
 
 var confirmCmdOrAbortFn = confirmCmdOrAbort
+
+func formatConfirmationPrompt(prompt string, choiceLabel string) string {
+	prompt = strings.TrimSpace(prompt)
+	if !strings.Contains(prompt, "\n") {
+		prompt = splitFinalConfirmationQuestion(prompt)
+	}
+	return fmt.Sprintf("%s %s: ", prompt, choiceLabel)
+}
+
+func splitFinalConfirmationQuestion(prompt string) string {
+	if !strings.HasSuffix(prompt, "?") {
+		return prompt
+	}
+	splitAt := -1
+	for _, marker := range []string{". ", "; ", "! "} {
+		if idx := strings.LastIndex(prompt, marker); idx > splitAt {
+			splitAt = idx
+		}
+	}
+	if splitAt < 0 {
+		return prompt
+	}
+	return strings.TrimSpace(prompt[:splitAt+1]) + "\n" + strings.TrimSpace(prompt[splitAt+2:])
+}
 
 func shouldImplicitlyConfirm(cmd *cobra.Command) bool {
 	return flagCmdAutoConfirm || automationModeEnabled(cmd)

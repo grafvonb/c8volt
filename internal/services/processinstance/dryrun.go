@@ -35,8 +35,14 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	if err != nil {
 		return d.DryRunPIKeyExpansion{}, err
 	}
+	seenRoots := make(map[string]struct{}, len(ancestryResults))
+	var duplicateRoots typex.Keys
 	for _, result := range ancestryResults {
 		if result.RootKey != "" {
+			if _, ok := seenRoots[result.RootKey]; ok {
+				duplicateRoots = append(duplicateRoots, result.RootKey)
+			}
+			seenRoots[result.RootKey] = struct{}{}
 			roots = append(roots, result.RootKey)
 		}
 	}
@@ -70,6 +76,7 @@ func DryRunCancelOrDeletePlan(ctx context.Context, api API, keys typex.Keys, wan
 	plan := d.DryRunPIKeyExpansion{
 		Roots:                      roots,
 		Collected:                  collected,
+		DuplicateRoots:             duplicateRoots.Unique(),
 		SelectedFinalState:         selectedFinalStateProcessInstances(keys, ancestryResults),
 		RequiresCancelBeforeDelete: nonFinalProcessInstances(collected, descendantResults),
 		MissingAncestors:           uniqueMissingAncestors(append(ancestryMissing, descendantsMissing...)),

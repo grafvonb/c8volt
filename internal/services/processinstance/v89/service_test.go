@@ -177,6 +177,47 @@ func TestService_CreateProcessInstance(t *testing.T) {
 		assert.NotEmpty(t, creation.StartConfirmedAt)
 		assert.Equal(t, 1, getCalls)
 	})
+
+	t.Run("CreateLogOmitsStartAndConfirmedTimestamps", func(t *testing.T) {
+		var logBuf bytes.Buffer
+		svc, err := v89.New(
+			waitTestConfig(),
+			&http.Client{},
+			slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo)),
+			v89.WithClientCamunda(&mockCamundaClient{
+				createProcessInstanceWithResponse: func(ctx context.Context, body camundav89.CreateProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CreateProcessInstanceResponse, error) {
+					return &camundav89.CreateProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances", http.StatusOK, "200 OK"),
+						JSON200: &camundav89.CreateProcessInstanceResult{
+							ProcessDefinitionId:      "demo",
+							ProcessDefinitionKey:     "proc-key",
+							ProcessDefinitionVersion: 7,
+							ProcessInstanceKey:       "123",
+							TenantId:                 "tenant-a",
+						},
+					}, nil
+				},
+				searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+				cancelProcessInstanceWithResponse: unexpectedCancelProcessInstance(t),
+				deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+				getProcessInstanceWithResponse: func(ctx context.Context, key camundav89.ProcessInstanceKey, reqEditors ...camundav89.RequestEditorFn) (*camundav89.GetProcessInstanceResponse, error) {
+					return &camundav89.GetProcessInstanceResponse{
+						HTTPResponse: newHTTPResponse(http.MethodGet, "https://camunda.local/v2/process-instances/123", http.StatusOK, "200 OK"),
+						JSON200:      new(makeProcessInstanceResult("123", "ACTIVE", "")),
+					}, nil
+				},
+			}),
+		)
+		require.NoError(t, err)
+
+		_, err = svc.CreateProcessInstance(ctx, d.ProcessInstanceData{BpmnProcessId: "demo", TenantId: "tenant-a"})
+
+		require.NoError(t, err)
+		output := logBuf.String()
+		assert.Contains(t, output, "INFO pi 123 created; pd proc-key demo v7 tenant-a")
+		assert.NotContains(t, output, "start ")
+		assert.NotContains(t, output, "confirmed")
+	})
 }
 
 func TestService_SearchAndLookup(t *testing.T) {
@@ -444,6 +485,46 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		assert.Empty(t, items)
 	})
 
+	t.Run("CancelNoWaitSuppressesProcessInstanceDetailLogs", func(t *testing.T) {
+		runCancelNoWaitLogTest := func(t *testing.T, suppress bool) string {
+			t.Helper()
+			var logBuf bytes.Buffer
+			svc, err := v89.New(
+				testConfig(),
+				&http.Client{},
+				slog.New(logging.NewPlainHandler(&logBuf, slog.LevelInfo)),
+				v89.WithClientCamunda(&mockCamundaClient{
+					createProcessInstanceWithResponse: unexpectedCreateProcessInstance(t),
+					searchProcessInstancesWithResp:    unexpectedSearchProcessInstances(t),
+					cancelProcessInstanceWithResponse: func(ctx context.Context, key string, body camundav89.CancelProcessInstanceJSONRequestBody, reqEditors ...camundav89.RequestEditorFn) (*camundav89.CancelProcessInstanceResponse, error) {
+						assert.Equal(t, "123", key)
+						return &camundav89.CancelProcessInstanceResponse{
+							HTTPResponse: newHTTPResponse(http.MethodPost, "https://camunda.local/v2/process-instances/123/cancellation", http.StatusAccepted, "202 Accepted"),
+						}, nil
+					},
+					deleteProcessInstanceWithResponse: unexpectedDeleteProcessInstance(t),
+					getProcessInstanceWithResponse:    unexpectedGetProcessInstance(t),
+				}),
+			)
+			require.NoError(t, err)
+
+			opts := []services.CallOption{services.WithNoStateCheck(), services.WithNoWait()}
+			if suppress {
+				opts = append(opts, services.WithSuppressProcessInstanceDetailLogs())
+			}
+			_, _, err = svc.CancelProcessInstance(context.Background(), "123", opts...)
+
+			require.NoError(t, err)
+			return logBuf.String()
+		}
+
+		normalLog := runCancelNoWaitLogTest(t, false)
+		suppressedLog := runCancelNoWaitLogTest(t, true)
+
+		assert.Contains(t, normalLog, "INFO pi 123 cancel requested; no-wait")
+		assert.NotContains(t, suppressedLog, "pi 123 cancel requested; no-wait")
+	})
+
 	t.Run("ForceCancelLogsKeyListOnlyWhenVerbose", func(t *testing.T) {
 		runForceCancelLogTest := func(t *testing.T, verbose bool) string {
 			t.Helper()
@@ -506,9 +587,9 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		quietLog := runForceCancelLogTest(t, false)
 		verboseLog := runForceCancelLogTest(t, true)
 
-		assert.Contains(t, quietLog, "force flag is set, cancelling 2 process instances")
+		assert.Contains(t, quietLog, "force: cancelling 2 pi")
 		assert.NotContains(t, quietLog, "with keys [123 124]")
-		assert.Contains(t, verboseLog, "force flag is set, cancelling 2 process instances with keys [123 124]")
+		assert.Contains(t, verboseLog, "force: cancelling 2 pi; keys [123 124]")
 	})
 
 	t.Run("DeleteNoWait", func(t *testing.T) {
@@ -661,8 +742,8 @@ func TestService_CancelAndDeleteProcessInstance(t *testing.T) {
 		quietLog := runDeleteWrongStateLogTest(t, false)
 		verboseLog := runDeleteWrongStateLogTest(t, true)
 
-		assert.NotContains(t, quietLog, "cannot delete, process instance 123 is not in one of terminated states")
-		assert.Contains(t, verboseLog, "cannot delete, process instance 123 is not in one of terminated states")
+		assert.NotContains(t, quietLog, "pi 123 delete blocked; state not terminal")
+		assert.Contains(t, verboseLog, "pi 123 delete blocked; state not terminal")
 	})
 }
 
