@@ -3,7 +3,6 @@ title: "c8volt ops"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops
 
 Discover high-level operational workflows

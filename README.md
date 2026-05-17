@@ -10,9 +10,9 @@
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
-## C8 Ops CLI
+## New in v4: C8 Ops CLI
 
-Low-level commands do work. `c8volt ops` finishes workflows.
+The v4 release introduces the C8 Ops CLI: high-level operational commands that finish the whole workflow. Low-level commands do work. `c8volt ops` gets the job done.
 
 The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
 
@@ -23,29 +23,25 @@ The `ops` command group turns multi-command Camunda operations into audited, pre
 | `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Orphan Process Instances](docs/ops/orphan-process-instances.md) |
 | `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Incident-Based Purge](docs/ops/purge-pi-with-incidents.md) |
 | `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [All Process Definitions](docs/ops/all-process-definitions.md) |
+| `c8volt ops repair incident` | Freezes incident targets, repairs variables/jobs where requested, resolves incidents, and reports every step. | [Incident Repair](docs/ops/repair-incident.md) |
+| `c8volt ops repair process-instance` | Selects process instances, discovers their active incidents, then runs the same audited repair workflow. | [Process-Instance Repair](docs/ops/repair-process-instance.md) |
 
-Start every destructive workflow with a plan:
+Start every destructive or repair workflow with a plan:
 
 ```bash
 ./c8volt ops execute retention-policy --retention-days 90 --dry-run
 ./c8volt ops purge orphan-process-instances --dry-run
 ./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
 ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --dry-run
+./c8volt ops repair incident --state active --limit 5 --dry-run
+./c8volt ops repair process-instance --direct-incidents-only --limit 5 --dry-run
 ```
 
 When the plan is right, run for real with `--auto-confirm`, `--automation`, `--json`, or `--report-file` according to the environment. See the [C8 Ops CLI playbooks](docs/ops/index.md) for the problem each workflow solves, the lower-level command flow it composes, dry-run versus execution behavior, and VHS demo scripts.
 
+## c8volt in Action
+
 <img src="./docs/assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
-
-## Release 3.7.x
-
-`3.7.x` was released on 2026-05-10.
-
-- update process-instance variables from inline JSON or a vars file, preview the plan with `--dry-run`, and confirm visibility by default
-- inspect jobs from incident output, then update retries or timeout with dry-run previews and unattended confirmation support
-- resolve incidents directly by incident key, or resolve the active incident set discovered for one or more process instances
-- list, fetch, count, and pipe incidents with `get incident`, including state, error-type, message, process, flow-node, and creation-time filters
-- keep incident diagnosis in context with refined process-instance incident scopes, direct-incident filtering, and incident state rendering
 
 ## Why c8volt
 
@@ -580,8 +576,18 @@ c8volt
 |   `-- process-instance      Resolve active incidents discovered for process instances
 |-- ops                       Discover high-level operational workflows
 |   |-- execute               Discover predefined operational playbooks
+|   |   |-- smoke-test         Prove profile connectivity, deployment, runtime, traversal, and cleanup
+|   |   `-- retention-policy   Delete old process instances through an audited retention plan
 |   |-- purge                 Discover destructive operational cleanup workflows
+|   |   |-- orphan-process-instances
+|   |   |                         Purge orphan child process instances through delete planning
+|   |   |-- process-instances-with-incidents
+|   |   |                         Purge process-instance families selected by incident filters
+|   |   `-- all-process-definitions
+|   |                             Purge selected process definitions after impact planning
 |   `-- repair                Discover repair and remediation workflows
+|       |-- incident           Repair incidents selected by key, stdin, or incident filters
+|       `-- process-instance   Repair active incidents selected from process-instance keys or filters
 |-- walk                      Inspect parent/child relationships
 |   `-- pi                    Walk ancestors, descendants, or full family trees
 |-- cancel                    Cancel resources and wait for confirmation
@@ -651,7 +657,7 @@ instances, inspect the tree, wait for the outcome, and clean up safely.
 ./c8volt ops repair incident --key <incident-key> --dry-run
 ./c8volt ops repair incident --key <incident-key> --retries 3 --job-timeout 5m --auto-confirm --report-file repair.md
 ./c8volt ops repair process-instance --key <process-instance-key> --dry-run
-./c8volt ops repair process-instance --state active --limit 25 --dry-run
+./c8volt ops repair process-instance --direct-incidents-only --state active --limit 5 --dry-run
 
 # Find active work, incidents, and exact instance details.
 ./c8volt get pi --bpmn-process-id <bpmn-process-id> --state active --limit 5

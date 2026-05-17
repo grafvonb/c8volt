@@ -1,4 +1,4 @@
-Output docs/assets/screencasts/ops-retention-policy.gif
+Output docs/assets/screencasts/ops-repair-process-instance.gif
 
 Require zsh
 
@@ -28,23 +28,23 @@ Show
 Wait
 Sleep 2s
 Hide
-Type "printf '\\033[1A\\033[2K%s\\n' 'Preview retention cleanup for process instances older than 90 days.'"
+Type "printf '\\033[1A\\033[2K%s\\n' 'Preview repair for one incident-bearing process instance.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops execute retention-policy --retention-days 90 --dry-run"
+Type "./c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --dry-run"
 Enter
 Wait
 
 Sleep 1s
 Hide
-Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run the retention workflow and write an audit report.'"
+Type "printf '\\033[1A\\033[2K\\n%s\\n' 'Run the bounded process-instance repair workflow and write an audit report.'"
 Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops execute retention-policy --retention-days 90 --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/retention-report.md"
+Type "./c8volt ops repair process-instance --direct-incidents-only --state active --limit 1 --auto-confirm --report-file /tmp/c8volt-vhs/reports/repair-process-instance.md"
 Enter
 Wait
 
@@ -55,6 +55,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/retention-report.md"
+Type "sed -n '1,80p' /tmp/c8volt-vhs/reports/repair-process-instance.md"
 Enter
 Wait
+

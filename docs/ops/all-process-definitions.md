@@ -33,8 +33,8 @@ c8volt ops purge all-process-definitions --dry-run --report-file process-definit
 c8volt ops purge all-pds --bpmn-process-id invoice --latest --dry-run
 c8volt ops purge all-process-definitions --bpmn-process-id invoice --pd-version 3 --dry-run --report-file invoice-purge.json --report-format json
 c8volt ops purge all-process-definitions --automation --json --dry-run
-c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force
-c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --workers 4 --no-wait --report-file process-definition-purge.json --report-format json
+c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force
+c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --workers 4 --no-wait --report-file process-definition-purge.json --report-format json
 ```
 
 ## Built From Lower-Level Commands
@@ -117,4 +117,3 @@ c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --au
 - [ops purge all-process-definitions](/cli/c8volt_ops_purge_all-process-definitions/)
 - [get process-definition](/cli/c8volt_get_process-definition/)
 - [delete process-definition](/cli/c8volt_delete_process-definition/)
-

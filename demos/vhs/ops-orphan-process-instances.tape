@@ -44,7 +44,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge orphan-process-instances --auto-confirm --report-file /tmp/c8volt-vhs/reports/orphan-purge.md"
+Type "./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/orphan-purge.md"
 Enter
 Wait
 

@@ -1,23 +1,23 @@
 ---
-title: "Use Cases"
+title: "C8 Ops Discussions"
 permalink: /use-cases/
 nav_order: 3
 has_toc: false
 ---
 
-# Use Cases & Ideas
+# C8 Ops Use-Case Discussions
 
-The c8volt use-case board is where operational workflows are shaped before they become CLI behavior.
+The c8volt use-case board is the GitHub discussion space where C8 Ops CLI workflows are shaped before, during, and after implementation.
 
 [Open the discussion board](https://github.com/grafvonb/c8volt/discussions/categories/1-use-cases-ideas){: .btn .btn-primary }
 
 Implemented operational workflows now live in the [C8 Ops CLI playbooks](/ops/). This page remains the idea board for accepted, upcoming, and superseded workflow concepts.
 
-## Ops use cases
+## Discussion Links
 
-### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-accepted">status: accepted</span>
+### [Repair commands](https://github.com/grafvonb/c8volt/discussions/189) <span class="status-badge status-implemented">status: implemented</span>
 
-High-level repair workflows for operator-safe remediation. The goal is to turn multi-step recovery work into explicit `c8volt ops repair ...` commands with dry-run previews, confirmation controls, automation support, and a final report that shows what was selected, attempted, skipped, and changed.
+High-level repair workflows for operator-safe remediation. The implemented `c8volt ops repair incident` and `c8volt ops repair process-instance` flows freeze repair targets, optionally update process-instance variables once per scope, apply related-job retry/timeout repair where applicable, resolve incidents, confirm clearance unless `--no-wait` is set, and write a final report that shows what was selected, attempted, skipped, and changed.
 
 ### [Orphan cleanup](https://github.com/grafvonb/c8volt/discussions/190) <span class="status-badge status-implemented">status: implemented</span>
 

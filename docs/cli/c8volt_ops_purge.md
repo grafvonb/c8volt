@@ -3,7 +3,6 @@ title: "c8volt ops purge"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops purge
 
 Discover destructive operational cleanup workflows
@@ -25,7 +24,7 @@ c8volt ops purge [flags]
 ```
   ./c8volt ops purge --help
   ./c8volt ops purge orphan-process-instances --dry-run
-  ./c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.md
+  ./c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.md
 ```
 
 ### Options

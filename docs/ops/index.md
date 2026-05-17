@@ -21,6 +21,8 @@ The ops command group is the operator-facing layer for predefined Camunda playbo
 | [Orphan Process Instances](/ops/orphan-process-instances/) | `c8volt ops purge orphan-process-instances` | You need to find and delete orphan child process instances. |
 | [Incident-Based Purge](/ops/purge-pi-with-incidents/) | `c8volt ops purge process-instances-with-incidents` | You need to delete process-instance families selected from incident filters. |
 | [All Process Definitions](/ops/all-process-definitions/) | `c8volt ops purge all-process-definitions` | You need to delete selected process-definition versions after impact planning. |
+| [Incident Repair](/ops/repair-incident/) | `c8volt ops repair incident` | You need to repair incidents selected by key, stdin, or incident filters. |
+| [Process-Instance Repair](/ops/repair-process-instance/) | `c8volt ops repair process-instance` | You need to repair active incidents discovered from selected process instances. |
 
 ## Shared Shape
 
@@ -72,4 +74,4 @@ write audit report
 
 Ops reports should be stable structured data first, then rendered to Markdown or JSON. Markdown is for operator review. JSON is for agents, CI, and audit pipelines.
 
-Demo recordings live as VHS scripts under `demos/vhs/`. The scripts intentionally show preview-first usage before destructive execution.
+Demo recordings live as VHS scripts under `demos/vhs/`. The scripts intentionally show preview-first usage before deletion, cleanup, or repair execution.

@@ -33,8 +33,8 @@ c8volt ops purge process-instances-with-incidents --state active --error-type io
 c8volt ops purge pi-with-incidents --state active --limit 5 --dry-run
 c8volt ops purge process-instances-with-incidents --automation --json --dry-run
 c8volt ops purge process-instances-with-incidents --dry-run --report-file incident-purge.md
-c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force
-c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json
+c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force
+c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force --workers 4 --report-file incident-purge.json --report-format json
 ```
 
 ## Built From Lower-Level Commands
@@ -119,7 +119,7 @@ The demo should show the preview-first path:
 
 ```bash
 c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
-c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --auto-confirm --report-file /tmp/c8volt-vhs/reports/incident-purge.md
+c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --limit 5 --auto-confirm --report-file /tmp/c8volt-vhs/reports/incident-purge.md
 ```
 
 ## Failure And Safety Notes

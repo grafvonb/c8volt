@@ -3,7 +3,6 @@ title: "c8volt ops execute"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops execute
 
 Discover predefined operational playbooks

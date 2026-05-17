@@ -44,7 +44,7 @@ Enter
 Show
 Sleep 1s
 Wait
-Type "./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md"
+Type "./c8volt ops purge process-instances-with-incidents --state active --error-type job_no_retries --limit 5 --auto-confirm --force --report-file /tmp/c8volt-vhs/reports/incident-purge.md"
 Enter
 Wait
 

@@ -31,9 +31,9 @@ Aliases: `orphan-pi`, `opi`.
 c8volt ops purge orphan-process-instances --dry-run
 c8volt ops purge orphan-process-instances --dry-run --bpmn-process-id order-process --limit 25
 c8volt ops purge orphan-process-instances --automation --json --dry-run
-c8volt ops purge orphan-process-instances --auto-confirm
+c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm
 c8volt ops purge orphan-process-instances --dry-run --report-file orphan-purge.md
-c8volt ops purge orphan-process-instances --auto-confirm --report-file orphan-purge.json --report-format json
+c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file orphan-purge.json --report-format json
 ```
 
 ## Built From Lower-Level Commands
@@ -100,7 +100,7 @@ The VHS source is `demos/vhs/ops-orphan-process-instances.tape`.
 
 ```bash
 c8volt ops purge orphan-process-instances --dry-run
-c8volt ops purge orphan-process-instances --auto-confirm --report-file /tmp/c8volt-vhs/reports/orphan-purge.md
+c8volt ops purge orphan-process-instances --state completed --limit 25 --auto-confirm --report-file /tmp/c8volt-vhs/reports/orphan-purge.md
 ```
 
 ## Failure And Safety Notes
@@ -116,4 +116,3 @@ c8volt ops purge orphan-process-instances --auto-confirm --report-file /tmp/c8vo
 - [ops purge orphan-process-instances](/cli/c8volt_ops_purge_orphan-process-instances/)
 - [get process-instance](/cli/c8volt_get_process-instance/)
 - [delete process-instance](/cli/c8volt_delete_process-instance/)
-

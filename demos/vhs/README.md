@@ -65,3 +65,5 @@ Generated media is written to:
 - `docs/assets/screencasts/ops-orphan-process-instances.gif`
 - `docs/assets/screencasts/ops-purge-pi-with-incidents.gif`
 - `docs/assets/screencasts/ops-all-process-definitions.gif`
+- `docs/assets/screencasts/ops-repair-incident.gif`
+- `docs/assets/screencasts/ops-repair-process-instance.gif`

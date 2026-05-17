@@ -3,7 +3,6 @@ title: "c8volt ops purge all-process-definitions"
 nav_exclude: true
 ---
 
-[CLI Reference]({{ "/cli/" | relative_url }})
 ## c8volt ops purge all-process-definitions
 
 Purge all selected process definitions
@@ -26,8 +25,8 @@ c8volt ops purge all-process-definitions [flags]
   ./c8volt ops purge all-pds --bpmn-process-id invoice --latest --dry-run
   ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --pd-version 3 --dry-run --report-file invoice-purge.json --report-format json
   ./c8volt ops purge all-process-definitions --automation --json --dry-run
-  ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force
-  ./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --auto-confirm --force --workers 4 --no-wait --report-file process-definition-purge.json --report-format json
+  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force
+  ./c8volt ops purge all-process-definitions --key <process-definition-key> --auto-confirm --force --workers 4 --no-wait --report-file process-definition-purge.json --report-format json
 ```
 
 ### Options

@@ -21,6 +21,10 @@
   margin-top: 0.25rem;
 }
 
+.main-content-wrap:has(#main-content h1[id^="c8volt-ops"]) > .breadcrumb-nav {
+  display: none;
+}
+
 .site-title {
   font-size: 1.15rem;
   font-weight: 700;
