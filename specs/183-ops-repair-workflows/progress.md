@@ -13,6 +13,11 @@
 
 ## Codebase Patterns
 
+- `ops repair process-instance` reuses the `get pi` process-definition/date/state/relationship validation globals and helper functions, but owns separate target keys, retries, timeout, and repair-specific search-mode validation.
+- Process-instance repair search mode is explicit: `--incidents-only` or `--direct-incidents-only` is required before remote selection, and `--key`/stdin input is rejected with search filters before mutation.
+- Internal process-instance repair first freezes selected process-instance keys, discovers direct active incidents through the incident service, dedupes incidents by key in selected-process-instance order, and then routes the frozen incidents through the shared incident repair execution path.
+- The public repair request now carries `DirectIncidentsOnly` so the command can preserve the selected direct-incident semantics across the facade boundary without encoding CLI-only state in process filters.
+- Adding the process-instance repair child affects docsgen expectations: generated `ops repair` docs should list both concrete repair targets while still omitting target-specific flags from the grouping page.
 - `ops repair incident` search mode owns repair-specific incident filter globals and reuses the same validation helpers as `get incident`: state/error/date validation, key-shaped context validation, batch-size/limit guardrails, and keyed-plus-filter rejection before remote mutation.
 - Filtered incident repair uses `DiscoveryMode=search` to call `incident.SearchIncidents` once with `Limit` taking precedence over `BatchSize`, freezes that returned set, and then reuses the explicit incident repair execution path without re-querying or expanding scope.
 - Dry-run search repair still performs discovery and plan construction, but leaves job updates and incident resolution uncalled; human output shows the filter summary before frozen counts and verbose key/step rows.
@@ -49,7 +54,6 @@
 
 - Iteration 2 foundational validation passed with targeted ops/facade tests and full `go test ./... -count=1` using `GOCACHE=/private/tmp/go-build-cache` for sandbox-compatible cache writes.
 
----
 ## Iteration 1 - 2026-05-17 17:21:56 CEST
 **User Story**: Phase 1: Setup (Shared Discovery)
 **Tasks Completed**:
@@ -169,4 +173,41 @@
 - Search-mode repair deliberately treats explicit search flags as required, so the default active state does not turn a bare `ops repair incident` invocation into a mutation target.
 - The existing incident search helper already captures version-specific paging and local filtering behavior; repair only needs to choose the bounded size and freeze the returned details.
 - Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepairIncident|TestRenderOpsRepairIncident|TestRepairIncidentsSearchMode' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepairIncident' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
+---
+---
+## Iteration 5 - 2026-05-17 18:11:48 CEST
+**User Story**: User Story 3 - Repair Incidents From Process Instances
+**Tasks Completed**:
+- [x] T038: Add command tests for `ops repair process-instance --help`, explicit keys, stdin `-`, invalid keys, and keyed-plus-filter rejection
+- [x] T039: Add command tests requiring `--incidents-only` or `--direct-incidents-only` in process-instance search mode
+- [x] T040: Add internal service tests for process-instance selection, incident discovery, deduped incident keys, and deterministic reporting
+- [x] T041: Add command contract metadata tests for `ops repair process-instance`
+- [x] T042: Add `ops repair process-instance` Cobra command, explicit key flags, stdin key handling, PI filter flags, and validation
+- [x] T043: Reuse `get pi` search filter validation and incident-bearing selector behavior
+- [x] T044: Implement process-instance selection and active incident discovery
+- [x] T045: Deduplicate incident keys and route process-instance repair through the shared incident repair workflow
+- [x] T046: Render process-instance repair discovery, frozen incidents, duplicate handling, and final result
+- [x] T047: Set mutation, contract, output-mode, and automation metadata for `ops repair process-instance`
+- [x] T048: Run targeted validation
+- [x] T049: Mark US3 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/convert.go
+- c8volt/ops/model.go
+- cmd/cmd_views_ops_repair.go
+- cmd/command_contract_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- docsgen/main_test.go
+- internal/domain/ops_repair.go
+- internal/services/ops/orphan_purge_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- Process-instance repair can preserve layering by having the command pass PI selectors to the public ops facade while the internal ops workflow composes process-instance lookup/search and incident discovery primitives.
+- Direct incident selection needs a durable request bit in addition to the process-instance filter, because the existing process filter only represents incident-bearing state, not direct-only semantics.
+- Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepairProcessInstance|TestCommandContract' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./docsgen -run TestGeneratedOpsDocsDocumentGroupingCommands -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
 ---

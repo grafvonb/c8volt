@@ -104,21 +104,21 @@
 
 ### Tests for User Story 3
 
-- [ ] T038 [P] [US3] Add command tests for `ops repair process-instance --help`, explicit keys, stdin `-`, invalid keys, and keyed-plus-filter rejection in `cmd/ops_repair_processinstance_test.go`
-- [ ] T039 [P] [US3] Add command tests requiring `--incidents-only` or `--direct-incidents-only` in process-instance search mode in `cmd/ops_repair_processinstance_test.go`
-- [ ] T040 [P] [US3] Add internal service tests for process-instance selection, incident discovery, deduped incident keys, and deterministic reporting in `internal/services/ops/repair_test.go`
-- [ ] T041 [P] [US3] Add command contract metadata tests for `ops repair process-instance` in `cmd/command_contract_test.go`
+- [x] T038 [P] [US3] Add command tests for `ops repair process-instance --help`, explicit keys, stdin `-`, invalid keys, and keyed-plus-filter rejection in `cmd/ops_repair_processinstance_test.go`
+- [x] T039 [P] [US3] Add command tests requiring `--incidents-only` or `--direct-incidents-only` in process-instance search mode in `cmd/ops_repair_processinstance_test.go`
+- [x] T040 [P] [US3] Add internal service tests for process-instance selection, incident discovery, deduped incident keys, and deterministic reporting in `internal/services/ops/repair_test.go`
+- [x] T041 [P] [US3] Add command contract metadata tests for `ops repair process-instance` in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Add `ops repair process-instance` Cobra command, aliases if appropriate, explicit key flags, stdin key handling, PI filter flags, and validation in `cmd/ops_repair_processinstance.go`
-- [ ] T043 [US3] Reuse `get pi` search filter validation and incident-bearing selector behavior in `cmd/ops_repair_processinstance.go`
-- [ ] T044 [US3] Implement process-instance selection and active incident discovery in `internal/services/ops/repair.go`
-- [ ] T045 [US3] Deduplicate incident keys and route process-instance repair through the shared incident repair workflow in `internal/services/ops/repair.go`
-- [ ] T046 [US3] Render process-instance repair discovery, frozen incidents, duplicate handling, and final result in `cmd/cmd_views_ops_repair.go`
-- [ ] T047 [US3] Set mutation, contract, output-mode, and automation metadata for `ops repair process-instance` in `cmd/ops_repair_processinstance.go`
-- [ ] T048 [US3] Run targeted validation with `go test ./cmd ./internal/services/ops -run 'TestOpsRepairProcessInstance|TestCommandContract' -count=1`
-- [ ] T049 [US3] Mark US3 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T042 [US3] Add `ops repair process-instance` Cobra command, aliases if appropriate, explicit key flags, stdin key handling, PI filter flags, and validation in `cmd/ops_repair_processinstance.go`
+- [x] T043 [US3] Reuse `get pi` search filter validation and incident-bearing selector behavior in `cmd/ops_repair_processinstance.go`
+- [x] T044 [US3] Implement process-instance selection and active incident discovery in `internal/services/ops/repair.go`
+- [x] T045 [US3] Deduplicate incident keys and route process-instance repair through the shared incident repair workflow in `internal/services/ops/repair.go`
+- [x] T046 [US3] Render process-instance repair discovery, frozen incidents, duplicate handling, and final result in `cmd/cmd_views_ops_repair.go`
+- [x] T047 [US3] Set mutation, contract, output-mode, and automation metadata for `ops repair process-instance` in `cmd/ops_repair_processinstance.go`
+- [x] T048 [US3] Run targeted validation with `go test ./cmd ./internal/services/ops -run 'TestOpsRepairProcessInstance|TestCommandContract' -count=1`
+- [x] T049 [US3] Mark US3 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Process-instance-selected incident repair is independently functional.
 

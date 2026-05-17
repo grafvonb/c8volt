@@ -71,6 +71,7 @@ type RepairRequest struct {
 	InputKeys                typex.Keys                    `json:"inputKeys,omitempty"`
 	IncidentSelection        incident.Filter               `json:"incidentSelection,omitempty"`
 	ProcessInstanceSelection process.ProcessInstanceFilter `json:"processInstanceSelection,omitempty"`
+	DirectIncidentsOnly      bool                          `json:"directIncidentsOnly,omitempty"`
 	BatchSize                int32                         `json:"batchSize,omitempty"`
 	Limit                    int32                         `json:"limit,omitempty"`
 	Workers                  int                           `json:"workers,omitempty"`

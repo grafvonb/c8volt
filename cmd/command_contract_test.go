@@ -113,6 +113,46 @@ func TestCommandContractOpsRepairIncident(t *testing.T) {
 	})
 }
 
+// TestCommandContractOpsRepairProcessInstance verifies the process-instance repair target exposes automation metadata.
+func TestCommandContractOpsRepairProcessInstance(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsRepairProcessInstanceCmd)
+
+	require.Equal(t, "ops repair process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true},
+	}, capability.OutputModes)
+	require.Contains(t, capability.Aliases, "pi")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process-instance key(s) whose active incidents should be repaired; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "incidents-only",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "select only process instances that have incidents",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "direct-incidents-only",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "select only process instances with direct active incidents",
+	})
+}
+
 func TestCommandPath_TrimsRootName(t *testing.T) {
 	require.Equal(t, "", commandPath(Root()))
 	require.Equal(t, "version", commandPath(versionCmd))

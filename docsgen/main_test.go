@@ -321,6 +321,7 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Target-specific subcommands will define their own target semantics",
 		"./c8volt ops repair --help",
 		"incident",
+		"process-instance",
 	} {
 		if !strings.Contains(repairDoc, want) {
 			t.Fatalf("expected generated ops repair docs to contain %q, got %q", want, repairDoc)
@@ -338,6 +339,18 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
 		}
 	}
+	repairProcessInstanceDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_process-instance.md")
+	for _, want := range []string{
+		"Repair incidents selected by process instances",
+		"--key strings",
+		"--incidents-only",
+		"--direct-incidents-only",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(repairProcessInstanceDoc, want) {
+			t.Fatalf("expected generated ops repair process-instance docs to contain %q, got %q", want, repairProcessInstanceDoc)
+		}
+	}
 
 	for _, unwanted := range []string{
 		"orphan-cleanup",
@@ -350,8 +363,8 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 			t.Fatalf("expected generated ops docs to omit %q", unwanted)
 		}
 	}
-	if strings.Contains(repairDoc, "--key strings") || strings.Contains(repairDoc, "repair process-instance") {
-		t.Fatalf("expected generated ops repair grouping docs to omit target flags and unavailable process-instance repair")
+	if strings.Contains(repairDoc, "--key strings") {
+		t.Fatalf("expected generated ops repair grouping docs to omit target flags")
 	}
 }
 

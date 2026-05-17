@@ -53,6 +53,7 @@ type OpsRepairRequest struct {
 	InputKeys                typex.Keys
 	IncidentSelection        IncidentFilter
 	ProcessInstanceSelection ProcessInstanceFilter
+	DirectIncidentsOnly      bool
 	BatchSize                int32
 	Limit                    int32
 	Workers                  int

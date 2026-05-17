@@ -42,24 +42,22 @@ func (s *Service) RepairIncidents(ctx context.Context, request d.OpsRepairReques
 }
 
 // RepairProcessInstances initializes the process-instance repair workflow boundary.
-func (s *Service) RepairProcessInstances(_ context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+func (s *Service) RepairProcessInstances(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
 	request.Target = d.OpsRepairTargetProcessInstance
-	return s.prepareRepairResult(request, opts...)
-}
-
-// prepareRepairResult records foundational repair controls without performing target discovery or mutation.
-func (s *Service) prepareRepairResult(request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
 	request = withRepairOptionControls(request, opts...)
 	if request.StartedAt.IsZero() {
 		request.StartedAt = time.Now().UTC()
 	}
-	result := newRepairResult(request)
 	if err := validateRepairServiceReady(s); err != nil {
+		result := newRepairResult(request)
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
 	}
-	return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+	if request.DiscoveryMode == d.OpsRepairDiscoveryModeSearch {
+		return s.repairFilteredProcessInstances(ctx, request, opts...)
+	}
+	return s.repairExplicitProcessInstances(ctx, request, opts...)
 }
 
 func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
@@ -147,6 +145,127 @@ func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepa
 	return finishRepairResult(result, s.version, outcome, runErr)
 }
 
+// repairExplicitProcessInstances discovers active incidents for the frozen explicit process-instance key set.
+func (s *Service) repairExplicitProcessInstances(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	if request.DiscoveryMode == "" {
+		request.DiscoveryMode = d.OpsRepairDiscoveryModeKeyed
+	}
+	result := newRepairResult(request)
+	keys := request.InputKeys.Unique()
+	if len(keys) == 0 {
+		err := fmt.Errorf("%w: no process-instance keys provided for repair", d.ErrValidation)
+		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
+		result.FrozenSet.Errors = []string{err.Error()}
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	pis, err := s.piAPI.GetProcessInstances(ctx, keys, request.Workers, opts...)
+	if err != nil {
+		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
+		result.FrozenSet.Errors = []string{err.Error()}
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	processInstanceKeys := processInstanceKeysFromDetails(pis)
+	incidents, err := s.discoverProcessInstanceRepairIncidents(ctx, request, processInstanceKeys, opts...)
+	if err != nil {
+		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
+		result.FrozenSet.Errors = []string{err.Error()}
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, incidents)
+	return s.finishProcessInstanceIncidentRepair(ctx, request, result, incidents, opts...)
+}
+
+// repairFilteredProcessInstances searches incident-bearing process instances before freezing and repairing their active incidents.
+func (s *Service) repairFilteredProcessInstances(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	result := newRepairResult(request)
+	pis, err := s.piAPI.SearchForProcessInstances(ctx, request.ProcessInstanceSelection, repairProcessInstanceDiscoverySize(request), opts...)
+	if err != nil {
+		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
+		result.FrozenSet.Errors = []string{err.Error()}
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	processInstanceKeys := processInstanceKeysFromDetails(limitRepairProcessInstances(pis, request.Limit))
+	incidents, err := s.discoverProcessInstanceRepairIncidents(ctx, request, processInstanceKeys, opts...)
+	if err != nil {
+		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
+		result.FrozenSet.Errors = []string{err.Error()}
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	if request.DirectIncidentsOnly {
+		processInstanceKeys = processInstanceKeysFromIncidents(incidents)
+	}
+	result.FrozenSet = freezeProcessInstanceRepairSet(request, processInstanceKeys, incidents)
+	result.FrozenSet.DiscoveryMode = d.OpsRepairDiscoveryModeSearch
+	result.FrozenSet.InputKeys = nil
+	result.FrozenSet.ProcessFilters = request.ProcessInstanceSelection
+	return s.finishProcessInstanceIncidentRepair(ctx, request, result, incidents, opts...)
+}
+
+// finishProcessInstanceIncidentRepair routes process-instance selected incidents through the shared incident execution rules.
+func (s *Service) finishProcessInstanceIncidentRepair(ctx context.Context, request d.OpsRepairRequest, result d.OpsRepairResult, incidents []d.ProcessInstanceIncidentDetail, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	if len(incidents) == 0 {
+		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
+		result.Notices = append(result.Notices, d.OpsRepairWorkflowNotice{
+			Code:     "no_active_incidents",
+			Severity: "info",
+			Message:  "no active incidents found for selected process instances",
+		})
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+	}
+	if request.DryRun {
+		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents)
+		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+	}
+
+	cfg := services.ApplyCallOptions(opts)
+	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
+	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
+		return s.executeIncidentRepair(ctx, request, incident, opts...)
+	})
+	for _, item := range items {
+		if item.Plan.IncidentKey == "" {
+			continue
+		}
+		result.Plan = append(result.Plan, item.Plan)
+		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
+	}
+	result.Remaining = d.OpsRepairRemainingIncidentSummary{Status: d.OpsWorkflowStepStatusConfirmed, Checked: !request.NoWait}
+	outcome := repairOutcomeForPlans(result.Plan, runErr)
+	return finishRepairResult(result, s.version, outcome, runErr)
+}
+
+// discoverProcessInstanceRepairIncidents loads direct active incidents for each selected process instance and dedupes by incident key.
+func (s *Service) discoverProcessInstanceRepairIncidents(ctx context.Context, request d.OpsRepairRequest, processInstanceKeys typex.Keys, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	keys := processInstanceKeys.Unique()
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	cfg := services.ApplyCallOptions(opts)
+	workers := toolx.DetermineNoOfWorkers(len(keys), request.Workers, cfg.NoWorkerLimit)
+	items, err := pool.ExecuteSlice(ctx, keys, workers, cfg.FailFast, func(ctx context.Context, key string, _ int) ([]d.ProcessInstanceIncidentDetail, error) {
+		return s.incAPI.SearchProcessInstanceIncidents(ctx, key, opts...)
+	})
+	seen := make(map[string]struct{})
+	out := make([]d.ProcessInstanceIncidentDetail, 0)
+	for _, item := range items {
+		for _, incident := range item {
+			if !incidentIsActive(incident) {
+				continue
+			}
+			if incident.IncidentKey == "" {
+				continue
+			}
+			if _, ok := seen[incident.IncidentKey]; ok {
+				continue
+			}
+			seen[incident.IncidentKey] = struct{}{}
+			out = append(out, incident)
+		}
+	}
+	return out, err
+}
+
 type repairIncidentExecution struct {
 	Plan             d.OpsRepairPlanItem
 	JobApplicability d.OpsRepairJobApplicability
@@ -175,6 +294,21 @@ func freezeIncidentSearchSet(request d.OpsRepairRequest, incidents []d.ProcessIn
 	return frozen
 }
 
+// freezeProcessInstanceRepairSet records selected process-instance keys and the deduped active incident repair set.
+func freezeProcessInstanceRepairSet(request d.OpsRepairRequest, processInstanceKeys typex.Keys, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
+	frozen := newRepairResult(request).FrozenSet
+	frozen.Status = d.OpsWorkflowStepStatusConfirmed
+	frozen.ProcessInstanceKeys = processInstanceKeys.Unique()
+	frozen.IncidentKeys = incidentKeysFromDetails(incidents)
+	frozen.RootProcessKeys = rootProcessInstanceKeysFromIncidents(incidents)
+	frozen.JobKeys = jobKeysFromIncidents(incidents)
+	if len(request.Variables) > 0 {
+		frozen.VariableScopes = frozen.ProcessInstanceKeys.Unique()
+	}
+	frozen.OriginalIncidents = append([]d.ProcessInstanceIncidentDetail(nil), incidents...)
+	return frozen
+}
+
 // repairIncidentDiscoverySize normalizes the search size while allowing --limit to cap repair targets first.
 func repairIncidentDiscoverySize(request d.OpsRepairRequest) int32 {
 	if request.Limit > 0 {
@@ -186,8 +320,27 @@ func repairIncidentDiscoverySize(request d.OpsRepairRequest) int32 {
 	return consts.MaxPISearchSize
 }
 
+// repairProcessInstanceDiscoverySize normalizes process-instance discovery size for bounded repair searches.
+func repairProcessInstanceDiscoverySize(request d.OpsRepairRequest) int32 {
+	if request.Limit > 0 {
+		return request.Limit
+	}
+	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
+		return request.BatchSize
+	}
+	return consts.MaxPISearchSize
+}
+
 // limitRepairIncidents protects repair scope even when a stub or backend over-returns.
 func limitRepairIncidents(items []d.ProcessInstanceIncidentDetail, limit int32) []d.ProcessInstanceIncidentDetail {
+	if limit <= 0 || len(items) <= int(limit) {
+		return items
+	}
+	return items[:limit]
+}
+
+// limitRepairProcessInstances protects repair scope even when a stub or backend over-returns.
+func limitRepairProcessInstances(items []d.ProcessInstance, limit int32) []d.ProcessInstance {
 	if limit <= 0 || len(items) <= int(limit) {
 		return items
 	}
@@ -404,6 +557,17 @@ func processInstanceKeysFromIncidents(incidents []d.ProcessInstanceIncidentDetai
 	for _, incident := range incidents {
 		if incident.ProcessInstanceKey != "" {
 			keys = append(keys, incident.ProcessInstanceKey)
+		}
+	}
+	return keys.Unique()
+}
+
+// processInstanceKeysFromDetails extracts stable process-instance keys from selected process-instance records.
+func processInstanceKeysFromDetails(items []d.ProcessInstance) typex.Keys {
+	keys := make(typex.Keys, 0, len(items))
+	for _, item := range items {
+		if item.Key != "" {
+			keys = append(keys, item.Key)
 		}
 	}
 	return keys.Unique()

@@ -61,18 +61,42 @@ func TestRepairWorkflowsValidateFoundationalDependencies(t *testing.T) {
 	}
 }
 
-// TestRepairWorkflowsRecordFoundationalPlan verifies repair constructors inject job support without running concrete target behavior.
-func TestRepairWorkflowsRecordFoundationalPlan(t *testing.T) {
+// TestRepairProcessInstancesDryRunDiscoversExplicitTargets verifies explicit process-instance repair freezes selected PIs and active incidents.
+func TestRepairProcessInstancesDryRunDiscoversExplicitTargets(t *testing.T) {
 	t.Parallel()
 
 	started := time.Date(2026, 5, 17, 16, 15, 0, 0, time.UTC)
 	retries := int32(1)
-	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, stubIncidentAPI{}, nil, nil, stubJobAPI{}, "")
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		getProcessInstances: func(_ context.Context, keys typex.Keys, _ int, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(keys))
+			return []d.ProcessInstance{
+				{Key: "2251799813685251", State: d.StateActive},
+				{Key: "2251799813685253", State: d.StateActive},
+			}, nil
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			switch key {
+			case "2251799813685251":
+				return []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "2251799813685249", ProcessInstanceKey: key, RootProcessInstanceKey: key, JobKey: "2251799813685252", State: "ACTIVE"},
+				}, nil
+			case "2251799813685253":
+				return []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "2251799813685250", ProcessInstanceKey: key, RootProcessInstanceKey: key, State: "ACTIVE"},
+				}, nil
+			default:
+				t.Fatalf("unexpected process instance key %s", key)
+				return nil, nil
+			}
+		},
+	}, nil, nil, stubJobAPI{}, "")
 
 	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
 		CommandName:              "ops repair process-instance",
 		DiscoveryMode:            d.OpsRepairDiscoveryModeKeyed,
-		InputKeys:                typex.Keys{"pi-2", "pi-2", "pi-1"},
+		InputKeys:                typex.Keys{"2251799813685251", "2251799813685251", "2251799813685253"},
 		ProcessInstanceSelection: d.ProcessInstanceFilter{State: d.StateActive},
 		Workers:                  3,
 		RequestedRetries:         &retries,
@@ -86,14 +110,74 @@ func TestRepairWorkflowsRecordFoundationalPlan(t *testing.T) {
 	require.True(t, got.Request.FailFast)
 	require.True(t, got.Request.NoWorkerLimit)
 	require.True(t, got.Request.DryRun)
-	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.FrozenSet.Status)
-	require.Equal(t, []string{"pi-2", "pi-1"}, []string(got.FrozenSet.InputKeys))
-	require.Equal(t, []string{"pi-2", "pi-1"}, []string(got.FrozenSet.ProcessInstanceKeys))
-	require.Empty(t, got.FrozenSet.IncidentKeys)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.FrozenSet.Status)
+	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.InputKeys))
+	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, []string{"2251799813685252"}, []string(got.FrozenSet.JobKeys))
+	require.Len(t, got.Plan, 2)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
 	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Remaining.Status)
 	require.Equal(t, "ops.repair.v1", got.Report.SchemaVersion)
 	require.Equal(t, started, got.Report.StartedAt)
 	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairProcessInstancesSearchDedupeAndRoutesThroughIncidentRepair verifies search-selected PIs repair each duplicate incident once.
+func TestRepairProcessInstancesSearchDedupeAndRoutesThroughIncidentRepair(t *testing.T) {
+	t.Parallel()
+
+	var gotFilter d.ProcessInstanceFilter
+	var gotSize int32
+	var resolved []string
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{
+		search: func(_ context.Context, filter d.ProcessInstanceFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstance, error) {
+			gotFilter = filter
+			gotSize = size
+			return []d.ProcessInstance{
+				{Key: "2251799813685251", State: d.StateActive},
+				{Key: "2251799813685253", State: d.StateActive},
+			}, nil
+		},
+	}, repairIncidentAPI{
+		searchProcessInstanceIncidents: func(_ context.Context, key string, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			if key == "2251799813685251" {
+				return []d.ProcessInstanceIncidentDetail{
+					{IncidentKey: "2251799813685249", ProcessInstanceKey: key, State: "ACTIVE"},
+					{IncidentKey: "2251799813685250", ProcessInstanceKey: key, State: "RESOLVED"},
+				}, nil
+			}
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", State: "ACTIVE"},
+				{IncidentKey: "2251799813685254", ProcessInstanceKey: key, State: "ACTIVE"},
+			}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			resolved = append(resolved, key)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	hasIncident := true
+	got, err := api.RepairProcessInstances(context.Background(), d.OpsRepairRequest{
+		CommandName:              "ops repair process-instance",
+		DiscoveryMode:            d.OpsRepairDiscoveryModeSearch,
+		ProcessInstanceSelection: d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident},
+		BatchSize:                25,
+		Limit:                    2,
+		Workers:                  1,
+		NoWait:                   true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.ProcessInstanceFilter{State: d.StateActive, HasIncident: &hasIncident}, gotFilter)
+	require.EqualValues(t, 2, gotSize)
+	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
+	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"2251799813685249", "2251799813685254"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, []string{"2251799813685249", "2251799813685254"}, resolved)
+	require.Len(t, got.Plan, 2)
 }
 
 // TestRepairIncidentsFreezesExplicitTargetsAndPlansMixedJobs verifies explicit incident repair freezes lookup results before mutation.
