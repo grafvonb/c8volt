@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafvonb/c8volt/consts"
 	"github.com/grafvonb/c8volt/internal/exitcode"
 	"github.com/grafvonb/c8volt/testx"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,10 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 		"Aliases:",
 		"inc",
 		"--key strings",
+		"--state string",
+		"--error-type string",
+		"--batch-size int32",
+		"--limit int32",
 		"--retries int32",
 		"--job-timeout string",
 		"--dry-run",
@@ -86,6 +91,82 @@ func TestOpsRepairIncidentStdinDryRunFreezesKeys(t *testing.T) {
 	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
 }
 
+// TestOpsRepairIncidentFilterDryRunDiscoversFrozenTargets verifies search-mode repair freezes filtered incidents without mutation.
+func TestOpsRepairIncidentFilterDryRunDiscoversFrozenTargets(t *testing.T) {
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--state", "active", "--error-type", "io_mapping_error", "--limit", "2", "--dry-run", "--verbose"}),
+	})
+
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), "dry run: repair incidents")
+	require.Contains(t, string(output), `discovery: search filters {state=active, errorType="io_mapping_error"}`)
+	require.Contains(t, string(output), "frozen incidents: 2")
+	require.Contains(t, string(output), "incident keys: 2251799813685249, 2251799813685250")
+	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "POST /v2/incidents/search")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "GET /v2/incidents/")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "PATCH /v2/jobs/")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/resolution")
+}
+
+// TestOpsRepairIncidentRejectsKeyedSearchMode verifies mixed key and filter selection fails before remote mutation.
+func TestOpsRepairIncidentRejectsKeyedSearchMode(t *testing.T) {
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, "http://127.0.0.1:9", "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{"ops", "repair", "incident", "--key", "2251799813685249", "--state", "active"}),
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+	require.Contains(t, string(output), "invalid input")
+	require.Contains(t, string(output), "--key cannot be combined with search filters")
+	require.NotContains(t, string(output), "Usage:")
+}
+
+// TestOpsRepairIncidentSearchValidation verifies local batch and limit guardrails are enforced before CLI initialization.
+func TestOpsRepairIncidentSearchValidation(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "invalid batch size",
+			args: []string{"ops", "repair", "incident", "--batch-size", "0"},
+			want: "invalid value for --batch-size",
+		},
+		{
+			name: "invalid limit",
+			args: []string{"ops", "repair", "incident", "--limit", "0"},
+			want: "--limit must be positive integer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, "http://127.0.0.1:9", "8.9"),
+				"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, tt.args),
+			})
+
+			require.Error(t, err)
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
+			require.Contains(t, string(output), tt.want)
+		})
+	}
+}
+
 func TestOpsRepairIncidentInvalidKeyFailsBeforeMutation(t *testing.T) {
 	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
 		"C8VOLT_TEST_CONFIG":              writeTestConfigForVersion(t, "http://127.0.0.1:9", "8.9"),
@@ -123,6 +204,9 @@ func newOpsRepairIncidentServer(t *testing.T, requests *testx.SafeSlice[string])
 	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Append(r.Method + " " + r.URL.Path)
 		switch r.URL.Path {
+		case "/v2/incidents/search":
+			require.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte(`{"items":[` + opsRepairIncidentJSON("2251799813685249", "2251799813685251", "2251799813685252", "ACTIVE") + `,` + opsRepairIncidentJSON("2251799813685250", "2251799813685253", "", "ACTIVE") + `],"page":{"totalItems":2}}`))
 		case "/v2/incidents/2251799813685249":
 			_, _ = w.Write([]byte(opsRepairIncidentJSON("2251799813685249", "2251799813685251", "2251799813685252", "ACTIVE")))
 		case "/v2/incidents/2251799813685250":
@@ -163,6 +247,19 @@ func unmarshalOpsRepairIncidentArgsFromEnv(t *testing.T) []string {
 
 func resetOpsRepairIncidentFlagState() {
 	flagOpsRepairIncidentKeys = nil
+	flagOpsRepairIncidentState = "active"
+	flagOpsRepairIncidentErrorType = ""
+	flagOpsRepairIncidentErrorMessage = ""
+	flagOpsRepairIncidentPIKey = ""
+	flagOpsRepairIncidentRootKey = ""
+	flagOpsRepairIncidentPDKey = ""
+	flagOpsRepairIncidentBpmnProcessID = ""
+	flagOpsRepairIncidentFlowNodeID = ""
+	flagOpsRepairIncidentFNIKey = ""
+	flagOpsRepairIncidentCreationTimeAfter = ""
+	flagOpsRepairIncidentCreationTimeBefore = ""
+	flagOpsRepairIncidentBatchSize = consts.MaxPISearchSize
+	flagOpsRepairIncidentLimit = 0
 	flagOpsRepairIncidentRetries = 1
 	flagOpsRepairIncidentJobTimeoutRaw = ""
 	flagDryRun = false
@@ -171,6 +268,8 @@ func resetOpsRepairIncidentFlagState() {
 	flagNoWorkerLimit = false
 	flagFailFast = false
 	flagVerbose = false
+	flagViewAsJson = false
+	flagViewKeysOnly = false
 	flagCmdAutoConfirm = false
 	flagCmdAutomation = false
 }

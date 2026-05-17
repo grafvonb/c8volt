@@ -79,18 +79,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T029 [P] [US2] Add command tests for incident filter flags, keyed-plus-filter rejection, batch-size/limit validation, and dry-run output in `cmd/ops_repair_incident_test.go`
-- [ ] T030 [P] [US2] Add internal service tests for filtered incident discovery, frozen target sets, and no expansion to newly created incidents in `internal/services/ops/repair_test.go`
-- [ ] T031 [P] [US2] Add command rendering tests for dry-run incident repair rows and JSON in `cmd/cmd_views_ops_repair_test.go`
+- [x] T029 [P] [US2] Add command tests for incident filter flags, keyed-plus-filter rejection, batch-size/limit validation, and dry-run output in `cmd/ops_repair_incident_test.go`
+- [x] T030 [P] [US2] Add internal service tests for filtered incident discovery, frozen target sets, and no expansion to newly created incidents in `internal/services/ops/repair_test.go`
+- [x] T031 [P] [US2] Add command rendering tests for dry-run incident repair rows and JSON in `cmd/cmd_views_ops_repair_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T032 [US2] Reuse `get incident` filter parsing and validation patterns for repair incident search mode in `cmd/ops_repair_incident.go`
-- [ ] T033 [US2] Implement incident-filter discovery and frozen repair set construction in `internal/services/ops/repair.go`
-- [ ] T034 [US2] Implement dry-run behavior that discovers and validates without variable, job, or incident mutations in `internal/services/ops/repair.go`
-- [ ] T035 [US2] Render dry-run discovery filters, frozen keys, job applicability, retry/timeout requests, and resolution targets in `cmd/cmd_views_ops_repair.go`
-- [ ] T036 [US2] Run targeted validation with `go test ./cmd ./internal/services/ops -run 'TestOpsRepairIncident' -count=1`
-- [ ] T037 [US2] Mark US2 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T032 [US2] Reuse `get incident` filter parsing and validation patterns for repair incident search mode in `cmd/ops_repair_incident.go`
+- [x] T033 [US2] Implement incident-filter discovery and frozen repair set construction in `internal/services/ops/repair.go`
+- [x] T034 [US2] Implement dry-run behavior that discovers and validates without variable, job, or incident mutations in `internal/services/ops/repair.go`
+- [x] T035 [US2] Render dry-run discovery filters, frozen keys, job applicability, retry/timeout requests, and resolution targets in `cmd/cmd_views_ops_repair.go`
+- [x] T036 [US2] Run targeted validation with `go test ./cmd ./internal/services/ops -run 'TestOpsRepairIncident' -count=1`
+- [x] T037 [US2] Mark US2 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Incident search repair and dry-run previews are independently functional.
 

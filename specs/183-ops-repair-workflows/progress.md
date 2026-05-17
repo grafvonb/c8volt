@@ -13,6 +13,9 @@
 
 ## Codebase Patterns
 
+- `ops repair incident` search mode owns repair-specific incident filter globals and reuses the same validation helpers as `get incident`: state/error/date validation, key-shaped context validation, batch-size/limit guardrails, and keyed-plus-filter rejection before remote mutation.
+- Filtered incident repair uses `DiscoveryMode=search` to call `incident.SearchIncidents` once with `Limit` taking precedence over `BatchSize`, freezes that returned set, and then reuses the explicit incident repair execution path without re-querying or expanding scope.
+- Dry-run search repair still performs discovery and plan construction, but leaves job updates and incident resolution uncalled; human output shows the filter summary before frozen counts and verbose key/step rows.
 - `ops repair incident` now owns explicit incident repair input semantics: repeated `--key`, stdin `-`, local key validation, `--retries` defaulting to `1`, optional `--job-timeout`, and inherited bulk controls.
 - Explicit incident repair freezes incident details with `incident.GetIncidents` before any job or resolution mutation, then derives incident, process-instance, root, job, and variable-scope key sets from the frozen details.
 - Repair job steps are per incident: missing `JobKey` yields `not_applicable`; `--retries 0` yields `skipped`; retry updates can be confirmed through job service primitives; timeout updates submit without retry confirmation semantics.
@@ -137,4 +140,33 @@
 - Explicit incident repair can stay inside the existing layering by having the command call the public ops facade and the internal ops workflow compose incident and job services.
 - The frozen target set must be built before calling job or resolution mutations; later filtered discovery should reuse the same frozen-set construction path rather than mutate during paging.
 - Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -run 'TestOpsRepairIncident|TestCommandContract' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./docsgen -run TestGeneratedOpsDocsDocumentGroupingCommands -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
+---
+---
+## Iteration 4 - 2026-05-17 17:59:40 CEST
+**User Story**: User Story 2 - Discover Incidents With Filters
+**Tasks Completed**:
+- [x] T029: Add command tests for incident filter flags, keyed-plus-filter rejection, batch-size/limit validation, and dry-run output
+- [x] T030: Add internal service tests for filtered incident discovery, frozen target sets, and no expansion to newly created incidents
+- [x] T031: Add command rendering tests for dry-run incident repair rows and JSON
+- [x] T032: Reuse `get incident` filter parsing and validation patterns for repair incident search mode
+- [x] T033: Implement incident-filter discovery and frozen repair set construction
+- [x] T034: Implement dry-run behavior that discovers and validates without variable, job, or incident mutations
+- [x] T035: Render dry-run discovery filters, frozen keys, job applicability, retry/timeout requests, and resolution targets
+- [x] T036: Run targeted validation
+- [x] T037: Mark US2 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_repair.go
+- cmd/cmd_views_ops_repair_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- Search-mode repair deliberately treats explicit search flags as required, so the default active state does not turn a bare `ops repair incident` invocation into a mutation target.
+- The existing incident search helper already captures version-specific paging and local filtering behavior; repair only needs to choose the bounded size and freeze the returned details.
+- Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepairIncident|TestRenderOpsRepairIncident|TestRepairIncidentsSearchMode' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepairIncident' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
 ---

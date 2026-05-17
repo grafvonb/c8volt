@@ -198,6 +198,81 @@ func TestRepairIncidentsUpdatesJobAndConfirmsResolution(t *testing.T) {
 	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Plan[0].ConfirmationStatus)
 }
 
+// TestRepairIncidentsSearchModeFreezesFilteredTargets verifies filtered discovery is bounded and converted into a dry-run plan.
+func TestRepairIncidentsSearchModeFreezesFilteredTargets(t *testing.T) {
+	t.Parallel()
+
+	retries := int32(1)
+	var gotFilter d.IncidentFilter
+	var gotSize int32
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		searchIncidents: func(_ context.Context, filter d.IncidentFilter, size int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			gotFilter = filter
+			gotSize = size
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", JobKey: "2251799813685252", State: "ACTIVE", ErrorType: "IO_MAPPING_ERROR"},
+				{IncidentKey: "2251799813685250", ProcessInstanceKey: "2251799813685253", State: "ACTIVE", ErrorType: "IO_MAPPING_ERROR"},
+				{IncidentKey: "2251799813685254", ProcessInstanceKey: "2251799813685255", State: "ACTIVE", ErrorType: "IO_MAPPING_ERROR"},
+			}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:       "ops repair incident",
+		DiscoveryMode:     d.OpsRepairDiscoveryModeSearch,
+		IncidentSelection: d.IncidentFilter{State: "active", ErrorType: "io_mapping_error"},
+		BatchSize:         25,
+		Limit:             2,
+		RequestedRetries:  &retries,
+		DryRun:            true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.IncidentFilter{State: "active", ErrorType: "io_mapping_error"}, gotFilter)
+	require.EqualValues(t, 2, gotSize)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsRepairDiscoveryModeSearch, got.FrozenSet.DiscoveryMode)
+	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"2251799813685252"}, []string(got.FrozenSet.JobKeys))
+	require.Len(t, got.FrozenSet.OriginalIncidents, 2)
+	require.Len(t, got.Plan, 2)
+	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
+	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze verifies mutation uses only the initially discovered incident set.
+func TestRepairIncidentsSearchModeDoesNotExpandAfterFreeze(t *testing.T) {
+	t.Parallel()
+
+	var resolved []string
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		searchIncidents: func(_ context.Context, _ d.IncidentFilter, _ int32, _ ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+			return []d.ProcessInstanceIncidentDetail{
+				{IncidentKey: "2251799813685249", ProcessInstanceKey: "2251799813685251", State: "ACTIVE", ErrorType: "IO_MAPPING_ERROR"},
+			}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			resolved = append(resolved, key)
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:       "ops repair incident",
+		DiscoveryMode:     d.OpsRepairDiscoveryModeSearch,
+		IncidentSelection: d.IncidentFilter{State: "active"},
+		BatchSize:         10,
+		NoWait:            true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
+	require.Equal(t, []string{"2251799813685249"}, resolved)
+	require.Equal(t, []string{"2251799813685249"}, []string(got.FrozenSet.IncidentKeys))
+	require.Len(t, got.Plan, 1)
+}
+
 type stubJobAPI struct {
 	jsvc.API
 }
@@ -207,6 +282,7 @@ type repairIncidentAPI struct {
 	getIncident                     func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
 	resolveIncident                 func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 	waitForIncidentResolved         func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	searchIncidents                 func(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	searchProcessInstanceIncidents  func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
 	waitForProcessIncidentsResolved func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
 }
@@ -232,8 +308,11 @@ func (s repairIncidentAPI) WaitForIncidentResolved(ctx context.Context, key stri
 	return s.waitForIncidentResolved(ctx, key, opts...)
 }
 
-func (s repairIncidentAPI) SearchIncidents(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
-	panic("unexpected search incidents")
+func (s repairIncidentAPI) SearchIncidents(ctx context.Context, filter d.IncidentFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchIncidents == nil {
+		panic("unexpected search incidents")
+	}
+	return s.searchIncidents(ctx, filter, size, opts...)
 }
 
 func (s repairIncidentAPI) SearchIncidentsPage(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error) {

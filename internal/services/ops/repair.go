@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafvonb/c8volt/consts"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
@@ -33,6 +34,9 @@ func (s *Service) RepairIncidents(ctx context.Context, request d.OpsRepairReques
 		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
 		result.FrozenSet.Errors = []string{err.Error()}
 		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	if request.DiscoveryMode == d.OpsRepairDiscoveryModeSearch {
+		return s.repairFilteredIncidents(ctx, request, opts...)
 	}
 	return s.repairExplicitIncidents(ctx, request, opts...)
 }
@@ -100,6 +104,49 @@ func (s *Service) repairExplicitIncidents(ctx context.Context, request d.OpsRepa
 	return finishRepairResult(result, s.version, outcome, runErr)
 }
 
+// repairFilteredIncidents discovers matching incidents once, freezes them, and then reuses the shared incident repair execution path.
+func (s *Service) repairFilteredIncidents(ctx context.Context, request d.OpsRepairRequest, opts ...services.CallOption) (d.OpsRepairResult, error) {
+	result := newRepairResult(request)
+	incidents, err := incsvc.SearchIncidents(ctx, s.incAPI, request.IncidentSelection, repairIncidentDiscoverySize(request), opts...)
+	if err != nil {
+		result.FrozenSet.Status = d.OpsWorkflowStepStatusFailed
+		result.FrozenSet.Errors = []string{err.Error()}
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomeFailed, err)
+	}
+	incidents = limitRepairIncidents(incidents, request.Limit)
+	result.FrozenSet = freezeIncidentSearchSet(request, incidents)
+	if len(incidents) == 0 {
+		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
+		result.Notices = append(result.Notices, d.OpsRepairWorkflowNotice{
+			Code:     "no_matching_incidents",
+			Severity: "info",
+			Message:  "no matching incidents found for repair",
+		})
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+	}
+	if request.DryRun {
+		result.Plan, result.JobApplicability = buildRepairPlans(request, incidents)
+		result.Remaining.Status = d.OpsWorkflowStepStatusSkipped
+		return finishRepairResult(result, s.version, d.OpsRepairOutcomePlanned, nil)
+	}
+
+	cfg := services.ApplyCallOptions(opts)
+	workers := toolx.DetermineNoOfWorkers(len(incidents), request.Workers, cfg.NoWorkerLimit)
+	items, runErr := pool.ExecuteSlice(ctx, incidents, workers, cfg.FailFast, func(ctx context.Context, incident d.ProcessInstanceIncidentDetail, _ int) (repairIncidentExecution, error) {
+		return s.executeIncidentRepair(ctx, request, incident, opts...)
+	})
+	for _, item := range items {
+		if item.Plan.IncidentKey == "" {
+			continue
+		}
+		result.Plan = append(result.Plan, item.Plan)
+		result.JobApplicability = append(result.JobApplicability, item.JobApplicability)
+	}
+	result.Remaining = d.OpsRepairRemainingIncidentSummary{Status: d.OpsWorkflowStepStatusConfirmed, Checked: !request.NoWait}
+	outcome := repairOutcomeForPlans(result.Plan, runErr)
+	return finishRepairResult(result, s.version, outcome, runErr)
+}
+
 type repairIncidentExecution struct {
 	Plan             d.OpsRepairPlanItem
 	JobApplicability d.OpsRepairJobApplicability
@@ -117,6 +164,34 @@ func freezeExplicitIncidentSet(request d.OpsRepairRequest, incidents []d.Process
 	}
 	frozen.OriginalIncidents = append([]d.ProcessInstanceIncidentDetail(nil), incidents...)
 	return frozen
+}
+
+// freezeIncidentSearchSet records the filtered discovery result without retaining any later incidents.
+func freezeIncidentSearchSet(request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail) d.OpsRepairFrozenSet {
+	frozen := freezeExplicitIncidentSet(request, incidents)
+	frozen.DiscoveryMode = d.OpsRepairDiscoveryModeSearch
+	frozen.InputKeys = nil
+	frozen.IncidentFilters = request.IncidentSelection
+	return frozen
+}
+
+// repairIncidentDiscoverySize normalizes the search size while allowing --limit to cap repair targets first.
+func repairIncidentDiscoverySize(request d.OpsRepairRequest) int32 {
+	if request.Limit > 0 {
+		return request.Limit
+	}
+	if request.BatchSize > 0 && request.BatchSize <= consts.MaxPISearchSize {
+		return request.BatchSize
+	}
+	return consts.MaxPISearchSize
+}
+
+// limitRepairIncidents protects repair scope even when a stub or backend over-returns.
+func limitRepairIncidents(items []d.ProcessInstanceIncidentDetail, limit int32) []d.ProcessInstanceIncidentDetail {
+	if limit <= 0 || len(items) <= int(limit) {
+		return items
+	}
+	return items[:limit]
 }
 
 func buildRepairPlans(request d.OpsRepairRequest, incidents []d.ProcessInstanceIncidentDetail) ([]d.OpsRepairPlanItem, []d.OpsRepairJobApplicability) {

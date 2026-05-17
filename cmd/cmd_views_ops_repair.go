@@ -21,6 +21,9 @@ func renderOpsRepairIncidentResult(cmd *cobra.Command, result ops.RepairResult) 
 	} else {
 		renderHumanLine(cmd, "repair incidents")
 	}
+	if result.Request.DiscoveryMode == ops.RepairDiscoveryModeSearch {
+		renderHumanLine(cmd, "discovery: search filters %s", result.FrozenSet.IncidentFilters.String())
+	}
 	renderHumanLine(cmd, "frozen incidents: %d", len(result.FrozenSet.IncidentKeys))
 	if len(result.FrozenSet.JobKeys) > 0 || len(result.Plan) > 0 {
 		renderHumanLine(cmd, "related jobs: %d applicable, %d not applicable", len(result.FrozenSet.JobKeys), countOpsRepairIncidentJobNotApplicable(result.Plan))
