@@ -6,6 +6,7 @@ package ops
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -853,6 +854,43 @@ func TestClientRepairIncidentsMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, "job_timeout_not_requested", got.Notices[0].Code)
 	require.Equal(t, RepairOutcomePlanned, got.Report.Outcome)
 	require.Equal(t, []string{"inc-1"}, []string(got.Report.FrozenSet.IncidentKeys))
+}
+
+// TestClientRepairIncidentsMapsServiceErrors verifies explicit repair returns the partial result with facade-normalized errors.
+func TestClientRepairIncidentsMapsServiceErrors(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		repairIncidents: func(_ context.Context, request d.OpsRepairRequest, _ ...services.CallOption) (d.OpsRepairResult, error) {
+			return d.OpsRepairResult{
+				Request: request,
+				FrozenSet: d.OpsRepairFrozenSet{
+					Status:       d.OpsWorkflowStepStatusFailed,
+					Target:       d.OpsRepairTargetIncident,
+					IncidentKeys: typex.Keys{"2251799813685249"},
+					Errors:       []string{"boom"},
+				},
+				Outcome: d.OpsRepairOutcomeFailed,
+				Errors:  []string{"boom"},
+			}, fmt.Errorf("%w: boom", d.ErrValidation)
+		},
+	}
+
+	got, err := New(api, slog.Default()).RepairIncidents(context.Background(), RepairRequest{
+		CommandName: "ops repair incident",
+		Target:      RepairTargetIncident,
+		InputKeys:   typex.Keys{"2251799813685249"},
+		RequestedRetries: func() *int32 {
+			v := int32(1)
+			return &v
+		}(),
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "boom")
+	require.Equal(t, RepairOutcomeFailed, got.Outcome)
+	require.Equal(t, WorkflowStepStatusFailed, got.FrozenSet.Status)
+	require.Equal(t, []string{"2251799813685249"}, []string(got.FrozenSet.IncidentKeys))
 }
 
 type stubOpsService struct {

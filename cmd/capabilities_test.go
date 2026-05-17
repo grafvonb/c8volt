@@ -177,10 +177,14 @@ func TestCapabilitiesCommand_JSONIncludesOpsRootMetadata(t *testing.T) {
 	repair, ok := findCommandCapability(ops.Children, "ops repair")
 	require.True(t, ok)
 	require.Equal(t, CommandMutationStateChanging, repair.Mutation)
-	require.Equal(t, ContractSupportUnsupported, repair.ContractSupport)
+	require.Equal(t, ContractSupportLimited, repair.ContractSupport)
 	require.Equal(t, AutomationSupportUnsupported, repair.AutomationSupport)
 	require.Contains(t, repair.Summary, "Discover repair and remediation workflows")
-	require.Empty(t, repair.Children)
+	repairIncident, ok := findCommandCapability(repair.Children, "ops repair incident")
+	require.True(t, ok)
+	require.Equal(t, CommandMutationStateChanging, repairIncident.Mutation)
+	require.Equal(t, ContractSupportFull, repairIncident.ContractSupport)
+	require.Equal(t, AutomationSupportFull, repairIncident.AutomationSupport)
 	for _, flag := range repair.Flags {
 		require.NotEqual(t, "key", flag.Name)
 	}
@@ -207,14 +211,7 @@ func TestCapabilitiesCommand_OpsGroupingCommandsDoNotClaimFullAutomation(t *test
 	var doc CapabilityDocument
 	require.NoError(t, json.Unmarshal([]byte(output), &doc))
 
-	for _, path := range []string{"ops repair"} {
-		capability, ok := findCommandCapability(doc.Commands, path)
-		require.True(t, ok, "expected %q to appear in capability discovery", path)
-		require.Equal(t, ContractSupportUnsupported, capability.ContractSupport)
-		require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
-		require.Empty(t, capability.AutomationNotes)
-	}
-	for _, path := range []string{"ops", "ops execute", "ops purge"} {
+	for _, path := range []string{"ops", "ops execute", "ops purge", "ops repair"} {
 		capability, ok := findCommandCapability(doc.Commands, path)
 		require.True(t, ok, "expected %q to appear in capability discovery", path)
 		require.Equal(t, ContractSupportLimited, capability.ContractSupport)

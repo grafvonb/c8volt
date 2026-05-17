@@ -51,21 +51,21 @@
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] Add command tests for `ops repair incident --help`, no top-level parent `--key`, explicit `--key`, stdin `-`, and invalid key failures in `cmd/ops_repair_incident_test.go`
-- [ ] T018 [P] [US1] Add internal service tests for frozen explicit incident keys and mixed job-backed/non-job repair planning in `internal/services/ops/repair_test.go`
-- [ ] T019 [P] [US1] Add facade tests for explicit incident repair request conversion and error mapping in `c8volt/ops/client_test.go`
-- [ ] T020 [P] [US1] Add command contract metadata tests for `ops repair incident` in `cmd/command_contract_test.go`
+- [x] T017 [P] [US1] Add command tests for `ops repair incident --help`, no top-level parent `--key`, explicit `--key`, stdin `-`, and invalid key failures in `cmd/ops_repair_incident_test.go`
+- [x] T018 [P] [US1] Add internal service tests for frozen explicit incident keys and mixed job-backed/non-job repair planning in `internal/services/ops/repair_test.go`
+- [x] T019 [P] [US1] Add facade tests for explicit incident repair request conversion and error mapping in `c8volt/ops/client_test.go`
+- [x] T020 [P] [US1] Add command contract metadata tests for `ops repair incident` in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Add `ops repair incident` Cobra command, aliases if appropriate, explicit key flags, stdin key handling, and validation in `cmd/ops_repair_incident.go`
-- [ ] T022 [US1] Implement explicit incident repair planning and target freezing in `internal/services/ops/repair.go`
-- [ ] T023 [US1] Implement per-incident job applicability and default retry planning using job service primitives in `internal/services/ops/repair.go`
-- [ ] T024 [US1] Implement incident resolution and confirmation delegation through incident service primitives in `internal/services/ops/repair.go`
-- [ ] T025 [US1] Add human and JSON rendering for explicit incident repair results in `cmd/cmd_views_ops_repair.go`
-- [ ] T026 [US1] Set mutation, contract, output-mode, and automation metadata for `ops repair incident` in `cmd/ops_repair_incident.go`
-- [ ] T027 [US1] Run targeted validation with `go test ./cmd ./c8volt/ops ./internal/services/ops -run 'TestOpsRepairIncident|TestCommandContract' -count=1`
-- [ ] T028 [US1] Mark US1 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T021 [US1] Add `ops repair incident` Cobra command, aliases if appropriate, explicit key flags, stdin key handling, and validation in `cmd/ops_repair_incident.go`
+- [x] T022 [US1] Implement explicit incident repair planning and target freezing in `internal/services/ops/repair.go`
+- [x] T023 [US1] Implement per-incident job applicability and default retry planning using job service primitives in `internal/services/ops/repair.go`
+- [x] T024 [US1] Implement incident resolution and confirmation delegation through incident service primitives in `internal/services/ops/repair.go`
+- [x] T025 [US1] Add human and JSON rendering for explicit incident repair results in `cmd/cmd_views_ops_repair.go`
+- [x] T026 [US1] Set mutation, contract, output-mode, and automation metadata for `ops repair incident` in `cmd/ops_repair_incident.go`
+- [x] T027 [US1] Run targeted validation with `go test ./cmd ./c8volt/ops ./internal/services/ops -run 'TestOpsRepairIncident|TestCommandContract' -count=1`
+- [x] T028 [US1] Mark US1 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Explicit incident repair is independently functional and testable.
 

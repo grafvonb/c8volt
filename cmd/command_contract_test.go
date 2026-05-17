@@ -81,6 +81,38 @@ func TestCommandCapabilityForCommand_UsesExplicitAutomationOutputModes(t *testin
 	}, capability.OutputModes)
 }
 
+func TestCommandContractOpsRepairIncident(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(opsRepairIncidentCmd)
+
+	require.Equal(t, "ops repair incident", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Equal(t, []OutputModeContract{
+		{Name: "one-line", Supported: true},
+		{Name: "json", Supported: true, MachinePreferred: true},
+	}, capability.OutputModes)
+	require.Contains(t, capability.Aliases, "inc")
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "incident key(s) to repair; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "retries",
+		Type:        "int32",
+		Required:    false,
+		Repeated:    false,
+		Description: "retry count to set on related jobs; 0 skips retry restoration",
+	})
+}
+
 func TestCommandPath_TrimsRootName(t *testing.T) {
 	require.Equal(t, "", commandPath(Root()))
 	require.Equal(t, "version", commandPath(versionCmd))

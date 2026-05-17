@@ -20,6 +20,8 @@ const (
 	OpsWorkflowStepStatusPlanned OpsWorkflowStepStatus = "planned"
 	// OpsWorkflowStepStatusSkipped means the step intentionally did not run.
 	OpsWorkflowStepStatusSkipped OpsWorkflowStepStatus = "skipped"
+	// OpsWorkflowStepStatusNotApplicable means the step does not apply to the selected target.
+	OpsWorkflowStepStatusNotApplicable OpsWorkflowStepStatus = "not_applicable"
 	// OpsWorkflowStepStatusSubmitted means the operation was submitted but not confirmed.
 	OpsWorkflowStepStatusSubmitted OpsWorkflowStepStatus = "submitted"
 	// OpsWorkflowStepStatusConfirmed means the requested outcome was verified.
@@ -42,6 +44,7 @@ func (s OpsWorkflowStepStatus) IsValid() bool {
 	switch s {
 	case OpsWorkflowStepStatusPlanned,
 		OpsWorkflowStepStatusSkipped,
+		OpsWorkflowStepStatusNotApplicable,
 		OpsWorkflowStepStatusSubmitted,
 		OpsWorkflowStepStatusConfirmed,
 		OpsWorkflowStepStatusConfirmationFailed,
@@ -58,6 +61,7 @@ func opsWorkflowStepStatuses() []OpsWorkflowStepStatus {
 	return []OpsWorkflowStepStatus{
 		OpsWorkflowStepStatusPlanned,
 		OpsWorkflowStepStatusSkipped,
+		OpsWorkflowStepStatusNotApplicable,
 		OpsWorkflowStepStatusSubmitted,
 		OpsWorkflowStepStatusConfirmed,
 		OpsWorkflowStepStatusConfirmationFailed,

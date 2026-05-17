@@ -320,9 +320,22 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"Discover repair and remediation workflows",
 		"Target-specific subcommands will define their own target semantics",
 		"./c8volt ops repair --help",
+		"incident",
 	} {
 		if !strings.Contains(repairDoc, want) {
 			t.Fatalf("expected generated ops repair docs to contain %q, got %q", want, repairDoc)
+		}
+	}
+	repairIncidentDoc := readGeneratedDocForTest(t, out, "c8volt_ops_repair_incident.md")
+	for _, want := range []string{
+		"Repair incidents by key",
+		"--key strings",
+		"--retries int32",
+		"--job-timeout string",
+		"[c8volt ops repair](c8volt_ops_repair)",
+	} {
+		if !strings.Contains(repairIncidentDoc, want) {
+			t.Fatalf("expected generated ops repair incident docs to contain %q, got %q", want, repairIncidentDoc)
 		}
 	}
 
@@ -331,12 +344,14 @@ func TestGeneratedOpsDocsDocumentGroupingCommands(t *testing.T) {
 		"smoke-test",
 		"--key string",
 		"--key strings",
-		"repair incident",
 		"repair process-instance",
 	} {
-		if strings.Contains(opsDoc, unwanted) || strings.Contains(repairDoc, unwanted) {
+		if strings.Contains(opsDoc, unwanted) {
 			t.Fatalf("expected generated ops docs to omit %q", unwanted)
 		}
+	}
+	if strings.Contains(repairDoc, "--key strings") || strings.Contains(repairDoc, "repair process-instance") {
+		t.Fatalf("expected generated ops repair grouping docs to omit target flags and unavailable process-instance repair")
 	}
 }
 

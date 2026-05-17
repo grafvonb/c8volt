@@ -19,6 +19,7 @@ func TestOpsWorkflowStepStatusesMatchSharedContract(t *testing.T) {
 	require.Equal(t, []OpsWorkflowStepStatus{
 		OpsWorkflowStepStatusPlanned,
 		OpsWorkflowStepStatusSkipped,
+		OpsWorkflowStepStatusNotApplicable,
 		OpsWorkflowStepStatusSubmitted,
 		OpsWorkflowStepStatusConfirmed,
 		OpsWorkflowStepStatusConfirmationFailed,
@@ -28,6 +29,7 @@ func TestOpsWorkflowStepStatusesMatchSharedContract(t *testing.T) {
 	require.Equal(t, []string{
 		"planned",
 		"skipped",
+		"not_applicable",
 		"submitted",
 		"confirmed",
 		"confirmation_failed",

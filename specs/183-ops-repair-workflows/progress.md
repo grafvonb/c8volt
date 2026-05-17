@@ -13,6 +13,11 @@
 
 ## Codebase Patterns
 
+- `ops repair incident` now owns explicit incident repair input semantics: repeated `--key`, stdin `-`, local key validation, `--retries` defaulting to `1`, optional `--job-timeout`, and inherited bulk controls.
+- Explicit incident repair freezes incident details with `incident.GetIncidents` before any job or resolution mutation, then derives incident, process-instance, root, job, and variable-scope key sets from the frozen details.
+- Repair job steps are per incident: missing `JobKey` yields `not_applicable`; `--retries 0` yields `skipped`; retry updates can be confirmed through job service primitives; timeout updates submit without retry confirmation semantics.
+- Repair command output uses a dedicated `cmd/cmd_views_ops_repair.go` renderer and shared result envelopes for JSON, keeping command orchestration separate from human/JSON rendering.
+- Adding a concrete child under an ops grouping command changes generated capabilities and docs expectations: the grouping command becomes `limited` contract support while remaining automation-unsupported and flag-free.
 - `cmd/ops_repair.go` is a grouping command only: `Use: "repair"`, `cobra.NoArgs`, help-only `RunE`, no target `--key`, no direct workflow execution, and target-specific subcommands must own their own key/filter semantics.
 - `get incident` already owns the repair-relevant incident selector shape: repeated `--key`, stdin `-`, `mergeAndValidateKeys(...).Unique()`, `validateKeys`, `hasGetIncidentSearchModeFlags`, `populateGetIncidentSearchFilter`, `SearchIncidentsPage`, and keyed/search mutual exclusion before remote calls.
 - `internal/domain.ProcessInstanceIncidentDetail` already carries the incident freeze data repair needs, including incident key, process-instance key, root key, flow-node and element-instance keys, error context, state, tenant, process definition data, and optional `JobKey`.
@@ -95,4 +100,41 @@
 - `not_applicable` belongs in the shared ops workflow step vocabulary because repair job steps need it for mixed job-backed and non-job incidents.
 - Keeping repair service methods as planned skeletons lets later user stories add explicit incident and process-instance behavior without changing public method signatures.
 - Validation run: `go test ./c8volt/ops ./internal/services/ops -run 'TestClientRepairIncidentsMapsServiceBoundary|TestRepairWorkflows' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./c8volt ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
+---
+---
+## Iteration 3 - 2026-05-17 17:48:42 CEST
+**User Story**: User Story 1 - Repair Explicit Incidents
+**Tasks Completed**:
+- [x] T017: Add command tests for `ops repair incident --help`, no top-level parent `--key`, explicit `--key`, stdin `-`, and invalid key failures
+- [x] T018: Add internal service tests for frozen explicit incident keys and mixed job-backed/non-job repair planning
+- [x] T019: Add facade tests for explicit incident repair request conversion and error mapping
+- [x] T020: Add command contract metadata tests for `ops repair incident`
+- [x] T021: Add `ops repair incident` Cobra command, explicit key flags, stdin key handling, and validation
+- [x] T022: Implement explicit incident repair planning and target freezing
+- [x] T023: Implement per-incident job applicability and default retry planning using job service primitives
+- [x] T024: Implement incident resolution and confirmation delegation through incident service primitives
+- [x] T025: Add human and JSON rendering for explicit incident repair results
+- [x] T026: Set mutation, contract, output-mode, and automation metadata for `ops repair incident`
+- [x] T027: Run targeted validation
+- [x] T028: Mark US1 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- c8volt/ops/client_test.go
+- cmd/capabilities_test.go
+- cmd/cmd_views_ops_repair.go
+- cmd/command_contract_test.go
+- cmd/ops_contract.go
+- cmd/ops_contract_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- docsgen/main_test.go
+- internal/services/ops/repair.go
+- internal/services/ops/repair_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- Explicit incident repair can stay inside the existing layering by having the command call the public ops facade and the internal ops workflow compose incident and job services.
+- The frozen target set must be built before calling job or resolution mutations; later filtered discovery should reuse the same frozen-set construction path rather than mutate during paging.
+- Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -run 'TestOpsRepairIncident|TestCommandContract' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./c8volt/ops ./internal/services/ops -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./docsgen -run TestGeneratedOpsDocsDocumentGroupingCommands -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
 ---

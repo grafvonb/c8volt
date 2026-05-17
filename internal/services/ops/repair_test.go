@@ -6,11 +6,13 @@ package ops
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
+	incsvc "github.com/grafvonb/c8volt/internal/services/incident"
 	jsvc "github.com/grafvonb/c8volt/internal/services/job"
 	"github.com/grafvonb/c8volt/typex"
 	"github.com/stretchr/testify/require"
@@ -94,6 +96,176 @@ func TestRepairWorkflowsRecordFoundationalPlan(t *testing.T) {
 	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
 }
 
+// TestRepairIncidentsFreezesExplicitTargetsAndPlansMixedJobs verifies explicit incident repair freezes lookup results before mutation.
+func TestRepairIncidentsFreezesExplicitTargetsAndPlansMixedJobs(t *testing.T) {
+	t.Parallel()
+
+	retries := int32(1)
+	started := time.Date(2026, 5, 17, 18, 0, 0, 0, time.UTC)
+	incidents := map[string]d.ProcessInstanceIncidentDetail{
+		"2251799813685249": {
+			IncidentKey:            "2251799813685249",
+			ProcessInstanceKey:     "2251799813685251",
+			RootProcessInstanceKey: "2251799813685251",
+			JobKey:                 "2251799813685252",
+			State:                  "ACTIVE",
+			ErrorType:              "JOB_NO_RETRIES",
+		},
+		"2251799813685250": {
+			IncidentKey:            "2251799813685250",
+			ProcessInstanceKey:     "2251799813685253",
+			RootProcessInstanceKey: "2251799813685253",
+			State:                  "ACTIVE",
+			ErrorType:              "IO_MAPPING_ERROR",
+		},
+	}
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return incidents[key], nil
+		},
+	}, nil, nil, repairJobAPI{}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:      "ops repair incident",
+		DiscoveryMode:    d.OpsRepairDiscoveryModeKeyed,
+		InputKeys:        typex.Keys{"2251799813685249", "2251799813685250", "2251799813685249"},
+		RequestedRetries: &retries,
+		DryRun:           true,
+		StartedAt:        started,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomePlanned, got.Outcome)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.FrozenSet.Status)
+	require.Equal(t, []string{"2251799813685249", "2251799813685250"}, []string(got.FrozenSet.IncidentKeys))
+	require.Equal(t, []string{"2251799813685251", "2251799813685253"}, []string(got.FrozenSet.ProcessInstanceKeys))
+	require.Equal(t, []string{"2251799813685252"}, []string(got.FrozenSet.JobKeys))
+	require.Len(t, got.FrozenSet.OriginalIncidents, 2)
+	require.Len(t, got.Plan, 2)
+	require.Equal(t, d.OpsWorkflowStepStatusPlanned, got.Plan[0].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.Plan[1].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusNotApplicable, got.JobApplicability[1].TimeoutStatus)
+	require.Equal(t, got.FrozenSet, got.Report.FrozenSet)
+}
+
+// TestRepairIncidentsUpdatesJobAndConfirmsResolution verifies the mutation path composes job and incident primitives.
+func TestRepairIncidentsUpdatesJobAndConfirmsResolution(t *testing.T) {
+	t.Parallel()
+
+	retries := int32(1)
+	var jobRequests []d.JobUpdateRequest
+	api := NewWithRepairDependencies(nil, stubProcessInstanceAPI{}, repairIncidentAPI{
+		getIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+			return d.ProcessInstanceIncidentDetail{
+				IncidentKey:        key,
+				ProcessInstanceKey: "2251799813685251",
+				JobKey:             "2251799813685252",
+				State:              "ACTIVE",
+			}, nil
+		},
+		resolveIncident: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusNoContent, Status: "accepted"}, nil
+		},
+		waitForIncidentResolved: func(_ context.Context, key string, _ ...services.CallOption) (d.IncidentResolutionResponse, error) {
+			return d.IncidentResolutionResponse{Key: key, Ok: true, StatusCode: http.StatusOK, Status: "resolved"}, nil
+		},
+	}, nil, nil, repairJobAPI{
+		updateJob: func(_ context.Context, request d.JobUpdateRequest, _ ...services.CallOption) (d.JobUpdateResult, error) {
+			jobRequests = append(jobRequests, request)
+			return d.JobUpdateResult{
+				Key:                request.Key,
+				MutationAccepted:   true,
+				SubmittedRetries:   request.Retries,
+				ConfirmedRetries:   request.Retries,
+				ConfirmationStatus: "confirmed",
+			}, nil
+		},
+	}, "")
+
+	got, err := api.RepairIncidents(context.Background(), d.OpsRepairRequest{
+		CommandName:      "ops repair incident",
+		InputKeys:        typex.Keys{"2251799813685249"},
+		RequestedRetries: &retries,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.OpsRepairOutcomeRepaired, got.Outcome)
+	require.Len(t, jobRequests, 1)
+	require.Equal(t, "2251799813685252", jobRequests[0].Key)
+	require.Equal(t, &retries, jobRequests[0].Retries)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Plan[0].RetryUpdateStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusSubmitted, got.Plan[0].ResolutionStatus)
+	require.Equal(t, d.OpsWorkflowStepStatusConfirmed, got.Plan[0].ConfirmationStatus)
+}
+
 type stubJobAPI struct {
 	jsvc.API
+}
+
+type repairIncidentAPI struct {
+	incsvc.API
+	getIncident                     func(context.Context, string, ...services.CallOption) (d.ProcessInstanceIncidentDetail, error)
+	resolveIncident                 func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	waitForIncidentResolved         func(context.Context, string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+	searchProcessInstanceIncidents  func(context.Context, string, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error)
+	waitForProcessIncidentsResolved func(context.Context, string, []string, ...services.CallOption) (d.IncidentResolutionResponse, error)
+}
+
+func (s repairIncidentAPI) GetIncident(ctx context.Context, key string, opts ...services.CallOption) (d.ProcessInstanceIncidentDetail, error) {
+	if s.getIncident == nil {
+		panic("unexpected get incident")
+	}
+	return s.getIncident(ctx, key, opts...)
+}
+
+func (s repairIncidentAPI) ResolveIncident(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.resolveIncident == nil {
+		panic("unexpected resolve incident")
+	}
+	return s.resolveIncident(ctx, key, opts...)
+}
+
+func (s repairIncidentAPI) WaitForIncidentResolved(ctx context.Context, key string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.waitForIncidentResolved == nil {
+		panic("unexpected wait for incident resolved")
+	}
+	return s.waitForIncidentResolved(ctx, key, opts...)
+}
+
+func (s repairIncidentAPI) SearchIncidents(context.Context, d.IncidentFilter, int32, ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	panic("unexpected search incidents")
+}
+
+func (s repairIncidentAPI) SearchIncidentsPage(context.Context, d.IncidentFilter, d.IncidentPageRequest, ...services.CallOption) (d.IncidentPage, error) {
+	panic("unexpected search incidents page")
+}
+
+func (s repairIncidentAPI) SearchProcessInstanceIncidents(ctx context.Context, key string, opts ...services.CallOption) ([]d.ProcessInstanceIncidentDetail, error) {
+	if s.searchProcessInstanceIncidents == nil {
+		panic("unexpected search process instance incidents")
+	}
+	return s.searchProcessInstanceIncidents(ctx, key, opts...)
+}
+
+func (s repairIncidentAPI) WaitForProcessInstanceIncidentsResolved(ctx context.Context, key string, incidentKeys []string, opts ...services.CallOption) (d.IncidentResolutionResponse, error) {
+	if s.waitForProcessIncidentsResolved == nil {
+		panic("unexpected wait for process instance incidents resolved")
+	}
+	return s.waitForProcessIncidentsResolved(ctx, key, incidentKeys, opts...)
+}
+
+type repairJobAPI struct {
+	jsvc.API
+	updateJob func(context.Context, d.JobUpdateRequest, ...services.CallOption) (d.JobUpdateResult, error)
+}
+
+func (s repairJobAPI) GetJob(context.Context, string, ...services.CallOption) (d.Job, error) {
+	panic("unexpected get job")
+}
+
+func (s repairJobAPI) UpdateJob(ctx context.Context, request d.JobUpdateRequest, opts ...services.CallOption) (d.JobUpdateResult, error) {
+	if s.updateJob == nil {
+		panic("unexpected update job")
+	}
+	return s.updateJob(ctx, request, opts...)
 }
