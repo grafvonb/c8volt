@@ -62,5 +62,5 @@
 
 ## Active Speckit Plan
 <!-- SPECKIT START -->
-- Active implementation plan: `specs/199-ops-incident-purge/plan.md`
+- Active implementation plan: `specs/208-purge-process-definitions/plan.md`
 <!-- SPECKIT END -->

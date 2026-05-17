@@ -255,7 +255,7 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 
 	require.NoError(t, err)
 	require.Equal(t, d.OrphanPurgeOutcomeDeleted, got.Outcome)
-	require.Contains(t, logBuf.String(), "deleting pi done; requested 1, ok 1, failed 0")
+	require.Contains(t, logBuf.String(), "pi delete done; requested 1, ok 1, failed 0")
 }
 
 type stubProcessInstanceAPI struct {
@@ -264,6 +264,7 @@ type stubProcessInstanceAPI struct {
 	filterOrphans         func(context.Context, []d.ProcessInstance, ...services.CallOption) ([]d.ProcessInstance, error)
 	ancestryResult        func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult     func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	cancelProcessInstance func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
 	deleteProcessInstance func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
 }
 
@@ -293,6 +294,13 @@ func (s stubProcessInstanceAPI) DescendantsResult(ctx context.Context, rootKey s
 		panic("unexpected descendants")
 	}
 	return s.descendantsResult(ctx, rootKey, opts...)
+}
+
+func (s stubProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {
+	if s.cancelProcessInstance == nil {
+		panic("unexpected cancel")
+	}
+	return s.cancelProcessInstance(ctx, key, opts...)
 }
 
 func (s stubProcessInstanceAPI) DeleteProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.DeleteResponse, error) {

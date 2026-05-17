@@ -43,7 +43,7 @@ func (c *client) DeployProcessDefinition(ctx context.Context, units []Deployment
 }
 
 func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts ...options.FacadeOption) (DeleteReport, error) {
-	resp, err := rsvc.DeleteProcessDefinition(ctx, c.api, c.pdApi, c.piApi, c.log, key, options.MapFacadeOptionsToCallOptions(opts)...)
+	resp, err := pdsvc.DeleteProcessDefinition(ctx, c.api, c.pdApi, c.piApi, c.log, key, options.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromResourceDeleteResponse(key, resp, resp.Ok && err == nil)
 	if err != nil {
 		return out, ferr.FromDomain(err)
@@ -52,7 +52,7 @@ func (c *client) DeleteProcessDefinition(ctx context.Context, key string, opts .
 }
 
 func (c *client) PreviewDeleteProcessDefinitions(ctx context.Context, keys types.Keys, opts ...options.FacadeOption) (DeleteProcessDefinitionPlan, error) {
-	plan, err := rsvc.PreviewDeleteProcessDefinitions(ctx, c.pdApi, c.piApi, c.log, keys, options.MapFacadeOptionsToCallOptions(opts)...)
+	plan, err := pdsvc.PreviewDeleteProcessDefinitions(ctx, c.pdApi, c.piApi, c.log, keys, options.MapFacadeOptionsToCallOptions(opts)...)
 	if err != nil {
 		return DeleteProcessDefinitionPlan{}, ferr.FromDomain(err)
 	}
