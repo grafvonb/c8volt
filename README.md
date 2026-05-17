@@ -10,6 +10,31 @@
 
 `c8volt` is a Camunda 8 CLI for teams that care about outcomes, not just accepted requests. It is built for operators, developers, support engineers, CI pipelines, and AI agents that need one reliable command line for setup, inspection, recovery, and cleanup.
 
+## C8 Ops CLI
+
+Low-level commands do work. `c8volt ops` finishes workflows.
+
+The `ops` command group turns multi-command Camunda operations into audited, previewable playbooks. Instead of making operators manually chain `get`, `walk`, `delete`, `resolve`, `update`, and cleanup commands, an ops command discovers the target set, freezes it, builds the same lower-level c8volt plan you would trust by hand, then runs it with dry-run previews, confirmation controls, JSON output, and audit reports.
+
+| Command | What it finishes | Playbook |
+| --- | --- | --- |
+| `c8volt ops execute smoke-test` | Proves that a profile can connect, deploy, run, walk, and clean up a real process. | [Smoke Test](docs/ops/smoke-test.md) |
+| `c8volt ops execute retention-policy` | Deletes old finished process instances with a retention-age plan and audit report. | [Retention Policy](docs/ops/retention-policy.md) |
+| `c8volt ops purge orphan-process-instances` | Finds orphan child process instances and deletes the frozen set through c8volt delete planning. | [Orphan Process Instances](docs/ops/orphan-process-instances.md) |
+| `c8volt ops purge process-instances-with-incidents` | Finds process instances through incident filters, then purges them through deterministic family-scope delete planning. | [Incident-Based Purge](docs/ops/purge-pi-with-incidents.md) |
+| `c8volt ops purge all-process-definitions` | Finds process-definition versions, plans their process-instance impact, then deletes the selected definitions. | [All Process Definitions](docs/ops/all-process-definitions.md) |
+
+Start every destructive workflow with a plan:
+
+```bash
+./c8volt ops execute retention-policy --retention-days 90 --dry-run
+./c8volt ops purge orphan-process-instances --dry-run
+./c8volt ops purge process-instances-with-incidents --state active --error-type io_mapping_error --dry-run
+./c8volt ops purge all-process-definitions --bpmn-process-id invoice --latest --dry-run
+```
+
+When the plan is right, run for real with `--auto-confirm`, `--automation`, `--json`, or `--report-file` according to the environment. See the [C8 Ops CLI playbooks](docs/ops/index.md) for the problem each workflow solves, the lower-level command flow it composes, dry-run versus execution behavior, and VHS demo scripts.
+
 <img src="./docs/assets/screencasts/fast-start.gif" alt="c8volt fast start screencast" />
 
 ## Release 3.7.x
@@ -45,7 +70,7 @@ That is the gap `c8volt` closes.
 - list, fetch, filter, and count incidents directly
 - inspect process trees with incidents and variables in context
 - resolve incident keys or process-instance incidents with dry-run previews
-- discover high-level ops workflow groups before concrete playbooks are added
+- run high-level ops playbooks with audited dry-run and report output
 - preview, cancel, and delete process-instance families safely
 - wait for state or incident conditions in scripts
 - search, page, count, and batch process-instance results
