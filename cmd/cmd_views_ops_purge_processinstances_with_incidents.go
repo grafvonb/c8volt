@@ -27,8 +27,8 @@ func renderOpsPurgeProcessInstancesWithIncidentsResult(cmd *cobra.Command, resul
 	renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd, result)
-	renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsReportFile(cmd, result)
+	renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}

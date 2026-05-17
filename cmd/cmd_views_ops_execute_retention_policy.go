@@ -27,8 +27,8 @@ func renderOpsExecuteRetentionPolicyResult(cmd *cobra.Command, result ops.Retent
 	renderOpsExecuteRetentionPolicyDiscovery(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletePlan(cmd, result)
 	renderOpsExecuteRetentionPolicyDeletion(cmd, result)
-	renderOpsExecuteRetentionPolicyOutcome(cmd, result)
 	renderOpsExecuteRetentionPolicyReportFile(cmd, result)
+	renderOpsExecuteRetentionPolicyOutcome(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}

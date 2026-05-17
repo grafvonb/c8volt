@@ -197,6 +197,7 @@ func TestOpsExecuteSmokeTestDryRunWritesMarkdownReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# Smoke Test Audit Report")
 	require.Contains(t, report, "- Command: ops execute smoke-test")
@@ -248,6 +249,7 @@ func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: passed_cleanup_skipped")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: passed_cleanup_skipped"))
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# Smoke Test Audit Report")
 	require.Contains(t, report, "- Schema Version: ops.smoke-test.v1")
@@ -398,12 +400,22 @@ func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.
 	)
 
 	require.Contains(t, output, "execute smoke test")
+	require.Contains(t, output, "deploy: fixture embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, output, "deploy: confirmed process definition pd-88")
+	require.Contains(t, output, "start: 1 process instance")
+	require.Contains(t, output, "start: created 1/1")
+	require.Contains(t, output, "walk: 1 process-instance family")
+	require.Contains(t, output, "walk: confirmed 1 process-instance family")
+	require.Contains(t, output, "cleanup: deleting created resources")
 	require.Contains(t, output, "fixture: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
 	require.Contains(t, output, "deployment: confirmed")
 	require.Contains(t, output, "created process instances: 1/1")
 	require.Contains(t, output, "walk: confirmed (process instances: 1)")
-	require.Contains(t, output, "cleanup: submitted (process instances: 1, process definition: submitted)")
-	require.Contains(t, output, "cleanup confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
+	require.NotContains(t, output, "cleanup confirmation:")
+	require.NotContains(t, output, "pi delete done")
+	require.NotContains(t, output, "delete request sent")
+	require.NotContains(t, output, "pd delete done")
 	require.NotContains(t, output, "created keys: 101")
 	require.NotContains(t, output, "walk 101:")
 	require.Contains(t, output, "outcome: passed")
@@ -462,6 +474,9 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 			}, tt.args...)
 			output := executeRootForProcessInstanceTest(t, args...)
 
+			require.Contains(t, output, "start: 2 process instances")
+			require.Contains(t, output, "walk: 2 process-instance families")
+			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
 			require.Contains(t, output, "created process instances: 2/2")
 			require.Contains(t, output, "walk: confirmed (process instances: 2)")
 			require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
@@ -572,7 +587,8 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 		"--no-wait",
 	)
 
-	require.Contains(t, output, "cleanup: submitted (process instances: 1, process definition: submitted)")
+	require.Contains(t, output, "cleanup: submitted 1 process instance and fixture process definition (--no-wait)")
+	require.NotContains(t, output, "cleanup confirmation:")
 	require.Len(t, prompts, 1)
 	require.Contains(t, prompts[0], "clean up the created instances and eligible process definition")
 }

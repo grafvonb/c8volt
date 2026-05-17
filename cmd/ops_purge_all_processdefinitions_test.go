@@ -426,6 +426,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	require.Empty(t, deleted.Snapshot())
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# All Process Definitions Purge Audit Report")
@@ -467,6 +468,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesJSONReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
 	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))

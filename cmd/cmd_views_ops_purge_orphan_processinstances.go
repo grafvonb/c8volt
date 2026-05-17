@@ -40,12 +40,13 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 		if result.Request.DryRun {
 			renderHumanLine(cmd, "delete preview: skipped (no orphan process-instance targets)")
+			renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 			renderHumanLine(cmd, "outcome: planned; no changes applied%s", elapsed)
 		} else {
 			renderHumanLine(cmd, "delete plan: skipped")
+			renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 			renderHumanLine(cmd, "outcome: planned; no targets deleted%s", elapsed)
 		}
-		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
 		return nil
 	}
 	renderHumanLine(cmd, "selection filters: %s", result.Discovery.Filters.String())
@@ -75,8 +76,8 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		} else {
 			renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
 		}
-		renderHumanLine(cmd, "outcome: %s%s", result.Outcome, opsWorkflowElapsedSuffix(result.Report.Duration))
 		renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
+		renderHumanLine(cmd, "outcome: %s%s", result.Outcome, opsWorkflowElapsedSuffix(result.Report.Duration))
 		return nil
 	}
 	if flagVerbose {
@@ -87,8 +88,8 @@ func renderOpsPurgeOrphanProcessInstancesHuman(cmd *cobra.Command, result ops.Or
 		line += "; use --verbose to list process-instance keys"
 	}
 	line += opsWorkflowElapsedSuffix(result.Report.Duration)
-	renderHumanLine(cmd, "%s", line)
 	renderOpsPurgeOrphanProcessInstancesReportFile(cmd, result)
+	renderHumanLine(cmd, "%s", line)
 	return nil
 }
 

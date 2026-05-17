@@ -28,8 +28,8 @@ func renderOpsExecuteSmokeTestResult(cmd *cobra.Command, result ops.SmokeTestRes
 	renderOpsExecuteSmokeTestRun(cmd, result)
 	renderOpsExecuteSmokeTestWalk(cmd, result)
 	renderOpsExecuteSmokeTestCleanup(cmd, result)
-	renderOpsExecuteSmokeTestOutcome(cmd, result)
 	renderOpsExecuteSmokeTestReportFile(cmd, result)
+	renderOpsExecuteSmokeTestOutcome(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}
@@ -141,18 +141,7 @@ func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestRe
 	}
 	status := smokeTestCleanupStatus(cleanup)
 	if status != "" && status != ops.WorkflowStepStatusSkipped {
-		renderHumanLine(cmd, "cleanup: %s (process instances: %d, process definition: %s)",
-			status,
-			len(cleanup.ProcessInstanceCleanup.SubmittedKeys),
-			smokeTestProcessDefinitionCleanupStatus(cleanup),
-		)
-		if cleanup.ProcessInstanceCleanup.Submitted || cleanup.ProcessDefinitionCleanup.Submitted {
-			if cleanup.ProcessInstanceCleanup.NoWait || cleanup.ProcessDefinitionCleanup.NoWait {
-				renderHumanLine(cmd, "cleanup confirmation: skipped (--no-wait)")
-			} else {
-				renderHumanLine(cmd, "cleanup confirmation: %t", cleanup.ProcessInstanceCleanup.Confirmed && cleanup.ProcessDefinitionCleanup.Confirmed)
-			}
-		}
+		renderHumanLine(cmd, "cleanup: %s", smokeTestCleanupSummary(cleanup, status))
 	}
 	if !flagVerbose {
 		if len(cleanup.ProcessDefinitionEligibility.Blockers) > 0 {
@@ -232,6 +221,45 @@ func smokeTestProcessDefinitionCleanupStatus(cleanup ops.SmokeTestCleanupResult)
 		return cleanup.ProcessDefinitionEligibility.Status
 	}
 	return cleanup.ProcessDefinitionCleanup.Status
+}
+
+func smokeTestCleanupSummary(cleanup ops.SmokeTestCleanupResult, status ops.WorkflowStepStatus) string {
+	resources := smokeTestCleanupResourceSummary(cleanup)
+	switch status {
+	case ops.WorkflowStepStatusConfirmed:
+		return "removed " + resources
+	case ops.WorkflowStepStatusSubmitted:
+		if cleanup.ProcessInstanceCleanup.NoWait || cleanup.ProcessDefinitionCleanup.NoWait {
+			return "submitted " + resources + " (--no-wait)"
+		}
+		return "submitted " + resources
+	case ops.WorkflowStepStatusBlocked, ops.WorkflowStepStatusFailed:
+		pdStatus := smokeTestProcessDefinitionCleanupStatus(cleanup)
+		if pdStatus != "" && pdStatus != ops.WorkflowStepStatusSkipped {
+			return fmt.Sprintf("%s (%s, process definition: %s)", status, smokeTestProcessInstanceCountLabel(len(cleanup.ProcessInstanceCleanup.SubmittedKeys)), pdStatus)
+		}
+	}
+	return fmt.Sprintf("%s (%s)", status, resources)
+}
+
+func smokeTestCleanupResourceSummary(cleanup ops.SmokeTestCleanupResult) string {
+	pi := smokeTestProcessInstanceCountLabel(len(cleanup.ProcessInstanceCleanup.SubmittedKeys))
+	pdStatus := smokeTestProcessDefinitionCleanupStatus(cleanup)
+	switch pdStatus {
+	case ops.WorkflowStepStatusConfirmed, ops.WorkflowStepStatusSubmitted:
+		return pi + " and fixture process definition"
+	case "", ops.WorkflowStepStatusSkipped:
+		return pi
+	default:
+		return fmt.Sprintf("%s, fixture process definition: %s", pi, pdStatus)
+	}
+}
+
+func smokeTestProcessInstanceCountLabel(count int) string {
+	if count == 1 {
+		return "1 process instance"
+	}
+	return fmt.Sprintf("%d process instances", count)
 }
 
 func smokeTestHasHiddenKeys(result ops.SmokeTestResult) bool {

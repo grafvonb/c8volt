@@ -331,6 +331,7 @@ func TestOpsExecuteRetentionPolicyWritesMarkdownReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# Retention Policy Audit Report")
 	require.Contains(t, report, "- Command: ops execute retention-policy")
@@ -363,6 +364,7 @@ func TestOpsExecuteRetentionPolicyWritesJSONReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
 	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))

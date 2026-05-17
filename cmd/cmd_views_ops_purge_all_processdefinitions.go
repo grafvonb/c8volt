@@ -29,8 +29,8 @@ func renderOpsPurgeAllProcessDefinitionsResult(cmd *cobra.Command, result ops.Al
 	renderOpsPurgeAllProcessDefinitionsDiscovery(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsPlan(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsDeletion(cmd, result)
-	renderOpsPurgeAllProcessDefinitionsOutcome(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsReportFile(cmd, result)
+	renderOpsPurgeAllProcessDefinitionsOutcome(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}

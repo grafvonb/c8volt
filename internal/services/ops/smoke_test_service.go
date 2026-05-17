@@ -130,6 +130,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	}
 
 	proofOpts := smokeTestProofOptions(opts...)
+	smokeTestProgressf(s.log, result.Request, "deploy: fixture %s", fixture.File)
 	deployment, err := s.resourceAPI.Deploy(ctx, []d.DeploymentUnitData{unit}, proofOpts...)
 	if err != nil {
 		result.Deployment = d.SmokeTestDeploymentResult{
@@ -148,6 +149,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 	}
 
 	result.Deployment = smokeTestDeploymentResult(fixture, deployment, d.OpsWorkflowStepStatusConfirmed)
+	smokeTestProgressf(s.log, result.Request, "deploy: confirmed process definition %s", smokeTestDeploymentIdentity(result.Deployment))
 	if s.piAPI == nil {
 		err := fmt.Errorf("%w: smoke-test run requires process-instance service", d.ErrValidation)
 		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
@@ -161,6 +163,7 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, err)
 	}
 
+	smokeTestProgressf(s.log, result.Request, "start: %s", smokeTestProcessInstanceCountLabel(result.Request.Count))
 	result.Run, err = smokeTestCreateProcessInstances(ctx, s.piAPI, s.log, result.Request, result.Deployment, proofOpts...)
 	if err != nil {
 		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, d.OpsWorkflowStepStatusSkipped, d.OpsWorkflowStepStatusSkipped)
@@ -171,6 +174,8 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("start smoke-test process instances: %w", err))
 	}
 
+	smokeTestProgressf(s.log, result.Request, "start: created %d/%d", result.Run.CreatedCount, result.Run.RequestedCount)
+	smokeTestProgressf(s.log, result.Request, "walk: %s", smokeTestFamilyCountLabel(len(result.Run.ProcessInstanceKeys)))
 	result.Walk, err = smokeTestWalkCreatedFamilies(ctx, s.piAPI, result.Run.ProcessInstanceKeys, result.Request.Workers, proofOpts...)
 	if err != nil {
 		result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, d.OpsWorkflowStepStatusSkipped)
@@ -180,7 +185,13 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePartiallyFailed, fmt.Errorf("walk smoke-test process-instance families: %w", err))
 	}
 
+	smokeTestProgressf(s.log, result.Request, "walk: confirmed %s", smokeTestFamilyCountLabel(len(result.Walk.Items)))
 	cleanupOpts := smokeTestCleanupOptions(opts...)
+	if result.Request.NoCleanup {
+		smokeTestProgressf(s.log, result.Request, "cleanup: skipped (--no-cleanup)")
+	} else {
+		smokeTestProgressf(s.log, result.Request, "cleanup: deleting created resources")
+	}
 	result.Cleanup, err = s.cleanupSmokeTestResources(ctx, result, cleanupOpts...)
 	result.Plan.PlannedSteps = smokeTestPlannedStepsWithStatuses(result.Request, connectivityStatus, connectivityMessage, nil, d.OpsWorkflowStepStatusConfirmed, result.Deployment.Status, result.Run.Status, result.Walk.Status, smokeTestCleanupStepStatus(result.Cleanup))
 	if err != nil {
@@ -190,6 +201,41 @@ func (s *Service) executeSmokeTestDeployment(ctx context.Context, result d.Smoke
 		return finishSmokeTestResult(result, d.SmokeTestOutcomePassedCleanupSkipped, nil)
 	}
 	return finishSmokeTestResult(result, d.SmokeTestOutcomePassed, nil)
+}
+
+func smokeTestProgressf(log *slog.Logger, request d.SmokeTestRequest, format string, args ...any) {
+	if log == nil || !smokeTestShouldLogProgress(request) {
+		return
+	}
+	log.Info(fmt.Sprintf(format, args...))
+}
+
+func smokeTestShouldLogProgress(request d.SmokeTestRequest) bool {
+	return !request.DryRun && !strings.EqualFold(request.OutputMode, "json")
+}
+
+func smokeTestDeploymentIdentity(deployment d.SmokeTestDeploymentResult) string {
+	if deployment.ProcessDefinitionKey != "" {
+		return deployment.ProcessDefinitionKey
+	}
+	if deployment.BpmnProcessID != "" {
+		return deployment.BpmnProcessID
+	}
+	return "<unknown>"
+}
+
+func smokeTestFamilyCountLabel(count int) string {
+	if count == 1 {
+		return "1 process-instance family"
+	}
+	return fmt.Sprintf("%d process-instance families", count)
+}
+
+func smokeTestProcessInstanceCountLabel(count int) string {
+	if count == 1 {
+		return "1 process instance"
+	}
+	return fmt.Sprintf("%d process instances", count)
 }
 
 func smokeTestCreateProcessInstances(ctx context.Context, api pisvc.API, log *slog.Logger, request d.SmokeTestRequest, deployment d.SmokeTestDeploymentResult, opts ...services.CallOption) (d.SmokeTestRunResult, error) {
@@ -315,7 +361,10 @@ func smokeTestCleanupOptions(opts ...services.CallOption) []services.CallOption 
 	if cfg.NoWait {
 		out = append(out, services.WithNoWait())
 	}
-	return append(out, services.WithForce(), services.WithSuppressProcessInstanceDetailLogs())
+	if !cfg.Verbose {
+		out = append(out, services.WithSuppressWorkflowDetailLogs(), services.WithSuppressProcessInstanceDetailLogs())
+	}
+	return append(out, services.WithForce())
 }
 
 func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeTestResult, opts ...services.CallOption) (d.SmokeTestCleanupResult, error) {

@@ -33,7 +33,10 @@ func CreateNProcessInstances(ctx context.Context, api API, log *slog.Logger, dat
 	defer stopActivity()
 	var completed atomic.Int64
 	var created atomic.Int64
-	stopProgress := startProcessInstanceBulkProgress(ctx, log, "create", n, 0, &completed)
+	stopProgress := func() {}
+	if !cfg.SuppressWorkflowDetailLogs {
+		stopProgress = startProcessInstanceBulkProgress(ctx, log, "create", n, 0, &completed)
+	}
 	defer stopProgress()
 	pics, err := pool.ExecuteNTimes[d.ProcessInstanceCreation](ctx, n, nw, cfg.FailFast, func(ctx context.Context, _ int) (d.ProcessInstanceCreation, error) {
 		defer completed.Add(1)
@@ -76,14 +79,17 @@ func CancelProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("cancelling", lk, affectedCount))
 	defer stopActivity()
 	var completed atomic.Int64
-	stopProgress := startProcessInstanceBulkProgress(ctx, log, "cancel", lk, affectedCount, &completed)
+	stopProgress := func() {}
+	if !cfg.SuppressWorkflowDetailLogs {
+		stopProgress = startProcessInstanceBulkProgress(ctx, log, "cancel", lk, affectedCount, &completed)
+	}
 	defer stopProgress()
 	rs, err := pool.ExecuteSlice[string, d.Reporter](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.Reporter, error) {
 		defer completed.Add(1)
 		resp, _, err := api.CancelProcessInstance(ctx, key, opts...)
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
 	})
-	if !cfg.NoWait {
+	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		t, oks, noks := reporterTotals(rs)
 		if affectedCount > t {
 			log.Info(fmt.Sprintf("pi cancel done; roots %d, affected %d, ok %d (cancelled/terminal), failed %d", t, affectedCount, oks, noks))
@@ -107,14 +113,17 @@ func DeleteProcessInstances(ctx context.Context, api API, log *slog.Logger, keys
 	stopActivity := logging.StartActivity(ctx, processInstanceBulkActivity("deleting", lk, affectedCount))
 	defer stopActivity()
 	var completed atomic.Int64
-	stopProgress := startProcessInstanceBulkProgress(ctx, log, "delete", lk, affectedCount, &completed)
+	stopProgress := func() {}
+	if !cfg.SuppressWorkflowDetailLogs {
+		stopProgress = startProcessInstanceBulkProgress(ctx, log, "delete", lk, affectedCount, &completed)
+	}
 	defer stopProgress()
 	rs, err := pool.ExecuteSlice[string, d.Reporter](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.Reporter, error) {
 		defer completed.Add(1)
 		resp, err := api.DeleteProcessInstance(ctx, key, opts...)
 		return d.Reporter{Key: key, Ok: resp.Ok, StatusCode: resp.StatusCode, Status: resp.Status}, err
 	})
-	if !cfg.NoWait {
+	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		t, oks, noks := reporterTotals(rs)
 		if hasStatusCode(rs, http.StatusConflict) {
 			affected := affectedCount
