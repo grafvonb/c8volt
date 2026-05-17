@@ -12,7 +12,7 @@ List bundled BPMN fixture files
 
 List bundled BPMN fixture files.
 
-Use before `embed deploy` or `embed export` to get exact file names.
+Shows files for the configured Camunda version, matching `embed deploy --all`. Use before `embed deploy` or `embed export` to get exact file names.
 
 ```
 c8volt embed list [flags]

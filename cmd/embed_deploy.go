@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/fs"
 	"slices"
-	"strings"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
 	"github.com/grafvonb/c8volt/c8volt/resource"
@@ -45,11 +44,7 @@ var embedDeployCmd = &cobra.Command{
 		var toDeploy []string
 		switch {
 		case flagEmbedDeployAll:
-			for _, d := range all {
-				if strings.Contains(d, cfg.App.CamundaVersion.FilePrefix()) {
-					toDeploy = append(toDeploy, d)
-				}
-			}
+			toDeploy = embeddedFilesForCamundaVersion(all, cfg.App.CamundaVersion)
 			if len(toDeploy) == 0 {
 				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no deployable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
 			}

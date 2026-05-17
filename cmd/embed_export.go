@@ -27,7 +27,7 @@ var embedExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export bundled BPMN fixtures to local files",
 	Long: "Export bundled BPMN fixtures to local files.\n\n" +
-		"Use --all for the full set, or repeat --file with exact names or quoted globs.",
+		"Use --all for the configured Camunda version, or repeat --file with exact names or quoted globs.",
 	Example: `  ./c8volt embed export --all --out ./fixtures
   ./c8volt embed export --file 'processdefinitions/*.bpmn' --out ./fixtures
   ./c8volt embed export --file processdefinitions/C89_SimpleUserTaskProcess.bpmn --out ./fixtures`,
@@ -50,7 +50,10 @@ var embedExportCmd = &cobra.Command{
 		var toExport []string
 		switch {
 		case flagEmbedExportAll:
-			toExport = append(toExport, all...)
+			toExport = embeddedFilesForCamundaVersion(all, cfg.App.CamundaVersion)
+			if len(toExport) == 0 {
+				ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no exportable embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
+			}
 		case len(flagEmbedExportFileNames) == 0:
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, missingDependentFlagsf("either --all or at least one --file is required"))
 		default:
@@ -124,7 +127,7 @@ func init() {
 	embedExportCmd.Flags().StringSliceVarP(&flagEmbedExportFileNames, "file", "f", nil, "embedded file(s) or a glob pattern to export (repeatable, quote patterns in the shell like zsh)")
 	embedExportCmd.Flags().StringVarP(&flagEmbedExportOut, "out", "o", ".", "output base directory")
 	embedExportCmd.Flags().BoolVar(&flagForce, "force", false, "overwrite if destination file exists")
-	embedExportCmd.Flags().BoolVar(&flagEmbedExportAll, "all", false, "export all embedded files")
+	embedExportCmd.Flags().BoolVar(&flagEmbedExportAll, "all", false, "export all embedded files for the configured Camunda version")
 }
 
 func embedExportContainsGlob(s string) bool {

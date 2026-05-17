@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/grafvonb/c8volt/internal/exitcode"
@@ -19,21 +20,77 @@ func TestEmbedListHelp_DocumentsReadOnlyDiscoveryExamples(t *testing.T) {
 	output := executeRootForTest(t, "embed", "list", "--help")
 
 	require.Contains(t, output, "List bundled BPMN fixture files")
-	require.Contains(t, output, "Use before `embed deploy` or `embed export`")
+	require.Contains(t, output, "Shows files for the configured Camunda version")
 	require.Contains(t, output, "./c8volt embed list --details")
 	require.Contains(t, output, "./c8volt --json embed list")
+}
+
+func TestEmbedListCommand_FiltersFilesForConfiguredCamundaVersion(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list")
+
+	require.Contains(t, output, "C88_SimpleUserTaskProcess.bpmn")
+	require.Contains(t, output, "C88_MultipleSubProcessesParentProcess.bpmn")
+	require.NotContains(t, output, "C87_")
+	require.NotContains(t, output, "C89_")
+	require.NotContains(t, output, "processdefinitions/")
+}
+
+func TestEmbedListCommand_DetailsFiltersFilesForConfiguredCamundaVersion(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.9")
+
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "list", "--details")
+
+	require.Contains(t, output, "processdefinitions/C89_SimpleUserTaskProcess.bpmn")
+	require.Contains(t, output, "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn")
+	require.NotContains(t, output, "processdefinitions/C87_")
+	require.NotContains(t, output, "processdefinitions/C88_")
 }
 
 func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 	output := executeRootForTest(t, "embed", "export", "--help")
 
 	require.Contains(t, output, "Export bundled BPMN fixtures to local files")
-	require.Contains(t, output, "Use --all for the full set")
+	require.Contains(t, output, "Use --all for the configured Camunda version")
 	require.Contains(t, output, "./c8volt embed export --all --out ./fixtures")
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }
 
+func TestEmbedExportCommand_AllFiltersFilesForConfiguredCamundaVersion(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+	outDir := t.TempDir()
+
+	output := executeRootForTest(t, "--config", cfgPath, "embed", "export", "--all", "--out", outDir)
+
+	require.Contains(t, output, "exported")
+	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTaskProcess.bpmn"))
+	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C88_MultipleSubProcessesParentProcess.bpmn"))
+	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C87_SimpleUserTaskProcess.bpmn"))
+	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTaskProcess.bpmn"))
+}
+
+func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersions(t *testing.T) {
+	resetEmbedCommandStateForTest()
+	cfgPath := writeTestConfigForVersion(t, "http://127.0.0.1:1", "8.8")
+	outDir := t.TempDir()
+
+	output, err := testx.RunCmdSubprocess(t, "TestEmbedExportCommand_FileSelectionCanStillExportOtherVersionsHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG":     cfgPath,
+		"C8VOLT_TEST_EXPORT_OUT": outDir,
+	})
+	require.NoError(t, err, string(output))
+
+	require.Contains(t, string(output), "exported 1 embedded resource")
+	require.FileExists(t, filepath.Join(outDir, "processdefinitions", "C89_SimpleUserTaskProcess.bpmn"))
+	require.NoFileExists(t, filepath.Join(outDir, "processdefinitions", "C88_SimpleUserTaskProcess.bpmn"))
+}
+
 func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *testing.T) {
+	resetEmbedCommandStateForTest()
 	var sawDeploy bool
 
 	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +117,7 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *test
 }
 
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
+	resetEmbedCommandStateForTest()
 	var sawDeploy bool
 	var sawRun bool
 
@@ -112,6 +170,23 @@ func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper(t
 	_ = root.Execute()
 }
 
+func TestEmbedExportCommand_FileSelectionCanStillExportOtherVersionsHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"embed", "export",
+		"--file", "processdefinitions/C89_SimpleUserTaskProcess.bpmn",
+		"--out", os.Getenv("C8VOLT_TEST_EXPORT_OUT"),
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
+}
+
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
@@ -131,6 +206,7 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
 
 // Verifies embed export requires an explicit selection via --all or at least one --file.
 func TestEmbedExportCommand_RequiresSelection(t *testing.T) {
+	resetEmbedCommandStateForTest()
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")
 
 	output, err := testx.RunCmdSubprocess(t, "TestEmbedExportCommand_RequiresSelectionHelper", map[string]string{
@@ -143,6 +219,17 @@ func TestEmbedExportCommand_RequiresSelection(t *testing.T) {
 	require.Equal(t, exitcode.InvalidArgs, exitErr.ExitCode())
 	require.Contains(t, string(output), "invalid input")
 	require.Contains(t, string(output), "either --all or at least one --file is required")
+}
+
+func resetEmbedCommandStateForTest() {
+	flagEmbedListDetails = false
+	flagEmbedDeployFileNames = nil
+	flagEmbedDeployAll = false
+	flagEmbedDeployWithRun = false
+	flagEmbedExportFileNames = nil
+	flagEmbedExportOut = "."
+	flagEmbedExportAll = false
+	flagForce = false
 }
 
 // Helper-process entrypoint for embed export selection validation.

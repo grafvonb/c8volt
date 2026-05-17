@@ -12,7 +12,7 @@ Export bundled BPMN fixtures to local files
 
 Export bundled BPMN fixtures to local files.
 
-Use --all for the full set, or repeat --file with exact names or quoted globs.
+Use --all for the configured Camunda version, or repeat --file with exact names or quoted globs.
 
 ```
 c8volt embed export [flags]
@@ -29,7 +29,7 @@ c8volt embed export [flags]
 ### Options
 
 ```
-      --all            export all embedded files
+      --all            export all embedded files for the configured Camunda version
   -f, --file strings   embedded file(s) or a glob pattern to export (repeatable, quote patterns in the shell like zsh)
       --force          overwrite if destination file exists
   -h, --help           help for export
