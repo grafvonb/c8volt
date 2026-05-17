@@ -25,6 +25,7 @@ c8volt ops execute [flags]
 ```
   ./c8volt ops execute --help
   ./c8volt ops execute retention-policy --retention-days 90 --dry-run
+  ./c8volt ops execute smoke-test --dry-run
   ./c8volt capabilities --json
 ```
 

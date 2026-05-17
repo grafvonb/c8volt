@@ -200,7 +200,11 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 					}},
 				},
 				Cleanup: d.SmokeTestCleanupResult{
-					NoCleanup: true,
+					NoCleanup:                    true,
+					RetainedProcessInstanceKeys:  typex.Keys{"pi-1", "pi-2"},
+					RetainedProcessDefinitionKey: "pd-1",
+					RetainedBpmnProcessID:        "C89_MultipleSubProcessesParentProcess",
+					RetainedTenantID:             "tenant-a",
 					ProcessInstanceCleanup: d.SmokeTestProcessInstanceCleanupResult{
 						Status:        d.OpsWorkflowStepStatusSkipped,
 						SubmittedKeys: typex.Keys{"pi-1", "pi-2"},
@@ -269,6 +273,10 @@ func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
 	require.Equal(t, []process.MissingAncestor{{Key: "missing", StartKey: "pi-1"}}, got.Walk.Items[0].Summary.MissingAncestors)
 	require.Equal(t, []process.DeleteReport{{Key: "pi-1", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Cleanup.ProcessInstanceCleanup.Items)
 	require.Equal(t, []resource.DeleteReport{{Key: "pd-1", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Cleanup.ProcessDefinitionCleanup.Items)
+	require.Equal(t, []string{"pi-1", "pi-2"}, []string(got.Cleanup.RetainedProcessInstanceKeys))
+	require.Equal(t, "pd-1", got.Cleanup.RetainedProcessDefinitionKey)
+	require.Equal(t, "C89_MultipleSubProcessesParentProcess", got.Cleanup.RetainedBpmnProcessID)
+	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
 	require.Equal(t, "profile-a", got.Report.ProfileIdentity)
 	require.True(t, got.Report.NoCleanup)
 }

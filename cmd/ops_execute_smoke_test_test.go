@@ -232,6 +232,159 @@ func TestOpsExecuteSmokeTestDryRunExistingReportFailsBeforePreflight(t *testing.
 	require.Empty(t, requests.Snapshot())
 }
 
+func TestOpsExecuteSmokeTestWritesMarkdownAuditReport(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "smoke-test",
+		"--no-cleanup",
+		"--report-file", reportPath,
+	)
+
+	require.Contains(t, output, "outcome: passed_cleanup_skipped")
+	require.Contains(t, output, "report: written "+reportPath)
+	report := readReportFile(t, reportPath)
+	require.Contains(t, report, "# Smoke Test Audit Report")
+	require.Contains(t, report, "- Schema Version: ops.smoke-test.v1")
+	require.Contains(t, report, "- Command: ops execute smoke-test")
+	require.Contains(t, report, "- Dry Run: false")
+	require.Contains(t, report, "- Camunda Version: 8.8")
+	require.Contains(t, report, "- File: embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn")
+	require.Contains(t, report, "- Process Definition Key: pd-88")
+	require.Contains(t, report, "- Requested Count: 1")
+	require.Contains(t, report, "- Created Count: 1")
+	require.Contains(t, report, "Created Process Instance Keys:")
+	require.Contains(t, report, "101")
+	require.Contains(t, report, "## Walk")
+	require.Contains(t, report, "root 101")
+	require.Contains(t, report, "- No Cleanup: true")
+	require.Contains(t, report, "- Retained Process Definition Key: pd-88")
+	require.Contains(t, report, "- Outcome: passed_cleanup_skipped")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
+}
+
+func TestOpsExecuteSmokeTestWritesJSONAuditReportWithInferredFormat(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "smoke-test.json")
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "smoke-test",
+		"--no-cleanup",
+		"--report-file", reportPath,
+	)
+
+	require.Contains(t, output, "report: written "+reportPath)
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
+	require.Equal(t, "ops.smoke-test.v1", report["schemaVersion"])
+	require.Equal(t, "ops execute smoke-test", report["commandName"])
+	require.Equal(t, "8.8", report["camundaVersion"])
+	require.Equal(t, "<default>", report["tenantId"])
+	require.Equal(t, "passed_cleanup_skipped", report["outcome"])
+	fixture := requireJSONObject(t, report["fixture"])
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", fixture["file"])
+	deployment := requireJSONObject(t, report["deployment"])
+	require.Equal(t, "confirmed", deployment["status"])
+	require.Equal(t, "pd-88", deployment["processDefinitionKey"])
+	run := requireJSONObject(t, report["run"])
+	require.Equal(t, float64(1), run["requestedCount"])
+	require.Equal(t, float64(1), run["createdCount"])
+	require.Equal(t, []any{"101"}, run["processInstanceKeys"])
+	walk := requireJSONObject(t, report["walk"])
+	require.Equal(t, "confirmed", walk["status"])
+	require.Len(t, walk["items"], 1)
+	cleanup := requireJSONObject(t, report["cleanup"])
+	require.Equal(t, true, cleanup["noCleanup"])
+	require.Equal(t, []any{"101"}, cleanup["retainedProcessInstanceKeys"])
+	require.Equal(t, "pd-88", cleanup["retainedProcessDefinitionKey"])
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
+}
+
+func TestOpsExecuteSmokeTestExistingReportPreservation(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "dry-run",
+			args: []string{"ops", "execute", "smoke-test", "--dry-run"},
+		},
+		{
+			name: "unconfirmed",
+			args: []string{"ops", "execute", "smoke-test"},
+		},
+		{
+			name: "no-cleanup",
+			args: []string{"ops", "execute", "smoke-test", "--no-cleanup"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests testx.SafeSlice[string]
+			srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
+			t.Cleanup(srv.Close)
+			reportPath := filepath.Join(t.TempDir(), "smoke-test.md")
+			const existingReport = "existing report"
+			require.NoError(t, os.WriteFile(reportPath, []byte(existingReport), 0o600))
+			args := append([]string{}, tt.args...)
+			args = append(args, "--report-file", reportPath)
+
+			output, err := testx.RunCmdSubprocess(t, "TestOpsExecuteSmokeTestInvalidLocalFlagsHelper", map[string]string{
+				"C8VOLT_TEST_CONFIG":     writeTestConfigForVersion(t, srv.URL, "8.8"),
+				"C8VOLT_TEST_SMOKE_ARGS": marshalSmokeTestArgsForEnv(t, args),
+			})
+			require.Error(t, err)
+
+			exitErr, ok := err.(*exec.ExitError)
+			require.True(t, ok)
+			require.Equal(t, exitcode.Error, exitErr.ExitCode())
+			require.Contains(t, string(output), "report file already exists: "+reportPath)
+			require.NotContains(t, string(output), "write audit report")
+			require.Equal(t, existingReport, readReportFile(t, reportPath))
+			require.Empty(t, requests.Snapshot())
+		})
+	}
+}
+
+func TestOpsExecuteSmokeTestAutomationJSONStdoutIsMachineOnly(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+	reportPath := filepath.Join(t.TempDir(), "smoke-test.json")
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--json",
+		"ops", "execute", "smoke-test",
+		"--automation",
+		"--no-cleanup",
+		"--report-file", reportPath,
+	)
+
+	require.Empty(t, strings.TrimSpace(stderr))
+	require.NotContains(t, stdout, "execute smoke test")
+	require.NotContains(t, stdout, "report: written")
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	require.Equal(t, string(OutcomeSucceeded), envelope["outcome"])
+	require.Equal(t, "ops execute smoke-test", envelope["command"])
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "passed_cleanup_skipped", payload["outcome"])
+	request := requireJSONObject(t, payload["request"])
+	require.Equal(t, true, request["automation"])
+	require.Equal(t, true, request["noCleanup"])
+	require.NotEmpty(t, readReportFile(t, reportPath))
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
+}
+
 func TestOpsExecuteSmokeTestDeploysFixtureAndRendersDeploymentOutput(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestDeploymentServer(t, &requests)
@@ -329,6 +482,51 @@ func TestOpsExecuteSmokeTestCreatesAndWalksRequestedInstances(t *testing.T) {
 	}
 }
 
+func TestOpsExecuteSmokeTestNoCleanupHumanOutputReportsRetainedResources(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "smoke-test",
+		"--no-cleanup",
+	)
+
+	require.Contains(t, output, "cleanup: skipped (--no-cleanup)")
+	require.Contains(t, output, "retained process instances: 101")
+	require.Contains(t, output, "retained process definition: pd-88 (C88_MultipleSubProcessesParentProcess)")
+	require.Contains(t, output, "outcome: passed_cleanup_skipped")
+	requestLog := strings.Join(requests.Snapshot(), "\n")
+	require.NotContains(t, requestLog, "DELETE /process-instances/")
+	require.NotContains(t, requestLog, "/v2/resources/pd-88/deletion")
+}
+
+func TestOpsExecuteSmokeTestNoCleanupJSONOutputReportsRetainedResources(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+
+	stdout, stderr := executeRootForProcessInstanceWithSeparateOutputs(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"--json",
+		"ops", "execute", "smoke-test",
+		"--no-cleanup",
+	)
+
+	require.Empty(t, strings.TrimSpace(stderr))
+	var envelope map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &envelope))
+	payload := requireJSONObject(t, envelope["payload"])
+	require.Equal(t, "passed_cleanup_skipped", payload["outcome"])
+	cleanup := requireJSONObject(t, payload["cleanup"])
+	require.Equal(t, true, cleanup["noCleanup"])
+	require.Equal(t, []any{"101"}, cleanup["retainedProcessInstanceKeys"])
+	require.Equal(t, "pd-88", cleanup["retainedProcessDefinitionKey"])
+	require.Equal(t, "C88_MultipleSubProcessesParentProcess", cleanup["retainedBpmnProcessId"])
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
+}
+
 func TestOpsExecuteSmokeTestMapsWorkerControlsToJSONRequest(t *testing.T) {
 	var requests testx.SafeSlice[string]
 	srv := newOpsExecuteSmokeTestDryRunServer(t, &requests)
@@ -381,6 +579,28 @@ func TestOpsExecuteSmokeTestUsesImplicitConfirmationForCleanup(t *testing.T) {
 	require.Contains(t, output, "process-instance cleanup: submitted")
 	require.Len(t, prompts, 1)
 	require.Contains(t, prompts[0], "clean up the created instances and eligible process definition")
+}
+
+func TestOpsExecuteSmokeTestAutomationNoCleanupDoesNotPrompt(t *testing.T) {
+	var requests testx.SafeSlice[string]
+	srv := newOpsExecuteSmokeTestRunWalkServer(t, &requests, nil)
+	t.Cleanup(srv.Close)
+	prevConfirm := confirmCmdOrAbortFn
+	confirmCmdOrAbortFn = func(bool, string) error {
+		t.Fatal("unexpected confirmation prompt for --automation --no-cleanup")
+		return nil
+	}
+	t.Cleanup(func() { confirmCmdOrAbortFn = prevConfirm })
+
+	output := executeRootForProcessInstanceTest(t,
+		"--config", writeTestConfigForVersion(t, srv.URL, "8.8"),
+		"ops", "execute", "smoke-test",
+		"--automation",
+		"--no-cleanup",
+	)
+
+	require.Contains(t, output, "outcome: passed_cleanup_skipped")
+	require.NotContains(t, strings.Join(requests.Snapshot(), "\n"), "/v2/resources/pd-88/deletion")
 }
 
 func TestOpsExecuteSmokeTestUnsafeCleanupBlockerExitsWithError(t *testing.T) {

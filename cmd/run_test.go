@@ -46,6 +46,48 @@ func TestRunHelp_DocumentsWaitAndVerificationRouting(t *testing.T) {
 	require.Contains(t, output, "--no-wait")
 }
 
+func TestRunProcessInstanceCommand_RegressionPreservesSelectorAndWorkerContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(runProcessInstanceCmd)
+
+	require.Equal(t, "run process-instance", capability.Path)
+	require.Equal(t, CommandMutationStateChanging, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, capability.AutomationSupport)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "BPMN process ID(s) to run process instance for (mutually exclusive with --pd-key). Runs latest version unless --pd-version is specified",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "pd-key",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "specific process definition key(s) to run process instance for (mutually exclusive with --bpmn-process-id)",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "count",
+		Shorthand:   "n",
+		Type:        "int",
+		Required:    false,
+		Repeated:    false,
+		Description: "number of instances to start for a single process definition",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "no-wait",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "return after creation is accepted",
+	})
+}
+
 // Verifies run commands consume the profile selected by the root flag for tenant and API URL resolution.
 func TestRunProcessInstanceCommand_ProfileFlagSelectsProfileTenantAndBaseURL(t *testing.T) {
 	baseSrv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

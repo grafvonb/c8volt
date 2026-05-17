@@ -174,6 +174,10 @@ type SmokeTestCleanupResult struct {
 	ProcessDefinitionEligibility SmokeTestCleanupEligibility             `json:"processDefinitionEligibility,omitempty"`
 	ProcessDefinitionCleanup     SmokeTestProcessDefinitionCleanupResult `json:"processDefinitionCleanup,omitempty"`
 	NoCleanup                    bool                                    `json:"noCleanup,omitempty"`
+	RetainedProcessInstanceKeys  typex.Keys                              `json:"retainedProcessInstanceKeys,omitempty"`
+	RetainedProcessDefinitionKey string                                  `json:"retainedProcessDefinitionKey,omitempty"`
+	RetainedBpmnProcessID        string                                  `json:"retainedBpmnProcessId,omitempty"`
+	RetainedTenantID             string                                  `json:"retainedTenantId,omitempty"`
 	Errors                       []string                                `json:"errors,omitempty"`
 }
 

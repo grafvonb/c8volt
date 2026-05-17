@@ -192,6 +192,10 @@ func fromDomainSmokeTestCleanupResult(x d.SmokeTestCleanupResult) SmokeTestClean
 		ProcessDefinitionEligibility: fromDomainSmokeTestCleanupEligibility(x.ProcessDefinitionEligibility),
 		ProcessDefinitionCleanup:     fromDomainSmokeTestProcessDefinitionCleanupResult(x.ProcessDefinitionCleanup),
 		NoCleanup:                    x.NoCleanup,
+		RetainedProcessInstanceKeys:  append(typex.Keys(nil), x.RetainedProcessInstanceKeys...),
+		RetainedProcessDefinitionKey: x.RetainedProcessDefinitionKey,
+		RetainedBpmnProcessID:        x.RetainedBpmnProcessID,
+		RetainedTenantID:             x.RetainedTenantID,
 		Errors:                       append([]string(nil), x.Errors...),
 	}
 }

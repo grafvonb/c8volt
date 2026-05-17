@@ -32,6 +32,7 @@ var opsExecuteSmokeTestCmd = &cobra.Command{
   ./c8volt ops execute smoke-test --count 5
   ./c8volt ops execute smoke-test --no-cleanup
   ./c8volt ops execute smoke-test --dry-run --report-file smoke-test.md
+  ./c8volt ops execute smoke-test --no-cleanup --report-file retained-smoke-test.md
   ./c8volt ops execute smoke-test --count 10 --automation --json --report-file smoke-test.json --report-format json`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {

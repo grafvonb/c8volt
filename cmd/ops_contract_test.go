@@ -148,6 +148,40 @@ func TestOpsExecuteRetentionPolicyReportFlagsReuseSharedContract(t *testing.T) {
 	)
 }
 
+func TestOpsExecuteSmokeTestReportFlagsReuseSharedContract(t *testing.T) {
+	prevFile := flagOpsExecuteSmokeTestReportFile
+	prevFormat := flagOpsExecuteSmokeTestReportFormat
+	t.Cleanup(func() {
+		flagOpsExecuteSmokeTestReportFile = prevFile
+		flagOpsExecuteSmokeTestReportFormat = prevFormat
+	})
+
+	flagOpsExecuteSmokeTestReportFile = "smoke-test.json"
+	flagOpsExecuteSmokeTestReportFormat = ""
+	require.NoError(t, validateOpsExecuteSmokeTestReportFlags())
+	format, err := opsWorkflowReportFormatForPath(flagOpsExecuteSmokeTestReportFile, OpsWorkflowReportFormat(flagOpsExecuteSmokeTestReportFormat))
+	require.NoError(t, err)
+	require.Equal(t, OpsWorkflowReportFormatJSON, format)
+
+	flagOpsExecuteSmokeTestReportFile = "smoke-test.md"
+	flagOpsExecuteSmokeTestReportFormat = "json"
+	require.NoError(t, validateOpsExecuteSmokeTestReportFlags())
+
+	flagOpsExecuteSmokeTestReportFile = ""
+	flagOpsExecuteSmokeTestReportFormat = "json"
+	require.EqualError(t,
+		validateOpsExecuteSmokeTestReportFlags(),
+		"invalid input: missing dependent flags: --report-format requires --report-file",
+	)
+
+	flagOpsExecuteSmokeTestReportFile = "smoke-test.yaml"
+	flagOpsExecuteSmokeTestReportFormat = "yaml"
+	require.EqualError(t,
+		validateOpsExecuteSmokeTestReportFlags(),
+		`invalid input: invalid flag value: unsupported ops workflow report format "yaml"`,
+	)
+}
+
 func TestWriteOpsWorkflowReportFilePreservesExistingUntilConfirmed(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "report.md")
 	require.NoError(t, writeOpsWorkflowReportFile(path, []byte("first"), OpsWorkflowReportPreserveExisting))

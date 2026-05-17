@@ -569,6 +569,51 @@ func TestExecuteSmokeTestBlocksProcessDefinitionCleanupForUnrelatedInstances(t *
 	require.Zero(t, resource.deleteCalls)
 }
 
+func TestExecuteSmokeTestNoCleanupRetainsCreatedResources(t *testing.T) {
+	t.Parallel()
+
+	resource := &stubSmokeTestResourceAPI{
+		deploy: func(_ context.Context, _ []d.DeploymentUnitData, _ ...services.CallOption) (d.Deployment, error) {
+			return d.Deployment{Units: []d.DeploymentUnit{{ProcessDefinition: d.ProcessDefinitionDeployment{
+				ProcessDefinitionId:  "C88_MultipleSubProcessesParentProcess",
+				ProcessDefinitionKey: "pd-retained",
+				TenantId:             "tenant-a",
+			}}}}, nil
+		},
+		delete: func(context.Context, string, ...services.CallOption) (d.ResourceDeleteResponse, error) {
+			return d.ResourceDeleteResponse{}, errors.New("unexpected process-definition delete")
+		},
+	}
+	piAPI := stubProcessInstanceAPI{
+		createProcessInstance: func(_ context.Context, data d.ProcessInstanceData, _ ...services.CallOption) (d.ProcessInstanceCreation, error) {
+			return d.ProcessInstanceCreation{Key: "pi-retained", ProcessDefinitionKey: data.ProcessDefinitionSpecificId, TenantId: data.TenantId}, nil
+		},
+		familyResult: func(_ context.Context, startKey string, _ ...services.CallOption) (pitraversal.Result, error) {
+			return pitraversal.Result{Mode: pitraversal.ModeFamily, StartKey: startKey, RootKey: startKey, Keys: []string{startKey}, Outcome: pitraversal.OutcomeComplete}, nil
+		},
+	}
+
+	got, err := NewWithWorkflowDependencies(nil, piAPI, nil, nil, resource, toolx.V88).ExecuteSmokeTest(context.Background(), d.SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+		NoCleanup:   true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, d.SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
+	require.True(t, got.Cleanup.NoCleanup)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessInstanceCleanup.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionEligibility.Status)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Cleanup.ProcessDefinitionCleanup.Status)
+	require.Equal(t, typexKeys("pi-retained"), got.Cleanup.RetainedProcessInstanceKeys)
+	require.Equal(t, "pd-retained", got.Cleanup.RetainedProcessDefinitionKey)
+	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Cleanup.RetainedBpmnProcessID)
+	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
+	require.Equal(t, got.Cleanup, got.Report.Cleanup)
+	require.Equal(t, d.OpsWorkflowStepStatusSkipped, got.Plan.PlannedSteps[5].Status)
+	require.Zero(t, resource.deleteCalls)
+}
+
 func TestExecuteSmokeTestDryRunConnectivityFailureDoesNotPlanMutation(t *testing.T) {
 	t.Parallel()
 

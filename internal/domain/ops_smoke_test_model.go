@@ -158,6 +158,10 @@ type SmokeTestCleanupResult struct {
 	ProcessDefinitionEligibility SmokeTestCleanupEligibility
 	ProcessDefinitionCleanup     SmokeTestProcessDefinitionCleanupResult
 	NoCleanup                    bool
+	RetainedProcessInstanceKeys  typex.Keys
+	RetainedProcessDefinitionKey string
+	RetainedBpmnProcessID        string
+	RetainedTenantID             string
 	Errors                       []string
 }
 

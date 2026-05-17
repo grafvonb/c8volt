@@ -107,6 +107,18 @@ func renderOpsExecuteSmokeTestCleanup(cmd *cobra.Command, result ops.SmokeTestRe
 	cleanup := result.Cleanup
 	if cleanup.NoCleanup {
 		renderHumanLine(cmd, "cleanup: skipped (--no-cleanup)")
+		if len(cleanup.RetainedProcessInstanceKeys) > 0 {
+			renderHumanLine(cmd, "retained process instances: %s", strings.Join(cleanup.RetainedProcessInstanceKeys, ", "))
+		}
+		if cleanup.RetainedProcessDefinitionKey != "" {
+			if cleanup.RetainedBpmnProcessID != "" {
+				renderHumanLine(cmd, "retained process definition: %s (%s)", cleanup.RetainedProcessDefinitionKey, cleanup.RetainedBpmnProcessID)
+			} else {
+				renderHumanLine(cmd, "retained process definition: %s", cleanup.RetainedProcessDefinitionKey)
+			}
+		} else if cleanup.RetainedBpmnProcessID != "" {
+			renderHumanLine(cmd, "retained process definition: %s", cleanup.RetainedBpmnProcessID)
+		}
 		return
 	}
 	if cleanup.ProcessInstanceCleanup.Status != "" && cleanup.ProcessInstanceCleanup.Status != ops.WorkflowStepStatusSkipped {
@@ -281,6 +293,9 @@ func renderOpsExecuteSmokeTestMarkdownReport(report ops.SmokeTestAuditReport, cf
 	writeMarkdownReportField(&out, "Process Instance Cleanup", string(report.Cleanup.ProcessInstanceCleanup.Status))
 	writeMarkdownReportField(&out, "Process Definition Eligibility", string(report.Cleanup.ProcessDefinitionEligibility.Status))
 	writeMarkdownReportField(&out, "Process Definition Cleanup", string(report.Cleanup.ProcessDefinitionCleanup.Status))
+	writeMarkdownReportList(&out, "Retained Process Instance Keys", report.Cleanup.RetainedProcessInstanceKeys)
+	writeMarkdownReportField(&out, "Retained Process Definition Key", report.Cleanup.RetainedProcessDefinitionKey)
+	writeMarkdownReportField(&out, "Retained BPMN Process ID", report.Cleanup.RetainedBpmnProcessID)
 	writeMarkdownReportList(&out, "Run Errors", report.Errors)
 
 	return []byte(out.String()), nil

@@ -321,6 +321,10 @@ func (s *Service) cleanupSmokeTestResources(ctx context.Context, result d.SmokeT
 		cleanup.ProcessInstanceCleanup.Status = d.OpsWorkflowStepStatusSkipped
 		cleanup.ProcessDefinitionEligibility.Status = d.OpsWorkflowStepStatusSkipped
 		cleanup.ProcessDefinitionCleanup.Status = d.OpsWorkflowStepStatusSkipped
+		cleanup.RetainedProcessInstanceKeys = append(typex.Keys(nil), result.Run.ProcessInstanceKeys...)
+		cleanup.RetainedProcessDefinitionKey = result.Deployment.ProcessDefinitionKey
+		cleanup.RetainedBpmnProcessID = result.Deployment.BpmnProcessID
+		cleanup.RetainedTenantID = result.Deployment.TenantID
 		return cleanup, nil
 	}
 	piCleanup, cleanupScope, err := smokeTestCleanupProcessInstances(ctx, s.piAPI, s.log, result.Run.ProcessInstanceKeys, result.Request.Workers, opts...)

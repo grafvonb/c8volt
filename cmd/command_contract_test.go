@@ -938,6 +938,38 @@ func TestCommandCapabilityForCommand_OpsExecuteSmokeTestContract(t *testing.T) {
 	})
 }
 
+func TestCapabilityDocumentForRoot_OpsExecuteSmokeTestDiscovery(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	doc := capabilityDocumentForRoot(root)
+
+	opsCapability, ok := findCommandCapability(doc.Commands, "ops")
+	require.True(t, ok)
+	executeCapability, ok := findCommandCapability(opsCapability.Children, "ops execute")
+	require.True(t, ok)
+	smokeTestCapability, ok := findCommandCapability(executeCapability.Children, "ops execute smoke-test")
+	require.True(t, ok)
+	require.Equal(t, "Execute a cluster smoke test workflow", smokeTestCapability.Summary)
+	require.Equal(t, CommandMutationStateChanging, smokeTestCapability.Mutation)
+	require.Equal(t, ContractSupportFull, smokeTestCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, smokeTestCapability.AutomationSupport)
+	require.Contains(t, smokeTestCapability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, smokeTestCapability.Flags, FlagContract{
+		Name:        "report-file",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "write an audit report to the given path",
+	})
+}
+
 func TestCapabilityDocumentForRoot_UpdateCommandFamily(t *testing.T) {
 	root := Root()
 	resetCommandTreeFlags(root)

@@ -143,6 +143,70 @@ func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *
 	require.NotContains(t, output, "no mutation submitted")
 }
 
+func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	piCapability := commandCapabilityForCommand(deleteProcessInstanceCmd)
+	require.Equal(t, "delete process-instance", piCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, piCapability.Mutation)
+	require.Equal(t, ContractSupportFull, piCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, piCapability.AutomationSupport)
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to delete; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview delete scope without submitting deletion or cancel-before-delete requests",
+	})
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+
+	pdCapability := commandCapabilityForCommand(deleteProcessDefinitionCmd)
+	require.Equal(t, "delete process-definition", pdCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, pdCapability.Mutation)
+	require.Equal(t, ContractSupportFull, pdCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, pdCapability.AutomationSupport)
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process definition key(s) to delete",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID of the process definition (all versions) to delete",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+}
+
 // TestDeleteProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
 // verifies terminal selected instances are summarized without noisy key lists by
 // default.

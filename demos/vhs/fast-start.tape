@@ -10,6 +10,7 @@ Set Height 640
 Set Padding 16
 Set WindowBar Colorful
 Set TypingSpeed 35 ms
+Set WaitTimeout 30m
 Set Theme "TokyoNight"
 
 Env HOME "/tmp/c8volt-vhs/home"
@@ -22,66 +23,66 @@ Type "clear"
 Enter
 Show
 
-Sleep 500 ms
+Wait
 Type "./c8volt config test-connection"
 Enter
-Sleep 3s
+Wait
 
 Type "./c8volt get pd"
 Enter
-Sleep 3s
+Wait
 
 Type "./c8volt embed list"
 Enter
-Sleep 3s
+Wait
 
 Type "./c8volt embed deploy --all"
 Enter
-Sleep 2s
+Wait
 
 Type "./c8volt get pd --stat"
 Enter
-Sleep 2s
+Wait
 
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
-Sleep 2s
+Wait
 
 Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":123}'`
 Enter
-Sleep 4s
+Wait
 
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
-Sleep 2s
+Wait
 
 Type "./c8volt get pd --stat"
 Enter
-Sleep 2s
+Wait
 
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --with-vars"
 Enter
-Sleep 5s
+Wait
 
 Type "C8_VOLT_PI=$(./c8volt get pi -b C89_MultipleSubProcessesParentProcess --limit 1 --keys-only)"
 Enter
-Sleep 2s
+Wait
 
 Type "echo $C8_VOLT_PI"
 Enter
-Sleep 1s
+Wait
 
 Type "./c8volt walk pi --key $C8_VOLT_PI"
 Enter
-Sleep 3s
+Wait
 
 Type "./c8volt delete pi -b C89_MultipleSubProcessesParentProcess --force"
 Enter
-Sleep 1s
+Wait
 Type "y"
 Enter
-Sleep 33s
+Wait
 
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
-Sleep 2s
+Wait

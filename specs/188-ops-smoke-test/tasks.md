@@ -173,16 +173,16 @@
 
 ### Tests for User Story 6
 
-- [ ] T059 [P] [US6] Add no-cleanup service tests proving process-instance and process-definition delete calls are skipped in `internal/services/ops/smoke_test_test.go`
-- [ ] T060 [P] [US6] Add no-cleanup human and JSON output tests in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T061 [P] [US6] Add `--automation --no-cleanup` without destructive confirmation tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T059 [P] [US6] Add no-cleanup service tests proving process-instance and process-definition delete calls are skipped in `internal/services/ops/smoke_test_test.go`
+- [x] T060 [P] [US6] Add no-cleanup human and JSON output tests in `cmd/ops_execute_smoke_test_test.go`
+- [x] T061 [P] [US6] Add `--automation --no-cleanup` without destructive confirmation tests in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T062 [US6] Implement no-cleanup branching and retained resource result fields in `internal/services/ops/smoke_test.go`
-- [ ] T063 [US6] Preserve retained created keys and deployed definition metadata in `internal/domain/ops_smoke_test.go`
-- [ ] T064 [US6] Render no-cleanup retained resource output in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T065 [US6] Mark US6 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T062 [US6] Implement no-cleanup branching and retained resource result fields in `internal/services/ops/smoke_test.go`
+- [x] T063 [US6] Preserve retained created keys and deployed definition metadata in `internal/domain/ops_smoke_test.go`
+- [x] T064 [US6] Render no-cleanup retained resource output in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T065 [US6] Mark US6 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: No-cleanup mode is independently functional and automation-compatible.
 
@@ -196,20 +196,20 @@
 
 ### Tests for User Story 7
 
-- [ ] T066 [P] [US7] Add report format inference and validation tests for smoke-test in `cmd/ops_contract_test.go`
-- [ ] T067 [P] [US7] Add Markdown smoke-test report rendering test in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T068 [P] [US7] Add JSON smoke-test report rendering test in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T069 [P] [US7] Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_execute_smoke_test_test.go`
-- [ ] T070 [P] [US7] Add `--automation --json` deterministic stdout test in `cmd/ops_execute_smoke_test_test.go`
+- [x] T066 [P] [US7] Add report format inference and validation tests for smoke-test in `cmd/ops_contract_test.go`
+- [x] T067 [P] [US7] Add Markdown smoke-test report rendering test in `cmd/ops_execute_smoke_test_test.go`
+- [x] T068 [P] [US7] Add JSON smoke-test report rendering test in `cmd/ops_execute_smoke_test_test.go`
+- [x] T069 [P] [US7] Add existing report-file preservation tests for dry-run, unconfirmed, and locally blocked runs in `cmd/ops_execute_smoke_test_test.go`
+- [x] T070 [P] [US7] Add `--automation --json` deterministic stdout test in `cmd/ops_execute_smoke_test_test.go`
 
 ### Implementation for User Story 7
 
-- [ ] T071 [US7] Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_execute_smoke_test.go`
-- [ ] T072 [US7] Implement smoke-test Markdown and JSON report renderers in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T073 [US7] Ensure reports render from the stable structured smoke-test model in `internal/domain/ops_smoke_test.go`
-- [ ] T074 [US7] Keep normal human output compact while preserving complete JSON/report data in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T075 [US7] Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_execute_smoke_test.go`
-- [ ] T076 [US7] Mark US7 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T071 [US7] Reuse shared ops report-file validation, format inference, overwrite safety, and file writing in `cmd/ops_execute_smoke_test.go`
+- [x] T072 [US7] Implement smoke-test Markdown and JSON report renderers in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T073 [US7] Ensure reports render from the stable structured smoke-test model in `internal/domain/ops_smoke_test.go`
+- [x] T074 [US7] Keep normal human output compact while preserving complete JSON/report data in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T075 [US7] Print compact `report: written <path>` human output after report writes in `cmd/cmd_views_ops_execute_smoke_test.go`
+- [x] T076 [US7] Mark US7 tasks complete and record validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: Output and reports are independently functional for dry-run, success, cleanup-skipped, and failure paths.
 
@@ -223,19 +223,19 @@
 
 ### Tests for User Story 8
 
-- [ ] T077 [P] [US8] Add regression tests for unchanged `config test-connection` behavior in `cmd/config_test.go`
-- [ ] T078 [P] [US8] Add regression tests for unchanged `embed deploy` fixture deployment behavior in `cmd/embed_test.go`
-- [ ] T079 [P] [US8] Add regression tests for unchanged `run pi`, `walk pi`, `delete pi`, and `delete pd` behavior in `cmd/run_test.go`, `cmd/walk_test.go`, and `cmd/delete_test.go`
-- [ ] T080 [P] [US8] Add docs/contract assertions for smoke-test command metadata in `cmd/command_contract_test.go`
+- [x] T077 [P] [US8] Add regression tests for unchanged `config test-connection` behavior in `cmd/config_test.go`
+- [x] T078 [P] [US8] Add regression tests for unchanged `embed deploy` fixture deployment behavior in `cmd/embed_test.go`
+- [x] T079 [P] [US8] Add regression tests for unchanged `run pi`, `walk pi`, `delete pi`, and `delete pd` behavior in `cmd/run_test.go`, `cmd/walk_test.go`, and `cmd/delete_test.go`
+- [x] T080 [P] [US8] Add docs/contract assertions for smoke-test command metadata in `cmd/command_contract_test.go`
 
 ### Implementation for User Story 8
 
-- [ ] T081 [US8] Update user-facing help examples for smoke-test in `cmd/ops_execute_smoke_test.go`
-- [ ] T082 [US8] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
-- [ ] T083 [US8] Run targeted command tests with `go test ./cmd -run 'TestOpsExecuteSmokeTest|TestCommandCapability|TestConfigTestConnection|TestDeploy|TestRun|TestWalk|TestDelete' -count=1`
-- [ ] T084 [US8] Run facade and service tests with `go test ./c8volt/ops ./c8volt/process ./c8volt/resource ./internal/services/ops ./internal/services/processinstance ./internal/services/processdefinition ./internal/services/resource -count=1`
-- [ ] T085 [US8] Run repository validation with `make test`
-- [ ] T086 [US8] Mark US8 tasks complete and record final validation notes in `specs/188-ops-smoke-test/progress.md`
+- [x] T081 [US8] Update user-facing help examples for smoke-test in `cmd/ops_execute_smoke_test.go`
+- [x] T082 [US8] Run `make docs-content` and review generated files under `docs/cli/` and `docs/index.md`
+- [x] T083 [US8] Run targeted command tests with `go test ./cmd -run 'TestOpsExecuteSmokeTest|TestCommandCapability|TestConfigTestConnection|TestDeploy|TestRun|TestWalk|TestDelete' -count=1`
+- [x] T084 [US8] Run facade and service tests with `go test ./c8volt/ops ./c8volt/process ./c8volt/resource ./internal/services/ops ./internal/services/processinstance ./internal/services/processdefinition ./internal/services/resource -count=1`
+- [x] T085 [US8] Run repository validation with `make test`
+- [x] T086 [US8] Mark US8 tasks complete and record final validation notes in `specs/188-ops-smoke-test/progress.md`
 
 **Checkpoint**: Feature is documented, regression-protected, and ready for review.
 

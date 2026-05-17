@@ -33,6 +33,32 @@ func TestEmbedExportHelp_DocumentsSelectionWorkflow(t *testing.T) {
 	require.Contains(t, output, "quote patterns in the shell like zsh")
 }
 
+func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnly(t *testing.T) {
+	var sawDeploy bool
+
+	srv := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/deployments":
+			sawDeploy = true
+			require.NoError(t, r.ParseMultipartForm(1<<20))
+			require.Equal(t, "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn", r.MultipartForm.File["resources"][0].Filename)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"deploymentKey":"deployment-188","tenantId":"<default>","deployments":[{"processDefinition":{"processDefinitionId":"C89_MultipleSubProcessesParentProcess","processDefinitionKey":"188001","processDefinitionVersion":1,"resourceName":"processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn","tenantId":"<default>"}}]}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfgPath := writeTestConfigForVersion(t, srv.URL, "8.9")
+
+	output, err := testx.RunCmdSubprocess(t, "TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": cfgPath,
+	})
+	require.NoError(t, err, string(output))
+	require.True(t, sawDeploy)
+}
+
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	var sawDeploy bool
 	var sawRun bool
@@ -68,6 +94,22 @@ func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87(t *testing.T) {
 	require.NoError(t, err, string(output))
 	require.True(t, sawDeploy)
 	require.True(t, sawRun)
+}
+
+func TestEmbedDeployCommand_RegressionPreservesSelectedFixtureDeployOnlyHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+
+	root := Root()
+	root.SetArgs([]string{
+		"--config", os.Getenv("C8VOLT_TEST_CONFIG"),
+		"embed", "deploy",
+		"--file", "processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
+	})
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
+	_ = root.Execute()
 }
 
 func TestEmbedDeployCommand_AllRunFallsBackToBPMNIDForV87Helper(t *testing.T) {
