@@ -13,9 +13,10 @@
 
 ## Codebase Patterns
 
+- Repair audit reports are rendered in `cmd/cmd_views_ops_repair.go` from the structured public `ops.RepairAuditReport`, with command-side enrichment for build version, Camunda version, tenant, and profile identity matching existing ops report helpers.
+- Repair commands write requested reports immediately after the ops service returns and before surfacing post-discovery service errors, so failure reports preserve frozen target, step status, and error data.
+- With report writing implemented, compact repair human output uses `report: written <path>`; dry-run report requests now create audit files while still skipping variable, job, and incident mutation calls.
 - Dry-run repair planning now flows through one internal service helper after target freezing, so explicit incident, incident search, explicit process-instance, and process-instance search modes share the same planned variable, job, resolution, and remaining-summary statuses without calling mutation primitives.
-- Repair report options are accepted and validated during dry-run planning, with `--report-format` requiring `--report-file`; report paths are preserved and formats are inferred for output, but report file writing remains a separate US6 concern.
-- Compact repair human output uses `report: planned <path> (<format>)` for requested report previews so it does not imply a report file was written before US6 report rendering exists.
 - Repair variable flags reuse the existing `update pi` JSON object parser through a narrow repair wrapper, so `--vars` and `--vars-file` keep the same mutual exclusion and parse failure semantics on both repair targets.
 - Process-instance variable confirmation now verifies only requested process-scope variable names after JSON normalization, using `SearchProcessInstanceVariables` so formatting and numeric representation differences do not fail valid confirmations.
 - Ops repair applies variable payloads once per unique process-instance scope before incident mutation, records dependent incident keys per scope, and blocks dependent incident resolution when a scope update fails or confirmation fails.
@@ -81,7 +82,6 @@
 - No conflict was found between `specs/ralph-implementation-rules.md` and the active feature artifacts.
 - The first implementation iteration should start with foundational models and dependency wiring, especially adding job service injection to the ops workflow boundary.
 - Repair command implementation should reuse existing selector validation and report patterns instead of creating parallel parsing, output, or file-writing behavior.
----
 ---
 ## Iteration 2 - 2026-05-17 17:32:20 CEST
 **User Story**: Phase 2: Foundational (Blocking Prerequisites)
@@ -284,4 +284,36 @@
 - Dry-run can produce a complete mutation preview by reusing the same frozen incident plan builder after discovery and stopping before variable, job, or incident mutation services are invoked.
 - Report options need to be represented in the repair request before US6 writes files, because dry-run JSON and human previews must show the planned report path and resolved format.
 - Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -run 'TestOpsRepair.*DryRun' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd ./internal/services/ops -count=1`.
+---
+---
+## Iteration 8 - 2026-05-17 18:39:15 CEST
+**User Story**: User Story 6 - Produce Audited Repair Reports
+**Tasks Completed**:
+- [x] T068: Add report format inference and validation tests for repair reports
+- [x] T069: Add Markdown report rendering tests for repair success and planned dry-run
+- [x] T070: Add JSON report rendering tests for repair success, partial failure, and post-discovery failure
+- [x] T071: Add command tests proving report files are written for failure after discovery
+- [x] T072: Add repair audit report model and shared report conversion
+- [x] T073: Implement Markdown and JSON repair report renderers
+- [x] T074: Add report-file/report-format write path for incident repair
+- [x] T075: Add report-file/report-format write path for process-instance repair
+- [x] T076: Ensure failure paths after discovery preserve report data before surfacing command errors
+- [x] T077: Run targeted validation
+- [x] T078: Mark US6 tasks complete and record validation notes
+**Tasks Remaining in Story**: None - story complete
+**Commit**: Recorded in Git history for this iteration
+**Files Changed**:
+- cmd/cmd_views_ops_repair.go
+- cmd/cmd_views_ops_repair_test.go
+- cmd/ops_contract_test.go
+- cmd/ops_repair_incident.go
+- cmd/ops_repair_incident_test.go
+- cmd/ops_repair_processinstance.go
+- cmd/ops_repair_processinstance_test.go
+- specs/183-ops-repair-workflows/tasks.md
+- specs/183-ops-repair-workflows/progress.md
+**Learnings**:
+- The existing repair service already returns a complete structured `RepairAuditReport`; US6 only needed command-side metadata enrichment, file rendering, and write sequencing.
+- Report writing must happen before command error handling so post-discovery failures still produce audit artifacts.
+- Validation run: `GOCACHE=/private/tmp/go-build-cache go test ./cmd -run 'TestOpsRepair.*Report|TestOpsWorkflowReport' -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./cmd -count=1`; `GOCACHE=/private/tmp/go-build-cache go test ./... -count=1`.
 ---

@@ -182,20 +182,20 @@
 
 ### Tests for User Story 6
 
-- [ ] T068 [P] [US6] Add report format inference and validation tests for repair reports in `cmd/ops_contract_test.go`
-- [ ] T069 [P] [US6] Add Markdown report rendering tests for repair success and planned dry-run in `cmd/cmd_views_ops_repair_test.go`
-- [ ] T070 [P] [US6] Add JSON report rendering tests for repair success, partial failure, and post-discovery failure in `cmd/cmd_views_ops_repair_test.go`
-- [ ] T071 [P] [US6] Add command tests proving report files are written for failure after discovery in `cmd/ops_repair_incident_test.go`
+- [x] T068 [P] [US6] Add report format inference and validation tests for repair reports in `cmd/ops_contract_test.go`
+- [x] T069 [P] [US6] Add Markdown report rendering tests for repair success and planned dry-run in `cmd/cmd_views_ops_repair_test.go`
+- [x] T070 [P] [US6] Add JSON report rendering tests for repair success, partial failure, and post-discovery failure in `cmd/cmd_views_ops_repair_test.go`
+- [x] T071 [P] [US6] Add command tests proving report files are written for failure after discovery in `cmd/ops_repair_incident_test.go`
 
 ### Implementation for User Story 6
 
-- [ ] T072 [US6] Add repair audit report model and shared report conversion in `cmd/ops_contract.go` or `cmd/cmd_views_ops_repair.go`
-- [ ] T073 [US6] Implement Markdown and JSON repair report renderers in `cmd/cmd_views_ops_repair.go`
-- [ ] T074 [US6] Add report-file/report-format flags and report write path for incident repair in `cmd/ops_repair_incident.go`
-- [ ] T075 [US6] Add report-file/report-format flags and report write path for process-instance repair in `cmd/ops_repair_processinstance.go`
-- [ ] T076 [US6] Ensure failure paths after discovery preserve report data before surfacing command errors in both repair command files
-- [ ] T077 [US6] Run targeted validation with `go test ./cmd -run 'TestOpsRepair.*Report|TestOpsWorkflowReport' -count=1`
-- [ ] T078 [US6] Mark US6 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
+- [x] T072 [US6] Add repair audit report model and shared report conversion in `cmd/ops_contract.go` or `cmd/cmd_views_ops_repair.go`
+- [x] T073 [US6] Implement Markdown and JSON repair report renderers in `cmd/cmd_views_ops_repair.go`
+- [x] T074 [US6] Add report-file/report-format flags and report write path for incident repair in `cmd/ops_repair_incident.go`
+- [x] T075 [US6] Add report-file/report-format flags and report write path for process-instance repair in `cmd/ops_repair_processinstance.go`
+- [x] T076 [US6] Ensure failure paths after discovery preserve report data before surfacing command errors in both repair command files
+- [x] T077 [US6] Run targeted validation with `go test ./cmd -run 'TestOpsRepair.*Report|TestOpsWorkflowReport' -count=1`
+- [x] T078 [US6] Mark US6 tasks complete and record validation notes in `specs/183-ops-repair-workflows/progress.md`
 
 **Checkpoint**: Repair audit reports are independently functional for dry-run, success, partial failure, and failure paths.
 

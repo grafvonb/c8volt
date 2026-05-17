@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -47,12 +48,12 @@ func TestOpsRepairProcessInstanceHelpDocumentsSelectionShape(t *testing.T) {
 	)
 }
 
-// TestOpsRepairProcessInstanceDryRunReportOptionsPlansPathWithoutMutation verifies report planning does not write or mutate.
-func TestOpsRepairProcessInstanceDryRunReportOptionsPlansPathWithoutMutation(t *testing.T) {
+// TestOpsRepairProcessInstanceDryRunWritesMarkdownReport verifies report writing keeps dry-run mutation-free.
+func TestOpsRepairProcessInstanceDryRunWritesMarkdownReport(t *testing.T) {
 	resetOpsRepairProcessInstanceFlagState()
 	t.Cleanup(resetOpsRepairProcessInstanceFlagState)
 
-	reportFile := t.TempDir() + "/repair.md"
+	reportFile := filepath.Join(t.TempDir(), "repair.md")
 	var requests testx.SafeSlice[string]
 	srv := newOpsRepairProcessInstanceServer(t, &requests)
 	t.Cleanup(srv.Close)
@@ -63,8 +64,14 @@ func TestOpsRepairProcessInstanceDryRunReportOptionsPlansPathWithoutMutation(t *
 	})
 
 	require.NoError(t, err, string(output))
-	require.Contains(t, string(output), "report: planned "+reportFile+" (markdown)")
-	require.NoFileExists(t, reportFile)
+	require.Contains(t, string(output), "report: written "+reportFile)
+	report := readReportFile(t, reportFile)
+	require.Contains(t, report, "# Repair Audit Report")
+	require.Contains(t, report, "- Command: ops repair process-instance")
+	require.Contains(t, report, "- Dry Run: true")
+	require.Contains(t, report, "- Outcome: planned")
+	require.Contains(t, report, "## Frozen Targets")
+	require.Contains(t, report, "  - 2251799813685251")
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.Contains(t, gotRequests, "GET /v2/process-instances/2251799813685251")
 	require.Contains(t, gotRequests, "POST /v2/process-instances/2251799813685251/incidents/search")

@@ -134,6 +134,12 @@ var opsRepairIncidentCmd = &cobra.Command{
 			ReportFormat:        reportFormat,
 			StartedAt:           time.Now().UTC(),
 		}, collectOptions()...)
+		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w; write audit report: %v", err, reportErr))
+			}
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops repair incident audit report: %w", reportErr))
+		}
 		renderErr := renderOpsRepairIncidentResult(cmd, result)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair incident: %w", err))

@@ -130,6 +130,12 @@ var opsRepairProcessInstanceCmd = &cobra.Command{
 			ReportFormat:             reportFormat,
 			StartedAt:                time.Now().UTC(),
 		}, collectOptions()...)
+		if reportErr := writeOpsRepairReport(result, cfg, OpsWorkflowReportPreserveExisting); reportErr != nil {
+			if err != nil {
+				handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair process-instance: %w; write audit report: %v", err, reportErr))
+			}
+			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("write ops repair process-instance audit report: %w", reportErr))
+		}
 		renderErr := renderOpsRepairProcessInstanceResult(cmd, result)
 		if err != nil {
 			handleCommandError(cmd, log, cfg.App.NoErrCodes, fmt.Errorf("ops repair process-instance: %w", err))

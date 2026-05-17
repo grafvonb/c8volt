@@ -123,6 +123,24 @@ func TestValidateOpsWorkflowReportFlags(t *testing.T) {
 	)
 }
 
+// TestResolveOpsRepairReportFormatUsesSharedInference verifies repair targets expose the shared ops report format rules.
+func TestResolveOpsRepairReportFormatUsesSharedInference(t *testing.T) {
+	got, err := resolveOpsRepairReportFormat("repair.json", "")
+	require.NoError(t, err)
+	require.Equal(t, "json", got)
+
+	got, err = resolveOpsRepairReportFormat("repair.md", "json")
+	require.NoError(t, err)
+	require.Equal(t, "json", got)
+
+	got, err = resolveOpsRepairReportFormat("", "")
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	_, err = resolveOpsRepairReportFormat("repair.md", "yaml")
+	require.EqualError(t, err, `invalid input: invalid flag value: unsupported ops workflow report format "yaml"`)
+}
+
 func TestOpsExecuteRetentionPolicyReportFlagsReuseSharedContract(t *testing.T) {
 	prevFile := flagOpsExecuteRetentionPolicyReportFile
 	prevFormat := flagOpsExecuteRetentionPolicyReportFormat

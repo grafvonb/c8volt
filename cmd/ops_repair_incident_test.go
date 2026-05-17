@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -52,12 +53,12 @@ func TestOpsRepairIncidentHelpDocumentsExplicitKeyShape(t *testing.T) {
 	require.NotContains(t, parentOutput, "--retries int32")
 }
 
-// TestOpsRepairIncidentDryRunReportOptionsPreservePlannedJSON verifies dry-run report options are reflected without writing or mutating.
-func TestOpsRepairIncidentDryRunReportOptionsPreservePlannedJSON(t *testing.T) {
+// TestOpsRepairIncidentDryRunWritesJSONReport verifies dry-run reports write structured audit data without mutation.
+func TestOpsRepairIncidentDryRunWritesJSONReport(t *testing.T) {
 	resetOpsRepairIncidentFlagState()
 	t.Cleanup(resetOpsRepairIncidentFlagState)
 
-	reportFile := t.TempDir() + "/repair.json"
+	reportFile := filepath.Join(t.TempDir(), "repair.json")
 	var requests testx.SafeSlice[string]
 	srv := newOpsRepairIncidentServer(t, &requests)
 	t.Cleanup(srv.Close)
@@ -72,11 +73,52 @@ func TestOpsRepairIncidentDryRunReportOptionsPreservePlannedJSON(t *testing.T) {
 	require.Contains(t, string(output), `"reportFormat": "json"`)
 	require.Contains(t, string(output), `"jobKeys": [`)
 	require.Contains(t, string(output), `"retryUpdateStatus": "not_applicable"`)
-	require.NoFileExists(t, reportFile)
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportFile)), &report))
+	require.Equal(t, "ops.repair.v1", report["schemaVersion"])
+	require.Equal(t, "ops repair incident", report["commandName"])
+	require.Equal(t, "planned", report["outcome"])
+	require.Equal(t, true, report["dryRun"])
+	require.Equal(t, "8.9", report["camundaVersion"])
+	require.Len(t, requireJSONObject(t, report["frozenSet"])["incidentKeys"], 2)
 	gotRequests := strings.Join(requests.Snapshot(), "\n")
 	require.Contains(t, gotRequests, "POST /v2/incidents/search")
 	require.NotContains(t, gotRequests, "PATCH /v2/jobs/")
 	require.NotContains(t, gotRequests, "/resolution")
+}
+
+// TestOpsRepairIncidentWritesReportForFailureAfterDiscovery verifies post-discovery failures keep audit output.
+func TestOpsRepairIncidentWritesReportForFailureAfterDiscovery(t *testing.T) {
+	resetOpsRepairIncidentFlagState()
+	t.Cleanup(resetOpsRepairIncidentFlagState)
+
+	reportFile := filepath.Join(t.TempDir(), "repair-failed.json")
+	var requests testx.SafeSlice[string]
+	srv := newOpsRepairIncidentFailingResolutionServer(t, &requests)
+	t.Cleanup(srv.Close)
+
+	output, err := testx.RunCmdSubprocess(t, "TestOpsRepairIncidentCommandHelper", map[string]string{
+		"C8VOLT_TEST_CONFIG": writeTestConfigForVersion(t, srv.URL, "8.9"),
+		"C8VOLT_TEST_OPS_REPAIR_INC_ARGS": marshalOpsRepairIncidentArgsForEnv(t, []string{
+			"ops", "repair", "incident",
+			"--key", "2251799813685249",
+			"--no-wait",
+			"--report-file", reportFile,
+			"--report-format", "json",
+		}),
+	})
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok)
+	require.Equal(t, exitcode.Error, exitErr.ExitCode())
+	require.Contains(t, string(output), "ops repair incident:")
+	var report map[string]any
+	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportFile)), &report))
+	require.Equal(t, "failed", report["outcome"])
+	require.Len(t, report["errors"], 1)
+	require.Len(t, requireJSONObject(t, report["frozenSet"])["incidentKeys"], 1)
+	require.Contains(t, strings.Join(requests.Snapshot(), "\n"), "POST /v2/incidents/2251799813685249/resolution")
 }
 
 // TestOpsRepairIncidentVarsDryRunShowsVariableScopes verifies repair variable flags reuse update-pi parsing and appear in dry-run output.
@@ -289,6 +331,26 @@ func newOpsRepairIncidentServer(t *testing.T, requests *testx.SafeSlice[string])
 		case "/v2/incidents/2251799813685249/resolution", "/v2/incidents/2251799813685250/resolution":
 			require.Equal(t, http.MethodPost, r.Method)
 			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+}
+
+// newOpsRepairIncidentFailingResolutionServer returns discovery data but fails after mutation begins.
+func newOpsRepairIncidentFailingResolutionServer(t *testing.T, requests *testx.SafeSlice[string]) *httptest.Server {
+	t.Helper()
+	return testx.NewIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Append(r.Method + " " + r.URL.Path)
+		switch r.URL.Path {
+		case "/v2/incidents/2251799813685249":
+			_, _ = w.Write([]byte(opsRepairIncidentJSON("2251799813685249", "2251799813685251", "2251799813685252", "ACTIVE")))
+		case "/v2/jobs/2251799813685252":
+			require.Equal(t, http.MethodPatch, r.Method)
+			w.WriteHeader(http.StatusNoContent)
+		case "/v2/incidents/2251799813685249/resolution":
+			require.Equal(t, http.MethodPost, r.Method)
+			http.Error(w, "resolution failed", http.StatusInternalServerError)
 		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
