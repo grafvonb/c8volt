@@ -172,7 +172,7 @@ func TestOpsExecuteRetentionPolicyDryRunNoTargetsReportsNoOp(t *testing.T) {
 
 	require.Contains(t, output, "candidate retention process instances: 0")
 	require.Contains(t, output, "no retention cleanup targets found")
-	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "delete preview: skipped (no retention cleanup targets)")
 	require.NotContains(t, output, "deletion: skipped; no deletion request submitted")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "use --verbose to list process-instance keys")
@@ -242,7 +242,7 @@ func TestOpsExecuteRetentionPolicyDryRunDoesNotPromptOrMutate(t *testing.T) {
 		"--dry-run",
 	)
 
-	require.Contains(t, output, "delete plan: planned")
+	require.Contains(t, output, "delete preview:")
 	require.NotContains(t, output, "deletion: skipped; no deletion request submitted")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
 	require.Empty(t, deleted.Snapshot())
@@ -263,9 +263,10 @@ func TestOpsExecuteRetentionPolicyConfirmedDeletionUsesFrozenPlanRoots(t *testin
 	)
 
 	require.Contains(t, output, "delete plan: planned")
-	require.Contains(t, output, "deletion: submitted (requests: 1)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v1/process-instances/" + opsRetentionPolicySeedKey}, deleted.Snapshot())
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsRetentionPolicyChangedSeedKey)
 }
@@ -330,6 +331,7 @@ func TestOpsExecuteRetentionPolicyWritesMarkdownReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# Retention Policy Audit Report")
 	require.Contains(t, report, "- Command: ops execute retention-policy")
@@ -362,6 +364,7 @@ func TestOpsExecuteRetentionPolicyWritesJSONReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
 	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))
@@ -535,6 +538,7 @@ func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 
 	err := renderOpsExecuteRetentionPolicyResult(cmd, ops.RetentionPolicyResult{
 		Request: ops.RetentionPolicyRequest{
+			DryRun:                 true,
 			RetentionDays:          90,
 			DerivedEndDateBoundary: "2026-02-13",
 		},
@@ -561,7 +565,7 @@ func TestOpsExecuteRetentionPolicyDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, out.String(), "execute retention policy")
 	require.Contains(t, out.String(), "selection filters: {bpmnProcessId=\"invoice\", endDateBefore=\"2026-02-13\"}")
 	require.Contains(t, out.String(), "candidate retention process instances: 2")
-	require.Contains(t, out.String(), "delete plan: skipped")
+	require.Contains(t, out.String(), "delete preview: skipped (no retention cleanup targets)")
 	require.Contains(t, out.String(), "outcome: planned; no changes applied")
 	require.NotContains(t, out.String(), "retention days: 90")
 	require.NotContains(t, out.String(), "retention boundary: endDate <= 2026-02-13")
@@ -580,6 +584,7 @@ func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
 
 	err := renderOpsExecuteRetentionPolicyResult(cmd, ops.RetentionPolicyResult{
 		Request: ops.RetentionPolicyRequest{
+			DryRun:                 true,
 			RetentionDays:          90,
 			DerivedEndDateBoundary: "2026-02-13",
 		},
@@ -611,9 +616,9 @@ func TestOpsExecuteRetentionPolicyDryRunPlanRendering(t *testing.T) {
 	require.Contains(t, got, "retention days: 90")
 	require.Contains(t, got, "retention boundary: endDate <= 2026-02-13")
 	require.Contains(t, got, "retention discovery: planned")
-	require.Contains(t, got, "delete plan: planned (candidate retention process instances: 2, roots: 1, affected process instances: 3)")
-	require.Contains(t, got, "duplicate roots: 1")
-	require.Contains(t, got, "non-final descendants in final-root scope: 1 (use --force to cancel before delete)")
+	require.Contains(t, got, "delete preview: 2 retention candidate(s), 1 process-instance tree(s), 3 process instance(s) would be deleted")
+	require.Contains(t, got, "duplicate process-instance trees: 1")
+	require.Contains(t, got, "non-final process instances in scope: 1 (use --force to cancel before delete)")
 	require.Contains(t, got, "missing ancestors: 1")
 	require.Contains(t, got, "traversal warning: one or more parent process instances were not found")
 	require.Contains(t, got, "confirmation required: true")

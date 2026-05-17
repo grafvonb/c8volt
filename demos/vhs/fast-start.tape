@@ -10,6 +10,7 @@ Set Height 640
 Set Padding 16
 Set WindowBar Colorful
 Set TypingSpeed 35 ms
+Set WaitTimeout 30m
 Set Theme "TokyoNight"
 
 Env HOME "/tmp/c8volt-vhs/home"
@@ -22,66 +23,185 @@ Type "clear"
 Enter
 Show
 
-Sleep 500 ms
+Wait
+Sleep 2s
+Hide
+Type "printf '\033[1A\033[2K%s\n' 'Check the connection and credentials.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt config test-connection"
 Enter
-Sleep 3s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'List deployed process definitions.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pd"
 Enter
-Sleep 3s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Show bundled BPMN resources available for deployment.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt embed list"
 Enter
-Sleep 3s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Deploy all bundled demo process definitions for configured Camunda version only.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt embed deploy --all"
 Enter
-Sleep 2s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Show deployed process definitions with their instance counts.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pd --stat"
 Enter
-Sleep 2s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Count process instances for the demo process.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
-Sleep 2s
+Wait
 
-Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":123}'`
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Start two demo process instances with process variables.'"
 Enter
-Sleep 4s
+Show
+Sleep 1s
+Wait
+Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":12345}'`
+Enter
+Wait
+Type `./c8volt run pi -b C89_MultipleSubProcessesParentProcess --vars '{"businessId":67890}'`
+Enter
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Confirm the new process instances are visible.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
-Sleep 2s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Refresh process definition stats after starting the instances.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pd --stat"
 Enter
-Sleep 2s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Inspect process instances with their variables.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --with-vars"
 Enter
-Sleep 5s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Store one process instance key for follow-up commands.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "C8_VOLT_PI=$(./c8volt get pi -b C89_MultipleSubProcessesParentProcess --limit 1 --keys-only)"
 Enter
-Sleep 2s
-
+Wait
 Type "echo $C8_VOLT_PI"
 Enter
-Sleep 1s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Walk the selected process instance and its related executions.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt walk pi --key $C8_VOLT_PI"
 Enter
-Sleep 3s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Preview which demo process instances would be deleted.'"
+Enter
+Show
+Sleep 1s
+Wait
+Type "./c8volt delete pi -b C89_MultipleSubProcessesParentProcess --force --dry-run"
+Enter
+Wait
+
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Delete the demo process instances to clean up.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt delete pi -b C89_MultipleSubProcessesParentProcess --force"
 Enter
 Sleep 1s
 Type "y"
 Enter
-Sleep 33s
+Wait
 
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Verify no demo process instances remain.'"
+Enter
+Show
+Sleep 1s
+Wait
 Type "./c8volt get pi -b C89_MultipleSubProcessesParentProcess --total"
 Enter
-Sleep 2s
+Wait
+
+Sleep 1s
+Hide
+Type "printf '\033[1A\033[2K\n%s\n' 'Fast start demo complete.'"
+Enter
+Show
+Wait
+Sleep 3s

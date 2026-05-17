@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/grafvonb/c8volt/c8volt/ferrors"
@@ -21,6 +22,7 @@ var embedListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List bundled BPMN fixture files",
 	Long: "List bundled BPMN fixture files.\n\n" +
+		"Shows files for the configured Camunda version, matching `embed deploy --all`. " +
 		"Use before `embed deploy` or `embed export` to get exact file names.",
 	Example: `  ./c8volt embed list
   ./c8volt embed list --details
@@ -37,6 +39,10 @@ var embedListCmd = &cobra.Command{
 		files, err := embedded.List()
 		if err != nil {
 			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, err)
+		}
+		files = embeddedFilesForCamundaVersion(files, cfg.App.CamundaVersion)
+		if len(files) == 0 {
+			ferrors.HandleAndExit(log, cfg.App.NoErrCodes, localPreconditionError(fmt.Errorf("no embedded files found for Camunda version %q", cfg.App.CamundaVersion.String())))
 		}
 
 		viewItems := make([]string, 0, len(files))

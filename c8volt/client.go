@@ -99,7 +99,7 @@ func New(opts ...Option) (API, error) {
 	if err != nil {
 		return nil, err
 	}
-	opsAPI := opsvc.NewWithProcessDefinitionPurge(piAPI, incAPI, pdAPI, rAPI, c.log)
+	opsAPI := opsvc.NewWithWorkflowDependencies(cAPI, piAPI, incAPI, pdAPI, rAPI, c.cfg.App.CamundaVersion, c.log)
 	utAPI, err := utsvc.New(c.cfg, c.http, c.log)
 	if err != nil {
 		return nil, err

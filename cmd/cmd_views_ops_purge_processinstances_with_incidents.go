@@ -27,8 +27,8 @@ func renderOpsPurgeProcessInstancesWithIncidentsResult(cmd *cobra.Command, resul
 	renderOpsPurgeProcessInstancesWithIncidentsDiscovery(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd, result)
-	renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd, result)
 	renderOpsPurgeProcessInstancesWithIncidentsReportFile(cmd, result)
+	renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}
@@ -64,6 +64,10 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 	if result.DeletePlan.Status == "" {
 		return
 	}
+	if result.Request.DryRun {
+		renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd, result)
+		return
+	}
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
@@ -84,6 +88,27 @@ func renderOpsPurgeProcessInstancesWithIncidentsPlan(cmd *cobra.Command, result 
 	}
 }
 
+func renderOpsPurgeProcessInstancesWithIncidentsDryRunDeletePreview(cmd *cobra.Command, result ops.IncidentPurgeResult) {
+	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "delete preview: skipped (no incident process-instance targets)")
+		return
+	}
+	renderHumanLine(cmd, "delete preview: %d incident(s), %d process-instance candidate(s), %d process-instance tree(s), %d process instance(s) would be deleted",
+		result.Discovery.IncidentCount,
+		len(result.DeletePlan.CandidateProcessInstanceKeys),
+		len(result.DeletePlan.ResolvedRootKeys),
+		len(result.DeletePlan.AffectedKeys),
+	)
+	if len(result.DeletePlan.NonFinalAffectedItems) > 0 {
+		renderHumanLine(cmd, "non-final process instances in scope: %d", len(result.DeletePlan.NonFinalAffectedItems))
+	}
+	if flagVerbose {
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "resolved root keys", result.DeletePlan.ResolvedRootKeys)
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "affected process-instance keys", result.DeletePlan.AffectedKeys)
+		renderOpsPurgeProcessInstancesWithIncidentsKeys(cmd, "duplicate resolved root keys", result.DeletePlan.DuplicateResolvedRootKeys)
+	}
+}
+
 // renderOpsPurgeProcessInstancesWithIncidentsDeletion prints deletion status when the workflow reaches mutation.
 func renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd *cobra.Command, result ops.IncidentPurgeResult) {
 	if result.Deletion.Status == "" || (!result.Deletion.Submitted && !flagVerbose) {
@@ -93,12 +118,7 @@ func renderOpsPurgeProcessInstancesWithIncidentsDeletion(cmd *cobra.Command, res
 		renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 		return
 	}
-	renderHumanLine(cmd, "deletion: %s (requests: %d)", result.Deletion.Status, len(result.Deletion.Items))
-	if result.Deletion.NoWait {
-		renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
-	} else {
-		renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
-	}
+	renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process-instance tree", "process-instance trees", result.Deletion.NoWait))
 }
 
 // renderOpsPurgeProcessInstancesWithIncidentsOutcome prints the final workflow outcome with hidden-key guidance.
@@ -106,15 +126,17 @@ func renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd *cobra.Command, resu
 	if result.Outcome == "" {
 		return
 	}
+	elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 	if !result.Deletion.Submitted && result.Outcome == ops.IncidentPurgeOutcomePlanned {
 		line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
 		if !flagVerbose && incidentPurgeHasHiddenKeys(result) {
 			line += "; use --verbose to list process-instance keys"
 		}
+		line += elapsed
 		renderHumanLine(cmd, "%s", line)
 		return
 	}
-	renderHumanLine(cmd, "outcome: %s", result.Outcome)
+	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 }
 
 // incidentPurgeHasHiddenKeys reports whether compact output suppressed verbose key details.

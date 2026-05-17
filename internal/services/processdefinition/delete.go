@@ -52,7 +52,9 @@ func DeleteProcessDefinition(ctx context.Context, api ResourceDeleteAPI, pdApi A
 			return d.ResourceDeleteResponse{}, err
 		}
 	}
-	log.Info(fmt.Sprintf("%s; delete impact checked; active pi %d", pdLabel, plan.ActiveProcessInstances()))
+	if !cfg.SuppressWorkflowDetailLogs {
+		log.Info(fmt.Sprintf("%s; delete impact checked; active pi %d", pdLabel, plan.ActiveProcessInstances()))
+	}
 	if !cfg.NoStateCheck && plan.ActiveProcessInstances() > 0 {
 		if !cfg.Force {
 			return d.ResourceDeleteResponse{}, fmt.Errorf("cannot delete process definition %s with %d active process instance(s); use --force to cancel them automatically", key, plan.ActiveProcessInstances())
@@ -85,10 +87,15 @@ func logProcessDefinitionDeleteResult(log *slog.Logger, pdLabel string, resp d.R
 
 // DeleteProcessDefinitionResource submits a process-definition resource delete from an already-validated plan item.
 func DeleteProcessDefinitionResource(ctx context.Context, api ResourceDeleteAPI, log *slog.Logger, plan d.DeleteProcessDefinitionPlanItem, opts ...services.CallOption) (d.ResourceDeleteResponse, error) {
+	cfg := services.ApplyCallOptions(opts)
 	pdLabel := processDefinitionDeleteLogSubject(plan)
-	log.Info(fmt.Sprintf("%s; delete request sent; history included", pdLabel))
+	if !cfg.SuppressWorkflowDetailLogs {
+		log.Info(fmt.Sprintf("%s; delete request sent; history included", pdLabel))
+	}
 	resp, err := api.Delete(ctx, plan.Key, opts...)
-	logProcessDefinitionDeleteResult(log, pdLabel, resp)
+	if !cfg.SuppressWorkflowDetailLogs {
+		logProcessDefinitionDeleteResult(log, pdLabel, resp)
+	}
 	resp.Key = plan.Key
 	return resp, err
 }
@@ -154,7 +161,7 @@ func DeleteProcessDefinitions(ctx context.Context, api ResourceDeleteAPI, pdApi 
 	rs, err := pool.ExecuteSlice[string, d.ResourceDeleteResponse](ctx, ukeys, nw, cfg.FailFast, func(ctx context.Context, key string, _ int) (d.ResourceDeleteResponse, error) {
 		return DeleteProcessDefinition(ctx, api, pdApi, piApi, log, key, opts...)
 	})
-	if !cfg.NoWait {
+	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		total, oks, noks := resourceDeleteTotals(rs)
 		log.Info(fmt.Sprintf("pd delete done; requested %d, ok %d, failed %d", total, oks, noks))
 	}
@@ -172,11 +179,42 @@ func DeleteProcessDefinitionResources(ctx context.Context, api ResourceDeleteAPI
 	rs, err := pool.ExecuteSlice[d.DeleteProcessDefinitionPlanItem, d.ResourceDeleteResponse](ctx, plans, nw, cfg.FailFast, func(ctx context.Context, plan d.DeleteProcessDefinitionPlanItem, _ int) (d.ResourceDeleteResponse, error) {
 		return DeleteProcessDefinitionResource(ctx, api, log, plan, opts...)
 	})
-	if !cfg.NoWait {
+	if !cfg.NoWait && !cfg.SuppressWorkflowDetailLogs {
 		total, oks, noks := resourceDeleteTotals(rs)
 		log.Info(fmt.Sprintf("pd delete done; requested %d, ok %d, failed %d", total, oks, noks))
 	}
 	return rs, err
+}
+
+// FindUnrelatedProcessInstancesForDefinition returns process instances matching
+// a process definition that are not part of the caller-owned cleanup scope.
+func FindUnrelatedProcessInstancesForDefinition(ctx context.Context, piApi pisvc.API, processDefinitionKey string, bpmnProcessID string, allowedKeys types.Keys, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	filter := d.ProcessInstanceFilter{ProcessDefinitionKey: strings.TrimSpace(processDefinitionKey)}
+	if filter.ProcessDefinitionKey == "" {
+		filter.BpmnProcessId = strings.TrimSpace(bpmnProcessID)
+	}
+	if filter.ProcessDefinitionKey == "" && filter.BpmnProcessId == "" {
+		return nil, fmt.Errorf("%w: process-definition cleanup eligibility requires process-definition key or BPMN process ID", d.ErrValidation)
+	}
+	items, err := piApi.SearchForProcessInstances(ctx, filter, MaxResultSize, opts...)
+	if err != nil {
+		return nil, err
+	}
+	allowed := make(map[string]struct{}, len(allowedKeys))
+	for _, key := range allowedKeys.Unique() {
+		allowed[key] = struct{}{}
+	}
+	unrelated := make([]d.ProcessInstance, 0, len(items))
+	for _, item := range items {
+		if item.Key == "" {
+			continue
+		}
+		if _, ok := allowed[item.Key]; ok {
+			continue
+		}
+		unrelated = append(unrelated, item)
+	}
+	return unrelated, nil
 }
 
 // previewDeleteProcessDefinitionImpact loads metadata and completes active-instance impact expansion for one process definition.

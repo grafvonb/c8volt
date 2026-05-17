@@ -29,8 +29,8 @@ func renderOpsPurgeAllProcessDefinitionsResult(cmd *cobra.Command, result ops.Al
 	renderOpsPurgeAllProcessDefinitionsDiscovery(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsPlan(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsDeletion(cmd, result)
-	renderOpsPurgeAllProcessDefinitionsOutcome(cmd, result)
 	renderOpsPurgeAllProcessDefinitionsReportFile(cmd, result)
+	renderOpsPurgeAllProcessDefinitionsOutcome(cmd, result)
 	if len(result.Errors) > 0 {
 		return fmt.Errorf("%s", result.Errors[0])
 	}
@@ -65,12 +65,33 @@ func renderOpsPurgeAllProcessDefinitionsPlan(cmd *cobra.Command, result ops.AllP
 	if result.DeletePlan.Status == "" {
 		return
 	}
+	if result.Request.DryRun {
+		renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd, result)
+		return
+	}
 	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
 		renderHumanLine(cmd, "delete plan: skipped")
 		return
 	}
 	renderHumanLine(cmd, "delete plan: %s (candidate process definitions: %d, affected process instances: %d)",
 		result.DeletePlan.Status,
+		len(result.DeletePlan.CandidateProcessDefinitionKeys),
+		result.DeletePlan.AffectedProcessInstanceCount,
+	)
+	if result.DeletePlan.RequiresForce {
+		renderHumanLine(cmd, "active-instance blocker: %d active process instances require --force before deletion", result.DeletePlan.ActiveProcessInstanceCount)
+	}
+	if flagVerbose {
+		renderOpsPurgeAllProcessDefinitionsKeys(cmd, "planned candidate process-definition keys", result.DeletePlan.CandidateProcessDefinitionKeys)
+	}
+}
+
+func renderOpsPurgeAllProcessDefinitionsDryRunDeletePreview(cmd *cobra.Command, result ops.AllProcessDefinitionsPurgeResult) {
+	if result.DeletePlan.Status == ops.WorkflowStepStatusSkipped {
+		renderHumanLine(cmd, "delete preview: skipped (no matching process definitions)")
+		return
+	}
+	renderHumanLine(cmd, "delete preview: %d process definition(s) would be deleted; %d process instance(s) affected",
 		len(result.DeletePlan.CandidateProcessDefinitionKeys),
 		result.DeletePlan.AffectedProcessInstanceCount,
 	)
@@ -91,12 +112,7 @@ func renderOpsPurgeAllProcessDefinitionsDeletion(cmd *cobra.Command, result ops.
 		renderHumanLine(cmd, "deletion: %s; no deletion request submitted", result.Deletion.Status)
 		return
 	}
-	renderHumanLine(cmd, "deletion: %s (submitted process-definition deletes: %d)", result.Deletion.Status, len(result.Deletion.Items))
-	if result.Deletion.NoWait {
-		renderHumanLine(cmd, "deletion confirmation: skipped (--no-wait)")
-	} else {
-		renderHumanLine(cmd, "deletion confirmation: %t", result.Deletion.Confirmed)
-	}
+	renderHumanLine(cmd, "deletion: %s", opsWorkflowDeletionSummary(string(result.Deletion.Status), len(result.Deletion.Items), "process definition", "process definitions", result.Deletion.NoWait))
 }
 
 // renderOpsPurgeAllProcessDefinitionsOutcome prints the final workflow outcome.
@@ -104,11 +120,12 @@ func renderOpsPurgeAllProcessDefinitionsOutcome(cmd *cobra.Command, result ops.A
 	if result.Outcome == "" {
 		return
 	}
+	elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 	if !result.Deletion.Submitted && result.Outcome == ops.AllProcessDefinitionsPurgeOutcomePlanned {
-		renderHumanLine(cmd, "outcome: %s; no changes applied", result.Outcome)
+		renderHumanLine(cmd, "outcome: %s; no changes applied%s", result.Outcome, elapsed)
 		return
 	}
-	renderHumanLine(cmd, "outcome: %s", result.Outcome)
+	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 }
 
 // renderOpsPurgeAllProcessDefinitionsReportFile prints the compact audit report location.

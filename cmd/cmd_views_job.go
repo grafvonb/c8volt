@@ -132,7 +132,7 @@ func formatJobUpdatePlanItems(items []job.UpdatePlanItem) string {
 			}
 			parts = append(parts, fmt.Sprintf("retries: %s -> %s", item.Before, item.After))
 		case "timeout":
-			parts = append(parts, fmt.Sprintf("timeout: submit %s", item.After))
+			parts = append(parts, fmt.Sprintf("timeout: set to %s", item.After))
 		default:
 			parts = append(parts, fmt.Sprintf("%s: %s", item.Name, item.After))
 		}

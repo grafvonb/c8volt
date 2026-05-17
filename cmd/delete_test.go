@@ -124,7 +124,7 @@ func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *
 	require.Contains(t, output, "selected process instances: 1")
 	require.Contains(t, output, "process-instance trees to delete: 1")
 	require.Contains(t, output, "process instances in scope: 3")
-	require.Contains(t, output, "scope: complete")
+	require.Contains(t, output, "process-instance family scope: complete (all related process instances were found)")
 	require.NotContains(t, output, "selected process-instance keys")
 	require.NotContains(t, output, "root process-instance tree keys")
 	require.NotContains(t, output, "in-scope process-instance keys")
@@ -141,6 +141,70 @@ func TestDeleteProcessInstanceDryRun_DefaultOutputHidesScopeKeysUntilVerbose(t *
 	require.Contains(t, output, "root process-instance tree keys: root-human")
 	require.Contains(t, output, "in-scope process-instance keys: root-human, child-human, sibling-human")
 	require.NotContains(t, output, "no mutation submitted")
+}
+
+func TestDeleteCommands_RegressionPreservesCleanupContracts(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	piCapability := commandCapabilityForCommand(deleteProcessInstanceCmd)
+	require.Equal(t, "delete process-instance", piCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, piCapability.Mutation)
+	require.Equal(t, ContractSupportFull, piCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, piCapability.AutomationSupport)
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process instance key(s) to delete; repeat or combine with stdin '-'",
+	})
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "dry-run",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "preview delete scope without submitting deletion or cancel-before-delete requests",
+	})
+	require.Contains(t, piCapability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
+
+	pdCapability := commandCapabilityForCommand(deleteProcessDefinitionCmd)
+	require.Equal(t, "delete process-definition", pdCapability.Path)
+	require.Equal(t, CommandMutationStateChanging, pdCapability.Mutation)
+	require.Equal(t, ContractSupportFull, pdCapability.ContractSupport)
+	require.Equal(t, AutomationSupportFull, pdCapability.AutomationSupport)
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "stringSlice",
+		Required:    false,
+		Repeated:    true,
+		Description: "process definition key(s) to delete",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "bpmn-process-id",
+		Shorthand:   "b",
+		Type:        "string",
+		Required:    false,
+		Repeated:    false,
+		Description: "BPMN process ID of the process definition (all versions) to delete",
+	})
+	require.Contains(t, pdCapability.Flags, FlagContract{
+		Name:        "force",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "force cancellation of the process instance(s), prior to deletion",
+	})
 }
 
 // TestDeleteProcessInstanceDryRun_DefaultOutputSummarizesSelectedFinalStateInstances
@@ -304,7 +368,7 @@ func TestDeleteProcessInstanceDryRun_KeyedRootReportsFullFamilyWithoutMutation(t
 	require.Equal(t, typex.Keys{"root-1"}, typex.Keys(got.DryRunPreview.ResolvedRoots))
 	require.Equal(t, typex.Keys{"root-1", "child-1", "child-2"}, typex.Keys(got.DryRunPreview.AffectedFamilyKeys))
 	require.Contains(t, buf.String(), "process instances in scope: 3")
-	require.Contains(t, buf.String(), "scope: complete")
+	require.Contains(t, buf.String(), "process-instance family scope: complete (all related process instances were found)")
 	require.NotContains(t, buf.String(), "in-scope process-instance keys")
 	require.NotContains(t, buf.String(), "no mutation submitted")
 }

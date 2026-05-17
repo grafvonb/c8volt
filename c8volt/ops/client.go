@@ -21,6 +21,15 @@ func New(api opsvc.API, log *slog.Logger) API {
 	return &client{api: api, log: log}
 }
 
+func (c *client) ExecuteSmokeTest(ctx context.Context, request SmokeTestRequest, opts ...options.FacadeOption) (SmokeTestResult, error) {
+	result, err := c.api.ExecuteSmokeTest(ctx, toDomainSmokeTestRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
+	out := fromDomainSmokeTestResult(result)
+	if err != nil {
+		return out, ferr.FromDomain(err)
+	}
+	return out, nil
+}
+
 func (c *client) PurgeOrphanProcessInstances(ctx context.Context, request OrphanPurgeRequest, opts ...options.FacadeOption) (OrphanPurgeResult, error) {
 	result, err := c.api.PurgeOrphanProcessInstances(ctx, toDomainOrphanPurgeRequest(request), options.MapFacadeOptionsToCallOptions(opts)...)
 	out := fromDomainOrphanPurgeResult(result)

@@ -81,6 +81,29 @@ func TestConfigTestConnectionHelp_ExplainsConnectionDiagnostic(t *testing.T) {
 	require.NotContains(t, output, "--template")
 }
 
+func TestConfigTestConnectionCommand_RegressionPreservesReadOnlyJSONContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+
+	capability := commandCapabilityForCommand(configTestConnectionCmd)
+
+	require.Equal(t, "config test-connection", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Contains(t, capability.OutputModes, OutputModeContract{
+		Name:             "json",
+		Supported:        true,
+		MachinePreferred: true,
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "json",
+		Shorthand:   "j",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "output as JSON (where applicable)",
+	})
+}
+
 func TestConfigShowCommand_PrintsSanitizedEffectiveConfigAndWarnings(t *testing.T) {
 	cfgPath := writeRawTestConfig(t, `app:
   tenant: tenant-a

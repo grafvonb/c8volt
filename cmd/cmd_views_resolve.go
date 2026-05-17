@@ -36,7 +36,7 @@ func renderIncidentResolutionResults(cmd *cobra.Command, results incident.Resolu
 	}
 	total, ok, failed := results.Totals()
 	if results.DryRun {
-		renderHumanLine(cmd, "dry run: resolve incidents: %d target(s), %d planned/skipped, %d failed; no changes applied", total, ok, failed)
+		renderHumanLine(cmd, "dry run: resolve incidents: %d target(s) checked, %d ready or already skipped, %d failed; no changes applied", total, ok, failed)
 		if failed > 0 {
 			return fmt.Errorf("one or more incident resolution dry-run lookups failed")
 		}
@@ -97,7 +97,7 @@ func renderProcessInstanceResolutionResults(cmd *cobra.Command, results incident
 	}
 	total, ok, failed := results.Totals()
 	if results.DryRun {
-		renderHumanLine(cmd, "dry run: resolve process-instances: %d target(s), %d planned/skipped, %d failed; no changes applied", total, ok, failed)
+		renderHumanLine(cmd, "dry run: resolve process-instances: %d target(s) checked, %d ready or already skipped, %d failed; no changes applied", total, ok, failed)
 		if failed > 0 {
 			return fmt.Errorf("one or more process-instance incident resolution dry-run lookups failed")
 		}

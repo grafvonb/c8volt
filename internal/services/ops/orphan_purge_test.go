@@ -260,12 +260,29 @@ func TestPurgeOrphanProcessInstancesUsesSuppliedLoggerForDeleteSummary(t *testin
 
 type stubProcessInstanceAPI struct {
 	pisvc.API
+	createProcessInstance func(context.Context, d.ProcessInstanceData, ...services.CallOption) (d.ProcessInstanceCreation, error)
+	search                func(context.Context, d.ProcessInstanceFilter, int32, ...services.CallOption) ([]d.ProcessInstance, error)
 	searchPage            func(context.Context, d.ProcessInstanceFilter, d.ProcessInstancePageRequest, ...services.CallOption) (d.ProcessInstancePage, error)
 	filterOrphans         func(context.Context, []d.ProcessInstance, ...services.CallOption) ([]d.ProcessInstance, error)
 	ancestryResult        func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	descendantsResult     func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
+	familyResult          func(context.Context, string, ...services.CallOption) (pitraversal.Result, error)
 	cancelProcessInstance func(context.Context, string, ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error)
 	deleteProcessInstance func(context.Context, string, ...services.CallOption) (d.DeleteResponse, error)
+}
+
+func (s stubProcessInstanceAPI) CreateProcessInstance(ctx context.Context, data d.ProcessInstanceData, opts ...services.CallOption) (d.ProcessInstanceCreation, error) {
+	if s.createProcessInstance == nil {
+		panic("unexpected create")
+	}
+	return s.createProcessInstance(ctx, data, opts...)
+}
+
+func (s stubProcessInstanceAPI) SearchForProcessInstances(ctx context.Context, filter d.ProcessInstanceFilter, size int32, opts ...services.CallOption) ([]d.ProcessInstance, error) {
+	if s.search == nil {
+		panic("unexpected search")
+	}
+	return s.search(ctx, filter, size, opts...)
 }
 
 func (s stubProcessInstanceAPI) SearchForProcessInstancesPage(ctx context.Context, filter d.ProcessInstanceFilter, page d.ProcessInstancePageRequest, opts ...services.CallOption) (d.ProcessInstancePage, error) {
@@ -294,6 +311,13 @@ func (s stubProcessInstanceAPI) DescendantsResult(ctx context.Context, rootKey s
 		panic("unexpected descendants")
 	}
 	return s.descendantsResult(ctx, rootKey, opts...)
+}
+
+func (s stubProcessInstanceAPI) FamilyResult(ctx context.Context, startKey string, opts ...services.CallOption) (pitraversal.Result, error) {
+	if s.familyResult == nil {
+		panic("unexpected family")
+	}
+	return s.familyResult(ctx, startKey, opts...)
 }
 
 func (s stubProcessInstanceAPI) CancelProcessInstance(ctx context.Context, key string, opts ...services.CallOption) (d.CancelResponse, []d.ProcessInstance, error) {

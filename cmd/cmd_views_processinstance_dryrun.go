@@ -373,12 +373,15 @@ func formatProcessInstanceDryRunSelectedFinalState(items []processInstanceDryRun
 
 // printProcessInstanceDryRunScope writes the traversal completeness line for dry-run output.
 func printProcessInstanceDryRunScope(cmd *cobra.Command, outcome process.TraversalOutcome, warning string, missingAncestors []processInstanceDryRunMissingAncestor) {
-	renderHumanLine(cmd, "scope: %s", formatProcessInstanceDryRunScope(outcome, warning, missingAncestors))
+	renderHumanLine(cmd, "process-instance family scope: %s", formatProcessInstanceDryRunScope(outcome, warning, missingAncestors))
 }
 
 // formatProcessInstanceDryRunScope formats traversal completeness and partial-scope details.
 func formatProcessInstanceDryRunScope(outcome process.TraversalOutcome, warning string, missingAncestors []processInstanceDryRunMissingAncestor) string {
 	if outcome != process.TraversalOutcomePartial || (warning == "" && len(missingAncestors) == 0) {
+		if outcome == process.TraversalOutcomeComplete {
+			return "complete (all related process instances were found)"
+		}
 		return string(outcome)
 	}
 

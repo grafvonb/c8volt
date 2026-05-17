@@ -10,6 +10,7 @@ import (
 )
 
 type API interface {
+	ExecuteSmokeTest(ctx context.Context, request SmokeTestRequest, opts ...options.FacadeOption) (SmokeTestResult, error)
 	PurgeOrphanProcessInstances(ctx context.Context, request OrphanPurgeRequest, opts ...options.FacadeOption) (OrphanPurgeResult, error)
 	ExecuteRetentionPolicy(ctx context.Context, request RetentionPolicyRequest, opts ...options.FacadeOption) (RetentionPolicyResult, error)
 	PurgeProcessInstancesWithIncidents(ctx context.Context, request IncidentPurgeRequest, opts ...options.FacadeOption) (IncidentPurgeResult, error)

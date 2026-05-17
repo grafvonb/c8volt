@@ -14,6 +14,7 @@ import (
 	"github.com/grafvonb/c8volt/c8volt/foptions"
 	"github.com/grafvonb/c8volt/c8volt/incident"
 	"github.com/grafvonb/c8volt/c8volt/process"
+	"github.com/grafvonb/c8volt/c8volt/resource"
 	d "github.com/grafvonb/c8volt/internal/domain"
 	"github.com/grafvonb/c8volt/internal/services"
 	opsvc "github.com/grafvonb/c8volt/internal/services/ops"
@@ -116,6 +117,202 @@ func TestClientPurgeOrphanProcessInstancesMapsServiceBoundary(t *testing.T) {
 	require.True(t, got.DeleteRequested)
 	require.Equal(t, WorkflowStepStatusSubmitted, got.Deletion.Status)
 	require.Equal(t, []process.DeleteReport{{Key: "2251799813685248", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Deletion.Items)
+}
+
+// TestClientExecuteSmokeTestMapsServiceBoundary verifies the new smoke-test facade remains a thin mapping layer.
+func TestClientExecuteSmokeTestMapsServiceBoundary(t *testing.T) {
+	t.Parallel()
+
+	started := time.Date(2026, 5, 17, 9, 45, 0, 0, time.UTC)
+	finished := started.Add(30 * time.Second)
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, request d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+			require.Equal(t, d.SmokeTestRequest{
+				CommandName:   "ops execute smoke-test",
+				DryRun:        true,
+				Count:         2,
+				Workers:       3,
+				FailFast:      true,
+				NoWorkerLimit: true,
+				NoCleanup:     true,
+				AutoConfirm:   true,
+				Automation:    true,
+				NoWait:        true,
+				OutputMode:    "json",
+				ReportFile:    "smoke-test.json",
+				ReportFormat:  "json",
+				StartedAt:     started,
+			}, request)
+			cfg := services.ApplyCallOptions(opts)
+			require.True(t, cfg.NoWait)
+			require.True(t, cfg.FailFast)
+			require.True(t, cfg.NoWorkerLimit)
+			return d.SmokeTestResult{
+				Request: request,
+				Plan: d.SmokeTestPlan{
+					Status:           d.OpsWorkflowStepStatusPlanned,
+					CamundaVersion:   "8.9",
+					CleanupRequested: false,
+					Fixture: d.EmbeddedSmokeTestFixture{
+						CamundaVersion: "8.9",
+						File:           "embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
+						BpmnProcessID:  "C89_MultipleSubProcessesParentProcess",
+						Available:      true,
+					},
+					PlannedSteps: []d.WorkflowStepResult{{Name: "deploy", Status: d.OpsWorkflowStepStatusPlanned, Message: "deploy fixture"}},
+				},
+				Fixture: d.EmbeddedSmokeTestFixture{
+					CamundaVersion: "8.9",
+					File:           "embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
+					BpmnProcessID:  "C89_MultipleSubProcessesParentProcess",
+					Available:      true,
+				},
+				Deployment: d.SmokeTestDeploymentResult{
+					Status:                   d.OpsWorkflowStepStatusSubmitted,
+					FixtureFile:              "embedded/processdefinitions/C89_MultipleSubProcessesParentProcess.bpmn",
+					BpmnProcessID:            "C89_MultipleSubProcessesParentProcess",
+					ProcessDefinitionKey:     "pd-1",
+					ProcessDefinitionVersion: 7,
+					TenantID:                 "tenant-a",
+				},
+				Run: d.SmokeTestRunResult{
+					Status:              d.OpsWorkflowStepStatusConfirmed,
+					RequestedCount:      2,
+					CreatedCount:        2,
+					ProcessInstanceKeys: typex.Keys{"pi-1", "pi-2"},
+					Items: []d.SmokeTestRunItem{
+						{ProcessInstanceKey: "pi-1", Status: d.OpsWorkflowStepStatusConfirmed},
+						{ProcessInstanceKey: "pi-2", Status: d.OpsWorkflowStepStatusConfirmed},
+					},
+				},
+				Walk: d.SmokeTestWalkResult{
+					Status: d.OpsWorkflowStepStatusConfirmed,
+					Items: []d.SmokeTestWalkItem{{
+						ProcessInstanceKey: "pi-1",
+						Status:             d.OpsWorkflowStepStatusConfirmed,
+						Summary: d.SmokeTestTraversalSummary{
+							ProcessInstanceKey:     "pi-1",
+							RootProcessInstanceKey: "root-1",
+							FamilyKeys:             typex.Keys{"root-1", "pi-1"},
+							MissingAncestors:       []d.MissingAncestor{{Key: "missing", StartKey: "pi-1"}},
+							Outcome:                d.TraversalOutcomePartial,
+						},
+					}},
+				},
+				Cleanup: d.SmokeTestCleanupResult{
+					NoCleanup:                    true,
+					RetainedProcessInstanceKeys:  typex.Keys{"pi-1", "pi-2"},
+					RetainedProcessDefinitionKey: "pd-1",
+					RetainedBpmnProcessID:        "C89_MultipleSubProcessesParentProcess",
+					RetainedTenantID:             "tenant-a",
+					ProcessInstanceCleanup: d.SmokeTestProcessInstanceCleanupResult{
+						Status:        d.OpsWorkflowStepStatusSkipped,
+						SubmittedKeys: typex.Keys{"pi-1", "pi-2"},
+						Items:         []d.Reporter{{Key: "pi-1", Ok: true, StatusCode: 202, Status: "accepted"}},
+						NoWait:        true,
+					},
+					ProcessDefinitionEligibility: d.SmokeTestCleanupEligibility{
+						Status:   d.OpsWorkflowStepStatusSkipped,
+						Eligible: true,
+					},
+					ProcessDefinitionCleanup: d.SmokeTestProcessDefinitionCleanupResult{
+						Status:                        d.OpsWorkflowStepStatusSkipped,
+						SubmittedProcessDefinitionKey: "pd-1",
+						Items: []d.ResourceDeleteResponse{{
+							Key:        "pd-1",
+							Ok:         true,
+							StatusCode: 202,
+							Status:     "accepted",
+						}},
+						NoWait: true,
+					},
+				},
+				Report: d.SmokeTestAuditReport{
+					SchemaVersion:    "ops.smoke-test.v1",
+					CommandName:      "ops execute smoke-test",
+					StartedAt:        started,
+					FinishedAt:       finished,
+					Duration:         "30s",
+					DryRun:           true,
+					CamundaVersion:   "8.9",
+					ProfileIdentity:  "profile-a",
+					TenantID:         "tenant-a",
+					CleanupRequested: false,
+					NoCleanup:        true,
+					NoWait:           true,
+					Outcome:          d.SmokeTestOutcomePassedCleanupSkipped,
+				},
+				Outcome: d.SmokeTestOutcomePassedCleanupSkipped,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{
+		CommandName:   "ops execute smoke-test",
+		DryRun:        true,
+		Count:         2,
+		Workers:       3,
+		FailFast:      true,
+		NoWorkerLimit: true,
+		NoCleanup:     true,
+		AutoConfirm:   true,
+		Automation:    true,
+		NoWait:        true,
+		OutputMode:    "json",
+		ReportFile:    "smoke-test.json",
+		ReportFormat:  "json",
+		StartedAt:     started,
+	}, foptions.WithNoWait(), foptions.WithFailFast(), foptions.WithNoWorkerLimit())
+
+	require.NoError(t, err)
+	require.Equal(t, SmokeTestOutcomePassedCleanupSkipped, got.Outcome)
+	require.Equal(t, "C89_MultipleSubProcessesParentProcess", got.Fixture.BpmnProcessID)
+	require.Equal(t, []string{"pi-1", "pi-2"}, []string(got.Run.ProcessInstanceKeys))
+	require.Equal(t, WorkflowStepStatusConfirmed, got.Walk.Items[0].Status)
+	require.Equal(t, process.TraversalOutcomePartial, got.Walk.Items[0].Summary.Outcome)
+	require.Equal(t, []process.MissingAncestor{{Key: "missing", StartKey: "pi-1"}}, got.Walk.Items[0].Summary.MissingAncestors)
+	require.Equal(t, []process.DeleteReport{{Key: "pi-1", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Cleanup.ProcessInstanceCleanup.Items)
+	require.Equal(t, []resource.DeleteReport{{Key: "pd-1", Ok: true, StatusCode: 202, Status: "accepted"}}, got.Cleanup.ProcessDefinitionCleanup.Items)
+	require.Equal(t, []string{"pi-1", "pi-2"}, []string(got.Cleanup.RetainedProcessInstanceKeys))
+	require.Equal(t, "pd-1", got.Cleanup.RetainedProcessDefinitionKey)
+	require.Equal(t, "C89_MultipleSubProcessesParentProcess", got.Cleanup.RetainedBpmnProcessID)
+	require.Equal(t, "tenant-a", got.Cleanup.RetainedTenantID)
+	require.Equal(t, "profile-a", got.Report.ProfileIdentity)
+	require.True(t, got.Report.NoCleanup)
+}
+
+func TestClientExecuteSmokeTestMapsDeploymentResult(t *testing.T) {
+	t.Parallel()
+
+	api := stubOpsService{
+		smokeTest: func(_ context.Context, request d.SmokeTestRequest, _ ...services.CallOption) (d.SmokeTestResult, error) {
+			return d.SmokeTestResult{
+				Request: request,
+				Deployment: d.SmokeTestDeploymentResult{
+					Status:                   d.OpsWorkflowStepStatusConfirmed,
+					FixtureFile:              "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn",
+					BpmnProcessID:            "C88_MultipleSubProcessesParentProcess",
+					ProcessDefinitionKey:     "pd-88",
+					ProcessDefinitionVersion: 4,
+					TenantID:                 "tenant-a",
+				},
+				Outcome: d.SmokeTestOutcomePassedCleanupSkipped,
+			}, nil
+		},
+	}
+
+	got, err := New(api, slog.Default()).ExecuteSmokeTest(context.Background(), SmokeTestRequest{
+		CommandName: "ops execute smoke-test",
+		Count:       1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, WorkflowStepStatusConfirmed, got.Deployment.Status)
+	require.Equal(t, "embedded/processdefinitions/C88_MultipleSubProcessesParentProcess.bpmn", got.Deployment.FixtureFile)
+	require.Equal(t, "C88_MultipleSubProcessesParentProcess", got.Deployment.BpmnProcessID)
+	require.Equal(t, "pd-88", got.Deployment.ProcessDefinitionKey)
+	require.Equal(t, int32(4), got.Deployment.ProcessDefinitionVersion)
+	require.Equal(t, "tenant-a", got.Deployment.TenantID)
 }
 
 func TestClientExecuteRetentionPolicyMapsServiceBoundary(t *testing.T) {
@@ -529,10 +726,18 @@ func TestClientPurgeAllProcessDefinitionsMapsDiscoveryFields(t *testing.T) {
 }
 
 type stubOpsService struct {
+	smokeTest                  func(context.Context, d.SmokeTestRequest, ...services.CallOption) (d.SmokeTestResult, error)
 	purge                      func(context.Context, d.OrphanPurgeRequest, ...services.CallOption) (d.OrphanPurgeResult, error)
 	retention                  func(context.Context, d.RetentionPolicyRequest, ...services.CallOption) (d.RetentionPolicyResult, error)
 	incidentPurge              func(context.Context, d.IncidentPurgeRequest, ...services.CallOption) (d.IncidentPurgeResult, error)
 	allProcessDefinitionsPurge func(context.Context, d.AllProcessDefinitionsPurgeRequest, ...services.CallOption) (d.AllProcessDefinitionsPurgeResult, error)
+}
+
+func (s stubOpsService) ExecuteSmokeTest(ctx context.Context, request d.SmokeTestRequest, opts ...services.CallOption) (d.SmokeTestResult, error) {
+	if s.smokeTest == nil {
+		panic("unexpected call")
+	}
+	return s.smokeTest(ctx, request, opts...)
 }
 
 func (s stubOpsService) PurgeOrphanProcessInstances(ctx context.Context, request d.OrphanPurgeRequest, opts ...services.CallOption) (d.OrphanPurgeResult, error) {

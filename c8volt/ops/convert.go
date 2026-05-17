@@ -12,6 +12,222 @@ import (
 	"github.com/grafvonb/c8volt/typex"
 )
 
+func toDomainSmokeTestRequest(x SmokeTestRequest) d.SmokeTestRequest {
+	return d.SmokeTestRequest{
+		CommandName:   x.CommandName,
+		DryRun:        x.DryRun,
+		Count:         x.Count,
+		Workers:       x.Workers,
+		FailFast:      x.FailFast,
+		NoWorkerLimit: x.NoWorkerLimit,
+		NoCleanup:     x.NoCleanup,
+		AutoConfirm:   x.AutoConfirm,
+		Automation:    x.Automation,
+		NoWait:        x.NoWait,
+		OutputMode:    x.OutputMode,
+		ReportFile:    x.ReportFile,
+		ReportFormat:  x.ReportFormat,
+		StartedAt:     x.StartedAt,
+	}
+}
+
+func fromDomainSmokeTestResult(x d.SmokeTestResult) SmokeTestResult {
+	return SmokeTestResult{
+		Request:    fromDomainSmokeTestRequest(x.Request),
+		Plan:       fromDomainSmokeTestPlan(x.Plan),
+		Fixture:    fromDomainEmbeddedSmokeTestFixture(x.Fixture),
+		Deployment: fromDomainSmokeTestDeploymentResult(x.Deployment),
+		Run:        fromDomainSmokeTestRunResult(x.Run),
+		Walk:       fromDomainSmokeTestWalkResult(x.Walk),
+		Cleanup:    fromDomainSmokeTestCleanupResult(x.Cleanup),
+		Report:     fromDomainSmokeTestAuditReport(x.Report),
+		Outcome:    SmokeTestOutcome(x.Outcome),
+		Errors:     append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestRequest(x d.SmokeTestRequest) SmokeTestRequest {
+	return SmokeTestRequest{
+		CommandName:   x.CommandName,
+		DryRun:        x.DryRun,
+		Count:         x.Count,
+		Workers:       x.Workers,
+		FailFast:      x.FailFast,
+		NoWorkerLimit: x.NoWorkerLimit,
+		NoCleanup:     x.NoCleanup,
+		AutoConfirm:   x.AutoConfirm,
+		Automation:    x.Automation,
+		NoWait:        x.NoWait,
+		OutputMode:    x.OutputMode,
+		ReportFile:    x.ReportFile,
+		ReportFormat:  x.ReportFormat,
+		StartedAt:     x.StartedAt,
+	}
+}
+
+func fromDomainWorkflowStepResult(x d.WorkflowStepResult) WorkflowStepResult {
+	return WorkflowStepResult{
+		Name:    x.Name,
+		Status:  WorkflowStepStatus(x.Status),
+		Message: x.Message,
+		Errors:  append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainEmbeddedSmokeTestFixture(x d.EmbeddedSmokeTestFixture) EmbeddedSmokeTestFixture {
+	return EmbeddedSmokeTestFixture{
+		CamundaVersion: x.CamundaVersion,
+		File:           x.File,
+		BpmnProcessID:  x.BpmnProcessID,
+		Available:      x.Available,
+	}
+}
+
+func fromDomainSmokeTestPlan(x d.SmokeTestPlan) SmokeTestPlan {
+	return SmokeTestPlan{
+		Status:           WorkflowStepStatus(x.Status),
+		CamundaVersion:   x.CamundaVersion,
+		Fixture:          fromDomainEmbeddedSmokeTestFixture(x.Fixture),
+		CleanupRequested: x.CleanupRequested,
+		PlannedSteps:     toolx.MapSlice(x.PlannedSteps, fromDomainWorkflowStepResult),
+		Errors:           append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestDeploymentResult(x d.SmokeTestDeploymentResult) SmokeTestDeploymentResult {
+	return SmokeTestDeploymentResult{
+		Status:                   WorkflowStepStatus(x.Status),
+		FixtureFile:              x.FixtureFile,
+		BpmnProcessID:            x.BpmnProcessID,
+		ProcessDefinitionKey:     x.ProcessDefinitionKey,
+		ProcessDefinitionVersion: x.ProcessDefinitionVersion,
+		TenantID:                 x.TenantID,
+		Errors:                   append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestRunItem(x d.SmokeTestRunItem) SmokeTestRunItem {
+	return SmokeTestRunItem{
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		Status:             WorkflowStepStatus(x.Status),
+		Error:              x.Error,
+	}
+}
+
+func fromDomainSmokeTestRunResult(x d.SmokeTestRunResult) SmokeTestRunResult {
+	return SmokeTestRunResult{
+		Status:              WorkflowStepStatus(x.Status),
+		RequestedCount:      x.RequestedCount,
+		CreatedCount:        x.CreatedCount,
+		ProcessInstanceKeys: append(typex.Keys(nil), x.ProcessInstanceKeys...),
+		Items:               toolx.MapSlice(x.Items, fromDomainSmokeTestRunItem),
+		Errors:              append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestTraversalSummary(x d.SmokeTestTraversalSummary) SmokeTestTraversalSummary {
+	return SmokeTestTraversalSummary{
+		ProcessInstanceKey:     x.ProcessInstanceKey,
+		RootProcessInstanceKey: x.RootProcessInstanceKey,
+		FamilyKeys:             append(typex.Keys(nil), x.FamilyKeys...),
+		MissingAncestors:       toolx.MapSlice(x.MissingAncestors, fromDomainMissingAncestor),
+		Warning:                x.Warning,
+		Outcome:                process.TraversalOutcome(x.Outcome),
+	}
+}
+
+func fromDomainSmokeTestWalkItem(x d.SmokeTestWalkItem) SmokeTestWalkItem {
+	return SmokeTestWalkItem{
+		ProcessInstanceKey: x.ProcessInstanceKey,
+		Status:             WorkflowStepStatus(x.Status),
+		Summary:            fromDomainSmokeTestTraversalSummary(x.Summary),
+		Error:              x.Error,
+	}
+}
+
+func fromDomainSmokeTestWalkResult(x d.SmokeTestWalkResult) SmokeTestWalkResult {
+	return SmokeTestWalkResult{
+		Status: WorkflowStepStatus(x.Status),
+		Items:  toolx.MapSlice(x.Items, fromDomainSmokeTestWalkItem),
+		Errors: append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestCleanupEligibility(x d.SmokeTestCleanupEligibility) SmokeTestCleanupEligibility {
+	return SmokeTestCleanupEligibility{
+		Status:   WorkflowStepStatus(x.Status),
+		Eligible: x.Eligible,
+		Blockers: append([]string(nil), x.Blockers...),
+		Errors:   append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestProcessInstanceCleanupResult(x d.SmokeTestProcessInstanceCleanupResult) SmokeTestProcessInstanceCleanupResult {
+	return SmokeTestProcessInstanceCleanupResult{
+		Status:        WorkflowStepStatus(x.Status),
+		SubmittedKeys: append(typex.Keys(nil), x.SubmittedKeys...),
+		Items:         toolx.MapSlice(x.Items, fromDomainDeleteReport),
+		Submitted:     x.Submitted,
+		Confirmed:     x.Confirmed,
+		NoWait:        x.NoWait,
+		Errors:        append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestProcessDefinitionCleanupResult(x d.SmokeTestProcessDefinitionCleanupResult) SmokeTestProcessDefinitionCleanupResult {
+	return SmokeTestProcessDefinitionCleanupResult{
+		Status:                        WorkflowStepStatus(x.Status),
+		SubmittedProcessDefinitionKey: x.SubmittedProcessDefinitionKey,
+		Items:                         toolx.MapSlice(x.Items, fromDomainResourceDeleteReport),
+		Submitted:                     x.Submitted,
+		Confirmed:                     x.Confirmed,
+		NoWait:                        x.NoWait,
+		Errors:                        append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestCleanupResult(x d.SmokeTestCleanupResult) SmokeTestCleanupResult {
+	return SmokeTestCleanupResult{
+		ProcessInstanceCleanup:       fromDomainSmokeTestProcessInstanceCleanupResult(x.ProcessInstanceCleanup),
+		ProcessDefinitionEligibility: fromDomainSmokeTestCleanupEligibility(x.ProcessDefinitionEligibility),
+		ProcessDefinitionCleanup:     fromDomainSmokeTestProcessDefinitionCleanupResult(x.ProcessDefinitionCleanup),
+		NoCleanup:                    x.NoCleanup,
+		RetainedProcessInstanceKeys:  append(typex.Keys(nil), x.RetainedProcessInstanceKeys...),
+		RetainedProcessDefinitionKey: x.RetainedProcessDefinitionKey,
+		RetainedBpmnProcessID:        x.RetainedBpmnProcessID,
+		RetainedTenantID:             x.RetainedTenantID,
+		Errors:                       append([]string(nil), x.Errors...),
+	}
+}
+
+func fromDomainSmokeTestAuditReport(x d.SmokeTestAuditReport) SmokeTestAuditReport {
+	return SmokeTestAuditReport{
+		SchemaVersion:    x.SchemaVersion,
+		CommandName:      x.CommandName,
+		StartedAt:        x.StartedAt,
+		FinishedAt:       x.FinishedAt,
+		Duration:         x.Duration,
+		DryRun:           x.DryRun,
+		C8voltVersion:    x.C8voltVersion,
+		CamundaVersion:   x.CamundaVersion,
+		ProfileIdentity:  x.ProfileIdentity,
+		TenantID:         x.TenantID,
+		Fixture:          fromDomainEmbeddedSmokeTestFixture(x.Fixture),
+		Plan:             fromDomainSmokeTestPlan(x.Plan),
+		Deployment:       fromDomainSmokeTestDeploymentResult(x.Deployment),
+		Run:              fromDomainSmokeTestRunResult(x.Run),
+		Walk:             fromDomainSmokeTestWalkResult(x.Walk),
+		CleanupRequested: x.CleanupRequested,
+		NoCleanup:        x.NoCleanup,
+		Cleanup:          fromDomainSmokeTestCleanupResult(x.Cleanup),
+		AutoConfirm:      x.AutoConfirm,
+		Automation:       x.Automation,
+		NoWait:           x.NoWait,
+		Errors:           append([]string(nil), x.Errors...),
+		Outcome:          SmokeTestOutcome(x.Outcome),
+	}
+}
+
 func toDomainOrphanPurgeRequest(x OrphanPurgeRequest) d.OrphanPurgeRequest {
 	out := d.OrphanPurgeRequest{
 		CommandName:  x.CommandName,

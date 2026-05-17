@@ -263,7 +263,7 @@ func TestUpdateJobCommand_TimeoutDryRunReportsSubmissionIntent(t *testing.T) {
 
 	require.Equal(t, []string{"POST /v2/jobs/search"}, requests)
 	require.Empty(t, patchBodies)
-	require.Contains(t, output, "dry run: update job 2251799813711967: timeout: submit 5m; no changes applied")
+	require.Contains(t, output, "dry run: update job 2251799813711967: timeout: set to 5m; no changes applied")
 	require.NotContains(t, output, "deadline")
 }
 

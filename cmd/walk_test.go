@@ -97,6 +97,42 @@ func TestWalkHelp_DocumentsTraversalVerificationGuidance(t *testing.T) {
 	require.NotContains(t, output, "--family")
 }
 
+func TestWalkProcessInstanceCommand_RegressionPreservesReadOnlyTraversalContract(t *testing.T) {
+	root := Root()
+	resetCommandTreeFlags(root)
+	resetProcessInstanceCommandGlobals()
+	t.Cleanup(resetProcessInstanceCommandGlobals)
+
+	capability := commandCapabilityForCommand(walkProcessInstanceCmd)
+
+	require.Equal(t, "walk process-instance", capability.Path)
+	require.Equal(t, CommandMutationReadOnly, capability.Mutation)
+	require.Equal(t, ContractSupportFull, capability.ContractSupport)
+	require.Equal(t, AutomationSupportUnsupported, capability.AutomationSupport)
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "key",
+		Shorthand:   "k",
+		Type:        "string",
+		Required:    true,
+		Repeated:    false,
+		Description: "start walking from this process instance key",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-incidents",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show incident keys, states, and messages for keyed process-instance walks",
+	})
+	require.Contains(t, capability.Flags, FlagContract{
+		Name:        "with-vars",
+		Type:        "bool",
+		Required:    false,
+		Repeated:    false,
+		Description: "show process-instance-scope variables for keyed process-instance walks",
+	})
+}
+
 // TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey keeps incident enrichment scoped to keyed walks.
 func TestWalkProcessInstanceCommand_RejectsWithIncidentsWithoutKey(t *testing.T) {
 	cfgPath := writeTestConfig(t, "http://127.0.0.1:1")

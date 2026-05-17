@@ -150,7 +150,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunDiscoveryOutput(t *testing.T) {
 	require.Contains(t, output, "candidate process definitions: 1")
 	require.Contains(t, output, "candidate scope: latest matching process definitions")
 	require.Contains(t, output, "duplicate candidate process definitions: 1")
-	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "delete preview: skipped (no matching process definitions)")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "candidate process-definition keys:")
 
@@ -203,7 +203,7 @@ func TestOpsPurgeAllProcessDefinitionsDryRunPlanOutput(t *testing.T) {
 	require.NoError(t, renderOpsPurgeAllProcessDefinitionsResult(cmd, sampleAllProcessDefinitionsPurgeDryRunPlanResult()))
 	output := buf.String()
 
-	require.Contains(t, output, "delete plan: planned (candidate process definitions: 2, affected process instances: 3)")
+	require.Contains(t, output, "delete preview: 2 process definition(s) would be deleted; 3 process instance(s) affected")
 	require.NotContains(t, output, "\nprocess definitions:\n")
 	require.Contains(t, output, "invoice [v1: 3, v2/stable: 0]")
 	require.Contains(t, output, "active-instance blocker: 3 active process instances require --force before deletion")
@@ -299,9 +299,10 @@ func TestOpsPurgeAllProcessDefinitionsConfirmedDeletionUsesFrozenCandidates(t *t
 	output := string(outputBytes)
 
 	require.Contains(t, readReportFile(t, promptPath), "All process-definitions purge matched 2 candidate process definition(s)")
-	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 2 process definitions (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "elapsed:")
 	require.ElementsMatch(t, []string{
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyA + "/deletion",
 		"/v2/resources/" + opsAllProcessDefinitionsPurgePDKeyB + "/deletion",
@@ -397,8 +398,8 @@ func TestOpsPurgeAllProcessDefinitionsDeletionOutput(t *testing.T) {
 	output := buf.String()
 
 	require.Contains(t, output, "purge all process definitions")
-	require.Contains(t, output, "deletion: submitted (submitted process-definition deletes: 2)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 2 process definitions (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 }
 
@@ -425,6 +426,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesMarkdownReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	require.Empty(t, deleted.Snapshot())
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# All Process Definitions Purge Audit Report")
@@ -466,6 +468,7 @@ func TestOpsPurgeAllProcessDefinitionsWritesJSONReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
 	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))

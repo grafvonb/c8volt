@@ -52,7 +52,7 @@ func TestOpsPurgeOrphanProcessInstancesDryRunHidesCandidateKeysWithoutDelete(t *
 	require.Contains(t, output, "dry run: purge orphan process-instances")
 	require.Contains(t, output, "candidate orphan process instances: 1")
 	require.NotContains(t, output, "candidate keys:")
-	require.Contains(t, output, "delete plan: planned")
+	require.Contains(t, output, "delete preview:")
 	require.NotContains(t, output, "one or more parent process instances were not found")
 	require.NotContains(t, output, "no deletion request submitted")
 	require.Contains(t, output, "outcome: planned; no changes applied; use --verbose to list process-instance keys")
@@ -91,7 +91,7 @@ func TestOpsPurgeOrphanProcessInstancesDryRunNoTargetsReportsNoOp(t *testing.T) 
 	)
 
 	require.Contains(t, output, "candidate orphan process instances: 0")
-	require.Contains(t, output, "delete plan: skipped")
+	require.Contains(t, output, "delete preview: skipped (no orphan process-instance targets)")
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.NotContains(t, output, "use --verbose to list process-instance keys")
 	snapshot := requests.Snapshot()
@@ -141,9 +141,10 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesCandidateKeys(t *testin
 	require.Contains(t, output, "candidate orphan process instances: 1")
 	require.Contains(t, output, "delete plan: planned")
 	require.NotContains(t, output, "one or more parent process instances were not found")
-	require.Contains(t, output, "deletion: submitted (requests: 1)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsOrphanParentKey)
 }
@@ -180,8 +181,8 @@ func TestOpsPurgeOrphanProcessInstancesAutomationDeletesWithoutAutoConfirm(t *te
 		"--no-wait",
 	)
 
-	require.Contains(t, output, "deletion: submitted (requests: 1)")
-	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
+	require.Contains(t, output, "deletion: submitted 1 process-instance tree (--no-wait)")
+	require.NotContains(t, output, "deletion confirmation:")
 	require.Contains(t, output, "outcome: deleted")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 }
@@ -228,6 +229,7 @@ func TestOpsPurgeOrphanProcessInstancesWritesMarkdownReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: planned; no changes applied")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: planned; no changes applied"))
 	report := readReportFile(t, reportPath)
 	require.Contains(t, report, "# Orphan Process Instance Purge Audit Report")
 	require.Contains(t, report, "- Command: ops purge orphan-process-instances")
@@ -258,6 +260,7 @@ func TestOpsPurgeOrphanProcessInstancesWritesJSONReport(t *testing.T) {
 
 	require.Contains(t, output, "outcome: deleted")
 	require.Contains(t, output, "report: written "+reportPath)
+	require.Less(t, strings.Index(output, "report: written "+reportPath), strings.Index(output, "outcome: deleted"))
 	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any
 	require.NoError(t, json.Unmarshal([]byte(readReportFile(t, reportPath)), &report))

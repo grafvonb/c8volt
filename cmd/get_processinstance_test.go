@@ -4172,6 +4172,10 @@ func resetProcessInstanceCommandGlobals() {
 	flagOpsExecuteRetentionPolicyRetentionDays = 0
 	flagOpsExecuteRetentionPolicyReportFile = ""
 	flagOpsExecuteRetentionPolicyReportFormat = ""
+	flagOpsExecuteSmokeTestCount = 1
+	flagOpsExecuteSmokeTestNoCleanup = false
+	flagOpsExecuteSmokeTestReportFile = ""
+	flagOpsExecuteSmokeTestReportFormat = ""
 	flagExpectPIKeys = nil
 	flagExpectPIStates = nil
 	flagExpectPIIncident = ""

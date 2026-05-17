@@ -147,7 +147,9 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 	pi := fromPostProcessInstancesResponse(*payload)
 	s.log.Debug(fmt.Sprintf("pi %s created by API; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
 	if !cCfg.NoWait {
-		s.log.Info(fmt.Sprintf("waiting for pi %s; pd %s", pi.Key, pi.ProcessDefinitionKey))
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("waiting for pi %s; pd %s", pi.Key, pi.ProcessDefinitionKey))
+		}
 		states := []d.State{d.StateActive}
 		_, created, err := waiter.WaitForProcessInstanceState(ctx, s, s.cfg, s.log, pi.Key, states, opts...)
 		if err != nil {
@@ -155,10 +157,14 @@ func (s *Service) CreateProcessInstance(ctx context.Context, data d.ProcessInsta
 		}
 		pi.StartDate = created.StartDate
 		pi.StartConfirmedAt = time.Now().UTC().Format(time.RFC3339)
-		s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("pi %s created; pd %s %s v%d %s", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+		}
 	} else {
 		pi.StartDate = time.Now().UTC().Format(time.RFC3339)
-		s.log.Info(fmt.Sprintf("pi %s create requested; pd %s %s v%d %s; no-wait", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+		if !cCfg.SuppressWorkflowDetailLogs {
+			s.log.Info(fmt.Sprintf("pi %s create requested; pd %s %s v%d %s; no-wait", pi.Key, pi.ProcessDefinitionKey, pi.BpmnProcessId, pi.ProcessDefinitionVersion, pi.TenantId))
+		}
 	}
 	return pi, nil
 }

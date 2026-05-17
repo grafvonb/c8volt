@@ -183,24 +183,28 @@ func (s *Service) Deploy(ctx context.Context, units []d.DeploymentUnitData, opts
 		return d.Deployment{}, err
 	}
 	if !cCfg.NoWait {
-		if err = s.waitForDeploymentConfirmation(ctx, *payload, vtenantID); err != nil {
+		if err = s.waitForDeploymentConfirmation(ctx, *payload, vtenantID, cCfg.SuppressWorkflowDetailLogs); err != nil {
 			return d.Deployment{}, err
 		}
-	} else {
+	} else if !cCfg.SuppressWorkflowDetailLogs {
 		s.log.Info(fmt.Sprintf("pd deploy submitted; count %d, tenant %s, no-wait", len(units), vtenantID))
 	}
 	return fromDeploymentResult(*payload), nil
 }
 
-func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav89.DeploymentResult, vtenantID string) error {
-	s.log.Info(fmt.Sprintf("pd deploy wait; count %d", len(dr.Deployments)))
+func (s *Service) waitForDeploymentConfirmation(ctx context.Context, dr camundav89.DeploymentResult, vtenantID string, suppressDetailLogs bool) error {
+	if !suppressDetailLogs {
+		s.log.Info(fmt.Sprintf("pd deploy wait; count %d", len(dr.Deployments)))
+	}
 	stopActivity := logging.StartActivity(ctx, fmt.Sprintf("waiting for %d deployments", len(dr.Deployments)))
 	defer stopActivity()
 	poll := s.processDefinitionDeployPoller(dr)
 	if err := poller.WaitForCompletion(ctx, s.log, poller.DefaultCompletionTimeout, true, poll); err != nil {
 		return fmt.Errorf("waiting for process definition deployment confirmation failed: %w", err)
 	}
-	s.log.Info(fmt.Sprintf("pd deploy confirmed; count %d, tenant %s", len(dr.Deployments), vtenantID))
+	if !suppressDetailLogs {
+		s.log.Info(fmt.Sprintf("pd deploy confirmed; count %d, tenant %s", len(dr.Deployments), vtenantID))
+	}
 	return nil
 }
 
