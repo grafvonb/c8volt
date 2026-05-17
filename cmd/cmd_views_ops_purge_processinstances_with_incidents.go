@@ -106,15 +106,17 @@ func renderOpsPurgeProcessInstancesWithIncidentsOutcome(cmd *cobra.Command, resu
 	if result.Outcome == "" {
 		return
 	}
+	elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 	if !result.Deletion.Submitted && result.Outcome == ops.IncidentPurgeOutcomePlanned {
 		line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
 		if !flagVerbose && incidentPurgeHasHiddenKeys(result) {
 			line += "; use --verbose to list process-instance keys"
 		}
+		line += elapsed
 		renderHumanLine(cmd, "%s", line)
 		return
 	}
-	renderHumanLine(cmd, "outcome: %s", result.Outcome)
+	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 }
 
 // incidentPurgeHasHiddenKeys reports whether compact output suppressed verbose key details.

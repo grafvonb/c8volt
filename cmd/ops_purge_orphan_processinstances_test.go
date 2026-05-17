@@ -144,6 +144,7 @@ func TestOpsPurgeOrphanProcessInstancesAutoConfirmDeletesCandidateKeys(t *testin
 	require.Contains(t, output, "deletion: submitted (requests: 1)")
 	require.Contains(t, output, "deletion confirmation: skipped (--no-wait)")
 	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "elapsed:")
 	require.Equal(t, []string{"/v2/process-instances/" + opsOrphanChildKey + "/deletion"}, deleted.Snapshot())
 	require.NotContains(t, strings.Join(deleted.Snapshot(), "\n"), opsOrphanParentKey)
 }

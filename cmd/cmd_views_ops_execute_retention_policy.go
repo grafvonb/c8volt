@@ -112,14 +112,16 @@ func renderOpsExecuteRetentionPolicyDeletion(cmd *cobra.Command, result ops.Rete
 
 func renderOpsExecuteRetentionPolicyOutcome(cmd *cobra.Command, result ops.RetentionPolicyResult) {
 	if result.Outcome != "" {
+		elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 		if !result.Deletion.Submitted && result.Outcome == ops.RetentionPolicyOutcomePlanned {
 			line := fmt.Sprintf("outcome: %s; no changes applied", result.Outcome)
 			if !flagVerbose && retentionPolicyHasHiddenKeys(result) {
 				line += "; use --verbose to list process-instance keys"
 			}
+			line += elapsed
 			renderHumanLine(cmd, "%s", line)
 		} else {
-			renderHumanLine(cmd, "outcome: %s", result.Outcome)
+			renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 		}
 	}
 }

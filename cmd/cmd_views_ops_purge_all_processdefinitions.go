@@ -104,11 +104,12 @@ func renderOpsPurgeAllProcessDefinitionsOutcome(cmd *cobra.Command, result ops.A
 	if result.Outcome == "" {
 		return
 	}
+	elapsed := opsWorkflowElapsedSuffix(result.Report.Duration)
 	if !result.Deletion.Submitted && result.Outcome == ops.AllProcessDefinitionsPurgeOutcomePlanned {
-		renderHumanLine(cmd, "outcome: %s; no changes applied", result.Outcome)
+		renderHumanLine(cmd, "outcome: %s; no changes applied%s", result.Outcome, elapsed)
 		return
 	}
-	renderHumanLine(cmd, "outcome: %s", result.Outcome)
+	renderHumanLine(cmd, "outcome: %s%s", result.Outcome, elapsed)
 }
 
 // renderOpsPurgeAllProcessDefinitionsReportFile prints the compact audit report location.

@@ -401,6 +401,7 @@ func TestOpsPurgeProcessInstancesWithIncidentsWritesJSONReport(t *testing.T) {
 	output := string(outputBytes)
 
 	require.Contains(t, output, "outcome: deleted")
+	require.Contains(t, output, "elapsed:")
 	require.Contains(t, output, "report: written "+reportPath)
 	require.NotContains(t, readReportFile(t, reportPath), "old report")
 	var report map[string]any

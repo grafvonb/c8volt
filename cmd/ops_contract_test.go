@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -39,6 +40,13 @@ func TestOpsWorkflowStepStatusesMatchSharedContract(t *testing.T) {
 		require.Equal(t, string(status), status.String())
 	}
 	require.False(t, OpsWorkflowStepStatus("mutation_failed").IsValid())
+}
+
+func TestOpsWorkflowElapsedSuffixUsesApproximateDuration(t *testing.T) {
+	require.Empty(t, opsWorkflowElapsedSuffix(""))
+	require.Equal(t, "; elapsed: <1s", opsWorkflowElapsedSuffix((250 * time.Millisecond).String()))
+	require.Equal(t, "; elapsed: 1m31s", opsWorkflowElapsedSuffix((90*time.Second + 600*time.Millisecond).String()))
+	require.Equal(t, "; elapsed: about five minutes", opsWorkflowElapsedSuffix("about five minutes"))
 }
 
 // TestOpsWorkflowReportFormatForPath documents explicit and extension-inferred report format behavior.
